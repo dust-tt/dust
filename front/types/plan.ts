@@ -30,6 +30,7 @@ export type LimitsType = {
     isSlackBotAllowed: boolean;
     maxMessages: number;
     maxMessagesTimeframe: MaxMessagesTimeframeType;
+    isDeepDiveAllowed: boolean;
   };
   connections: ManageDataSourcesLimitsType;
   dataSources: {
@@ -110,6 +111,7 @@ export const CreatePlanFormSchema = t.type({
     day: null,
     lifetime: null,
   }),
+  isDeepDiveAllowed: t.boolean,
   dataSourcesCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsCount: t.union([t.number, NumberFromString]),
   dataSourcesDocumentsSizeMb: t.union([t.number, NumberFromString]),
@@ -119,10 +121,19 @@ export const CreatePlanFormSchema = t.type({
 
 export type CreatePlanFormType = t.TypeOf<typeof CreatePlanFormSchema>;
 
-export const EnterpriseUpgradeFormSchema = t.type({
-  stripeSubscriptionId: NonEmptyString,
-  planCode: NonEmptyString,
-});
+export const EnterpriseUpgradeFormSchema = t.intersection([
+  t.type({
+    stripeSubscriptionId: NonEmptyString,
+    planCode: NonEmptyString,
+    freeCreditsOverrideEnabled: t.boolean,
+    paygEnabled: t.boolean,
+  }),
+  t.partial({
+    freeCreditsDollars: t.number,
+    defaultDiscountPercent: t.number,
+    paygCapDollars: t.number,
+  }),
+]);
 
 export type EnterpriseUpgradeFormType = t.TypeOf<
   typeof EnterpriseUpgradeFormSchema

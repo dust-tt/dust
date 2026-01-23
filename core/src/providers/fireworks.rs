@@ -1,19 +1,17 @@
 use crate::providers::chat_messages::ChatMessage;
 use crate::providers::embedder::Embedder;
 use crate::providers::llm::ChatFunction;
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{LLMChatGeneration, LLMGeneration, LLM};
 use crate::providers::provider::{Provider, ProviderID};
-use crate::providers::tiktoken::tiktoken::{batch_tokenize_async, o200k_base_singleton, CoreBPE};
-use crate::providers::tiktoken::tiktoken::{decode_async, encode_async};
 use crate::run::Credentials;
+use crate::types::tokenizer::{TiktokenTokenizerBase, TokenizerConfig};
 use crate::utils;
 
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use hyper::Uri;
-use parking_lot::RwLock;
 use serde_json::Value;
-use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::helpers::strip_tools_from_chat_history;
@@ -28,26 +26,31 @@ const MODEL_IDS_WITH_TOOLS_SUPPORT: &[&str] = &[
     "accounts/fireworks/models/qwen2p5-72b-instruct",
     "accounts/fireworks/models/firefunction-v2",
     "accounts/fireworks/models/firefunction-v1",
-    "accounts/fireworks/models/kimi-k2-instruct",
+    "accounts/fireworks/models/kimi-k2-instruct-0905",
+    "accounts/fireworks/models/deepseek-v3p2",
 ];
 
 pub struct FireworksLLM {
     id: String,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl FireworksLLM {
-    pub fn new(id: String) -> Self {
-        FireworksLLM { id, api_key: None }
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
+        FireworksLLM {
+            id,
+            api_key: None,
+            tokenizer: tokenizer.or_else(|| {
+                TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+                    base: TiktokenTokenizerBase::O200kBase,
+                })
+            }),
+        }
     }
 
     fn chat_uri(&self) -> Result<Uri> {
         Ok(format!("https://api.fireworks.ai/inference/v1/chat/completions",).parse::<Uri>()?)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<CoreBPE>> {
-        // TODO(@fontanierh): TBD
-        o200k_base_singleton()
     }
 
     pub fn fireworks_context_size(_model_id: &str) -> usize {
@@ -86,15 +89,27 @@ impl LLM for FireworksLLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn generate(
@@ -216,9 +231,13 @@ impl Provider for FireworksProvider {
             Err(anyhow!("User aborted Fireworks test."))?;
         }
 
-        let mut llm = self.llm(String::from(
-            "accounts/fireworks/models/llama-v3p1-8b-instruct",
-        ));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::Tiktoken {
+            base: TiktokenTokenizerBase::O200kBase,
+        });
+        let mut llm = self.llm(
+            String::from("accounts/fireworks/models/llama-v3p1-8b-instruct"),
+            tokenizer,
+        );
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -242,8 +261,8 @@ impl Provider for FireworksProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(FireworksLLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(FireworksLLM::new(id, tokenizer))
     }
 
     fn embedder(&self, _id: String) -> Box<dyn Embedder + Sync + Send> {

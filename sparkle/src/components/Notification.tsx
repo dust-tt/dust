@@ -7,7 +7,8 @@ import {
   InformationCircleIcon,
   XCircleIcon,
 } from "@sparkle/icons/app";
-import { assertNever, cn } from "@sparkle/lib/utils";
+import { assertNever } from "@sparkle/lib/internal_utils";
+import { cn } from "@sparkle/lib/utils";
 
 import { Icon } from "./Icon";
 
@@ -22,6 +23,16 @@ export type NotificationType = {
 const NotificationsContext = React.createContext<(n: NotificationType) => void>(
   (n) => n
 );
+
+const notificationVariants = cva("s-pt-0.5", {
+  variants: {
+    type: {
+      success: "s-text-success-600 dark:s-text-success-400-night",
+      error: "s-text-warning-500 dark:s-text-warning-500-night",
+      info: "s-text-info-600 dark:s-text-info-400-night",
+    },
+  },
+});
 
 function NotificationContent({
   type,
@@ -42,16 +53,6 @@ function NotificationContent({
     }
   })();
 
-  const variantClassName = cva("s-pt-0.5", {
-    variants: {
-      type: {
-        success: "s-text-success-600 dark:s-text-success-400-night",
-        error: "s-text-warning-500 dark:s-text-warning-500-night",
-        info: "s-text-info-600 dark:s-text-info-400-night",
-      },
-    },
-  });
-
   return (
     <div
       className={cn(
@@ -65,14 +66,14 @@ function NotificationContent({
       <Icon
         size="lg"
         visual={icon}
-        className={variantClassName({ type })}
+        className={notificationVariants({ type })}
         aria-hidden="true"
       />
       <div className="s-flex s-min-w-0 s-flex-grow s-flex-col">
         <div
           className={cn(
-            "s-text-md s-line-clamp-1 s-h-6 s-grow s-font-semibold",
-            variantClassName({ type })
+            "s-heading-md s-line-clamp-1 s-h-6 s-grow",
+            notificationVariants({ type })
           )}
         >
           {title || type}

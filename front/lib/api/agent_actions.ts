@@ -2,9 +2,9 @@ import { Op, Sequelize } from "sequelize";
 
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { AgentsUsageType, ModelId } from "@app/types";
 
@@ -31,15 +31,9 @@ export async function getToolsUsage(
   }
 
   const getAgentsForUser = async () =>
-    (
-      await GroupResource.findAgentIdsForGroups(
-        auth,
-        auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id)
-      )
-    ).map((g) => g.agentConfigurationId);
+    (await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())).map(
+      (g) => g.agentConfigurationId
+    );
 
   const getAgentWhereClauseAdmin = () => ({
     status: "active",
@@ -62,7 +56,7 @@ export async function getToolsUsage(
     ],
   });
 
-  const res = (await AgentConfiguration.findAll({
+  const res = (await AgentConfigurationModel.findAll({
     raw: true,
     group: [
       "mcpServerConfigurations->mcpServerView.internalMCPServerId",
@@ -95,7 +89,7 @@ export async function getToolsUsage(
     ],
     include: [
       {
-        model: AgentMCPServerConfiguration,
+        model: AgentMCPServerConfigurationModel,
         as: "mcpServerConfigurations",
         attributes: [],
         required: true,

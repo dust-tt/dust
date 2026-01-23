@@ -2,6 +2,7 @@ import type { RunAppResponseType } from "@dust-tt/client";
 import { createParser } from "eventsource-parser";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import { getDustAppSecrets } from "@app/lib/api/dust_app_secrets";
@@ -12,7 +13,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import type { RunUsageType } from "@app/lib/resources/run_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -64,6 +65,7 @@ function extractUsageFromExecutions(
             prompt_tokens: number;
             completion_tokens: number;
             cached_tokens?: number;
+            cache_creation_input_tokens?: number;
             reasoning_tokens?: number;
           };
         };
@@ -71,6 +73,15 @@ function extractUsageFromExecutions(
           const promptTokens = token_usage.prompt_tokens;
           const completionTokens = token_usage.completion_tokens;
           const cachedTokens = token_usage.cached_tokens;
+          const cacheCreationTokens = token_usage.cache_creation_input_tokens;
+
+          const usageCostMicroUsd = computeTokensCostForUsageInMicroUsd({
+            modelId: block.model_id,
+            promptTokens,
+            completionTokens,
+            cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+          });
 
           usages.push({
             providerId: block.provider_id,
@@ -78,6 +89,8 @@ function extractUsageFromExecutions(
             promptTokens,
             completionTokens,
             cachedTokens: cachedTokens ?? null,
+            cacheCreationTokens: cacheCreationTokens ?? null,
+            costMicroUsd: usageCostMicroUsd,
           });
         }
       }
@@ -191,18 +204,17 @@ function extractUsageFromExecutions(
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<RunAppResponseType>>,
   auth: Authenticator,
-  { space }: { space: SpaceResource },
-  keyAuth: Authenticator
+  { space }: { space: SpaceResource }
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
-  const keyWorkspaceId = keyAuth.getNonNullableWorkspace().id;
   const [app, providers, secrets] = await Promise.all([
     AppResource.fetchById(auth, req.query.aId as string),
-    Provider.findAll({
+    ProviderModel.findAll({
       where: {
-        workspaceId: keyWorkspaceId,
+        workspaceId: owner.id,
       },
     }),
     getDustAppSecrets(auth, true),
@@ -218,7 +230,7 @@ async function handler(
     });
   }
 
-  if (!app.canRead(keyAuth)) {
+  if (!app.canRead(auth)) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
@@ -228,10 +240,13 @@ async function handler(
     });
   }
 
-  // This variable is used in the context of the DustAppRun action to use the workspace credentials
-  // instead of our managed credentials when running an app with a system API key.
-  const useWorkspaceCredentials =
-    req.query["use_workspace_credentials"] === "true";
+  // This variable defines whether to use the dust managed credentials or the workspace credentials.
+  // Dust managed credentials can only be used with a system API key.
+  // The `use_workspace_credentials` query parameter is used in the context of the DustAppRun action, to
+  // use the workspace credentials even though we use a system API key.
+  const useDustCredentials =
+    auth.isSystemKey() && req.query["use_workspace_credentials"] !== "true";
+
   const coreAPI = new CoreAPI(apiConfig.getCoreAPIConfig(), logger);
   const runFlavor: RunFlavor = req.body.stream
     ? "streaming"
@@ -269,18 +284,12 @@ async function handler(
       }
 
       // Fetch the feature flags for the owner of the run.
-      const keyWorkspaceFlags = await getFeatureFlags(
-        keyAuth.getNonNullableWorkspace()
-      );
-
-      // Temporary flag to help test EU OpenAI in specific workspaces.
-      const useOpenAIEUKeyFlag =
-        keyWorkspaceFlags.includes("use_openai_eu_key");
+      const keyWorkspaceFlags = await getFeatureFlags(owner);
 
       let credentials: CredentialsType | null = null;
-      if (auth.isSystemKey() && !useWorkspaceCredentials) {
+      if (useDustCredentials) {
         // Dust managed credentials: system API key (packaged apps).
-        credentials = dustManagedCredentials({ useOpenAIEUKeyFlag });
+        credentials = dustManagedCredentials();
       } else {
         credentials = credentialsFromProviders(providers);
       }
@@ -315,15 +324,14 @@ async function handler(
           },
           app: app.sId,
           useOpenAIEUEndpoint: credentials?.OPENAI_USE_EU_ENDPOINT,
-          userWorkspace: keyAuth.getNonNullableWorkspace().sId,
         },
         "App run creation"
       );
 
       const runRes = await coreAPI.createRunStream(
-        keyAuth.getNonNullableWorkspace(),
+        owner,
         keyWorkspaceFlags,
-        keyAuth.groups(),
+        auth.groupIds(),
         {
           projectId: app.dustAPIProjectId,
           runType: "deploy",
@@ -450,7 +458,8 @@ async function handler(
           dustRunId,
           appId: app.id,
           runType: "deploy",
-          workspaceId: keyWorkspaceId,
+          workspaceId: owner.id,
+          useWorkspaceCredentials: !useDustCredentials,
         });
 
         await run.recordRunUsage(usages);
@@ -540,8 +549,5 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   // Check read on the workspace authenticator - for public space, everybody can read
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } }),
-  {
-    allowUserOutsideCurrentWorkspace: true,
-  }
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
 );

@@ -1,64 +1,39 @@
 import {
+  ActionCard,
   ActionIcons,
   BookOpenIcon,
   Hoverable,
-  ToolCard,
 } from "@dust-tt/sparkle";
 import React, { useMemo } from "react";
 
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
-import type { MCPServerViewTypeWithLabel } from "@app/components/agent_builder/MCPServerViewsContext";
-import type { ActionSpecification } from "@app/components/agent_builder/types";
-import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
 import {
   InternalActionIcons,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
-import { getMCPServerToolsConfigurations } from "@app/lib/actions/mcp_internal_actions/input_configuration";
+  isCustomResourceIconType,
+} from "@app/components/resources/resources_icons";
+import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
+import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 
-interface DataVisualizationCardProps {
-  specification: ActionSpecification;
-  isSelected: boolean;
-  onClick: () => void;
-}
-
-function DataVisualizationCard({
-  specification,
-  isSelected,
-  onClick,
-}: DataVisualizationCardProps) {
-  return (
-    <ToolCard
-      icon={specification.dropDownIcon}
-      label={specification.label}
-      description={specification.description}
-      isSelected={isSelected}
-      canAdd={!isSelected}
-      onClick={onClick}
-      cardContainerClassName="h-36"
-    />
-  );
-}
-
-interface MCPServerCardProps {
+export interface MCPServerCardProps {
   view: MCPServerViewTypeWithLabel;
   isSelected: boolean;
   onClick: () => void;
   onToolInfoClick: () => void;
 }
 
-function MCPServerCard({
+export function MCPServerCard({
   view,
   isSelected,
   onClick,
   onToolInfoClick,
 }: MCPServerCardProps) {
-  const requirement = getMCPServerToolsConfigurations(view);
-  const canAdd = requirement.configurable !== "no" ? true : !isSelected;
+  const requirements = getMCPServerRequirements(view);
+  const canAdd = requirements.noRequirement ? !isSelected : true;
 
-  const icon = isCustomServerIconType(view.server.icon)
+  const icon = isCustomResourceIconType(view.server.icon)
     ? ActionIcons[view.server.icon]
-    : InternalActionIcons[view.server.icon] || BookOpenIcon;
+    : (InternalActionIcons[view.server.icon] ?? BookOpenIcon);
 
   // Create a ref to use as portal container for tooltips to prevent click blocking
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -81,12 +56,12 @@ function MCPServerCard({
       </>
     );
   } else {
-    description = <>{getMcpServerViewDescription(view)}</>;
+    description = getMcpServerViewDescription(view);
   }
 
   return (
     <div ref={containerRef}>
-      <ToolCard
+      <ActionCard
         icon={icon}
         label={view.label}
         description={description}
@@ -95,10 +70,10 @@ function MCPServerCard({
         onClick={onClick}
         cardContainerClassName="h-36"
         mountPortal
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        // eslint-disable-next-line react-hooks/refs, @typescript-eslint/prefer-nullish-coalescing
         mountPortalContainer={containerRef.current || undefined}
-        toolInfo={{
-          label: "More info",
+        footer={{
+          label: "Tool Details",
           onClick: onToolInfoClick,
         }}
       />
@@ -110,8 +85,6 @@ interface MCPServerSelectionPageProps {
   topMCPServerViews: MCPServerViewTypeWithLabel[];
   nonTopMCPServerViews: MCPServerViewTypeWithLabel[];
   onItemClick: (mcpServerView: MCPServerViewTypeWithLabel) => void;
-  dataVisualization?: ActionSpecification | null;
-  onDataVisualizationClick?: () => void;
   selectedToolsInSheet?: SelectedTool[];
   onToolDetailsClick?: (tool: SelectedTool) => void;
 }
@@ -120,8 +93,6 @@ export function MCPServerSelectionPage({
   topMCPServerViews,
   nonTopMCPServerViews,
   onItemClick,
-  dataVisualization,
-  onDataVisualizationClick,
   selectedToolsInSheet = [],
   onToolDetailsClick,
 }: MCPServerSelectionPageProps) {
@@ -129,23 +100,14 @@ export function MCPServerSelectionPage({
   const selectedMCPIds = useMemo(() => {
     const mcpIds = new Set<string>();
     selectedToolsInSheet.forEach((tool) => {
-      if (tool.type === "MCP") {
-        mcpIds.add(tool.view.sId);
-      }
+      mcpIds.add(tool.view.sId);
     });
     return mcpIds;
   }, [selectedToolsInSheet]);
 
-  const isDataVisualizationSelected = selectedToolsInSheet.some(
-    (tool) => tool.type === "DATA_VISUALIZATION"
-  );
-
-  const hasDataVisualization = dataVisualization && onDataVisualizationClick;
   const hasTopViews = topMCPServerViews.length > 0;
   const hasNonTopViews = nonTopMCPServerViews.length > 0;
-  const hasAnyResults =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    hasDataVisualization || hasTopViews || hasNonTopViews;
+  const hasAnyResults = hasTopViews || hasNonTopViews;
 
   if (!hasAnyResults) {
     return (
@@ -163,55 +125,43 @@ export function MCPServerSelectionPage({
   }
 
   return (
-    <>
-      <div className="flex flex-col gap-4 py-2">
-        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-        {((dataVisualization && onDataVisualizationClick) ||
-          topMCPServerViews) && (
-          <span className="text-lg font-semibold">Top tools</span>
-        )}
-        <div className="grid grid-cols-2 gap-3">
-          {dataVisualization && onDataVisualizationClick && (
-            <DataVisualizationCard
-              key="data-visualization"
-              specification={dataVisualization}
-              isSelected={isDataVisualizationSelected}
-              onClick={onDataVisualizationClick}
-            />
-          )}
-          {topMCPServerViews.map((view) => (
-            <MCPServerCard
-              key={view.id}
-              view={view}
-              isSelected={selectedMCPIds.has(view.sId)}
-              onClick={() => onItemClick(view)}
-              onToolInfoClick={() => {
-                if (onToolDetailsClick) {
-                  onToolDetailsClick({ type: "MCP", view });
-                }
-              }}
-            />
-          ))}
-        </div>
-        {nonTopMCPServerViews.length ? (
-          <span className="text-lg font-semibold">Other tools</span>
-        ) : null}
-        <div className="grid grid-cols-2 gap-3">
-          {nonTopMCPServerViews.map((view) => (
-            <MCPServerCard
-              key={view.id}
-              view={view}
-              isSelected={selectedMCPIds.has(view.sId)}
-              onClick={() => onItemClick(view)}
-              onToolInfoClick={() => {
-                if (onToolDetailsClick) {
-                  onToolDetailsClick({ type: "MCP", view });
-                }
-              }}
-            />
-          ))}
-        </div>
+    <div className="flex flex-col gap-4 py-2">
+      {topMCPServerViews.length ? (
+        <span className="text-lg font-semibold">Top tools</span>
+      ) : null}
+      <div className="grid grid-cols-2 gap-3">
+        {topMCPServerViews.map((view) => (
+          <MCPServerCard
+            key={view.id}
+            view={view}
+            isSelected={selectedMCPIds.has(view.sId)}
+            onClick={() => onItemClick(view)}
+            onToolInfoClick={() => {
+              if (onToolDetailsClick) {
+                onToolDetailsClick({ view });
+              }
+            }}
+          />
+        ))}
       </div>
-    </>
+      {nonTopMCPServerViews.length ? (
+        <span className="text-lg font-semibold">Other tools</span>
+      ) : null}
+      <div className="grid grid-cols-2 gap-3">
+        {nonTopMCPServerViews.map((view) => (
+          <MCPServerCard
+            key={view.id}
+            view={view}
+            isSelected={selectedMCPIds.has(view.sId)}
+            onClick={() => onItemClick(view)}
+            onToolInfoClick={() => {
+              if (onToolDetailsClick) {
+                onToolDetailsClick({ view });
+              }
+            }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

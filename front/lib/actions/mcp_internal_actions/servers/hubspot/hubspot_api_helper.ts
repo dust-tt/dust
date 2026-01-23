@@ -36,6 +36,27 @@ const isEnumerationProperty = (
   propertyTypes?: Record<string, string>
 ) => propertyTypes?.[propertyName] === "enumeration";
 
+const isDateProperty = (
+  propertyName: string,
+  propertyTypes?: Record<string, string>
+): boolean => {
+  // If we have property type metadata, use it (most reliable).
+  if (propertyTypes?.[propertyName]) {
+    const type = propertyTypes[propertyName];
+    return type === "date" || type === "datetime";
+  }
+
+  // Fallback to name-based detection.
+  return (
+    propertyName.includes("date") ||
+    propertyName.includes("time") ||
+    propertyName.includes("timestamp") ||
+    propertyName === "createdate" ||
+    propertyName === "lastmodifieddate" ||
+    propertyName === "hs_lastmodifieddate"
+  );
+};
+
 export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
 type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
 
@@ -300,16 +321,8 @@ function buildHubspotFilters(
       ) {
         // For string properties, values must be lowercase, but not for date or enumeration properties
         if (values?.length) {
-          // Check if this is a date property to avoid lowercasing dates
-          const isDateProperty =
-            propertyName.includes("date") ||
-            propertyName.includes("time") ||
-            propertyName.includes("timestamp") ||
-            propertyName === "createdate" ||
-            propertyName === "lastmodifieddate" ||
-            propertyName === "hs_lastmodifieddate";
-
-          // Check if this is an enumeration property that should preserve case
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
           const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
@@ -320,26 +333,71 @@ function buildHubspotFilters(
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
           filter.values =
-            isDateProperty || isEnumProperty
+            isDateProp || isEnumProperty
               ? cleanValues
               : cleanValues.map((v) => v.toLowerCase());
         } else {
           throw new Error(`Values array is required for ${operator} operator`);
         }
       } else if (operator === FilterOperatorEnum.Between) {
-        // BETWEEN operator needs separate value and highValue fields
+        // Date properties need to be converted to Unix timestamps in milliseconds
+        const isDateProp = isDateProperty(propertyName, propertyTypes);
+
         if (values?.length === 2) {
-          const cleanValues = values
+          let cleanValues = values
             .filter((v) => v !== undefined && v !== null)
             .map((v) => String(v));
+
+          // Convert date strings to timestamps for date properties
+          if (isDateProp) {
+            cleanValues = cleanValues.map((dateStr) => {
+              // Check if it's already a timestamp (all digits)
+              if (/^\d+$/.test(dateStr)) {
+                return dateStr;
+              }
+              // Convert ISO date string to timestamp
+              const timestamp = new Date(dateStr).getTime();
+              if (isNaN(timestamp)) {
+                throw new Error(
+                  `Invalid date format for BETWEEN operator: ${dateStr}`
+                );
+              }
+              return String(timestamp);
+            });
+          }
+
           filter.value = cleanValues[0];
           filter.highValue = cleanValues[1];
         } else if (value !== undefined && value !== null) {
           // If single value provided, assume it's semicolon-separated
           const parts = String(value).split(";");
           if (parts.length === 2) {
-            filter.value = parts[0];
-            filter.highValue = parts[1];
+            let [lowValue, highValue] = parts;
+
+            // Convert date strings to timestamps for date properties
+            if (isDateProp) {
+              if (!/^\d+$/.test(lowValue)) {
+                const timestamp = new Date(lowValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${lowValue}`
+                  );
+                }
+                lowValue = String(timestamp);
+              }
+              if (!/^\d+$/.test(highValue)) {
+                const timestamp = new Date(highValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${highValue}`
+                  );
+                }
+                highValue = String(timestamp);
+              }
+            }
+
+            filter.value = lowValue;
+            filter.highValue = highValue;
           } else {
             throw new Error(
               `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
@@ -353,16 +411,8 @@ function buildHubspotFilters(
       } else {
         // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
         if (value !== undefined && value !== null) {
-          // Check if this is a date property to preserve proper formatting
-          const isDateProperty =
-            propertyName.includes("date") ||
-            propertyName.includes("time") ||
-            propertyName.includes("timestamp") ||
-            propertyName === "createdate" ||
-            propertyName === "lastmodifieddate" ||
-            propertyName === "hs_lastmodifieddate";
-
-          // Check if this is an enumeration property that should preserve case
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
           const isEnumProperty = isEnumerationProperty(
             propertyName,
             propertyTypes
@@ -371,7 +421,7 @@ function buildHubspotFilters(
           const stringValue = String(value);
           // For string comparison operators, lowercase non-date, non-enumeration values for consistency
           if (
-            !isDateProperty &&
+            !isDateProp &&
             !isEnumProperty &&
             (operator === FilterOperatorEnum.Eq ||
               operator === FilterOperatorEnum.Neq ||
@@ -680,6 +730,7 @@ export const createNote = async ({
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!propertiesForApi.hs_timestamp) {
     propertiesForApi.hs_timestamp = new Date().toISOString();
   }
@@ -853,6 +904,7 @@ export const createCommunication = async ({
 
   const finalProperties = { ...properties }; // Create a copy
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
     finalProperties.hs_engagement_type = "COMMUNICATION"; // Default if not provided, mutate the copy
   }
@@ -935,6 +987,7 @@ export const createMeeting = async ({
   const finalProperties = { ...properties }; // Create a copy
 
   // Ensure hs_engagement_type is set for meetings
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
     finalProperties.hs_engagement_type = "MEETING"; // Mutate the copy
   }
@@ -998,6 +1051,7 @@ const getAssociationTypeId = async (
   fromObjectType: string,
   toObjectType: string
 ): Promise<number> => {
+  // eslint-disable-next-line no-restricted-globals
   const response = await fetch(
     `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
     {
@@ -1059,12 +1113,23 @@ export const getContact = async (
 
 export const getCompany = async (
   accessToken: string,
-  companyId: string
+  companyId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const company =
-      await hubspotClient.crm.companies.basicApi.getById(companyId);
+    const defaultProperties = [
+      "createdate",
+      "domain",
+      "name",
+      "hubspot_owner_id",
+    ];
+    const company = await hubspotClient.crm.companies.basicApi.getById(
+      companyId,
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
+    );
     return company;
   } catch (error: any) {
     if (error.code === 404) {
@@ -1080,11 +1145,12 @@ export const getCompany = async (
 
 export const getDeal = async (
   accessToken: string,
-  dealId: string
+  dealId: string,
+  extraProperties?: string[]
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    const deal = await hubspotClient.crm.deals.basicApi.getById(dealId, [
+    const defaultProperties = [
       "amount",
       "hubspot_owner_id",
       "closedate",
@@ -1094,7 +1160,13 @@ export const getDeal = async (
       "hs_lastmodifieddate",
       "hs_object_id",
       "pipeline",
-    ]);
+    ];
+    const deal = await hubspotClient.crm.deals.basicApi.getById(
+      dealId,
+      extraProperties
+        ? [...defaultProperties, ...extraProperties]
+        : defaultProperties
+    );
     return deal;
   } catch (error: any) {
     if (error.code === 404) {
@@ -1393,6 +1465,13 @@ export const searchCrmObjects = async ({
       paging: searchResponse.paging,
     };
   } catch (error: any) {
+    if (error.code === 404) {
+      localLogger.warn(
+        { objectType, filters, query },
+        `Error 404 when searching ${objectType}. Returning empty results.`
+      );
+      return { results: [], paging: undefined };
+    }
     localLogger.error({ error }, `Error searching ${objectType}:`);
     throw normalizeError(error);
   }
@@ -1441,6 +1520,7 @@ export const getUserActivity = async ({
             if (result?.results && result.results.length > 0) {
               break; // Found results with this property name
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (propertyError) {
             // Try next property name
             continue;
@@ -1613,6 +1693,7 @@ export const updateDeal = async ({
 
 export const getUserDetails = async (accessToken: string) => {
   try {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `https://api.hubapi.com/oauth/v1/access-tokens/${accessToken}`,
       {
@@ -1779,6 +1860,7 @@ export const listAssociations = async ({
                 associations: result.results,
               });
             }
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
             // Continue if this association type doesn't exist
             continue;

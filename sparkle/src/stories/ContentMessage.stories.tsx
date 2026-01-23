@@ -10,6 +10,10 @@ import {
   InformationCircleIcon,
 } from "../index_with_tw_base";
 
+type ContentMessageStoryProps = React.ComponentProps<typeof ContentMessage> & {
+  showAction?: boolean;
+};
+
 const ICONS = {
   none: null,
   InformationCircleIcon: InformationCircleIcon,
@@ -17,7 +21,7 @@ const ICONS = {
   HeartIcon: HeartIcon,
 } as const;
 
-const meta = {
+const meta: Meta<ContentMessageStoryProps> = {
   title: "Components/ContentMessage",
   component: ContentMessage,
   argTypes: {
@@ -56,17 +60,32 @@ const meta = {
       control: { type: "select" },
       description: "Icon to display",
     },
+    showAction: {
+      control: "boolean",
+      description: "Show a right-aligned action button",
+    },
   },
-} satisfies Meta<typeof ContentMessage>;
+};
 
 export default meta;
-type Story = StoryObj<typeof meta>;
+type Story = StoryObj<ContentMessageStoryProps>;
 
 export const Basic: Story = {
+  render: ({ showAction, ...args }) => (
+    <ContentMessage
+      {...args}
+      action={
+        showAction ? (
+          <ContentMessageAction variant="primary" label="Action" />
+        ) : undefined
+      }
+    />
+  ),
   args: {
     title: "This is a title",
     children: "This is a message. It can be multiple lines long.",
     size: "md",
+    showAction: false,
   },
 };
 

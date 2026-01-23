@@ -1,43 +1,33 @@
 // Okay to use public API types because it's front/connectors communication.
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isFolder, isWebsite } from "@dust-tt/client";
-import {
-  CitationGrid,
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DoubleIcon,
-  Icon,
-} from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { CitationGrid, DoubleIcon, Icon } from "@dust-tt/sparkle";
+import { useCallback, useMemo } from "react";
 
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import type {
   Attachment,
   FileAttachment,
   NodeAttachment,
-} from "@app/components/assistant/conversation/AttachmentCitation";
-import {
-  AttachmentCitation,
-  attachmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
+} from "@app/components/assistant/conversation/attachment/types";
+import { attachmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import {
   getDisplayDateFromPastedFileId,
   getDisplayNameFromPastedFileId,
   isPastedFile,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import type {
+  FileBlob,
+  FileUploaderService,
+} from "@app/hooks/useFileUploaderService";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { getSpaceIcon } from "@app/lib/spaces";
+import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
@@ -50,17 +40,22 @@ interface NodeAttachmentsProps {
 
 interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
-  files?: FileAttachmentsProps;
+  files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
+  conversationId?: string | null;
+  disable?: boolean;
 }
 
 export function InputBarAttachments({
   owner,
   files,
   nodes,
+  conversationId,
+  disable = false,
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !nodes?.items.length,
   });
   const spacesMap = useMemo(
@@ -69,7 +64,7 @@ export function InputBarAttachments({
         spaces?.map((space) => [
           space.sId,
           {
-            name: space.kind === "global" ? GLOBAL_SPACE_NAME : space.name,
+            name: getSpaceName(space),
             icon: getSpaceIcon(space),
           },
         ]) || []
@@ -77,31 +72,39 @@ export function InputBarAttachments({
     [spaces]
   );
 
-  // Convert file blobs to FileAttachment objects
+  const fileService = files.service;
+
+  const createFileAttachment = useCallback(
+    (blob: FileBlob): FileAttachment => {
+      const isPasted = isPastedFile(blob.contentType);
+      const title = isPasted
+        ? getDisplayNameFromPastedFileId(blob.id)
+        : blob.filename;
+      const uploadDate = isPasted
+        ? getDisplayDateFromPastedFileId(blob.id)
+        : undefined;
+
+      return {
+        type: "file",
+        id: blob.id,
+        title,
+        sourceUrl: blob.sourceUrl,
+        contentType: blob.contentType,
+        isUploading: blob.isUploading,
+        description: uploadDate,
+        iconName: blob.iconName,
+        provider: blob.provider,
+        fileId: blob.fileId,
+        onRemove: disable ? undefined : () => fileService.removeFile(blob.id),
+      };
+    },
+    [disable, fileService]
+  );
+
+  // Convert file blobs to FileAttachments (open in viewer dialog).
   const fileAttachments: FileAttachment[] = useMemo(() => {
-    return (
-      files?.service.fileBlobs.map((blob) => {
-        const isPasted = isPastedFile(blob.contentType);
-        const title = isPasted
-          ? getDisplayNameFromPastedFileId(blob.id)
-          : blob.id;
-        const uploadDate = isPasted
-          ? getDisplayDateFromPastedFileId(blob.id)
-          : undefined;
-        return {
-          type: "file",
-          id: blob.id,
-          title,
-          preview: blob.preview,
-          contentType: blob.contentType,
-          isUploading: blob.isUploading,
-          description: uploadDate,
-          onRemove: () => files.service.removeFile(blob.id),
-        };
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      }) || []
-    );
-  }, [files?.service]);
+    return fileService.fileBlobs.map((blob) => createFileAttachment(blob));
+  }, [fileService, createFileAttachment]);
 
   // Convert content nodes to NodeAttachment objects
   const nodeAttachments: NodeAttachment[] = useMemo(() => {
@@ -135,16 +138,11 @@ export function InputBarAttachments({
           spaceIcon: spacesMap[node.dataSourceView.spaceId].icon,
           path: getLocationForDataSourceViewContentNode(node),
           visual,
-          onRemove: () => nodes.onRemove(node),
+          onRemove: disable ? undefined : () => nodes.onRemove(node),
         };
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      }) || []
+      }) ?? []
     );
-  }, [nodes, spacesMap]);
-
-  const [viewerOpen, setViewerOpen] = useState(false);
-  const [viewerTitle, setViewerTitle] = useState("");
-  const [viewerText, setViewerText] = useState("");
+  }, [nodes, spacesMap, disable]);
 
   const allAttachments: Attachment[] = [...fileAttachments, ...nodeAttachments];
 
@@ -152,73 +150,19 @@ export function InputBarAttachments({
     return null;
   }
 
-  const openPastedViewer = async (attachment: Attachment) => {
-    if (!files) {
-      return;
-    }
-    const blob = files.service.fileBlobs.find((b) => b.id === attachment.id);
-    if (!blob) {
-      return;
-    }
-    const text = await blob.file.text();
-    setViewerTitle(attachment.title);
-    setViewerText(text);
-    setViewerOpen(true);
-  };
-
-  const isTextualContentType = (attachment: Attachment) => {
-    if (attachment.type !== "file") {
-      return false;
-    }
-    const ct = attachment.contentType;
-    if (!ct) {
-      return false;
-    }
-    return (
-      ct.startsWith("text/") ||
-      ct === "application/json" ||
-      ct === "application/xml" ||
-      ct === "application/vnd.dust.section.json"
-    );
-  };
-
   return (
-    <>
-      <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
-        {allAttachments.map((attachment) => {
-          const attachmentCitation = attachmentToAttachmentCitation(attachment);
-          const canPreviewText = isTextualContentType(attachment);
-          return (
-            <AttachmentCitation
-              key={attachmentCitation.id}
-              attachmentCitation={attachmentCitation}
-              onRemove={attachment.onRemove}
-              onClick={
-                canPreviewText ? () => openPastedViewer(attachment) : undefined
-              }
-            />
-          );
-        })}
-      </CitationGrid>
-
-      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent size="xl" height="lg">
-          <DialogHeader>
-            <DialogTitle>{viewerTitle}</DialogTitle>
-          </DialogHeader>
-          <DialogContainer>
-            <pre className="m-0 max-h-[60vh] whitespace-pre-wrap break-words">
-              {viewerText}
-            </pre>
-          </DialogContainer>
-          <DialogFooter
-            rightButtonProps={{
-              label: "Close",
-              variant: "highlight",
-            }}
+    <CitationGrid className="border-b border-separator px-3 pb-3 pt-3 dark:border-separator-night">
+      {allAttachments.map((attachment, index) => {
+        const attachmentCitation = attachmentToAttachmentCitation(attachment);
+        return (
+          <AttachmentCitation
+            key={index}
+            owner={owner}
+            attachmentCitation={attachmentCitation}
+            conversationId={conversationId}
           />
-        </DialogContent>
-      </Dialog>
-    </>
+        );
+      })}
+    </CitationGrid>
   );
 }

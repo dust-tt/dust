@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import { useSWRConfig } from "swr";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
   fetcher,
@@ -15,11 +17,24 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { GetAgentConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
-import type { GetAgentConfigurationAnalyticsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/analytics";
+import type { GetAgentMcpConfigurationsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/mcp_configurations";
+import type { GetDatasourceRetrievalResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval";
+import type { GetDatasourceRetrievalDocumentsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/datasource-retrieval-documents";
+import type { GetErrorRateResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/error_rate";
+import type { GetFeedbackDistributionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/feedback-distribution";
+import type { GetLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/latency";
+import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/overview";
+import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
+import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
+import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
+import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
+import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
+import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
 import type { GetAgentUsageResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/usage";
 import type { GetSlackChannelsLinkedWithAgentResponseBody } from "@app/pages/api/w/[wId]/assistant/builder/slack/channels_linked_with_agent";
+import type { GetMemberResponseBody } from "@app/pages/api/w/[wId]/members/[uId]";
 import type { PostAgentUserFavoriteRequestBody } from "@app/pages/api/w/[wId]/members/me/agent_favorite";
 import type {
   AgentConfigurationType,
@@ -29,6 +44,34 @@ import type {
   UserType,
 } from "@app/types";
 import { normalizeError } from "@app/types";
+
+export function useAgentMcpConfigurations({
+  workspaceId,
+  agentConfigurationId,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  disabled?: boolean;
+}) {
+  const mcpConfigurationsFetcher: Fetcher<GetAgentMcpConfigurationsResponseBody> =
+    fetcher;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled
+      ? null
+      : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/mcp_configurations`,
+    mcpConfigurationsFetcher,
+    { disabled }
+  );
+
+  return {
+    configurations: data?.configurations ?? emptyArray(),
+    isAgentMcpConfigurationsLoading: !error && !data && !disabled,
+    isAgentMcpConfigurationsError: error,
+    isAgentMcpConfigurationsValidating: isValidating,
+  };
+}
 
 export function useAssistantTemplates() {
   const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
@@ -52,8 +95,7 @@ export function useAssistantTemplate({
 }: {
   templateId: string | null;
 }) {
-  const assistantTemplateFetcher: Fetcher<FetchAssistantTemplateResponse> =
-    fetcher;
+  const assistantTemplateFetcher: Fetcher<FetchAgentTemplateResponse> = fetcher;
 
   const { data, error, mutate } = useSWRWithDefaults(
     templateId !== null ? `/api/templates/${templateId}` : null,
@@ -61,6 +103,7 @@ export function useAssistantTemplate({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     assistantTemplate: data ? data : null,
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
@@ -251,11 +294,14 @@ interface AgentConfigurationFeedbacksByDescVersionProps {
   workspaceId: string;
   agentConfigurationId: string | null;
   limit: number;
+  filter?: "unseen" | "all";
 }
+
 export function useAgentConfigurationFeedbacksByDescVersion({
   workspaceId,
   agentConfigurationId,
   limit,
+  filter = "unseen",
 }: AgentConfigurationFeedbacksByDescVersionProps) {
   const agentConfigurationFeedbacksFetcher: Fetcher<{
     feedbacks: (
@@ -263,13 +309,6 @@ export function useAgentConfigurationFeedbacksByDescVersion({
       | AgentMessageFeedbackWithMetadataType
     )[];
   }> = fetcher;
-
-  const urlParams = new URLSearchParams({
-    limit: limit.toString(),
-    orderColumn: "id",
-    orderDirection: "desc",
-    withMetadata: "true",
-  });
 
   const [hasMore, setHasMore] = useState(true);
 
@@ -286,6 +325,15 @@ export function useAgentConfigurationFeedbacksByDescVersion({
           setHasMore(false);
           return null;
         }
+
+        // Build URLSearchParams fresh for each page to avoid param accumulation.
+        const urlParams = new URLSearchParams({
+          limit: limit.toString(),
+          orderColumn: "id",
+          orderDirection: "desc",
+          withMetadata: "true",
+          filter,
+        });
 
         if (previousPageData !== null) {
           const lastIdValue =
@@ -349,6 +397,7 @@ export function useAgentConfigurationHistory({
     mutateAgentConfigurationHistory: mutate,
   };
 }
+
 export function useAgentConfigurationLastAuthor({
   workspaceId,
   agentConfigurationId,
@@ -403,26 +452,62 @@ export function useAgentAnalytics({
   workspaceId,
   agentConfigurationId,
   period,
+  version,
   disabled,
 }: {
   workspaceId: string;
   agentConfigurationId: string | null;
   period: number;
+  version?: string;
   disabled?: boolean;
 }) {
-  const agentAnalyticsFetcher: Fetcher<GetAgentConfigurationAnalyticsResponseBody> =
-    fetcher;
+  const agentAnalyticsFetcher: Fetcher<GetAgentOverviewResponseBody> = fetcher;
   const fetchUrl = agentConfigurationId
-    ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/analytics?period=${period}`
+    ? (() => {
+        const params = new URLSearchParams({ days: String(period) });
+        if (version) {
+          params.set("version", version);
+        }
+        return `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/overview?${params.toString()}`;
+      })()
     : null;
   const { data, error } = useSWRWithDefaults(fetchUrl, agentAnalyticsFetcher, {
     disabled,
   });
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     agentAnalytics: data ? data : null,
     isAgentAnalyticsLoading: !error && !data && !disabled,
     isAgentAnalyticsError: error,
+  };
+}
+
+export function useAgentObservabilitySummary({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const summaryFetcher: Fetcher<GetAgentSummaryResponseBody> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/summary?days=${days}`;
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    disabled ? null : key,
+    summaryFetcher
+  );
+
+  return {
+    summaryText: data?.summaryText ?? null,
+    isSummaryLoading: !error && !data && !disabled,
+    isSummaryError: error,
+    isSummaryValidating: isValidating,
+    refetchSummary: mutate,
   };
 }
 
@@ -481,7 +566,7 @@ export function useDeleteAgentConfiguration({
     if (!agentConfiguration) {
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}`,
       {
         method: "DELETE",
@@ -531,7 +616,7 @@ export function useBatchDeleteAgentConfigurations({
     if (agentConfigurationIds.length === 0) {
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/delete`,
       {
         method: "POST",
@@ -597,7 +682,7 @@ export function useUpdateUserFavorite({
           userFavorite: userFavorite,
         };
 
-        const res = await fetch(
+        const res = await clientFetch(
           `/api/w/${owner.sId}/members/me/agent_favorite`,
           {
             method: "POST",
@@ -675,7 +760,7 @@ export function useRestoreAgentConfiguration({
     if (!agentConfiguration) {
       return;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/restore`,
       {
         method: "POST",
@@ -716,7 +801,7 @@ export function useBatchUpdateAgentTags({
       agentIds: string[],
       body: { addTagIds?: string[]; removeTagIds?: string[] }
     ) => {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_tags`,
         {
           method: "POST",
@@ -743,7 +828,7 @@ export function useBatchUpdateAgentScope({
 }) {
   const batchUpdateAgentScope = useCallback(
     async (agentIds: string[], body: { scope: "visible" | "hidden" }) => {
-      await fetch(
+      await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/batch_update_scope`,
         {
           method: "POST",
@@ -761,4 +846,344 @@ export function useBatchUpdateAgentScope({
   );
 
   return batchUpdateAgentScope;
+}
+
+export function useAgentUsageMetrics({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  interval = "day",
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  interval?: "day" | "week";
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetUsageMetricsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/usage-metrics?days=${days}&interval=${interval}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    usageMetrics: data?.points ?? emptyArray(),
+    isUsageMetricsLoading: !error && !data && !disabled,
+    isUsageMetricsError: error,
+    isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useAgentContextOrigin(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const {
+    workspaceId,
+    agentConfigurationId,
+    days = DEFAULT_PERIOD_DAYS,
+    version,
+    disabled,
+  } = params;
+  const fetcherFn: Fetcher<GetContextOriginResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/source?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
+    isContextOriginLoading: !error && !data && !disabled,
+    isContextOriginError: error,
+    isContextOriginValidating: isValidating,
+  };
+}
+
+export function useAgentLatency({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetLatencyResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/latency?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    latency: data?.points ?? emptyArray(),
+    isLatencyLoading: !error && !data && !disabled,
+    isLatencyError: error,
+    isLatencyValidating: isValidating,
+  };
+}
+
+export function useAgentErrorRate({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetErrorRateResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/error_rate?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    errorRate: data?.points ?? emptyArray(),
+    isErrorRateLoading: !error && !data && !disabled,
+    isErrorRateError: error,
+    isErrorRateValidating: isValidating,
+  };
+}
+
+export function useAgentFeedbackDistribution({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetFeedbackDistributionResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/feedback-distribution?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    feedbackDistribution: data?.points ?? emptyArray(),
+    isFeedbackDistributionLoading: !error && !data && !disabled,
+    isFeedbackDistributionError: error,
+    isFeedbackDistributionValidating: isValidating,
+  };
+}
+
+export function useAgentVersionMarkers({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetVersionMarkersResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/version-markers?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    versionMarkers: data?.versionMarkers ?? emptyArray(),
+    isVersionMarkersLoading: !error && !data && !disabled,
+    isVersionMarkersError: error,
+    isVersionMarkersValidating: isValidating,
+  };
+}
+
+export function useAgentToolExecution({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetToolExecutionResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-execution?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolExecutionByVersion: data?.byVersion ?? emptyArray(),
+    isToolExecutionLoading: !error && !data && !disabled,
+    isToolExecutionError: error,
+    isToolExecutionValidating: isValidating,
+  };
+}
+
+export function useAgentToolStepIndex({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetToolStepIndexResponse> = fetcher;
+  const versionParam = version ? `&version=${encodeURIComponent(version)}` : "";
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-step-index?days=${days}${versionParam}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolStepIndexByStep: data?.byStep ?? emptyArray(),
+    isToolStepIndexLoading: !error && !data && !disabled,
+    isToolStepIndexError: error,
+    isToolStepIndexValidating: isValidating,
+  };
+}
+
+export function useAgentDatasourceRetrieval({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetDatasourceRetrievalResponse> = fetcher;
+  const params = new URLSearchParams({ days: days.toString() });
+  if (version) {
+    params.set("version", version);
+  }
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    datasourceRetrieval: data?.datasources ?? emptyArray(),
+    totalRetrievals: data?.total ?? 0,
+    isDatasourceRetrievalLoading: !error && !data && !disabled,
+    isDatasourceRetrievalError: error,
+    isDatasourceRetrievalValidating: isValidating,
+  };
+}
+
+export function useAgentDatasourceRetrievalDocuments({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  mcpServerConfigId,
+  dataSourceId,
+  limit = 50,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  mcpServerConfigId: string | null;
+  dataSourceId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
+  const isDisabled = !!disabled || !mcpServerConfigId || !dataSourceId;
+  const params = new URLSearchParams({ days: days.toString() });
+  if (version) {
+    params.set("version", version);
+  }
+  if (mcpServerConfigId) {
+    params.set("mcpServerConfigId", mcpServerConfigId);
+  }
+  if (dataSourceId) {
+    params.set("dataSourceId", dataSourceId);
+  }
+  params.set("limit", limit.toString());
+
+  const key = isDisabled
+    ? null
+    : `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/datasource-retrieval-documents?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(key, fetcherFn);
+
+  return {
+    documents: data?.documents ?? emptyArray(),
+    groups: data?.groups ?? emptyArray(),
+    total: data?.total ?? 0,
+    isDatasourceRetrievalDocumentsLoading: !error && !data && !isDisabled,
+    isDatasourceRetrievalDocumentsError: error,
+    isDatasourceRetrievalDocumentsValidating: isValidating,
+  };
+}
+
+export function useMemberDetails({
+  workspaceId,
+  userId,
+}: {
+  workspaceId: string;
+  userId: string | null;
+}) {
+  const userConfigurationFetcher: Fetcher<GetMemberResponseBody> = fetcher;
+
+  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+    userId ? `/api/w/${workspaceId}/members/${userId}` : null,
+    userConfigurationFetcher
+  );
+
+  return {
+    userDetails: data?.member,
+    isUserDetailsLoading: !error && !data && !!userId,
+    isUserDetailsError: error,
+    isUserConfigurationValidating: isValidating,
+    mutateUserConfiguration: mutate,
+  };
 }

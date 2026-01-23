@@ -1,4 +1,6 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type { ConnectorsAPIError } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isConnectorsAPIError } from "@dust-tt/client";
 import * as t from "io-ts";
 
@@ -10,12 +12,14 @@ import { Err, Ok } from "../shared/result";
 import type { AdminCommandType, AdminResponseType } from "./admin/cli";
 import type { ConnectorConfiguration } from "./configuration";
 import type { ContentNodesViewType } from "./content_nodes";
+import { DiscordBotConfigurationTypeSchema } from "./discord_bot";
 import { SlackConfigurationTypeSchema } from "./slack";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
 export const ConnectorConfigurationTypeSchema = t.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
+  DiscordBotConfigurationTypeSchema,
   t.null,
 ]);
 
@@ -41,6 +45,7 @@ export type ConnectorCreateRequestBody = t.TypeOf<
 
 export const UpdateConnectorRequestBodySchema = t.type({
   connectionId: t.string,
+  extraConfig: t.union([t.undefined, t.record(t.string, t.string)]),
 });
 
 export type UpdateConnectorRequestBody = t.TypeOf<
@@ -122,6 +127,7 @@ export type ProviderVisibility = "public" | "private";
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
+  childrenCount: number;
   expandable: boolean;
   internalId: string;
   lastUpdatedAt: number | null;
@@ -236,21 +242,8 @@ export class ConnectorsAPI {
         headers: this.getDefaultHeaders(),
         body: JSON.stringify({
           connectionId,
+          extraConfig: undefined,
         } satisfies UpdateConnectorRequestBody),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async stopConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/stop/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
       }
     );
 
@@ -276,20 +269,6 @@ export class ConnectorsAPI {
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/unpause/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async resumeConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/resume/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),
@@ -582,6 +561,35 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async addSlackWebhookRouterEntry({
+    slackTeamId,
+    signingSecret,
+  }: {
+    slackTeamId: string;
+    signingSecret: string;
+  }): Promise<ConnectorsAPIResponse<{ success: boolean }>> {
+    const webhooksSecret = process.env.DUST_CONNECTORS_WEBHOOKS_SECRET;
+    if (!webhooksSecret) {
+      return new Err({
+        type: "internal_server_error",
+        message: "DUST_CONNECTORS_WEBHOOKS_SECRET is not configured",
+      });
+    }
+
+    const res = await this._fetchWithError(
+      `${this._url}/webhooks_router_entries/${encodeURIComponent(webhooksSecret)}/slack/${encodeURIComponent(slackTeamId)}`,
+      {
+        method: "POST",
+        headers: this.getDefaultHeaders(),
+        body: JSON.stringify({
+          signingSecret,
+        }),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   async getNotionUrlStatus({
     connectorId,
     url,
@@ -619,6 +627,53 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
+  async getNotionWorkspaceId(connectorId: string): Promise<
+    ConnectorsAPIResponse<{
+      notionWorkspaceId: string;
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/connectors/${encodeURIComponent(
+        connectorId
+      )}/notion/workspace_id`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
+  async getWebhookRouterEntry({
+    provider,
+    providerWorkspaceId,
+    webhookSecret,
+  }: {
+    provider: "slack" | "notion";
+    providerWorkspaceId: string;
+    webhookSecret: string;
+  }): Promise<
+    ConnectorsAPIResponse<{
+      provider: string;
+      providerWorkspaceId: string;
+      signingSecret: string;
+      regions: string[];
+    }>
+  > {
+    const res = await this._fetchWithError(
+      `${this._url}/webhooks_router_entries/${encodeURIComponent(
+        webhookSecret
+      )}/${provider}/${encodeURIComponent(providerWorkspaceId)}`,
+      {
+        method: "GET",
+        headers: this.getDefaultHeaders(),
+      }
+    );
+
+    return this._resultFromResponse(res);
+  }
+
   getDefaultHeaders() {
     return {
       "Content-Type": "application/json",
@@ -634,6 +689,7 @@ export class ConnectorsAPI {
   > {
     const now = Date.now();
     try {
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(url, init);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {

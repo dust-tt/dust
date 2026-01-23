@@ -6,6 +6,7 @@ export async function updateWebsite(
   dataSourceId: string,
   config: WebCrawlerConfigurationType
 ) {
+  // eslint-disable-next-line no-restricted-globals
   const res = await fetch(
     `/api/w/${workspaceId}/spaces/${spaceId}/data_sources/${dataSourceId}/configuration`,
     {
@@ -28,6 +29,7 @@ export async function createWebsite(
   name: string,
   config: WebCrawlerConfigurationType
 ) {
+  // eslint-disable-next-line no-restricted-globals
   const res = await fetch(
     `/api/w/${workspaceId}/spaces/${spaceId}/data_sources`,
     {

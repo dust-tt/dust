@@ -15,7 +15,7 @@ import type {
 } from "@app/types";
 import { SUBSCRIPTION_STATUSES } from "@app/types";
 
-export class Plan extends BaseModel<Plan> {
+export class PlanModel extends BaseModel<PlanModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -27,6 +27,7 @@ export class Plan extends BaseModel<Plan> {
   // workspace limitations
   declare maxMessages: number;
   declare maxMessagesTimeframe: MaxMessagesTimeframeType;
+  declare isDeepDiveAllowed: boolean;
   declare maxUsersInWorkspace: number;
   declare maxImagesPerWeek: number;
   declare maxVaultsInWorkspace: number;
@@ -45,7 +46,7 @@ export class Plan extends BaseModel<Plan> {
   declare maxDataSourcesDocumentsCount: number;
   declare maxDataSourcesDocumentsSizeMb: number;
 }
-Plan.init(
+PlanModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -82,6 +83,11 @@ Plan.init(
     maxMessagesTimeframe: {
       type: DataTypes.ENUM("day", "lifetime"),
       allowNull: false,
+    },
+    isDeepDiveAllowed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
     },
     maxImagesPerWeek: {
       type: DataTypes.INTEGER,
@@ -164,7 +170,7 @@ Plan.init(
   }
 );
 
-export class Subscription extends WorkspaceAwareModel<Subscription> {
+export class SubscriptionModel extends WorkspaceAwareModel<SubscriptionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -176,8 +182,8 @@ export class Subscription extends WorkspaceAwareModel<Subscription> {
   declare startDate: Date;
   declare endDate: Date | null;
 
-  declare planId: ForeignKey<Plan["id"]>;
-  declare plan: NonAttribute<Plan>;
+  declare planId: ForeignKey<PlanModel["id"]>;
+  declare plan: NonAttribute<PlanModel>;
 
   declare stripeSubscriptionId: string | null;
 
@@ -185,7 +191,7 @@ export class Subscription extends WorkspaceAwareModel<Subscription> {
   // for analytics and business operations.
   declare requestCancelAt: Date | null;
 }
-Subscription.init(
+SubscriptionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -245,13 +251,16 @@ Subscription.init(
   }
 );
 // Define a hook to ensure there's only one active subscription for each workspace
-Subscription.addHook(
+SubscriptionModel.addHook(
   "beforeCreate",
   "enforce_single_active_subscription",
-  async (subscription: Subscription, options: { transaction: Transaction }) => {
+  async (
+    subscription: SubscriptionModel,
+    options: { transaction: Transaction }
+  ) => {
     if (subscription.status === "active") {
       // Check if there's already an active subscription for the same workspace
-      const existingActiveSubscription = await Subscription.findOne({
+      const existingActiveSubscription = await SubscriptionModel.findOne({
         where: {
           workspaceId: subscription.workspaceId,
           status: "active",
@@ -269,10 +278,10 @@ Subscription.addHook(
 );
 
 // Plan <> Subscription relationship: attribute "planId" in Subscription
-Plan.hasMany(Subscription, {
+PlanModel.hasMany(SubscriptionModel, {
   foreignKey: { name: "planId", allowNull: false },
   onDelete: "RESTRICT",
 });
-Subscription.belongsTo(Plan, {
+SubscriptionModel.belongsTo(PlanModel, {
   foreignKey: { name: "planId", allowNull: false },
 });

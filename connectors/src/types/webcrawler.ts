@@ -1,4 +1,4 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
 export const WEBCRAWLER_MAX_DEPTH = 5;
 export const WEBCRAWLER_MAX_PAGES = 1024;
@@ -16,36 +16,32 @@ export type CrawlingFrequency = (typeof CrawlingFrequencies)[number];
 
 export const DepthOptions = [0, 1, 2, 3, 4, 5] as const;
 export type DepthOption = (typeof DepthOptions)[number];
-export type WebCrawlerConfigurationType = t.TypeOf<
-  typeof WebCrawlerConfigurationTypeSchema
->;
 
 export function isDepthOption(value: unknown): value is DepthOption {
   return DepthOptions.includes(value as DepthOption);
 }
 
-export const WebCrawlerConfigurationTypeSchema = t.type({
-  url: t.string,
-  depth: t.union([
-    t.literal(0),
-    t.literal(1),
-    t.literal(2),
-    t.literal(3),
-    t.literal(4),
-    t.literal(5),
+export const WebCrawlerConfigurationTypeSchema = z.object({
+  url: z.string(),
+  depth: z.union([
+    z.literal(0),
+    z.literal(1),
+    z.literal(2),
+    z.literal(3),
+    z.literal(4),
+    z.literal(5),
   ]),
-  maxPageToCrawl: t.number,
-  crawlMode: t.union([t.literal("child"), t.literal("website")]),
-  crawlFrequency: t.union([
-    t.literal("never"),
-    t.literal("daily"),
-    t.literal("weekly"),
-    t.literal("monthly"),
-  ]),
-  headers: t.record(t.string, t.string),
+  maxPageToCrawl: z.number(),
+  crawlMode: z.enum(["child", "website"]),
+  crawlFrequency: z.enum(["never", "daily", "weekly", "monthly"]),
+  headers: z.record(z.string(), z.string()),
 });
 
-export type WebCrawlerConfiguration = t.TypeOf<
+export type WebCrawlerConfigurationType = z.infer<
+  typeof WebCrawlerConfigurationTypeSchema
+>;
+
+export type WebCrawlerConfiguration = z.infer<
   typeof WebCrawlerConfigurationTypeSchema
 >;
 

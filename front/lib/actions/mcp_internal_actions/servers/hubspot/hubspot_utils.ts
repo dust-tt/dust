@@ -2,7 +2,6 @@ import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import { makeMCPToolTextError } from "@app/lib/actions/mcp_internal_actions/utils";
 import logger from "@app/logger/logger";
 
 export const ERROR_MESSAGES = {
@@ -76,7 +75,10 @@ export const withAuth = async ({
 }): Promise<CallToolResult> => {
   const accessToken = authInfo?.token;
   if (!accessToken) {
-    return makeMCPToolTextError(ERROR_MESSAGES.NO_ACCESS_TOKEN);
+    return {
+      isError: true,
+      content: [{ type: "text", text: ERROR_MESSAGES.NO_ACCESS_TOKEN }],
+    };
   }
   try {
     return await action(accessToken);
@@ -101,9 +103,15 @@ export const logAndReturnError = ({
     },
     `[Hubspot MCP Server] ${message}`
   );
-  return makeMCPToolTextError(
-    error.response?.body?.message ?? error.message ?? message
-  );
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: error.response?.body?.message ?? error.message ?? message,
+      },
+    ],
+  };
 };
 
 // HubSpot link generation tool

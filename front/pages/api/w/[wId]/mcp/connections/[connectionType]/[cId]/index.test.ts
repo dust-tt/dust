@@ -7,7 +7,6 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerConnectionFactory } from "@app/tests/utils/MCPServerConnectionFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
 import handler from "./index";
@@ -18,7 +17,7 @@ describe("MCP Connection API Handler", () => {
       await createPrivateApiMockRequest({
         method: "GET",
       });
-    await SpaceFactory.system(workspace);
+
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     const connection = await MCPServerConnectionFactory.remote(
@@ -42,7 +41,6 @@ describe("MCP Connection API Handler", () => {
       await createPrivateApiMockRequest({
         method: "GET",
       });
-    await SpaceFactory.system(workspace1);
     const remoteServer1 = await RemoteMCPServerFactory.create(workspace1);
     const connection1 = await MCPServerConnectionFactory.remote(
       authenticator1,
@@ -72,7 +70,6 @@ describe("MCP Connection API Handler", () => {
       await createPrivateApiMockRequest({
         method: "GET",
       });
-    await SpaceFactory.system(workspace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     // Create connection for first user
@@ -108,7 +105,6 @@ describe("MCP Connection API Handler", () => {
     } = await createPrivateApiMockRequest({
       method: "DELETE",
     });
-    await SpaceFactory.system(workspace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     // Create two personal connections for the same server
@@ -167,7 +163,6 @@ describe("MCP Connection API Handler", () => {
       method: "DELETE",
       role: "admin",
     });
-    await SpaceFactory.system(workspace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     // Create both personal and workspace connections for the same server
@@ -227,7 +222,6 @@ describe("MCP Connection API Handler", () => {
       method: "DELETE",
       role: "user", // Explicitly set as non-admin
     });
-    await SpaceFactory.system(workspace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
 
     const admin = await UserFactory.basic();
@@ -261,7 +255,6 @@ describe("MCP Connection API Handler", () => {
       await createPrivateApiMockRequest({
         method: "GET",
       });
-    await SpaceFactory.system(workspace);
     const remoteServer = await RemoteMCPServerFactory.create(workspace);
     const connection1 = await MCPServerConnectionFactory.remote(
       authenticator1,

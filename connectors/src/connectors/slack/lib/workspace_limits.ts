@@ -1,5 +1,5 @@
 import type { Result, WorkspaceDomainType } from "@dust-tt/client";
-import { DustAPI, Err, Ok } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type {} from "@slack/web-api/dist/types/response/UsersInfoResponse";
 
@@ -9,66 +9,20 @@ import {
   getSlackConversationInfo,
   reportSlackUsage,
 } from "@connectors/connectors/slack/lib/slack_client";
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
+import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
-import type { DataSourceConfig } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
-
-function getDustAPI(dataSourceConfig: DataSourceConfig) {
-  return new DustAPI(
-    {
-      url: apiConfig.getDustFrontAPIUrl(),
-    },
-    {
-      apiKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-    logger
-  );
-}
-
-async function getActiveMemberEmails(
-  connector: ConnectorResource
-): Promise<string[]> {
-  const ds = dataSourceConfigFromConnector(connector);
-
-  // List the emails of all active members in the workspace.
-  const dustAPI = getDustAPI(ds);
-
-  const activeMemberEmailsRes =
-    await dustAPI.getActiveMemberEmailsInWorkspace();
-  if (activeMemberEmailsRes.isErr()) {
-    logger.error("Error getting all members in workspace.", {
-      error: activeMemberEmailsRes.error,
-    });
-
-    throw new Error("Error getting all members in workspace.");
-  }
-
-  return activeMemberEmailsRes.value;
-}
-
-export const getActiveMemberEmailsMemoized = cacheWithRedis(
-  getActiveMemberEmails,
-  (connector: ConnectorResource) => {
-    return `active-member-emails-connector-${connector.id}`;
-  },
-  // Caches data for 2 minutes to limit frequent API calls.
-  // Note: Updates (e.g., new members added by an admin) may take up to 2 minutes to be reflected.
-  {
-    ttlMs: 2 * 10 * 1000,
-  }
-);
 
 async function getVerifiedDomainsForWorkspace(
   connector: ConnectorResource
 ): Promise<WorkspaceDomainType[]> {
   const ds = dataSourceConfigFromConnector(connector);
 
-  const dustAPI = getDustAPI(ds);
+  const dustAPI = getDustAPI(ds, { useInternalAPI: false });
 
   const workspaceVerifiedDomainsRes =
     await dustAPI.getWorkspaceVerifiedDomains();
@@ -169,7 +123,7 @@ function makeSlackMembershipAccessBlocksForConnector(
   };
 }
 
-async function postMessageForUnhautorizedUser(
+async function postMessageForUnauthorizedUser(
   connector: ConnectorResource,
   slackClient: WebClient,
   slackUserInfo: SlackUserInfo,
@@ -199,20 +153,6 @@ async function postMessageForUnhautorizedUser(
   });
 }
 
-export async function isActiveMemberOfWorkspace(
-  connector: ConnectorResource,
-  slackUserEmail: string | undefined
-) {
-  if (!slackUserEmail) {
-    return false;
-  }
-
-  const workspaceActiveMemberEmails =
-    await getActiveMemberEmailsMemoized(connector);
-
-  return workspaceActiveMemberEmails.includes(slackUserEmail);
-}
-
 export async function isBotAllowed(
   connector: ConnectorResource,
   slackUserInfo: SlackUserInfo
@@ -231,7 +171,9 @@ export async function isBotAllowed(
   const slackConfig = await SlackConfigurationResource.fetchByConnectorId(
     connector.id
   );
-  const whitelist = await slackConfig?.isBotWhitelistedToSummon(realName);
+  const whitelist = await slackConfig?.isBotWhitelistedToSummon(
+    realName.trim() // sometimes the user put a space at the end of the bot name
+  );
 
   if (!whitelist) {
     logger.info(
@@ -357,24 +299,31 @@ export async function notifyIfSlackUserIsNotAllowed(
   } = slackUserInfo;
   const isGuest = is_restricted || is_ultra_restricted;
   const isExternal = isGuest || isStranger;
+  let isAllowed = false;
+  let externalAuthorization: {
+    authorized: boolean;
+    groupIds: string[];
+  } | null = null;
+
   if (isExternal) {
     // If the external user is allowed, they are allowed with a specific group id.
-    return isExternalUserAllowed(
+    externalAuthorization = await isExternalUserAllowed(
       connector,
       slackClient,
       slackUserInfo,
       slackInfos,
       whitelistedDomains
     );
+    isAllowed = externalAuthorization.authorized;
+  } else {
+    // Handle users that are not Slack external.
+    isAllowed = await isSlackUserAllowed(
+      slackUserInfo,
+      connector,
+      slackClient,
+      slackInfos
+    );
   }
-
-  // Handle users that are not Slack external.
-  const isAllowed = await isSlackUserAllowed(
-    slackUserInfo,
-    connector,
-    slackClient,
-    slackInfos
-  );
 
   if (!isAllowed) {
     logger.info(
@@ -386,7 +335,7 @@ export async function notifyIfSlackUserIsNotAllowed(
       "Unauthorized Slack user attempted to access webhook."
     );
 
-    await postMessageForUnhautorizedUser(
+    await postMessageForUnauthorizedUser(
       connector,
       slackClient,
       slackUserInfo,
@@ -395,5 +344,9 @@ export async function notifyIfSlackUserIsNotAllowed(
   }
 
   // If the user is part of the Dust workspace, they are allowed without any explicit group id.
+  if (isExternal && externalAuthorization) {
+    return externalAuthorization;
+  }
+
   return { authorized: isAllowed, groupIds: [] };
 }

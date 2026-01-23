@@ -1,8 +1,8 @@
 import { createParser } from "eventsource-parser";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { normalizeError } from "./error_utils";
-import {
+import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
   AgentConfigurationViewType,
@@ -12,20 +12,14 @@ import {
   AgentMessagePublicType,
   AgentMessageSuccessEvent,
   APIError,
-  APIErrorSchema,
   AppsCheckRequestType,
-  AppsCheckResponseSchema,
-  BlockedActionsResponseSchema,
   BlockedActionsResponseType,
   CancelMessageGenerationRequestType,
-  CancelMessageGenerationResponseSchema,
+  ContentNodeType,
   ConversationPublicType,
-  CreateConversationResponseSchema,
   CreateConversationResponseType,
-  CreateGenericAgentConfigurationResponseSchema,
-  DataSourceViewResponseSchema,
+  DataSourceContentNodeType,
   DataSourceViewType,
-  DeleteFolderResponseSchema,
   DustAPICredentials,
   DustAppConfigType,
   DustAppRunBlockExecutionEvent,
@@ -38,10 +32,40 @@ import {
   DustAppRunReasoningTokensEvent,
   DustAppRunRunStatusEvent,
   DustAppRunTokensEvent,
-  Err,
-  FileUploadRequestResponseSchema,
   FileUploadUrlRequestType,
   GenerationTokensEvent,
+  HeartbeatMCPResponseType,
+  LoggerInterface,
+  PatchConversationRequestType,
+  PatchDataSourceViewRequestType,
+  PostMCPResultsResponseType,
+  PublicHeartbeatMCPRequestBody,
+  PublicPostContentFragmentRequestBody,
+  PublicPostConversationsRequestBody,
+  PublicPostMCPResultsRequestBody,
+  PublicPostMessageFeedbackRequestBody,
+  PublicPostMessagesRequestBody,
+  PublicRegisterMCPRequestBody,
+  RegisterMCPResponseType,
+  Result,
+  SearchRequestBodyType,
+  SearchWarningCode,
+  ToolErrorEvent,
+  UserMessageErrorEvent,
+  ValidateActionRequestBodyType,
+  ValidateActionResponseType,
+} from "./types";
+import {
+  APIErrorSchema,
+  AppsCheckResponseSchema,
+  BlockedActionsResponseSchema,
+  CancelMessageGenerationResponseSchema,
+  CreateConversationResponseSchema,
+  CreateGenericAgentConfigurationResponseSchema,
+  DataSourceViewResponseSchema,
+  DeleteFolderResponseSchema,
+  Err,
+  FileUploadRequestResponseSchema,
   GetActiveMemberEmailsInWorkspaceResponseSchema,
   GetAgentConfigurationsResponseSchema,
   GetAppsResponseSchema,
@@ -50,44 +74,31 @@ import {
   GetDataSourcesResponseSchema,
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
+  GetMentionSuggestionsResponseBodySchema,
+  GetSpaceConversationIdsResponseSchema,
+  GetSpaceConversationsForDataSourceResponseSchema,
+  GetSpaceMetadataResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
   HeartbeatMCPResponseSchema,
-  HeartbeatMCPResponseType,
-  LoggerInterface,
   MeResponseSchema,
   Ok,
-  PatchConversationRequestType,
+  ParseMentionsRequestBodySchema,
+  ParseMentionsResponseBodySchema,
   PatchConversationResponseSchema,
-  PatchDataSourceViewRequestType,
   PostContentFragmentResponseSchema,
   PostMCPResultsResponseSchema,
-  PostMCPResultsResponseType,
   PostMessageFeedbackResponseSchema,
   PostUserMessageResponseSchema,
   PostWorkspaceSearchResponseBodySchema,
-  PublicHeartbeatMCPRequestBody,
-  PublicPostContentFragmentRequestBody,
-  PublicPostConversationsRequestBody,
-  PublicPostMCPResultsRequestBody,
-  PublicPostMessageFeedbackRequestBody,
-  PublicPostMessagesRequestBody,
-  PublicRegisterMCPRequestBody,
   RegisterMCPResponseSchema,
-  RegisterMCPResponseType,
-  Result,
   RetryMessageResponseSchema,
   RunAppResponseSchema,
   SearchDataSourceViewsResponseSchema,
-  SearchRequestBodyType,
   TokenizeResponseSchema,
-  ToolErrorEvent,
   UpsertFolderResponseSchema,
-  UserMessageErrorEvent,
-  ValidateActionRequestBodyType,
   ValidateActionResponseSchema,
-  ValidateActionResponseType,
 } from "./types";
 
 export * from "./error_utils";
@@ -658,6 +669,84 @@ export class DustAPI {
     return new Ok(r.value.agentConfigurations);
   }
 
+  /**
+   * Parses mentions in markdown text and converts them to the proper mention format.
+   * Matches @agentName or @userName patterns against available agents and users.
+   *
+   * @param markdown - Markdown text containing @ mentions to parse
+   * @returns A promise that resolves to a Result containing the parsed markdown with mentions converted to proper format
+   */
+  async parseForMentions({ markdown }: { markdown: string }) {
+    const body = ParseMentionsRequestBodySchema.parse({ markdown });
+
+    const res = await this.request({
+      method: "POST",
+      path: "assistant/mentions/parse",
+      body,
+    });
+
+    const r = await this._resultFromResponse(
+      ParseMentionsResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.markdown);
+  }
+
+  /**
+   * Get suggestions for mentions (agents and users) based on a query string.
+   *
+   * @param query - Search query string to filter suggestions
+   * @param select - Optional array of mention types to include. Can be "agents", "users", or both.
+   * @param conversationId - Optional conversation ID to scope suggestions to a specific conversation
+   * @param current - Optional boolean to include the current user in the suggestions
+   * @returns A promise that resolves to a Result containing an array of mention suggestions
+   */
+  async getMentionsSuggestions({
+    query,
+    select,
+    conversationId,
+    current,
+  }: {
+    query: string;
+    select?: "agents" | "users" | ("agents" | "users")[];
+    conversationId?: string;
+    current?: boolean;
+  }) {
+    const queryParams = new URLSearchParams({ query });
+    if (select) {
+      if (Array.isArray(select)) {
+        select.forEach((s) => queryParams.append("select", s));
+      } else {
+        queryParams.append("select", select);
+      }
+    }
+    if (current !== undefined) {
+      queryParams.append("current", current ? "true" : "false");
+    }
+
+    const path = conversationId
+      ? `assistant/conversations/${conversationId}/mentions/suggestions`
+      : "assistant/mentions/suggestions";
+
+    const res = await this.request({
+      method: "GET",
+      path,
+      query: queryParams.toString() ? queryParams : undefined,
+    });
+
+    const r = await this._resultFromResponse(
+      GetMentionSuggestionsResponseBodySchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value.suggestions);
+  }
+
   async postContentFragment({
     conversationId,
     contentFragment,
@@ -782,6 +871,31 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.message);
+  }
+
+  async postConversationTools({
+    conversationId,
+    action,
+    mcpServerViewId,
+  }: {
+    conversationId: string;
+    action: "add" | "delete";
+    mcpServerViewId: string;
+  }) {
+    const res = await this.request({
+      method: "POST",
+      path: `assistant/conversations/${conversationId}/tools`,
+      body: { action, mcp_server_view_id: mcpServerViewId },
+    });
+
+    const r = await this._resultFromResponse(
+      PatchConversationResponseSchema,
+      res
+    );
+    if (r.isErr()) {
+      return r;
+    }
+    return new Ok(r.value);
   }
 
   async streamAgentAnswerEvents({
@@ -966,6 +1080,8 @@ export class DustAPI {
         const reader = res.value.response.body.getReader();
         const decoder = new TextDecoder();
 
+        let streamEndedWithError = false;
+
         try {
           for (;;) {
             const { value, done } = await reader.read();
@@ -988,6 +1104,8 @@ export class DustAPI {
           }
         } catch (e) {
           logger.error({ error: e }, "Failed processing event stream");
+          streamEndedWithError = true;
+
           // Respect caller-initiated aborts.
           if (signal?.aborted) {
             return;
@@ -1003,10 +1121,13 @@ export class DustAPI {
 
         // Stream ended - check if we need to reconnect
         if (!receivedTerminalEvent && autoReconnect) {
-          reconnectAttempts += 1;
+          // Only increment reconnect attempts for actual errors, not clean closures (pagination).
+          if (streamEndedWithError) {
+            reconnectAttempts += 1;
 
-          if (reconnectAttempts >= maxReconnectAttempts) {
-            throw new Error("Exceeded maximum reconnection attempts");
+            if (reconnectAttempts >= maxReconnectAttempts) {
+              throw new Error("Exceeded maximum reconnection attempts");
+            }
           }
 
           await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
@@ -1116,6 +1237,48 @@ export class DustAPI {
     return new Ok(r.value.feedbacks);
   }
 
+  async getSpaceConversationsForDataSource({
+    spaceId,
+    updatedSince,
+  }: {
+    spaceId: string;
+    updatedSince?: number | null;
+  }) {
+    const query = new URLSearchParams();
+    if (updatedSince !== undefined && updatedSince !== null) {
+      query.append("updatedSince", String(updatedSince));
+    }
+
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/conversations`,
+      query,
+    });
+
+    return this._resultFromResponse(
+      GetSpaceConversationsForDataSourceResponseSchema,
+      res
+    );
+  }
+
+  async getSpaceConversationIds({ spaceId }: { spaceId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/conversation_ids`,
+    });
+
+    return this._resultFromResponse(GetSpaceConversationIdsResponseSchema, res);
+  }
+
+  async getSpaceMetadata({ spaceId }: { spaceId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/project_metadata`,
+    });
+
+    return this._resultFromResponse(GetSpaceMetadataResponseSchema, res);
+  }
+
   async postFeedback(
     conversationId: string,
     messageId: string,
@@ -1223,6 +1386,85 @@ export class DustAPI {
     }
 
     return new Ok(r.value);
+  }
+
+  private _validateRedirectUrl(url: string): boolean {
+    const urlObj = new URL(url);
+    if (
+      urlObj.protocol !== "https:" ||
+      urlObj.hostname !== "storage.googleapis.com"
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  async downloadFile({ fileID }: { fileID: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileID}?action=download`,
+    });
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    // Handle redirect response (the API redirects to a signed URL)
+    if (res.value.response.status >= 200 && res.value.response.status < 400) {
+      const redirectUrl = res.value.response.url;
+
+      // Validate the redirect URL format to prevent SSRF attacks
+      if (!this._validateRedirectUrl(redirectUrl)) {
+        return new Err({
+          type: "unexpected_network_error",
+          message: `Invalid redirect URL format. Expected format: https://storage.googleapis.com/... Got: ${redirectUrl}`,
+        });
+      }
+
+      // Fetch the actual file content from the signed URL
+      try {
+        const fileResponse = await fetch(redirectUrl);
+        if (!fileResponse.ok) {
+          return new Err({
+            type: "unexpected_network_error",
+            message: `Failed to download file from signed URL: ${fileResponse.status}`,
+          });
+        }
+
+        const buffer = Buffer.from(await fileResponse.arrayBuffer());
+        return new Ok(buffer);
+      } catch (error) {
+        return new Err({
+          type: "unexpected_network_error",
+          message: `Failed to download file: ${error}`,
+        });
+      }
+    }
+  }
+
+  async getFileContent({
+    fileId,
+    version = "original",
+  }: {
+    fileId: string;
+    version?: "original" | "processed";
+  }) {
+    const res = await this.request({
+      method: "GET",
+      path: `files/${fileId}?action=view&version=${version}`,
+      stream: true,
+    });
+
+    if (res.isErr()) {
+      return res;
+    }
+
+    const { body } = res.value.response;
+    if (typeof body === "string") {
+      return new Ok(new Blob([body]));
+    }
+
+    return new Ok(await new Response(body).blob());
   }
 
   async uploadFile({
@@ -1461,6 +1703,144 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.nodes);
+  }
+
+  /**
+   * Unified search with SSE streaming for both knowledge and tool results.
+   * Returns a Result containing an async generator that yields search results as they arrive.
+   *
+   * @param params Search parameters
+   * @returns Promise resolving to Result with eventStream AsyncGenerator
+   */
+  async searchUnified({
+    query,
+    limit = 25,
+    cursor,
+    viewType = "all",
+    spaceIds,
+    includeDataSources = true,
+    searchSourceUrls = false,
+    includeTools = true,
+  }: {
+    query: string;
+    limit?: number;
+    cursor?: string | null;
+    viewType?: "all" | "documents" | "tables";
+    spaceIds?: string[];
+    includeDataSources?: boolean;
+    searchSourceUrls?: boolean;
+    includeTools?: boolean;
+  }) {
+    const params = new URLSearchParams();
+    params.append("query", query);
+    params.append("limit", limit.toString());
+    params.append("viewType", viewType);
+    params.append("includeDataSources", includeDataSources.toString());
+    params.append("searchSourceUrls", searchSourceUrls.toString());
+    params.append("includeTools", includeTools.toString());
+
+    if (spaceIds && spaceIds.length > 0) {
+      params.append("spaceIds", spaceIds.join(","));
+    }
+
+    if (cursor) {
+      params.append("cursor", cursor);
+    }
+
+    const res = await this.request({
+      method: "GET",
+      path: `search?${params.toString()}`,
+      stream: true,
+    });
+
+    if (res.isErr()) {
+      return new Err({
+        type: "search_error",
+        message: `Search request failed: ${res.error.message}`,
+      });
+    }
+
+    if (typeof res.value.response.body === "string") {
+      return new Err({
+        type: "search_error",
+        message: "Expected stream body but got string",
+      });
+    }
+
+    const logger = this._logger;
+
+    const streamSearchResults = async function* () {
+      if (
+        !res.value.response.body ||
+        typeof res.value.response.body === "string"
+      ) {
+        throw new Error("Expected a stream response, but got a string or null");
+      }
+
+      const reader = res.value.response.body.getReader();
+      const decoder = new TextDecoder();
+
+      try {
+        let pendingChunks: Array<{
+          knowledgeResults?: {
+            nodes: DataSourceContentNodeType[];
+            warningCode: SearchWarningCode | null;
+            nextPageCursor: string | null;
+            resultsCount: number | null;
+          };
+          toolResults?: Array<{
+            internalId: string;
+            externalId: string;
+            title: string;
+            type: ContentNodeType["type"];
+            mimeType: string;
+            serverName: string;
+            serverIcon: string;
+            serverViewId: string;
+            sourceUrl: string | null;
+            url?: string;
+            score?: number;
+          }>;
+        }> = [];
+
+        const parser = createParser((event) => {
+          if (event.type === "event") {
+            if (event.data) {
+              try {
+                const chunk = JSON.parse(event.data);
+                pendingChunks.push(chunk);
+              } catch (err) {
+                logger.error(
+                  {
+                    error: normalizeError(err),
+                  },
+                  "Error parsing search stream chunk"
+                );
+              }
+            }
+          }
+        });
+
+        for (;;) {
+          const { value, done } = await reader.read();
+          if (value) {
+            parser.feed(decoder.decode(value, { stream: true }));
+
+            for (const chunk of pendingChunks) {
+              yield chunk;
+            }
+            pendingChunks = [];
+          }
+          if (done) {
+            break;
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    };
+
+    return new Ok({ eventStream: streamSearchResults() });
   }
 
   async retryMessage({

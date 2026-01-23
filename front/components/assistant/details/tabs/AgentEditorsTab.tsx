@@ -2,7 +2,7 @@ import { Button, PlusIcon } from "@dust-tt/sparkle";
 
 import { AddEditorDropdown } from "@app/components/members/AddEditorsDropdown";
 import { MembersList } from "@app/components/members/MembersList";
-import { useEditors, useUpdateEditors } from "@app/lib/swr/editors";
+import { useEditors, useUpdateEditors } from "@app/lib/swr/agent_editors";
 import type {
   AgentConfigurationType,
   UserType,

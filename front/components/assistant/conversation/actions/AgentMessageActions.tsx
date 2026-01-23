@@ -1,9 +1,7 @@
 import {
   AnimatedText,
-  Button,
   Card,
   cn,
-  CommandLineIcon,
   ContentMessage,
   Markdown,
   Spinner,
@@ -15,7 +13,7 @@ import { useConversationSidePanelContext } from "@app/components/assistant/conve
 import type {
   ActionProgressState,
   AgentStateClassification,
-} from "@app/lib/assistant/state/messageReducer";
+} from "@app/components/assistant/conversation/types";
 import type {
   LightAgentMessageType,
   LightAgentMessageWithActionsType,
@@ -72,7 +70,7 @@ export function AgentMessageActions({
   }, [agentMessage, currentPanel, data, openPanel]);
 
   const lastNotification = lastAction
-    ? actionProgress.get(lastAction.id)?.progress ?? null
+    ? (actionProgress.get(lastAction.id)?.progress ?? null)
     : null;
 
   const showMessageBreakdownButton =
@@ -87,7 +85,7 @@ export function AgentMessageActions({
       )}
     >
       {lastAction && lastAgentStateClassification === "acting" ? (
-        <Card variant="secondary" size="sm">
+        <Card variant="secondary" className="max-w-xl">
           <MCPActionDetails
             viewType="conversation"
             action={lastAction}
@@ -98,7 +96,7 @@ export function AgentMessageActions({
         </Card>
       ) : (
         <div>
-          <ContentMessage variant="primary" className="max-w-[1000px] p-3">
+          <ContentMessage variant="primary" className="min-h-fit p-3">
             <div className="flex w-full flex-row">
               {!chainOfThought ? (
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
@@ -122,15 +120,5 @@ export function AgentMessageActions({
         </div>
       )}
     </div>
-  ) : (
-    <div className="flex flex-col items-start gap-y-4">
-      <Button
-        size="xs"
-        label="Message Breakdown"
-        icon={CommandLineIcon}
-        variant={data === agentMessage.sId ? "primary" : "outline"}
-        onClick={onClick}
-      />
-    </div>
-  );
+  ) : null;
 }

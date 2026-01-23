@@ -1,11 +1,11 @@
 import { CONNECTOR_CONFIGURATIONS } from "@app/shared/lib/connector_providers";
 import type {
   ContentNodeType,
+  DataSourceType,
   DataSourceViewContentNodeType,
 } from "@dust-tt/client";
 import { DATA_SOURCE_MIME_TYPE, INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import {
-  assertNever,
   ChatBubbleLeftRightIcon,
   DocumentIcon,
   DocumentPileIcon,
@@ -14,6 +14,8 @@ import {
   LockIcon,
   Square3Stack3DIcon,
 } from "@dust-tt/sparkle";
+
+import { assertNeverAndIgnore } from "./assertNeverAndIgnore";
 
 // Since titles will be synced in ES we don't support arbitrarily large titles.
 export const MAX_NODE_TITLE_LENGTH = 512;
@@ -71,6 +73,20 @@ export function getVisualForDataSourceViewContentNode(
   return getVisualForContentNode(node);
 }
 
+export function getVisualForContentNodeType(type: ContentNodeType["type"]) {
+  switch (type) {
+    case "table":
+      return Square3Stack3DIcon;
+    case "folder":
+      return FolderIcon;
+    case "document":
+      return DocumentIcon;
+    default:
+      assertNeverAndIgnore(type);
+      return DocumentIcon;
+  }
+}
+
 export function getVisualForContentNode(node: ContentNodeType) {
   // Check mime type first for special icon handling.
   if (node.mimeType) {
@@ -113,7 +129,8 @@ export function getVisualForContentNode(node: ContentNodeType) {
       );
 
     default:
-      assertNever(node.type);
+      assertNeverAndIgnore(node.type);
+      return DocumentIcon;
   }
 }
 
@@ -131,4 +148,36 @@ export function getLocationForDataSourceViewContentNode(
   }
 
   return `${providerName} › ... › ${node.parentTitle}`;
+}
+
+function getSetupSuffixForDataSource(
+  dataSource: DataSourceType
+): string | null {
+  const match = dataSource.name.match(
+    new RegExp(`managed\\-${dataSource.connectorProvider}\\-(.*)`)
+  );
+  if (!match || match.length < 2) {
+    return null;
+  }
+  return match[1];
+}
+
+export function getDisplayNameForDataSource(
+  ds: DataSourceType,
+  aggregateFolder: boolean = false
+) {
+  if (ds.connectorProvider) {
+    if (ds.connectorProvider === "webcrawler") {
+      return aggregateFolder ? "Websites" : ds.name;
+    }
+    // Not very satisfying to retro-engineer getDefaultDataSourceName but we don't store the suffix by itself.
+    // This is a technical debt to have this function.
+    const suffix = getSetupSuffixForDataSource(ds);
+    if (suffix) {
+      return `${CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name} (${suffix})`;
+    }
+    return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
+  } else {
+    return aggregateFolder ? "Folders" : ds.name;
+  }
 }

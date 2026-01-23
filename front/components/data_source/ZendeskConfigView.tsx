@@ -10,10 +10,12 @@ import { useState } from "react";
 
 import { ZendeskCustomFieldFilters } from "@app/components/data_source/ZendeskCustomTagFilters";
 import { ZendeskOrganizationTagFilters } from "@app/components/data_source/ZendeskOrganizationTagFilters";
+import { ZendeskRateLimitConfig } from "@app/components/data_source/ZendeskRateLimitConfig";
 import { ZendeskTicketTagFilters } from "@app/components/data_source/ZendeskTicketTagFilters";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { ZENDESK_CONFIG_KEYS } from "@app/lib/constants/zendesk";
+import { clientFetch } from "@app/lib/egress/client";
 import { useConnectorConfig } from "@app/lib/swr/connectors";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 
@@ -71,7 +73,7 @@ export function ZendeskConfigView({
     configValue: boolean | number
   ) => {
     setLoading(true);
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/config/${configKey}`,
       {
         headers: { "Content-Type": "application/json" },
@@ -101,6 +103,7 @@ export function ZendeskConfigView({
         type: "info",
         title: "Failed to edit Zendesk configuration",
         description:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           err.error?.connectors_error.message || "An unknown error occurred",
       });
     }
@@ -241,6 +244,12 @@ export function ZendeskConfigView({
         dataSource={dataSource}
       />
       <ZendeskCustomFieldFilters
+        owner={owner}
+        readOnly={readOnly}
+        isAdmin={isAdmin}
+        dataSource={dataSource}
+      />
+      <ZendeskRateLimitConfig
         owner={owner}
         readOnly={readOnly}
         isAdmin={isAdmin}

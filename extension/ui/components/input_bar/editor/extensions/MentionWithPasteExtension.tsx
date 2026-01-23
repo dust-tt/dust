@@ -8,6 +8,25 @@ const escapeRegExp = (string: string): string => {
 };
 
 export const MentionWithPasteExtension = Mention.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      // Add description attribute to store agent description for tooltip display
+      description: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-description"),
+        renderHTML: (attributes) => {
+          if (!attributes.description) {
+            return {};
+          }
+          return {
+            "data-description": attributes.description,
+          };
+        },
+      },
+    };
+  },
+
   addPasteRules() {
     const pasteRule = nodePasteRule({
       find: (text) => {
@@ -31,7 +50,11 @@ export const MentionWithPasteExtension = Mention.extend({
                 index: match.index,
                 text: match[1],
                 replaceWith: suggestion.label,
-                data: { id: suggestion.id, label: suggestion.label },
+                data: {
+                  id: suggestion.id,
+                  label: suggestion.label,
+                  description: suggestion.description,
+                },
               };
             });
           }
@@ -40,7 +63,11 @@ export const MentionWithPasteExtension = Mention.extend({
       },
       type: this.type,
       getAttributes: (match: Record<string, any>) => {
-        return { label: match.data["label"], id: match.data["id"] };
+        return {
+          label: match.data["label"],
+          id: match.data["id"],
+          description: match.data["description"],
+        };
       },
     });
 

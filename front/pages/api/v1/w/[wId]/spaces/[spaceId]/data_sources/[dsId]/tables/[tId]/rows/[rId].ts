@@ -112,6 +112,7 @@ import { CoreAPI } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<GetTableRowsResponseType | { success: boolean }>
   >,

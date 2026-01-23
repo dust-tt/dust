@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./search";
 
@@ -111,17 +110,20 @@ vi.mock(
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/search", () => {
   it("blocks non-GET methods", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "POST",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "POST",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "valid",
     };
@@ -131,17 +133,20 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
   });
 
   it("requires minimum query length", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "a",
     };
@@ -150,66 +155,72 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]/tables/sea
     expect(res._getStatusCode()).toBe(400);
   });
 
-  it("returns tables with search results", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+  it.skip("returns tables with search results", async () => {
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "tasks",
     };
 
     await handler(req, res);
 
-    // expect(res._getStatusCode()).toBe(200);
-    // expect(res._getJSONData().tables.length).toBe(3);
-    true; // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData().tables.length).toBe(3);
   });
 
-  it("handles empty results", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+  it.skip("handles empty results", async () => {
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "empty",
     };
 
     await handler(req, res);
-    true; // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
   });
 
-  it("propagates warnings", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      method: "GET",
-      role: "admin",
-    });
+  it.skip("propagates warnings", async () => {
+    const { req, res, workspace, globalSpace } =
+      await createPrivateApiMockRequest({
+        method: "GET",
+        role: "admin",
+      });
 
-    const space = await SpaceFactory.global(workspace);
-    const dataSourceView = await DataSourceViewFactory.folder(workspace, space);
+    const dataSourceView = await DataSourceViewFactory.folder(
+      workspace,
+      globalSpace
+    );
 
     req.query = {
       ...req.query,
-      spaceId: space.sId,
+      spaceId: globalSpace.sId,
       dsvId: dataSourceView.sId,
       query: "warning",
     };
 
     await handler(req, res);
-    true; // Skip for now, I have trouble mocking correctly the CoreAPI.searchNodes
   });
 });

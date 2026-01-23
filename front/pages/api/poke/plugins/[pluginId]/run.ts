@@ -13,7 +13,11 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { createIoTsCodecFromArgs, supportedResourceTypes } from "@app/types";
+import {
+  createIoTsCodecFromArgs,
+  normalizeError,
+  supportedResourceTypes,
+} from "@app/types";
 
 export const config = {
   api: {
@@ -120,6 +124,7 @@ async function handler(
           }
           const body = Buffer.concat(chunks).toString();
           formData = JSON.parse(body);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (e) {
           return apiError(req, res, {
             status_code: 400,
@@ -180,11 +185,25 @@ async function handler(
         }
       );
 
-      const runRes = await plugin.execute(
-        auth,
-        resource,
-        pluginArgsValidation.right
-      );
+      let runRes;
+      try {
+        runRes = await plugin.execute(
+          auth,
+          resource,
+          pluginArgsValidation.right
+        );
+      } catch (error) {
+        const errorMessage = normalizeError(error).message;
+        await pluginRun.recordError(errorMessage);
+
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "plugin_execution_failed",
+            message: errorMessage,
+          },
+        });
+      }
 
       if (runRes.isErr()) {
         await pluginRun.recordError(runRes.error.message);
@@ -198,7 +217,7 @@ async function handler(
         });
       }
 
-      await pluginRun.recordResult(runRes.value);
+      await pluginRun.recordResult(runRes.value, plugin);
 
       res.status(200).json({ result: runRes.value });
 

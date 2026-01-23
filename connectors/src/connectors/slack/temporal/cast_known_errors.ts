@@ -7,9 +7,7 @@ import type {
 
 import { ProviderRateLimitError } from "@connectors/lib/error";
 
-export class SlackCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class SlackCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -23,6 +21,7 @@ export class SlackCastKnownErrorsInterceptor
           throw ApplicationFailure.create({
             message: `${err.message}. Retry after ${err.retryAfter / 1000}s`,
             nextRetryDelay: err.retryAfter,
+            cause: err,
           });
         }
       }

@@ -1,7 +1,7 @@
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type {
   ConnectorPermission,
@@ -18,6 +18,8 @@ export class SlackConfigurationModel extends ConnectorBaseModel<SlackConfigurati
   // Whitelisted domains are in the format "domain:group_id".
   declare whitelistedDomains?: readonly string[];
   declare autoReadChannelPatterns: SlackAutoReadPattern[];
+  declare feedbackVisibleToAuthorOnly: boolean;
+  declare privateIntegrationCredentialId?: string | null;
 }
 
 SlackConfigurationModel.init(
@@ -55,9 +57,18 @@ SlackConfigurationModel.init(
       allowNull: false,
       defaultValue: true,
     },
+    feedbackVisibleToAuthorOnly: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    privateIntegrationCredentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["slackTeamId"] },
       { fields: ["connectorId"], unique: true },
@@ -72,7 +83,7 @@ SlackConfigurationModel.init(
   }
 );
 
-export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
+export class SlackMessagesModel extends ConnectorBaseModel<SlackMessagesModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare channelId: string;
@@ -80,7 +91,7 @@ export class SlackMessages extends ConnectorBaseModel<SlackMessages> {
   declare documentId: string;
   declare skipReason?: string;
 }
-SlackMessages.init(
+SlackMessagesModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -110,7 +121,7 @@ SlackMessages.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "slack_messages",
     indexes: [
       { fields: ["connectorId", "channelId", "documentId"], unique: true },
@@ -118,7 +129,7 @@ SlackMessages.init(
   }
 );
 
-export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
+export class SlackChannelModel extends ConnectorBaseModel<SlackChannelModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -133,7 +144,7 @@ export class SlackChannel extends ConnectorBaseModel<SlackChannel> {
   declare agentConfigurationId: CreationOptional<string | null>;
   declare autoRespondWithoutMention: CreationOptional<boolean>;
 }
-SlackChannel.init(
+SlackChannelModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -177,7 +188,7 @@ SlackChannel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "slack_channels",
     indexes: [
       { fields: ["connectorId", "slackChannelId"], unique: true },
@@ -186,7 +197,7 @@ SlackChannel.init(
   }
 );
 
-export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage> {
+export class SlackChatBotMessageModel extends ConnectorBaseModel<SlackChatBotMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare channelId: string;
@@ -204,7 +215,7 @@ export class SlackChatBotMessage extends ConnectorBaseModel<SlackChatBotMessage>
   declare conversationId: string | null; // conversationId is set only for V2 conversations
   declare userType: "bot" | "user";
 }
-SlackChatBotMessage.init(
+SlackChatBotMessageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -270,7 +281,7 @@ SlackChatBotMessage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "slack_chat_bot_messages",
     indexes: [{ fields: ["connectorId", "channelId", "threadTs"] }],
   }
@@ -312,7 +323,7 @@ SlackBotWhitelistModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [{ fields: ["connectorId", "botName"], unique: true }],
     modelName: "slack_bot_whitelist",
     tableName: "slack_bot_whitelist",

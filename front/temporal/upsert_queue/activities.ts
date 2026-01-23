@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 
 import config from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
-import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { WorkflowError } from "@app/lib/temporal_monitoring";
 import { EnqueueUpsertDocument } from "@app/lib/upsert_queue";
@@ -99,10 +98,13 @@ export async function upsertDocumentActivity(
     projectId: dataSource.dustAPIProjectId,
     dataSourceId: dataSource.dustAPIDataSourceId,
     documentId: upsertQueueItem.documentId,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     tags: ((upsertQueueItem.tags as string[] | null) || []).map((tag) =>
       safeSubstring(tag, 0)
     ),
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parentId: upsertQueueItem.parentId || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     parents: upsertQueueItem.parents || [upsertQueueItem.documentId],
     sourceUrl: upsertQueueItem.sourceUrl,
     timestamp: cleanTimestamp(upsertQueueItem.timestamp),
@@ -156,13 +158,4 @@ export async function upsertDocumentActivity(
     Date.now() - enqueueTimestamp,
     []
   );
-
-  runDocumentUpsertHooks({
-    auth,
-    dataSourceId: dataSource.sId,
-    documentId: upsertQueueItem.documentId,
-    documentHash: upsertRes.value.document.hash,
-    dataSourceConnectorProvider: dataSource.connectorProvider || null,
-    upsertContext: upsertQueueItem.upsertContext || undefined,
-  });
 }

@@ -5,6 +5,7 @@ import { vi } from "vitest";
 
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { MembershipRoleType } from "@app/types";
@@ -14,7 +15,7 @@ import { setupWorkOSMocks } from "./mocks/workos";
 // Setup WorkOS mocks
 setupWorkOSMocks();
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -56,20 +57,22 @@ export const createPrivateApiMockRequest = async ({
   const user = await (isSuperUser
     ? UserFactory.superUser()
     : UserFactory.basic());
+
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
+  const systemSpace = await SpaceFactory.system(workspace, systemGroup);
+  const globalSpace = await SpaceFactory.global(workspace, globalGroup);
 
   const membership = await MembershipFactory.associate(workspace, user, {
     role,
   });
 
-  // Mock the getSession function to return the user without going through the auth0 session
+  // Mock the getSession function to return the user without going through the workos session
   vi.mocked(getSession).mockReturnValue(
     Promise.resolve({
       type: "workos",
       sessionId: "test-session-id",
       user: {
         workOSUserId: user.workOSUserId!,
-        auth0Sub: null,
         email: user.email!,
         email_verified: true,
         name: user.username!,
@@ -79,7 +82,7 @@ export const createPrivateApiMockRequest = async ({
       authenticationMethod: "GoogleOAuth",
       isSSO: false,
       workspaceId: workspace.sId,
-      organizationId: workspace.workOSOrganizationId || undefined,
+      organizationId: workspace.workOSOrganizationId ?? undefined,
       region: "us-central1",
     })
   );
@@ -97,7 +100,9 @@ export const createPrivateApiMockRequest = async ({
     user,
     membership,
     globalGroup,
+    globalSpace,
     systemGroup,
+    systemSpace,
     authenticator: await Authenticator.fromUserIdAndWorkspaceId(
       user.sId,
       workspace.sId

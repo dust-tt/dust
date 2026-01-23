@@ -1,5 +1,6 @@
 import TurndownService from "turndown";
 
+import { UNTITLED_COLLECTION_NAME } from "@connectors/connectors/intercom/lib/help_center_permissions";
 import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/intercom_access_token";
 import { fetchIntercomCollections } from "@connectors/connectors/intercom/lib/intercom_api";
 import type {
@@ -192,7 +193,7 @@ export async function upsertCollectionWithChildren({
 
   if (collectionOnDb) {
     await collectionOnDb.update({
-      name: collection.name,
+      name: collection.name?.trim() ?? UNTITLED_COLLECTION_NAME,
       description: collection.description,
       parentId: collection.parent_id,
       url: collection.url || fallbackCollectionUrl,
@@ -205,7 +206,7 @@ export async function upsertCollectionWithChildren({
       intercomWorkspaceId: collection.workspace_id,
       helpCenterId: helpCenterId,
       parentId: collection.parent_id,
-      name: collection.name,
+      name: collection.name?.trim() ?? UNTITLED_COLLECTION_NAME,
       description: collection.description,
       url: collection.url || fallbackCollectionUrl,
       permission: "read",
@@ -230,7 +231,7 @@ export async function upsertCollectionWithChildren({
   await upsertDataSourceFolder({
     dataSourceConfig,
     folderId: internalCollectionId,
-    title: collection.name.trim() || "Untitled Collection",
+    title: collection.name?.trim() ?? "UNTITLED_COLLECTION_NAME",
     parents: collectionParents,
     parentId: collectionParents[1] || null,
     mimeType: INTERNAL_MIME_TYPES.INTERCOM.COLLECTION,

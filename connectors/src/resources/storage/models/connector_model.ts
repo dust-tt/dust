@@ -2,7 +2,7 @@ import type { ConnectorProvider } from "@dust-tt/client";
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { BaseModel } from "@connectors/resources/storage/wrappers/base";
 import type {
   ConnectorErrorType,
@@ -116,7 +116,7 @@ ConnectorModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "connectors",
     indexes: [{ fields: ["workspaceId", "dataSourceId"], unique: true }],
   }

@@ -3,7 +3,7 @@ import type { NodeCandidate, UrlCandidate } from "@app/shared/lib/connectors";
 import { isNodeCandidate } from "@app/shared/lib/connectors";
 import { getSpaceAccessPriority } from "@app/shared/lib/spaces";
 import { classNames } from "@app/shared/lib/utils";
-import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
+import { AgentPicker } from "@app/ui/components/agents/AgentPicker";
 import { AttachFragment } from "@app/ui/components/conversation/AttachFragment";
 import { MentionDropdown } from "@app/ui/components/input_bar/editor/MentionDropdown";
 import type { CustomEditorProps } from "@app/ui/components/input_bar/editor/useCustomEditor";
@@ -31,7 +31,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlexSplitButton,
-  Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -85,6 +84,7 @@ export const InputBarContainer = ({
   >(null);
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNodeType | null>(null);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
@@ -243,14 +243,37 @@ export const InputBarContainer = ({
     onClick,
     isLoading: isSubmitting,
   };
+
+  // Update the editor ref when the editor is created and listen for updates to the editor.
+  useEffect(() => {
+    const handleUpdate = () => {
+      setIsEmpty(editorService.isEmpty());
+    };
+
+    if (editorRef.current) {
+      editorRef.current.off("update", handleUpdate);
+    }
+
+    if (editor) {
+      editor.on("update", handleUpdate);
+    }
+    editorRef.current = editor;
+
+    return () => {
+      if (editor) {
+        editor.off("update", handleUpdate);
+      }
+    };
+  }, [editor, editorService]);
+
   const disabled =
     isSubmitting ||
-    editorService.isEmpty() ||
+    isEmpty ||
     fileUploaderService.isProcessingFiles ||
     fileUploaderService.isCapturing;
 
   return (
-    <div id="InputBarContainer" className="relative flex flex-col w-full">
+    <div id="InputBarContainer" className="relative flex w-full flex-col">
       <div className="flex space-x-2">
         <EditorContent
           editor={editor}
@@ -270,19 +293,19 @@ export const InputBarContainer = ({
             onNodeUnselect={onNodeUnselect}
             attachedNodes={attachedNodes}
           />
-          <AssistantPicker
+          <AgentPicker
             owner={owner}
             size="xs"
             onItemClick={(c) => {
               editorService.insertMention({ id: c.sId, label: c.name });
             }}
-            assistants={allAssistants}
+            agents={allAssistants}
             isLoading={isSubmitting}
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-end space-x-1 mt-2">
+      <div className="mt-2 flex items-center justify-end space-x-1">
         <AttachFragment
           owner={owner}
           fileUploaderService={fileUploaderService}
@@ -292,30 +315,26 @@ export const InputBarContainer = ({
           {...(isTabIncluded ? SendWithContentAction : SendAction)}
           variant="highlight"
           splitAction={
-            isSubmitting ? (
-              <Spinner size="xs" />
-            ) : (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="mini"
-                    variant="highlight"
-                    icon={ChevronDownIcon}
-                    disabled={disabled}
-                  />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    label={SendAction.label}
-                    onClick={() => setIncludeTab(false)}
-                  />
-                  <DropdownMenuItem
-                    label={SendWithContentAction.label}
-                    onClick={() => setIncludeTab(true)}
-                  />
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="mini"
+                  variant="highlight"
+                  icon={ChevronDownIcon}
+                  disabled={disabled}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  label={SendAction.label}
+                  onClick={() => setIncludeTab(false)}
+                />
+                <DropdownMenuItem
+                  label={SendWithContentAction.label}
+                  onClick={() => setIncludeTab(true)}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
           disabled={disabled}
         />

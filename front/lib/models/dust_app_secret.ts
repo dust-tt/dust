@@ -5,7 +5,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 
-export class DustAppSecret extends WorkspaceAwareModel<DustAppSecret> {
+export class DustAppSecretModel extends WorkspaceAwareModel<DustAppSecretModel> {
   declare createdAt: CreationOptional<Date>;
 
   declare name: string;
@@ -15,7 +15,7 @@ export class DustAppSecret extends WorkspaceAwareModel<DustAppSecret> {
 
   declare user: NonAttribute<UserModel>;
 }
-DustAppSecret.init(
+DustAppSecretModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -38,8 +38,8 @@ DustAppSecret.init(
   }
 );
 // We don't want to delete keys when a user gets deleted.
-UserModel.hasMany(DustAppSecret, {
+UserModel.hasMany(DustAppSecretModel, {
   foreignKey: { allowNull: true },
   onDelete: "SET NULL",
 });
-DustAppSecret.belongsTo(UserModel);
+DustAppSecretModel.belongsTo(UserModel);

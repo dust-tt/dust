@@ -57,5 +57,18 @@ export const IconPositions = () => (
         secondaryIcon={SlackLogo}
       />
     </div>
+    <div className="s-flex s-items-center s-gap-8">
+      <DoubleIcon size="sm" mainIcon={FolderIcon} secondaryIcon={DriveLogo} />{" "}
+      <DoubleIcon
+        size="sm"
+        mainIcon={DocumentIcon}
+        secondaryIcon={NotionLogo}
+      />{" "}
+      <DoubleIcon
+        size="sm"
+        mainIcon={ChatBubbleThoughtIcon}
+        secondaryIcon={SlackLogo}
+      />
+    </div>
   </div>
 );

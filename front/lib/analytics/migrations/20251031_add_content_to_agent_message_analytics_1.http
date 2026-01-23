@@ -1,0 +1,9 @@
+PUT /front.agent_message_analytics_1/_mapping
+{
+  "properties": {
+    "content": {
+      "type": "text",
+      "index": "false"
+    }
+  }
+}

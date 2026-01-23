@@ -5,6 +5,7 @@ export type ProviderType = {
 
 export type CredentialsType = {
   OPENAI_API_KEY?: string;
+  OPENAI_BASE_URL?: string;
   OPENAI_USE_EU_ENDPOINT?: string;
   COHERE_API_KEY?: string;
   AI21_API_KEY?: string;
@@ -22,4 +23,5 @@ export type CredentialsType = {
   FIREWORKS_API_KEY?: string;
   XAI_API_KEY?: string;
   FIRECRAWL_API_KEY?: string;
+  ELEVENLABS_API_KEY?: string;
 };

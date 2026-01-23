@@ -1,5 +1,6 @@
 import type { ConnectorProvider, Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
+import * as iconv from "iconv-lite";
 
 import { apiConfig } from "@connectors/lib/api/config";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
@@ -21,6 +22,37 @@ import {
 
 // We observed cases where tabular data was stored in ASCII in .txt files.
 const MAX_NUMBER_CHAR_RATIO = 0.66;
+
+/**
+ * Detects the encoding of a buffer and decodes it to a string.
+ * Checks for UTF-16 BOM markers and falls back to UTF-8.
+ */
+export function decodeBuffer(data: ArrayBufferLike): string {
+  const buffer = Buffer.from(data);
+
+  // Check for UTF-16 LE BOM (FF FE)
+  if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xfe) {
+    return iconv.decode(buffer, "utf16le");
+  }
+
+  // Check for UTF-16 BE BOM (FE FF)
+  if (buffer.length >= 2 && buffer[0] === 0xfe && buffer[1] === 0xff) {
+    return iconv.decode(buffer, "utf16be");
+  }
+
+  // Check for UTF-8 BOM (EF BB BF)
+  if (
+    buffer.length >= 3 &&
+    buffer[0] === 0xef &&
+    buffer[1] === 0xbb &&
+    buffer[2] === 0xbf
+  ) {
+    return iconv.decode(buffer, "utf8");
+  }
+
+  // Default to UTF-8 without BOM
+  return buffer.toString("utf-8");
+}
 
 export function handleTextFile(
   data: ArrayBuffer,
@@ -65,12 +97,11 @@ export async function handleCsvFile({
     return new Err(new Error("file_too_big"));
   }
 
-  const tableCsv = Buffer.from(data).toString("utf-8").trim();
   const tableName = slugify(fileName.substring(0, 32));
   const tableDescription = `Structured data from ${provider} (${fileName})`;
 
   try {
-    const stringifiedContent = await parseAndStringifyCsv(tableCsv);
+    const stringifiedContent = await parseAndStringifyCsv(decodeBuffer(data));
     await ignoreTablesError(`${provider} CSV File`, () =>
       upsertDataSourceTableFromCsv({
         dataSourceConfig,

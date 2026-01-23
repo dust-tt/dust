@@ -75,8 +75,6 @@ export function formatHubSpotObject(
         value !== undefined &&
         value !== "" &&
         !key.startsWith("hs_") &&
-        !key.includes("_id") &&
-        key !== "hubspot_owner_id" &&
         ((!key.includes("_date") && !key.includes("_timestamp")) ||
           allowlist.includes(key))
     )

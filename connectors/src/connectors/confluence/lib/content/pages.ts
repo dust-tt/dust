@@ -28,8 +28,8 @@ import {
   renderMarkdownSection,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
-import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
-import { ConfluencePage } from "@connectors/lib/models/confluence";
+import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
+import { ConfluencePageModel } from "@connectors/lib/models/confluence";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -49,7 +49,7 @@ async function markPageHasVisited({
   spaceId: string;
   visitedAtMs: number;
 }) {
-  await ConfluencePage.update(
+  await ConfluencePageModel.update(
     {
       lastVisitedAt: new Date(visitedAtMs),
     },
@@ -71,7 +71,7 @@ interface ConfluenceUpsertPageInput {
   page: NonNullable<Awaited<ReturnType<ConfluenceClient["getPageById"]>>>;
   spaceName: string;
   parents: [string, string, ...string[]];
-  confluenceConfig: ConfluenceConfiguration;
+  confluenceConfig: ConfluenceConfigurationModel;
   syncType?: UpsertDataSourceDocumentParams["upsertContext"]["sync_type"];
   dataSourceConfig: DataSourceConfig;
   loggerArgs: Record<string, string | number>;
@@ -160,7 +160,7 @@ export async function upsertConfluencePageInDb(
   page: ConfluencePageWithBodyType,
   visitedAtMs: number
 ) {
-  await ConfluencePage.upsert({
+  await ConfluencePageModel.upsert({
     connectorId,
     externalUrl: page._links.tinyui,
     lastVisitedAt: new Date(visitedAtMs),
@@ -205,7 +205,7 @@ export async function confluenceCheckAndUpsertSinglePage({
   };
   const localLogger = logger.child(loggerArgs);
 
-  const pageAlreadyInDb = await ConfluencePage.findOne({
+  const pageAlreadyInDb = await ConfluencePageModel.findOne({
     attributes: ["parentId", "skipReason", "version"],
     where: {
       connectorId,
@@ -325,7 +325,7 @@ async function deletePage(
   });
 
   localLogger.info("Deleting Confluence page from database.");
-  await ConfluencePage.destroy({
+  await ConfluencePageModel.destroy({
     where: {
       connectorId,
       pageId,
@@ -346,7 +346,7 @@ export async function confluenceRemoveUnvisitedPages({
 }) {
   const { id: connectorId } = connector;
 
-  const unvisitedPages = await ConfluencePage.findAll({
+  const unvisitedPages = await ConfluencePageModel.findAll({
     attributes: ["pageId"],
     where: {
       connectorId,
@@ -380,7 +380,7 @@ export async function confluenceRemoveAllPagesInSpace({
     spaceId,
   });
 
-  const allPages = await ConfluencePage.findAll({
+  const allPages = await ConfluencePageModel.findAll({
     attributes: ["pageId"],
     where: {
       connectorId,

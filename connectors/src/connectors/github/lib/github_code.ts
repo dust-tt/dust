@@ -8,7 +8,6 @@ import {
 } from "@connectors/connectors/github/lib/errors";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import { fileSizeToHumanReadable } from "@connectors/types";
 
 const REPO_SIZE_LIMIT = 10 * 1024 * 1024; // 10GB in KB
 
@@ -74,9 +73,8 @@ export function isRepoTooLarge(
         repoLogin: repoInfo.owner.login,
         repoName: repoInfo.name,
         size: repoInfo.size,
-        panic: true,
       },
-      `GitHub repository too large to sync (size: ${fileSizeToHumanReadable(repoInfo.size * 1024)}, max: 10 GB).`
+      "GitHub repository too large to sync"
     );
 
     return true;

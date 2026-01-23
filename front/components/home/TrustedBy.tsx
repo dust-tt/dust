@@ -1,9 +1,40 @@
+import { Button } from "@dust-tt/sparkle";
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { H4 } from "@app/components/home/ContentComponents";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
-import { classNames } from "@app/lib/utils";
+import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+
+const CASE_STUDIES: Record<string, string> = {
+  alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
+  // assembled:
+  //   "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
+  blueground: "/customers/customer-support-blueground",
+  clay: "/customers/clay-scaling-gtme-team",
+  doctolib:
+    "/customers/doctolibs-ai-adoption-playbook-from-30-person-pilot-to-company-wide-deployment",
+  fleet: "/customers/how-valentine-head-of-marketing-at-fleet-uses-dust",
+  kyriba: "/customers/kyriba-accelerating-innovation-with-dust",
+  malt: "/customers/malt-customer-support",
+  mirakl: "/customers/why-mirakl-chose-dust-as-its-go-to-agentic-solution",
+  patch:
+    "/customers/how-patch-empowered-70-of-its-team-to-use-ai-agents-weekly",
+  payfit:
+    "/customers/less-admin-more-selling-how-dust-frees-up-payfits-sales-team-to-close-more-deals",
+  pennylane: "/customers/pennylane-customer-support-journey",
+  persona: "/customers/how-persona-hit-80-ai-agent-adoption-with-dust",
+  qonto: "/customers/qonto-dust-ai-partnership",
+  wakam:
+    "/customers/how-wakam-cut-legal-contract-analysis-time-by-50-with-dust",
+  watershed:
+    "/customers/how-watershed-got-90-of-its-team-to-leverage-dust-agents",
+  vanta:
+    "/customers/how-vantas-gtm-team-saves-thousands-of-hours-annually-with-dust",
+};
 
 const LOGO_SETS = {
   default: {
@@ -11,12 +42,12 @@ const LOGO_SETS = {
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
+      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
@@ -29,7 +60,7 @@ const LOGO_SETS = {
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
@@ -41,12 +72,12 @@ const LOGO_SETS = {
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
-      { name: "jumia", src: "/static/landing/logos/gray/Jumia.svg" },
-      { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
+      { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
+      { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "qonto", src: "/static/landing/logos/gray/qonto.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },
       { name: "whatnot", src: "/static/landing/logos/gray/whatnot.svg" },
@@ -59,7 +90,7 @@ const LOGO_SETS = {
       { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
-      { name: "mirakl", src: "/static/landing/logos/gray/mirakl.svg" },
+      { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
       { name: "payfit", src: "/static/landing/logos/gray/payfit.svg" },
       { name: "photoroom", src: "/static/landing/logos/gray/photoroom.svg" },
       { name: "pennylane", src: "/static/landing/logos/gray/pennylane.svg" },
@@ -160,52 +191,123 @@ const LOGO_SETS = {
 } as const;
 
 type LogoSetKey = keyof typeof LOGO_SETS;
-type RegionKey = "us" | "eu";
+type SizeKey = "default" | "large";
 
 interface TrustedByProps {
   logoSet?: LogoSetKey;
-  region?: RegionKey;
-  title?: string;
+  size?: SizeKey;
 }
 
 export default function TrustedBy({
   logoSet = "default",
-  title = "Trusted by 1,000+ organizations",
+  size = "default",
 }: TrustedByProps) {
   const { geoData } = useGeolocation();
-  const isEU = isEUCountry(geoData?.countryCode);
-  const logos = LOGO_SETS[logoSet][isEU ? "eu" : "us"];
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // Use requestAnimationFrame to avoid ESLint warning about synchronous setState in effect.
+    const frameId = requestAnimationFrame(() => {
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, []);
+
+  const region =
+    mounted && geoData?.countryCode && isEUCountry(geoData.countryCode)
+      ? "eu"
+      : "us";
+
+  const logos = LOGO_SETS[logoSet][region];
+
+  const isLarge = size === "large";
 
   return (
     <div
-      className={classNames(
-        "col-span-12 flex flex-col items-center py-8",
+      className={cn(
+        "col-span-12 flex flex-col items-center",
+        isLarge ? "py-6 sm:py-10" : "py-4 sm:py-8",
         "lg:col-span-12 lg:col-start-1",
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H4 className="mb-6 w-full text-center text-xs font-medium text-muted-foreground">
-        {title}
+      <H4 className="mb-6 w-full text-center text-foreground">
+        Trusted by <span className="text-blue-500">2,000+</span> organizations
       </H4>
 
       <div className="w-full">
-        <div className="flex flex-wrap justify-center gap-6 sm:gap-8 lg:gap-10 xl:gap-12">
-          {logos.map((logo, index) => (
-            <div
-              key={`${logo.name}-${index}`}
-              className="flex h-20 w-36 items-center justify-center sm:h-24 sm:w-48 lg:w-44 xl:w-40"
-            >
-              <Image
-                alt={logo.name}
-                src={logo.src}
-                width={200}
-                height={80}
-                className="h-auto max-h-16 w-auto object-contain sm:max-h-20 lg:max-h-24"
-              />
-            </div>
-          ))}
+        <div
+          className={cn(
+            "flex flex-wrap justify-center",
+            isLarge
+              ? "gap-x-8 gap-y-6 sm:gap-x-10 lg:gap-x-14 xl:gap-x-16"
+              : "gap-x-6 gap-y-4 sm:gap-x-8 lg:gap-x-10 xl:gap-x-12"
+          )}
+        >
+          {logos.map((logo, index) => {
+            const caseStudyUrl = CASE_STUDIES[logo.name];
+            return (
+              <div
+                key={`${logo.name}-${index}`}
+                className={cn(
+                  "flex flex-col items-center",
+                  isLarge
+                    ? "w-40 sm:w-56 lg:w-52 xl:w-48"
+                    : "w-36 sm:w-48 lg:w-44 xl:w-40"
+                )}
+              >
+                <div
+                  className={cn(
+                    "flex items-center justify-center",
+                    isLarge ? "h-14 sm:h-16" : "h-12 sm:h-14"
+                  )}
+                >
+                  <Image
+                    alt={logo.name}
+                    src={logo.src}
+                    width={200}
+                    height={80}
+                    className={cn(
+                      "h-auto w-auto object-contain",
+                      isLarge
+                        ? "max-h-20 sm:max-h-24 lg:max-h-28"
+                        : "max-h-16 sm:max-h-20 lg:max-h-24"
+                    )}
+                  />
+                </div>
+                {caseStudyUrl ? (
+                  <Link
+                    href={caseStudyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="-mt-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() =>
+                      trackEvent({
+                        area: TRACKING_AREAS.HOME,
+                        object: "case_study",
+                        extra: { company: logo.name },
+                      })
+                    }
+                  >
+                    Case study &rarr;
+                  </Link>
+                ) : (
+                  <div className="h-4" />
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
+      <Button
+        variant="highlight"
+        size="md"
+        label="Join them"
+        className="mt-8"
+        onClick={() => {
+          window.location.href = "/api/workos/login?screenHint=sign-up";
+        }}
+      />
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { getTemporalClient } from "@connectors/lib/temporal";
 import {
   createSchedule,
   scheduleExists,
-  triggerSchedule,
+  unpauseAndTriggerSchedule,
 } from "@connectors/lib/temporal_schedules";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -58,7 +58,7 @@ export async function launchCrawlWebsiteWorkflow(
     const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await handle.terminate("Terminating before restarting workflow");
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;
@@ -95,9 +95,13 @@ export async function launchCrawlWebsiteWorkflow(
   }
 }
 
-export async function stopCrawlWebsiteWorkflow(
-  connectorId: ModelId
-): Promise<Result<void, Error>> {
+export async function stopCrawlWebsiteWorkflow({
+  connectorId,
+  stopReason,
+}: {
+  connectorId: ModelId;
+  stopReason: string;
+}): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
 
   const workflowId = crawlWebsiteWorkflowId(connectorId);
@@ -105,7 +109,7 @@ export async function stopCrawlWebsiteWorkflow(
     const handle: WorkflowHandle<typeof crawlWebsiteWorkflow> =
       client.workflow.getHandle(workflowId);
     try {
-      await handle.terminate();
+      await handle.terminate(stopReason);
     } catch (e) {
       if (!(e instanceof WorkflowNotFoundError)) {
         throw e;
@@ -133,7 +137,7 @@ export async function launchCrawlWebsiteScheduler() {
   });
   // If the schedule already exists, trigger it.
   if (scheduleAlreadyExists) {
-    return triggerSchedule({
+    return unpauseAndTriggerSchedule({
       scheduleId,
     });
   }
@@ -350,6 +354,8 @@ export async function launchFirecrawlCrawlPageWorkflow(
   try {
     await client.workflow.start(firecrawlCrawlPageWorkflow, {
       args: [connectorId, crawlId, scrapeId],
+      // Firecrawl API often returns 404 if we attempt to get the page details too quickly.
+      startDelay: "30s", // Delay the start of the workflow by 30 seconds.
       taskQueue: WebCrawlerQueueNames.FIRECRAWL,
       workflowId: workflowId,
       searchAttributes: {

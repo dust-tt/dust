@@ -7,8 +7,9 @@ use crate::oauth::{
         ProviderError,
         RefreshResult, // PROVIDER_TIMEOUT_SECONDS,
     },
-    credential::Credential,
+    credential::{Credential, CredentialMetadata, CredentialProvider},
     providers::utils::execute_request,
+    store::OAuthStore,
 };
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -23,11 +24,6 @@ lazy_static! {
         env::var("OAUTH_SLACK_BOT_CLIENT_ID").expect("OAUTH_SLACK_BOT_CLIENT_ID must be set");
     static ref OAUTH_SLACK_BOT_CLIENT_SECRET: String = env::var("OAUTH_SLACK_BOT_CLIENT_SECRET")
         .expect("OAUTH_SLACK_BOT_CLIENT_SECRET must be set");
-    static ref OAUTH_SLACK_TOOLS_CLIENT_ID: String =
-        env::var("OAUTH_SLACK_TOOLS_CLIENT_ID").expect("OAUTH_SLACK_TOOLS_CLIENT_ID must be set");
-    static ref OAUTH_SLACK_TOOLS_CLIENT_SECRET: String =
-        env::var("OAUTH_SLACK_TOOLS_CLIENT_SECRET")
-            .expect("OAUTH_SLACK_TOOLS_CLIENT_SECRET must be set");
 }
 
 /// We support three Slack apps. Our default `connection` app (for data source connections) a
@@ -37,7 +33,6 @@ lazy_static! {
 pub enum SlackUseCase {
     Connection,
     Bot,
-    PersonalActions, // (personal tools setup)
     PlatformActions,
 }
 
@@ -48,23 +43,97 @@ impl SlackConnectionProvider {
         SlackConnectionProvider {}
     }
 
-    fn basic_auth(&self, app_type: SlackUseCase) -> String {
-        match app_type {
-            SlackUseCase::Connection => general_purpose::STANDARD.encode(&format!(
-                "{}:{}",
-                *OAUTH_SLACK_CLIENT_ID, *OAUTH_SLACK_CLIENT_SECRET
-            )),
-            SlackUseCase::PlatformActions | SlackUseCase::Bot => {
-                general_purpose::STANDARD.encode(&format!(
-                    "{}:{}",
-                    *OAUTH_SLACK_BOT_CLIENT_ID, *OAUTH_SLACK_BOT_CLIENT_SECRET
-                ))
-            }
-            SlackUseCase::PersonalActions => general_purpose::STANDARD.encode(&format!(
-                "{}:{}",
-                *OAUTH_SLACK_TOOLS_CLIENT_ID, *OAUTH_SLACK_TOOLS_CLIENT_SECRET
-            )),
+    fn basic_auth(
+        &self,
+        app_type: SlackUseCase,
+        related_credentials: Option<Credential>,
+    ) -> Result<String> {
+        let (client_id, client_secret) = match app_type {
+            // related_credentials refers to customers using their own Slack app
+            SlackUseCase::Connection => match related_credentials {
+                Some(credentials) => Self::get_credentials(credentials)?,
+                None => (
+                    OAUTH_SLACK_CLIENT_ID.clone(),
+                    OAUTH_SLACK_CLIENT_SECRET.clone(),
+                ),
+            },
+            SlackUseCase::PlatformActions | SlackUseCase::Bot => (
+                OAUTH_SLACK_BOT_CLIENT_ID.clone(),
+                OAUTH_SLACK_BOT_CLIENT_SECRET.clone(),
+            ),
+        };
+
+        Ok(general_purpose::STANDARD.encode(&format!("{}:{}", client_id, client_secret)))
+    }
+
+    pub fn get_credentials(credentials: Credential) -> Result<(String, String)> {
+        let content = credentials.unseal_encrypted_content()?;
+        let provider = credentials.provider();
+
+        if provider != CredentialProvider::Slack {
+            return Err(anyhow!(
+                "Invalid credential provider: {:?}, expected Slack",
+                provider
+            ));
         }
+
+        let client_id = content
+            .get("client_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing client_id in Slack credential"))?;
+
+        let client_secret = content
+            .get("client_secret")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing client_secret in Slack credential"))?;
+
+        Ok((client_id.to_string(), client_secret.to_string()))
+    }
+
+    /// Creates a system credential for Slack connection use-case using env variables
+    /// Returns None if this is not a Slack connection use-case
+    pub async fn create_system_credential_if_needed(
+        store: Box<dyn OAuthStore + Sync + Send>,
+        metadata: &serde_json::Value,
+    ) -> Result<Option<Credential>> {
+        if metadata.get("use_case").and_then(|v| v.as_str()) != Some("connection") {
+            return Ok(None);
+        }
+
+        let workspace_id = metadata
+            .get("workspace_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing workspace_id in metadata"))?;
+
+        let user_id = metadata
+            .get("user_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| anyhow!("Missing user_id in metadata"))?;
+
+        let client_id = OAUTH_SLACK_CLIENT_ID.clone();
+        let client_secret = OAUTH_SLACK_CLIENT_SECRET.clone();
+
+        let credential_metadata = CredentialMetadata {
+            user_id: user_id.to_string(),
+            workspace_id: workspace_id.to_string(),
+        };
+
+        let mut credential_content = serde_json::Map::new();
+        credential_content.insert("client_id".to_string(), serde_json::json!(client_id));
+        credential_content.insert(
+            "client_secret".to_string(),
+            serde_json::json!(client_secret),
+        );
+
+        let credential = Credential::create(
+            store,
+            CredentialProvider::Slack,
+            credential_metadata,
+            credential_content,
+        )
+        .await?;
+
+        Ok(Some(credential))
     }
 }
 
@@ -77,7 +146,7 @@ impl Provider for SlackConnectionProvider {
     async fn finalize(
         &self,
         connection: &Connection,
-        _related_credentials: Option<Credential>,
+        related_credentials: Option<Credential>,
         code: &str,
         redirect_uri: &str,
     ) -> Result<FinalizeResult, ProviderError> {
@@ -86,10 +155,25 @@ impl Provider for SlackConnectionProvider {
                 "connection" => SlackUseCase::Connection,
                 "bot" => SlackUseCase::Bot,
                 "platform_actions" => SlackUseCase::PlatformActions,
-                "personal_actions" => SlackUseCase::PersonalActions,
                 _ => Err(anyhow!("Slack use_case format invalid"))?,
             },
             None => Err(anyhow!("Slack use_case missing"))?,
+        };
+
+        // Extract client_id early for metadata
+        let client_id = match app_type {
+            SlackUseCase::Connection => match &related_credentials {
+                Some(credentials) => {
+                    let content = credentials.unseal_encrypted_content()?;
+                    content
+                        .get("client_id")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| anyhow!("Missing client_id in Slack credential"))?
+                        .to_string()
+                }
+                None => OAUTH_SLACK_CLIENT_ID.clone(),
+            },
+            SlackUseCase::PlatformActions | SlackUseCase::Bot => OAUTH_SLACK_BOT_CLIENT_ID.clone(),
         };
 
         let req = self
@@ -98,7 +182,10 @@ impl Provider for SlackConnectionProvider {
             .header("Content-Type", "application/x-www-form-urlencoded")
             .header(
                 "Authorization",
-                format!("Basic {}", self.basic_auth(app_type.clone())),
+                format!(
+                    "Basic {}",
+                    self.basic_auth(app_type.clone(), related_credentials)?
+                ),
             )
             // Very important, this will *not* work with JSON body.
             .form(&[("code", code), ("redirect_uri", redirect_uri)]);
@@ -130,18 +217,10 @@ impl Provider for SlackConnectionProvider {
             }
         };
 
-        // For Bot, Connection, and PlatformActions we receive a bot token (acces_token). For personal_actions (personal tools setup) we receive a user
-        // token (authed_user.access_token).
-        let access_token = match app_type {
-            SlackUseCase::Connection | SlackUseCase::Bot | SlackUseCase::PlatformActions => {
-                raw_json["access_token"]
-                    .as_str()
-                    .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?
-            }
-            SlackUseCase::PersonalActions => raw_json["authed_user"]["access_token"]
-                .as_str()
-                .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?,
-        };
+        // For Bot, Connection, and PlatformActions we receive a bot token (acces_token).
+        let access_token = raw_json["access_token"]
+            .as_str()
+            .ok_or_else(|| anyhow!("Missing `access_token` in response from Slack"))?;
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
@@ -157,6 +236,10 @@ impl Provider for SlackConnectionProvider {
                 (
                     "team_name".to_string(),
                     serde_json::Value::String(team_name.to_string()),
+                ),
+                (
+                    "client_id".to_string(),
+                    serde_json::Value::String(client_id.to_string()),
                 ),
             ])),
             raw_json,

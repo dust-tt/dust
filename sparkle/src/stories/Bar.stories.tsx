@@ -1,12 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { ChatBubbleBottomCenterTextIcon } from "@sparkle/icons/app";
+import { ChatBubbleBottomCenterTextIcon, RobotIcon } from "@sparkle/icons/app";
 
 import {
   Bar,
   BarFooter,
   Button,
+  Icon,
   Page,
   ResizableHandle,
   ResizablePanel,
@@ -26,6 +27,26 @@ export const BasicBarHeader: Story = {
     position: "top",
     title: "Knowledge Base",
   },
+};
+
+export const BarHeaderWithDescription = () => {
+  return (
+    <Bar
+      position="top"
+      title="My Custom Skill"
+      description={
+        <div className="s-flex s-items-center s-gap-1 s-text-sm">
+          <p className="s-text-muted-foreground dark:s-text-muted-foreground-night">
+            Based on
+          </p>
+          <Icon visual={RobotIcon} size="xs" />
+          <p className="s-text-foreground dark:s-text-foreground-night">
+            Research Assistant
+          </p>
+        </div>
+      }
+    />
+  );
 };
 
 export const BasicBarFooter: Story = {

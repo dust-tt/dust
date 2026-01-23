@@ -1,12 +1,10 @@
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
-import {
-  fetchZendeskBrand,
-  fetchZendeskCategory,
-} from "@connectors/connectors/zendesk/lib/zendesk_api";
+import { ZendeskClient } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import logger from "@connectors/logger/logger";
 import {
   ZendeskBrandResource,
   ZendeskCategoryResource,
+  ZendeskConfigurationResource,
 } from "@connectors/resources/zendesk_resources";
 import type { ModelId } from "@connectors/types";
 
@@ -25,8 +23,20 @@ export async function allowSyncZendeskHelpCenter({
   connectionId: string;
   brandId: number;
 }): Promise<boolean> {
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const { subdomain, accessToken } =
     await getZendeskSubdomainAndAccessToken(connectionId);
+
+  const zendeskClient = new ZendeskClient(
+    accessToken,
+    connectorId,
+    configuration.rateLimitTransactionsPerSecond
+  );
   const brand = await ZendeskBrandResource.fetchByBrandId({
     connectorId,
     brandId,
@@ -36,10 +46,9 @@ export async function allowSyncZendeskHelpCenter({
     await brand.grantHelpCenterPermissions();
   } else {
     // fetching the brand from Zendesk
-    const fetchedBrand = await fetchZendeskBrand({
+    const fetchedBrand = await zendeskClient.fetchBrand({
       brandId,
       subdomain,
-      accessToken,
     });
 
     if (!fetchedBrand) {
@@ -108,6 +117,12 @@ export async function allowSyncZendeskCategory({
   brandId: number;
   categoryId: number;
 }): Promise<boolean> {
+  const configuration =
+    await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
+  if (!configuration) {
+    throw new Error(`[Zendesk] Configuration not found.`);
+  }
+
   const category = await ZendeskCategoryResource.fetchByCategoryId({
     connectorId,
     brandId,
@@ -120,14 +135,19 @@ export async function allowSyncZendeskCategory({
   } else {
     const { accessToken, subdomain } =
       await getZendeskSubdomainAndAccessToken(connectionId);
+
+    const zendeskClient = new ZendeskClient(
+      accessToken,
+      connectorId,
+      configuration.rateLimitTransactionsPerSecond
+    );
     /// creating the brand if missing
     let brand = await ZendeskBrandResource.fetchByBrandId({
       connectorId,
       brandId,
     });
     if (!brand) {
-      const fetchedBrand = await fetchZendeskBrand({
-        accessToken,
+      const fetchedBrand = await zendeskClient.fetchBrand({
         subdomain,
         brandId,
       });
@@ -153,9 +173,8 @@ export async function allowSyncZendeskCategory({
       });
     }
 
-    const fetchedCategory = await fetchZendeskCategory({
+    const fetchedCategory = await zendeskClient.fetchCategory({
       brandSubdomain: brand.subdomain,
-      accessToken,
       categoryId,
     });
     if (fetchedCategory) {

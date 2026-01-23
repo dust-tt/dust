@@ -8,19 +8,35 @@ const SyntaxHighlighter = React.lazy(
   () => import("react-syntax-highlighter/dist/esm/default-highlight")
 );
 
-export const codeBlockVariants = cva(
+export const codeInlineVariants = cva(
   [
     "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-px-1 s-py-0.5",
+    "s-border-border dark:s-border-border-night",
+    "s-text-[0.90em]",
+    "s-text-golden-600 dark:s-text-golden-600-night",
+  ],
+  {
+    variants: {
+      variant: {
+        surface: ["s-bg-muted/70 dark:s-bg-muted-night/70"],
+      },
+    },
+    defaultVariants: {
+      variant: "surface",
+    },
+  }
+);
+
+export const codeBlockVariants = cva(
+  [
+    "s-mx-0.5 s-my-0.5 s-cursor-text s-rounded-md s-border s-p-2",
     "s-border-border dark:s-border-border-night",
     "s-text-[0.90em]",
   ],
   {
     variants: {
       variant: {
-        surface: [
-          "s-bg-muted/70 dark:s-bg-muted-night/70",
-          "s-text-golden-600 dark:s-text-golden-600-night",
-        ],
+        surface: ["s-bg-muted/70 dark:s-bg-muted-night/70"],
       },
     },
     defaultVariants: {
@@ -153,7 +169,7 @@ export function CodeBlock({
     },
   };
 
-  return !inline && language ? (
+  return !inline ? (
     <Suspense fallback={<div />}>
       <div className="s-text-foreground dark:s-text-foreground-night">
         <SyntaxHighlighter
@@ -169,6 +185,6 @@ export function CodeBlock({
       </div>
     </Suspense>
   ) : (
-    <code className={codeBlockVariants({ variant })}>{children}</code>
+    <code className={codeInlineVariants({ variant })}>{children}</code>
   );
 }

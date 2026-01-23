@@ -4,8 +4,9 @@ import { useMemo } from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-interface ScrollAreaProps
-  extends React.ComponentPropsWithoutRef<typeof ScrollAreaPrimitive.Root> {
+interface ScrollAreaProps extends React.ComponentPropsWithoutRef<
+  typeof ScrollAreaPrimitive.Root
+> {
   hideScrollBar?: boolean;
   orientation?: "vertical" | "horizontal";
   scrollBarClassName?: string;
@@ -81,9 +82,13 @@ const ScrollArea = React.forwardRef<
         >
           {children}
         </ScrollAreaPrimitive.Viewport>
-        {!shouldHideDefaultScrollBar && (
-          <ScrollBar orientation={orientation} className={scrollBarClassName} />
-        )}
+        <ScrollBar
+          orientation={orientation}
+          className={cn(
+            scrollBarClassName,
+            shouldHideDefaultScrollBar && "s-hidden"
+          )}
+        />
         <ScrollAreaPrimitive.Corner />
       </ScrollAreaPrimitive.Root>
     );
@@ -120,14 +125,27 @@ const scrollBarSizes = {
       "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-night/80"
     ),
   },
+  minimal: {
+    bar: {
+      vertical: "s-w-3",
+      horizontal: "s-h-3",
+    },
+    padding: {
+      vertical: "s-pr-px s-pl-1.5 s-py-px",
+      horizontal: "s-pb-px s-pt-1.5 s-px-px",
+    },
+    thumb: cn(
+      "s-bg-muted-foreground/20 dark:s-bg-muted-foreground-night/20",
+      "hover:s-bg-muted-foreground/50 dark:hover:s-bg-muted-foreground-night/50"
+    ),
+  },
 } as const;
 
 type ScrollBarSize = keyof typeof scrollBarSizes;
 
-interface ScrollBarProps
-  extends React.ComponentPropsWithoutRef<
-    typeof ScrollAreaPrimitive.ScrollAreaScrollbar
-  > {
+interface ScrollBarProps extends React.ComponentPropsWithoutRef<
+  typeof ScrollAreaPrimitive.ScrollAreaScrollbar
+> {
   size?: ScrollBarSize;
 }
 
@@ -175,4 +193,4 @@ const ScrollBar = React.forwardRef<
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName;
 
 export { ScrollArea, ScrollBar };
-export type { ScrollBarSize };
+export type { ScrollAreaProps, ScrollBarSize };

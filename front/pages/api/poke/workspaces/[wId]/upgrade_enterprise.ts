@@ -4,7 +4,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
+import {
+  ProgrammaticUsageConfigurationSchema,
+  upsertProgrammaticUsageConfiguration,
+} from "@app/lib/api/poke/plugins/workspaces/manage_programmatic_usage_configuration";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
+import { startOrResumeEnterprisePAYG } from "@app/lib/credits/payg";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import {
   assertStripeSubscriptionIsValid,
@@ -85,7 +91,6 @@ async function handler(
       }
       const body = bodyValidation.right;
 
-      // We validate that the stripe subscription exists and is correctly configured.
       const stripeSubscription = await getStripeSubscription(
         body.stripeSubscriptionId
       );
@@ -152,9 +157,83 @@ async function handler(
         });
       }
 
-      // If yes, we will create the new plan and attach it to the workspace with a new subscription
+      const programmaticConfigValidation =
+        ProgrammaticUsageConfigurationSchema.safeParse(body);
+      if (!programmaticConfigValidation.success) {
+        const errorMessage = programmaticConfigValidation.error.errors
+          .map((e) => `${e.path.join(".")}: ${e.message}`)
+          .join(", ");
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
+      const {
+        freeCreditsOverrideEnabled,
+        freeCreditsDollars,
+        defaultDiscountPercent,
+        paygEnabled,
+        paygCapDollars,
+      } = programmaticConfigValidation.data;
+
+      const freeCreditMicroUsd =
+        freeCreditsOverrideEnabled && freeCreditsDollars
+          ? Math.round(freeCreditsDollars * 1_000_000)
+          : null;
+
+      const paygCapMicroUsd =
+        paygEnabled && paygCapDollars
+          ? Math.round(paygCapDollars * 1_000_000)
+          : null;
+
+      const upsertResult = await upsertProgrammaticUsageConfiguration(auth, {
+        freeCreditMicroUsd,
+        defaultDiscountPercent: defaultDiscountPercent ?? 0,
+        paygCapMicroUsd,
+      });
+      if (upsertResult.isErr()) {
+        const errorMessage = upsertResult.error.message;
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
+
       try {
         await SubscriptionResource.pokeUpgradeWorkspaceToEnterprise(auth, body);
+        // Restore workspace functionality after subscription upgrade
+        await restoreWorkspaceAfterSubscription(auth);
+
+        // If PAYG is enabled, create the PAYG credit for the current billing period
+        if (paygEnabled && paygCapMicroUsd !== null) {
+          const paygResult = await startOrResumeEnterprisePAYG({
+            auth,
+            stripeSubscription,
+            paygCapMicroUsd,
+          });
+          if (paygResult.isErr()) {
+            const errorMessage = paygResult.error.message;
+            await pluginRun.recordError(
+              `Workspace upgraded but PAYG credit creation failed: ${errorMessage}`
+            );
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `Workspace upgraded but PAYG credit creation failed: ${errorMessage}`,
+              },
+            });
+          }
+        }
       } catch (error) {
         const errorString =
           error instanceof Error
@@ -171,9 +250,12 @@ async function handler(
         });
       }
 
+      const paygStatus = paygEnabled
+        ? `PAYG enabled with $${paygCapDollars} cap.`
+        : "PAYG disabled.";
       await pluginRun.recordResult({
         display: "text",
-        value: `Workspace ${owner.name} upgraded to enterprise.`,
+        value: `Workspace ${owner.name} upgraded to enterprise. ${paygStatus}`,
       });
 
       res.status(200).json({

@@ -2,13 +2,15 @@ import React, { useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
-import type { MarkdownCitation } from "./MarkdownCitation";
+import { IconForAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+
+import type { MCPReferenceCitation } from "./MCPReferenceCitation";
 
 export type CitationsContextType = {
   references: {
-    [key: string]: MarkdownCitation;
+    [key: string]: MCPReferenceCitation;
   };
-  updateActiveReferences: (doc: MarkdownCitation, index: number) => void;
+  updateActiveReferences: (doc: MCPReferenceCitation, index: number) => void;
 };
 
 export const CitationsContext = React.createContext<CitationsContextType>({
@@ -58,9 +60,15 @@ export function CiteBlock(props: ReactMarkdownProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <div className="group flex flex-row items-center justify-center space-x-1 rounded-lg bg-muted-background p-1 text-xs font-medium text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
+                <div className="group flex translate-y-1 flex-row items-center justify-center space-x-1 rounded-lg bg-muted-background px-1.5 py-1 text-xs font-medium text-muted-foreground dark:bg-muted-background-night dark:text-muted-foreground-night">
                   <span className="grayscale-[100%] transition-all duration-150 ease-in-out group-hover:grayscale-0">
-                    {document.icon}
+                    <IconForAttachmentCitation
+                      provider={document.provider}
+                      contentType={document.contentType}
+                      nodeType={"document"}
+                      sourceUrl={document.href}
+                      size="sm"
+                    ></IconForAttachmentCitation>
                   </span>
                   <span>{r.counter}</span>
                 </div>
@@ -92,6 +100,7 @@ export function getCiteDirective() {
     return (tree: any) => {
       visit(tree, ["textDirective"], (node) => {
         if (node.name === "cite" && node.children[0]?.value) {
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           const data = node.data || (node.data = {});
 
           const references = node.children[0]?.value

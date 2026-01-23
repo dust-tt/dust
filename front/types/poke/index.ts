@@ -15,10 +15,18 @@ import type { GroupType } from "../groups";
 import type { ModelId } from "../shared/model_id";
 import type { SpaceType } from "../space";
 
+type PokeItemType =
+  | "Workspace"
+  | "Data Source"
+  | "Data Source View"
+  | "Connector"
+  | "MCP Server View";
+
 export interface PokeItemBase {
   id: ModelId;
   link: string | null;
   name: string;
+  type: PokeItemType;
 }
 
 export type PokeSpaceType = SpaceType & {
@@ -40,6 +48,12 @@ export type PokeDataSourceViewType = DataSourceViewType &
 export type PokeMCPServerViewType = MCPServerViewType &
   PokeItemBase & {
     space: PokeSpaceType;
+    connections: {
+      connectionType: "workspace" | "personal";
+      userId: string | null;
+      userFullName: string | null;
+      userEmail: string | null;
+    }[];
   };
 
 type PokeAgentActionType = AgentMessageType["actions"][number] & {
@@ -58,6 +72,7 @@ type PokeAgentActionType = AgentMessageType["actions"][number] & {
 
 export type PokeAgentMessageType = Omit<AgentMessageType, "actions"> & {
   runIds?: string[] | null;
+  runUrls?: { runId: string; url: string; isLLM: boolean }[] | null;
   actions: PokeAgentActionType[];
 };
 

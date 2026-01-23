@@ -77,6 +77,7 @@ PluginRunModel.init(
     indexes: [
       { fields: ["workspaceId"] },
       { fields: ["resourceType", "resourceId"] },
+      { fields: ["workspaceId", "resourceType", "resourceId", "createdAt"] },
     ],
   }
 );

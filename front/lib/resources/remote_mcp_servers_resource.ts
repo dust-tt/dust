@@ -7,21 +7,22 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import { remoteMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { MCPToolType, RemoteMCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
-import { RemoteMCPServerModel } from "@app/lib/models/assistant/actions/remote_mcp_server";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
+import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { RemoteMCPServerToolMetadataResource } from "@app/lib/resources/remote_mcp_server_tool_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
@@ -33,9 +34,8 @@ import { Err, Ok, redactString, removeNulls } from "@app/types";
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface RemoteMCPServerResource
-  extends ReadonlyAttributesType<RemoteMCPServerModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface RemoteMCPServerResource extends ReadonlyAttributesType<RemoteMCPServerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> {
   static model: ModelStatic<RemoteMCPServerModel> = RemoteMCPServerModel;
@@ -207,7 +207,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       },
     });
 
-    await MCPServerConnection.destroy({
+    await MCPServerConnectionModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         remoteMCPServerId: this.id,
@@ -274,7 +274,7 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
       lastSyncAt,
       clearError,
     }: {
-      icon?: CustomServerIconType | InternalAllowedIconType;
+      icon?: CustomResourceIconType | InternalAllowedIconType;
       sharedSecret?: string;
       customHeaders?: Record<string, string>;
       cachedName?: string;
@@ -294,6 +294,16 @@ export class RemoteMCPServerResource extends BaseResource<RemoteMCPServerModel> 
           "The user is not authorized to update the metadata of a remote MCP server"
         )
       );
+    }
+
+    // If cachedTools is being updated, clean up tool metadata for tools that no longer exist
+    if (cachedTools) {
+      const cachedToolNames = new Set(cachedTools.map((tool) => tool.name));
+
+      await RemoteMCPServerToolMetadataResource.deleteStaleTools(auth, {
+        serverId: this.id,
+        toolsToKeep: Array.from(cachedToolNames),
+      });
     }
 
     await this.update({

@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import { isString } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
@@ -26,19 +27,16 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       metadata: { workspace_id: string; user_id: string };
     };
   }) {
-    const scopes = [
-      "User.Read",
-      "Sites.Read.All",
-      "Directory.Read.All",
-      "Files.Read.All",
-      "Team.ReadBasic.All",
-      "ChannelSettings.Read.All",
-      "ChannelMessage.Read.All",
-      "offline_access",
-    ];
     if (relatedCredential) {
       return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
+      const scopes = [
+        "User.Read",
+        "Sites.Read.All",
+        "Files.Read.All",
+        "offline_access",
+      ];
+
       const qs = querystring.stringify({
         response_type: "code",
         client_id: config.getOAuthMicrosoftClientId(),
@@ -103,6 +101,14 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
   ): Promise<ExtraConfigType> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
+
+    if (isString(restConfig.selected_sites)) {
+      restConfig.selected_sites = restConfig.selected_sites
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0)
+        .join("\n");
+    }
 
     return restConfig;
   }

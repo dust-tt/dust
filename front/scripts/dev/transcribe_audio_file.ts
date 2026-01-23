@@ -36,7 +36,6 @@ async function transcribeAudioFile(
 
   const data = await readFile(file);
   const filename = basename(file);
-
   logger.info(
     { file: filename, size: data.length },
     "Transcribing audio file."
@@ -119,6 +118,12 @@ makeScript(
       default: false,
       description:
         "Use streaming transcription (transcribeStream) and log chunks as they arrive.",
+    },
+    provider: {
+      type: "string",
+      choices: ["openai", "elevenlabs"],
+      default: "openai",
+      description: "The provider to use for transcription",
     },
   },
   async ({ file, execute, stream }, logger) => {

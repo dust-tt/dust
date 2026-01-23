@@ -58,14 +58,21 @@ export function DataSourceSearchResults({
         return [];
       }
 
-      // Build path using IDs: ["root", spaceId, category, dataSourceViewId, nodeId]
-      return [
+      // Build path using IDs: ["root", spaceId, category, dataSourceViewId, nodeId?]
+      // For full datasources, we stop at dataSourceViewId
+      const path = [
         "root",
         space.sId, // Use space ID, not name
         dataSourceView.category,
         dataSourceView.sId, // Use dataSourceView ID
-        node.internalId,
       ];
+
+      // Only add nodeId if this is not a full datasource
+      if (node.mimeType !== DATA_SOURCE_MIME_TYPE) {
+        path.push(node.internalId);
+      }
+
+      return path;
     },
     [spaces]
   );

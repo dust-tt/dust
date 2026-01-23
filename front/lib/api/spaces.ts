@@ -4,27 +4,39 @@ import uniq from "lodash/uniq";
 import { hardDeleteApp } from "@app/lib/api/apps";
 import {
   getAgentConfigurations,
-  updateAgentRequestedGroupIds,
+  updateAgentRequirements,
 } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
+import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
-import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
+import {
+  Err,
+  Ok,
+  PROJECT_GROUP_PREFIX,
+  removeNulls,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -32,7 +44,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   force?: boolean
 ) {
   assert(auth.isAdmin(), "Only admins can delete spaces.");
-  assert(space.isRegular(), "Cannot delete non regular spaces.");
+  assert(
+    space.isRegular() || space.isProject(),
+    "Cannot delete spaces that are not regular or project."
+  );
 
   const usages: AgentsUsageType[] = [];
 
@@ -79,7 +94,9 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
 
   const groupHasKeys = await KeyResource.countActiveForGroups(
     auth,
-    space.groups.filter((g) => !space.isRegular() || !g.isGlobal())
+    space.groups.filter(
+      (g) => (!space.isRegular() && !space.isProject()) || !g.isGlobal()
+    )
   );
   if (groupHasKeys > 0) {
     return new Err(
@@ -140,25 +157,55 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       const agentIds = uniq(
         usages.flatMap((u) => u.agents).map((agent) => agent.sId)
       );
+      const agentConfigurations = await getAgentConfigurations(auth, {
+        agentIds,
+        variant: "full",
+      });
+      const agentConfigurationsById = new Map(
+        agentConfigurations.map((config) => [config.sId, config])
+      );
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const agentConfigs = await getAgentConfigurations(auth, {
-            agentIds: [agentId],
-            variant: "full",
-          });
-          const [agentConfig] = agentConfigs;
+          const agentConfig = agentConfigurationsById.get(agentId);
+          if (!agentConfig) {
+            logger.error(
+              {
+                agentId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              },
+              "Agent configuration not found for space soft delete"
+            );
+            return;
+          }
+
+          let skills: SkillResource[] = [];
+          if (featureFlags.includes("skills")) {
+            skills = await SkillResource.listByAgentConfiguration(
+              auth,
+              agentConfig
+            );
+          }
 
           // Get the required group IDs from the agent's actions
-          const requestedGroupIds =
-            await getAgentConfigurationGroupIdsFromActions(auth, {
+          const requirements =
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
               actions: agentConfig.actions,
+              skills,
               ignoreSpaces: [space],
             });
 
-          const res = await updateAgentRequestedGroupIds(
+          const res = await updateAgentRequirements(
             auth,
-            { agentId, newGroupIds: requestedGroupIds },
+            {
+              agentModelId: agentConfig.id,
+              newSpaceIds: requirements.requestedSpaceIds,
+            },
             { transaction: t }
           );
 
@@ -215,7 +262,47 @@ export async function hardDeleteSpace(
     }
   }
 
+  // Delete all webhook source views of the space.
+  const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+    auth,
+    space,
+    { includeDeleted: true }
+  );
+  for (const webhookSourceView of webhookSourceViews) {
+    // Delete triggers referencing this webhook source view first.
+    const triggers = await TriggerResource.listByWebhookSourceViewId(
+      auth,
+      webhookSourceView.id
+    );
+    await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        const triggerRes = await trigger.delete(auth);
+        if (triggerRes.isErr()) {
+          throw triggerRes.error;
+        }
+      },
+      { concurrency: 4 }
+    );
+
+    const res = await webhookSourceView.hardDelete(auth);
+    if (res.isErr()) {
+      return res;
+    }
+  }
+
   await withTransaction(async (t) => {
+    // Delete project metadata if this is a project space
+    if (space.isProject()) {
+      const metadata = await ProjectMetadataResource.fetchBySpace(auth, space);
+      if (metadata) {
+        const metadataRes = await metadata.delete(auth, { transaction: t });
+        if (metadataRes.isErr()) {
+          throw metadataRes.error;
+        }
+      }
+    }
+
     // Delete all spaces groups.
     for (const group of space.groups) {
       // Skip deleting global groups for regular spaces.
@@ -238,22 +325,16 @@ export async function hardDeleteSpace(
   return new Ok(undefined);
 }
 
-export async function createRegularSpaceAndGroup(
+export async function createSpaceAndGroup(
   auth: Authenticator,
-  params:
-    | {
-        name: string;
-        isRestricted: true;
-        memberIds: string[];
-        managementMode: "manual";
-      }
-    | {
-        name: string;
-        isRestricted: true;
-        groupIds: string[];
-        managementMode: "group";
-      }
-    | { name: string; isRestricted: false },
+  params: {
+    name: string;
+    isRestricted: boolean;
+    spaceKind: "regular" | "project";
+  } & (
+    | { memberIds: string[]; managementMode: "manual" }
+    | { groupIds: string[]; managementMode: "group" }
+  ),
   { ignoreWorkspaceLimit = false }: { ignoreWorkspaceLimit?: boolean } = {}
 ): Promise<
   Result<
@@ -282,7 +363,7 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted } = params;
+    const { name, isRestricted, spaceKind } = params;
     const managementMode = isRestricted ? params.managementMode : "manual";
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
@@ -294,7 +375,7 @@ export async function createRegularSpaceAndGroup(
       );
     }
 
-    const group = await GroupResource.makeNew(
+    const membersGroup = await GroupResource.makeNew(
       {
         name: `${SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
@@ -307,19 +388,34 @@ export async function createRegularSpaceAndGroup(
       ? null
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
-    const groups = removeNulls([
-      group,
+    const memberGroups = removeNulls([
+      membersGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
+
+    // Create the editor group for projects and add the creator
+    const editorGroups: GroupResource[] = [];
+    if (spaceKind === "project") {
+      const creator = auth.getNonNullableUser();
+      const editorGroup = await GroupResource.makeNew(
+        {
+          name: `${PROJECT_GROUP_PREFIX} ${name}`,
+          workspaceId: owner.id,
+          kind: "space_editors",
+        },
+        { transaction: t, memberIds: [creator.id] }
+      );
+      editorGroups.push(editorGroup);
+    }
 
     const space = await SpaceResource.makeNew(
       {
         name,
-        kind: "regular",
+        kind: spaceKind,
         managementMode,
         workspaceId: owner.id,
       },
-      groups,
+      { members: memberGroups, editors: editorGroups },
       t
     );
 
@@ -328,7 +424,8 @@ export async function createRegularSpaceAndGroup(
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
-      const groupsResult = await group.addMembers(auth, users, {
+      const groupsResult = await membersGroup.addMembers(auth, {
+        users,
         transaction: t,
       });
       if (groupsResult.isErr()) {
@@ -371,14 +468,49 @@ export async function createRegularSpaceAndGroup(
             groupId: selectedGroup.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
+            kind: "member",
           },
           { transaction: t }
         );
       }
     }
 
+    // Create empty project metadata for project spaces
+    if (spaceKind === "project") {
+      await ProjectMetadataResource.makeNew(
+        auth,
+        space,
+        { description: null, urls: [] },
+        t
+      );
+    }
+
     return new Ok(space);
   });
 
+  if (result.isOk()) {
+    const space = result.value;
+    if (space.kind === "project") {
+      // If this is a project space, create the dust_project connector
+      // Create connector outside transaction to avoid long-running transaction
+      // The connector creation involves external API calls
+      const connectorRes = await createDataSourceAndConnectorForProject(
+        auth,
+        space
+      );
+      if (connectorRes.isErr()) {
+        logger.error(
+          {
+            error: connectorRes.error,
+            spaceId: space.sId,
+            workspaceId: owner.sId,
+          },
+          "Failed to create dust_project connector for project, but space was created"
+        );
+        // Don't fail space creation if connector creation fails
+        // The connector can be created later if needed
+      }
+    }
+  }
   return result;
 }

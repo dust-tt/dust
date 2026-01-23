@@ -21,6 +21,7 @@ import { RoleDropDown } from "@app/components/members/RolesDropDown";
 import { useChangeMembersRoles } from "@app/hooks/useChangeMembersRoles";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   MAX_UNCONSUMED_INVITATIONS_PER_WORKSPACE_PER_DAY,
   sendInvitations,
@@ -66,7 +67,7 @@ export function InviteEmailButtonWithModal({
   owner: WorkspaceType;
   prefillText: string;
   perSeatPricing: SubscriptionPerSeatPricing | null;
-  onInviteClick: (event: MouseEvent) => void;
+  onInviteClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
   const [inviteEmails, setInviteEmails] = useState<string>("");
   const { inviteEmailsList, emailError } =
@@ -94,7 +95,7 @@ export function InviteEmailButtonWithModal({
 
     const existingMembersResponses = await Promise.all(
       inviteEmailsList.map(async (email) => {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${owner.sId}/members/search?searchTerm=${encodeURIComponent(email)}`
         );
         if (!response.ok) {
@@ -193,6 +194,10 @@ export function InviteEmailButtonWithModal({
     }
   }, [prefillText, open]);
 
+  const shouldDisableButton = useMemo(() => {
+    return !inviteEmailsList || inviteEmailsList.length === 0 || emailError;
+  }, [inviteEmailsList, emailError]);
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -249,7 +254,8 @@ export function InviteEmailButtonWithModal({
           }}
           rightButtonProps={{
             label: "Send Invite",
-            onClick: async (event: MouseEvent) => {
+            disabled: !!shouldDisableButton,
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               if (!inviteEmailsList) {
                 return;

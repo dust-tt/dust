@@ -4,12 +4,21 @@ import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
+import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { UserType, WithAPIErrorResponse } from "@app/types";
+import { removeNulls } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
+
+export type TriggerWithProviderType = TriggerType & {
+  provider?: WebhookProvider | null;
+  editorUser?: UserType | null;
+};
 
 export type PokeListTriggers = {
-  triggers: TriggerType[];
+  triggers: TriggerWithProviderType[];
 };
 
 async function handler(
@@ -44,9 +53,56 @@ async function handler(
   switch (req.method) {
     case "GET":
       const triggers = await TriggerResource.listByWorkspace(auth);
+      const triggerJSONs = triggers.map((t) => t.toJSON());
+
+      const webhookSourceViewIds = removeNulls(
+        triggerJSONs.map((t) =>
+          t.kind === "webhook" ? t.webhookSourceViewSId : null
+        )
+      );
+
+      const webhookSourceViews =
+        webhookSourceViewIds.length > 0
+          ? await WebhookSourcesViewResource.fetchByIds(
+              auth,
+              webhookSourceViewIds
+            )
+          : [];
+
+      const providerMap = new Map<string, WebhookProvider | null>();
+      for (const view of webhookSourceViews) {
+        const viewJSON = view.toJSON();
+        providerMap.set(viewJSON.sId, viewJSON.provider);
+      }
+
+      // Fetch editor users
+      const editorIds = removeNulls(triggerJSONs.map((t) => t.editor));
+      const editorUsers =
+        editorIds.length > 0
+          ? await UserResource.fetchByModelIds(editorIds)
+          : [];
+      const editorUserMap = new Map(editorUsers.map((u) => [u.id, u.toJSON()]));
+
+      const triggersWithProvider: TriggerWithProviderType[] = triggerJSONs.map(
+        (t) => {
+          const editorUser = editorUserMap.get(t.editor) ?? null;
+          if (t.kind === "webhook" && t.webhookSourceViewSId) {
+            return {
+              ...t,
+              provider: providerMap.get(t.webhookSourceViewSId) ?? null,
+              editorUser,
+            };
+          }
+          return {
+            ...t,
+            provider: t.kind === "schedule" ? undefined : null,
+            editorUser,
+          };
+        }
+      );
 
       return res.status(200).json({
-        triggers: triggers.map((t) => t.toJSON()),
+        triggers: triggersWithProvider,
       });
 
     case "DELETE":

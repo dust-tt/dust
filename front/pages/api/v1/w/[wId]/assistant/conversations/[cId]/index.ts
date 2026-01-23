@@ -5,8 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { apiError } from "@app/logger/withlogging";
 import type { PatchConversationResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -104,6 +106,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       GetConversationResponseType | PatchConversationResponseBody
@@ -132,7 +135,18 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      return res.status(200).json({ conversation });
+      return res.status(200).json({
+        conversation: {
+          ...conversation,
+          url: getConversationRoute(
+            conversation.owner.sId,
+            conversation.sId,
+            undefined,
+            config.getClientFacingUrl()
+          ),
+          requestedGroupIds: [], // Remove once all old SDKs users are updated
+        },
+      });
     }
 
     case "PATCH": {
@@ -166,6 +180,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation", PATCH: "update:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

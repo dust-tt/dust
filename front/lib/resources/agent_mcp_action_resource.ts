@@ -21,19 +21,24 @@ import {
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMCPActionModel,
-  AgentMCPActionOutputItem,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+  AgentMCPActionOutputItemModel,
+} from "@app/lib/models/agent/actions/mcp";
+import {
+  AgentMessageModel,
+  MessageModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { FileModel } from "@app/lib/resources/storage/models/files";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
@@ -45,13 +50,12 @@ import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
-import type { FunctionCallContentType } from "@app/types/assistant/agent_message_content";
+import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPActionResource
-  extends ReadonlyAttributesType<AgentMCPActionModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
@@ -62,7 +66,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     model: ModelStaticWorkspaceAware<AgentMCPActionModel>,
     blob: Attributes<AgentMCPActionModel>,
     readonly stepContent: NonAttribute<
-      AgentStepContentResource & { value: FunctionCallContentType }
+      AgentStepContentResource & { value: AgentFunctionCallContentType }
     >,
     readonly metadata: {
       internalMCPServerName: InternalMCPServerNameType | null;
@@ -197,17 +201,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
 
   static async listBlockedActionsForConversation(
     auth: Authenticator,
-    conversationId: string
+    conversation: ConversationResource
   ): Promise<BlockedToolExecution[]> {
     const owner = auth.getNonNullableWorkspace();
-
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    if (!conversation) {
-      return [];
-    }
 
     const latestAgentMessages =
       await conversation.getLatestAgentMessageIdByRank(auth);
@@ -215,12 +211,12 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const blockedActions = await AgentMCPActionModel.findAll({
       include: [
         {
-          model: AgentMessage,
+          model: AgentMessageModel,
           as: "agentMessage",
           required: true,
           include: [
             {
-              model: Message,
+              model: MessageModel,
               as: "message",
               required: true,
               where: {
@@ -239,20 +235,56 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       order: [["createdAt", "ASC"]],
     });
 
+    const parentUserMessageIds = removeNulls(
+      blockedActions.map((a) => a.agentMessage!.message!.parentId)
+    );
+
+    const parentUserMessages = await MessageModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        conversationId: conversation.id,
+        id: { [Op.in]: parentUserMessageIds },
+      },
+      include: [
+        {
+          model: UserMessageModel,
+          as: "userMessage",
+          required: true,
+          include: [
+            {
+              model: UserModel,
+              as: "user",
+            },
+          ],
+        },
+      ],
+    });
+
+    const parentUserMessageById = _.keyBy(parentUserMessages, "id");
+
     const blockedActionsList: BlockedToolExecution[] = [];
 
-    // We get the latest version here, it may show a different name than the one used when the
-    // action was created, taking this shortcut for the sake of simplicity.
-    const agentConfigurations = await getAgentConfigurations(auth, {
-      agentIds: [
-        ...new Set(
-          removeNulls(
-            blockedActions.map((a) => a.agentMessage?.agentConfigurationId)
-          )
-        ),
-      ],
-      variant: "extra_light",
-    });
+    // Fetch agent configurations with their specific versions from the actions.
+    const agentConfigVersionPairs = removeNulls(
+      blockedActions.map((a) => {
+        const agentMessage = a.agentMessage;
+        if (!agentMessage) {
+          return null;
+        }
+        return {
+          agentId: agentMessage.agentConfigurationId,
+          agentVersion: agentMessage.agentConfigurationVersion,
+        };
+      })
+    );
+
+    const agentConfigurations = await getAgentConfigurationsWithVersion(
+      auth,
+      agentConfigVersionPairs,
+      {
+        variant: "extra_light",
+      }
+    );
 
     const mcpServerViewIds = [
       ...new Set(
@@ -287,7 +319,9 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       }
 
       const agentConfiguration = agentConfigurations.find(
-        (a) => a.sId === agentMessage.agentConfigurationId
+        (a) =>
+          a.sId === agentMessage.agentConfigurationId &&
+          a.version === agentMessage.agentConfigurationVersion
       );
       assert(agentConfiguration, "Agent not found.");
 
@@ -310,16 +344,24 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         ? getMcpServerViewDisplayName(mcpServerView.toJSON())
         : undefined;
 
+      const parentUserMessage =
+        parentUserMessageById[agentMessage.message.parentId!];
+
+      assert(parentUserMessage.userMessage, "Parent user message not found.");
+
       const baseActionParams: Omit<
         BlockedToolExecution,
         "status" | "authorizationInfo"
       > = {
         messageId: agentMessage.message.sId,
-        conversationId,
+        userId: parentUserMessage.userMessage?.user?.sId,
+        conversationId: conversation.sId,
         actionId: this.modelIdToSId({
           id: action.id,
           workspaceId: owner.id,
         }),
+        configurationId: action.toolConfiguration.sId,
+        created: action.createdAt.getTime(),
         inputs: action.augmentedInputs,
         stake: action.toolConfiguration.permission,
         metadata: {
@@ -328,6 +370,11 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           agentName: agentConfiguration.name,
           icon: action.toolConfiguration.icon,
         },
+        argumentsRequiringApproval: isLightServerSideMCPToolConfiguration(
+          action.toolConfiguration
+        )
+          ? action.toolConfiguration.argumentsRequiringApproval
+          : undefined,
       };
 
       if (action.status === "blocked_authentication_required") {
@@ -335,7 +382,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           logger.warn(
             {
               actionId: action.id,
-              conversationId,
+              conversationId: conversation.sId,
               messageId: agentMessage.message.sId,
               workspaceId: owner.id,
             },
@@ -357,8 +404,26 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
         });
       } else if (action.status === "blocked_child_action_input_required") {
         const conversationId = action.stepContext.resumeState?.conversationId;
+
+        // conversation was not created so we can skip it
+        if (!conversationId || !isString(conversationId)) {
+          continue;
+        }
+
+        const childConversation = await ConversationResource.fetchById(
+          auth,
+          conversationId
+        );
+
+        if (!childConversation) {
+          continue;
+        }
+
         const childBlockedActionsList = isString(conversationId)
-          ? await this.listBlockedActionsForConversation(auth, conversationId)
+          ? await this.listBlockedActionsForConversation(
+              auth,
+              childConversation
+            )
           : [];
 
         blockedActionsList.push({
@@ -368,8 +433,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           childBlockedActionsList,
           metadata: {
             ...baseActionParams.metadata,
-            mcpServerId,
-            mcpServerDisplayName,
           },
           authorizationInfo: null,
         });
@@ -379,8 +442,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           status: action.status,
           metadata: {
             ...baseActionParams.metadata,
-            mcpServerId,
-            mcpServerDisplayName,
           },
           authorizationInfo: null,
         });
@@ -487,6 +548,37 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     return actions;
   }
 
+  static async fetchOutputItemsByActionIds(
+    auth: Authenticator,
+    actionIds: ModelId[]
+  ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const outputItems = await AgentMCPActionOutputItemModel.findAll({
+      where: {
+        workspaceId,
+        agentMCPActionId: {
+          [Op.in]: actionIds,
+        },
+      },
+    });
+
+    const outputItemsByActionId = new Map<
+      number,
+      AgentMCPActionOutputItemModel[]
+    >();
+    for (const item of outputItems) {
+      const existing = outputItemsByActionId.get(item.agentMCPActionId);
+      if (existing) {
+        existing.push(item);
+      } else {
+        outputItemsByActionId.set(item.agentMCPActionId, [item]);
+      }
+    }
+
+    return outputItemsByActionId;
+  }
+
   static async enrichActionsWithOutputItems(
     auth: Authenticator,
     actions: AgentMCPActionResource[]
@@ -494,14 +586,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const outputItemsByActionId = _.groupBy(
-      await AgentMCPActionOutputItem.findAll({
-        where: {
-          workspaceId,
-          agentMCPActionId: {
-            [Op.in]: actions.map((a) => a.id),
-          },
-        },
-      }),
+      Array.from(
+        (
+          await this.fetchOutputItemsByActionIds(
+            auth,
+            actions.map((a) => a.id)
+          )
+        ).values()
+      ).flat(),
       "agentMCPActionId"
     );
 
@@ -559,6 +651,8 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
               contentType: file.contentType,
               title: file.fileName,
               snippet: file.snippet,
+              createdAt: file.createdAt.getTime(),
+              updatedAt: file.updatedAt.getTime(),
               ...(hidden ? { hidden: true } : {}),
             };
           })
@@ -577,15 +671,18 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       id: this.id,
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
+      updatedAt: this.updatedAt.getTime(),
       agentMessageId: this.agentMessageId,
       citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
       functionCallId: this.stepContent.value.value.id,
       internalMCPServerName: this.metadata.internalMCPServerName,
+      toolName: this.toolConfiguration.originalName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
       step: this.stepContent.step,
+      executionDurationMs: this.executionDurationMs,
     };
   }
 
@@ -594,6 +691,28 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<[affectedCount: number]> {
     return this.update({
       status,
+    });
+  }
+
+  async markAsErrored({
+    executionDurationMs,
+  }: {
+    executionDurationMs: number;
+  }): Promise<void> {
+    await this.update({
+      status: "errored",
+      executionDurationMs: Math.round(executionDurationMs),
+    });
+  }
+
+  async markAsSucceeded({
+    executionDurationMs,
+  }: {
+    executionDurationMs: number;
+  }): Promise<void> {
+    await this.update({
+      status: "succeeded",
+      executionDurationMs: Math.round(executionDurationMs),
     });
   }
 
@@ -634,6 +753,7 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
     try {
       await AgentMCPActionModel.destroy({
         where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
           id: this.id,
         },
         transaction,
@@ -662,10 +782,6 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       id,
       workspaceId,
     });
-  }
-
-  get functionCalldId(): string {
-    return this.stepContent.value.value.id;
   }
 
   get functionCallName(): string {

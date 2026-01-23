@@ -9,6 +9,7 @@ import { fromError } from "zod-validation-error";
 import { validateMCPServerAccess } from "@app/lib/api/actions/mcp/client_side_registry";
 import {
   createConversation,
+  isUserMessageContextValid,
   postNewContentFragment,
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
@@ -20,13 +21,20 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { hasReachedPublicAPILimits } from "@app/lib/api/public_api_limits";
+import config from "@app/lib/api/config";
+import {
+  hasReachedProgrammaticUsageLimits,
+  isProgrammaticUsage,
+} from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { getConversationRoute } from "@app/lib/utils/router";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
+  AgenticMessageData,
   ContentFragmentType,
   UserMessageContext,
   UserMessageType,
@@ -40,9 +48,8 @@ import {
   isContentFragmentInputWithInlinedContent,
   isEmptyString,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
-const MAX_CONVERSATION_DEPTH = 4;
+export const MAX_CONVERSATION_DEPTH = 4;
 
 /**
  * @swagger
@@ -140,27 +147,44 @@ async function handler(
         blocking,
       } = r.data;
 
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
-
-      const hasReachedLimits = await hasReachedPublicAPILimits(auth);
-      if (hasReachedLimits) {
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message:
-              "Monthly API usage limit exceeded. Please upgrade your plan or wait until your " +
-              "limit resets next billing period.",
+      if (
+        req.body.message?.context?.origin &&
+        message?.context?.origin &&
+        req.body.message.context.origin !== message.context.origin
+      ) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            authMethod: auth.authMethod(),
+            originProvided: req.body.message.context.origin,
+            originUsed: message.context.origin,
           },
-        });
+          "Invalid origin used, fallbacking to default value"
+        );
       }
 
+      const origin = message?.context.origin ?? "api";
+
       if (message) {
+        const hasReachedLimits =
+          isProgrammaticUsage(auth, {
+            userMessageOrigin: origin,
+          }) && (await hasReachedProgrammaticUsageLimits(auth));
+        if (hasReachedLimits) {
+          const errorMessage = auth.isAdmin()
+            ? "Your workspace has run out of programmatic usage credits. " +
+              "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
+            : "Your workspace has run out of programmatic usage credits. " +
+              "Please ask a Dust workspace admin to purchase more credits.";
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: errorMessage,
+            },
+          });
+        }
+
         if (isUserMessageContextOverflowing(message.context)) {
           return apiError(req, res, {
             status_code: 400,
@@ -217,9 +241,7 @@ async function handler(
           }
         }
 
-        const isRunAgent =
-          message.context.origin === "run_agent" ||
-          message.context.origin === "agent_handover";
+        const isRunAgent = !!message.agenticMessageData;
         if (isRunAgent && !auth.isSystemKey()) {
           return apiError(req, res, {
             status_code: 401,
@@ -282,6 +304,7 @@ async function handler(
         // Temporary translation layer for deprecated "workspace" visibility.
         visibility: visibility === "workspace" ? "unlisted" : visibility,
         depth,
+        spaceId: null,
       });
 
       let newContentFragment: ContentFragmentType | null = null;
@@ -365,12 +388,14 @@ async function handler(
           clientSideMCPServerIds: message.context.clientSideMCPServerIds ?? [],
           email: message.context.email?.toLowerCase() ?? null,
           fullName: message.context.fullName ?? null,
-          origin: message.context.origin ?? "api",
+          origin,
           profilePictureUrl: message.context.profilePictureUrl ?? null,
           timezone: message.context.timezone,
           username: message.context.username,
-          originMessageId: message.context.originMessageId ?? null,
         };
+
+        const agenticMessageData: AgenticMessageData | undefined =
+          message.agenticMessageData ?? undefined;
 
         // If tools are enabled, we need to add the MCP server views to the conversation before posting the message.
         if (message.context.selectedMCPServerViewIds) {
@@ -395,6 +420,22 @@ async function handler(
           }
         }
 
+        const validateUserMessageContextRes = isUserMessageContextValid(
+          auth,
+          req,
+          ctx
+        );
+        if (!validateUserMessageContextRes) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "This origin is not allowed. Remove the origin from the context property.",
+            },
+          });
+        }
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message. `postUserMessage` returns as soon as the user message
         // and the agent messages are created, while `postUserMessageAndWaitForCompletion` waits for
@@ -404,16 +445,16 @@ async function handler(
             ? await postUserMessageAndWaitForCompletion(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               })
             : await postUserMessage(auth, {
                 content: message.content,
                 context: ctx,
+                agenticMessageData,
                 conversation,
-                executionMode,
                 mentions: message.mentions,
                 skipToolsValidation: skipToolsValidation ?? false,
               });
@@ -425,7 +466,6 @@ async function handler(
         newMessage = messageRes.value.userMessage;
       }
 
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       if (newContentFragment || newMessage) {
         // If we created a user message or a content fragment (or both) we retrieve the
         // conversation. If a user message was posted, we know that the agent messages have been
@@ -441,7 +481,16 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation,
+        conversation: {
+          ...conversation,
+          url: getConversationRoute(
+            conversation.owner.sId,
+            conversation.sId,
+            undefined,
+            config.getClientFacingUrl()
+          ),
+          requestedGroupIds: [], // Remove once all old SDKs users are updated
+        },
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });
@@ -459,7 +508,19 @@ async function handler(
       }
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
-      res.status(200).json({ conversations });
+      res.status(200).json({
+        conversations: conversations.map((c) => ({
+          ...c.toJSON(),
+
+          // Theses 2 properties are excluded from the ConversationWithoutContentType used internally (as they are not needed anywhere).
+          // They are still returned for the public API to stay backward compatible.
+          visibility: "unlisted", // Hardcoded as "deleted" conversations are not returned by the API
+          owner: auth.getNonNullableWorkspace(),
+
+          // This one is no excluded (yet)
+          requestedGroupIds: [], // No need to leak to the public API. Hardcoded as an empty array. Can be removed once the chrome extension is updated.
+        })),
+      });
       return;
 
     default:
@@ -474,6 +535,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:conversation", POST: "create:conversation" },
-});
+export default withPublicAPIAuthentication(handler);

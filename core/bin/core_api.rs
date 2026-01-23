@@ -6,10 +6,13 @@ use axum::{
     Router,
 };
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
-use dust::api::api_state::APIState;
 use dust::api::{
     data_sources, databases, datasets, folders, nodes, projects, runs, specifications,
     sqlite_workers, tables, tags, tokenize,
+};
+use dust::{
+    api::api_state::APIState,
+    utils::{CoreRequestMakeSpan, CoreRequestOnResponse},
 };
 use dust::{
     api_keys::validate_api_key,
@@ -24,12 +27,14 @@ use dust::{
         store::{self},
     },
 };
+
 use std::sync::Arc;
 use tikv_jemallocator::Jemalloc;
 use tokio::{
     net::TcpListener,
     signal::unix::{signal, SignalKind},
 };
+use tower_http::trace::TraceLayer;
 use tracing::{error, info};
 
 #[global_allocator]
@@ -189,6 +194,10 @@ fn main() {
             post(data_sources::data_sources_search),
         )
         .route(
+            "/data_sources/search/bulk",
+            post(data_sources::data_sources_search_bulk),
+        )
+        .route(
             "/projects/{project_id}/data_sources/{data_source_id}/documents",
             get(data_sources::data_sources_documents_list),
         )
@@ -297,7 +306,14 @@ fn main() {
         // Misc
         .route("/tokenize", post(tokenize::tokenize))
         .route("/tokenize/batch", post(tokenize::tokenize_batch))
+        .route("/tokenize/batch/count", post(tokenize::tokenize_batch_count))
         .layer(OtelInResponseLayer::default())
+        // TraceLayer must come before OtelAxumLayer to ensure make_span is called
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(CoreRequestMakeSpan::new())
+                .on_response(CoreRequestOnResponse::new()),
+        )
         // Start OpenTelemetry trace on incoming request.
         .layer(OtelAxumLayer::default())
         // Extensions
@@ -324,8 +340,11 @@ fn main() {
         let (tx1, rx1) = tokio::sync::oneshot::channel::<()>();
         let (tx2, rx2) = tokio::sync::oneshot::channel::<()>();
 
+        let port = std::env::var("CORE_PORT").unwrap_or_else(|_| "3001".to_string());
+        let addr = format!("[::]:{}", port);
+
         let srv = axum::serve(
-            TcpListener::bind::<std::net::SocketAddr>("[::]:3001".parse().unwrap()).await?,
+            TcpListener::bind::<std::net::SocketAddr>(addr.parse().unwrap()).await?,
             app.into_make_service(),
         )
         .with_graceful_shutdown(async {
@@ -340,7 +359,7 @@ fn main() {
             tx2.send(()).ok();
         });
 
-        info!(pid = std::process::id() as u64, "dust_api server started");
+        info!(pid = std::process::id() as u64, port = %port, "dust_api server started");
 
         let mut stream = signal(SignalKind::terminate()).unwrap();
         stream.recv().await;

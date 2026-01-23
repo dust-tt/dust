@@ -41,6 +41,10 @@ export function reportSlackUsage({
   statsDClient.increment("slack_api_call.count", 1, tags);
 }
 
+interface SlackClientOptions {
+  rejectOnRateLimit?: boolean;
+}
+
 /**
  * Creates a Slack WebClient instance for making API calls.
  *
@@ -61,12 +65,17 @@ export function reportSlackUsage({
  * const result = await slackClient.conversations.list({ types: "public_channel" });
  * ```
  */
-export async function getSlackClient(connectorId: ModelId): Promise<WebClient>;
 export async function getSlackClient(
-  slackAccessToken: string
+  connectorId: ModelId,
+  options?: SlackClientOptions
 ): Promise<WebClient>;
 export async function getSlackClient(
-  connectorIdOrAccessToken: string | ModelId
+  slackAccessToken: string,
+  options?: SlackClientOptions
+): Promise<WebClient>;
+export async function getSlackClient(
+  connectorIdOrAccessToken: string | ModelId,
+  options?: SlackClientOptions
 ): Promise<WebClient> {
   let slackAccessToken: string | undefined = undefined;
   if (typeof connectorIdOrAccessToken === "number") {
@@ -80,16 +89,20 @@ export async function getSlackClient(
   } else {
     slackAccessToken = connectorIdOrAccessToken;
   }
-  const slackClient = new WebClient(slackAccessToken, {
-    timeout: SLACK_NETWORK_TIMEOUT_MS,
-    rejectRateLimitedCalls: true,
-    // retryConfig: {
-    //   retries: 1,
-    //   factor: 1,
-    // },
-  });
 
-  return slackClient;
+  // By default, we want to reject on rate limit errors.
+  const { rejectOnRateLimit = true } = options ?? {};
+
+  return new WebClient(slackAccessToken, {
+    timeout: SLACK_NETWORK_TIMEOUT_MS,
+    rejectRateLimitedCalls: rejectOnRateLimit,
+    retryConfig: rejectOnRateLimit
+      ? undefined
+      : {
+          retries: 5,
+          factor: 2,
+        },
+  });
 }
 
 export async function withSlackErrorHandling<T>(
@@ -171,7 +184,7 @@ async function _getSlackUserInfo(
     const res = await throttleWithRedis(
       RATE_LIMITS["users.info"],
       `${connectorId}-users-info`,
-      false,
+      { canBeIgnored: false },
       () => slackClient.users.info({ user: userId }),
       { source: "getSlackUserInfo" }
     );

@@ -24,7 +24,6 @@ makeScript(
     const workspaceIds = workspaceFileContent.split("\n");
     logger.info(`${workspaceIds.length} workspaces will be skipped`);
 
-    // @ts-expect-error -- Dropped column
     const webcrawlerConfigs = await WebCrawlerConfigurationModel.findAll({
       where: {
         // @ts-expect-error -- Dropped column
@@ -60,7 +59,6 @@ makeScript(
           WebCrawlerConfigurationModel.update(
             // @ts-expect-error -- Dropped column
             { customCrawler: "firecrawl" },
-            // @ts-expect-error -- Dropped column
             { where: { id: crawler.id } }
           ),
         { concurrency: 10 }

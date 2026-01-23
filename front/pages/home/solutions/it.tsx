@@ -1,5 +1,6 @@
 import { Button } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
@@ -22,17 +23,14 @@ import {
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.octahedron),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
@@ -47,10 +45,21 @@ const GRID_SECTION_CLASSES = classNames(
 );
 
 export default function IT() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title={pageSettings.seo.title}
+        description={pageSettings.seo.description}
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
-        <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
+        <HeroSection
+          {...Hero}
+          accentColor={pageSettings.accentColor}
+          trackingPrefix="it_hero"
+        />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
             <BenefitsSection benefits={Benefits} />
@@ -82,6 +91,10 @@ export default function IT() {
                       size="md"
                       label={Hero.ctaButtons.primary.label}
                       icon={Hero.ctaButtons.primary.icon}
+                      onClick={withTracking(
+                        TRACKING_AREAS.SOLUTIONS,
+                        "it_footer_cta_primary"
+                      )}
                     />
                   </Link>
                 )}
@@ -91,6 +104,10 @@ export default function IT() {
                     size="md"
                     label={Hero.ctaButtons.secondary.label}
                     href={Hero.ctaButtons.secondary.href}
+                    onClick={withTracking(
+                      TRACKING_AREAS.SOLUTIONS,
+                      "it_footer_cta_secondary"
+                    )}
                   />
                 )}
               </div>

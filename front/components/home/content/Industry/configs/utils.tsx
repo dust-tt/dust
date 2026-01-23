@@ -1,5 +1,11 @@
 import type { ReactNode } from "react";
 
+// SEO config type
+export interface SeoConfig {
+  title: string;
+  description: string;
+}
+
 // Basic config types
 export interface ChipConfig {
   label: string;
@@ -190,6 +196,9 @@ export interface LayoutConfig {
 
 // Main Industry Config (Updated)
 export interface IndustryPageConfig {
+  // SEO configuration
+  seo: SeoConfig;
+
   // Layout configuration - NEW
   layout: LayoutConfig;
 

@@ -12,7 +12,10 @@ interface UpdateInfoProps {
 
 const UpdateInfo: FC<UpdateInfoProps> = ({ onComplete }) => {
   const [isChecking, setIsChecking] = useState(true);
-  const [updateInfo, setUpdateInfo] = useState<{currentVersion: string, latestVersion: string} | null>(null);
+  const [updateInfo, setUpdateInfo] = useState<{
+    currentVersion: string;
+    latestVersion: string;
+  } | null>(null);
   const [waitingForInput, setWaitingForInput] = useState(false);
 
   // Handle user input - any key continues with current version
@@ -27,19 +30,19 @@ const UpdateInfo: FC<UpdateInfoProps> = ({ onComplete }) => {
 
   useEffect(() => {
     const checkUpdates = async () => {
-        setIsChecking(true);
+      setIsChecking(true);
 
-        const result = await checkForUpdates();
+      const result = await checkForUpdates();
 
-        if (result) {
-          // Update available - show notification and wait for input
-          setUpdateInfo(result);
-          setWaitingForInput(true);
-        } else {
-          // No update available, continue with app
-          onComplete();
-        }
-        setIsChecking(false)
+      if (result) {
+        // Update available - show notification and wait for input
+        setUpdateInfo(result);
+        setWaitingForInput(true);
+      } else {
+        // No update available, continue with app
+        onComplete();
+      }
+      setIsChecking(false);
     };
 
     void checkUpdates();
@@ -47,25 +50,32 @@ const UpdateInfo: FC<UpdateInfoProps> = ({ onComplete }) => {
 
   if (updateInfo) {
     return (
-      <Box flexDirection="column" paddingY={1} borderStyle="round" borderColor="cyan">
+      <Box
+        flexDirection="column"
+        paddingY={1}
+        borderStyle="round"
+        borderColor="cyan"
+      >
         <Box paddingX={2}>
           <Text color="cyan" bold>
             ⬆ Update Available
           </Text>
         </Box>
-        
+
         <Box paddingX={2} marginY={1}>
           <Text>
             <Text color="yellow">{updateInfo.currentVersion}</Text>
             <Text color="dim"> → </Text>
-            <Text color="green" bold>{updateInfo.latestVersion}</Text>
+            <Text color="green" bold>
+              {updateInfo.latestVersion}
+            </Text>
           </Text>
         </Box>
 
         <Box paddingX={2} marginBottom={1}>
           <Text color="dim">To update, run:</Text>
         </Box>
-        
+
         <Box paddingX={2} paddingY={1} borderStyle="single" borderColor="green">
           <Text color="green" bold>
             npm install -g {pkg.name}@latest

@@ -20,7 +20,7 @@ const {
   renderAndUpsertPageFromCache,
   upsertDatabaseInConnectorsDb,
 } = proxyActivities<typeof activities>({
-  startToCloseTimeout: "10 minute",
+  startToCloseTimeout: "20 minute",
 });
 
 export async function upsertPageChildWorkflow({

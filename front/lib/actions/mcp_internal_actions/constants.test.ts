@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   INTERNAL_MCP_SERVERS,
   LEGACY_INTERNAL_MCP_SERVER_IDS,
 } from "./constants";
@@ -38,7 +39,6 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "image_generation", id: 2 },
       { name: "file_generation", id: 3 },
       { name: "web_search_&_browse", id: 5 },
-      { name: "think", id: 6 },
       { name: "agent_router", id: 8 },
       { name: "include_data", id: 9 },
       { name: "run_dust_app", id: 10 },
@@ -46,25 +46,36 @@ describe("INTERNAL_MCP_SERVERS", () => {
       { name: "missing_action_catcher", id: 13 },
       { name: "conversation_files", id: 17 },
       { name: "agent_memory", id: 21 },
-      { name: "content_creation", id: 23 },
+      { name: "interactive_content", id: 23 },
       { name: "slideshow", id: 28 },
-      { name: "deep_research", id: 29 },
-      {
-        name: "web_search_&_browse_with_summary",
-        id: 30,
-      },
+      { name: "deep_dive", id: 29 },
+      { name: "speech_generator", id: 34 },
       { name: "search", id: 1006 },
       { name: "run_agent", id: 1008 },
-      { name: "reasoning", id: 1007 },
       { name: "query_tables_v2", id: 1009 },
       { name: "data_sources_file_system", id: 1010 },
       { name: "agent_management", id: 1011 },
       { name: "data_warehouses", id: 1012 },
       { name: "toolsets", id: 1013 },
+      { name: "common_utilities", id: 1017 },
+      { name: "skill_management", id: 1019 },
+      { name: "schedules_management", id: 1020 },
+      { name: "project_context_management", id: 1021 },
+      { name: "agent_copilot_context", id: 1022 },
+      { name: "agent_copilot_agent_state", id: 1023 },
     ];
     expect(
       autoInternalTools,
-      "Internal tools with availabilty auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
+      "Internal tools with availability auto or auto_hidden_builder are not up to date.\nIf you are adding or removing a tool, just update the hard coded list.\nHowever, if you are changing the availability from auto(_xxx) to manual, you need to run a migration on existing agents that were configured with that tool to update their requestedGroupIds (see getAgentConfigurationGroupIdsFromActions())."
     ).toEqual(HARD_CODED_AUTO_INTERNAL_TOOLS);
+  });
+});
+
+describe("AVAILABLE_INTERNAL_MCP_SERVER_NAMES", () => {
+  it("should contain unique server names", () => {
+    const names = [...AVAILABLE_INTERNAL_MCP_SERVER_NAMES];
+    const unique = [...new Set(names)];
+
+    expect(names).toStrictEqual(unique);
   });
 });

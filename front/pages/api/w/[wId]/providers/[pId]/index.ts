@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
 import { apiError } from "@app/logger/withlogging";
 import type { ProviderType, WithAPIErrorResponse } from "@app/types";
 
@@ -37,7 +37,7 @@ async function handler(
   }
 
   let [provider] = await Promise.all([
-    Provider.findOne({
+    ProviderModel.findOne({
       where: {
         workspaceId: owner.id,
         providerId: req.query.pId,
@@ -68,7 +68,7 @@ async function handler(
       }
 
       if (!provider) {
-        provider = await Provider.create({
+        provider = await ProviderModel.create({
           providerId: req.query.pId,
           config: req.body.config,
           workspaceId: owner.id,
@@ -105,7 +105,7 @@ async function handler(
         });
       }
 
-      await Provider.destroy({
+      await ProviderModel.destroy({
         where: {
           workspaceId: owner.id,
           providerId: req.query.pId,

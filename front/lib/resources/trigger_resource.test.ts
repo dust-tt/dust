@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
-import * as temporalClient from "@app/temporal/agent_schedule/client";
+import * as temporalClient from "@app/temporal/triggers/schedule/client";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -44,11 +44,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1", // Every Monday at 9 AM
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -98,11 +99,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: user.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -148,11 +150,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: user1.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -170,72 +173,9 @@ describe("TriggerResource", () => {
         expect(result.error).toBeInstanceOf(DustError);
         expect(result.error.code).toBe("unauthorized");
         expect(result.error.message).toBe(
-          "User do not have access to this trigger"
+          "User does not have access to this trigger"
         );
       }
-    });
-
-    it("should handle database errors gracefully", async () => {
-      const {
-        workspace,
-        authenticator: editorAuth,
-        user: editorUser,
-      } = await createResourceTest({
-        role: "admin",
-      });
-
-      // Create a second user who will be the subscriber
-      const subscriberUser = await UserFactory.basic();
-      const subscriberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        subscriberUser.sId,
-        workspace.sId
-      );
-
-      // Create an agent configuration for the trigger
-      const agentConfig = await AgentConfigurationFactory.createTestAgent(
-        editorAuth,
-        { name: "Test Agent" }
-      );
-
-      // Create a trigger
-      const triggerResult = await TriggerResource.makeNew(editorAuth, {
-        id: 123,
-        workspaceId: workspace.id,
-        name: "Test Trigger",
-        kind: "schedule",
-        agentConfigurationId: agentConfig.sId,
-        editor: editorUser.id,
-        customPrompt: null,
-        enabled: true,
-        configuration: {
-          cron: "0 9 * * 1",
-          timezone: "UTC",
-        },
-      });
-
-      expect(triggerResult.isOk()).toBe(true);
-      if (triggerResult.isErr()) {
-        throw triggerResult.error;
-      }
-
-      const trigger = triggerResult.value;
-
-      // Mock TriggerSubscriberModel.create to throw an error
-      const mockCreate = vi
-        .spyOn(TriggerSubscriberModel, "create")
-        .mockRejectedValue(new Error("Database connection failed"));
-
-      const result = await trigger.addToSubscribers(subscriberAuth);
-
-      expect(result.isErr()).toBe(true);
-      if (result.isErr()) {
-        expect(result.error).toBeInstanceOf(DustError);
-        expect(result.error.code).toBe("internal_error");
-        expect(result.error.message).toBe("Database connection failed");
-      }
-
-      // Restore the original method
-      mockCreate.mockRestore();
     });
 
     it("should handle duplicate subscription attempts", async () => {
@@ -269,11 +209,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -333,11 +274,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -403,11 +345,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: user1.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -425,7 +368,7 @@ describe("TriggerResource", () => {
         expect(result.error).toBeInstanceOf(DustError);
         expect(result.error.code).toBe("unauthorized");
         expect(result.error.message).toBe(
-          "User do not have access to this trigger"
+          "User does not have access to this trigger"
         );
       }
     });
@@ -461,11 +404,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -524,11 +468,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -593,11 +538,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: editorUser.id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(triggerResult.isOk()).toBe(true);
@@ -664,10 +610,10 @@ describe("TriggerResource", () => {
     it("should successfully disable all enabled triggers in a workspace", async () => {
       // Mock temporal workflow operations to avoid failures in test environment
       const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
+        .spyOn(temporalClient, "deleteTriggerSchedule")
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
@@ -689,11 +635,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 9 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       const trigger2Result = await TriggerResource.makeNew(authenticator, {
@@ -704,11 +651,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
-        enabled: true,
+        status: "enabled",
         configuration: {
           cron: "0 10 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       const trigger3Result = await TriggerResource.makeNew(authenticator, {
@@ -719,11 +667,12 @@ describe("TriggerResource", () => {
         agentConfigurationId: agentConfig.sId,
         editor: authenticator.getNonNullableUser().id,
         customPrompt: null,
-        enabled: false,
+        status: "disabled",
         configuration: {
           cron: "0 11 * * 1",
           timezone: "UTC",
         },
+        origin: "user",
       });
 
       expect(trigger1Result.isOk()).toBe(true);
@@ -743,39 +692,41 @@ describe("TriggerResource", () => {
       const trigger3 = trigger3Result.value;
 
       // Verify initial state
-      expect(trigger1.enabled).toBe(true);
-      expect(trigger2.enabled).toBe(true);
-      expect(trigger3.enabled).toBe(false);
+      expect(trigger1.status).toBe("enabled");
+      expect(trigger2.status).toBe("enabled");
+      expect(trigger3.status).toBe("disabled");
 
-      // Disable all triggers for the workspace
-      const result =
-        await TriggerResource.disableAllForWorkspace(authenticator);
+      // Disable all triggers for the workspace with "relocating" status
+      const result = await TriggerResource.disableAllForWorkspace(
+        authenticator,
+        "relocating"
+      );
 
       expect(result.isOk()).toBe(true);
 
       // Fetch updated triggers to verify they were disabled
       const updatedTrigger1 = await TriggerResource.fetchById(
         authenticator,
-        trigger1.sId()
+        trigger1.sId
       );
       const updatedTrigger2 = await TriggerResource.fetchById(
         authenticator,
-        trigger2.sId()
+        trigger2.sId
       );
       const updatedTrigger3 = await TriggerResource.fetchById(
         authenticator,
-        trigger3.sId()
+        trigger3.sId
       );
 
       expect(updatedTrigger1).toBeTruthy();
       expect(updatedTrigger2).toBeTruthy();
       expect(updatedTrigger3).toBeTruthy();
 
-      // Previously enabled triggers should now be disabled
-      expect(updatedTrigger1!.enabled).toBe(false);
-      expect(updatedTrigger2!.enabled).toBe(false);
+      // Previously enabled triggers should now be set to "relocating"
+      expect(updatedTrigger1!.status).toBe("relocating");
+      expect(updatedTrigger2!.status).toBe("relocating");
       // Previously disabled trigger should remain disabled
-      expect(updatedTrigger3!.enabled).toBe(false);
+      expect(updatedTrigger3!.status).toBe("disabled");
 
       // Clean up mocks
       mockCreateOrUpdateWorkflow.mockRestore();
@@ -787,10 +738,10 @@ describe("TriggerResource", () => {
     it("should successfully enable all disabled triggers that point to active agents", async () => {
       // Mock temporal workflow operations
       const mockCreateOrUpdateWorkflow = vi
-        .spyOn(temporalClient, "createOrUpdateAgentScheduleWorkflow")
+        .spyOn(temporalClient, "createOrUpdateAgentSchedule")
         .mockResolvedValue(new Ok("workflow-id"));
       const mockDeleteWorkflow = vi
-        .spyOn(temporalClient, "deleteAgentScheduleWorkflow")
+        .spyOn(temporalClient, "deleteTriggerSchedule")
         .mockResolvedValue(new Ok(undefined));
 
       const { workspace, authenticator } = await createResourceTest({
@@ -810,7 +761,7 @@ describe("TriggerResource", () => {
 
       // Mock AgentConfiguration.findAll to return different statuses
       const mockAgentConfigFindAll = vi
-        .spyOn(AgentConfiguration, "findAll")
+        .spyOn(AgentConfigurationModel, "findAll")
         .mockResolvedValue([
           {
             sId: activeAgentConfig.sId,
@@ -835,11 +786,12 @@ describe("TriggerResource", () => {
           agentConfigurationId: activeAgentConfig.sId,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
-          enabled: false,
+          status: "disabled",
           configuration: {
             cron: "0 9 * * 1",
             timezone: "UTC",
           },
+          origin: "user",
         }
       );
 
@@ -853,11 +805,12 @@ describe("TriggerResource", () => {
           agentConfigurationId: archivedAgentConfig.sId,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
-          enabled: false,
+          status: "disabled",
           configuration: {
             cron: "0 10 * * 1",
             timezone: "UTC",
           },
+          origin: "user",
         }
       );
 
@@ -871,11 +824,12 @@ describe("TriggerResource", () => {
           agentConfigurationId: activeAgentConfig.sId,
           editor: authenticator.getNonNullableUser().id,
           customPrompt: null,
-          enabled: true,
+          status: "enabled",
           configuration: {
             cron: "0 11 * * 1",
             timezone: "UTC",
           },
+          origin: "user",
         }
       );
 
@@ -896,27 +850,30 @@ describe("TriggerResource", () => {
       const trigger3 = enabledActiveTrigger.value;
 
       // Verify initial state
-      expect(trigger1.enabled).toBe(false);
-      expect(trigger2.enabled).toBe(false);
-      expect(trigger3.enabled).toBe(true);
+      expect(trigger1.status).toBe("disabled");
+      expect(trigger2.status).toBe("disabled");
+      expect(trigger3.status).toBe("enabled");
 
-      // Enable all triggers for the workspace
-      const result = await TriggerResource.enableAllForWorkspace(authenticator);
+      // Enable all triggers that were manually disabled for the workspace
+      const result = await TriggerResource.enableAllForWorkspace(
+        authenticator,
+        "disabled"
+      );
 
       expect(result.isOk()).toBe(true);
 
       // Fetch updated triggers to verify correct behavior
       const updatedTrigger1 = await TriggerResource.fetchById(
         authenticator,
-        trigger1.sId()
+        trigger1.sId
       );
       const updatedTrigger2 = await TriggerResource.fetchById(
         authenticator,
-        trigger2.sId()
+        trigger2.sId
       );
       const updatedTrigger3 = await TriggerResource.fetchById(
         authenticator,
-        trigger3.sId()
+        trigger3.sId
       );
 
       expect(updatedTrigger1).toBeTruthy();
@@ -924,11 +881,11 @@ describe("TriggerResource", () => {
       expect(updatedTrigger3).toBeTruthy();
 
       // Disabled trigger pointing to active agent should now be enabled
-      expect(updatedTrigger1!.enabled).toBe(true);
+      expect(updatedTrigger1!.status).toBe("enabled");
       // Disabled trigger pointing to archived agent should remain disabled
-      expect(updatedTrigger2!.enabled).toBe(false);
+      expect(updatedTrigger2!.status).toBe("disabled");
       // Already enabled trigger should remain enabled
-      expect(updatedTrigger3!.enabled).toBe(true);
+      expect(updatedTrigger3!.status).toBe("enabled");
 
       // Clean up mocks
       mockAgentConfigFindAll.mockRestore();

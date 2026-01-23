@@ -3,8 +3,8 @@ import type { Order } from "sequelize";
 import type { AgentConfigurationType, TagsFilter } from "@app/types";
 
 export type DataSourceFilter = {
-  parents: { in: string[]; not: string[] } | null;
-  tags?: TagsFilter;
+  parents: { in: string[] | null; not: string[] | null } | null;
+  tags: TagsFilter;
 };
 
 export type DataSourceConfiguration = {

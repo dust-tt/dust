@@ -101,8 +101,9 @@ export function SearchMembersDropdown({
           <DropdownMenuItem
             key={member.sId}
             onClick={addMember(member)}
-            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-            icon={() => <Avatar size="sm" visual={member.image || ""} />}
+            icon={() => (
+              <Avatar size="sm" visual={member.image ?? ""} isRounded />
+            )}
             label={member.fullName}
             description={member.email}
           />

@@ -8,6 +8,7 @@ import type {
   MicrosoftNodeType,
 } from "@connectors/connectors/microsoft/lib/types";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
+import type { SelectedSiteMetadata } from "@connectors/lib/models/microsoft";
 import {
   MicrosoftConfigurationModel,
   MicrosoftNodeModel,
@@ -20,10 +21,9 @@ import type { ModelId } from "@connectors/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftConfigurationResource
-  extends ReadonlyAttributesType<MicrosoftConfigurationModel> {}
+export interface MicrosoftConfigurationResource extends ReadonlyAttributesType<MicrosoftConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfigurationModel> {
@@ -114,20 +114,23 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
   toJSON(): {
     id: number;
     connectorId: number;
+    tenantId: string | null;
+    selectedSites: SelectedSiteMetadata[] | null;
   } {
     return {
       id: this.id,
       connectorId: this.connectorId,
+      tenantId: this.tenantId,
+      selectedSites: this.selectedSites,
     };
   }
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftRootResource
-  extends ReadonlyAttributesType<MicrosoftRootModel> {}
+export interface MicrosoftRootResource extends ReadonlyAttributesType<MicrosoftRootModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
@@ -227,8 +230,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MicrosoftNodeResource
-  extends ReadonlyAttributesType<MicrosoftNodeModel> {}
+export interface MicrosoftNodeResource extends ReadonlyAttributesType<MicrosoftNodeModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {

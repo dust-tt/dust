@@ -19,10 +19,11 @@ import {
   PRO_PLAN_COST_YEARLY,
 } from "@app/lib/client/subscription";
 import {
-  PRO_PLAN_LARGE_FILES_CODE,
-  PRO_PLAN_SEAT_29_CODE,
-  PRO_PLAN_SEAT_39_CODE,
+  isProOrBusinessPlanCode,
+  isProPlan,
+  isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type { BillingPeriod, PlanType, WorkspaceType } from "@app/types";
 
@@ -92,14 +93,6 @@ const ENTERPRISE_PLAN_ITEMS: PriceTableItem[] = [
   },
 ];
 
-function isProPlanCode(plan?: PlanType) {
-  return (
-    plan?.code === PRO_PLAN_SEAT_29_CODE ||
-    plan?.code === PRO_PLAN_LARGE_FILES_CODE ||
-    plan?.code === PRO_PLAN_SEAT_39_CODE
-  );
-}
-
 interface PriceTableProps {
   billingPeriod?: BillingPeriod;
   display: PriceTableDisplay;
@@ -121,8 +114,7 @@ export function ProPriceTable({
 }: PriceTableProps) {
   const [isFairUseModalOpened, setIsFairUseModalOpened] = useState(false);
 
-  // If the owner has the business metadata, we show the BusinessPriceTable instead.
-  if (owner?.metadata?.isBusiness) {
+  if (isWhitelistedBusinessPlan(owner)) {
     return (
       <BusinessPriceTable
         display={display}
@@ -178,7 +170,7 @@ export function ProPriceTable({
             className="cursor-pointer text-gray-400 underline hover:text-gray-500"
             onClick={() => setIsFairUseModalOpened(true)}
           >
-            Fair use limits apply*
+            Fair use limits apply
           </Hoverable>
           )
         </>
@@ -187,7 +179,24 @@ export function ProPriceTable({
       display: ["landing", "subscribe"],
     },
     {
-      label: "Fixed price on programmatic usage (API, GSheet, Zapier)",
+      label: (
+        <>
+          Free credits for programmatic usage (API, GSheet, Zapier,...) (
+          <Hoverable
+            className="cursor-pointer text-gray-400 underline hover:text-gray-500"
+            href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e#2b728599d941808b8f8dfa8dbe7e466f"
+            target="_blank"
+          >
+            Learn more
+          </Hoverable>
+          )
+        </>
+      ),
+      variant: "check",
+      display: ["landing", "subscribe"],
+    },
+    {
+      label: "Fixed price on additional programmatic usage",
       variant: "dash",
       display: ["landing", "subscribe"],
     },
@@ -224,17 +233,21 @@ export function ProPriceTable({
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode(plan)) && (
+        {onClick && (!plan || !isProOrBusinessPlanCode(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
               size={biggerButtonSize}
               label={
-                display === "landing" ? "Start now, 15 days free" : "Start now"
+                display === "landing" ? "Start now, 14 days free" : "Start now"
               }
               icon={RocketIcon}
               disabled={isProcessing}
-              onClick={onClick}
+              onClick={withTracking(
+                TRACKING_AREAS.PRICING,
+                "plan_pro_select",
+                onClick
+              )}
             />
           </PriceTable.ActionContainer>
         )}
@@ -341,24 +354,28 @@ export function BusinessPriceTable({
         onClose={() => setIsFairUseModalOpened(false)}
       />
       <PriceTable
-        title="Business"
+        title="Enterprise (Seat-based)"
         price={price}
         color="blue"
         priceLabel="/ month / user, excl. tax."
         size={size}
         magnified={false}
       >
-        {onClick && (!plan || !isProPlanCode(plan)) && (
+        {onClick && (!plan || !isProPlan(plan)) && (
           <PriceTable.ActionContainer position="top">
             <Button
               variant="highlight"
               size={biggerButtonSize}
               label={
-                display === "landing" ? "Start now, 15 days free" : "Start now"
+                display === "landing" ? "Start now, 14 days free" : "Start now"
               }
               icon={RocketIcon}
               disabled={isProcessing}
-              onClick={onClick}
+              onClick={withTracking(
+                TRACKING_AREAS.PRICING,
+                "plan_pro_select",
+                onClick
+              )}
             />
           </PriceTable.ActionContainer>
         )}
@@ -399,6 +416,10 @@ function EnterprisePriceTable({
           size={biggerButtonSize}
           disabled={isProcessing}
           label="Contact Sales"
+          onClick={withTracking(
+            TRACKING_AREAS.PRICING,
+            "plan_enterprise_contact"
+          )}
         />
       </PriceTable.ActionContainer>
       {ENTERPRISE_PLAN_ITEMS.map((item, index) => (
@@ -413,6 +434,7 @@ function EnterprisePriceTable({
 }
 
 interface PricePlanProps {
+  owner?: WorkspaceType;
   plan?: PlanType;
   onClickProPlan?: () => void;
   isProcessing?: boolean;
@@ -421,6 +443,7 @@ interface PricePlanProps {
 }
 
 export function PricePlans({
+  owner,
   flexCSS = "mx-4 flex flex-row w-full md:-mx-12 md:gap-4 lg:gap-6 xl:mx-0 xl:gap-8 2xl:gap-10",
   plan,
   onClickProPlan,
@@ -448,6 +471,7 @@ export function PricePlans({
           <div className="mt-8">
             <TabsContent value="pro">
               <ProPriceTable
+                owner={owner}
                 display={display}
                 size="xs"
                 plan={plan}
@@ -465,6 +489,7 @@ export function PricePlans({
       {/* Cards view for larger screens (hidden below lg) */}
       <div className={classNames(flexCSS, "hidden lg:flex")}>
         <ProPriceTable
+          owner={owner}
           size="sm"
           plan={plan}
           isProcessing={isProcessing}

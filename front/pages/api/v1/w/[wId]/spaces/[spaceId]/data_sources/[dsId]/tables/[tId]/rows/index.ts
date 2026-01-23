@@ -15,7 +15,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { CoreAPI, isSlugified } from "@app/types";
+import { CoreAPI, isSlugified, isString } from "@app/types";
 
 /**
  * @swagger
@@ -159,6 +159,7 @@ import { CoreAPI, isSlugified } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       UpsertTableRowsResponseType | ListTableRowsResponseType
@@ -169,7 +170,7 @@ async function handler(
   const owner = auth.getNonNullableWorkspace();
 
   const { dsId, tId } = req.query;
-  if (typeof dsId !== "string" || typeof tId !== "string") {
+  if (!isString(dsId) || !isString(tId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

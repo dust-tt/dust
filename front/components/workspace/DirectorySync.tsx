@@ -52,6 +52,7 @@ function useDirectorySyncStatus({
     owner,
   });
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const handleSetupClick = React.useCallback(() => {
     if (!isUpgraded(plan)) {
       setShowUpgradePlanDialog(true);

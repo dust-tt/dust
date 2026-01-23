@@ -7,8 +7,12 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceSubscriptions,
+} from "@app/lib/swr/workspaces";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -36,22 +40,32 @@ export default function Analytics({
   subscription,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
+  const [includeInactive, setIncludeInactive] = useState(true);
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
   });
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
       return;
     }
 
-    const queryString = `mode=month&start=${selectedMonth}&table=all`;
+    const queryParams = new URLSearchParams({
+      mode: "month",
+      start: selectedMonth,
+      table: "all",
+    });
+    if (includeInactive) {
+      queryParams.set("includeInactive", "true");
+    }
 
     setDownloadingMonth(selectedMonth);
     try {
-      const response = await fetch(
-        `/api/w/${owner.sId}/workspace-usage?${queryString}`
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/workspace-usage?${queryParams.toString()}`
       );
 
       if (!response.ok) {
@@ -95,6 +109,7 @@ export default function Analytics({
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       alert("Failed to download activity data.");
     } finally {
@@ -142,7 +157,11 @@ export default function Analytics({
       <AppCenteredLayout
         subscription={subscription}
         owner={owner}
-        subNavigation={subNavigationAdmin({ owner, current: "analytics" })}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "analytics",
+          featureFlags,
+        })}
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
@@ -156,6 +175,8 @@ export default function Analytics({
               downloadingMonth={downloadingMonth}
               monthOptions={monthOptions}
               handleDownload={handleDownload}
+              includeInactive={includeInactive}
+              onIncludeInactiveChange={setIncludeInactive}
             />
           </div>
         </Page.Vertical>

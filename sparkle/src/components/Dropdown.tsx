@@ -1,8 +1,10 @@
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
+import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cva } from "class-variance-authority";
 import * as React from "react";
 import { useRef } from "react";
 
+import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
@@ -27,7 +29,7 @@ export const menuStyleClasses = {
   ),
   item: cva(
     cn(
-      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-text-sm s-font-semibold s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
+      "s-relative s-flex s-gap-2 s-cursor-pointer s-select-none s-items-center s-outline-none s-rounded-md s-heading-sm s-transition-colors s-duration-300 data-[disabled]:s-pointer-events-none",
       "data-[disabled]:s-text-primary-400 dark:data-[disabled]:s-text-primary-400-night"
     ),
     {
@@ -67,7 +69,7 @@ export const menuStyleClasses = {
     span: "s-absolute s-left-2 s-flex s-h-3.5 s-w-3.5 s-items-center s-justify-center",
   },
   label: cn(
-    "s-font-semibold s-px-2 s-py-2 s-text-xs",
+    "s-px-2 s-py-2 s-heading-xs",
     "s-text-muted-foreground dark:s-text-muted-foreground-night"
   ),
   description: cn(
@@ -241,8 +243,9 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
-interface DropdownMenuContentProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
+interface DropdownMenuContentProps extends React.ComponentPropsWithoutRef<
+  typeof DropdownMenuPrimitive.Content
+> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
@@ -485,8 +488,10 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-interface DropdownMenuTagItemProps
-  extends Omit<DropdownMenuItemProps, "label" | "icon" | "onClick"> {
+interface DropdownMenuTagItemProps extends Omit<
+  DropdownMenuItemProps,
+  "label" | "icon" | "onClick"
+> {
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
@@ -662,7 +667,7 @@ const DropdownMenuSearchbar = React.forwardRef<
     return (
       <div className={cn("s-flex s-gap-1.5 s-p-1.5", className)}>
         <SearchInput
-          className="w-full"
+          className="s-w-full"
           ref={internalRef}
           placeholder={placeholder}
           name={name}
@@ -678,6 +683,148 @@ const DropdownMenuSearchbar = React.forwardRef<
 );
 
 DropdownMenuSearchbar.displayName = "DropdownMenuSearchbar";
+
+export interface DropdownMenuFilterOption {
+  label: string;
+  value: string;
+}
+
+interface DropdownMenuFiltersProps {
+  filters: DropdownMenuFilterOption[];
+  selectedValues: string[];
+  onSelectFilter: (value: string) => void;
+  className?: string;
+}
+
+const DropdownMenuFilters = React.forwardRef<
+  HTMLDivElement,
+  DropdownMenuFiltersProps
+>(({ filters, selectedValues = [], onSelectFilter, className }, ref) => {
+  const multiSelectionValues = Array.isArray(selectedValues)
+    ? selectedValues
+    : [];
+
+  return (
+    <div
+      ref={ref}
+      className={cn("s-flex s-flex-wrap s-gap-0.5 s-p-2", className)}
+    >
+      {filters.map((filter) => {
+        const isSelected = multiSelectionValues.includes(filter.value);
+
+        return (
+          <Button
+            key={filter.value}
+            size="xs"
+            variant={isSelected ? "primary" : "outline"}
+            label={filter.label}
+            onClick={() => onSelectFilter(filter.value)}
+          />
+        );
+      })}
+    </div>
+  );
+});
+
+DropdownMenuFilters.displayName = "DropdownMenuFilters";
+
+// DropdownTooltip: Simple tooltip with consistent layout: optional media at top, description below.
+export interface DropdownTooltipProps {
+  description: string;
+  media?: React.ReactNode;
+}
+
+const DropdownTooltip = ({ description, media }: DropdownTooltipProps) => (
+  <div className="s-space-y-4">
+    {/* Media at top */}
+    {media && <div className="s-rounded-sm">{media}</div>}
+
+    {/* Description */}
+    <p className="text-foreground dark:text-foreground-night s-text-sm s-font-normal">
+      {description}
+    </p>
+  </div>
+);
+
+DropdownTooltip.displayName = "DropdownTooltip";
+
+export interface DropdownTooltipTriggerProps {
+  children: React.ReactElement;
+  className?: string;
+  description: string;
+  media?: React.ReactNode;
+  mountPortal?: boolean;
+  mountPortalContainer?: HTMLElement;
+  onVisibilityChange?: (visible: boolean) => void;
+  side?: "left" | "right" | "top" | "bottom";
+  sideOffset?: number;
+}
+
+const DropdownTooltipTrigger = React.forwardRef<
+  React.ElementRef<typeof TooltipPrimitive.Trigger>,
+  DropdownTooltipTriggerProps
+>(
+  (
+    {
+      children,
+      className,
+      description,
+      media,
+      mountPortal = true,
+      mountPortalContainer,
+      onVisibilityChange,
+      side = "right",
+      sideOffset = 8,
+    },
+    ref
+  ) => {
+    const tooltipContent = (
+      <TooltipPrimitive.Content
+        side={side}
+        sideOffset={sideOffset}
+        className={cn(
+          menuStyleClasses.container,
+          "s-w-48 s-max-w-sm s-p-2 s-shadow-lg"
+        )}
+      >
+        <DropdownTooltip description={description} media={media} />
+      </TooltipPrimitive.Content>
+    );
+
+    const [container, setContainer] = React.useState<Element | undefined>(
+      mountPortalContainer
+    );
+
+    React.useEffect(() => {
+      if (mountPortal && !container) {
+        const dialogElements = document.querySelectorAll(
+          ".s-sheet[role=dialog][data-state=open]"
+        );
+        const defaultContainer = dialogElements[dialogElements.length - 1];
+        setContainer(defaultContainer);
+      }
+    }, [mountPortal, container]);
+
+    return (
+      <TooltipPrimitive.Provider delayDuration={300}>
+        <TooltipPrimitive.Root onOpenChange={onVisibilityChange}>
+          <TooltipPrimitive.Trigger asChild className={className} ref={ref}>
+            {children}
+          </TooltipPrimitive.Trigger>
+          {mountPortal ? (
+            <TooltipPrimitive.Portal container={container}>
+              {tooltipContent}
+            </TooltipPrimitive.Portal>
+          ) : (
+            tooltipContent
+          )}
+        </TooltipPrimitive.Root>
+      </TooltipPrimitive.Provider>
+    );
+  }
+);
+
+DropdownTooltipTrigger.displayName = "DropdownTooltipTrigger";
 
 interface DropdownMenuStaticItemProps {
   label: string;
@@ -698,7 +845,7 @@ const DropdownMenuStaticItem = React.forwardRef<
       className
     )}
   >
-    <span className="s-grow s-font-semibold">{label}</span>
+    <span className="s-grow s-font-medium">{label}</span>
     {value && (
       <span
         className={cn(
@@ -718,6 +865,7 @@ export {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -734,4 +882,5 @@ export {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
 };

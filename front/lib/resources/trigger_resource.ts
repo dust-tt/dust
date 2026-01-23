@@ -1,3 +1,4 @@
+import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
@@ -9,20 +10,24 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TriggerSubscriberModel } from "@app/lib/models/assistant/triggers/trigger_subscriber";
-import { TriggerModel } from "@app/lib/models/assistant/triggers/triggers";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TriggerSubscriberModel } from "@app/lib/models/agent/triggers/trigger_subscriber";
+import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
+import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
+import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
+import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import {
-  createOrUpdateAgentScheduleWorkflow,
-  deleteAgentScheduleWorkflow,
-} from "@app/temporal/agent_schedule/client";
-import type { ModelId, Result } from "@app/types";
+  createOrUpdateAgentSchedule,
+  deleteTriggerSchedule,
+} from "@app/temporal/triggers/schedule/client";
+import type { ModelId, Result, UserType } from "@app/types";
 import {
   assertNever,
   Err,
@@ -32,13 +37,15 @@ import {
 } from "@app/types";
 import type {
   ScheduleConfig,
+  TriggerExecutionMode,
+  TriggerStatus,
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TriggerResource extends ReadonlyAttributesType<TriggerModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TriggerResource extends BaseResource<TriggerModel> {
@@ -61,12 +68,22 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     const resource = new this(TriggerModel, trigger.get());
-    const r = await resource.upsertTemporalWorkflow(auth);
-    if (r.isErr()) {
-      return r;
+
+    if (resource.status === "enabled") {
+      const r = await resource.upsertTemporalWorkflow(auth);
+      if (r.isErr()) {
+        return r;
+      }
     }
 
     return new Ok(resource);
+  }
+
+  get sId(): string {
+    return TriggerResource.modelIdToSId({
+      id: this.id,
+      workspaceId: this.workspaceId,
+    });
   }
 
   private static async baseFetch(
@@ -118,6 +135,28 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
+  static async listByAgentConfigurationIdAndEditors(
+    auth: Authenticator,
+    {
+      agentConfigurationId,
+      editorIds,
+    }: {
+      agentConfigurationId: string;
+      editorIds: ModelId[];
+    }
+  ): Promise<Result<TriggerResource[], Error>> {
+    if (editorIds.length === 0) {
+      return new Ok([]);
+    }
+    const triggers = await this.baseFetch(auth, {
+      where: {
+        agentConfigurationId,
+        editor: { [Op.in]: editorIds },
+      },
+    });
+    return new Ok(triggers);
+  }
+
   static listByWorkspace(auth: Authenticator) {
     return this.baseFetch(auth);
   }
@@ -134,8 +173,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  static async listByUserEditor(auth: Authenticator) {
-    const user = auth.getNonNullableUser();
+  static async listByUserEditor(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ) {
+    assert(
+      auth.isAdmin() || auth.user()?.id === user.id,
+      "Triggers can only be listed by admins or by their editor."
+    );
 
     return this.baseFetch(auth, {
       where: {
@@ -144,9 +189,16 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  static async listByUserSubscriber(auth: Authenticator) {
+  static async listByUserSubscriber(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ) {
+    assert(
+      auth.isAdmin() || auth.user()?.id === user.id,
+      "Triggers can only be listed by admins or by the subscribed user."
+    );
+
     const workspace = auth.getNonNullableWorkspace();
-    const user = auth.getNonNullableUser();
 
     const res = await this.model.findAll({
       where: {
@@ -170,6 +222,62 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return res.map((c) => new this(this.model, c.get()));
   }
 
+  /**
+   * Returns minimal trigger data for webhook source usage queries.
+   * Used by getWebhookSourcesUsage() for performance-optimized queries.
+   */
+  static async listWebhookTriggersForUsageQuery(auth: Authenticator): Promise<
+    Array<{
+      webhookSourceViewId: ModelId | null;
+      agentConfigurationId: string;
+    }>
+  > {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return (await this.model.findAll({
+      raw: true,
+      attributes: ["webhookSourceViewId", "agentConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        kind: "webhook",
+        status: "enabled",
+        webhookSourceViewId: {
+          [Op.ne]: null,
+        },
+      },
+    })) as Array<{
+      webhookSourceViewId: ModelId | null;
+      agentConfigurationId: string;
+    }>;
+  }
+
+  /**
+   * DANGEROUS: Lists triggers across workspaces for maintenance scripts.
+   * Should only be used in scripts, never in API routes or lib/api.
+   */
+  static async listAllForScript(options?: {
+    workspaceId?: ModelId;
+    status?: TriggerStatus;
+  }): Promise<TriggerResource[]> {
+    const where: {
+      workspaceId?: ModelId;
+      status?: TriggerStatus;
+    } = {};
+
+    if (options?.workspaceId) {
+      where.workspaceId = options.workspaceId;
+    }
+    if (options?.status) {
+      where.status = options.status;
+    }
+
+    const res = await this.model.findAll({
+      where,
+    });
+
+    return res.map((c) => new this(this.model, c.get()));
+  }
+
   static async update(
     auth: Authenticator,
     sId: string,
@@ -187,8 +295,34 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
+    const previousStatus = trigger.status;
+
     await trigger.update(blob, transaction);
-    const r = await trigger.upsertTemporalWorkflow(auth);
+
+    // Log status changes when update includes a status change
+    if (blob.status !== undefined && blob.status !== previousStatus) {
+      logger.info(
+        {
+          triggerId: trigger.sId,
+          triggerName: trigger.name,
+          triggerKind: trigger.kind,
+          previousStatus,
+          newStatus: blob.status,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: trigger.agentConfigurationId,
+          editorId: trigger.editor,
+          userId: auth.getNonNullableUser().sId,
+        },
+        `Trigger status changed: ${blob.status}`
+      );
+    }
+
+    let r = null;
+    if (trigger.status === "enabled") {
+      r = await trigger.upsertTemporalWorkflow(auth);
+    } else {
+      r = await trigger.removeTemporalWorkflow(auth);
+    }
     if (r.isErr()) {
       return r;
     }
@@ -208,6 +342,41 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     try {
+      if (this.kind === "webhook" && this.webhookSourceViewId) {
+        const webhookSourceView = await WebhookSourcesViewModel.findOne({
+          where: {
+            id: this.webhookSourceViewId,
+            workspaceId: owner.id,
+          },
+        });
+
+        if (!webhookSourceView) {
+          return new Err(new Error("Webhook source view not found"));
+        }
+
+        const webhookRequests = await WebhookRequestModel.findAll({
+          where: {
+            workspaceId: owner.id,
+            webhookSourceId: webhookSourceView.webhookSourceId,
+          },
+        });
+
+        await WebhookRequestTriggerModel.destroy({
+          where: {
+            workspaceId: owner.id,
+            webhookRequestId: {
+              [Op.in]: webhookRequests.map((w) => w.id),
+            },
+          },
+        });
+        await WebhookRequestModel.destroy({
+          where: {
+            workspaceId: owner.id,
+            id: { [Op.in]: webhookRequests.map((w) => w.id) },
+          },
+        });
+      }
+
       await TriggerSubscriberModel.destroy({
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
@@ -238,21 +407,47 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     const r = await concurrentExecutor(
       triggers,
       async (trigger) => {
-        try {
-          return await trigger.delete(auth);
-        } catch (error) {
-          return new Err(normalizeError(error));
-        }
+        return trigger.delete(auth);
       },
       {
-        concurrency: 10,
+        concurrency: 4,
       }
     );
 
-    if (r.find((res) => res.isErr())) {
+    if (r.some((res) => res.isErr())) {
       return new Err(
         new Error(
-          `Failed to delete ${r.filter((res) => res.isErr()).length} some triggers`
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
+        )
+      );
+    }
+    return new Ok(undefined);
+  }
+
+  static async deleteAllForUser(
+    auth: Authenticator,
+    user: UserResource | UserType
+  ): Promise<Result<undefined, Error>> {
+    const triggers = await this.listByUserEditor(auth, user);
+
+    if (triggers.length === 0) {
+      return new Ok(undefined);
+    }
+
+    const r = await concurrentExecutor(
+      triggers,
+      async (trigger) => {
+        return trigger.delete(auth);
+      },
+      {
+        concurrency: 4,
+      }
+    );
+
+    if (r.some((res) => res.isErr())) {
+      return new Err(
+        new Error(
+          `Failed to delete ${r.filter((res) => res.isErr()).length} triggers`
         )
       );
     }
@@ -260,7 +455,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async disableAllForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    targetStatus: Exclude<TriggerStatus, "enabled">
   ): Promise<Result<undefined, Error>> {
     const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
@@ -268,14 +464,14 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Only disable enabled triggers
-    const enabledTriggers = triggers.filter((t) => t.enabled);
+    const enabledTriggers = triggers.filter((t) => t.status === "enabled");
     if (enabledTriggers.length === 0) {
       return new Ok(undefined);
     }
 
     const disabledTriggersResult = await concurrentExecutor(
       enabledTriggers,
-      async (trigger) => trigger.disable(auth),
+      async (trigger) => trigger.disable(auth, targetStatus),
       {
         concurrency: 10,
       }
@@ -308,7 +504,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Query latest versions of all agent configurations at once
-    const agentConfigs = await AgentConfiguration.findAll({
+    const agentConfigs = await AgentConfigurationModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         sId: agentConfigurationIds,
@@ -316,7 +512,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
 
     // Get only the latest version of each agent config (by latest createdAt)
-    const latestAgentConfigs = new Map<string, AgentConfiguration>();
+    const latestAgentConfigs = new Map<string, AgentConfigurationModel>();
     for (const config of agentConfigs) {
       const existing = latestAgentConfigs.get(config.sId);
       if (
@@ -339,22 +535,23 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   static async enableAllForWorkspace(
-    auth: Authenticator
+    auth: Authenticator,
+    fromStatus: Exclude<TriggerStatus, "enabled">
   ): Promise<Result<undefined, Error>> {
     const triggers = await this.listByWorkspace(auth);
     if (triggers.length === 0) {
       return new Ok(undefined);
     }
 
-    // Only enable disabled triggers that point to non-archived agents
-    const disabledTriggers = triggers.filter((t) => !t.enabled);
-    if (disabledTriggers.length === 0) {
+    // Only enable triggers with the specified status that point to non-archived agents
+    const matchingTriggers = triggers.filter((t) => t.status === fromStatus);
+    if (matchingTriggers.length === 0) {
       return new Ok(undefined);
     }
 
     const rActiveAgentIds = await this.getActiveAgentFromTriggers(
       auth,
-      disabledTriggers
+      matchingTriggers
     );
     if (rActiveAgentIds.isErr()) {
       return rActiveAgentIds;
@@ -366,7 +563,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     }
 
     // Filter triggers to only include those pointing to active agents
-    const enableableTriggers = disabledTriggers.filter((trigger) =>
+    const enableableTriggers = matchingTriggers.filter((trigger) =>
       activeAgentIds.has(trigger.agentConfigurationId)
     );
 
@@ -395,7 +592,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   async upsertTemporalWorkflow(auth: Authenticator) {
     switch (this.kind) {
       case "schedule":
-        return createOrUpdateAgentScheduleWorkflow({
+        return createOrUpdateAgentSchedule({
           auth,
           trigger: this,
         });
@@ -411,7 +608,7 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<void, Error>> {
     switch (this.kind) {
       case "schedule":
-        return deleteAgentScheduleWorkflow({
+        return deleteTriggerSchedule({
           workspaceId: auth.getNonNullableWorkspace().sId,
           trigger: this,
         });
@@ -423,15 +620,31 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   }
 
   async enable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (this.enabled) {
+    if (this.status === "enabled") {
       return new Ok(undefined);
     }
 
+    const previousStatus = this.status;
+
     try {
-      await this.update({ enabled: true });
+      await this.update({ status: "enabled" });
     } catch (error) {
       return new Err(normalizeError(error));
     }
+
+    logger.info(
+      {
+        triggerId: this.sId,
+        triggerName: this.name,
+        triggerKind: this.kind,
+        previousStatus,
+        newStatus: "enabled",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId: this.agentConfigurationId,
+        editorId: this.editor,
+      },
+      "Trigger status changed: enabled"
+    );
 
     const editor = await UserResource.fetchByModelId(this.editor);
     if (!editor) {
@@ -451,16 +664,35 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
-  async disable(auth: Authenticator): Promise<Result<undefined, Error>> {
-    if (!this.enabled) {
+  async disable(
+    auth: Authenticator,
+    targetStatus: Exclude<TriggerStatus, "enabled"> = "disabled"
+  ): Promise<Result<undefined, Error>> {
+    if (this.status === targetStatus) {
       return new Ok(undefined);
     }
 
+    const previousStatus = this.status;
+
     try {
-      await this.update({ enabled: false });
+      await this.update({ status: targetStatus });
     } catch (error) {
       return new Err(normalizeError(error));
     }
+
+    logger.info(
+      {
+        triggerId: this.sId,
+        triggerName: this.name,
+        triggerKind: this.kind,
+        previousStatus,
+        newStatus: targetStatus,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId: this.agentConfigurationId,
+        editorId: this.editor,
+      },
+      `Trigger status changed: ${targetStatus}`
+    );
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);
@@ -471,17 +703,41 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * Updates webhook-specific settings (execution limit and mode).
+   * Used by poke plugins for admin-level trigger configuration.
+   * Does not trigger temporal workflow updates.
+   */
+  async updateWebhookSettings(
+    executionPerDayLimitOverride: number | null,
+    executionMode: TriggerExecutionMode | null
+  ): Promise<Result<undefined, Error>> {
+    if (this.kind !== "webhook") {
+      return new Err(
+        new Error("Can only update webhook settings on webhook triggers")
+      );
+    }
+
+    try {
+      await this.update({
+        executionPerDayLimitOverride,
+        executionMode,
+      });
+      return new Ok(undefined);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
+  }
+
   async addToSubscribers(
     auth: Authenticator
-  ): Promise<
-    Result<
-      undefined,
-      DustError<"unauthorized" | "internal_error" | "internal_error">
-    >
-  > {
+  ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -491,17 +747,26 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
-    try {
-      await TriggerSubscriberModel.create({
+    const existing = await TriggerSubscriberModel.findOne({
+      where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         triggerId: this.id,
         userId: auth.getNonNullableUser().id,
-      });
-
-      return new Ok(undefined);
-    } catch (error) {
-      return new Err(new DustError("internal_error", errorToString(error)));
+      },
+    });
+    if (existing) {
+      return new Err(
+        new DustError("internal_error", "User is already a subscriber")
+      );
     }
+
+    await TriggerSubscriberModel.create({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      triggerId: this.id,
+      userId: auth.getNonNullableUser().id,
+    });
+
+    return new Ok(undefined);
   }
 
   async removeFromSubscribers(
@@ -509,7 +774,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   ): Promise<Result<undefined, DustError<"unauthorized" | "internal_error">>> {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -535,7 +803,10 @@ export class TriggerResource extends BaseResource<TriggerModel> {
   > {
     if (auth.getNonNullableWorkspace().id !== this.workspaceId) {
       return new Err(
-        new DustError("unauthorized", "User do not have access to this trigger")
+        new DustError(
+          "unauthorized",
+          "User does not have access to this trigger"
+        )
       );
     }
 
@@ -590,23 +861,18 @@ export class TriggerResource extends BaseResource<TriggerModel> {
     });
   }
 
-  sId(): string {
-    return TriggerResource.modelIdToSId({
-      id: this.id,
-      workspaceId: this.workspaceId,
-    });
-  }
-
   toJSON(): TriggerType {
     const base = {
       id: this.id,
-      sId: this.sId(),
+      sId: this.sId,
       name: this.name,
       agentConfigurationId: this.agentConfigurationId,
       editor: this.editor,
       customPrompt: this.customPrompt,
-      enabled: this.enabled,
+      status: this.status,
+      naturalLanguageDescription: this.naturalLanguageDescription,
       createdAt: this.createdAt.getTime(),
+      origin: this.origin,
     };
 
     if (this.kind === "webhook") {
@@ -614,6 +880,8 @@ export class TriggerResource extends BaseResource<TriggerModel> {
         ...base,
         kind: "webhook" as const,
         configuration: this.configuration as WebhookConfig,
+        executionPerDayLimitOverride: this.executionPerDayLimitOverride,
+        executionMode: this.executionMode,
         webhookSourceViewSId: this.webhookSourceViewId
           ? makeSId("webhook_sources_view", {
               id: this.webhookSourceViewId,

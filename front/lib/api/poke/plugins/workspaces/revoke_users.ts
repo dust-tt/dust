@@ -43,10 +43,7 @@ export const revokeUsersPlugin = createPlugin({
     const revokedResults = await concurrentExecutor(
       users,
       async (user) => {
-        const res = await revokeAndTrackMembership(
-          auth.getNonNullableWorkspace(),
-          user
-        );
+        const res = await revokeAndTrackMembership(auth, user);
         return {
           userId: user.sId,
           result: res,

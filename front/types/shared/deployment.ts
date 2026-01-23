@@ -26,6 +26,7 @@ export async function sendInitDbMessage({
 
   try {
     commitId = child_process.execSync("git rev-parse HEAD").toString().trim();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     logger.error({}, "Failed to get commit id");
   }
@@ -33,6 +34,7 @@ export async function sendInitDbMessage({
   const message = `papertrail: \`initdb\` has been initiated. Service: \`${service}\`. CommitId: \`${commitId}\``;
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const res = await fetch("https://slack.com/api/chat.postMessage", {
       method: "POST",
       headers: {

@@ -70,7 +70,6 @@ function FooterLink({ href, children, isExternal, ...props }: FooterLinkProps) {
   return (
     <Link
       href={isExternal ? href : appendUTMParams(href.toString())}
-      shallow={!isExternal}
       target={isExternal ? "_blank" : undefined}
       {...props}
     >

@@ -4,8 +4,12 @@ import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import * as _ from "lodash";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { parser } from "stream-json";
+import Assembler from "stream-json/Assembler";
 
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   clientApiPost,
   extractPath,
@@ -31,7 +35,11 @@ import {
   internalIdFromTypeAndPath,
   typeAndPathFromInternalId,
 } from "@connectors/connectors/microsoft/lib/utils";
-import { isItemNotFoundError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
+import {
+  isAccessBlockedError,
+  isGeneralExceptionError,
+  isItemNotFoundError,
+} from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   deleteFile,
   deleteFolder,
@@ -44,8 +52,14 @@ import {
 import { getMimeTypesToSync } from "@connectors/connectors/microsoft/temporal/mime_types";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { concurrentExecutor } from "@connectors/lib/async_utils";
-import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
+import {
+  concurrentExecutor,
+  getAdaptiveConcurrency,
+} from "@connectors/lib/async_utils";
+import {
+  MAX_FILE_SIZE_TO_DOWNLOAD,
+  upsertDataSourceFolder,
+} from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
@@ -65,6 +79,77 @@ interface DeltaDataInGCS {
   rootNodeIds: string[];
   sortedChangedItems: DriveItem[];
   totalItems: number;
+}
+
+// Creates a readable stream that yields JSON chunks for DeltaDataInGCS.
+// This avoids calling JSON.stringify on the entire object, which can fail
+// with "Invalid string length" for large arrays (JavaScript string limit ~512MB).
+function createDeltaJsonStream(
+  deltaLink: string,
+  rootNodeIds: string[],
+  sortedChangedItems: DriveItem[],
+  totalItems: number
+): Readable {
+  let index = 0;
+  let sentHeader = false;
+  let sentFooter = false;
+
+  return new Readable({
+    read() {
+      if (!sentHeader) {
+        // Write the opening of the JSON object and all fields except the array items
+        const header =
+          `{"deltaLink":${JSON.stringify(deltaLink)}` +
+          `,"rootNodeIds":${JSON.stringify(rootNodeIds)}` +
+          `,"totalItems":${totalItems}` +
+          `,"sortedChangedItems":[`;
+        this.push(header);
+        sentHeader = true;
+        return;
+      }
+
+      if (index < sortedChangedItems.length) {
+        // Write each item individually (each item is small enough to stringify)
+        const prefix = index > 0 ? "," : "";
+        this.push(prefix + JSON.stringify(sortedChangedItems[index]));
+        index++;
+        return;
+      }
+
+      if (!sentFooter) {
+        // Close the array and object
+        this.push("]}");
+        sentFooter = true;
+        return;
+      }
+
+      // Signal end of stream
+      this.push(null);
+    },
+  });
+}
+
+// Reads delta data from a GCS file using streaming JSON parsing.
+// This avoids calling buffer.toString() which can fail with "Invalid string length"
+// for very large files (JavaScript string limit ~512MB).
+// Uses stream-json's Assembler to reconstruct the object from a token stream.
+async function readDeltaFromGCSStream(
+  file: ReturnType<ReturnType<Storage["bucket"]>["file"]>
+): Promise<DeltaDataInGCS> {
+  return new Promise((resolve, reject) => {
+    const readStream = file.createReadStream();
+    const jsonParser = parser();
+    const assembler = Assembler.connectTo(jsonParser);
+
+    assembler.on("done", (asm: Assembler) => {
+      resolve(asm.current as DeltaDataInGCS);
+    });
+
+    readStream.on("error", reject);
+    jsonParser.on("error", reject);
+
+    readStream.pipe(jsonParser);
+  });
 }
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -90,7 +175,9 @@ export async function getRootNodesToSyncFromResources(
   }
 
   const logger = getActivityLogger(connector);
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
+
+  const oauthTokenErrors: ExternalOAuthTokenError[] = [];
 
   // get root folders and drives and drill down site-root and sites to their
   // child drives (converted to MicrosoftNode types)
@@ -121,8 +208,32 @@ export async function getRootNodesToSyncFromResources(
             if (error instanceof GraphError && error.statusCode === 404) {
               return null;
             }
+            if (isAccessBlockedError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  id: resource.internalId,
+                  error: error.message,
+                },
+                "Root resource access blocked by administrator, skipping"
+              );
+              return null;
+            }
+            if (isGeneralExceptionError(error)) {
+              logger.warn(
+                {
+                  connectorId,
+                  internalId: resource.internalId,
+                  errorCode: error.code,
+                  errorMessage: error.message,
+                },
+                "Skipping root resource due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
+              return null;
+            }
             if (error instanceof ExternalOAuthTokenError) {
-              throw error;
+              // Do not throw immediately, the token may still be valid for other roots
+              oauthTokenErrors.push(error);
             }
             logger.error(
               {
@@ -132,11 +243,16 @@ export async function getRootNodesToSyncFromResources(
               },
               "Failed to get item"
             );
-            return null;
+            throw error;
           }
         })
     )
   );
+
+  // If no root folders or drives were found, and there were OAuth token errors, put the connector in error state
+  if (rootFolderAndDriveNodes.length === 0 && oauthTokenErrors.length > 0) {
+    throw oauthTokenErrors[0];
+  }
 
   const rootSitePaths: string[] = rootResources
     .filter((resource) => resource.nodeType === "site")
@@ -145,27 +261,64 @@ export async function getRootNodesToSyncFromResources(
     );
 
   if (rootResources.some((resource) => resource.nodeType === "sites-root")) {
-    const msSites = await getAllPaginatedEntities((nextLink) =>
-      getSites(logger, client, nextLink)
-    );
-    rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
+    try {
+      const msSites = await getAllPaginatedEntities((nextLink) =>
+        getSites(logger, client, nextLink)
+      );
+      rootSitePaths.push(...msSites.map((site) => getSiteAPIPath(site)));
+    } catch (error) {
+      if (isGeneralExceptionError(error)) {
+        logger.warn(
+          { errorCode: error.code, errorMessage: error.message },
+          "Skipping sites-root due to 401 generalException - possible permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+        );
+      } else {
+        throw error;
+      }
+    }
   }
 
   const siteDriveNodes = (
     await concurrentExecutor(
       rootSitePaths,
       async (sitePath) => {
-        const msDrives = await getAllPaginatedEntities((nextLink) =>
-          getDrives(
-            logger,
-            client,
-            internalIdFromTypeAndPath({
-              nodeType: "site",
-              itemAPIPath: sitePath,
-            }),
-            nextLink
-          )
-        );
+        const msDrives = await getAllPaginatedEntities(async (nextLink) => {
+          try {
+            return await getDrives(
+              logger,
+              client,
+              internalIdFromTypeAndPath({
+                nodeType: "site",
+                itemAPIPath: sitePath,
+              }),
+              nextLink
+            );
+          } catch (error) {
+            if (isItemNotFoundError(error)) {
+              logger.warn({ sitePath }, "Site not found, skipping drives");
+              return { results: [] };
+            }
+            if (isAccessBlockedError(error)) {
+              logger.warn(
+                { sitePath, error: error.message },
+                "Site access blocked by administrator, skipping drives"
+              );
+              return { results: [] };
+            }
+            if (isGeneralExceptionError(error)) {
+              logger.warn(
+                {
+                  sitePath,
+                  errorCode: error.code,
+                  errorMessage: error.message,
+                },
+                "Skipping site drives due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+              );
+              return { results: [] };
+            }
+            throw error;
+          }
+        });
         return msDrives.map((driveItem) => {
           const driveNode = itemToMicrosoftNode("drive", driveItem);
           return {
@@ -263,7 +416,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
     throw new Error(`Connector ${connectorId} not found`);
   }
   const logger = getActivityLogger(connector);
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   for (const [driveId, nodeIds] of Object.entries(groupedItems)) {
     const { deltaLink } = await getDeltaResults({
@@ -446,7 +599,7 @@ export async function syncFiles({
     },
     `[SyncFiles] Start sync`
   );
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   // TODO(pr): handle pagination
   const childrenResult = await getFilesAndFolders(
@@ -467,6 +620,12 @@ export async function syncFiles({
       item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
   );
 
+  const concurrency = getAdaptiveConcurrency(
+    filesToSync,
+    MAX_FILE_SIZE_TO_DOWNLOAD,
+    FILES_SYNC_CONCURRENCY
+  );
+
   // sync files
   const results = await concurrentExecutor(
     filesToSync,
@@ -480,7 +639,7 @@ export async function syncFiles({
         startSyncTs,
         heartbeat,
       }),
-    { concurrency: FILES_SYNC_CONCURRENCY }
+    { concurrency }
   );
 
   const count = results.filter((r) => r).length;
@@ -586,6 +745,8 @@ export async function syncDeltaForRootNodesInDrive({
     throw new Error(`Connector ${connectorId} not found`);
   }
 
+  const logger = getActivityLogger(connector);
+
   const providerConfig =
     await MicrosoftConfigurationResource.fetchByConnectorId(connectorId);
 
@@ -610,7 +771,6 @@ export async function syncDeltaForRootNodesInDrive({
   let node = nodes[0];
 
   if (nodes.length !== rootNodeIds.length || !node) {
-    const logger = getActivityLogger(connector);
     logger.error(
       {
         connectorId,
@@ -623,9 +783,8 @@ export async function syncDeltaForRootNodesInDrive({
     return;
   }
 
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
-  const logger = getActivityLogger(connector);
   logger.info({ connectorId, rootNodeIds }, "Syncing delta for node");
 
   // Goes through pagination to return all delta results. This is because delta
@@ -681,7 +840,10 @@ export async function syncDeltaForRootNodesInDrive({
   );
 
   if (containsWholeDrive) {
-    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of sortForIncrementalUpdate(uniqueChangedItems)) {
+      sortedChangedItems.push(item);
+    }
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
@@ -756,6 +918,7 @@ export async function syncDeltaForRootNodesInDrive({
           connectorId,
           internalId,
           dataSourceConfig,
+          logger,
         });
         if (isDeleted) {
           deleted++;
@@ -791,6 +954,8 @@ export async function syncDeltaForRootNodesInDrive({
           dataSourceConfig,
           internalId,
           deleteRootNode: true,
+          logger,
+          reason: "delta_sync_deleted",
         });
         if (isDeleted) {
           deleted++;
@@ -953,7 +1118,7 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   logger.info({ connectorId, rootNodeIds }, "Fetching delta for node");
 
@@ -981,12 +1146,25 @@ export async function fetchDeltaForRootNodesInDrive({
     }
   }
 
-  const { results, deltaLink } = await getDeltaData({
-    logger,
-    client,
-    node,
-    heartbeat,
-  });
+  let results: DriveItem[] = [];
+  let deltaLink = "";
+  try {
+    const { results: resultsFromDelta, deltaLink: deltaLinkFromDelta } =
+      await getDeltaData({
+        logger,
+        client,
+        node,
+        heartbeat,
+      });
+    results = resultsFromDelta;
+    deltaLink = deltaLinkFromDelta;
+  } catch (error) {
+    if (isItemNotFoundError(error)) {
+      logger.info({ error: error.message }, "Node not found, skipping");
+      return { gcsFilePath: null };
+    }
+    throw error;
+  }
 
   // Generate a unique GCS file path for this delta sync
   const timestamp = Date.now();
@@ -1009,7 +1187,10 @@ export async function fetchDeltaForRootNodesInDrive({
   );
 
   if (containsWholeDrive) {
-    sortedChangedItems.push(...sortForIncrementalUpdate(uniqueChangedItems));
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of sortForIncrementalUpdate(uniqueChangedItems)) {
+      sortedChangedItems.push(item);
+    }
   } else {
     const microsoftNodes = await concurrentExecutor(
       rootNodeIds,
@@ -1060,14 +1241,29 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
-  const deltaData: DeltaDataInGCS = {
+  const totalItems = sortedChangedItems.length;
+
+  logger.info(
+    {
+      connectorId,
+      driveId,
+      gcsFilePath,
+      resultsCount: results.length,
+      totalItems,
+    },
+    "Uploading to GCS delta file (streaming)."
+  );
+
+  // Use streaming JSON write to avoid "Invalid string length" error
+  // when the delta data is too large to stringify at once.
+  const jsonStream = createDeltaJsonStream(
     deltaLink,
     rootNodeIds,
     sortedChangedItems,
-    totalItems: sortedChangedItems.length,
-  };
+    totalItems
+  );
 
-  await file.save(JSON.stringify(deltaData), {
+  const writeStream = file.createWriteStream({
     metadata: {
       contentType: "application/json",
       metadata: {
@@ -1079,13 +1275,15 @@ export async function fetchDeltaForRootNodesInDrive({
     },
   });
 
+  await pipeline(jsonStream, writeStream);
+
   logger.info(
     {
       connectorId,
       driveId,
       gcsFilePath,
       resultsCount: results.length,
-      totalItems: sortedChangedItems.length,
+      totalItems,
     },
     "Delta data fetched, processed, and uploaded to GCS"
   );
@@ -1231,12 +1429,11 @@ function sortForIncrementalUpdate(changedList: DriveItem[], rootId?: string) {
       return sortedItemList;
     }
 
-    sortedItemList.push(...nextLevel);
-
-    // Mark nodes as seen for the next iterations.
-    nextLevel.forEach((item) => {
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const item of nextLevel) {
+      sortedItemList.push(item);
       sortedItemSet.add(getDriveItemInternalId(item));
-    });
+    }
   }
 }
 
@@ -1272,7 +1469,7 @@ async function getDeltaData({
     if (e instanceof GraphError && e.statusCode === 410) {
       // API is answering 'resync required'
       // we repopulate the delta from scratch
-      return await getFullDeltaResults({
+      return getFullDeltaResults({
         logger,
         client,
         parentInternalId: node.internalId,
@@ -1329,6 +1526,7 @@ export async function microsoftDeletionActivity({
   if (!connector) {
     return [];
   }
+  const logger = getActivityLogger(connector);
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
   const results = await concurrentExecutor(
@@ -1349,6 +1547,8 @@ export async function microsoftDeletionActivity({
         nodeId,
         connectorId,
         dataSourceConfig,
+        logger,
+        reason: "user_deselected",
       });
     },
     { concurrency: DELETE_CONCURRENCY }
@@ -1377,7 +1577,7 @@ export async function microsoftGarbageCollectionActivity({
     { connectorId, idCursor },
     "Garbage collection activity for cursor"
   );
-  const client = await getClient(connector.connectionId);
+  const client = await getMicrosoftClient(connector.connectionId);
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
@@ -1479,34 +1679,56 @@ export async function microsoftGarbageCollectionActivity({
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                logger,
+                reason: "gc_drive_not_found",
               });
             } else if (!rootNodeIds.includes(node.internalId)) {
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
+                logger,
+                reason: "gc_drive_removed_from_selection",
               });
             }
             break;
           case "folder": {
-            const folder = driveOrItem as DriveItem;
-            if (
-              !folder ||
-              folder.deleted ||
-              // isOutsideRootNodes
-              (await isOutsideRootNodes({
+            const folder = driveOrItem as DriveItem | null;
+
+            if (!folder) {
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+                deleteRootNode: true,
+                logger,
+                reason: "gc_not_found",
+              });
+            } else if (folder.deleted) {
+              await deleteFolder({
+                connectorId,
+                dataSourceConfig,
+                internalId: node.internalId,
+                deleteRootNode: true,
+                logger,
+                reason: "gc_marked_deleted",
+              });
+            } else if (
+              await isOutsideRootNodes({
                 logger,
                 client,
                 driveItem: folder,
                 rootNodeIds,
                 startGarbageCollectionTs,
-              }))
+              })
             ) {
               await deleteFolder({
                 connectorId,
                 dataSourceConfig,
                 internalId: node.internalId,
                 deleteRootNode: true,
+                logger,
+                reason: "gc_outside_sync_scope",
               });
             }
             break;
@@ -1529,6 +1751,7 @@ export async function microsoftGarbageCollectionActivity({
                 connectorId,
                 internalId: node.internalId,
                 dataSourceConfig,
+                logger,
               });
             }
             break;
@@ -1649,6 +1872,18 @@ async function isOutsideRootNodes({
     });
   } while (parentInternalId !== null);
 
+  logger.info(
+    {
+      driveItemId: driveItem.id,
+      driveItemName: driveItem.name,
+      rootNodeIds,
+      internalId: getDriveItemInternalId(driveItem),
+      driveInternalId: getDriveInternalIdFromItem(driveItem),
+      parentInternalId: getParentReferenceInternalId(driveItem.parentReference),
+    },
+    "Item is outside of root nodes"
+  );
+
   return true;
 }
 
@@ -1705,12 +1940,15 @@ async function scrubRemovedFolders({
         connectorId: connector.id,
         internalId: node.internalId,
         dataSourceConfig,
+        logger,
       });
     } else if (node.nodeType === "folder") {
       await recursiveNodeDeletion({
         nodeId: node.internalId,
         connectorId: connector.id,
         dataSourceConfig,
+        logger,
+        reason: "moved_out_of_sync_scope",
       });
     }
   }
@@ -1755,8 +1993,9 @@ export async function processDeltaChangesFromGCS({
   const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
   const file = bucket.file(gcsFilePath);
 
-  const [content] = await file.download();
-  const changedItemsData = JSON.parse(content.toString()) as DeltaDataInGCS;
+  // Use streaming JSON parse to avoid "Invalid string length" error
+  // when the file is too large to convert to a string.
+  const changedItemsData = await readDeltaFromGCSStream(file);
 
   const { deltaLink, rootNodeIds, sortedChangedItems, totalItems } =
     changedItemsData;
@@ -1840,6 +2079,7 @@ export async function processDeltaChangesFromGCS({
           connectorId,
           internalId,
           dataSourceConfig,
+          logger,
         });
         if (isDeleted) {
           deleted++;
@@ -1871,6 +2111,7 @@ export async function processDeltaChangesFromGCS({
               connectorId,
               internalId,
               dataSourceConfig,
+              logger,
             });
             if (isDeleted) {
               deleted++;
@@ -1891,6 +2132,8 @@ export async function processDeltaChangesFromGCS({
           dataSourceConfig,
           internalId,
           deleteRootNode: true,
+          logger,
+          reason: "delta_sync_deleted",
         });
         if (isDeleted) {
           deleted++;
@@ -1898,7 +2141,7 @@ export async function processDeltaChangesFromGCS({
           skipped++;
         }
       } else {
-        const client = await getClient(connector.connectionId);
+        const client = await getMicrosoftClient(connector.connectionId);
         const { item, type } = driveItem.root
           ? {
               item: await getItem(

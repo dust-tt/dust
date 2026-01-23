@@ -14,6 +14,7 @@ import {
   fetchUserFromSession,
   maybeUpdateFromExternalUser,
 } from "@app/lib/iam/users";
+import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial";
 import logger from "@app/logger/logger";
 import { withGetServerSidePropsLogging } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces } from "@app/types";
@@ -21,7 +22,7 @@ import { isString } from "@app/types";
 
 /**
  * Retrieves the user for a given session
- * @param session any Auth0 session
+ * @param session any workos session
  * @returns Promise<UserType | null>
  */
 export async function getUserFromSession(
@@ -49,7 +50,6 @@ interface MakeGetServerSidePropsRequirementsWrapperOptions<
   enableLogging?: boolean;
   requireUserPrivilege: R;
   requireCanUseProduct?: boolean;
-  allowUserOutsideCurrentWorkspace?: boolean;
 }
 
 export type CustomGetServerSideProps<
@@ -121,7 +121,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
   enableLogging = true,
   requireUserPrivilege,
   requireCanUseProduct = false,
-  allowUserOutsideCurrentWorkspace,
 }: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
     getServerSideProps: CustomGetServerSideProps<
@@ -146,8 +145,10 @@ export function makeGetServerSidePropsRequirementsWrapper<
 
       const workspace = auth ? auth.workspace() : await getWorkspace(context);
       const maintenance = workspace?.metadata?.maintenance;
+      const isDustSuperUser = auth?.isDustSuperUser() ?? false;
 
-      if (maintenance) {
+      // Checking isDustSuperUser allows Poke to work during maintenance.
+      if (maintenance && !isDustSuperUser) {
         return {
           redirect: {
             permanent: false,
@@ -186,6 +187,17 @@ export function makeGetServerSidePropsRequirementsWrapper<
             "canUseProduct should never be true outside of a workspace context."
           );
         }
+
+        const redirectTrialPage = await isWorkspaceEligibleForTrial(auth!);
+        if (redirectTrialPage) {
+          return {
+            redirect: {
+              permanent: false,
+              destination: `/w/${context.query.wId}/trial`,
+            },
+          };
+        }
+
         return {
           redirect: {
             permanent: false,
@@ -198,7 +210,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
         // This was checked above already.
         assert(session);
 
-        const isDustSuperUser = auth?.isDustSuperUser() ?? false;
         if (requireUserPrivilege === "superuser" && !isDustSuperUser) {
           return {
             notFound: true,
@@ -206,7 +217,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // If we target a workspace and the user is not in the workspace, return not found.
-        if (!allowUserOutsideCurrentWorkspace && workspace && !auth?.isUser()) {
+        if (workspace && !auth?.isUser()) {
           return {
             notFound: true,
           };
@@ -255,31 +266,16 @@ export const withDefaultUserAuthPaywallWhitelisted =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: false,
-    allowUserOutsideCurrentWorkspace: false,
   });
 
 export const withDefaultUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
-    allowUserOutsideCurrentWorkspace: false,
-  });
-
-/**
- * This should only be used for pages that don't require
- * the current user to be in the current workspace.
- */
-export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
-  makeGetServerSidePropsRequirementsWrapper({
-    requireUserPrivilege: "user",
-    requireCanUseProduct: true,
-    // This is a special case where we don't want to check if the user is in the current workspace.
-    allowUserOutsideCurrentWorkspace: true,
   });
 
 export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "superuser",
     requireCanUseProduct: false,
-    allowUserOutsideCurrentWorkspace: false,
   });

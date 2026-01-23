@@ -5,7 +5,10 @@ import * as t from "io-ts";
 import type { Logger } from "pino";
 
 import { getParents } from "@connectors/connectors/notion/lib/parents";
-import { NotionDatabase, NotionPage } from "@connectors/lib/models/notion";
+import {
+  NotionDatabaseModel,
+  NotionPageModel,
+} from "@connectors/lib/models/notion";
 
 // Define the type codec for the Notion OAuth response
 export const NotionOAuthResponse = t.type({
@@ -71,10 +74,10 @@ export async function buildNotionBreadcrumbs(
 
   const current =
     resourceType === "page"
-      ? await NotionPage.findOne({
+      ? await NotionPageModel.findOne({
           where: { notionPageId: pageOrDbId, connectorId },
         })
-      : await NotionDatabase.findOne({
+      : await NotionDatabaseModel.findOne({
           where: { notionDatabaseId: pageOrDbId, connectorId },
         });
 
@@ -87,7 +90,7 @@ export async function buildNotionBreadcrumbs(
   }
 
   for (const parentId of breadcrumbIds) {
-    const page = await NotionPage.findOne({
+    const page = await NotionPageModel.findOne({
       where: { notionPageId: parentId, connectorId },
     });
 
@@ -100,7 +103,7 @@ export async function buildNotionBreadcrumbs(
       continue;
     }
 
-    const db = await NotionDatabase.findOne({
+    const db = await NotionDatabaseModel.findOne({
       where: { notionDatabaseId: parentId, connectorId },
     });
 
@@ -122,10 +125,10 @@ export async function buildNotionBreadcrumbs(
   } else if (breadcrumbs.length > 1) {
     const firstParentId = breadcrumbIds[breadcrumbIds.length - 1];
     const firstParent =
-      (await NotionPage.findOne({
+      (await NotionPageModel.findOne({
         where: { notionPageId: firstParentId, connectorId },
       })) ||
-      (await NotionDatabase.findOne({
+      (await NotionDatabaseModel.findOne({
         where: { notionDatabaseId: firstParentId, connectorId },
       }));
 
@@ -148,7 +151,18 @@ export async function buildNotionBreadcrumbs(
  * @throws Error if URL is invalid
  */
 export function pageOrDbIdFromUrl(url: string): string {
-  const u = new URL(url);
+  // If it is already a UUID, return it directly. This allows users to enter
+  // either a full URL or just the ID (e.g. in the Check URL Poke UI).
+  const trimmed = url.trim();
+  if (
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+      trimmed
+    )
+  ) {
+    return trimmed;
+  }
+
+  const u = new URL(trimmed);
   const last = u.pathname.split("/").pop();
   if (!last) {
     throw new Error(`Unhandled URL (could not get "last"): ${url}`);

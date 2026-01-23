@@ -1,10 +1,12 @@
 import type {
+  APIError,
   ConversationPublicType,
   DustAPI,
   PublicPostContentFragmentRequestBody,
 } from "@dust-tt/client";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { isTransientNetworkError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
 import type { ChildAgentBlob } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import { isRunAgentResumeState } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/types";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
@@ -13,14 +15,29 @@ import {
   isFileAttachmentType,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
+import { serializeMention } from "@app/lib/mentions/format";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
   AgentMessageType,
   ConversationType,
   Result,
+  UserMessageOrigin,
 } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, isUserMessageType, Ok } from "@app/types";
+
+/**
+ * Determines if an error should be considered user-side.
+ * User-side errors should not trigger alerts and their messages should be
+ * surfaced to the model.
+ */
+function isUserSideError(error: APIError): boolean {
+  return (
+    error.type === "invalid_request_error" ||
+    error.type === "plan_message_limit_exceeded" ||
+    error.type === "rate_limit_error"
+  );
+}
 
 export async function getOrCreateConversation(
   api: DustAPI,
@@ -65,17 +82,15 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(convRes.error);
+      const isTransient = isTransientNetworkError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
       return new Err(
         new MCPError(message, {
           cause: convRes.error,
-          tracked: !isUserSide,
+          tracked: !isUserSide && !isTransient,
         })
       );
     }
@@ -119,11 +134,28 @@ export async function getOrCreateConversation(
     }
   }
 
+  let parentOrigin: UserMessageOrigin | null = null;
+  const parentMessage = mainConversation.content
+    .flat()
+    .find((m) => m.sId === originMessage.parentMessageId);
+
+  if (!parentMessage) {
+    return new Err(new MCPError("Parent message not found."));
+  }
+
+  if (!isUserMessageType(parentMessage)) {
+    return new Err(new MCPError("Parent message is not a user message."));
+  }
+
+  parentOrigin = parentMessage.context.origin ?? null;
+
   if (conversationId) {
+    const agenticMessageType =
+      mainConversation.sId !== conversationId ? "run_agent" : "agent_handover";
     const messageRes = await api.postUserMessage({
       conversationId,
       message: {
-        content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+        content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
         mentions: [{ configurationId: childAgentId }],
         context: {
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -131,29 +163,27 @@ export async function getOrCreateConversation(
           fullName: `@${mainAgent.name}`,
           email: null,
           profilePictureUrl: mainAgent.pictureUrl,
-          // `run_agent` origin will skip adding the conversation to the user history.
-          origin:
-            mainConversation.sId !== conversationId
-              ? "run_agent"
-              : "agent_handover",
+          origin: parentOrigin,
           selectedMCPServerViewIds: toolsetsToAdd,
+        },
+        agenticMessageData: {
+          // `run_agent` type will skip adding the conversation to the user history.
+          type: agenticMessageType,
           originMessageId: originMessage.sId,
         },
       },
     });
 
     if (messageRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = messageRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(messageRes.error);
+      const isTransient = isTransientNetworkError(messageRes.error);
       const message = isUserSide
         ? messageRes.error.message
         : "Failed to create message";
       return new Err(
         new MCPError(message, {
           cause: messageRes.error,
-          tracked: !isUserSide,
+          tracked: !isUserSide && !isTransient,
         })
       );
     }
@@ -163,17 +193,15 @@ export async function getOrCreateConversation(
     });
 
     if (convRes.isErr()) {
-      // Do not track invalid request errors, since they are user-side and should
-      // not trigger an alert on our end. For user-side errors, surface the
-      // underlying message to the model.
-      const isUserSide = convRes.error.type === "invalid_request_error";
+      const isUserSide = isUserSideError(convRes.error);
+      const isTransient = isTransientNetworkError(convRes.error);
       const message = isUserSide
         ? convRes.error.message
         : "Failed to get conversation";
       return new Err(
         new MCPError(message, {
           cause: convRes.error,
-          tracked: !isUserSide,
+          tracked: !isUserSide && !isTransient,
         })
       );
     }
@@ -190,7 +218,7 @@ export async function getOrCreateConversation(
     visibility: "unlisted",
     depth: mainConversation.depth + 1,
     message: {
-      content: `:mention[${childAgentBlob.name}]{sId=${childAgentId}} ${query}`,
+      content: `${serializeMention({ name: childAgentBlob.name, sId: childAgentId })} ${query}`,
       mentions: [{ configurationId: childAgentId }],
       context: {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -198,40 +226,40 @@ export async function getOrCreateConversation(
         fullName: `@${mainAgent.name}`,
         email: null,
         profilePictureUrl: mainAgent.pictureUrl,
-        // `run_agent` origin will skip adding the conversation to the user history.
-        origin: "run_agent",
+        origin: parentOrigin,
         selectedMCPServerViewIds: toolsetsToAdd,
+      },
+      agenticMessageData: {
+        // `run_agent` type will skip adding the conversation to the user history.
+        type: "run_agent",
         originMessageId: originMessage.sId,
       },
     },
     contentFragments,
     skipToolsValidation: agentMessage.skipToolsValidation ?? false,
-    params: {
-      // TODO(DURABLE_AGENT 2025-08-20): Remove this if we decided to always use async mode.
-      execution: "async",
-    },
   });
 
   if (convRes.isErr()) {
+    const isUserSide = isUserSideError(convRes.error);
+    const isTransient = isTransientNetworkError(convRes.error);
+
     logger.error(
       {
         error: convRes.error,
         stepContext,
+        isTransient,
+        isUserSide,
       },
       "Failed to create conversation"
     );
 
-    // Do not track invalid request errors, since they are user-side and should
-    // not trigger an alert on our end. For user-side errors, surface the
-    // underlying message to the model.
-    const isUserSide = convRes.error.type === "invalid_request_error";
     const message = isUserSide
       ? convRes.error.message
       : "Failed to create conversation";
     return new Err(
       new MCPError(message, {
         cause: convRes.error,
-        tracked: !isUserSide,
+        tracked: !isUserSide && !isTransient,
       })
     );
   }

@@ -57,6 +57,7 @@ import type { WithAPIErrorResponse } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<GetMCPServerViewsResponseType>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }

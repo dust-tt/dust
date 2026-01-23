@@ -122,6 +122,7 @@ export function usePokeDataSourceViewContentNodes({
     nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
   };
 }

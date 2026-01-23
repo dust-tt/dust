@@ -18,7 +18,7 @@ import {
   deleteDataSourceFolder,
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
-import { ConfluenceFolder } from "@connectors/lib/models/confluence";
+import { ConfluenceFolderModel } from "@connectors/lib/models/confluence";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -35,7 +35,7 @@ async function markFolderHasVisited({
   spaceId: string;
   visitedAtMs: number;
 }) {
-  await ConfluenceFolder.update(
+  await ConfluenceFolderModel.update(
     {
       lastVisitedAt: new Date(visitedAtMs),
     },
@@ -77,7 +77,7 @@ export async function confluenceCheckAndUpsertSingleFolder({
   };
   const localLogger = logger.child(loggerArgs);
 
-  const folderAlreadyInDb = await ConfluenceFolder.findOne({
+  const folderAlreadyInDb = await ConfluenceFolderModel.findOne({
     attributes: ["parentId", "skipReason", "version"],
     where: {
       connectorId,
@@ -173,7 +173,7 @@ export async function confluenceCheckAndUpsertSingleFolder({
   });
 
   localLogger.info("Upserting Confluence folder in DB.");
-  await ConfluenceFolder.upsert({
+  await ConfluenceFolderModel.upsert({
     connectorId,
     externalUrl: folder._links.tinyui,
     folderId,
@@ -216,7 +216,7 @@ async function deleteFolder(
   });
 
   localLogger.info("Deleting Confluence folder from database.");
-  await ConfluenceFolder.destroy({
+  await ConfluenceFolderModel.destroy({
     where: {
       connectorId,
       folderId,
@@ -237,7 +237,7 @@ export async function confluenceRemoveUnvisitedFolders({
 }) {
   const { id: connectorId } = connector;
 
-  const unvisitedFolders = await ConfluenceFolder.findAll({
+  const unvisitedFolders = await ConfluenceFolderModel.findAll({
     attributes: ["folderId"],
     where: {
       connectorId,
@@ -264,7 +264,7 @@ export async function confluenceRemoveAllFoldersInSpace({
 }) {
   const { id: connectorId } = connector;
 
-  const allFolders = await ConfluenceFolder.findAll({
+  const allFolders = await ConfluenceFolderModel.findAll({
     attributes: ["folderId"],
     where: {
       connectorId,

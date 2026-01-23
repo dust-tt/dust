@@ -3,5 +3,6 @@
   "trailingComma": "es5",
   "requirePragma": false,
   "arrowParens": "always",
-  "semi": true
+  "semi": true,
+  "plugins": ["prettier-plugin-tailwindcss"]
 }

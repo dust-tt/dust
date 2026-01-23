@@ -1,11 +1,12 @@
 import { assert, describe, expect, it } from "vitest";
 
+import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   getToolExtraFields,
   listToolsForServerSideMCPServer,
-  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
@@ -68,7 +69,6 @@ async function setupTest() {
     dataSources: null,
     tables: null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     jsonSchema: null,
     additionalConfiguration: {},
@@ -126,7 +126,7 @@ describe("MCP Actions", () => {
     await RemoteMCPServerToolMetadataResource.updateOrCreateSettings(auth, {
       serverSId: mcpServerId,
       toolName: "list_events",
-      permission: "high", // Permission metadata is stored but NOT applied to tool configs.
+      permission: "high",
       enabled: true, // Explicitly enable (though it's enabled by default).
     });
 
@@ -164,7 +164,7 @@ describe("MCP Actions", () => {
         expect.objectContaining({
           availability: "manual",
           name: "list_events",
-          permission: "never_ask", // Permission metadata is stored but NOT applied to tool configs.
+          permission: "high",
         }),
       ])
     );
@@ -190,7 +190,6 @@ describe("getPrefixedToolName", () => {
     dataSources: null,
     tables: null,
     childAgentId: null,
-    reasoningModel: null,
     timeFrame: null,
     jsonSchema: null,
     additionalConfiguration: {},
@@ -264,7 +263,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
   it("should process internal MCP server with google_calendar", () => {
     const metadata: {
       toolName: string;
-      permission: "high" | "low" | "never_ask";
+      permission: MCPToolStakeLevelType;
       enabled: boolean;
     }[] = [
       {
@@ -286,22 +285,29 @@ describe("makeToolsWithStakesAndTimeout", () => {
         list_calendars: true,
       },
       toolsStakes: {
-        list_calendars: "never_ask",
+        list_calendars: "high",
         list_events: "never_ask",
         get_event: "never_ask",
-        create_event: "low",
-        update_event: "low",
-        delete_event: "low",
+        create_event: "medium",
+        update_event: "medium",
+        delete_event: "medium",
         check_availability: "never_ask",
+        get_user_timezones: "never_ask",
       },
+      toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
+      toolsArgumentsRequiringApproval: {
+        create_event: ["calendarId"],
+        update_event: ["calendarId"],
+        delete_event: ["calendarId"],
+      },
     });
   });
 
   it("should process remote MCP server", () => {
     const metadata: {
       toolName: string;
-      permission: "high" | "low" | "never_ask";
+      permission: MCPToolStakeLevelType;
       enabled: boolean;
     }[] = [
       {
@@ -336,6 +342,7 @@ describe("makeToolsWithStakesAndTimeout", () => {
       },
       toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
+      toolsArgumentsRequiringApproval: undefined,
     });
   });
 

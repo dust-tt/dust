@@ -30,8 +30,7 @@ const CareersMenuConfig: MenuConfig = {
     },
     {
       title: "Why Dust?",
-      href: "https://blog.dust.tt/why-dust/",
-      isExternal: true,
+      href: "/blog/why-dust",
     },
   ],
 };
@@ -81,8 +80,8 @@ const LegalMenuConfig: MenuConfig = {
     },
     {
       title: "Privacy Policy",
-      href: "/platform-privacy",
-      isExternal: true,
+      href: "/home/platform-privacy",
+      isExternal: false,
     },
     {
       title: "Website Privacy Policy",
@@ -213,6 +212,10 @@ const ProductMenuConfig: MenuConfig = {
       title: "Chrome Extension",
       href: "/home/chrome-extension",
     },
+    {
+      title: "Frames",
+      href: "/home/frames",
+    },
   ],
 };
 
@@ -237,8 +240,7 @@ const ExploreMenuConfig: MenuConfig = {
   items: [
     {
       title: "Blog",
-      href: "https://blog.dust.tt/",
-      isExternal: true,
+      href: "/blog",
     },
     {
       title: "Webinars",
@@ -252,8 +254,7 @@ const ExploreMenuConfig: MenuConfig = {
     },
     {
       title: "Customer Stories",
-      href: "https://blog.dust.tt/tag/customer-stories/",
-      isExternal: true,
+      href: "/customers",
     },
   ],
 };
@@ -277,26 +278,6 @@ const ConnectMenuConfig: MenuConfig = {
       href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
       isExternal: true,
     },
-  ],
-};
-
-const CompanyMenuConfig: MenuConfig = {
-  title: "Company",
-  items: [
-    {
-      title: CareersMenuConfig.title,
-    },
-    CareersMenuConfig.items[0],
-    CareersMenuConfig.items[1],
-    {
-      title: SocialMenuConfig.title,
-    },
-    SocialMenuConfig.items[0],
-    SocialMenuConfig.items[1],
-    {
-      title: "Legal",
-    },
-    LegalMenuConfig.items[1],
   ],
 };
 
@@ -351,22 +332,10 @@ export const menuConfig: DocsConfig = {
       items: SolutionsMenuConfig.items,
     },
     {
-      title: DevelopersMenuConfig.title,
-      label: "Build with Dust",
-      rows: 2,
-      items: DevelopersMenuConfig.items,
-    },
-    {
       title: ResourcesMenuConfig.title,
       label: "Resources",
       rows: 3,
       items: ResourcesMenuConfig.items,
-    },
-    {
-      title: CompanyMenuConfig.title,
-      label: "All about Dust",
-      rows: 3,
-      items: CompanyMenuConfig.items,
     },
     {
       title: "Security",
@@ -389,10 +358,6 @@ export const menuConfig: DocsConfig = {
     {
       title: SolutionsMenuConfig.title,
       items: SolutionsMenuConfig.items,
-    },
-    {
-      title: DevelopersMenuConfig.title,
-      items: DevelopersMenuConfig.items,
     },
     {
       title: BuildMenuConfig.title,
@@ -442,10 +407,6 @@ export const menuConfig: DocsConfig = {
       ],
     },
     {
-      title: SolutionsMenuConfig.title,
-      items: SolutionsMenuConfig.items,
-    },
-    {
       title: DevelopersMenuConfig.title,
       items: DevelopersMenuConfig.items,
     },
@@ -460,6 +421,10 @@ export const menuConfig: DocsConfig = {
           title: "Jobs",
           href: "/jobs",
           isExternal: true,
+        },
+        {
+          title: "Brand resources",
+          href: "/home/brand-resources",
         },
         {
           title: "Support",
@@ -507,8 +472,8 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Privacy Policy",
-          href: "/platform-privacy",
-          isExternal: true,
+          href: "/home/platform-privacy",
+          isExternal: false,
         },
         {
           title: "Trust Center",

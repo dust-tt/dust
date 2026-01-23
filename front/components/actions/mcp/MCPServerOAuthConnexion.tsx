@@ -1,15 +1,23 @@
 import {
-  Button,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
+  Card,
+  cn,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Hoverable,
+  Icon,
   Input,
+  Label,
+  PlanetIcon,
+  Tooltip,
+  UserIcon,
 } from "@dust-tt/sparkle";
-import { Hoverable } from "@dust-tt/sparkle";
-import { useEffect, useState } from "react";
+import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useController, useFormContext } from "react-hook-form";
 
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
   OAuthCredentialInputs,
@@ -18,206 +26,389 @@ import type {
 import {
   getProviderRequiredOAuthCredentialInputs,
   isSupportedOAuthCredential,
-  OAUTH_PROVIDER_NAMES,
 } from "@app/types";
 
 export const OAUTH_USE_CASE_TO_LABEL: Record<MCPOAuthUseCase, string> = {
-  platform_actions: "Workspace",
-  personal_actions: "Personal",
+  platform_actions: "Shared account",
+  personal_actions: "Personal accounts",
 };
 
-type MCPServerOauthConnexionProps = {
-  authorization: AuthorizationInfo;
-  authCredentials: OAuthCredentials | null;
-  useCase: MCPOAuthUseCase | null;
-  setUseCase: (useCase: MCPOAuthUseCase) => void;
-  setAuthCredentials: (authCredentials: OAuthCredentials) => void;
-  setIsFormValid: (isFormValid: boolean) => void;
-  documentationUrl?: string;
+export const OAUTH_USE_CASE_TO_DESCRIPTION: Record<MCPOAuthUseCase, string> = {
+  platform_actions: "All members will use the credentials you provide here.",
+  personal_actions:
+    "Each member logs in with their own credentials when they use the tool.",
 };
+
+// Error key used for credential validation errors.
+// Parent components can check formState.errors[AUTH_CREDENTIALS_ERROR_KEY].
+export const AUTH_CREDENTIALS_ERROR_KEY = "authCredentials" as const;
+
+interface MCPServerOAuthConnexionProps {
+  toolName: string;
+  // Authorization is always passed as a prop from the parent dialog.
+  // It's managed via useState in the dialog (workflow state), not in form state.
+  authorization: AuthorizationInfo;
+  documentationUrl?: string;
+}
 
 export function MCPServerOAuthConnexion({
+  toolName,
   authorization,
-  authCredentials,
-  useCase,
-  setUseCase,
-  setAuthCredentials,
-  setIsFormValid,
   documentationUrl,
-}: MCPServerOauthConnexionProps) {
-  const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null);
+}: MCPServerOAuthConnexionProps) {
+  const { setError, clearErrors, setValue, control } =
+    useFormContext<MCPServerOAuthFormValues>();
+
+  const { field: useCaseField } = useController({
+    name: "useCase",
+    control,
+  });
+
+  const { field: authCredentialsField } = useController({
+    name: "authCredentials",
+    control,
+  });
+
+  const useCase = useCaseField.value;
+  const authCredentials = authCredentialsField.value;
+
+  // Dynamically fetched credential inputs based on provider and use case.
   const [inputs, setInputs] = useState<OAuthCredentialInputs | null>(null);
 
+  // Track the last initialized provider+useCase to avoid re-initializing on every render.
+  const lastInitializedRef = useRef<string | null>(null);
+
+  // Initialize use case and fetch credential inputs.
+  // setValue is stable across renders, so no ref tricks needed.
   useEffect(() => {
-    // Pick first choice by default.
-    if (authorization.supported_use_cases.length > 0 && !useCase) {
-      setUseCase(authorization.supported_use_cases[0]);
+    let effectiveUseCase = useCase;
+
+    // Auto-select default use case if not already set.
+    if (!effectiveUseCase) {
+      if (authorization.supported_use_cases.includes("personal_actions")) {
+        effectiveUseCase = "personal_actions";
+      } else if (authorization.supported_use_cases.length > 0) {
+        effectiveUseCase = authorization.supported_use_cases[0];
+      }
+      if (effectiveUseCase) {
+        setValue("useCase", effectiveUseCase);
+      }
     }
-  }, [authorization.supported_use_cases, setUseCase, useCase]);
 
-  useEffect(() => {
-    if (useCase) {
-      // We fetch the credential inputs for this provider and use case.
-      const fetchCredentialInputs = async () => {
-        const credentialInputs = await getProviderRequiredOAuthCredentialInputs(
-          {
-            provider: authorization.provider,
-            useCase: useCase,
-          }
-        );
-        setInputs(credentialInputs);
-
-        // Set the auth credentials to the values in the credentials object
-        // that already have a value as we will not ask the user for these values.
-        if (credentialInputs) {
-          setAuthCredentials(
-            Object.entries(credentialInputs).reduce(
-              (acc, [key, { value }]) => ({ ...acc, [key]: value }),
-              {}
-            )
-          );
-        }
-      };
-      void fetchCredentialInputs();
+    if (!effectiveUseCase) {
+      return;
     }
-  }, [authorization.provider, setAuthCredentials, useCase]);
 
-  // We check if the form is valid.
-  useEffect(() => {
-    if (inputs && authCredentials) {
-      let isFormValid = true;
-      for (const [key, value] of Object.entries(authCredentials)) {
-        if (!isSupportedOAuthCredential(key)) {
-          // Can't happen but to make typescript happy.
-          continue;
-        }
+    // Skip if we've already initialized for this provider+useCase combination.
+    const initKey = `${authorization.provider}:${effectiveUseCase}`;
+    if (lastInitializedRef.current === initKey) {
+      return;
+    }
+    lastInitializedRef.current = initKey;
 
-        const input = inputs[key];
-        if (input && input.validator) {
-          if (!input.validator(value)) {
-            isFormValid = false;
-            break;
-          }
-        } else {
-          if (!value) {
-            isFormValid = false;
-            break;
-          }
+    // Get credential inputs for the selected provider/use case.
+    const credentialInputs = getProviderRequiredOAuthCredentialInputs({
+      provider: authorization.provider,
+      useCase: effectiveUseCase,
+    });
+    setInputs(credentialInputs);
+
+    // Pre-populate credentials with default values from the provider.
+    if (credentialInputs) {
+      const nextCredentials: OAuthCredentials = {};
+      for (const [key, inputData] of Object.entries(credentialInputs)) {
+        if (isSupportedOAuthCredential(key)) {
+          nextCredentials[key] = inputData.value ?? "";
         }
       }
-
-      setIsFormValid(isFormValid && !!useCase);
+      setValue("authCredentials", nextCredentials);
     }
-  }, [authCredentials, inputs, setIsFormValid, useCase]);
+  }, [authorization, useCase, setValue]);
+
+  // Validate credentials based on dynamic requirements.
+  // Runs when credentials or inputs change, uses setError/clearErrors.
+  useEffect(() => {
+    if (!inputs) {
+      clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
+      return;
+    }
+
+    if (!authCredentials) {
+      setError(AUTH_CREDENTIALS_ERROR_KEY, {
+        type: "manual",
+        message: "Credentials required",
+      });
+      return;
+    }
+
+    // Find first invalid credential.
+    let errorMessage: string | null = null;
+    for (const [key, inputData] of Object.entries(inputs)) {
+      if (!isSupportedOAuthCredential(key) || inputData.value) {
+        continue; // Skip unsupported or pre-filled values.
+      }
+
+      const value = authCredentials[key] ?? "";
+      if (inputData.validator) {
+        if (!inputData.validator(value)) {
+          errorMessage = `Invalid ${inputData.label}`;
+          break;
+        }
+      } else if (!value) {
+        errorMessage = `${inputData.label} is required`;
+        break;
+      }
+    }
+
+    if (errorMessage) {
+      setError(AUTH_CREDENTIALS_ERROR_KEY, {
+        type: "manual",
+        message: errorMessage,
+      });
+    } else {
+      clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
+    }
+  }, [authCredentials, inputs, setError, clearErrors]);
+
+  const handleCredentialChange = (key: string, value: string) => {
+    if (!isSupportedOAuthCredential(key)) {
+      return;
+    }
+    authCredentialsField.onChange({ ...(authCredentials ?? {}), [key]: value });
+  };
+
+  const handleUseCaseSelect = (selectedUseCase: MCPOAuthUseCase) => {
+    useCaseField.onChange(selectedUseCase);
+  };
+
+  const supportsPersonalActions =
+    authorization.supported_use_cases.includes("personal_actions");
+  const supportsPlatformActions =
+    authorization.supported_use_cases.includes("platform_actions");
+  const supportsBoth = supportsPersonalActions && supportsPlatformActions;
 
   return (
-    <div
-      className="flex flex-col items-center gap-4"
-      id="mcp-server-oauth-connexion-container"
-      ref={setContainerRef}
-    >
-      <>
-        {authorization.supported_use_cases.length > 1 && containerRef && (
-          <div className="w-full space-y-2">
-            <div className="heading-base">Authentication type</div>
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    isSelect
-                    variant="outline"
-                    label={
-                      useCase
-                        ? OAUTH_USE_CASE_TO_LABEL[useCase]
-                        : "Select credentials type"
-                    }
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent mountPortalContainer={containerRef}>
-                  {authorization.supported_use_cases.map(
-                    (selectableUseCase) => (
-                      <DropdownMenuCheckboxItem
-                        key={selectableUseCase}
-                        checked={selectableUseCase === useCase}
-                        onCheckedChange={() => setUseCase(selectableUseCase)}
-                      >
-                        {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        )}
-        <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
-          {useCase === "platform_actions" && (
-            <span className="text-sm">
-              The credentials you provide will be shared by all users of these
-              tools.
-            </span>
-          )}
-          {useCase === "personal_actions" && (
-            <span className="text-sm">
-              Users will connect their own accounts the first time they interact
-              with these tools.
-            </span>
-          )}
+    <div className="flex flex-col items-center gap-4">
+      <div className="w-full space-y-4">
+        <div className="heading-lg text-foreground dark:text-foreground-night">
+          {supportsBoth ? "How do you want to connect?" : "Connection type"}
         </div>
+        <div className="grid w-full grid-cols-2 gap-4">
+          <UseCaseCard
+            useCaseType="personal_actions"
+            isSelected={useCase === "personal_actions"}
+            isSupported={supportsPersonalActions}
+            toolName={toolName}
+            onSelect={handleUseCaseSelect}
+          />
+          <UseCaseCard
+            useCaseType="platform_actions"
+            isSelected={useCase === "platform_actions"}
+            isSupported={supportsPlatformActions}
+            toolName={toolName}
+            onSelect={handleUseCaseSelect}
+          />
+        </div>
+      </div>
 
-        {inputs &&
-          Object.entries(inputs).map(([key, inputData]) => {
-            if (inputData.value) {
-              // If the credential is already set, we don't need to ask the user for it.
-              return null;
-            }
+      {authorization.provider === "snowflake" && <SnowflakeSetupInstructions />}
 
-            if (!isSupportedOAuthCredential(key)) {
-              // Can't happen but to make typescript happy.
-              return null;
+      {inputs && (
+        <div className="w-full space-y-4 pt-4">
+          {Object.entries(inputs).map(([key, inputData]) => {
+            if (inputData.value || !isSupportedOAuthCredential(key)) {
+              return null; // Skip pre-filled or unsupported credentials.
             }
 
             const value = authCredentials?.[key] ?? "";
+            const hasValidationError =
+              value.length > 0 &&
+              inputData.validator &&
+              !inputData.validator(value);
+
             return (
               <div key={key} className="w-full space-y-1">
-                <div className="heading-base">{inputData.label}</div>
+                <Label className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  {inputData.label}
+                </Label>
                 <Input
                   id={key}
                   value={value}
-                  onChange={(e) =>
-                    setAuthCredentials({
-                      ...authCredentials,
-                      [key]: e.target.value,
-                    })
-                  }
+                  onChange={(e) => handleCredentialChange(key, e.target.value)}
                   message={inputData.helpMessage}
-                  messageStatus={
-                    value.length > 0 &&
-                    inputData.validator &&
-                    !inputData.validator(value)
-                      ? "error"
-                      : undefined
-                  }
+                  messageStatus={hasValidationError ? "error" : undefined}
                 />
               </div>
             );
           })}
-        {documentationUrl && (
-          <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
-            Questions ? Read{" "}
-            <Hoverable
-              href={documentationUrl}
-              target="_blank"
-              variant="primary"
-            >
-              our guide
-            </Hoverable>{" "}
-            on {OAUTH_PROVIDER_NAMES[authorization.provider]}
+        </div>
+      )}
+
+      {documentationUrl && (
+        <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Questions ? Read{" "}
+          <Hoverable href={documentationUrl} target="_blank" variant="primary">
+            our guide
+          </Hoverable>{" "}
+          on {toolName}.
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface UseCaseCardProps {
+  useCaseType: MCPOAuthUseCase;
+  isSelected: boolean;
+  isSupported: boolean;
+  toolName: string;
+  onSelect: (useCase: MCPOAuthUseCase) => void;
+}
+
+function UseCaseCard({
+  useCaseType,
+  isSelected,
+  isSupported,
+  toolName,
+  onSelect,
+}: UseCaseCardProps) {
+  const icon = useCaseType === "personal_actions" ? UserIcon : PlanetIcon;
+  const supportLabel =
+    useCaseType === "personal_actions" ? "individual" : "shared";
+
+  const card = (
+    <Card
+      variant={isSupported ? "secondary" : "primary"}
+      selected={isSelected}
+      disabled={!isSupported}
+      className={cn(
+        "h-full",
+        isSupported ? "cursor-pointer" : "cursor-not-allowed"
+      )}
+      onClick={isSupported ? () => onSelect(useCaseType) : undefined}
+    >
+      <div className="flex flex-col gap-1 p-1">
+        <div className="flex items-center gap-2">
+          <Icon
+            visual={icon}
+            className={cn(
+              isSupported
+                ? "text-highlight"
+                : "text-muted-foreground dark:text-muted-foreground-night"
+            )}
+          />
+          <span
+            className={cn(
+              "font-medium",
+              isSupported
+                ? "text-highlight"
+                : "text-muted-foreground dark:text-muted-foreground-night"
+            )}
+          >
+            {OAUTH_USE_CASE_TO_LABEL[useCaseType]}
+          </span>
+        </div>
+        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          {OAUTH_USE_CASE_TO_DESCRIPTION[useCaseType]}
+        </span>
+      </div>
+    </Card>
+  );
+
+  if (!isSupported) {
+    return (
+      <Tooltip
+        label={`${toolName} does not support ${supportLabel} connection.`}
+        trigger={card}
+        tooltipTriggerAsChild
+      />
+    );
+  }
+
+  return card;
+}
+
+function SnowflakeSetupInstructions() {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const redirectUri = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/oauth/snowflake/finalize`;
+
+  return (
+    <div className="w-full pt-4">
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <CollapsibleTrigger hideChevron>
+          <div className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/50 p-3 text-left text-sm font-medium text-foreground transition-colors hover:bg-muted dark:border-border-night dark:bg-muted-night/50 dark:text-foreground-night dark:hover:bg-muted-night">
+            {isOpen ? (
+              <ChevronDownIcon className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRightIcon className="h-4 w-4 shrink-0" />
+            )}
+            <span>Snowflake Custom OAuth Setup Guide</span>
           </div>
-        )}
-      </>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="mt-3 space-y-4 rounded-lg border border-border bg-background p-4 text-sm dark:border-border-night dark:bg-background-night">
+            <p className="text-muted-foreground dark:text-muted-foreground-night">
+              Before connecting, you need to create a Custom OAuth Security
+              Integration in your Snowflake account. Run the following SQL
+              commands as an <strong>ACCOUNTADMIN</strong>:
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+                  1. Create the OAuth Security Integration:
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+                  {`CREATE SECURITY INTEGRATION dust_oauth
+  TYPE = OAUTH
+  ENABLED = TRUE
+  OAUTH_CLIENT = CUSTOM
+  OAUTH_CLIENT_TYPE = 'CONFIDENTIAL'
+  OAUTH_REDIRECT_URI = '${redirectUri}'
+  OAUTH_ISSUE_REFRESH_TOKENS = TRUE
+  OAUTH_REFRESH_TOKEN_VALIDITY = 7776000;`}
+                </pre>
+              </div>
+
+              <div>
+                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+                  2. Get the Client ID and Client Secret:
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+                  {`SELECT SYSTEM$SHOW_OAUTH_CLIENT_SECRETS('DUST_OAUTH');`}
+                </pre>
+                <p className="mt-2 text-muted-foreground dark:text-muted-foreground-night">
+                  This returns a JSON object with{" "}
+                  <code className="rounded bg-muted px-1 dark:bg-muted-night">
+                    OAUTH_CLIENT_ID
+                  </code>{" "}
+                  and{" "}
+                  <code className="rounded bg-muted px-1 dark:bg-muted-night">
+                    OAUTH_CLIENT_SECRET
+                  </code>
+                  . Copy these values into the form below.
+                </p>
+              </div>
+
+              <div>
+                <p className="mb-2 font-medium text-foreground dark:text-foreground-night">
+                  3. (Optional) Grant the integration to specific roles:
+                </p>
+                <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-3 text-xs dark:bg-muted-night">
+                  {`GRANT USAGE ON INTEGRATION dust_oauth TO ROLE <role_name>;`}
+                </pre>
+              </div>
+            </div>
+
+            <p className="text-muted-foreground dark:text-muted-foreground-night">
+              <strong>Note:</strong> The warehouse you specify below will be
+              used for all users. The default role can be overridden by
+              individual users during their personal authentication.
+            </p>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

@@ -17,12 +17,13 @@ import {
   editClientExecutableFile,
   getClientExecutableFileContent,
 } from "@app/lib/api/files/client_executable";
+import { formatValidationWarningsForLLM } from "@app/lib/api/files/content_validation";
 import type { Authenticator } from "@app/lib/auth";
-import type { ContentCreationFileContentType } from "@app/types";
+import type { InteractiveContentFileContentType } from "@app/types";
 import {
-  clientExecutableContentType,
-  CONTENT_CREATION_FILE_FORMATS,
   Err,
+  frameContentType,
+  INTERACTIVE_CONTENT_FILE_FORMATS,
   Ok,
 } from "@app/types";
 
@@ -31,13 +32,13 @@ const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 /**
  * Slideshow Server - Allows the model to create and update slideshow files.
  * Slideshow files are interactive presentations that users can view and navigate.
- * Files are rendered in a content creation viewer where users can interact with them.
+ * Files are rendered in a interactive content viewer where users can interact with them.
  * We return the file resource only on file creation, as edit updates the existing file.
  */
-const createServer = (
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-): McpServer => {
+): McpServer {
   const server = makeInternalMCPServer("slideshow");
 
   server.tool(
@@ -53,13 +54,13 @@ const createServer = (
         ),
       mime_type: z
         .enum(
-          Object.keys(CONTENT_CREATION_FILE_FORMATS) as [
-            ContentCreationFileContentType,
+          Object.keys(INTERACTIVE_CONTENT_FILE_FORMATS) as [
+            InteractiveContentFileContentType,
           ]
         )
         .describe(
           "The MIME type for the slideshow file. Currently supports " +
-            `'${clientExecutableContentType}' for client-side executable files.`
+            `'${frameContentType}' for client-side executable files.`
         ),
       content: z
         .string()
@@ -79,7 +80,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: CREATE_SLIDESHOW_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: CREATE_SLIDESHOW_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async (
         { file_name, mime_type, content, description },
         { sendNotification, _meta }
@@ -111,11 +115,13 @@ const createServer = (
           );
         }
 
-        const { value: fileResource } = result;
+        const { fileResource, warnings } = result.value;
 
-        const responseText = description
+        let responseText = description
           ? `Slideshow '${fileResource.sId}' created successfully. ${description}`
           : `Slideshow '${fileResource.sId}' created successfully.`;
+
+        responseText += formatValidationWarningsForLLM(warnings);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
@@ -127,7 +133,7 @@ const createServer = (
               data: {
                 label: "Creating slideshow...",
                 output: {
-                  type: "content_creation_file",
+                  type: "interactive_content_file",
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
@@ -204,7 +210,10 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: EDIT_SLIDESHOW_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: EDIT_SLIDESHOW_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async (
         { file_id, old_string, new_string, expected_replacements },
         { sendNotification, _meta }
@@ -225,12 +234,14 @@ const createServer = (
           );
         }
 
-        const { fileResource, replacementCount } = result.value;
+        const { fileResource, replacementCount, warnings } = result.value;
 
         const pluralS = replacementCount === 1 ? "" : "s";
-        const responseText =
+        let responseText =
           `Slideshow '${fileResource.sId}' updated successfully. Made ` +
           `${replacementCount} replacement${pluralS}`;
+
+        responseText += formatValidationWarningsForLLM(warnings);
 
         if (_meta?.progressToken) {
           const notification: MCPProgressNotificationType = {
@@ -242,7 +253,7 @@ const createServer = (
               data: {
                 label: "Updating slideshow...",
                 output: {
-                  type: "content_creation_file",
+                  type: "interactive_content_file",
                   fileId: fileResource.sId,
                   mimeType: fileResource.contentType,
                   title: fileResource.fileName,
@@ -281,12 +292,18 @@ const createServer = (
     },
     withToolLogging(
       auth,
-      { toolName: RETRIEVE_SLIDESHOW_FILE_TOOL_NAME, agentLoopContext },
+      {
+        toolNameForMonitoring: RETRIEVE_SLIDESHOW_FILE_TOOL_NAME,
+        agentLoopContext,
+      },
       async ({ file_id }) => {
         const result = await getClientExecutableFileContent(auth, file_id);
-
         if (result.isErr()) {
-          return new Err(new MCPError(result.error.message));
+          return new Err(
+            new MCPError(result.error.message, {
+              tracked: result.error.tracked,
+            })
+          );
         }
 
         const { fileResource, content } = result.value;
@@ -304,6 +321,6 @@ const createServer = (
   );
 
   return server;
-};
+}
 
 export default createServer;

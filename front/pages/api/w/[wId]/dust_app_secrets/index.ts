@@ -6,7 +6,7 @@ import {
   getDustAppSecrets,
 } from "@app/lib/api/dust_app_secrets";
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
@@ -104,7 +104,7 @@ async function handler(
           hash: encryptedValue,
         });
       } else {
-        postSecret = await DustAppSecret.create({
+        postSecret = await DustAppSecretModel.create({
           userId: user.id,
           workspaceId: owner.id,
           name: sanitizedSecretName,

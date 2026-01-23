@@ -3,8 +3,8 @@ name: Publish Sparkle
 on:
   workflow_dispatch:
     inputs:
-      version_type:
-        description: "Type of version bump (major, minor, patch)"
+      release_type:
+        description: "Release type"
         required: true
         default: "patch"
         type: choice
@@ -12,38 +12,23 @@ on:
           - patch
           - minor
           - major
+          - rc
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: publish_sparkle
   cancel-in-progress: false
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20.13.0
-          cache: "npm"
-          cache-dependency-path: ./sparkle/package-lock.json
-
-      - name: Build and test
-        working-directory: sparkle
-        run: npm ci && npm run build
-
-  publish:
-    needs: build
+  publish-release:
+    if: github.event.inputs.release_type != 'rc' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
 
     steps:
       - name: Generate GitHub App token
@@ -61,10 +46,13 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: true
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20.13.0
+          node-version: 20.x
           registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
 
       - name: Configure git
         run: |
@@ -73,12 +61,9 @@ jobs:
 
       - name: Version bump and commit
         run: |
-          # Move to sparkle directory for npm version
           cd sparkle
-          CURRENT_VERSION=$(npm version ${{ github.event.inputs.version_type }} --no-git-tag-version)
+          CURRENT_VERSION=$(npm version ${{ github.event.inputs.release_type }} --no-git-tag-version)
           git add package.json package-lock.json
-          
-          # Commit with version
           git commit -m "chore(release): bump sparkle version to ${CURRENT_VERSION} [skip ci]"
           echo "Created version ${CURRENT_VERSION}"
 
@@ -88,6 +73,52 @@ jobs:
 
       - name: Publish
         working-directory: sparkle
-        run: npm ci && npm run build && npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm ci && npm run build && npm publish --provenance --access public
+
+  publish-rc:
+    if: github.event.inputs.release_type == 'rc'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Upgrade npm for OIDC support
+        run: npm install -g npm@latest
+
+      - name: Generate RC version
+        working-directory: sparkle
+        run: |
+          LATEST_VERSION=$(npm view @dust-tt/sparkle version)
+          echo "Latest published version: $LATEST_VERSION"
+
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+          NEXT_PATCH=$((PATCH + 1))
+          BASE_VERSION="${MAJOR}.${MINOR}.${NEXT_PATCH}"
+          echo "RC base version: $BASE_VERSION"
+
+          EXISTING_RCS=$(npm view @dust-tt/sparkle versions --json | jq -r '.[]' | grep "^${BASE_VERSION}-rc-" | sort -V | tail -n1 || echo "")
+
+          if [ -z "$EXISTING_RCS" ]; then
+            RC_VERSION="${BASE_VERSION}-rc-1"
+          else
+            RC_NUMBER=$(echo "$EXISTING_RCS" | sed "s/^${BASE_VERSION}-rc-//")
+            NEXT_RC_NUMBER=$((RC_NUMBER + 1))
+            RC_VERSION="${BASE_VERSION}-rc-${NEXT_RC_NUMBER}"
+          fi
+
+          echo "Generated RC version: $RC_VERSION"
+          npm version $RC_VERSION --no-git-tag-version
+
+      - name: Publish RC
+        working-directory: sparkle
+        run: |
+          npm ci && npm run build && npm publish --tag rc --provenance --access public
+          RC_VERSION=$(node -p "require('./package.json').version")
+          echo "Successfully published Sparkle RC: $RC_VERSION"

@@ -24,7 +24,12 @@ import { normalizeError } from "@connectors/types";
  */
 async function terminateWorkflowsForSchedule(
   scheduleHandle: ScheduleHandle,
-  client: Client
+  client: Client,
+  {
+    stopReason,
+  }: {
+    stopReason: string;
+  }
 ) {
   const scheduleDescription = await scheduleHandle.describe();
   // Terminate all the recent actions of the schedule,
@@ -34,7 +39,7 @@ async function terminateWorkflowsForSchedule(
       const workflowHandle = client.workflow.getHandle(
         action.action.workflow.workflowId
       );
-      await workflowHandle.terminate();
+      await workflowHandle.terminate(stopReason);
     } catch (error) {
       if (!(error instanceof WorkflowNotFoundError)) {
         logger.error({ error }, "Failed to terminate workflow.");
@@ -71,10 +76,18 @@ export async function createSchedule({
 
   try {
     const scheduleHandle = await client.schedule.create({
-      action,
+      action: {
+        ...action,
+        // Workflow-level search attributes.
+        searchAttributes: {
+          ...action.searchAttributes,
+          connectorId: connector ? [connector?.id] : undefined,
+        },
+      },
       scheduleId,
       policies,
       spec,
+      // Schedule-level search attributes.
       searchAttributes: {
         connectorId: connector ? [connector?.id] : undefined,
       },
@@ -112,7 +125,9 @@ export async function deleteSchedule({
   const scheduleHandle = client.schedule.getHandle(scheduleId);
   try {
     // Terminate the running workflows.
-    await terminateWorkflowsForSchedule(scheduleHandle, client);
+    await terminateWorkflowsForSchedule(scheduleHandle, client, {
+      stopReason: "Schedule deleted",
+    });
 
     // Delete the schedule.
     await scheduleHandle.delete();
@@ -136,7 +151,7 @@ export async function deleteSchedule({
 /**
  * Unpauses the schedule if paused and triggers the schedule to start the workflow immediately.
  */
-export async function triggerSchedule({
+export async function unpauseAndTriggerSchedule({
   scheduleId,
   connector,
 }: {
@@ -178,9 +193,11 @@ export async function triggerSchedule({
 export async function pauseSchedule({
   scheduleId,
   connector,
+  stopReason,
 }: {
   scheduleId: string;
   connector: ConnectorResource;
+  stopReason: string;
 }): Promise<Result<void, Error>> {
   const client = await getTemporalClient();
 
@@ -190,7 +207,9 @@ export async function pauseSchedule({
     await scheduleHandle.pause();
 
     // Terminate the running workflows.
-    await terminateWorkflowsForSchedule(scheduleHandle, client);
+    await terminateWorkflowsForSchedule(scheduleHandle, client, {
+      stopReason,
+    });
   } catch (error) {
     if (!(error instanceof ScheduleNotFoundError)) {
       logger.error(

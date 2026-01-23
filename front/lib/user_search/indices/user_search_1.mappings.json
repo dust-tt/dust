@@ -1,0 +1,36 @@
+{
+  "properties": {
+    "workspace_id": {
+      "type": "keyword"
+    },
+    "user_id": {
+      "type": "keyword"
+    },
+    "email": {
+      "type": "text",
+      "analyzer": "email_analyzer",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "full_name": {
+      "type": "text",
+      "analyzer": "icu_analyzer",
+      "fields": {
+        "edge": {
+          "type": "text",
+          "analyzer": "edge_analyzer",
+          "search_analyzer": "icu_analyzer"
+        },
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    },
+    "updated_at": {
+      "type": "date"
+    }
+  }
+}

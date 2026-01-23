@@ -1,17 +1,11 @@
-import {
-  Button,
-  Chip,
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-  LoginIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
-import { useCallback, useMemo, useState } from "react";
+import { Button, Chip, LoginIcon, XMarkIcon } from "@dust-tt/sparkle";
+import { useMemo, useState } from "react";
 
-import { ConnectMCPServerDialog } from "@app/components/actions/mcp/ConnectMCPServerDialog";
-import { OAUTH_USE_CASE_TO_LABEL } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
+import { ConnectMCPServerDialog } from "@app/components/actions/mcp/create/ConnectMCPServerDialog";
+import {
+  OAUTH_USE_CASE_TO_DESCRIPTION,
+  OAUTH_USE_CASE_TO_LABEL,
+} from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useDeleteMCPServerConnection,
@@ -28,10 +22,7 @@ export function MCPServerSettings({
   mcpServerView,
   owner,
 }: MCPServerSettingsProps) {
-  const authorization = useMemo(
-    () => mcpServerView.server.authorization,
-    [mcpServerView.server.authorization]
-  );
+  const authorization = mcpServerView.server.authorization;
 
   const { connections, isConnectionsLoading } = useMCPServerConnections({
     owner,
@@ -53,8 +44,15 @@ export function MCPServerSettings({
     owner,
   });
 
-  const handleDeleteConnection = useCallback(() => {
-    if (!connection || !mcpServerView) {
+  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedUseCase, setSelectedUseCase] =
+    useState<MCPOAuthUseCase | null>(null);
+
+  const useCase = selectedUseCase ?? mcpServerView.oAuthUseCase;
+
+  const handleDeleteConnection = () => {
+    if (!connection) {
       return;
     }
 
@@ -63,18 +61,7 @@ export function MCPServerSettings({
       connection,
       mcpServer: mcpServerView.server,
     });
-  }, [deleteMCPServerConnection, connection, mcpServerView]);
-
-  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedUseCase, setSelectedUseCase] =
-    useState<MCPOAuthUseCase | null>();
-
-  const useCase = useMemo(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    () => (selectedUseCase || mcpServerView.oAuthUseCase) as MCPOAuthUseCase,
-    [selectedUseCase, mcpServerView.oAuthUseCase]
-  );
+  };
 
   return (
     <>
@@ -124,56 +111,21 @@ export function MCPServerSettings({
       {connection && (
         <div className="space-y-2">
           <div className="heading-base">Credentials</div>
-
-          {mcpServerView.server.authorization &&
-            // Disabled for now, because switching to workspace credentials could be dangerous without knowing which account it was.
-            mcpServerView.server.authorization.supported_use_cases &&
-            mcpServerView.server.authorization.supported_use_cases.length <
-              0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    isSelect
-                    variant="outline"
-                    label={
-                      useCase
-                        ? OAUTH_USE_CASE_TO_LABEL[useCase]
-                        : "Select credentials type"
-                    }
-                    size="sm"
-                  />
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent>
-                  {mcpServerView.server.authorization.supported_use_cases.map(
-                    (selectableUseCase) => (
-                      <DropdownMenuCheckboxItem
-                        key={selectableUseCase}
-                        checked={selectableUseCase === useCase}
-                        onCheckedChange={() =>
-                          setSelectedUseCase(selectableUseCase)
-                        }
-                      >
-                        {OAUTH_USE_CASE_TO_LABEL[selectableUseCase]}
-                      </DropdownMenuCheckboxItem>
-                    )
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
           <div className="w-full text-muted-foreground dark:text-muted-foreground-night">
             {useCase === "platform_actions" && (
               <>
-                <span className="font-semibold">Workspace credentials</span>:
-                These tools will use the account's credentials provided during
-                activation for all users.
+                <span className="font-semibold">
+                  {OAUTH_USE_CASE_TO_LABEL["platform_actions"]}
+                </span>
+                : {OAUTH_USE_CASE_TO_DESCRIPTION["platform_actions"]}
               </>
             )}
             {useCase === "personal_actions" && (
               <>
-                <span className="font-semibold">Personal credentials</span>:
-                Users will connect their own accounts the first time they
-                interact with these tools.
+                <span className="font-semibold">
+                  {OAUTH_USE_CASE_TO_LABEL["personal_actions"]}
+                </span>
+                : {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
               </>
             )}
           </div>

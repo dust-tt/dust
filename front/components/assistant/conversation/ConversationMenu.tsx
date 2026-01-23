@@ -1,9 +1,13 @@
 import {
   Avatar,
+  ContactsUserIcon,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuPortal,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   LinkIcon,
   PencilSquareIcon,
@@ -11,24 +15,25 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import React from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { DeleteConversationsDialog } from "@app/components/assistant/conversation/DeleteConversationsDialog";
 import { EditConversationTitleDialog } from "@app/components/assistant/conversation/EditConversationTitleDialog";
 import { LeaveConversationDialog } from "@app/components/assistant/conversation/LeaveConversationDialog";
+import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useConversationParticipants,
-  useConversationParticipationOption,
-  useDeleteConversation,
+  useConversationParticipationOptions,
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { asDisplayName } from "@app/types/shared/utils/string_utils";
 
 /**
  * Hook for handling right-click context menu with timing protection
@@ -109,7 +114,7 @@ export function ConversationMenu({
   triggerPosition,
 }: {
   activeConversationId: string | null;
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;
@@ -118,16 +123,28 @@ export function ConversationMenu({
   triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useUser();
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
+
+  const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
+  const { onOpenChange: onOpenChangeUserModal } = useURLSheet("userDetails");
+
+  const handleSeeAgentDetails = (agentId: string) => {
+    onOpenChangeAgentModal(true);
+    setQueryParam(router, "agentDetails", agentId);
+  };
+
+  const handleSeeUserDetails = (userId: string) => {
+    onOpenChangeUserModal(true);
+    setQueryParam(router, "userDetails", userId);
+  };
 
   const shouldWaitBeforeFetching =
     activeConversationId === null || user?.sId === undefined || !isOpen;
-  const conversationParticipationOption = useConversationParticipationOption({
+  const conversationParticipationOptions = useConversationParticipationOptions({
     ownerId: owner.sId,
     conversationId: activeConversationId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    userId: user?.sId || null,
+    userId: user?.sId ?? null,
     disabled: shouldWaitBeforeFetching,
   });
   const { conversationParticipants } = useConversationParticipants({
@@ -148,16 +165,25 @@ export function ConversationMenu({
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   const shareLink =
     baseUrl !== undefined
-      ? getAgentRoute(owner.sId, activeConversationId, undefined, baseUrl)
+      ? getConversationRoute(
+          owner.sId,
+          activeConversationId,
+          undefined,
+          baseUrl
+        )
       : undefined;
 
   const doDelete = useDeleteConversation(owner);
-  const leaveOrDelete = useCallback(async () => {
-    const res = await doDelete(conversation);
-    isConversationDisplayed &&
-      res &&
-      void router.push(getAgentRoute(owner.sId));
-  }, [conversation, doDelete, owner.sId, router, isConversationDisplayed]);
+  const leaveOrDelete = useCallback(
+    async (forceDelete: boolean = false) => {
+      const res = await doDelete(conversation, forceDelete);
+      // eslint-disable-next-line no-unused-expressions
+      isConversationDisplayed &&
+        res &&
+        void router.push(getConversationRoute(owner.sId));
+    },
+    [conversation, doDelete, owner.sId, router, isConversationDisplayed]
+  );
 
   const copyConversationLink = useCallback(async () => {
     await navigator.clipboard.writeText(shareLink ?? "");
@@ -168,39 +194,15 @@ export function ConversationMenu({
     return null;
   }
 
-  const ConversationActionMenuItem = () => {
-    switch (conversationParticipationOption) {
-      case "delete":
-        return (
-          <DropdownMenuItem
-            label="Delete"
-            onClick={() => setShowDeleteDialog(true)}
-            icon={TrashIcon}
-          />
-        );
-      case "leave":
-        return (
-          <DropdownMenuItem
-            label="Leave"
-            onClick={() => setShowLeaveDialog(true)}
-            icon={XMarkIcon}
-          />
-        );
-      case "join":
-        return (
-          <DropdownMenuItem
-            label="Join"
-            onClick={joinConversation}
-            icon={PlusCircleIcon}
-          />
-        );
-      default:
-        return null;
-    }
-  };
+  const canJoin = conversationParticipationOptions.includes("join");
+  const canLeave = conversationParticipationOptions.includes("leave");
+  const canDelete = conversationParticipationOptions.includes("delete");
 
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      onContextMenu={(e) => e.stopPropagation()}
+    >
       <DeleteConversationsDialog
         isOpen={showDeleteDialog}
         type="selection"
@@ -208,7 +210,7 @@ export function ConversationMenu({
         onClose={() => setShowDeleteDialog(false)}
         onDelete={() => {
           setShowDeleteDialog(false);
-          void leaveOrDelete();
+          void leaveOrDelete(true);
         }}
       />
       <LeaveConversationDialog
@@ -222,7 +224,7 @@ export function ConversationMenu({
       <EditConversationTitleDialog
         isOpen={showRenameDialog}
         onClose={() => setShowRenameDialog(false)}
-        ownerId={owner.sId}
+        owner={owner}
         conversationId={activeConversationId}
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         currentTitle={conversation?.title || ""}
@@ -248,70 +250,85 @@ export function ConversationMenu({
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent>
-          <DropdownMenuLabel>Conversation</DropdownMenuLabel>
           <DropdownMenuItem
             label="Rename"
             onClick={() => setShowRenameDialog(true)}
             icon={PencilSquareIcon}
           />
-
-          <ConversationActionMenuItem />
-
+          {conversationParticipants !== undefined &&
+            (conversationParticipants.users.length > 0 ||
+              conversationParticipants.agents.length > 0) && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger
+                  icon={ContactsUserIcon}
+                  label="Participant list"
+                />
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {conversationParticipants.agents.map((agent) => (
+                      <DropdownMenuItem
+                        key={agent.configurationId}
+                        label={agent.name}
+                        onClick={() =>
+                          handleSeeAgentDetails(agent.configurationId)
+                        }
+                        icon={
+                          <Avatar
+                            size="xs"
+                            visual={agent.pictureUrl}
+                            name={agent.name}
+                          />
+                        }
+                      />
+                    ))}
+                    {conversationParticipants.users.map((user) => (
+                      <DropdownMenuItem
+                        key={user.sId}
+                        label={user.fullName ?? user.username}
+                        onClick={() => handleSeeUserDetails(user.sId)}
+                        icon={
+                          <Avatar
+                            size="xs"
+                            visual={user.pictureUrl}
+                            name={user.fullName ?? user.username}
+                            isRounded
+                          />
+                        }
+                        className="!text-foreground dark:!text-foreground-night"
+                      />
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            )}
           {shareLink && (
-            <>
-              <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
-              <DropdownMenuItem
-                label="Copy the link"
-                onClick={copyConversationLink}
-                icon={LinkIcon}
-              />
-            </>
+            <DropdownMenuItem
+              label="Copy the link"
+              onClick={copyConversationLink}
+              icon={LinkIcon}
+            />
           )}
-
-          {conversationParticipants === undefined ? null : (
-            <>
-              {conversationParticipants?.users.length > 0 && (
-                <>
-                  <DropdownMenuLabel>Participants</DropdownMenuLabel>
-                  {conversationParticipants.users.map((user) => (
-                    <DropdownMenuItem
-                      key={user.sId}
-                      label={asDisplayName(user.username)}
-                      icon={
-                        <Avatar
-                          size="xs"
-                          visual={user.pictureUrl}
-                          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                          name={user.fullName || user.username}
-                        />
-                      }
-                      disabled
-                      className="!text-foreground dark:!text-foreground-night"
-                    />
-                  ))}
-                </>
-              )}
-              {conversationParticipants.agents.length > 0 && (
-                <>
-                  <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                  {conversationParticipants.agents.map((agent) => (
-                    <DropdownMenuItem
-                      key={agent.configurationId}
-                      label={agent.name}
-                      icon={
-                        <Avatar
-                          size="xs"
-                          visual={agent.pictureUrl}
-                          name={agent.name}
-                        />
-                      }
-                      disabled
-                      className="!text-foreground dark:!text-foreground-night"
-                    />
-                  ))}
-                </>
-              )}
-            </>
+          {canJoin && (
+            <DropdownMenuItem
+              label="Join"
+              onClick={joinConversation}
+              icon={PlusCircleIcon}
+            />
+          )}
+          {canLeave && (
+            <DropdownMenuItem
+              label="Leave"
+              onClick={() => setShowLeaveDialog(true)}
+              icon={XMarkIcon}
+            />
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              label="Delete"
+              onClick={() => setShowDeleteDialog(true)}
+              icon={TrashIcon}
+              variant="warning"
+            />
           )}
         </DropdownMenuContent>
       </DropdownMenu>

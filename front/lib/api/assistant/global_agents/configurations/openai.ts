@@ -3,9 +3,12 @@ import {
   globalAgentGuidelines,
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
-import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
+import {
+  _getDefaultWebActionsForGlobalAgent,
+  _getInteractiveContentToolConfiguration,
+} from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
-import type { GlobalAgentSettings } from "@app/lib/models/assistant/agent";
+import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type {
   AgentConfigurationStatus,
@@ -15,8 +18,8 @@ import {
   GLOBAL_AGENTS_SID,
   GPT_3_5_TURBO_MODEL_CONFIG,
   GPT_4_1_MODEL_CONFIG,
+  GPT_5_2_MODEL_CONFIG,
   GPT_5_MINI_MODEL_CONFIG,
-  GPT_5_MODEL_CONFIG,
   GPT_5_NANO_MODEL_CONFIG,
   MAX_STEPS_USE_PER_RUN_LIMIT,
   O1_MINI_MODEL_CONFIG,
@@ -35,9 +38,11 @@ import {
 export function _getGPT35TurboGlobalAgent({
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "active";
 
@@ -67,11 +72,15 @@ export function _getGPT35TurboGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -82,10 +91,12 @@ export function _getGPT4GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -122,11 +133,15 @@ export function _getGPT4GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -137,10 +152,12 @@ export function _getGPT5GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -170,8 +187,8 @@ export function _getGPT5GlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_MODEL_CONFIG.providerId,
-      modelId: GPT_5_MODEL_CONFIG.modelId,
+      providerId: GPT_5_2_MODEL_CONFIG.providerId,
+      modelId: GPT_5_2_MODEL_CONFIG.modelId,
       temperature: 0.7,
       /**
        * WARNING: Because the default in ChatGPT is no reasoning, we do the same
@@ -183,11 +200,15 @@ export function _getGPT5GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -202,10 +223,12 @@ export function _getGPT5ThinkingGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -236,21 +259,25 @@ export function _getGPT5ThinkingGlobalAgent({
     scope: "global",
     userFavorite: false,
     model: {
-      providerId: GPT_5_MODEL_CONFIG.providerId,
-      modelId: GPT_5_MODEL_CONFIG.modelId,
+      providerId: GPT_5_2_MODEL_CONFIG.providerId,
+      modelId: GPT_5_2_MODEL_CONFIG.modelId,
       temperature: 0.7,
-      reasoningEffort: GPT_5_MODEL_CONFIG.defaultReasoningEffort,
+      reasoningEffort: GPT_5_2_MODEL_CONFIG.defaultReasoningEffort,
     },
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -261,10 +288,12 @@ export function _getGPT5MiniGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -305,11 +334,15 @@ export function _getGPT5MiniGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -319,10 +352,12 @@ export function _getGPT5NanoGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -363,11 +398,15 @@ export function _getGPT5NanoGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -378,10 +417,12 @@ export function _getO3MiniGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status: AgentConfigurationStatus = "active";
 
@@ -419,11 +460,15 @@ export function _getO3MiniGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -434,10 +479,12 @@ export function _getO1GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -470,11 +517,15 @@ export function _getO1GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -486,7 +537,7 @@ export function _getO1MiniGlobalAgent({
   settings,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -516,9 +567,9 @@ export function _getO1MiniGlobalAgent({
     },
     actions: [],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -529,10 +580,12 @@ export function _getO1HighReasoningGlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -566,11 +619,15 @@ export function _getO1HighReasoningGlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: false,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,
@@ -581,10 +638,12 @@ export function _getO3GlobalAgent({
   auth,
   settings,
   webSearchBrowseMCPServerView,
+  interactiveContentMCPServerView,
 }: {
   auth: Authenticator;
-  settings: GlobalAgentSettings | null;
+  settings: GlobalAgentSettingsModel | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -617,11 +676,15 @@ export function _getO3GlobalAgent({
         agentId: sId,
         webSearchBrowseMCPServerView,
       }),
+      ..._getInteractiveContentToolConfiguration({
+        agentId: sId,
+        interactiveContentMCPServerView,
+      }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-    visualizationEnabled: true,
     templateId: null,
     requestedGroupIds: [],
+    requestedSpaceIds: [],
     tags: [],
     canRead: true,
     canEdit: false,

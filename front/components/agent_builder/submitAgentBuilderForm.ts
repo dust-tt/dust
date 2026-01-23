@@ -1,17 +1,25 @@
-import type {
-  AdditionalConfigurationInBuilderType,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { DROID_AVATAR_URLS } from "@app/components/agent_builder/settings/avatar_picker/types";
 import {
   expandFoldersToTables,
   getTableIdForContentNode,
-} from "@app/components/assistant_builder/shared";
+} from "@app/components/agent_builder/shared/tables";
+import type { AdditionalConfigurationInBuilderType } from "@app/components/shared/tools_picker/types";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import { clientFetch } from "@app/lib/egress/client";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import { fetcherWithBody } from "@app/lib/swr/swr";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import datadogLogger from "@app/logger/datadogLogger";
+import type {
+  PatchTriggersRequestBody,
+  PostTriggersRequestBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/triggers";
 import type {
   GetContentNodesOrChildrenRequestBodyType,
   GetDataSourceViewContentNodes,
@@ -23,6 +31,7 @@ import type {
   LightAgentConfigurationType,
   PostOrPatchAgentConfigurationRequestBody,
   Result,
+  UserType,
   WorkspaceType,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
@@ -36,14 +45,12 @@ function processDataSourceConfigurations(
     dataSourceViewId: config.dataSourceView.sId,
     workspaceId: owner.sId,
     filter: {
-      parents: config.isSelectAll
-        ? null
-        : {
-            in: config.selectedResources.map((resource) => resource.internalId),
-            not: config.excludedResources.map(
-              (resource) => resource.internalId
-            ),
-          },
+      parents: {
+        in: config.isSelectAll
+          ? null
+          : config.selectedResources.map((resource) => resource.internalId),
+        not: config.excludedResources.map((resource) => resource.internalId),
+      },
       tags: config.tagsFilter
         ? {
             in: config.tagsFilter.in,
@@ -190,20 +197,198 @@ export function processAdditionalConfiguration(
   return flattenConfig(additionalConfiguration, {});
 }
 
+/**
+ * Process triggers for an agent: validate, delete, update, and create.
+ * Handles all trigger operations in the correct order (DELETE -> PATCH -> POST).
+ */
+async function processTriggers({
+  formData,
+  owner,
+  agentConfigurationId,
+  userId,
+}: {
+  formData: AgentBuilderFormData;
+  owner: WorkspaceType;
+  agentConfigurationId: string;
+  userId: number | null;
+}): Promise<Result<void, Error>> {
+  // Only submit triggers that belong to the current user to avoid updating other users' triggers
+  if (!userId) {
+    return new Err(new Error("A user is required to update triggers"));
+  }
+
+  // Validate trigger names are unique
+  const allTriggerNames = [
+    ...formData.triggersToCreate.map((t) => t.name),
+    ...formData.triggersToUpdate.map((t) => t.name),
+  ];
+  const uniqueTriggerNames = new Set(allTriggerNames);
+  if (uniqueTriggerNames.size !== allTriggerNames.length) {
+    datadogLogger.error(
+      {
+        workspaceId: owner.sId,
+        agentConfigurationId,
+        triggerNames: allTriggerNames,
+      },
+      "[Agent builder] - Duplicate trigger names found"
+    );
+    return new Err(
+      new Error("Trigger names must be unique for a given agent.")
+    );
+  }
+
+  // Process triggers in order: DELETE -> PATCH -> POST (batch operations)
+  // 1. Batch delete triggers
+  if (formData.triggersToDelete.length > 0) {
+    const deleteRes = await clientFetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          triggerIds: formData.triggersToDelete,
+        }),
+      }
+    );
+
+    if (!deleteRes.ok) {
+      const error = await deleteRes.json();
+      datadogLogger.error(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId,
+          triggerIds: formData.triggersToDelete,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          errorMessage: error?.api_error?.message || error?.error?.message,
+        },
+        "[Agent builder] - Failed to delete triggers"
+      );
+      return new Err(new Error("An error occurred while deleting triggers."));
+    }
+  }
+
+  // 2. Batch update existing triggers
+  if (formData.triggersToUpdate.length > 0) {
+    const updateRes = await clientFetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          triggers: formData.triggersToUpdate.map((trigger) => {
+            const baseData = {
+              sId: trigger.sId,
+              name: trigger.name,
+              status: trigger.status,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PatchTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PatchTriggersRequestBody["triggers"][number];
+          }),
+        }),
+      }
+    );
+
+    if (!updateRes.ok) {
+      const error = await updateRes.json();
+      datadogLogger.error(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId,
+          triggersCount: formData.triggersToUpdate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          errorMessage: error?.api_error?.message || error?.error?.message,
+        },
+        "[Agent builder] - Failed to update triggers"
+      );
+      return new Err(new Error("An error occurred while updating triggers."));
+    }
+  }
+
+  // 3. Batch create new triggers
+  if (formData.triggersToCreate.length > 0) {
+    const createRes = await clientFetch(
+      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          triggers: formData.triggersToCreate.map((trigger) => {
+            const baseData = {
+              name: trigger.name,
+              status: trigger.status,
+              customPrompt: trigger.customPrompt,
+              naturalLanguageDescription: trigger.naturalLanguageDescription,
+              configuration: trigger.configuration,
+              kind: trigger.kind,
+            };
+
+            if (trigger.kind === "webhook") {
+              return {
+                ...baseData,
+                executionPerDayLimitOverride:
+                  trigger.executionPerDayLimitOverride,
+                webhookSourceViewSId: trigger.webhookSourceViewSId,
+              } as PostTriggersRequestBody["triggers"][number];
+            }
+
+            return baseData as PostTriggersRequestBody["triggers"][number];
+          }),
+        }),
+      }
+    );
+
+    if (!createRes.ok) {
+      const error = await createRes.json();
+      datadogLogger.error(
+        {
+          workspaceId: owner.sId,
+          agentConfigurationId,
+          triggersCount: formData.triggersToCreate.length,
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+          errorMessage: error?.api_error?.message || error?.error?.message,
+        },
+        "[Agent builder] - Failed to create triggers"
+      );
+      return new Err(new Error("An error occurred while creating triggers."));
+    }
+  }
+
+  return new Ok(undefined);
+}
+
 export async function submitAgentBuilderForm({
+  user,
   formData,
   owner,
   agentConfigurationId = null,
   isDraft = false,
   areSlackChannelsChanged,
-  currentUserId,
 }: {
+  user: UserType;
   formData: AgentBuilderFormData;
   owner: WorkspaceType;
   agentConfigurationId?: string | null;
   isDraft?: boolean;
   areSlackChannelsChanged?: boolean;
-  currentUserId?: number;
 }): Promise<
   Result<LightAgentConfigurationType | AgentConfigurationType, Error>
 > {
@@ -214,7 +399,7 @@ export async function submitAgentBuilderForm({
     formData.agentSettings.pictureUrl ?? getRandomDefaultAvatar();
 
   // Process actions asynchronously to handle folder-to-table expansion
-  const mcpActions = formData.actions.filter((action) => action.type === "MCP");
+  const mcpActions = formData.actions;
 
   let processedActions;
   try {
@@ -245,7 +430,6 @@ export async function submitAgentBuilderForm({
                 )
               : null,
           childAgentId: action.configuration.childAgentId,
-          reasoningModel: action.configuration.reasoningModel,
           timeFrame: action.configuration.timeFrame,
           jsonSchema: action.configuration.jsonSchema,
           additionalConfiguration:
@@ -288,15 +472,16 @@ export async function submitAgentBuilderForm({
         reasoningEffort: formData.generationSettings.reasoningEffort,
         responseFormat: formData.generationSettings.responseFormat,
       },
+      skills: formData.skills.map((skill) => ({
+        sId: skill.sId,
+      })),
       actions: processedActions,
-      visualizationEnabled: formData.actions.some(
-        (action) => action.type === "DATA_VISUALIZATION"
-      ),
       templateId: null,
       tags: formData.agentSettings.tags,
       editors: formData.agentSettings.editors.map((editor) => ({
         sId: editor.sId,
       })),
+      additionalRequestedSpaceIds: formData.additionalSpaces,
     },
   };
 
@@ -307,7 +492,7 @@ export async function submitAgentBuilderForm({
   const method = agentConfigurationId ? "PATCH" : "POST";
 
   try {
-    const response = await fetch(endpoint, {
+    const response = await clientFetch(endpoint, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -330,6 +515,7 @@ export async function submitAgentBuilderForm({
           "[Agent builder] - Form submission failed"
         );
         return new Err(
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           new Error(error.error?.message || "Failed to save agent")
         );
       } catch {
@@ -353,6 +539,25 @@ export async function submitAgentBuilderForm({
 
     const agentConfiguration = result.agentConfiguration;
 
+    // Track agent creation (only for new agents, not updates)
+    if (!agentConfigurationId && !isDraft) {
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "create_agent",
+        action: TRACKING_ACTIONS.SUBMIT,
+        extra: {
+          agent_id: agentConfiguration.sId,
+          scope: formData.agentSettings.scope,
+          has_actions: processedActions.length > 0,
+          action_count: processedActions.length,
+          action_names: processedActions.map((a) => a.name).join(","),
+          has_instructions: !!formData.instructions,
+          model_id: formData.generationSettings.modelSettings.modelId,
+          model_provider: formData.generationSettings.modelSettings.providerId,
+        },
+      });
+    }
+
     // We don't update Slack channels nor triggers when saving a draft agent.
     if (isDraft) {
       return new Ok(agentConfiguration);
@@ -375,7 +580,7 @@ export async function submitAgentBuilderForm({
         ),
         auto_respond_without_mention: autoRespondWithoutMention,
       });
-      const slackLinkRes = await fetch(
+      const slackLinkRes = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/linked_slack_channels`,
         {
           method: "PATCH",
@@ -431,56 +636,15 @@ export async function submitAgentBuilderForm({
       }
     }
 
-    // Only submit triggers that belong to the current user to avoid updating other users' triggers
-    if (!currentUserId) {
-      return new Err(
-        new Error("currentUserId is required for non-draft agents")
-      );
-    }
-
-    const triggerSyncRes = await fetch(
-      `/api/w/${owner.sId}/assistant/agent_configurations/${agentConfiguration.sId}/triggers`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          triggers: formData.triggers,
-        }),
-      }
-    );
-
-    if (!triggerSyncRes.ok) {
-      try {
-        const error = await triggerSyncRes.json();
-        datadogLogger.error(
-          {
-            workspaceId: owner.sId,
-            agentConfigurationId: agentConfiguration.sId,
-            errorMessage: error?.api_error?.message || error?.error?.message,
-            triggersCount: formData.triggers.length,
-          },
-          "[Agent builder] - Failed to sync triggers for agent"
-        );
-        return new Err(
-          new Error(
-            error?.api_error?.message ||
-              error?.error?.message ||
-              "An error occurred while syncing triggers."
-          )
-        );
-      } catch {
-        datadogLogger.error(
-          {
-            workspaceId: owner.sId,
-            agentConfigurationId: agentConfiguration.sId,
-            triggersCount: formData.triggers.length,
-          },
-          "[Agent builder] - Failed to sync triggers for agent with unparseable error response"
-        );
-        return new Err(new Error("An error occurred while syncing triggers."));
-      }
+    // Process triggers (delete, update, create)
+    const triggerResult = await processTriggers({
+      formData,
+      owner,
+      agentConfigurationId: agentConfiguration.sId,
+      userId: user.id,
+    });
+    if (triggerResult.isErr()) {
+      return triggerResult;
     }
 
     return new Ok(agentConfiguration);

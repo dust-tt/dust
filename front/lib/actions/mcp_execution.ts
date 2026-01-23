@@ -1,4 +1,5 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { extname } from "path";
 import type { Logger } from "pino";
 
 import {
@@ -29,7 +30,7 @@ import { handleBase64Upload } from "@app/lib/actions/mcp_utils";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import { processAndStoreFromUrl } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentMCPActionOutputItem } from "@app/lib/models/assistant/actions/mcp";
+import { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import type { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -47,6 +48,7 @@ import {
   isSupportedFileContentType,
   removeNulls,
   stripNullBytes,
+  toWellFormed,
 } from "@app/types";
 
 export async function processToolNotification(
@@ -67,7 +69,7 @@ export async function processToolNotification(
 
   // Handle store_resource notifications by creating output items immediately
   if (isStoreResourceProgressOutput(output)) {
-    await AgentMCPActionOutputItem.bulkCreate(
+    await AgentMCPActionOutputItemModel.bulkCreate(
       output.contents.map((content) => ({
         workspaceId: action.workspaceId,
         agentMCPActionId: action.id,
@@ -124,7 +126,7 @@ export async function processToolResults(
     toolConfiguration: LightMCPToolConfigurationType;
   }
 ): Promise<{
-  outputItems: AgentMCPActionOutputItem[];
+  outputItems: AgentMCPActionOutputItemModel[];
   generatedFiles: ActionGeneratedFileType[];
 }> {
   const fileUseCase: FileUseCase = "conversation";
@@ -171,7 +173,7 @@ export async function processToolResults(
           return {
             content: {
               type: block.type,
-              text: stripNullBytes(block.text),
+              text: toWellFormed(stripNullBytes(block.text)),
             },
             file: null,
           };
@@ -214,7 +216,7 @@ export async function processToolResults(
                 type: block.type,
                 resource: {
                   ...block.resource,
-                  text: stripNullBytes(block.resource.text),
+                  text: toWellFormed(stripNullBytes(block.resource.text)),
                 },
               },
               file,
@@ -225,14 +227,19 @@ export async function processToolResults(
             isSupportedFileContentType(block.resource.mimeType)
           ) {
             if (isBlobResource(block)) {
-              const fileName = isResourceWithName(block)
-                ? block.name
-                : `generated-file-${Date.now()}${extensionsForContentType(block.resource.mimeType as SupportedFileContentType)[0]}`;
+              const extensionFromContentType =
+                extensionsForContentType(
+                  block.resource.mimeType as SupportedFileContentType
+                )[0] || "";
+              const extensionFromURI = extname(block.resource.uri);
+              const fileName = extensionFromURI
+                ? block.resource.uri
+                : `${block.resource.uri}${extensionFromContentType}`;
 
               return handleBase64Upload(auth, {
                 base64Data: block.resource.blob,
                 mimeType: block.resource.mimeType,
-                fileName,
+                fileName: fileName,
                 block,
                 fileUseCase,
                 fileUseCaseMetadata,
@@ -241,7 +248,7 @@ export async function processToolResults(
 
             const fileName = isResourceWithName(block.resource)
               ? block.resource.name
-              : block.resource.uri.split("/").pop() ?? "generated-file";
+              : (block.resource.uri.split("/").pop() ?? "generated-file");
 
             const fileUpsertResult = await processAndStoreFromUrl(auth, {
               url: block.resource.uri,
@@ -273,7 +280,7 @@ export async function processToolResults(
             const text =
               "text" in block.resource &&
               typeof block.resource.text === "string"
-                ? stripNullBytes(block.resource.text)
+                ? toWellFormed(stripNullBytes(block.resource.text))
                 : null;
 
             // If the resource text is too large, we create a file and return a resource block that references the file.
@@ -329,7 +336,7 @@ export async function processToolResults(
     }
   );
 
-  const outputItems = await AgentMCPActionOutputItem.bulkCreate(
+  const outputItems = await AgentMCPActionOutputItemModel.bulkCreate(
     cleanContent.map((c) => ({
       workspaceId: action.workspaceId,
       agentMCPActionId: action.id,

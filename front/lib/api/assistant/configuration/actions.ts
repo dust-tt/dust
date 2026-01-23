@@ -1,6 +1,7 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
+import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
@@ -9,22 +10,19 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type { LightAgentConfigurationType, Result } from "@app/types";
-import type { ReasoningModelConfigurationType } from "@app/types";
-import { removeNulls } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
 
 /**
  * Called by Agent Builder to create an action configuration.
@@ -38,20 +36,19 @@ export async function createAgentActionConfiguration(
 
   assert(isServerSideMCPServerConfiguration(action));
 
+  const mcpServerView = await MCPServerViewResource.fetchById(
+    auth,
+    action.mcpServerViewId
+  );
+  if (!mcpServerView) {
+    return new Err(new Error("MCP server view not found"));
+  }
+  const {
+    server: { name: serverName, description: serverDescription },
+  } = mcpServerView.toJSON();
+
   return withTransaction(async (t) => {
-    const mcpServerView = await MCPServerViewResource.fetchById(
-      auth,
-      action.mcpServerViewId
-    );
-    if (!mcpServerView) {
-      return new Err(new Error("MCP server view not found"));
-    }
-
-    const {
-      server: { name: serverName, description: serverDescription },
-    } = mcpServerView.toJSON();
-
-    const mcpConfig = await AgentMCPServerConfiguration.create(
+    const mcpConfig = await AgentMCPServerConfigurationModel.create(
       {
         sId: generateRandomModelSId(),
         agentConfigurationId: agentConfiguration.id,
@@ -61,7 +58,13 @@ export async function createAgentActionConfiguration(
         additionalConfiguration: action.additionalConfiguration,
         timeFrame: action.timeFrame,
         jsonSchema: action.jsonSchema,
-        name: serverName !== action.name ? action.name : null,
+        // specific case in which the server_name has an extra "&" compare
+        // to the action name
+        name:
+          serverName !== action.name &&
+          serverName !== DEFAULT_WEBSEARCH_ACTION_NAME
+            ? action.name
+            : null,
         singleToolDescriptionOverride:
           serverDescription !== action.description ? action.description : null,
         appId: action.dustAppConfiguration?.appId ?? null,
@@ -91,14 +94,6 @@ export async function createAgentActionConfiguration(
         mcpConfig,
       });
     }
-    // Creating the AgentReasoningConfiguration if configured
-    if (action.reasoningModel) {
-      await createReasoningConfiguration(auth, t, {
-        reasoningModel: action.reasoningModel,
-        mcpConfig,
-        agentConfiguration,
-      });
-    }
 
     return new Ok({
       id: mcpConfig.id,
@@ -111,7 +106,6 @@ export async function createAgentActionConfiguration(
       dataSources: action.dataSources,
       tables: action.tables,
       childAgentId: action.childAgentId,
-      reasoningModel: action.reasoningModel,
       timeFrame: action.timeFrame,
       additionalConfiguration: action.additionalConfiguration,
       dustAppConfiguration: action.dustAppConfiguration,
@@ -136,9 +130,9 @@ async function createAgentDataSourcesConfiguration(
     mcpServerConfiguration,
   }: {
     dataSourceConfigurations: DataSourceConfiguration[];
-    mcpServerConfiguration: AgentMCPServerConfiguration | null;
+    mcpServerConfiguration: AgentMCPServerConfigurationModel | null;
   }
-): Promise<AgentDataSourceConfiguration[]> {
+): Promise<AgentDataSourceConfigurationModel[]> {
   const owner = auth.getNonNullableWorkspace();
 
   // Although we have the capability to support multiple workspaces,
@@ -148,8 +142,14 @@ async function createAgentDataSourcesConfiguration(
     dataSourceConfigurations.every((dsc) => dsc.workspaceId === owner.sId)
   );
 
-  // DataSourceViewResource.listByWorkspace() applies the permissions check.
-  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const allDataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceConfigurations.map((dsc) => dsc.dataSourceViewId)
+  );
+  const dataSourceViews = allDataSourceViews.filter((dsv) =>
+    dsv.canReadOrAdministrate(auth)
+  );
+
   const dataSourceViewsMap = dataSourceViews.reduce(
     (acc, dsv) => {
       acc[dsv.sId] = dsv;
@@ -191,8 +191,7 @@ async function createAgentDataSourcesConfiguration(
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
         dataSourceViewId: dataSourceView.id,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        mcpServerConfigurationId: mcpServerConfiguration?.id || null,
+        mcpServerConfigurationId: mcpServerConfiguration?.id ?? null,
         tagsMode,
         tagsIn,
         tagsNotIn,
@@ -201,9 +200,12 @@ async function createAgentDataSourcesConfiguration(
     })
   );
 
-  return AgentDataSourceConfiguration.bulkCreate(agentDataSourceConfigBlobs, {
-    transaction: t,
-  });
+  return AgentDataSourceConfigurationModel.bulkCreate(
+    agentDataSourceConfigBlobs,
+    {
+      transaction: t,
+    }
+  );
 }
 
 async function createTableDataSourceConfiguration(
@@ -214,7 +216,7 @@ async function createTableDataSourceConfiguration(
     mcpConfig,
   }: {
     tableConfigurations: TableDataSourceConfiguration[];
-    mcpConfig: AgentMCPServerConfiguration;
+    mcpConfig: AgentMCPServerConfigurationModel;
   }
 ) {
   const owner = auth.getNonNullableWorkspace();
@@ -223,8 +225,14 @@ async function createTableDataSourceConfiguration(
   // This allows us to use the current authenticator to fetch resources.
   assert(tableConfigurations.every((tc) => tc.workspaceId === owner.sId));
 
-  // DataSourceViewResource.listByWorkspace() applies the permissions check.
-  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const allDataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    tableConfigurations.map((tc) => tc.dataSourceViewId)
+  );
+  const dataSourceViews = allDataSourceViews.filter((dsv) =>
+    dsv.canReadOrAdministrate(auth)
+  );
+
   const dataSourceViewsMap = dataSourceViews.reduce(
     (acc, dsv) => {
       acc[dsv.sId] = dsv;
@@ -258,7 +266,7 @@ async function createTableDataSourceConfiguration(
     })
   );
 
-  return AgentTablesQueryConfigurationTable.bulkCreate(tableConfigBlobs, {
+  return AgentTablesQueryConfigurationTableModel.bulkCreate(tableConfigBlobs, {
     transaction: t,
   });
 }
@@ -271,40 +279,13 @@ async function createChildAgentConfiguration(
     mcpConfig,
   }: {
     childAgentId: string;
-    mcpConfig: AgentMCPServerConfiguration;
+    mcpConfig: AgentMCPServerConfigurationModel;
   }
 ) {
-  return AgentChildAgentConfiguration.create(
+  return AgentChildAgentConfigurationModel.create(
     {
       agentConfigurationId: childAgentId,
       mcpServerConfigurationId: mcpConfig.id,
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-    { transaction: t }
-  );
-}
-
-async function createReasoningConfiguration(
-  auth: Authenticator,
-  t: Transaction,
-  {
-    reasoningModel,
-    mcpConfig,
-    agentConfiguration,
-  }: {
-    reasoningModel: ReasoningModelConfigurationType;
-    mcpConfig: AgentMCPServerConfiguration;
-    agentConfiguration: LightAgentConfigurationType;
-  }
-) {
-  return AgentReasoningConfiguration.create(
-    {
-      sId: generateRandomModelSId(),
-      mcpServerConfigurationId: mcpConfig.id,
-      providerId: reasoningModel.providerId,
-      modelId: reasoningModel.modelId,
-      temperature: agentConfiguration.model.temperature,
-      reasoningEffort: reasoningModel.reasoningEffort,
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     { transaction: t }

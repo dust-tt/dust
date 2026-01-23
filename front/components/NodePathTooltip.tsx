@@ -1,5 +1,11 @@
-import { Spinner, Tooltip } from "@dust-tt/sparkle";
-import { useState } from "react";
+import {
+  Spinner,
+  TooltipContent,
+  TooltipProvider,
+  TooltipRoot,
+  TooltipTrigger,
+} from "@dust-tt/sparkle";
+import React, { useEffect, useState } from "react";
 
 import { useNodePath } from "@app/hooks/useNodePath";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
@@ -11,21 +17,18 @@ interface NodePathTooltipProps {
   children: React.ReactNode;
 }
 
+const HOVER_DELAY_MS = 500;
+
 export function NodePathTooltip({
   node,
   owner,
   children,
 }: NodePathTooltipProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const { fullPath, isLoading } = useNodePath({
     node,
     owner,
-    disabled: !isHovered || (node.parentInternalIds?.length ?? 0) === 0,
+    disabled: (node.parentInternalIds?.length ?? 0) === 0,
   });
-
-  if (!node.parentInternalIds || node.parentInternalIds.length === 0) {
-    return <>{children}</>;
-  }
 
   const { dataSource } = node.dataSourceView;
   const { connectorProvider } = dataSource;
@@ -39,15 +42,55 @@ export function NodePathTooltip({
     ...fullPath.map((parentNode) => parentNode.title),
   ].join(" › ");
 
+  const [isPointerHovering, setIsPointerHovering] = useState(false);
+  const [isPointerOpen, setIsPointerOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isPointerHovering) {
+      setIsPointerOpen(false);
+      return;
+    }
+
+    const id = setTimeout(() => {
+      setIsPointerOpen(true);
+    }, HOVER_DELAY_MS);
+
+    return () => {
+      clearTimeout(id);
+    };
+  }, [isPointerHovering]);
+
+  const handlePointerEnter = () => {
+    setIsPointerHovering(true);
+  };
+
+  const handlePointerLeave = () => {
+    setIsPointerHovering(false);
+    setIsPointerOpen(false);
+  };
+
+  const triggerChild = React.isValidElement(children) ? (
+    children
+  ) : (
+    <span style={{ display: "contents" }}>{children}</span>
+  );
+
+  if (!node.parentInternalIds || node.parentInternalIds.length === 0) {
+    return <>{children}</>;
+  }
+
   return (
-    <div
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Tooltip
-        tooltipTriggerAsChild
-        label={
-          isLoading ? (
+    <TooltipProvider delayDuration={0} skipDelayDuration={0}>
+      <TooltipRoot open={isPointerOpen}>
+        <TooltipTrigger
+          asChild
+          onPointerEnter={handlePointerEnter}
+          onPointerLeave={handlePointerLeave}
+        >
+          {triggerChild}
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="start">
+          {isLoading ? (
             <div className="flex gap-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
               {providerName} ›
               <Spinner size="xs" />
@@ -56,12 +99,9 @@ export function NodePathTooltip({
             <div className="text-xs text-muted-foreground dark:text-muted-foreground-night">
               {path}
             </div>
-          )
-        }
-        trigger={children}
-        side="bottom"
-        align="start"
-      />
-    </div>
+          )}
+        </TooltipContent>
+      </TooltipRoot>
+    </TooltipProvider>
   );
 }

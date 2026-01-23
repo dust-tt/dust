@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
+import { invalidateActiveSeatsCache } from "@app/lib/plans/usage/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -19,6 +20,7 @@ import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrapp
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger, { auditLog } from "@app/logger/logger";
+import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
   LightWorkspaceType,
   MembershipOriginType,
@@ -26,8 +28,9 @@ import type {
   ModelId,
   RequireAtLeastOne,
   Result,
+  UserType,
 } from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -52,9 +55,8 @@ type MembershipsWithTotal = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface MembershipResource
-  extends ReadonlyAttributesType<MembershipModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface MembershipResource extends ReadonlyAttributesType<MembershipModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MembershipResource extends BaseResource<MembershipModel> {
   static model: ModelStaticWorkspaceAware<MembershipModel> = MembershipModel;
@@ -69,6 +71,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     super(MembershipModel, blob);
 
     this.user = user;
+  }
+
+  get isBuilder(): boolean {
+    switch (this.role) {
+      case "admin":
+      case "builder":
+        return true;
+      case "user":
+        return false;
+      default:
+        assertNever(this.role);
+    }
   }
 
   static async getMembershipsForWorkspace({
@@ -285,7 +299,12 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Get all the memberships matching the criteria.
-    const { rows, count } = await MembershipModel.findAndCountAll(findOptions);
+    const { rows, count } = await this.model.findAndCountAll({
+      ...findOptions,
+      // WORKSPACE_ISOLATION_BYPASS: Used to find latest memberships across users and workspace is
+      // optional.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
+    });
     // Then, we only keep the latest membership for each (user, workspace).
     const latestMembershipByUserAndWorkspace = new Map<
       string,
@@ -407,19 +426,23 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     activeOnly,
     rolesFilter,
     transaction,
+    membershipSpan,
   }: {
     workspace: LightWorkspaceType;
     activeOnly: boolean;
     rolesFilter?: MembershipRoleType[];
     transaction?: Transaction;
+    membershipSpan?: { fromDate: Date; toDate: Date };
   }): Promise<number> {
+    const fromDate = membershipSpan?.fromDate ?? new Date();
+    const toDate = membershipSpan?.toDate ?? new Date();
     const where: WhereOptions<InferAttributes<MembershipModel>> = activeOnly
       ? {
           endAt: {
-            [Op.or]: [{ [Op.eq]: null }, { [Op.gt]: new Date() }],
+            [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: fromDate }],
           },
           startAt: {
-            [Op.lte]: new Date(),
+            [Op.lte]: toDate,
           },
         }
       : {};
@@ -542,6 +565,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       newRole: role,
     });
 
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    // Invalidate the active seats cache for this workspace.
+    await invalidateActiveSeatsCache(workspace.sId);
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -626,6 +661,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       }
     }
 
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    // Invalidate the active seats cache for this workspace.
+    await invalidateActiveSeatsCache(workspace.sId);
+
     return new Ok({
       role: membership.role,
       startAt: membership.startAt,
@@ -643,6 +690,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated = false,
     allowLastAdminRemoval = false,
     transaction,
+    author,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
@@ -651,6 +699,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     allowTerminated?: boolean;
     allowLastAdminRemoval?: boolean;
     transaction?: Transaction;
+    author: UserType | "no-author";
   }): Promise<
     Result<
       { previousRole: MembershipRoleType; newRole: MembershipRoleType },
@@ -735,6 +784,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
+        author,
         userId: user.id,
         workspaceId: workspace.id,
         previousRole,
@@ -742,6 +792,16 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       },
       "Membership role updated"
     );
+
+    // Update user search index across all workspaces
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: user.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
     return new Ok({ previousRole, newRole });
   }
 
@@ -799,11 +859,13 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     workspace,
     newOrigin,
     transaction,
+    author,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     newOrigin: MembershipOriginType;
     transaction?: Transaction;
+    author: UserType | "no-author";
   }): Promise<{
     previousOrigin: MembershipOriginType;
     newOrigin: MembershipOriginType;
@@ -814,6 +876,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
 
     auditLog(
       {
+        author,
         userId: user.id,
         workspaceId: workspace.id,
         previousOrigin,
@@ -829,49 +892,46 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
-    try {
-      const w = auth.workspace();
-      const u = this.user;
-      if (w && w.workOSOrganizationId && u && u.workOSUserId) {
-        try {
-          const workos = getWorkOS();
+    const w = auth.workspace();
+    const u = this.user;
+    if (w && w.workOSOrganizationId && u && u.workOSUserId) {
+      try {
+        const workos = getWorkOS();
 
-          const workOSMemberships =
-            await workos.userManagement.listOrganizationMemberships({
-              organizationId: w.workOSOrganizationId,
-              userId: u.workOSUserId,
-            });
+        const workOSMemberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: w.workOSOrganizationId,
+            userId: u.workOSUserId,
+          });
 
-          if (workOSMemberships.data.length > 0) {
-            await workos.userManagement.deleteOrganizationMembership(
-              workOSMemberships.data[0].id
-            );
-          }
-
-          await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
-        } catch (error) {
-          logger.error(
-            {
-              workspaceId: w.id,
-              userId: u.id,
-              error,
-            },
-            "Failed to delete WorkOS membership"
+        if (workOSMemberships.data.length > 0) {
+          await workos.userManagement.deleteOrganizationMembership(
+            workOSMemberships.data[0].id
           );
         }
+
+        await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: w.id,
+            userId: u.id,
+            error,
+          },
+          "Failed to delete WorkOS membership"
+        );
       }
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
     }
+
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
   }
 
   isRevoked(referenceDate: Date = new Date()): boolean {

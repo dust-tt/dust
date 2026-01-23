@@ -13,7 +13,7 @@ import {
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ProviderWorkflowError } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { heartbeat } from "@connectors/lib/temporal";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -62,7 +62,7 @@ export async function updateSlackChannelInConnectorsDb({
     throw new Error(`Could not find connector ${connectorId}`);
   }
 
-  let channel = await SlackChannel.findOne({
+  let channel = await SlackChannelModel.findOne({
     where: {
       connectorId,
       slackChannelId,
@@ -71,7 +71,7 @@ export async function updateSlackChannelInConnectorsDb({
 
   if (!channel) {
     if (createIfNotExistsWithParams) {
-      channel = await SlackChannel.create({
+      channel = await SlackChannelModel.create({
         connectorId,
         slackChannelId,
         slackChannelName,
@@ -120,7 +120,7 @@ export async function updateSlackChannelInCoreDb(
     );
   }
 
-  const channelOnDb = await SlackChannel.findOne({
+  const channelOnDb = await SlackChannelModel.findOne({
     where: {
       connectorId: connector.id,
       slackChannelId: channelId,
@@ -337,9 +337,15 @@ export async function getAllChannels(
   return getChannels(slackClient, connectorId, false);
 }
 
-async function _getJoinedChannelsUncached(
+async function _getTypedJoinedChannelsUncached(
   slackClient: WebClient,
-  connectorId: ModelId
+  {
+    connectorId,
+    types,
+  }: {
+    connectorId: ModelId;
+    types: "public_channel" | "private_channel";
+  }
 ): Promise<Channel[]> {
   const allChannels = [];
   let nextCursor: string | undefined = undefined;
@@ -354,7 +360,7 @@ async function _getJoinedChannelsUncached(
 
     const response = await withSlackErrorHandling(() =>
       slackClient.users.conversations({
-        types: "public_channel,private_channel",
+        types,
         exclude_archived: true,
         limit: 999, // Maximum allowed by Slack API
         cursor: nextCursor,
@@ -388,13 +394,32 @@ async function _getJoinedChannelsUncached(
     }
 
     for (const channel of response.channels) {
-      if (channel && channel.id) {
+      if (channel?.id) {
         allChannels.push(channel);
       }
     }
   } while (nextCursor);
 
   return allChannels;
+}
+
+async function _getJoinedChannelsUncached(
+  slackClient: WebClient,
+  connectorId: ModelId
+): Promise<Channel[]> {
+  return Promise.all([
+    _getTypedJoinedChannelsUncached(slackClient, {
+      connectorId,
+      types: "public_channel",
+    }),
+    _getTypedJoinedChannelsUncached(slackClient, {
+      connectorId,
+      types: "private_channel",
+    }),
+  ]).then(([publicChannels, privateChannels]) => [
+    ...publicChannels,
+    ...privateChannels,
+  ]);
 }
 
 async function _getChannelsUncached(
@@ -486,7 +511,7 @@ export async function getChannelsToSync(
 ) {
   const [remoteChannels, localChannels] = await Promise.all([
     getJoinedChannels(slackClient, connectorId),
-    SlackChannel.findAll({
+    SlackChannelModel.findAll({
       where: {
         connectorId,
         permission: {

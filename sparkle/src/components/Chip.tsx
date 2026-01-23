@@ -25,66 +25,86 @@ export const CHIP_COLORS = [
   "blue",
   "rose",
   "golden",
+  "white",
 ] as const;
 
 type ChipColorType = (typeof CHIP_COLORS)[number];
 
-const sizeVariants: Record<ChipSizeType, string> = {
-  mini: "s-rounded-md s-min-h-5 s-text-xs s-font-medium s-px-1.5 s-py-1 s-gap-0.5",
-  xs: "s-rounded-lg s-min-h-7 s-heading-xs s-px-3 s-gap-1",
-  sm: "s-rounded-xl s-min-h-9 s-heading-sm s-px-4 s-gap-1.5",
-};
-
-const backgroundVariants: Record<ChipColorType, string> = {
-  primary: cn(
-    "s-bg-muted-background s-border-border",
-    "dark:s-bg-muted-background-night dark:s-border-border-night"
-  ),
-  highlight: cn(
-    "s-bg-highlight-100 s-border-highlight-200",
-    "dark:s-bg-highlight-100-night dark:s-border-highlight-200-night"
-  ),
-  success: cn(
-    "s-bg-success-100 s-border-success-200",
-    "dark:s-bg-success-100-night dark:s-border-success-200-night"
-  ),
-  info: cn(
-    "s-bg-info-100 s-border-info-200",
-    "dark:s-bg-info-100-night dark:s-border-info-200-night"
-  ),
-  warning: cn(
-    "s-bg-warning-100 s-border-warning-200",
-    "dark:s-bg-warning-100-night dark:s-border-warning-200-night"
-  ),
-  green: cn(
-    "s-bg-green-100 s-border-green-200",
-    "dark:s-bg-green-100-night dark:s-border-green-200-night"
-  ),
-  blue: cn(
-    "s-bg-blue-100 s-border-blue-200",
-    "dark:s-bg-blue-100-night dark:s-border-blue-200-night"
-  ),
-  rose: cn(
-    "s-bg-rose-100 s-border-rose-200",
-    "dark:s-bg-rose-100-night dark:s-border-rose-200-night"
-  ),
-  golden: cn(
-    "s-bg-golden-100 s-border-golden-200",
-    "dark:s-bg-golden-100-night dark:s-border-golden-200-night"
-  ),
-};
-
-const textVariants: Record<ChipColorType, string> = {
-  primary: "s-text-primary-900 dark:s-text-primary-900-night",
-  highlight: "s-text-highlight-900 dark:s-text-highlight-900-night",
-  success: "s-text-success-900 dark:s-text-success-900-night",
-  warning: "s-text-warning-900 dark:s-text-warning-900-night",
-  info: "s-text-info-900 dark:s-text-info-900-night",
-  green: "s-text-green-900 dark:s-text-green-900-night",
-  blue: "s-text-blue-900 dark:s-text-blue-900-night",
-  rose: "s-text-rose-900 dark:s-text-rose-900-night",
-  golden: "s-text-golden-900 dark:s-text-golden-900-night",
-};
+const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
+  variants: {
+    size: {
+      mini: "s-rounded-md s-min-h-5 s-text-xs s-font-medium s-px-1.5 s-py-1 s-gap-0.5",
+      xs: "s-rounded-lg s-min-h-7 s-heading-xs s-px-3 s-gap-1",
+      sm: "s-rounded-xl s-min-h-9 s-heading-sm s-px-4 s-gap-1.5",
+    },
+    color: {
+      primary: cn(
+        "s-bg-muted-background s-border-border",
+        "s-text-primary-900",
+        "dark:s-bg-muted-background-night dark:s-border-border-night",
+        "dark:s-text-primary-900-night"
+      ),
+      highlight: cn(
+        "s-bg-highlight-100 s-border-highlight-200",
+        "s-text-highlight-900",
+        "dark:s-bg-highlight-100-night dark:s-border-highlight-200-night",
+        "dark:s-text-highlight-900-night"
+      ),
+      success: cn(
+        "s-bg-success-100 s-border-success-200",
+        "s-text-success-900",
+        "dark:s-bg-success-100-night dark:s-border-success-200-night",
+        "dark:s-text-success-900-night"
+      ),
+      info: cn(
+        "s-bg-info-100 s-border-info-200",
+        "s-text-info-900",
+        "dark:s-bg-info-100-night dark:s-border-info-200-night",
+        "dark:s-text-info-900-night"
+      ),
+      warning: cn(
+        "s-bg-warning-100 s-border-warning-200",
+        "s-text-warning-900",
+        "dark:s-bg-warning-100-night dark:s-border-warning-200-night",
+        "dark:s-text-warning-900-night"
+      ),
+      green: cn(
+        "s-bg-green-100 s-border-green-200",
+        "s-text-green-900",
+        "dark:s-bg-green-100-night dark:s-border-green-200-night",
+        "dark:s-text-green-900-night"
+      ),
+      blue: cn(
+        "s-bg-blue-100 s-border-blue-200",
+        "s-text-blue-900",
+        "dark:s-bg-blue-100-night dark:s-border-blue-200-night",
+        "dark:s-text-blue-900-night"
+      ),
+      rose: cn(
+        "s-bg-rose-100 s-border-rose-200",
+        "s-text-rose-900",
+        "dark:s-bg-rose-100-night dark:s-border-rose-200-night",
+        "dark:s-text-rose-900-night"
+      ),
+      golden: cn(
+        "s-bg-golden-100 s-border-golden-200",
+        "s-text-golden-900",
+        "dark:s-bg-golden-100-night dark:s-border-golden-200-night",
+        "dark:s-text-golden-900-night"
+      ),
+      white: cn(
+        "s-border s-bg-white s-border-border",
+        "s-text-primary-900",
+        "dark:s-bg-background-night dark:s-border-border-night",
+        "dark:s-text-primary-900-night"
+      ),
+    },
+  },
+  defaultVariants: {
+    size: "xs",
+    color: "primary",
+  },
+});
 
 const closeIconVariants: Record<ChipColorType, string> = {
   primary: cn(
@@ -123,20 +143,39 @@ const closeIconVariants: Record<ChipColorType, string> = {
     "s-text-golden-900 hover:s-text-golden-700 active:s-text-golden-950",
     "dark:s-text-golden-900-night dark:hover:s-text-golden-700-night dark:active:s-text-golden-950-night"
   ),
+  white: cn(
+    "s-text-primary-700 hover:s-text-primary-500 active:s-text-primary-950",
+    "dark:s-text-primary-700-night dark:hover:s-text-primary-500-night dark:active:s-text-primary-950-night"
+  ),
 };
 
-const chipVariants = cva("s-inline-flex s-box-border s-items-center", {
-  variants: {
-    size: sizeVariants,
-    text: textVariants,
-    background: backgroundVariants,
-  },
-  defaultVariants: {
-    size: "xs",
-    text: "primary",
-    background: "primary",
-  },
-});
+interface ChipInternalButtonProps {
+  icon: ComponentType;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  className?: string;
+  size?: "xs" | "sm";
+  "aria-label"?: string;
+}
+
+const ChipButton = React.forwardRef<HTMLButtonElement, ChipInternalButtonProps>(
+  ({ icon, onClick, className, size = "xs", "aria-label": ariaLabel }, ref) => (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel}
+      className={cn(
+        "s-rounded-md s-p-0.5",
+        "s-transition-colors s-duration-200",
+        "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring",
+        className
+      )}
+    >
+      <Icon visual={icon} size={size} />
+    </button>
+  )
+);
+ChipButton.displayName = "ChipButton";
 
 type ChipBaseProps = {
   size?: ChipSizeType;
@@ -152,7 +191,7 @@ type ChipBaseProps = {
 type ChipButtonProps = ChipBaseProps & {
   onClick?: () => void;
 } & {
-  [K in keyof Omit<LinkWrapperProps, "children">]?: never;
+  [K in keyof Omit<LinkWrapperProps, "children" | "className">]?: never;
 };
 
 type ChipLinkProps = ChipBaseProps &
@@ -160,7 +199,7 @@ type ChipLinkProps = ChipBaseProps &
     onClick?: never;
   };
 
-type ChipProps = ChipLinkProps | ChipButtonProps;
+export type ChipProps = ChipLinkProps | ChipButtonProps;
 
 // TODO(yuka: 1606): we should update this component so that you cannot have both
 // onClick and onRemove at the same time. We should use div when there is no onClick,
@@ -187,7 +226,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
     const chipContent = (
       <div
         className={cn(
-          chipVariants({ size, background: color, text: color }),
+          chipVariants({ size, color }),
           className,
           onClick && "s-cursor-pointer"
         )}
@@ -215,11 +254,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
         )}
         {label && (
           <span
-            className={cn(
-              "s-grow s-truncate",
-              onClick && "s-cursor-pointer",
-              size === "mini" && "s-uppercase"
-            )}
+            className={cn("s-grow s-truncate", onClick && "s-cursor-pointer")}
           >
             {isBusy ? (
               <AnimatedText variant={color}>{label}</AnimatedText>
@@ -229,21 +264,17 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
           </span>
         )}
         {onRemove && (
-          <button
+          <ChipButton
+            icon={XMarkIcon}
+            size={size === "mini" ? "xs" : "sm"}
+            className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
+            aria-label="Remove"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onRemove();
             }}
-          >
-            <Icon
-              visual={XMarkIcon}
-              size={size === "mini" ? "xs" : (size as IconProps["size"])}
-              className={cn(
-                "s-transition-color -s-mr-1 s-duration-200",
-                closeIconVariants[color || "primary"]
-              )}
-            />
-          </button>
+          />
         )}
       </div>
     );

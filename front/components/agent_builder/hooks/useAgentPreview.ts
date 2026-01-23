@@ -5,26 +5,21 @@ import { useFormContext } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { submitAgentBuilderForm } from "@app/components/agent_builder/submitAgentBuilderForm";
-import {
-  createConversationWithMessage,
-  submitMessage,
-} from "@app/components/assistant/conversation/lib";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DustError } from "@app/lib/error";
-import { useConversation } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
 import type {
-  AgentMention,
   ContentFragmentsType,
   ConversationType,
   LightAgentConfigurationType,
-  MentionType,
   Result,
+  RichMention,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 export function useDraftAgent() {
-  const { owner } = useAgentBuilderContext();
+  const { owner, user } = useAgentBuilderContext();
   const sendNotification = useSendNotification();
   const { getValues } = useFormContext<AgentBuilderFormData>();
 
@@ -34,7 +29,6 @@ export function useDraftAgent() {
     useState<LightAgentConfigurationType | null>(null);
   const [isSavingDraftAgent, setIsSavingDraftAgent] = useState(false);
   const [draftCreationFailed, setDraftCreationFailed] = useState(false);
-  const [stickyMentions, setStickyMentions] = useState<AgentMention[]>([]);
 
   const createDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -54,6 +48,7 @@ export function useDraftAgent() {
       lastFormDataRef.current = structuredClone(formData);
 
       const aRes = await submitAgentBuilderForm({
+        user,
         formData: {
           ...formData,
           agentSettings: {
@@ -80,10 +75,9 @@ export function useDraftAgent() {
       const newDraft = aRes.value;
 
       setDraftAgent(newDraft);
-      setStickyMentions([{ configurationId: newDraft.sId }]);
       setIsSavingDraftAgent(false);
       return newDraft;
-    }, [owner, sendNotification, getValues]);
+    }, [owner, user, sendNotification, getValues]);
 
   const getDraftAgent =
     useCallback(async (): Promise<LightAgentConfigurationType | null> => {
@@ -106,50 +100,55 @@ export function useDraftAgent() {
     isSavingDraftAgent,
     draftCreationFailed,
     getDraftAgent,
-    stickyMentions,
-    setStickyMentions,
   };
 }
 
 export function useDraftConversation({
   draftAgent,
   getDraftAgent,
+  clientSideMCPServerId,
 }: {
   draftAgent: LightAgentConfigurationType | null;
   getDraftAgent: () => Promise<LightAgentConfigurationType | null>;
+  clientSideMCPServerId?: string;
 }) {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
   const sendNotification = useSendNotification();
+  const [conversation, setConversation] = useState<
+    ConversationType | undefined
+  >();
 
-  const [conversationId, setConversationId] = useState<string | null>(null);
-
-  const { conversation } = useConversation({
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    conversationId: conversationId || "",
-    workspaceId: owner.sId,
-    options: {
-      disabled: !conversationId,
-    },
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner,
+    user,
   });
 
-  const handleSubmit = async (
-    input: string,
-    mentions: MentionType[],
-    contentFragments: ContentFragmentsType
-  ): Promise<Result<undefined, DustError>> => {
-    if (!user) {
-      return new Err({
-        code: "internal_error",
-        name: "No user",
-        message: "No user found",
-      });
-    }
+  const createConversation = useCallback(
+    async (
+      input: string,
+      mentions: RichMention[],
+      contentFragments: ContentFragmentsType
+    ): Promise<Result<undefined, DustError>> => {
+      try {
+        // Ensure we have a current draft agent before submitting
+        const currentAgent = await getDraftAgent();
+        if (!currentAgent) {
+          return new Err({
+            code: "internal_error",
+            name: "Draft Agent Creation Failed",
+            message: "Failed to create draft agent before submitting message",
+          });
+        }
 
-    try {
-      // Ensure we have a current draft agent before submitting
-      const currentAgent = await getDraftAgent();
-      if (!currentAgent) {
+        // Update mentions in the message data to use the current draft agent
+        mentions = mentions.map((mention) =>
+          mention.id === draftAgent?.sId && currentAgent?.sId
+            ? { ...mention, id: currentAgent.sId }
+            : mention
+        );
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
         return new Err({
           code: "internal_error",
           name: "Draft Agent Creation Failed",
@@ -157,32 +156,25 @@ export function useDraftConversation({
         });
       }
 
-      // Update mentions in the message data to use the current draft agent
-      mentions = mentions.map((mention) =>
-        mention.configurationId === draftAgent?.sId && currentAgent?.sId
-          ? { ...mention, configurationId: currentAgent.sId }
-          : mention
-      );
-    } catch (error) {
-      return new Err({
-        code: "internal_error",
-        name: "Draft Agent Creation Failed",
-        message: "Failed to create draft agent before submitting message",
-      });
-    }
+      const messageData = {
+        input,
+        mentions: mentions.map((mention) => ({
+          configurationId: mention.id,
+        })),
+        contentFragments,
+        // Include client-side MCP server IDs for the agent builder copilot.
+        clientSideMCPServerIds: clientSideMCPServerId
+          ? [clientSideMCPServerId]
+          : undefined,
+      };
 
-    const messageData = { input, mentions, contentFragments };
-
-    if (!conversation) {
       const result = await createConversationWithMessage({
-        owner,
-        user,
         messageData,
         visibility: "test",
       });
 
       if (result.isOk()) {
-        setConversationId(result.value.sId);
+        setConversation(result.value);
         return new Ok(undefined);
       }
 
@@ -197,45 +189,23 @@ export function useDraftConversation({
         name: result.error.title,
         message: result.error.message,
       });
-    } else {
-      const result = await submitMessage({
-        owner,
-        user,
-        conversationId: conversation.sId as string,
-        messageData,
-      });
-
-      if (result.isOk()) {
-        return new Ok(undefined);
-      }
-
-      sendNotification({
-        title: result.error.title,
-        description: result.error.message,
-        type: "error",
-      });
-
-      return new Err({
-        code: "internal_error",
-        name: result.error.title,
-        message: result.error.message,
-      });
-    }
-  };
+    },
+    [
+      clientSideMCPServerId,
+      createConversationWithMessage,
+      draftAgent?.sId,
+      getDraftAgent,
+      sendNotification,
+    ]
+  );
 
   const resetConversation = useCallback(() => {
-    setConversation(null);
-  }, []);
-
-  const setConversation = (newConversation: ConversationType | null) => {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    setConversationId(newConversation?.sId || null);
-  };
+    setConversation(undefined);
+  }, [setConversation]);
 
   return {
     conversation,
-    setConversation,
-    handleSubmit,
+    createConversation,
     resetConversation,
   };
 }

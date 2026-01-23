@@ -17,12 +17,14 @@ interface UserLookup {
   email_verified: boolean;
 }
 
-export async function lookupUserRegionByEmail(
+export async function hasEmailLocalRegionAffinity(
   userLookup: UserLookup
 ): Promise<boolean> {
   // Check if user exists, has pending invitations or has a workspace with verified domain.
-  const [pendingInvite, workspaceWithVerifiedDomain] = await Promise.all([
-    MembershipInvitationResource.getPendingForEmail(userLookup.email),
+  const [pendingInvites, workspaceWithVerifiedDomain] = await Promise.all([
+    MembershipInvitationResource.listPendingForEmail({
+      email: userLookup.email,
+    }),
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
       email_verified: userLookup.email_verified,
@@ -41,19 +43,21 @@ export async function lookupUserRegionByEmail(
     return false;
   }
 
-  // Check if pending invite exists but workspace has been relocated
+  // Check if pending invites exist but workspace have been relocated
   if (
-    pendingInvite &&
-    isWorkspaceRelocationDone(
-      renderLightWorkspaceType({ workspace: pendingInvite.workspace })
+    pendingInvites.length > 0 &&
+    pendingInvites.every((invite) =>
+      isWorkspaceRelocationDone(
+        renderLightWorkspaceType({ workspace: invite.workspace })
+      )
     )
   ) {
     return false;
   }
 
   // Return true if there is either a valid pending invite or workspace with verified domain
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return Boolean(pendingInvite || workspaceWithVerifiedDomain);
+
+  return Boolean(pendingInvites.length > 0 || workspaceWithVerifiedDomain);
 }
 
 export async function handleLookupWorkspace(workspaceLookup: {
@@ -88,6 +92,7 @@ async function lookupInOtherRegion(
   };
 
   try {
+    // eslint-disable-next-line no-restricted-globals
     const otherRegionResponse = await fetch(`${url}/api/lookup/user`, {
       method: "POST",
       headers: {
@@ -120,7 +125,7 @@ export async function checkUserRegionAffinity(
   userLookup: UserLookup
 ): Promise<Result<RegionAffinityResult, Error>> {
   // First check locally if user has affinity to current region (invitation, whitelisted domain).
-  const hasLocalAffinity = await lookupUserRegionByEmail(userLookup);
+  const hasLocalAffinity = await hasEmailLocalRegionAffinity(userLookup);
   if (hasLocalAffinity) {
     return new Ok({ hasAffinity: true, region: config.getCurrentRegion() });
   }

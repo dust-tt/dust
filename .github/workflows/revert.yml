@@ -37,6 +37,10 @@ on:
         required: true
       INFRA_DISPATCH_APP_PRIVATE_KEY:
         required: true
+      GCLOUD_US_PROJECT_ID:
+        required: true
+      GCLOUD_EU_PROJECT_ID:
+        required: true
 
 permissions:
   contents: read
@@ -74,10 +78,51 @@ jobs:
           is_revert: true
 
   revert:
+    permissions:
+      contents: read
+      id-token: write
     needs: [notify-start]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      - name: Set project ID
+        id: project
+        run: |
+          if [ "${{ inputs.region }}" = "us-central1" ]; then
+            echo "PROJECT_ID=${{ secrets.GCLOUD_US_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "PROJECT_ID=${{ secrets.GCLOUD_EU_PROJECT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v2"
+        with:
+          create_credentials_file: true
+          workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          service_account: "github-build-invoker@${{ steps.project.outputs.PROJECT_ID }}.iam.gserviceaccount.com"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+
+      - name: Validate image tag exists
+        run: |
+          echo "Validating image tag ${{ inputs.image_tag }} exists for ${{ inputs.component }} in ${{ inputs.region }}"
+
+          IMAGE_REPO="${{ inputs.region }}-docker.pkg.dev/${{ steps.project.outputs.PROJECT_ID }}/dust-images/${{ inputs.component }}"
+
+          if ! gcloud container images describe "${IMAGE_REPO}:${{ inputs.image_tag }}" --quiet >/dev/null 2>&1; then
+            echo "❌ Image tag '${{ inputs.image_tag }}' not found in registry ${IMAGE_REPO}"
+            echo "Available tags:"
+            gcloud container images list-tags "${IMAGE_REPO}" \
+              --limit=10 \
+              --sort-by=~timestamp \
+              --format="table(timestamp.date('%Y-%m-%d %H:%M:%S'),tags[0])"
+            exit 1
+          fi
+
+          echo "✅ Image tag '${{ inputs.image_tag }}' exists in registry" >> $GITHUB_STEP_SUMMARY
 
       - name: Generate token
         id: generate-token

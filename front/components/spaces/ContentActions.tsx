@@ -7,13 +7,12 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import capitalize from "lodash/capitalize";
-import type { NextRouter } from "next/router";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import React, { useCallback, useImperativeHandle, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
 import { DocumentUploadOrEditModal } from "@app/components/data_source/DocumentUploadOrEditModal";
-import { MultipleDocumentsUpload } from "@app/components/data_source/MultipleDocumentsUpload";
+import { MultipleFilesUpload } from "@app/components/data_source/MultipleFilesUpload";
 import { TableUploadOrEditModal } from "@app/components/data_source/TableUploadOrEditModal";
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
 import {
@@ -22,10 +21,12 @@ import {
   isManaged,
   isWebsite,
 } from "@app/lib/data_sources";
+import type { AppRouter } from "@app/lib/platform";
 import { setQueryParam } from "@app/lib/utils/router";
 import type {
   DataSourceViewContentNode,
   DataSourceViewType,
+  FileUseCase,
   PlanType,
   SpaceType,
   WorkspaceType,
@@ -38,7 +39,7 @@ export type UploadOrEditContentActionKey =
 
 export type ContentActionKey =
   | UploadOrEditContentActionKey
-  | "MultipleDocumentsUpload"
+  | "MultipleFilesUpload"
   | "DeleteContentNode";
 
 export type ContentAction = {
@@ -54,10 +55,12 @@ const isUploadOrEditAction = (
 
 type ContentActionsProps = {
   dataSourceView: DataSourceViewType;
+  existingNodes: DataSourceViewContentNode[];
   totalNodesCount: number;
   plan: PlanType;
   owner: WorkspaceType;
   onSave: (action?: ContentActionKey) => void;
+  useCaseForDocument?: FileUseCase;
 };
 
 export type ContentActionsRef = {
@@ -74,10 +77,12 @@ export const ContentActions = React.forwardRef<
   (
     {
       dataSourceView,
+      existingNodes,
       totalNodesCount,
       owner,
       plan,
       onSave,
+      useCaseForDocument,
     }: ContentActionsProps,
     ref
   ) => {
@@ -129,13 +134,15 @@ export const ContentActions = React.forwardRef<
         ) : (
           <DocumentUploadOrEditModal {...modalProps} />
         )}
-        <MultipleDocumentsUpload
+        <MultipleFilesUpload
           dataSourceView={dataSourceView}
-          isOpen={currentAction.action === "MultipleDocumentsUpload"}
+          existingNodes={existingNodes}
+          isOpen={currentAction.action === "MultipleFilesUpload"}
           onClose={onClose}
           owner={owner}
           totalNodesCount={totalNodesCount}
           plan={plan}
+          useCaseForDocument={useCaseForDocument}
         />
         <DocumentOrTableDeleteDialog
           dataSourceView={dataSourceView}
@@ -166,7 +173,7 @@ export const getMenuItems = (
     contentNode: DataSourceViewContentNode,
     spaceSId: string
   ) => void,
-  router: NextRouter,
+  router: AppRouter,
   onOpenDocument?: (node: DataSourceViewContentNode) => void,
   setEffectiveContentNode?: (node: DataSourceViewContentNode) => void
 ): MenuItem[] => {
@@ -311,7 +318,7 @@ const makeViewSourceUrlContentAction = (
 
 const makeViewRawContentAction = (
   contentNode: DataSourceViewContentNode,
-  router: NextRouter,
+  router: AppRouter,
   onOpenDocument?: (node: DataSourceViewContentNode) => void
 ): MenuItem => {
   return {

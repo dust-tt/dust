@@ -1,0 +1,23 @@
+name: Auto assign issues to EngRunner
+
+on:
+  issues:
+    types: [ opened ]
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  assign_one_project:
+    runs-on: ubuntu-latest
+    name: Assign to EngRunner project
+    steps:
+      - name: Assign new issues to project 2 (eng runner)
+        uses: actions/add-to-project@v1.0.2
+        with:
+          project-url: 'https://github.com/orgs/dust-tt/projects/2'
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}

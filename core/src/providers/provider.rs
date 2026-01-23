@@ -2,8 +2,9 @@ use crate::providers::anthropic::anthropic::AnthropicProvider;
 use crate::providers::azure_openai::AzureOpenAIProvider;
 use crate::providers::embedder::Embedder;
 use crate::providers::google_ai_studio::GoogleAiStudioProvider;
-use crate::providers::llm::LLM;
+use crate::providers::llm::{TokenizerSingleton, LLM};
 use crate::providers::mistral::MistralProvider;
+use crate::providers::noop::NoopProvider;
 use crate::providers::openai::OpenAIProvider;
 use crate::utils::ParseError;
 use anyhow::{anyhow, Result};
@@ -35,6 +36,7 @@ pub enum ProviderID {
     Deepseek,
     Fireworks,
     Xai,
+    Noop,
 }
 
 impl fmt::Display for ProviderID {
@@ -49,6 +51,7 @@ impl fmt::Display for ProviderID {
             ProviderID::Deepseek => write!(f, "deepseek"),
             ProviderID::Fireworks => write!(f, "fireworks"),
             ProviderID::Xai => write!(f, "xai"),
+            ProviderID::Noop => write!(f, "noop"),
         }
     }
 }
@@ -66,9 +69,10 @@ impl FromStr for ProviderID {
             "deepseek" => Ok(ProviderID::Deepseek),
             "fireworks" => Ok(ProviderID::Fireworks),
             "xai" => Ok(ProviderID::Xai),
+            "noop" => Ok(ProviderID::Noop),
             _ => Err(ParseError::with_message(
                 "Unknown provider ID \
-                 (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio, togetherai, deepseek, fireworks, xai)",
+                 (possible values: openai, azure_openai, anthropic, mistral, google_ai_studio, togetherai, deepseek, fireworks, xai, noop)",
             ))?,
         }
     }
@@ -88,8 +92,8 @@ pub struct ModelError {
     pub request_id: Option<String>,
 }
 
-impl std::fmt::Display for ModelError {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for ModelError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "[model_error(retryable={}{})] {}",
@@ -157,7 +161,7 @@ pub trait Provider {
     fn setup(&self) -> Result<()>;
     async fn test(&self) -> Result<()>;
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send>;
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send>;
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send>;
 }
 
@@ -172,5 +176,6 @@ pub fn provider(t: ProviderID) -> Box<dyn Provider + Sync + Send> {
         ProviderID::Deepseek => Box::new(DeepseekProvider::new()),
         ProviderID::Fireworks => Box::new(FireworksProvider::new()),
         ProviderID::Xai => Box::new(XaiProvider::new()),
+        ProviderID::Noop => Box::new(NoopProvider::new()),
     }
 }

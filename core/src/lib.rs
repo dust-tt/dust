@@ -55,14 +55,16 @@ pub mod project;
 pub mod run;
 pub mod search_filter;
 pub mod utils;
+pub mod types {
+    pub mod tokenizer;
+}
 pub mod providers {
     pub mod azure_openai;
+    pub mod chat_messages;
     pub mod embedder;
     pub mod llm;
     pub mod mistral;
     pub mod openai;
-
-    pub mod chat_messages;
     pub mod provider;
     pub mod tiktoken {
         pub mod tiktoken;
@@ -81,6 +83,7 @@ pub mod providers {
     pub mod fireworks;
     pub mod google_ai_studio;
     pub mod helpers;
+    pub mod noop;
     pub mod openai_compatible_helpers;
     pub mod openai_responses_api_helpers;
     pub mod togetherai;
@@ -141,6 +144,9 @@ pub mod oauth {
     pub mod providers {
         pub mod confluence;
         pub mod confluence_tools;
+        pub mod databricks;
+        pub mod discord;
+        pub mod fathom;
         pub mod freshservice;
         pub mod github;
         pub mod gmail;
@@ -149,6 +155,7 @@ pub mod oauth {
         pub mod hubspot;
         pub mod intercom;
         pub mod jira;
+        pub mod linear;
         pub mod mcp;
         pub mod mcp_static;
         pub mod microsoft;
@@ -156,9 +163,14 @@ pub mod oauth {
         pub mod mock;
         pub mod monday;
         pub mod notion;
+        pub mod productboard;
         pub mod salesforce;
         pub mod slack;
+        pub mod slack_tools;
+        pub mod snowflake;
+        pub mod ukg_ready;
         pub mod utils;
+        pub mod vanta;
         pub mod zendesk;
     }
 

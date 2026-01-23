@@ -513,7 +513,7 @@ const CliChat: FC<CliChatProps> = ({
                 username: me.username,
                 fullName: me.fullName,
                 email: me.email,
-                origin: "api",
+                origin: "cli",
                 clientSideMCPServerIds: fileSystemServerId
                   ? [fileSystemServerId]
                   : null,
@@ -554,7 +554,7 @@ const CliChat: FC<CliChatProps> = ({
                 username: me.username,
                 fullName: me.fullName,
                 email: me.email,
-                origin: "api",
+                origin: "cli",
               },
             },
           });
@@ -628,9 +628,9 @@ const CliChat: FC<CliChatProps> = ({
                     type: "agent_message_content_line",
                     text: line || " ",
                     index,
-                  } satisfies ConversationItem & {
+                  }) satisfies ConversationItem & {
                     type: "agent_message_content_line";
-                  })
+                  }
               )
               .filter((item) => !prevIds.has(item.key))
               .slice(0, isStreaming ? -1 : undefined);
@@ -652,9 +652,9 @@ const CliChat: FC<CliChatProps> = ({
                       type: "agent_message_cot_line",
                       text: line,
                       index,
-                    } satisfies ConversationItem & {
+                    }) satisfies ConversationItem & {
                       type: "agent_message_cot_line";
-                    })
+                    }
                 )
                 .filter((item) => !prevIds.has(item.key))
                 .slice(0, isStreaming && !contentItems.length ? -1 : undefined);

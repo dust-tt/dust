@@ -1,28 +1,41 @@
 import {
+  ActionIcons,
+  Button,
+  Chip,
   ClipboardIcon,
   cn,
   EyeIcon,
   EyeSlashIcon,
   IconButton,
+  IconPicker,
+  Input,
+  Label,
   Page,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   Separator,
+  TextArea,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
+import { useController, useFormContext } from "react-hook-form";
 
+import { getIcon } from "@app/components/resources/resources_icons";
+import type { WebhookSourceFormValues } from "@app/components/triggers/forms/webhookSourceFormSchema";
 import { WebhookEndpointUsageInfo } from "@app/components/triggers/WebhookEndpointUsageInfo";
-import { WebhookSourceViewForm } from "@app/components/triggers/WebhookSourceViewForm";
 import { useSendNotification } from "@app/hooks/useNotification";
-import config from "@app/lib/api/config";
+import { buildWebhookUrl, normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type { LightWorkspaceType } from "@app/types";
-import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
+import type { WebhookSourceViewForAdminType } from "@app/types/triggers/webhooks";
+import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 type WebhookSourceDetailsInfoProps = {
-  webhookSourceView: WebhookSourceViewType;
+  webhookSourceView: WebhookSourceViewForAdminType;
   owner: LightWorkspaceType;
 };
 
-const getEditedLabel = (webhookSourceView: WebhookSourceViewType) => {
+const getEditedLabel = (webhookSourceView: WebhookSourceViewForAdminType) => {
   if (
     webhookSourceView.editedByUser === null ||
     (webhookSourceView.editedByUser.editedAt === null &&
@@ -48,7 +61,19 @@ export function WebhookSourceDetailsInfo({
   owner,
 }: WebhookSourceDetailsInfoProps) {
   const [isSecretVisible, setIsSecretVisible] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const sendNotification = useSendNotification();
+  const form = useFormContext<WebhookSourceFormValues>();
+
+  const { field: nameField, fieldState: nameFieldState } = useController({
+    control: form.control,
+    name: "name",
+  });
+
+  const { field: descriptionField } = useController({
+    control: form.control,
+    name: "description",
+  });
 
   const editedLabel = useMemo(
     () => getEditedLabel(webhookSourceView),
@@ -56,6 +81,9 @@ export function WebhookSourceDetailsInfo({
   );
 
   const [isCopied, copy] = useCopyToClipboard();
+
+  const selectedIcon = form.watch("icon");
+  const IconComponent = getIcon(normalizeWebhookIcon(selectedIcon));
 
   useEffect(() => {
     if (isCopied) {
@@ -67,9 +95,14 @@ export function WebhookSourceDetailsInfo({
   }, [isCopied, sendNotification]);
 
   const webhookUrl = useMemo(() => {
-    const { url } = config.getDustAPIConfig();
-    return `${url}/api/v1/w/${owner.sId}/triggers/hooks/${webhookSourceView.webhookSource.sId}`;
-  }, [owner.sId, webhookSourceView.webhookSource.sId]);
+    return buildWebhookUrl({
+      apiBaseUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+      workspaceId: owner.sId,
+      webhookSource: webhookSourceView.webhookSource,
+    });
+  }, [owner.sId, webhookSourceView.webhookSource]);
+
+  const { provider } = webhookSourceView.webhookSource;
 
   return (
     <div className="flex flex-col gap-2">
@@ -79,10 +112,61 @@ export function WebhookSourceDetailsInfo({
         </div>
       )}
 
-      <WebhookSourceViewForm
-        webhookSourceView={webhookSourceView}
-        owner={owner}
-      />
+      <div className="space-y-5 text-foreground dark:text-foreground-night">
+        <div className="space-y-2">
+          <Label htmlFor="trigger-name-icon">
+            {provider ? "Name" : "Name & Icon"}
+          </Label>
+          <div className="flex items-end space-x-2">
+            <div className="flex-grow">
+              <Input
+                {...nameField}
+                id="trigger-name-icon"
+                isError={!!nameFieldState.error}
+                message={nameFieldState.error?.message}
+                placeholder={webhookSourceView.webhookSource.name}
+              />
+            </div>
+            {!provider && (
+              <PopoverRoot open={isPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    icon={IconComponent}
+                    onClick={() => setIsPopoverOpen(true)}
+                    isSelect
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-fit py-0"
+                  onInteractOutside={() => setIsPopoverOpen(false)}
+                  onEscapeKeyDown={() => setIsPopoverOpen(false)}
+                >
+                  <IconPicker
+                    icons={ActionIcons}
+                    selectedIcon={normalizeWebhookIcon(selectedIcon)}
+                    onIconSelect={(iconName: string) => {
+                      form.setValue("icon", iconName, { shouldDirty: true });
+                      setIsPopoverOpen(false);
+                    }}
+                  />
+                </PopoverContent>
+              </PopoverRoot>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="trigger-description">Description</Label>
+          <TextArea
+            {...descriptionField}
+            id="trigger-description"
+            rows={3}
+            placeholder="Help your team understand when to use this trigger."
+          />
+        </div>
+      </div>
 
       <Separator className="mb-4 mt-4" />
       <Page.H variant="h4">Webhook Source Details</Page.H>
@@ -91,7 +175,9 @@ export function WebhookSourceDetailsInfo({
         <div>
           <Page.H variant="h6">Webhook URL</Page.H>
           <div className="flex items-center space-x-2">
-            <Page.P>{webhookUrl}</Page.P>
+            <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              {webhookUrl}
+            </p>
             <IconButton
               icon={ClipboardIcon}
               onClick={() => copy(webhookUrl)}
@@ -100,11 +186,42 @@ export function WebhookSourceDetailsInfo({
           </div>
         </div>
 
-        <div>
-          <Page.H variant="h6">Source Name</Page.H>
-          <Page.P>{webhookSourceView.webhookSource.name}</Page.P>
-        </div>
-
+        {provider &&
+          (() => {
+            const DetailsComponent =
+              WEBHOOK_PRESETS[provider].components.detailsComponent;
+            return (
+              <DetailsComponent
+                webhookSource={webhookSourceView.webhookSource}
+              />
+            );
+          })()}
+        {provider && WEBHOOK_PRESETS[provider].events.length > 0 && (
+          <div className="space-y-3">
+            <Page.H variant="h6">Subscribed events</Page.H>
+            <div>
+              {webhookSourceView.webhookSource.subscribedEvents
+                .map((eventValue) => {
+                  const event = WEBHOOK_PRESETS[provider].events.find(
+                    (e) => e.value === eventValue
+                  );
+                  return event ? event.name : eventValue;
+                })
+                .map((event) => {
+                  return (
+                    <Chip
+                      key={event}
+                      size="xs"
+                      color="primary"
+                      className="m-0.5"
+                    >
+                      {event}
+                    </Chip>
+                  );
+                })}
+            </div>
+          </div>
+        )}
         {webhookSourceView.webhookSource.secret && (
           <div>
             <Page.H variant="h6">Secret</Page.H>
@@ -124,7 +241,6 @@ export function WebhookSourceDetailsInfo({
             </div>
           </div>
         )}
-
         {webhookSourceView.webhookSource.signatureHeader && (
           <>
             <div>
@@ -140,32 +256,6 @@ export function WebhookSourceDetailsInfo({
             </div>
           </>
         )}
-
-        {webhookSourceView.webhookSource.customHeaders &&
-          Object.keys(webhookSourceView.webhookSource.customHeaders).length >
-            0 && (
-            <div>
-              <Page.H variant="h6">Custom Headers</Page.H>
-              <div className="mt-2 space-y-1">
-                {Object.entries(
-                  webhookSourceView.webhookSource.customHeaders
-                ).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex items-center space-x-2 text-sm"
-                  >
-                    <span className="font-mono text-muted-foreground dark:text-muted-foreground-night">
-                      {key}:
-                    </span>
-                    <span className="text-foreground dark:text-foreground-night">
-                      {value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
         {webhookSourceView.webhookSource.secret &&
           webhookSourceView.webhookSource.signatureHeader &&
           webhookSourceView.webhookSource.signatureAlgorithm && (

@@ -5,17 +5,17 @@ import {
 } from "@app/lib/api/assistant/streaming/helpers";
 import { getRedisHybridManager } from "@app/lib/api/redis-hybrid-manager";
 import type { Authenticator } from "@app/lib/auth";
+import { wakeLock } from "@app/lib/wake_lock";
+import type { AgenticMessageData, MentionType } from "@app/types";
 import type {
   AgentMessageType,
   ConversationType,
-  MentionType,
   PubSubError,
   Result,
   UserMessageContext,
   UserMessageType,
 } from "@app/types";
 import { Ok } from "@app/types";
-import type { ExecutionMode } from "@app/types/assistant/agent_run";
 
 // We wait for 60 seconds for agent messages to complete.
 const WAIT_FOR_AGENT_COMPLETION_TIMEOUT_MS = 60000 * 3; // 3 minutes.
@@ -58,6 +58,7 @@ async function waitForAgentCompletion(
       subscriptions.forEach((unsub) => {
         try {
           unsub();
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           // Ignore individual unsubscribe errors to ensure all subscriptions are cleaned up.
         }
@@ -114,6 +115,7 @@ async function waitForAgentCompletion(
           );
 
           subscriptions.push(unsubscribe);
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           expectedMessageIds.delete(agentMessage.sId);
         }
@@ -144,15 +146,15 @@ export async function postUserMessageAndWaitForCompletion(
   {
     content,
     context,
+    agenticMessageData,
     conversation,
-    executionMode,
     mentions,
     skipToolsValidation,
   }: {
     content: string;
     context: UserMessageContext;
+    agenticMessageData?: AgenticMessageData;
     conversation: ConversationType;
-    executionMode?: ExecutionMode;
     mentions: MentionType[];
     skipToolsValidation: boolean;
   }
@@ -165,29 +167,39 @@ export async function postUserMessageAndWaitForCompletion(
     PubSubError
   >
 > {
-  const postResult = await postUserMessage(auth, {
-    content,
-    context,
-    conversation,
-    executionMode,
-    mentions,
-    skipToolsValidation,
-  });
+  return wakeLock(
+    async () => {
+      const postResult = await postUserMessage(auth, {
+        content,
+        context,
+        agenticMessageData,
+        conversation,
+        mentions,
+        skipToolsValidation,
+      });
 
-  if (postResult.isErr()) {
-    return postResult;
-  }
+      if (postResult.isErr()) {
+        return postResult;
+      }
 
-  const { userMessage, agentMessages } = postResult.value;
-  if (agentMessages.length === 0) {
-    return new Ok({ userMessage, agentMessages });
-  }
+      const { userMessage, agentMessages } = postResult.value;
+      if (agentMessages.length === 0) {
+        return new Ok({ userMessage, agentMessages });
+      }
 
-  // Wait for all agent messages to complete.
-  const completedAgentMessages = await waitForAgentCompletion(agentMessages);
+      // Wait for all agent messages to complete.
+      const completedAgentMessages =
+        await waitForAgentCompletion(agentMessages);
 
-  return new Ok({
-    userMessage,
-    agentMessages: completedAgentMessages,
-  });
+      return new Ok({
+        userMessage,
+        agentMessages: completedAgentMessages,
+      });
+    },
+    {
+      workspaceId: conversation.owner.sId,
+      conversationId: conversation.sId,
+      operation: "postUserMessageAndWaitForCompletion",
+    }
+  );
 }

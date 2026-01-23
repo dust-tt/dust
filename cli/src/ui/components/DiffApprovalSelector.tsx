@@ -201,12 +201,12 @@ export const DiffApprovalSelector: FC<DiffApprovalSelectorProps> = ({
                         .hex(COLORS.focusColor)
                         .bold(`${option.symbol} ${option.label}`)
                     : isAccept
-                    ? chalk.hex(COLORS.addedFg)(
-                        `${option.symbol} ${option.label}`
-                      )
-                    : chalk.hex(COLORS.removedFg)(
-                        `${option.symbol} ${option.label}`
-                      )}
+                      ? chalk.hex(COLORS.addedFg)(
+                          `${option.symbol} ${option.label}`
+                        )
+                      : chalk.hex(COLORS.removedFg)(
+                          `${option.symbol} ${option.label}`
+                        )}
                 </Text>
               </Box>
             );

@@ -1,5 +1,5 @@
 import {
-  BellIcon,
+  BoltIcon,
   CloudArrowLeftRightIcon,
   CommandLineIcon,
   CompanyIcon,
@@ -8,6 +8,8 @@ import {
   LockIcon,
   PlanetIcon,
   ServerIcon,
+  SpaceClosedIcon,
+  SpaceOpenIcon,
 } from "@dust-tt/sparkle";
 import groupBy from "lodash/groupBy";
 import type React from "react";
@@ -20,7 +22,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever, GLOBAL_SPACE_NAME } from "@app/types";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",
@@ -34,6 +36,10 @@ export type SpaceSectionGroupType = (typeof SPACE_SECTION_GROUP_ORDER)[number];
 export function getSpaceIcon(
   space: SpaceType
 ): (props: React.SVGProps<SVGSVGElement>) => React.ReactElement {
+  if (space.kind === "project") {
+    return space.isRestricted ? SpaceClosedIcon : SpaceOpenIcon;
+  }
+
   if (space.kind === "public") {
     return PlanetIcon;
   }
@@ -50,7 +56,7 @@ export function getSpaceIcon(
 }
 
 export const getSpaceName = (space: SpaceType) => {
-  return space.kind === "global" ? "Company Space" : space.name;
+  return space.kind === "global" ? GLOBAL_SPACE_NAME : space.name;
 };
 
 export const dustAppsListUrl = (
@@ -81,6 +87,7 @@ export const groupSpacesForDisplay = (spaces: SpaceType[]) => {
 
         case "global":
         case "regular":
+        case "project":
           return space.isRestricted ? "restricted" : "shared";
 
         default:
@@ -127,6 +134,7 @@ export const CATEGORY_DETAILS: {
   apps: {
     label: "Apps",
     icon: CommandLineIcon,
+    flag: "legacy_dust_apps",
   },
   actions: {
     label: "Tools",
@@ -134,17 +142,6 @@ export const CATEGORY_DETAILS: {
   },
   triggers: {
     label: "Triggers",
-    icon: BellIcon,
-    flag: "hootl_webhooks",
+    icon: BoltIcon,
   },
-};
-
-export const getSpaceAccessPriority = (space: SpaceType) => {
-  if (space.kind === "global") {
-    return 2;
-  }
-  if (!space.isRestricted) {
-    return 1;
-  }
-  return 0;
 };

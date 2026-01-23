@@ -51,52 +51,6 @@ function addItem(items: string[], newItem: string) {
 }
 ```
 
-### [GEN6] Comments must be sentences and properly wrapped
-
-Comments must be full sentences (generally starting with a capital letter and ending with a period)
-and must be consistently wrapped (see examples below).
-
-Example:
-
-```
-// BAD
-// new function
-// does something
-// interesting
-
-// BAD
-// this is a comment that is neither a full sentence nor wrapped at 100 characters (clearly higher) / it should be wrapped because otherwise it's really hard to read
-
-// BAD
-// This comment is a valid sentence but it
-// is wrapped at a much lower character count than
-// 100. It should be wrapped at ~100 characters.
-
-// BAD
-// Check if the current tag is the page selector.
-// If it is, we are inside a page.
-// This assumes that we don't have nested pages.
-
-// GOOD
-// This function is new and does something interesting.
-// TODO(xxx): improve the efficiency of this.
-
-// GOOD
-// This is a comment that is a full sentence and is wrapped at 100 characters. It is easy to read
-// and supports consistency of our code style.
-
-// GOOD
-// Permissions:
-// - "never_ask": Automatically approved
-// - "low": Ask user for approval and allow to automatically approve next time
-// - "high": Ask for approval each time
-// - undefined: Use default permission ("never_ask" for default tools, "high" for other tools)
-
-// GOOD
-// Check if the current tag is the page selector. If it is, we are inside a page. This assumes that
-// we don't have nested pages.
-```
-
 ### [GEN7] Avoid loops with quadratic or worse complexity
 
 Loops with quadratic O(n²) or worse cubic O(n³) complexity can severely hurt performance as data
@@ -168,7 +122,10 @@ When quadratic complexity cannot be avoided:
 
 ### [GEN8] Do not use console.log, console.error, etc. — always use the app logger
 
-Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console methods are prohibited in the codebase. Always use the application logger for all logging, debugging, and error reporting purposes. This ensures consistent log formatting, proper log routing, and easier log management across environments.
+Direct calls to `console.log`, `console.error`, `console.warn`, `console.info`, or similar console
+methods are prohibited in the codebase. Always use the application logger for all logging,
+debugging, and error reporting purposes. This ensures consistent log formatting, proper log
+routing, and easier log management across environments.
 
 Example:
 
@@ -180,6 +137,34 @@ console.error("Failed to fetch data", error);
 // GOOD
 logger.info({ user }, "User created");
 logger.error({ err: error }, "Failed to fetch data");
+```
+
+### [GEN9] Use unit suffixes for money and time variables
+
+Variables representing monetary amounts or time durations must include a unit suffix in their name.
+This prevents conversion errors (e.g., cents vs dollars, milliseconds vs seconds) such as the one
+that caused [this incident](https://dust4ai.slack.com/archives/C05B529FHV1/p1764835038528229).
+
+Common suffixes:
+
+- Money: `Cents`, `Dollars` (e.g., `priceCents`, `amountDollars`)
+- Time: `Ms`, `Seconds`, `Minutes`, `Hours` (e.g., `timeoutMs`, `durationSeconds`)
+
+Reviewer: If you detect a variable representing money or time without a unit suffix, require the
+author to rename it with the appropriate suffix.
+
+Example:
+
+```
+// BAD
+const price = 1999;
+const timeout = 5000;
+const delay = 30;
+
+// GOOD
+const priceCents = 1999;
+const timeoutMs = 5000;
+const delaySeconds = 30;
 ```
 
 ## SECURITY
@@ -322,6 +307,13 @@ const r = someFunction(aId);
 Resources and associated types should consistently expose both `sId` (string) and `id` (ModelId) in
 their interfaces. This pattern ensures consistency across the codebase and proper type safety.
 
+When extracting identifiers from resource objects into variables, follow this naming convention:
+
+- For the string identifier (`sId` field): use `<resourceName>Id` (e.g., `agentId`,
+  `conversationId`)
+- For the numeric identifier (`id` field): use `<resourceName>ModelId` (e.g., `agentModelId`,
+  `conversationModelId`)
+
 Example:
 
 ```
@@ -335,6 +327,10 @@ interface ResourceType {
 sId: string;
 id: ModelId;
 }
+
+// Variable naming
+const agentId = agent.sId;           // String identifier
+const agentModelId = agent.id;       // Numeric ModelId
 ```
 
 ### [BACK11] Resource invariant: Use "Model" suffix for Sequelize models when creating Resources
@@ -354,14 +350,62 @@ class Conversation extends Model { }
 class ConversationModel extends Model { }
 ```
 
+### [BACK12] Endpoint backward compatibility
+
+When updating an existing endpoint and its expected payload, ensure backward compatibility with
+clients. Schemas must be append-only, we never remove fields, and when adding a new field, it must
+be optional and accept `undefined` as a value even if the latest client code always sends a value.
+
+This prevents breaking clients who are still running an older version.
+
+Example:
+
+```
+// BAD - breaks clients that haven't refreshed
+interface UpdateResourceBody {
+  name: string;
+  newField: string | null;  // Required field added later
+}
+
+// GOOD - backward compatible
+interface UpdateResourceBody {
+  name: string;
+  newField?: string;  // Optional, with server-side default if needed
+}
+```
+
+### [BACK13] Foreign key must be indexed
+
+When adding a foreign key `B.a` on table `B` to a deletable object from table `A` (pretty much all
+objects in the context of scrubbing a workspace) make sure to add an index on `B.a` to avoid table
+scans when deleting objects from table `A`.
+
+```
+AgentMCPActionModel.belongsTo(AgentMessageModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+  as: "agentMessage",
+});
+
+AgentMessageModel.hasMany(AgentMCPActionModel, {
+  foreignKey: { name: "agentMessageId", allowNull: false },
+});
+
+// Must be accompanied above in the model definition by index:
+
+{
+  fields: ["agentMessageId"],
+  concurrently: true,
+}
+```
+
 ## MCP
 
 ### [MCP1] Single file internal servers
 
 If possible, internal MCP servers should fit in one file. The name of the file must match the
 name of the server. If having only one file is not possible, they should be placed into a folder
-that contains a file `server.ts` from where the `createServer` function that creates the server
-will be exported.
+that contains a file `index.ts` from where the `createServer` function that creates the server
+will be default exported.
 
 ### [MCP2] Tool output typing
 
@@ -455,6 +499,9 @@ export function useCreateFolder({
   };
 };
 ```
+
+In NextJS pages, getServerSideProps should not fetch data and return more that what's
+available in authenticator. Rather rely on API endpoint and SWR calls.
 
 ### [REACT3] Any async network operation should have a visual loading state
 

@@ -17,6 +17,7 @@ makeScript({}, async ({ execute }) => {
   try {
     console.log("Starting profiling...");
 
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(
       `http://localhost:3000/api/debug/profiler?secret=${debugProfilerSecret}`
     );

@@ -1,11 +1,13 @@
+import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   DataSourceConfiguration,
   DataSourceFilter,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
-import type { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import type { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import type { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import type { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
 export type RetrievalTimeframe =
@@ -17,7 +19,7 @@ export type RetrievalTimeframe =
     };
 
 export function renderDataSourceConfiguration(
-  dataSourceConfig: AgentDataSourceConfiguration
+  dataSourceConfig: AgentDataSourceConfigurationModel
 ): DataSourceConfiguration & { sId: string } {
   const { dataSourceView } = dataSourceConfig;
 
@@ -43,7 +45,8 @@ export function renderDataSourceConfiguration(
     }),
     filter: {
       parents:
-        dataSourceConfig.parentsIn && dataSourceConfig.parentsNotIn
+        dataSourceConfig.parentsIn !== null ||
+        dataSourceConfig.parentsNotIn !== null
           ? {
               in: dataSourceConfig.parentsIn,
               not: dataSourceConfig.parentsNotIn,
@@ -55,7 +58,7 @@ export function renderDataSourceConfiguration(
 }
 
 export function renderTableConfiguration(
-  table: AgentTablesQueryConfigurationTable
+  table: AgentTablesQueryConfigurationTableModel
 ): TableDataSourceConfiguration & { sId: string } {
   const { dataSourceView } = table;
 
@@ -70,5 +73,36 @@ export function renderTableConfiguration(
     }),
     workspaceId: dataSourceView.workspace.sId,
     tableId: table.tableId,
+  };
+}
+
+export function buildServerSideMCPServerConfiguration({
+  mcpServerView,
+  dataSources = null,
+  serverNameOverride,
+}: {
+  mcpServerView: MCPServerViewResource;
+  dataSources?: DataSourceConfiguration[] | null;
+  serverNameOverride?: string;
+}): ServerSideMCPServerConfigurationType {
+  const { server } = mcpServerView.toJSON();
+
+  return {
+    id: -1,
+    sId: `mcp_${server.sId}`,
+    type: "mcp_server_configuration",
+    name: serverNameOverride ?? mcpServerView.name ?? server.name,
+    description: mcpServerView.description ?? server.description,
+    icon: server.icon,
+    mcpServerViewId: mcpServerView.sId,
+    internalMCPServerId: mcpServerView.internalMCPServerId,
+    dataSources,
+    tables: null,
+    childAgentId: null,
+    additionalConfiguration: {},
+    timeFrame: null,
+    dustAppConfiguration: null,
+    jsonSchema: null,
+    secretName: null,
   };
 }

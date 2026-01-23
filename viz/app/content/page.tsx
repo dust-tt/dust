@@ -1,9 +1,11 @@
-import { VisualizationWrapperWithErrorBoundary } from "@viz/app/components/VisualizationWrapper";
+import { ClientVisualizationWrapper } from "@viz/app/content/ClientVisualizationWrapper";
+import { ServerSideVisualizationWrapper } from "@viz/app/content/ServerVisualizationWrapper";
 
-type RenderVisualizationSearchParams = {
-  identifier: string;
+interface RenderVisualizationSearchParams {
+  accessToken?: string;
   fullHeight?: string;
-};
+  identifier?: string;
+}
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
 
@@ -12,16 +14,36 @@ export default function RenderVisualization({
 }: {
   searchParams: RenderVisualizationSearchParams;
 }) {
-  const isFullHeight = searchParams.fullHeight === 'true';
   const allowedOrigins = ALLOWED_VISUALIZATION_ORIGIN
-    ? ALLOWED_VISUALIZATION_ORIGIN.split(',').map((s) => s.trim())
+    ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
-  return (
-    <VisualizationWrapperWithErrorBoundary
-      identifier={searchParams.identifier}
-      allowedOrigins={allowedOrigins}
-      isFullHeight={isFullHeight}
-    />
-  );
+  const { accessToken, fullHeight, identifier } = searchParams;
+
+  const isFullHeight = fullHeight === "true";
+
+  // Use SSR approach for access tokens (publicly accessible).
+  if (accessToken) {
+    return (
+      <ServerSideVisualizationWrapper
+        accessToken={accessToken}
+        allowedOrigins={allowedOrigins}
+        identifier={identifier!}
+        isFullHeight={isFullHeight}
+      />
+    );
+  }
+
+  // Use RPC approach for regular identifiers (other flows).
+  if (identifier) {
+    return (
+      <ClientVisualizationWrapper
+        identifier={identifier}
+        allowedOrigins={allowedOrigins}
+        isFullHeight={isFullHeight}
+      />
+    );
+  }
+
+  return <div>Missing access token or identifier</div>;
 }

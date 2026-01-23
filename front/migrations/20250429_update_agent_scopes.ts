@@ -2,7 +2,7 @@ import type { Logger } from "pino";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -18,7 +18,7 @@ const migrateWorkspace = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   logger.info({ workspace: workspace.sId }, "Migrating agents");
-  const agents = await AgentConfiguration.findAll({
+  const agents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       scope: ["workspace", "published", "private"],

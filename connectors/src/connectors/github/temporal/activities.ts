@@ -48,9 +48,9 @@ import {
 } from "@connectors/lib/data_sources";
 import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import {
-  GithubCodeRepository,
-  GithubDiscussion,
-  GithubIssue,
+  GithubCodeRepositoryModel,
+  GithubDiscussionModel,
+  GithubIssueModel,
 } from "@connectors/lib/models/github";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { getTemporalClient } from "@connectors/lib/temporal";
@@ -250,7 +250,7 @@ export async function githubUpsertIssueActivity(
     ...loggerArgs,
   });
   logger.info("Upserting GitHub issue.");
-  const existingIssue = await GithubIssue.findOne({
+  const existingIssue = await GithubIssueModel.findOne({
     where: {
       repoId: repoId.toString(),
       issueNumber,
@@ -336,7 +336,7 @@ export async function githubUpsertIssueActivity(
   }
 
   logger.info("Upserting GitHub issue in DB.");
-  await GithubIssue.upsert({
+  await GithubIssueModel.upsert({
     repoId: repoId.toString(),
     issueNumber,
     connectorId: connector.id,
@@ -441,9 +441,13 @@ async function renderDiscussion(
             prefix: `>> ${childComment.author?.login || "Unknown author"}:\n`,
             content: null,
             sections: [
-              await renderMarkdownSection(dataSourceConfig, comment.bodyText, {
-                flavor: "gfm",
-              }),
+              await renderMarkdownSection(
+                dataSourceConfig,
+                childComment.bodyText,
+                {
+                  flavor: "gfm",
+                }
+              ),
             ],
           };
           c.sections.push(cc);
@@ -563,7 +567,7 @@ export async function githubUpsertDiscussionActivity(
   }
 
   logger.info("Upserting GitHub discussion in DB.");
-  await GithubDiscussion.upsert({
+  await GithubDiscussionModel.upsert({
     repoId: repoId.toString(),
     discussionNumber: discussionNumber,
     connectorId: connector.id,
@@ -698,7 +702,7 @@ export async function githubRepoGarbageCollectActivity(
   }
   const logger = getActivityLogger(connector, { repoId });
 
-  const issuesInRepo = await GithubIssue.findAll({
+  const issuesInRepo = await GithubIssueModel.findAll({
     where: {
       repoId,
       connectorId: connector.id,
@@ -722,7 +726,7 @@ export async function githubRepoGarbageCollectActivity(
     );
   }
 
-  const discussionsInRepo = await GithubDiscussion.findAll({
+  const discussionsInRepo = await GithubDiscussionModel.findAll({
     where: {
       repoId,
       connectorId: connector.id,
@@ -772,7 +776,7 @@ export async function githubRepoGarbageCollectActivity(
   });
 
   // Finally delete the repository object if it exists.
-  await GithubCodeRepository.destroy({
+  await GithubCodeRepositoryModel.destroy({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),
@@ -787,7 +791,7 @@ async function deleteIssue(
   issueNumber: number,
   logger: Logger
 ) {
-  const issueInDb = await GithubIssue.findOne({
+  const issueInDb = await GithubIssueModel.findOne({
     where: {
       repoId: repoId.toString(),
       issueNumber,
@@ -810,7 +814,7 @@ async function deleteIssue(
 
   if (issueInDb) {
     logger.info("Deleting GitHub issue from database.");
-    await GithubIssue.destroy({
+    await GithubIssueModel.destroy({
       where: {
         repoId: repoId.toString(),
         issueNumber,
@@ -827,7 +831,7 @@ async function deleteDiscussion(
   discussionNumber: number,
   logger: Logger
 ) {
-  const discussionInDb = await GithubDiscussion.findOne({
+  const discussionInDb = await GithubDiscussionModel.findOne({
     where: {
       repoId: repoId.toString(),
       discussionNumber,
@@ -854,7 +858,7 @@ async function deleteDiscussion(
   );
 
   logger.info({ documentId }, "Deleting GitHub discussion from database.");
-  await GithubDiscussion.destroy({
+  await GithubDiscussionModel.destroy({
     where: {
       repoId: repoId.toString(),
       discussionNumber: discussionNumber,

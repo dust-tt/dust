@@ -1,24 +1,29 @@
 import {
-  ArrowRightIcon,
   Avatar,
   BellIcon,
   ClockIcon,
-  PencilSquareIcon,
-  XMarkIcon,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import { Button } from "@dust-tt/sparkle";
 import { Spinner } from "@dust-tt/sparkle";
 import cronstrue from "cronstrue";
 import { useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import {
-  useAddTriggerSubscriber,
   useAgentTriggers,
-  useRemoveTriggerSubscriber,
+  useDeleteTrigger,
 } from "@app/lib/swr/agent_triggers";
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 import type { LightAgentConfigurationType } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 interface AgentTriggersTabProps {
   agentConfiguration: LightAgentConfigurationType;
@@ -34,18 +39,45 @@ export function AgentTriggersTab({
     agentConfigurationId: agentConfiguration.sId,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
+  const [triggerToDelete, setTriggerToDelete] = useState<TriggerType | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const sendNotification = useSendNotification();
 
-  const subscribe = useAddTriggerSubscriber({
+  const deleteTrigger = useDeleteTrigger({
     workspaceId: owner.sId,
     agentConfigurationId: agentConfiguration.sId,
   });
-  const unsubscribe = useRemoveTriggerSubscriber({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentConfiguration.sId,
-  });
 
-  const editionURL = getAgentBuilderRoute(owner.sId, agentConfiguration.sId);
+  const handleDeleteTrigger = async () => {
+    if (!triggerToDelete) {
+      return;
+    }
+    setIsDeleting(true);
+    const success = await deleteTrigger(triggerToDelete.sId);
+    setIsDeleting(false);
+    setTriggerToDelete(null);
+
+    if (success) {
+      sendNotification({
+        type: "success",
+        title: "Trigger deleted",
+        description: `The trigger "${triggerToDelete.name}" has been deleted.`,
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete trigger",
+        description: "An error occurred while deleting the trigger.",
+      });
+    }
+  };
+
+  // TODO(adrien): for now, we only show the user's triggers.
+  // We might reconsider it, and display a "My triggers" section,
+  // and a "How others automate this" section in the future.
+  const filteredTriggers = triggers.filter((t) => t.isEditor);
 
   return (
     <>
@@ -55,12 +87,12 @@ export function AgentTriggersTab({
         </div>
       ) : (
         <div className="flex w-full flex-col gap-2">
-          {triggers.length === 0 && (
+          {filteredTriggers.length === 0 && (
             <div className="text-muted-foreground">
-              No triggers setup for this agent, yet.
+              You have no triggers setup for this agent, yet.
             </div>
           )}
-          {triggers.map((trigger) => (
+          {filteredTriggers.map((trigger) => (
             <div
               key={trigger.sId}
               className="flex w-full flex-row items-center justify-between border-b pb-2"
@@ -81,43 +113,14 @@ export function AgentTriggersTab({
                     <div className="font-semibold">{trigger.name}</div>
                   </div>
                   <div className="self-end">
-                    {trigger.isEditor ? (
-                      <Button
-                        label="Manage"
-                        icon={PencilSquareIcon}
-                        href={editionURL}
-                        variant="outline"
-                        size="sm"
-                      />
-                    ) : trigger.isSubscriber ? (
-                      <Button
-                        label="Unsubscribe"
-                        icon={XMarkIcon}
-                        variant="outline"
-                        size="sm"
-                        isLoading={isLoading}
-                        disabled={isLoading}
-                        onClick={async () => {
-                          setIsLoading(true);
-                          await unsubscribe(trigger.sId);
-                          setIsLoading(false);
-                        }}
-                      />
-                    ) : (
-                      <Button
-                        label="Subscribe"
-                        icon={ArrowRightIcon}
-                        variant="outline"
-                        size="sm"
-                        isLoading={isLoading}
-                        disabled={isLoading}
-                        onClick={async () => {
-                          setIsLoading(true);
-                          await subscribe(trigger.sId);
-                          setIsLoading(false);
-                        }}
-                      />
-                    )}
+                    <Button
+                      label="Delete"
+                      disabled={!trigger.isEditor}
+                      icon={TrashIcon}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setTriggerToDelete(trigger)}
+                    />
                   </div>
                 </div>
                 {trigger.kind === "schedule" && (
@@ -130,6 +133,43 @@ export function AgentTriggersTab({
           ))}
         </div>
       )}
+
+      <Dialog
+        open={triggerToDelete !== null}
+        onOpenChange={(open) => !open && setTriggerToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete trigger</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the trigger "
+              {triggerToDelete?.name}"?
+            </DialogDescription>
+          </DialogHeader>
+          {isDeleting ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <>
+              <DialogContainer>
+                <b>This action cannot be undone.</b>
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Delete",
+                  variant: "warning",
+                  onClick: handleDeleteTrigger,
+                }}
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

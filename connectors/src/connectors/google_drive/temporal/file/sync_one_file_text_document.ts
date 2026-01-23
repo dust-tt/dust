@@ -10,9 +10,8 @@ import {
 } from "@connectors/connectors/google_drive/temporal/mime_types";
 import { getInternalId } from "@connectors/connectors/google_drive/temporal/utils";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
-import type { GoogleDriveConfig } from "@connectors/lib/models/google_drive";
+import type { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
 import type { Logger } from "@connectors/logger/logger";
-import logger from "@connectors/logger/logger";
 import type {
   DataSourceConfig,
   GoogleDriveObjectType,
@@ -25,7 +24,7 @@ export async function syncOneFileTextDocument(
   oauth2client: OAuth2Client,
   file: GoogleDriveObjectType,
   localLogger: Logger,
-  config: GoogleDriveConfig | null,
+  config: GoogleDriveConfigModel | null,
   dataSourceConfig: DataSourceConfig,
   startSyncTs: number,
   isBatchSync: boolean,
@@ -60,7 +59,7 @@ export async function syncOneFileTextDocument(
       );
     } catch (e) {
       if (e instanceof WithRetriesError) {
-        logger.warn(
+        localLogger.warn(
           { error: e },
           "Couldn't export the file after multiple retries. Skipping."
         );

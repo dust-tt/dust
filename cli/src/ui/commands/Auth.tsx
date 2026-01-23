@@ -199,7 +199,7 @@ const Auth: FC<AuthProps> = ({ force = false, apiKey, wId }) => {
     // First check if we already have valid tokens, skip this if force flag is true
     if (!force) {
       const hasValidToken = await TokenStorage.hasValidAccessToken();
-      if (hasValidToken) {
+      if (hasValidToken.isOk()) {
         const accessToken = await TokenStorage.getAccessToken();
         const refreshToken = await TokenStorage.getRefreshToken();
 

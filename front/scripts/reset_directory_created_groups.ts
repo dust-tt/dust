@@ -1,8 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { normalizeError } from "@app/types";
-
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript(

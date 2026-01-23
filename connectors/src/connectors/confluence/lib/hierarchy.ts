@@ -3,8 +3,8 @@ import {
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
 import {
-  ConfluenceFolder,
-  ConfluencePage,
+  ConfluenceFolderModel,
+  ConfluencePageModel,
 } from "@connectors/lib/models/confluence";
 import type { ModelId } from "@connectors/types";
 
@@ -30,7 +30,7 @@ export async function getSpaceHierarchy(
   // By fetching all content within a space, we reconstruct parent-child
   // relationships in-app, minimizing database interactions.
   // If needed we could move the same approach as Notion and cache the results in Redis.
-  const allPages = await ConfluencePage.findAll({
+  const allPages = await ConfluencePageModel.findAll({
     attributes: ["pageId", "parentId", "parentType"],
     where: {
       connectorId,
@@ -38,7 +38,7 @@ export async function getSpaceHierarchy(
     },
   });
 
-  const allFolders = await ConfluenceFolder.findAll({
+  const allFolders = await ConfluenceFolderModel.findAll({
     attributes: ["folderId", "parentId", "parentType"],
     where: {
       connectorId,

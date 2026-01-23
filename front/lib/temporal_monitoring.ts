@@ -26,9 +26,7 @@ export type WorkflowError = {
   __is_dust_error: boolean;
 };
 
-export class ActivityInboundLogInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
   public readonly logger: Logger;
   private readonly context: Context;
 
@@ -51,15 +49,11 @@ export class ActivityInboundLogInterceptor
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let error: any = undefined;
     const startTime = new Date();
     const tags = [
       `activity_name:${this.context.info.activityType}`,
       `workflow_name:${this.context.info.workflowType}`,
-      // `activity_id:${this.context.info.activityId}`,
-      // `workflow_id:${this.context.info.workflowExecution.workflowId}`,
-      // `workflow_run_id:${this.context.info.workflowExecution.runId}`,
       `attempt:${this.context.info.attempt}`,
     ];
 
@@ -85,7 +79,6 @@ export class ActivityInboundLogInterceptor
           return next(input);
         }
       );
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
       error = err;
 

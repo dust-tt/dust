@@ -22,12 +22,34 @@
       font-synthesis-weight: none;
     }
   }
+
+  :root {
+    /* Chart tokens (light): exact shadcn palette */
+    --chart-1: 211 100% 78%;
+    --chart-2: 216 100% 58%;
+    --chart-3: 221 97% 54%;
+    --chart-4: 225 84% 49%;
+    --chart-5: 227 76% 41%;
+  }
+
+  .dark {
+    /* Chart tokens (dark): exact shadcn palette */
+    --chart-1: 211 100% 78%;
+    --chart-2: 216 100% 58%;
+    --chart-3: 221 97% 54%;
+    --chart-4: 225 84% 49%;
+    --chart-5: 227 76% 41%;
+  }
 }
 
 html,
 body,
 main {
   @apply h-full;
+}
+
+body {
+  overflow-x: hidden;
 }
 
 #__next {
@@ -60,18 +82,6 @@ main {
   100% {
     content: "";
   }
-}
-
-.blinking-cursor > :not(pre):last-child::after {
-  content: "";
-  width: 8px;
-  height: 16px;
-  @apply bg-success-400;
-  display: inline-block;
-  @apply animate-cursor-blink;
-  margin-left: 5px;
-  position: relative;
-  top: 4px;
 }
 
 @keyframes shake {
@@ -151,7 +161,52 @@ main {
   * {
     scrollbar-width: thin;
   }
+
   .dark * {
     scrollbar-color: theme("colors.gray.700") theme("colors.gray.900");
   }
+}
+
+/* Remove this once we have migrated to tailwindcss v4 */
+.h-dvh {
+  height: 100dvh;
+}
+
+.min-h-dvh {
+  min-height: 100dvh;
+}
+
+.max-h-dvh {
+  max-height: 100dvh;
+}
+
+/* Avoid the native focus outline border on Recharts surfaces when clicking charts. */
+.observability-chart-container svg:focus,
+.observability-chart-container svg:focus-visible {
+  outline: none;
+}
+
+/* Rich text table styles for Contentful blog posts */
+.rich-text-table table tr:last-child td,
+.rich-text-table table tr:last-child th {
+  border-bottom: none;
+}
+
+.rich-text-table table td:last-child,
+.rich-text-table table th:last-child {
+  border-right: none;
+}
+
+.rich-text-table table td > div,
+.rich-text-table table th > div {
+  margin-bottom: 0;
+  display: flex;
+  align-items: center;
+  min-height: 1.5em;
+}
+
+/* Style first row as header (Contentful doesn't always use th elements) */
+.rich-text-table table tr:first-child td {
+  background-color: theme("colors.gray.50");
+  font-weight: 600;
 }

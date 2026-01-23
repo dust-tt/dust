@@ -1,5 +1,4 @@
 import type { ConnectorProvider } from "@dust-tt/client";
-import { assertNever } from "@dust-tt/client";
 import type { Context } from "@temporalio/activity";
 import { ApplicationFailure } from "@temporalio/activity";
 import type {
@@ -30,7 +29,7 @@ const TRANSIENT_ERROR_PRE_BACKOFF_RETRY_ATTEMPTS = 19;
 
 function redactErrorForLogs(err: unknown) {
   if (err instanceof WithRetriesError) {
-    // Omitting the whole errors array, data meant to be logged  should be
+    // Omitting the whole errors array, data meant to be logged should be
     // passed in additionalContext.
     return {
       name: err.name,
@@ -48,9 +47,7 @@ export interface ContextWithLogger extends Context {
   logger: typeof logger;
 }
 
-export class ActivityInboundLogInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
   public readonly logger: Logger;
   private readonly context: Context;
   private readonly provider: ConnectorProvider;
@@ -64,6 +61,7 @@ export class ActivityInboundLogInterceptor
       workflowId: ctx.info.workflowExecution.workflowId,
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
+      provider,
     });
 
     // Set a logger instance on the current Activity Context to provide
@@ -81,13 +79,24 @@ export class ActivityInboundLogInterceptor
     const tags = [
       `activity_name:${this.context.info.activityType}`,
       `workflow_name:${this.context.info.workflowType}`,
-      // `activity_id:${this.context.info.activityId}`,
-      // `workflow_id:${this.context.info.workflowExecution.workflowId}`,
-      // `workflow_run_id:${this.context.info.workflowExecution.runId}`,
       `attempt:${this.context.info.attempt}`,
       `provider:${this.provider}`,
     ];
 
+    // Extract contextual information for logging.
+    const connectorId = await getConnectorId(
+      this.context.info.workflowExecution.workflowId
+    );
+    let connector: ConnectorResource | null = null;
+    let workspaceId: string | undefined;
+    let dataSourceId: string | undefined;
+    if (connectorId) {
+      connector = await ConnectorResource.fetchById(connectorId);
+      if (connector) {
+        workspaceId = connector.workspaceId;
+        dataSourceId = connector.dataSourceId;
+      }
+    }
     // startToClose timeouts do not log an error by default; this code
     // ensures that the error is logged and the activity is marked as
     // failed.
@@ -103,12 +112,15 @@ export class ActivityInboundLogInterceptor
           dustError: error,
           durationMs: this.context.info.startToCloseTimeoutMs,
           attempt: this.context.info.attempt,
+          connectorId,
+          workspaceId,
+          dataSourceId,
         },
         "Activity failed"
       );
     }, this.context.info.startToCloseTimeoutMs);
 
-    // We already trigger a monitor after 20 failures, but when the pod crashes (eg: OOM or segfault), the attempt never gets logged.
+    // We already trigger a monitor after 20 failures, but when the pod crashes (e.g.: OOM or segfault), the attempt never gets logged.
     // By looking at the attempt count before the activity starts, we can detect activities that are repeatedly crashing the pod.
     if (this.context.info.attempt > 25) {
       this.logger.error(
@@ -116,6 +128,9 @@ export class ActivityInboundLogInterceptor
           activity_name: this.context.info.activityType,
           workflow_name: this.context.info.workflowType,
           attempt: this.context.info.attempt,
+          connectorId,
+          workspaceId,
+          dataSourceId,
         },
         "Activity has been attempted more than 25 times. Make sure it's not crashing the pod."
       );
@@ -140,8 +155,6 @@ export class ActivityInboundLogInterceptor
           return next(input);
         }
       );
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: unknown) {
       error = err;
 
@@ -157,6 +170,7 @@ export class ActivityInboundLogInterceptor
           )}s`,
           type: err.type, // "transient_upstream_activity_error"
           nextRetryDelay: err.retryAfterMs,
+          cause: err,
         });
       }
 
@@ -175,6 +189,9 @@ export class ActivityInboundLogInterceptor
             attempt: this.context.info.attempt,
             activityStartTime: startTime.toISOString(),
             elapsedMs: new Date().getTime() - startTime.getTime(),
+            connectorId,
+            workspaceId,
+            dataSourceId,
           },
           "gRPC connection error during activity execution"
         );
@@ -185,12 +202,7 @@ export class ActivityInboundLogInterceptor
         err instanceof WorkspaceQuotaExceededError
       ) {
         // We have a connector working on an expired token, we need to cancel the workflow.
-        const { workflowId } = this.context.info.workflowExecution;
-
-        const connectorId = await getConnectorId(workflowId);
         if (connectorId) {
-          const connector = await ConnectorResource.fetchById(connectorId);
-
           if (!connector) {
             throw new Error(
               `Unexpected: Connector with id ${connectorId} not found in the database.`
@@ -200,15 +212,23 @@ export class ActivityInboundLogInterceptor
           if (err instanceof ExternalOAuthTokenError) {
             await syncFailed(connectorId, "oauth_token_revoked");
             this.logger.info(
+              {
+                connectorId,
+                workspaceId,
+                dataSourceId,
+              },
               `Stopping connector manager because of expired token.`
             );
-          } else if (err instanceof WorkspaceQuotaExceededError) {
+          } else {
             await syncFailed(connectorId, "workspace_quota_exceeded");
             this.logger.info(
+              {
+                connectorId,
+                workspaceId,
+                dataSourceId,
+              },
               `Stopping connector manager because of quota exceeded for the workspace.`
             );
-          } else {
-            assertNever(err);
           }
 
           const connectorManager = getConnectorManager({
@@ -217,11 +237,15 @@ export class ActivityInboundLogInterceptor
           });
 
           if (connectorManager) {
-            await connectorManager.pauseAndStop();
+            await connectorManager.pauseAndStop({
+              reason: `Stopped on ${err.name}`,
+            });
           } else {
             this.logger.error(
               {
                 connectorId: connector.id,
+                workspaceId,
+                dataSourceId,
               },
               `Connector manager not found for connector`
             );
@@ -244,6 +268,9 @@ export class ActivityInboundLogInterceptor
               dustError: error,
               durationMs,
               attempt: this.context.info.attempt,
+              connectorId,
+              workspaceId,
+              dataSourceId,
             },
             "Activity failed"
           );
@@ -255,6 +282,9 @@ export class ActivityInboundLogInterceptor
               error_stack: error?.stack,
               durationMs: durationMs,
               attempt: this.context.info.attempt,
+              connectorId,
+              workspaceId,
+              dataSourceId,
             },
             "Unhandled activity error"
           );
@@ -263,9 +293,6 @@ export class ActivityInboundLogInterceptor
         tags.push(`error_type:${errorType}`);
         statsDClient.increment("activity_failed.count", 1, tags);
       } else {
-        const connectorId = await getConnectorId(
-          this.context.info.workflowExecution.workflowId
-        );
         if (
           connectorId &&
           TRACK_SUCCESSFUL_ACTIVITIES_FOR_CONNECTOR_IDS.includes(connectorId)

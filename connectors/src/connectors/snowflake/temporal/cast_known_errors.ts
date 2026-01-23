@@ -114,9 +114,26 @@ function isSnowflakeSuspendedError(
   );
 }
 
-export class SnowflakeCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+interface SnowflakeUserAccessDisabledError extends Error {
+  name: "OperationFailedError";
+}
+
+function isSnowflakeUserAccessDisabledError(
+  err: unknown
+): err is SnowflakeUserAccessDisabledError {
+  const userDisabledError = err as {
+    name: "OperationFailedError";
+    message: string;
+  };
+  return (
+    "name" in userDisabledError &&
+    userDisabledError.name === "OperationFailedError" &&
+    "message" in userDisabledError &&
+    userDisabledError.message.includes("User access disabled")
+  );
+}
+
+export class SnowflakeCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -131,7 +148,8 @@ export class SnowflakeCastKnownErrorsInterceptor
         isSnowflakeAccountLockedError(err) ||
         isSnowflakeIncorrectCredentialsError(err) ||
         isSnowflakeRoleNotFoundError(err) ||
-        isSnowflakeSuspendedError(err)
+        isSnowflakeSuspendedError(err) ||
+        isSnowflakeUserAccessDisabledError(err)
       ) {
         throw new ExternalOAuthTokenError(err);
       }

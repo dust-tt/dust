@@ -1,0 +1,11 @@
+POST /front.agent_message_analytics_2/_update_by_query
+{
+  "query": {
+    "exists": {
+      "field": "apiKeyName"
+    }
+  },
+  "script": {
+    "source": """ctx._source.api_key_name =ctx._source.remove("apiKeyName")"""
+  }
+}

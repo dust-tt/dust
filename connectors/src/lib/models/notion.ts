@@ -1,11 +1,11 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { NotionBlockType, PageObjectProperties } from "@connectors/types";
 
-export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorState> {
+export class NotionConnectorStateModel extends ConnectorBaseModel<NotionConnectorStateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -17,7 +17,7 @@ export class NotionConnectorState extends ConnectorBaseModel<NotionConnectorStat
   declare notionWorkspaceId: string;
   declare privateIntegrationCredentialId?: string | null;
 }
-NotionConnectorState.init(
+NotionConnectorStateModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -51,14 +51,14 @@ NotionConnectorState.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_states",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
   }
 );
 
-export class NotionPage extends ConnectorBaseModel<NotionPage> {
+export class NotionPageModel extends ConnectorBaseModel<NotionPageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -75,7 +75,7 @@ export class NotionPage extends ConnectorBaseModel<NotionPage> {
   declare titleSearchVector: unknown;
   declare notionUrl?: string | null;
 }
-NotionPage.init(
+NotionPageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -129,7 +129,7 @@ NotionPage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId"], concurrently: true },
       { fields: ["notionPageId", "connectorId"], unique: true },
@@ -146,7 +146,7 @@ NotionPage.init(
   }
 );
 
-export class NotionDatabase extends ConnectorBaseModel<NotionDatabase> {
+export class NotionDatabaseModel extends ConnectorBaseModel<NotionDatabaseModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -174,7 +174,7 @@ export class NotionDatabase extends ConnectorBaseModel<NotionDatabase> {
   declare structuredDataUpsertedTs: CreationOptional<Date | null>;
 }
 
-NotionDatabase.init(
+NotionDatabaseModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -246,7 +246,7 @@ NotionDatabase.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId"], concurrently: true },
       { fields: ["notionDatabaseId", "connectorId"], unique: true },
@@ -269,7 +269,7 @@ NotionDatabase.init(
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorPageCacheEntry extends ConnectorBaseModel<NotionConnectorPageCacheEntry> {
+export class NotionConnectorPageCacheEntryModel extends ConnectorBaseModel<NotionConnectorPageCacheEntryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -286,7 +286,7 @@ export class NotionConnectorPageCacheEntry extends ConnectorBaseModel<NotionConn
 
   declare workflowId: string;
 }
-NotionConnectorPageCacheEntry.init(
+NotionConnectorPageCacheEntryModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -345,7 +345,7 @@ NotionConnectorPageCacheEntry.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_page_cache_entries",
     indexes: [
       {
@@ -364,7 +364,7 @@ NotionConnectorPageCacheEntry.init(
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorBlockCacheEntry extends ConnectorBaseModel<NotionConnectorBlockCacheEntry> {
+export class NotionConnectorBlockCacheEntryModel extends ConnectorBaseModel<NotionConnectorBlockCacheEntryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -380,7 +380,7 @@ export class NotionConnectorBlockCacheEntry extends ConnectorBaseModel<NotionCon
 
   declare workflowId: string;
 }
-NotionConnectorBlockCacheEntry.init(
+NotionConnectorBlockCacheEntryModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -426,7 +426,7 @@ NotionConnectorBlockCacheEntry.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_block_cache_entries",
     indexes: [
       {
@@ -435,10 +435,11 @@ NotionConnectorBlockCacheEntry.init(
         name: "uq_notion_block_id_conn_id_page_id_wf_id",
       },
       { fields: ["connectorId"] },
-      { fields: ["parentBlockId"] },
-      { fields: ["notionPageId"] },
-      { fields: ["workflowId"] },
       { fields: ["connectorId", "workflowId"] },
+      {
+        fields: ["connectorId", "notionPageId", "workflowId"],
+        name: "notion_connector_block_cache_entries_connector_page_workflow",
+      },
     ],
   }
 );
@@ -447,7 +448,7 @@ NotionConnectorBlockCacheEntry.init(
 // This is because it's a cache table that generates a lot of writes and we don't want to fill up the WAL.
 // It's also a cache table, so we don't care if we lose data.
 // This table is not replicated to the read replica, and all data is lost on a failover.
-export class NotionConnectorResourcesToCheckCacheEntry extends ConnectorBaseModel<NotionConnectorResourcesToCheckCacheEntry> {
+export class NotionConnectorResourcesToCheckCacheEntryModel extends ConnectorBaseModel<NotionConnectorResourcesToCheckCacheEntryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -456,7 +457,7 @@ export class NotionConnectorResourcesToCheckCacheEntry extends ConnectorBaseMode
 
   declare workflowId: string;
 }
-NotionConnectorResourcesToCheckCacheEntry.init(
+NotionConnectorResourcesToCheckCacheEntryModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -482,7 +483,7 @@ NotionConnectorResourcesToCheckCacheEntry.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "notion_connector_resources_to_check_cache_entries",
     indexes: [
       {

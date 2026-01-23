@@ -1,6 +1,4 @@
 import {
-  Button,
-  Cog6ToothIcon,
   Dialog,
   DialogContainer,
   DialogContent,
@@ -9,9 +7,8 @@ import {
   DialogTitle,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 
-import { getAgentBuilderRoute } from "@app/lib/utils/router";
+import { useAppRouter } from "@app/lib/platform";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
 
@@ -32,27 +29,9 @@ export function GlobalAgentAction({
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
 }: GlobalAgentActionProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
-  const isConfigurable = agent.sId === GLOBAL_AGENTS_SID.DUST;
-  const canBeDisabled =
-    agent.sId !== GLOBAL_AGENTS_SID.DUST &&
-    agent.sId !== GLOBAL_AGENTS_SID.HELPER;
-
-  if (isConfigurable) {
-    return (
-      <Button
-        variant="outline"
-        icon={Cog6ToothIcon}
-        size="xs"
-        disabled={!isBuilder(owner)}
-        onClick={(e: Event) => {
-          e.stopPropagation();
-          void router.push(getAgentBuilderRoute(owner.sId, agent.sId));
-        }}
-      />
-    );
-  }
+  const canBeDisabled = agent.sId !== GLOBAL_AGENTS_SID.HELPER;
 
   if (canBeDisabled) {
     return (

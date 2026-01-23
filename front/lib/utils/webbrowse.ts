@@ -3,6 +3,7 @@ import type {
   ScrapeParams,
   ScrapeResponse,
 } from "@mendable/firecrawl-js";
+import { FirecrawlError } from "@mendable/firecrawl-js";
 import FirecrawlApp from "@mendable/firecrawl-js";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -86,6 +87,23 @@ export const browseUrl = async (
 
     scrapeResult = await fc.scrapeUrl(url, scrapeOptions);
   } catch (error) {
+    if (isUnsupportedWebsiteError(error)) {
+      logger.warn(
+        {
+          error,
+          url: url,
+        },
+        "[Firecrawl] Unsupported website (probably social media)"
+      );
+
+      return {
+        error:
+          "Website couldn't be crawled, it is no longer supported by Firecrawl.",
+        status: 403,
+        url: url,
+      };
+    }
+
     logger.error(
       {
         error,
@@ -213,4 +231,12 @@ export const browseUrls = async (
   );
 
   return results;
+};
+
+const isUnsupportedWebsiteError = (error: unknown): boolean => {
+  return (
+    error instanceof FirecrawlError &&
+    error.statusCode === 403 &&
+    error.message.includes("This website is no longer supported")
+  );
 };

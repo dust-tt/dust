@@ -63,7 +63,8 @@ const RadioGroup = React.forwardRef<
 RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
 
 interface RadioGroupItemProps
-  extends Omit<
+  extends
+    Omit<
       React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
       "children"
     >,
@@ -127,7 +128,8 @@ const RadioGroupItem = React.forwardRef<
 type IconPosition = "start" | "center" | "end";
 
 interface RadioGroupCustomItemProps
-  extends React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
+  extends
+    React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>,
     VariantProps<typeof radioStyles> {
   iconPosition?: IconPosition;
   customItem: React.ReactNode;

@@ -1,9 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import { assertNever, isConnectorProvider } from "@dust-tt/client";
 import type { Request, Response } from "express";
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
+import { z } from "zod";
 
 import { createConnector } from "@connectors/connectors";
 import type {
@@ -17,18 +15,19 @@ import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorType } from "@connectors/types";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import {
-  ioTsParsePayload,
+  DiscordBotConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
   WebCrawlerConfigurationTypeSchema,
+  zodParsePayload,
 } from "@connectors/types";
 import { ConnectorConfigurationTypeSchema } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
 
-const ConnectorCreateRequestBodySchema = t.type({
-  workspaceAPIKey: t.string,
-  dataSourceId: t.string,
-  workspaceId: t.string,
-  connectionId: t.string,
+const ConnectorCreateRequestBodySchema = z.object({
+  workspaceAPIKey: z.string(),
+  dataSourceId: z.string(),
+  workspaceId: z.string(),
+  connectionId: z.string(),
   configuration: ConnectorConfigurationTypeSchema,
 });
 
@@ -39,15 +38,16 @@ const _createConnectorAPIHandler = async (
   res: Response<ConnectorCreateResBody>
 ) => {
   try {
-    const bodyValidation = ConnectorCreateRequestBodySchema.decode(req.body);
-    if (isLeft(bodyValidation)) {
-      const pathError = reporter.formatValidationErrors(bodyValidation.left);
-
+    const bodyValidation = zodParsePayload(
+      req.body,
+      ConnectorCreateRequestBodySchema
+    );
+    if (bodyValidation.isErr()) {
       return apiError(req, res, {
         status_code: 400,
         api_error: {
           type: "invalid_request_error",
-          message: `Invalid request body: ${pathError}`,
+          message: `Invalid request body: ${bodyValidation.error}`,
         },
       });
     }
@@ -68,7 +68,7 @@ const _createConnectorAPIHandler = async (
       dataSourceId,
       connectionId,
       configuration,
-    } = bodyValidation.right;
+    } = bodyValidation.value;
 
     let connectorRes: Result<
       string,
@@ -77,7 +77,7 @@ const _createConnectorAPIHandler = async (
 
     switch (req.params.connector_provider) {
       case "webcrawler": {
-        const configurationRes = ioTsParsePayload(
+        const configurationRes = zodParsePayload(
           configuration,
           WebCrawlerConfigurationTypeSchema
         );
@@ -107,7 +107,7 @@ const _createConnectorAPIHandler = async (
 
       case "slack":
       case "slack_bot": {
-        const configurationRes = ioTsParsePayload(
+        const configurationRes = zodParsePayload(
           configuration,
           SlackConfigurationTypeSchema
         );
@@ -135,6 +135,35 @@ const _createConnectorAPIHandler = async (
         break;
       }
 
+      case "discord_bot": {
+        const configurationRes = zodParsePayload(
+          configuration,
+          DiscordBotConfigurationTypeSchema
+        );
+        if (configurationRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid request body: ${configurationRes.error}`,
+            },
+          });
+        }
+        connectorRes = await createConnector({
+          connectorProvider: req.params.connector_provider,
+          params: {
+            dataSourceConfig: {
+              workspaceId,
+              workspaceAPIKey,
+              dataSourceId,
+            },
+            connectionId,
+            configuration: configurationRes.value,
+          },
+        });
+        break;
+      }
+
       case "github":
       case "notion":
       case "confluence":
@@ -144,8 +173,10 @@ const _createConnectorAPIHandler = async (
       case "bigquery":
       case "zendesk":
       case "microsoft":
+      case "microsoft_bot":
       case "salesforce":
-      case "gong": {
+      case "gong":
+      case "dust_project": {
         connectorRes = await createConnector({
           connectorProvider: req.params.connector_provider,
           params: {

@@ -1,9 +1,11 @@
 import type {
-  CustomServerIconType,
+  CustomResourceIconType,
   InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
+} from "@app/components/resources/resources_icons";
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
+
+export const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
 
 export const RETRY_ON_INTERRUPT_MAX_ATTEMPTS = 15;
 
@@ -27,7 +29,8 @@ export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
 
 export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
 
-export const DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME = "include_file";
+export const DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME =
+  "cat_conversation_file";
 
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
@@ -35,23 +38,27 @@ export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
 export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 
+export const DEFAULT_PROJECT_SEARCH_ACTION_NAME = "search_project_context";
+
+export const SEARCH_AVAILABLE_USERS_TOOL_NAME = "search_available_users";
+export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
+
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";
 
-export const DEFAULT_DATA_VISUALIZATION_NAME = "data_visualization";
-export const DEFAULT_DATA_VISUALIZATION_DESCRIPTION =
-  "Generate a data visualization.";
+export const ENABLE_SKILL_TOOL_NAME = "enable_skill";
 
 export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
 
-export const CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS = ["high", "low"] as const;
-export type CustomRemoteMCPToolStakeLevelType =
-  (typeof CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
+export const TOOL_NAME_SEPARATOR = "__";
+
 export const MCP_TOOL_STAKE_LEVELS = [
-  ...CUSTOM_REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "high",
+  "medium",
+  "low",
   "never_ask",
 ] as const;
 export type MCPToolStakeLevelType = (typeof MCP_TOOL_STAKE_LEVELS)[number];
@@ -74,5 +81,5 @@ export type MCPValidationMetadataType = {
   mcpServerName: string;
   agentName: string;
   pubsubMessageId?: string;
-  icon?: InternalAllowedIconType | CustomServerIconType;
+  icon?: InternalAllowedIconType | CustomResourceIconType;
 };

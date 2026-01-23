@@ -2,8 +2,7 @@ import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
@@ -12,6 +11,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getFeatureFlags } from "@app/lib/auth";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
@@ -76,6 +76,7 @@ export default function LabsTranscriptsIndex({
     useState(false);
 
   const { spaces, isSpacesLoading } = useSpaces({
+    kinds: ["global", "regular"],
     workspaceId: owner.sId,
   });
   const { agentConfigurations } = useAgentConfigurations({
@@ -93,7 +94,7 @@ export default function LabsTranscriptsIndex({
       return;
     }
 
-    const response = await fetch(
+    const response = await clientFetch(
       `/api/w/${owner.sId}/labs/transcripts/${transcriptConfigurationId}`,
       {
         method: "DELETE",
@@ -149,69 +150,65 @@ export default function LabsTranscriptsIndex({
   ];
 
   return (
-    <ConversationsNavigationProvider>
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        pageTitle="Dust - Transcripts processing"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
-      >
-        <Breadcrumbs items={items} />
-        <DeleteProviderDialog
-          isOpen={isDeleteProviderDialogOpened}
-          onClose={() => setIsDeleteProviderDialogOpened(false)}
-          onConfirm={async () => {
-            await handleDisconnectProvider(
-              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-              transcriptsConfiguration?.sId || null
-            );
-          }}
+    <AppCenteredLayout
+      subscription={subscription}
+      owner={owner}
+      pageTitle="Dust - Transcripts processing"
+      navChildren={<AgentSidebarMenu owner={owner} />}
+    >
+      <Breadcrumbs items={items} />
+      <DeleteProviderDialog
+        isOpen={isDeleteProviderDialogOpened}
+        onClose={() => setIsDeleteProviderDialogOpened(false)}
+        onConfirm={async () => {
+          await handleDisconnectProvider(
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            transcriptsConfiguration?.sId || null
+          );
+        }}
+      />
+      <Page>
+        <Page.Header
+          title="Meeting transcripts processing"
+          icon={BookOpenIcon}
+          description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
         />
-        <Page>
-          <Page.Header
-            title="Meeting transcripts processing"
-            icon={BookOpenIcon}
-            description="Receive meeting minutes processed by email automatically and store them in a Dust Folder."
+        <Page.Layout direction="vertical">
+          <ProviderSelection
+            transcriptsConfiguration={transcriptsConfiguration}
+            mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
+            setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
+            owner={owner}
           />
-          <Page.Layout direction="vertical">
-            <ProviderSelection
-              transcriptsConfiguration={transcriptsConfiguration}
-              mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
-              setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
-              owner={owner}
-            />
 
-            {transcriptsConfiguration && (
-              <>
-                {(!isProviderWithDefaultWorkspaceConfiguration(
-                  transcriptsConfiguration.provider
-                ) ||
-                  transcriptsConfiguration.isDefaultWorkspaceConfiguration) && (
-                  <StorageConfiguration
-                    owner={owner}
-                    transcriptsConfiguration={transcriptsConfiguration}
-                    mutateTranscriptsConfiguration={
-                      mutateTranscriptsConfiguration
-                    }
-                    dataSourcesViews={dataSourcesViews}
-                    spaces={spaces}
-                    isSpacesLoading={isSpacesLoading}
-                  />
-                )}
-                <ProcessingConfiguration
+          {transcriptsConfiguration && (
+            <>
+              {(!isProviderWithDefaultWorkspaceConfiguration(
+                transcriptsConfiguration.provider
+              ) ||
+                transcriptsConfiguration.isDefaultWorkspaceConfiguration) && (
+                <StorageConfiguration
                   owner={owner}
-                  agents={agents}
                   transcriptsConfiguration={transcriptsConfiguration}
                   mutateTranscriptsConfiguration={
                     mutateTranscriptsConfiguration
                   }
+                  dataSourcesViews={dataSourcesViews}
+                  spaces={spaces}
+                  isSpacesLoading={isSpacesLoading}
                 />
-              </>
-            )}
-          </Page.Layout>
-        </Page>
-      </AppCenteredLayout>
-    </ConversationsNavigationProvider>
+              )}
+              <ProcessingConfiguration
+                owner={owner}
+                agents={agents}
+                transcriptsConfiguration={transcriptsConfiguration}
+                mutateTranscriptsConfiguration={mutateTranscriptsConfiguration}
+              />
+            </>
+          )}
+        </Page.Layout>
+      </Page>
+    </AppCenteredLayout>
   );
 }
 

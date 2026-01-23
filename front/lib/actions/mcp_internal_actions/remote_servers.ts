@@ -1,6 +1,5 @@
+import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPOAuthUseCase } from "@app/types";
-
-import type { InternalAllowedIconType } from "../mcp_icons";
 
 export type DefaultRemoteMCPServerConfig = {
   id: number;
@@ -12,6 +11,7 @@ export type DefaultRemoteMCPServerConfig = {
   connectionInstructions?: string;
   authMethod: "bearer" | "oauth-dynamic" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
+  scope?: string;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
 
@@ -140,9 +140,69 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       asana_list_workspaces: "never_ask",
     },
   },
+  {
+    id: 10007,
+    name: "Supabase",
+    description:
+      "Supabase tools for database management, real-time queries, and backend operations.",
+    url: "https://mcp.supabase.com/mcp",
+    icon: "SupabaseLogo",
+    documentationUrl: "https://supabase.com/docs/guides/getting-started/mcp",
+    connectionInstructions:
+      "Supabase uses OAuth authentication with dynamic client registration. Natural language database queries and project management available.",
+    authMethod: "oauth-dynamic",
+    toolStakes: {},
+  },
+  {
+    id: 10008,
+    name: "Guru",
+    description: "Guru tools for knowledge management and team collaboration.",
+    url: "https://mcp.api.getguru.com/mcp",
+    icon: "GuruLogo",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      guru_answer_generation: "never_ask",
+      guru_create_draft: "low",
+      guru_search_documents: "never_ask",
+      guru_update_card: "low",
+      guru_list_knowledge_agents: "never_ask",
+      guru_get_card_by_id: "never_ask",
+    },
+  },
+  //Removed temporaly gitlab server
+  /*
+  {
+    id: 10003,
+    name: "gitlab",
+    description:
+      "GitLab tools for repository management, issue tracking, and CI/CD operations.",
+    url: "https://gitlab.com/api/v4/mcp",
+    icon: "GitlabLogo",
+    documentationUrl:
+      "https://docs.gitlab.com/user/gitlab_duo/model_context_protocol/mcp_server/",
+    connectionInstructions:
+      "GitLab uses OAuth authentication with the 'mcp' scope. The default URL connects to gitlab.com.",
+    authMethod: "oauth-dynamic",
+    scope: "mcp",
+    toolStakes: {
+      get_mcp_server_version: "never_ask",
+      create_issue: "low",
+      get_issue: "never_ask",
+      create_merge_request: "low",
+      get_merge_request: "never_ask",
+      get_merge_request_commits: "never_ask",
+      get_merge_request_diffs: "never_ask",
+      get_merge_request_pipelines: "never_ask",
+      get_pipeline_jobs: "never_ask",
+      gitlab_search: "never_ask",
+      semantic_code_search: "never_ask",
+    },
+  },
+  */
   //Removed temporaly see https://dust4ai.slack.com/archives/C050SM8NSPK/p1754397289272209
   /*
   {
+    id: ? 10004,
     name: "Datadog",
     description:
       "Datadog tools for monitoring and observability (Region: US1).",
@@ -170,6 +230,7 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   {
+    id: ? 10005,
     name: "Datadog Europe",
     description:
       "Datadog tools for monitoring and observability (Region: EU1).",
@@ -197,6 +258,39 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     },
   },
   */
+  {
+    id: 10006,
+    name: "Canva",
+    description: "Canva tools for design capabilities.",
+    url: "https://mcp.canva.com/mcp",
+    icon: "CanvaLogo",
+    documentationUrl:
+      "https://www.canva.dev/docs/connect/canva-mcp-server-setup/",
+    authMethod: "oauth-dynamic",
+    toolStakes: {
+      search_designs: "never_ask",
+      get_design: "never_ask",
+      get_design_pages: "never_ask",
+      get_design_content: "never_ask",
+      get_export_formats: "never_ask",
+      list_folder_items: "never_ask",
+      list_comments: "never_ask",
+      list_replies: "never_ask",
+
+      import_design_from_url: "low",
+      export_design: "low",
+
+      comment_on_design: "low",
+      reply_to_comment: "low",
+
+      create_folder: "low",
+      move_item_to_folder: "low",
+      upload_asset_from_url: "low",
+
+      generate_design: "low",
+      create_design_from_candidate: "low",
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {

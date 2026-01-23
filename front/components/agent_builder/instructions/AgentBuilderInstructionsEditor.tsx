@@ -1,29 +1,33 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
-import type { Editor as CoreEditor } from "@tiptap/core";
-import { CharacterCount } from "@tiptap/extension-character-count";
-import Placeholder from "@tiptap/extension-placeholder";
+import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
+import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
-import { AgentInstructionDiffExtension } from "@app/components/agent_builder/instructions/extensions/AgentInstructionDiffExtension";
-import { BlockInsertExtension } from "@app/components/agent_builder/instructions/extensions/BlockInsertExtension";
-import { HeadingExtension } from "@app/components/agent_builder/instructions/extensions/HeadingExtension";
-import { InstructionBlockExtension } from "@app/components/agent_builder/instructions/extensions/InstructionBlockExtension";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
-import { ParagraphExtension } from "@app/components/assistant/conversation/input_bar/editor/extensions/ParagraphExtension";
-import {
-  plainTextFromTipTapContent,
-  tipTapContentFromPlainText,
-} from "@app/lib/client/agent_builder/instructions";
+import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
+import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
+import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
+import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
+import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
+import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
+import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
+import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -72,42 +76,83 @@ export function AgentBuilderInstructionsEditor({
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
-
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
+  const initialContentSetRef = useRef(false);
 
   const extensions = useMemo(() => {
-    return [
+    const extensions: Extensions = [
+      Markdown,
       StarterKit.configure({
-        paragraph: false, // We use custom ParagraphExtension
-        heading: false,
-        bulletList: false,
-        orderedList: false,
-        listItem: false,
+        heading: false, // we use a custom one, see below
+        paragraph: false, // we use custom EmptyLineParagraphExtension instead
+        hardBreak: false, // we use custom EmptyLineParagraphExtension instead
+        orderedList: false, // we use custom OrderedListExtension instead
+        listItem: false, // we use custom ListItemExtension instead
+        link: false, // we use custom LinkExtension instead
+        bulletList: {
+          HTMLAttributes: {
+            class: markdownStyles.unorderedList(),
+          },
+        },
         blockquote: false,
         horizontalRule: false,
-        bold: false,
-        italic: false,
         strike: false,
-        history: {
+        undoRedo: {
           depth: 100,
+        },
+        code: {
+          HTMLAttributes: {
+            class: markdownStyles.codeBlock(),
+          },
         },
         codeBlock: {
           HTMLAttributes: {
-            class: markdownStyles.code(),
+            class: markdownStyles.codeBlock(),
           },
         },
       }),
-      ParagraphExtension,
+      // Custom ordered list and list item extensions to preserve start attribute
+      OrderedListExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      }),
+      ListItemExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
+      }),
+      // Custom paragraph extension to preserve empty lines in markdown
+      // See: https://github.com/ueberdosis/tiptap/issues/7269
+      EmptyLineParagraphExtension.configure({
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
+        },
+      }),
+      KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),
       Placeholder.configure({
-        placeholder:
-          "What does this agent do? How should it behave? What should it avoid doing?",
+        placeholder: ({ editor }) => {
+          // Don't show placeholder inside instruction blocks
+          const { state } = editor;
+          const { selection } = state;
+          const $pos = selection.$anchor;
+
+          // Check if we're inside an instruction block
+          for (let depth = $pos.depth; depth > 0; depth--) {
+            if ($pos.node(depth).type.name === "instructionBlock") {
+              return "";
+            }
+          }
+
+          return "What is the purpose of the agent? How should it behave?";
+        },
         emptyNodeClass:
           "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
       }),
@@ -120,17 +165,44 @@ export function AgentBuilderInstructionsEditor({
           class: "mt-4 mb-3",
         },
       }),
+      EmojiExtension,
+      LinkExtension.configure({
+        HTMLAttributes: {
+          class: "text-blue-600 hover:underline hover:text-blue-800",
+        },
+        autolink: false,
+        openOnClick: false,
+      }),
     ];
-  }, [suggestionHandler]);
+
+    extensions.push(
+      MentionExtension.configure({
+        owner,
+        HTMLAttributes: {
+          class:
+            "min-w-0 px-0 py-0 border-none outline-none focus:outline-none focus:border-none ring-0 focus:ring-0 text-highlight-500 font-semibold",
+        },
+        suggestion: createMentionSuggestion({
+          owner,
+          conversationId: null,
+          includeCurrentUser: true,
+          select: {
+            agents: false,
+            users: true,
+          },
+        }),
+      })
+    );
+
+    return extensions;
+  }, [owner, suggestionHandler]);
 
   // Debounce serialization to prevent performance issues
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: CoreEditor | ReactEditor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          const json = editor.getJSON();
-          const plainText = plainTextFromTipTapContent(json);
-          field.onChange(plainText);
+          field.onChange(editor.getMarkdown());
         }
       }, 250),
     [field, isInstructionDiffMode]
@@ -139,7 +211,9 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: tipTapContentFromPlainText(field.value),
+      // Don't set content here - it can cause race conditions in Safari
+      // Content will be set in a separate useEffect after the editor is ready
+      contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
           debouncedUpdate(editor);
@@ -149,13 +223,55 @@ export function AgentBuilderInstructionsEditor({
         window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
         return false;
       },
+      editorProps: {
+        // Cleans up incoming HTML to remove Chrome-specific wrapper tags (e.g., <b style="font-weight:normal">)
+        // that interfere with instruction block parsing
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
+      },
+      immediatelyRender: false,
     },
     [extensions]
   );
 
+  // Set initial content after editor is created, then focus
+  // This is separated from useEditor() to avoid Safari race conditions
+  // Only runs once when editor is first created
   useEffect(() => {
+    if (!editor || editor.isDestroyed || initialContentSetRef.current) {
+      return;
+    }
+
     editorRef.current = editor;
-  }, [editor]);
+    // Mark as set immediately to prevent race conditions
+    initialContentSetRef.current = true;
+
+    // Use requestAnimationFrame to ensure DOM is fully ready
+    // This fixes "Applying a mismatched transaction" error in Safari/iOS
+    requestAnimationFrame(() => {
+      if (!editor || editor.isDestroyed) {
+        return;
+      }
+
+      // Set content first if we have initial value
+      if (field.value) {
+        editor.commands.setContent(field.value, {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
+      }
+
+      // Then focus after content is set
+      // Use a second RAF to ensure content setting is complete
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.focus("end");
+        }
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]); // Only run when editor is created, not when field.value changes
 
   useEffect(() => {
     return () => {
@@ -164,7 +280,7 @@ export function AgentBuilderInstructionsEditor({
   }, [debouncedUpdate]);
 
   const currentCharacterCount =
-    editor?.storage.characterCount.characters() || 0;
+    editor?.storage.characterCount.characters() ?? 0;
   const displayError =
     currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT;
 
@@ -178,32 +294,43 @@ export function AgentBuilderInstructionsEditor({
         attributes: {
           class: editorVariants({ error: displayError }),
         },
+        // Preserve the transformPastedHTML handler when updating editorProps
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
       },
     });
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || field.value === undefined) {
+    if (
+      !editor ||
+      field.value === undefined ||
+      editor.isDestroyed ||
+      !initialContentSetRef.current
+    ) {
       return;
     }
 
     if (editor.isFocused) {
       return;
     }
-    const currentContent = plainTextFromTipTapContent(editor.getJSON());
+    const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
-      // Use setTimeout to ensure this runs after any diff mode changes
-      setTimeout(() => {
-        editor.commands.setContent(
-          tipTapContentFromPlainText(field.value),
-          false
-        );
-      }, 0);
+      // Use requestAnimationFrame to ensure DOM is ready (Safari fix)
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(field.value, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+        }
+      });
     }
   }, [editor, field.value]);
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 
@@ -212,9 +339,8 @@ export function AgentBuilderInstructionsEditor({
         editor.commands.exitDiff();
       }
 
-      const currentText = plainTextFromTipTapContent(editor.getJSON());
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const compareText = compareVersion.instructions || "";
+      const currentText = editor.getMarkdown();
+      const compareText = compareVersion.instructions ?? "";
 
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);

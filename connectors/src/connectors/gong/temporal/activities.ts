@@ -77,7 +77,7 @@ export async function getTranscriptsMetadata({
   configuration: GongConfigurationResource;
 }): Promise<GongTranscriptMetadata[]> {
   const gongClient = await getGongClient(connector);
-  const { trackersEnabled } = configuration;
+  const { trackersEnabled, accountsEnabled } = configuration;
 
   const metadata = [];
   let cursor = null;
@@ -86,6 +86,7 @@ export async function getTranscriptsMetadata({
       {
         callIds,
         trackersEnabled,
+        accountsEnabled,
       }
     );
     metadata.push(...callsMetadata);
@@ -109,13 +110,12 @@ export async function gongSyncTranscriptsActivity({
 }) {
   const connector = await fetchGongConnector({ connectorId });
   const configuration = await fetchGongConfiguration(connector);
-  const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {
     connectorId: connector.id,
-    dataSourceId: dataSourceConfig.dataSourceId,
+    dataSourceId: connector.dataSourceId,
     provider: "gong",
     startTimestamp: configuration.lastSyncTimestamp,
-    workspaceId: dataSourceConfig.workspaceId,
+    workspaceId: connector.workspaceId,
   };
 
   const gongClient = await getGongClient(connector);
@@ -157,7 +157,7 @@ export async function gongSyncTranscriptsActivity({
   const processedRecords = transcripts.length;
 
   if (totalRecords > 0) {
-    const progressMessage = `${processedRecords + currentRecordCount + 1}/${totalRecords} transcripts`;
+    const progressMessage = `${processedRecords + currentRecordCount}/${totalRecords} transcripts`;
     await reportInitialSyncProgress(connectorId, progressMessage);
   }
 
@@ -242,7 +242,6 @@ export async function gongSyncTranscriptsActivity({
       await syncGongTranscript({
         transcript,
         transcriptMetadata,
-        dataSourceConfig,
         speakerToEmailMap,
         loggerArgs,
         participantEmails,
@@ -266,6 +265,15 @@ export async function gongListAndSaveUsersActivity({
   connectorId: ModelId;
 }) {
   const connector = await fetchGongConnector({ connectorId });
+  const configuration = await fetchGongConfiguration(connector);
+
+  // Skip the full sync of users if we are not on the initial full sync.
+  // The call to /users is costly (many users usually) and heavily rate-limited:
+  // we have seen retry-after of ~20 minutes.
+  if (configuration.lastSyncTimestamp !== null) {
+    return;
+  }
+
   const gongClient = await getGongClient(connector);
 
   let pageCursor = null;

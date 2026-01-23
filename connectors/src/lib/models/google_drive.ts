@@ -2,19 +2,20 @@ import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
 import type { TablesErrorType } from "@connectors/lib/error";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class GoogleDriveConfig extends ConnectorBaseModel<GoogleDriveConfig> {
+export class GoogleDriveConfigModel extends ConnectorBaseModel<GoogleDriveConfigModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
+  declare useParallelSync: boolean;
 }
-GoogleDriveConfig.init(
+GoogleDriveConfigModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -41,9 +42,14 @@ GoogleDriveConfig.init(
       allowNull: false,
       defaultValue: false,
     },
+    useParallelSync: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_configs",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -51,13 +57,13 @@ GoogleDriveConfig.init(
 );
 
 // GoogleDriveFolders stores the folders selected by the user to sync.
-export class GoogleDriveFolders extends ConnectorBaseModel<GoogleDriveFolders> {
+export class GoogleDriveFoldersModel extends ConnectorBaseModel<GoogleDriveFoldersModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
   declare folderId: string;
 }
-GoogleDriveFolders.init(
+GoogleDriveFoldersModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -75,14 +81,14 @@ GoogleDriveFolders.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_folders",
     indexes: [{ fields: ["connectorId", "folderId"], unique: true }],
   }
 );
 
 // GoogleDriveFiles stores files and folders synced from Google Drive.
-export class GoogleDriveFiles extends ConnectorBaseModel<GoogleDriveFiles> {
+export class GoogleDriveFilesModel extends ConnectorBaseModel<GoogleDriveFilesModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenTs: Date | null;
@@ -95,7 +101,7 @@ export class GoogleDriveFiles extends ConnectorBaseModel<GoogleDriveFiles> {
   declare mimeType: string;
   declare parentId: string | null;
 }
-GoogleDriveFiles.init(
+GoogleDriveFilesModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -143,7 +149,7 @@ GoogleDriveFiles.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_files",
     indexes: [
       { fields: ["connectorId", "driveFileId"], unique: true },
@@ -152,7 +158,7 @@ GoogleDriveFiles.init(
   }
 );
 
-export class GoogleDriveSheet extends ConnectorBaseModel<GoogleDriveSheet> {
+export class GoogleDriveSheetModel extends ConnectorBaseModel<GoogleDriveSheetModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
@@ -161,7 +167,7 @@ export class GoogleDriveSheet extends ConnectorBaseModel<GoogleDriveSheet> {
   declare name: string;
   declare notUpsertedReason: TablesErrorType | null;
 }
-GoogleDriveSheet.init(
+GoogleDriveSheetModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -191,7 +197,7 @@ GoogleDriveSheet.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_sheets",
     indexes: [
       { fields: ["connectorId", "driveFileId", "driveSheetId"], unique: true },
@@ -201,7 +207,7 @@ GoogleDriveSheet.init(
 
 // Sync Token are the equivalent of a timestamp for syncing the delta
 // between the last sync and the current sync.
-export class GoogleDriveSyncToken extends ConnectorBaseModel<GoogleDriveSyncToken> {
+export class GoogleDriveSyncTokenModel extends ConnectorBaseModel<GoogleDriveSyncTokenModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   // The driveId is the Google Drive Id of the user's drive.
@@ -212,7 +218,7 @@ export class GoogleDriveSyncToken extends ConnectorBaseModel<GoogleDriveSyncToke
   declare syncToken: string;
   declare connectorId: ForeignKey<ConnectorModel["id"]>;
 }
-GoogleDriveSyncToken.init(
+GoogleDriveSyncTokenModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -234,7 +240,7 @@ GoogleDriveSyncToken.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "google_drive_sync_tokens",
     indexes: [{ fields: ["connectorId", "driveId"], unique: true }],
   }

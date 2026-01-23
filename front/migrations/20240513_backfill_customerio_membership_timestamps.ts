@@ -1,6 +1,6 @@
 import * as _ from "lodash";
 
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -15,7 +15,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { removeNulls } from "@app/types";
 
 const backfillCustomerIo = async (execute: boolean) => {
-  const allActiveSubscriptions = await Subscription.findAll({
+  const allActiveSubscriptions = await SubscriptionModel.findAll({
     where: {
       status: "active",
     },
@@ -23,7 +23,7 @@ const backfillCustomerIo = async (execute: boolean) => {
   const planIds = removeNulls(allActiveSubscriptions.map((s) => s.planId));
   const planById = _.keyBy(
     planIds.length
-      ? await Plan.findAll({
+      ? await PlanModel.findAll({
           where: {
             id: planIds,
           },

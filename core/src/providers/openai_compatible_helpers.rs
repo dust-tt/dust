@@ -761,6 +761,7 @@ pub async fn openai_compatible_chat_completion(
                 .prompt_tokens_details
                 .and_then(|details| details.cached_tokens),
             reasoning_tokens: None,
+            cache_creation_input_tokens: None,
         }),
         provider_request_id: request_id,
         logprobs: logprobs_from_choices(&c.choices),
@@ -989,7 +990,10 @@ async fn streamed_chat_completion(
         body["tool_choice"] = json!(tool_choice);
     }
     if let Some(response_format) = response_format {
-        body["response_format"] = json!(response_format);
+        // Guard against empty object response_format (must include a string "type").
+        if let Some(Value::String(_)) = response_format.get("type") {
+            body["response_format"] = json!(response_format);
+        }
     }
     if let Some(reasoning_effort) = reasoning_effort {
         body["reasoning_effort"] = json!(reasoning_effort);
@@ -1425,7 +1429,10 @@ async fn chat_completion(
     }
 
     if let Some(response_format) = response_format {
-        body["response_format"] = json!(response_format)
+        // Guard against empty object response_format (must include a string "type").
+        if let Some(Value::String(_)) = response_format.get("type") {
+            body["response_format"] = json!(response_format);
+        }
     }
     if tools.len() > 0 {
         body["tools"] = json!(tools);

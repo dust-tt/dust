@@ -5,6 +5,7 @@ import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
 import type { GetWorkspaceInvitationsResponseBody } from "@app/pages/api/w/[wId]/invitations";
 import type { GetMembersResponseBody } from "@app/pages/api/w/[wId]/members";
+import type { MembersLookupResponseBody } from "@app/pages/api/w/[wId]/members/lookup";
 import type { SearchMembersResponseBody } from "@app/pages/api/w/[wId]/members/search";
 import type { GroupKind, LightWorkspaceType } from "@app/types";
 import { isGroupKind } from "@app/types";
@@ -58,6 +59,7 @@ export function useMembers({
     isMembersError: error,
     hasNextPage: !!data?.nextPageUrl,
     loadNextPage: useCallback(
+      // eslint-disable-next-line react-hooks/preserve-manual-memoization
       () => data?.nextPageUrl && setUrl(data.nextPageUrl),
       [data?.nextPageUrl]
     ),
@@ -67,42 +69,14 @@ export function useMembers({
   };
 }
 
-export function useMembersCount(owner: LightWorkspaceType) {
-  const { total } = useMembers({
-    workspaceId: owner.sId,
-    pagination: { limit: 0, orderColumn: "createdAt", orderDirection: "asc" },
-    disabled: owner.role !== "admin",
-  });
-
-  return total;
-}
-
-export function useAdmins(
+export function useWorkspaceInvitations(
   owner: LightWorkspaceType,
-  pagination?: PaginationParams
+  { includeExpired = false }: { includeExpired?: boolean } = {}
 ) {
-  const params = new URLSearchParams();
-  appendPaginationParams(params, pagination);
-
-  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/members?role=admin&${params.toString()}`,
-    membersFetcher
-  );
-
-  return {
-    admins: data?.members ?? emptyArray(),
-    isAdminsLoading: !error && !data,
-    iAdminsError: error,
-    mutateMembers: mutate,
-  };
-}
-
-export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   const workspaceInvitationsFetcher: Fetcher<GetWorkspaceInvitationsResponseBody> =
     fetcher;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/invitations`,
+    `/api/w/${owner.sId}/invitations?includeExpired=${includeExpired}`,
     workspaceInvitationsFetcher
   );
 
@@ -114,45 +88,13 @@ export function useWorkspaceInvitations(owner: LightWorkspaceType) {
   };
 }
 
-export function useMembersByEmails({
-  workspaceId,
-  emails,
-  disabled,
-}: {
-  workspaceId: string;
-  emails: string[];
-  disabled?: boolean;
-}) {
-  const membersFetcher: Fetcher<GetMembersResponseBody> = fetcher;
-
-  if (emails.length === 0) {
-    disabled = true;
-  }
-
-  const { data, error, mutate, mutateRegardlessOfQueryParams } =
-    useSWRWithDefaults(
-      `/api/w/${workspaceId}/members/search?searchEmails=${emails.join(",")}`,
-      membersFetcher,
-      {
-        disabled,
-      }
-    );
-
-  return {
-    members: data?.members ?? emptyArray(),
-    isMembersLoading: !error && !data && !disabled,
-    isMembersError: error,
-    mutate,
-    mutateRegardlessOfQueryParams,
-  };
-}
-
 export function useSearchMembers({
   workspaceId,
   searchTerm,
   pageIndex,
   pageSize,
   groupKind,
+  buildersOnly,
   disabled,
 }: {
   workspaceId: string;
@@ -160,6 +102,7 @@ export function useSearchMembers({
   pageIndex: number;
   pageSize: number;
   groupKind?: Omit<GroupKind, "system">;
+  buildersOnly?: boolean;
   disabled?: boolean;
 }) {
   const searchMembersFetcher: Fetcher<SearchMembersResponseBody> = fetcher;
@@ -176,14 +119,16 @@ export function useSearchMembers({
 
   const searchParams = new URLSearchParams({
     searchTerm: debouncedSearchTerm,
-    orderColumn: "name",
-    orderDirection: "asc",
     offset: (pageIndex * pageSize).toString(),
     limit: pageSize.toString(),
   });
 
   if (groupKind && isGroupKind(groupKind)) {
     searchParams.set("groupKind", groupKind);
+  }
+
+  if (buildersOnly) {
+    searchParams.set("buildersOnly", "true");
   }
 
   const { data, error, mutate, mutateRegardlessOfQueryParams } =
@@ -204,5 +149,34 @@ export function useSearchMembers({
     isError: !!error,
     mutate,
     mutateRegardlessOfQueryParams,
+  };
+}
+
+export function useMembersLookup({
+  workspaceId,
+  memberIds,
+  disabled,
+}: {
+  workspaceId: string;
+  memberIds: number[];
+  disabled?: boolean;
+}) {
+  const membersLookupFetcher: Fetcher<MembersLookupResponseBody> = fetcher;
+
+  const query =
+    memberIds.length > 0
+      ? `/api/w/${workspaceId}/members/lookup?${memberIds
+          .map((id) => `ids=${id}`)
+          .join("&")}`
+      : null;
+
+  const { data, error } = useSWRWithDefaults(query, membersLookupFetcher, {
+    disabled,
+  });
+
+  return {
+    members: data?.users ?? emptyArray(),
+    isMembersLookupLoading: !error && !data && !!query && !disabled,
+    isMembersLookupError: !!error,
   };
 }

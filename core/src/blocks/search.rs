@@ -99,16 +99,6 @@ impl Search {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct SerpApiAnswerBoxResult {
-    answer: String,
-}
-
-#[derive(Serialize, Deserialize)]
-struct SerpApiResult {
-    answer_box: SerpApiAnswerBoxResult,
-}
-
 #[async_trait]
 impl Block for Search {
     fn block_type(&self) -> BlockType {

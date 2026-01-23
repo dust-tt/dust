@@ -1,6 +1,5 @@
 import {
   ActionCodeBoxIcon,
-  BookOpenIcon,
   ContextItem,
   EyeIcon,
   Icon,
@@ -9,8 +8,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 
-import { ConversationsNavigationProvider } from "@app/components/assistant/conversation/ConversationsNavigationProvider";
-import { AssistantSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { FeatureAccessButton } from "@app/components/labs/FeatureAccessButton";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
@@ -32,16 +30,6 @@ const LABS_FEATURES: LabsFeatureItemType[] = [
     icon: EyeIcon,
     description:
       "Receive meeting minutes processed by email automatically and store them in a Dust Folder.",
-  },
-  {
-    id: "trackers",
-    label: "Document Tracker",
-    featureFlag: "labs_trackers",
-    visibleWithoutAccess: false,
-    icon: BookOpenIcon,
-    description:
-      "Document monitoring made simple - receive alerts when documents are out of date.",
-    onlyAdminCanManage: false,
   },
   {
     id: "mcp_actions",
@@ -99,48 +87,46 @@ export default function LabsTranscriptsIndex({
   const visibleFeatures = getVisibleFeatures(featureFlags);
 
   return (
-    <ConversationsNavigationProvider>
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        pageTitle="Dust - Exploratory features"
-        navChildren={<AssistantSidebarMenu owner={owner} />}
-      >
-        <Page.Header
-          title="Exploratory features"
-          icon={TestTubeIcon}
-          description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
-        />
-        <Page.Layout direction="vertical">
-          <ContextItem.List>
-            <ContextItem.SectionHeader
-              title="Features"
-              description="All features presented here are in beta and may change or be removed."
-            />
+    <AppCenteredLayout
+      subscription={subscription}
+      owner={owner}
+      pageTitle="Dust - Exploratory features"
+      navChildren={<AgentSidebarMenu owner={owner} />}
+    >
+      <Page.Header
+        title="Exploratory features"
+        icon={TestTubeIcon}
+        description="Expect some bumps and changes. Feedback welcome, tell us what you think!"
+      />
+      <Page.Layout direction="vertical">
+        <ContextItem.List>
+          <ContextItem.SectionHeader
+            title="Features"
+            description="All features presented here are in beta and may change or be removed."
+          />
 
-            {visibleFeatures.map((item) => (
-              <ContextItem
-                key={item.id}
-                title={item.label}
-                action={
-                  <FeatureAccessButton
-                    accessible={featureFlags.includes(item.featureFlag)}
-                    featureName={item.label}
-                    managePath={`/w/${owner.sId}/labs/${item.id}`}
-                    owner={owner}
-                    canRequestAccess={isAdmin}
-                    canManage={!item.onlyAdminCanManage || isAdmin}
-                  />
-                }
-                visual={<Icon visual={item.icon} />}
-              >
-                <ContextItem.Description description={item.description} />
-              </ContextItem>
-            ))}
-          </ContextItem.List>
-        </Page.Layout>
-      </AppCenteredLayout>
-    </ConversationsNavigationProvider>
+          {visibleFeatures.map((item) => (
+            <ContextItem
+              key={item.id}
+              title={item.label}
+              action={
+                <FeatureAccessButton
+                  accessible={featureFlags.includes(item.featureFlag)}
+                  featureName={item.label}
+                  managePath={`/w/${owner.sId}/labs/${item.id}`}
+                  owner={owner}
+                  canRequestAccess={isAdmin}
+                  canManage={!item.onlyAdminCanManage || isAdmin}
+                />
+              }
+              visual={<Icon visual={item.icon} />}
+            >
+              <ContextItem.Description description={item.description} />
+            </ContextItem>
+          ))}
+        </ContextItem.List>
+      </Page.Layout>
+    </AppCenteredLayout>
   );
 }
 

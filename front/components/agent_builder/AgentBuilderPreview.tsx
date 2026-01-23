@@ -1,5 +1,5 @@
-import { ArrowPathIcon, Button, Spinner } from "@dust-tt/sparkle";
-import { useContext, useEffect, useMemo, useRef } from "react";
+import { Spinner } from "@dust-tt/sparkle";
+import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -7,29 +7,29 @@ import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import ConversationViewer from "@app/components/assistant/conversation/ConversationViewer";
-import {
-  GenerationContext,
-  GenerationContextProvider,
-} from "@app/components/assistant/conversation/GenerationContextProvider";
-import { AssistantInputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
+import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type {
-  AgentMention,
   ContentFragmentsType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
-  MentionType,
   Result,
+  RichMention,
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { toRichAgentMentionType } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 
 interface EmptyStateProps {
@@ -66,20 +66,21 @@ function LoadingState({ message }: LoadingStateProps) {
 }
 
 interface PreviewContentProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
   resetConversation: () => void;
-  handleSubmit: (
+  createConversation: (
     input: string,
-    mentions: MentionType[],
+    mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  setStickyMentions: (mentions: AgentMention[]) => void;
-  stickyMentions: AgentMention[];
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
+  isTrialPlan: boolean;
+  isAdmin: boolean;
+  clientSideMCPServerId?: string;
 }
 
 function PreviewContent({
@@ -88,53 +89,66 @@ function PreviewContent({
   owner,
   currentPanel,
   resetConversation,
-  handleSubmit,
-  setStickyMentions,
-  stickyMentions,
+  createConversation,
   draftAgent,
   isSavingDraftAgent,
+  isTrialPlan,
+  isAdmin,
+  clientSideMCPServerId,
 }: PreviewContentProps) {
-  const generationContext = useContext(GenerationContext);
-  const isGenerating = !!generationContext?.generatingMessages.length;
-
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto">
+          {isTrialPlan && (
+            <div className="px-4 pt-4">
+              <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
+            </div>
+          )}
           {conversation && user && (
             <ConversationViewer
               owner={owner}
               user={user}
               conversationId={conversation.sId}
-              onStickyMentionsChange={setStickyMentions}
-              isInModal
+              agentBuilderContext={{
+                draftAgent: draftAgent ?? undefined,
+                isSubmitting: isSavingDraftAgent,
+                resetConversation,
+                actionsToShow: ["attachment"],
+                clientSideMCPServerIds: clientSideMCPServerId
+                  ? [clientSideMCPServerId]
+                  : undefined,
+              }}
               key={conversation.sId}
             />
           )}
+          {!conversation && (
+            <div className="flex h-full items-center justify-center px-6 text-center">
+              <div className="text-base font-medium text-muted-foreground">
+                Preview your agent here
+              </div>
+            </div>
+          )}
         </div>
-        {conversation && !isGenerating && (
-          <div className="flex justify-center px-4">
-            <Button
-              variant="outline"
-              icon={ArrowPathIcon}
-              onClick={resetConversation}
-              label="Clear conversation"
+
+        {!conversation && (
+          <div className="mx-4 flex-shrink-0 py-4">
+            <InputBar
+              isSubmitting={isSavingDraftAgent}
+              owner={owner}
+              user={user}
+              onSubmit={createConversation}
+              stickyMentions={
+                draftAgent ? [toRichAgentMentionType(draftAgent)] : []
+              }
+              draftKey={`agent-${draftAgent?.name}-builder-preview`}
+              actions={["attachment"]}
+              disableAutoFocus
+              isFloating={false}
+              shouldUseDraft={false}
             />
           </div>
         )}
-        <div className="flex-shrink-0 py-4">
-          <AssistantInputBar
-            disable={isSavingDraftAgent}
-            owner={owner}
-            onSubmit={handleSubmit}
-            stickyMentions={stickyMentions}
-            conversationId={conversation?.sId ?? null}
-            additionalAgentConfiguration={draftAgent ?? undefined}
-            actions={["attachment"]}
-            disableAutoFocus
-            isFloating={false}
-          />
-        </div>
       </div>
 
       {conversation && (
@@ -148,9 +162,18 @@ function PreviewContent({
   );
 }
 
-export function AgentBuilderPreview() {
-  const { owner } = useAgentBuilderContext();
+interface AgentBuilderPreviewProps {
+  clientSideMCPServerId?: string;
+}
+
+export function AgentBuilderPreview({
+  clientSideMCPServerId,
+}: AgentBuilderPreviewProps) {
+  const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
+  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
+  const isTrialPlan =
+    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -162,9 +185,10 @@ export function AgentBuilderPreview() {
 
   const [instructions, actions, agentName] = watchedFields;
 
-  const hasContent = useMemo(() => {
-    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
-  }, [instructions, actions]);
+  const hasContent = useMemo(
+    () => !!instructions?.trim() || !!actions?.length,
+    [instructions, actions]
+  );
 
   const {
     draftAgent,
@@ -173,14 +197,13 @@ export function AgentBuilderPreview() {
     getDraftAgent,
     isSavingDraftAgent,
     draftCreationFailed,
-    stickyMentions,
-    setStickyMentions,
   } = useDraftAgent();
 
-  const { conversation, handleSubmit, resetConversation } =
+  const { conversation, createConversation, resetConversation } =
     useDraftConversation({
       draftAgent,
       getDraftAgent,
+      clientSideMCPServerId,
     });
 
   const debounceTimerRef = useRef<NodeJS.Timeout>();
@@ -209,6 +232,7 @@ export function AgentBuilderPreview() {
 
       // Update existing draft if agent name changed (with debouncing)
       // Normalize names for comparison (empty string becomes "Preview")
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedCurrentName = agentName?.trim() || "Preview";
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const normalizedDraftName = draftAgent?.name?.trim() || "Preview";
@@ -223,7 +247,6 @@ export function AgentBuilderPreview() {
           const newDraft = await createDraftAgent();
           if (newDraft) {
             setDraftAgent(newDraft);
-            setStickyMentions([{ configurationId: newDraft.sId }]);
           }
           isUpdatingDraftRef.current = false;
         }, 500);
@@ -245,7 +268,6 @@ export function AgentBuilderPreview() {
     agentName,
     createDraftAgent,
     setDraftAgent,
-    setStickyMentions,
   ]);
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
@@ -256,10 +278,11 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <EmptyState
-          message="Ready to test your agent?"
-          description="Add some instructions or actions to your agent to start testing it here."
-        />
+        <div className="flex h-full flex-1 items-center justify-center px-6 text-center">
+          <div className="text-base font-medium text-muted-foreground">
+            Preview your agent here
+          </div>
+        </div>
       );
     }
 
@@ -283,11 +306,12 @@ export function AgentBuilderPreview() {
         owner={owner}
         currentPanel={currentPanel}
         resetConversation={resetConversation}
-        handleSubmit={handleSubmit}
-        setStickyMentions={setStickyMentions}
-        stickyMentions={stickyMentions}
+        createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
+        isTrialPlan={!!isTrialPlan}
+        isAdmin={isAdmin}
+        clientSideMCPServerId={clientSideMCPServerId}
       />
     );
   };

@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -11,29 +12,37 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import type {
-  TriggerConfiguration,
-  TriggerType,
-} from "@app/types/assistant/triggers";
+import type { TriggerType } from "@app/types/assistant/triggers";
 import { TriggerSchema } from "@app/types/assistant/triggers";
 
 export interface GetTriggersResponseBody {
   triggers: (TriggerType & {
     isSubscriber: boolean;
     isEditor: boolean;
-    editorEmail?: string;
+    editorName?: string;
   })[];
 }
 
-export interface PatchTriggersRequestBody {
-  triggers: Array<
-    {
-      sId?: string;
-      name: string;
-      customPrompt: string;
-    } & TriggerConfiguration
-  >;
-}
+const DeleteTriggersRequestBodyCodec = t.type({
+  triggerIds: t.array(t.string),
+});
+export type DeleteTriggersRequestBody = t.TypeOf<
+  typeof DeleteTriggersRequestBodyCodec
+>;
+
+const PatchTriggersRequestBodyCodec = t.type({
+  triggers: t.array(t.intersection([t.type({ sId: t.string }), TriggerSchema])),
+});
+export type PatchTriggersRequestBody = t.TypeOf<
+  typeof PatchTriggersRequestBodyCodec
+>;
+
+const PostTriggersRequestBodyCodec = t.type({
+  triggers: t.array(TriggerSchema),
+});
+export type PostTriggersRequestBody = t.TypeOf<
+  typeof PostTriggersRequestBodyCodec
+>;
 
 // Helper type guard for decoded trigger data from TriggerSchema
 function isWebhookTriggerData(trigger: {
@@ -68,7 +77,7 @@ async function handler(
     variant: "light",
   });
 
-  if (!agentConfiguration || !agentConfiguration.canRead) {
+  if (!agentConfiguration || (!agentConfiguration.canRead && !auth.isAdmin())) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -94,8 +103,8 @@ async function handler(
         ...new Set(allTriggers.map((trigger) => trigger.editor)),
       ];
       const editorUsers = await UserResource.fetchByModelIds(editorIds);
-      const editorEmailMap = new Map(
-        editorUsers.map((user) => [user.id, user.email])
+      const editorNamesMap = new Map(
+        editorUsers.map((user) => [user.id, user.fullName()])
       );
 
       const triggersWithIsSubscriber = await Promise.all(
@@ -103,7 +112,7 @@ async function handler(
           ...trigger.toJSON(),
           isSubscriber: await trigger.isSubscriber(auth),
           isEditor: trigger.editor === auth.getNonNullableUser().id,
-          editorEmail: editorEmailMap.get(trigger.editor),
+          editorName: editorNamesMap.get(trigger.editor),
         }))
       );
 
@@ -112,8 +121,60 @@ async function handler(
       });
     }
 
+    case "DELETE": {
+      const deleteDecoded = DeleteTriggersRequestBodyCodec.decode(req.body);
+      if (isLeft(deleteDecoded)) {
+        const pathError = reporter.formatValidationErrors(deleteDecoded.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { triggerIds } = deleteDecoded.right;
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Batch delete triggers
+      for (const triggerId of triggerIds) {
+        const triggerToDelete = auth.isAdmin()
+          ? allTriggers.find((t) => t.sId === triggerId)
+          : userTriggers.find((t) => t.sId === triggerId);
+
+        if (!triggerToDelete) {
+          // Skip triggers that the user cannot delete
+          continue;
+        }
+
+        const deleteResult = await triggerToDelete.delete(auth);
+        if (deleteResult.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              agentConfigurationId,
+              triggerId,
+              error: deleteResult.error,
+            },
+            "Failed to delete trigger"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Failed to delete trigger ${triggerId}.`,
+            },
+          });
+        }
+      }
+
+      res.status(204).end();
+      return;
+    }
+
     case "PATCH": {
-      if (!agentConfiguration.canEdit && !auth.isAdmin()) {
+      if (!agentConfiguration.canEdit) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {
@@ -123,43 +184,35 @@ async function handler(
         });
       }
 
-      if (
-        !req.body ||
-        !req.body.triggers ||
-        !Array.isArray(req.body.triggers)
-      ) {
+      const patchDecoded = PatchTriggersRequestBodyCodec.decode(req.body);
+      if (isLeft(patchDecoded)) {
+        const pathError = reporter.formatValidationErrors(patchDecoded.left);
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "Request body must contain a 'triggers' array.",
+            message: `Invalid request body: ${pathError}`,
           },
         });
       }
 
-      const { triggers } = req.body;
+      const { triggers } = patchDecoded.right;
       const workspace = auth.getNonNullableWorkspace();
 
-      if (triggers.length > 0) {
-        const triggerNames = triggers.map((t: { name: string }) => t.name);
-        const uniqueTriggerNames = new Set(triggerNames);
-        if (uniqueTriggerNames.size !== triggerNames.length) {
-          return apiError(req, res, {
-            status_code: 400,
-            api_error: {
-              type: "invalid_request_error",
-              message: "Trigger names must be unique for a given agent.",
-            },
-          });
-        }
-      }
-
-      const currentTriggersMap = new Map(userTriggers.map((t) => [t.sId(), t]));
-      const resultTriggers: TriggerType[] = [];
-      const errors: Error[] = [];
-
+      // Batch update triggers
       for (const triggerData of triggers) {
-        const triggerValidation = TriggerSchema.decode(triggerData);
+        const triggerToUpdate = userTriggers.find(
+          (t) => t.sId === triggerData.sId
+        );
+
+        if (!triggerToUpdate) {
+          continue; // Skip triggers that the user cannot edit
+        }
+
+        const triggerValidation = TriggerSchema.decode({
+          ...triggerData,
+          editor: auth.getNonNullableUser().id,
+        });
 
         if (isLeft(triggerValidation)) {
           const pathError = reporter.formatValidationErrors(
@@ -176,86 +229,136 @@ async function handler(
 
         const validatedTrigger = triggerValidation.right;
 
-        if (
-          validatedTrigger.editor &&
-          validatedTrigger.editor !== auth.getNonNullableUser().id
-        ) {
-          continue;
-        }
+        const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
+          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+          : null;
 
-        if (triggerData.sId && currentTriggersMap.has(triggerData.sId)) {
-          const existingTrigger = currentTriggersMap.get(triggerData.sId)!;
-
-          const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-            ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
-            : null;
-
-          const updatedTrigger = await TriggerResource.update(
-            auth,
-            existingTrigger.sId(),
-            {
-              ...validatedTrigger,
-              webhookSourceViewId,
-            }
-          );
-          if (updatedTrigger.isErr()) {
-            return apiError(req, res, {
-              status_code: 500,
-              api_error: {
-                type: "internal_server_error",
-                message: "Failed to update trigger.",
-              },
-            });
-          }
-
-          resultTriggers.push(updatedTrigger.value.toJSON());
-          currentTriggersMap.delete(triggerData.sId);
-        } else {
-          const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
-            ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
-            : null;
-
-          const newTrigger = await TriggerResource.makeNew(auth, {
-            workspaceId: workspace.id,
-            agentConfigurationId,
-            name: validatedTrigger.name,
-            kind: validatedTrigger.kind,
-            configuration: validatedTrigger.configuration,
-            customPrompt: validatedTrigger.customPrompt,
-            editor: auth.getNonNullableUser().id,
-            webhookSourceViewId,
-          });
-
-          if (newTrigger.isErr()) {
-            errors.push(newTrigger.error);
-            continue;
-          }
-
-          resultTriggers.push(newTrigger.value.toJSON());
-        }
-      }
-
-      for (const [, trigger] of currentTriggersMap) {
-        await trigger.delete(auth);
-      }
-
-      if (errors.length > 0) {
-        logger.error(
+        const updatedTrigger = await TriggerResource.update(
+          auth,
+          triggerData.sId,
           {
-            errors: errors.map((e) => e.message),
-            workspaceId: workspace.id,
-            agentConfigurationId: agentConfiguration.id,
-          },
-          `Failed to process ${errors.length} triggers.`
+            ...validatedTrigger,
+            status: validatedTrigger.status ?? "enabled",
+            webhookSourceViewId,
+          }
         );
 
+        if (updatedTrigger.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              agentConfigurationId,
+              triggerId: triggerData.sId,
+              error: updatedTrigger.error,
+            },
+            "Failed to update trigger"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Failed to update trigger ${triggerData.name}.`,
+            },
+          });
+        }
+      }
+
+      res.status(204).end();
+      return;
+    }
+
+    case "POST": {
+      if (!agentConfiguration.canEdit) {
         return apiError(req, res, {
-          status_code: 500,
+          status_code: 403,
           api_error: {
-            type: "internal_server_error",
-            message: `Failed to process ${errors.length} triggers`,
+            type: "app_auth_error",
+            message: "Only editors can create triggers for this agent.",
           },
         });
+      }
+
+      const postDecoded = PostTriggersRequestBodyCodec.decode(req.body);
+      if (isLeft(postDecoded)) {
+        const pathError = reporter.formatValidationErrors(postDecoded.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { triggers } = postDecoded.right;
+      const workspace = auth.getNonNullableWorkspace();
+
+      // Batch create triggers
+      for (const triggerData of triggers) {
+        const triggerValidation = TriggerSchema.decode({
+          ...triggerData,
+          editor: auth.getNonNullableUser().id,
+        });
+
+        if (isLeft(triggerValidation)) {
+          const pathError = reporter.formatValidationErrors(
+            triggerValidation.left
+          );
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: `Invalid trigger data: ${pathError}`,
+            },
+          });
+        }
+
+        const validatedTrigger = triggerValidation.right;
+
+        const webhookSourceViewId = isWebhookTriggerData(validatedTrigger)
+          ? getResourceIdFromSId(validatedTrigger.webhookSourceViewSId)
+          : null;
+
+        const executionPerDay = isWebhookTriggerData(validatedTrigger)
+          ? validatedTrigger.executionPerDayLimitOverride
+          : null;
+
+        const newTrigger = await TriggerResource.makeNew(auth, {
+          workspaceId: workspace.id,
+          agentConfigurationId,
+          name: validatedTrigger.name,
+          kind: validatedTrigger.kind,
+          status: validatedTrigger.status ?? "enabled",
+          configuration: validatedTrigger.configuration,
+          naturalLanguageDescription:
+            validatedTrigger.naturalLanguageDescription,
+          customPrompt: validatedTrigger.customPrompt,
+          editor: auth.getNonNullableUser().id,
+          webhookSourceViewId,
+          executionPerDayLimitOverride: executionPerDay,
+          executionMode:
+            validatedTrigger.kind === "webhook" ? "fair_use" : null,
+          origin: "user",
+        });
+
+        if (newTrigger.isErr()) {
+          logger.error(
+            {
+              workspaceId: workspace.sId,
+              agentConfigurationId,
+              triggerName: validatedTrigger.name,
+              error: newTrigger.error,
+            },
+            "Failed to create trigger"
+          );
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: `Failed to create trigger ${validatedTrigger.name}.`,
+            },
+          });
+        }
       }
 
       res.status(204).end();
@@ -268,7 +371,7 @@ async function handler(
         api_error: {
           type: "method_not_supported_error",
           message:
-            "The method passed is not supported, GET, POST or PATCH is expected.",
+            "The method passed is not supported, GET, POST, PATCH, or DELETE is expected.",
         },
       });
   }

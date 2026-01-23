@@ -60,7 +60,7 @@ function DeleteMemoryDialog({
             label: "Cancel",
             disabled: isLoading,
             variant: "outline",
-            onClick: onClose,
+            onClick: () => onClose(false),
           }}
           rightButtonProps={{
             isLoading,

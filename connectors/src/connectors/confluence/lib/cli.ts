@@ -20,8 +20,8 @@ import {
   confluenceUpsertPageWithFullParentsWorkflow,
 } from "@connectors/connectors/confluence/temporal/workflows";
 import {
-  ConfluencePage,
-  ConfluenceSpace,
+  ConfluencePageModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import { default as topLogger } from "@connectors/logger/logger";
@@ -117,7 +117,7 @@ export const confluence = async ({
       const pageId = args.pageId;
       const skipReason = args.skipReason || "Blacklisted.";
 
-      const page = await ConfluencePage.findOne({
+      const page = await ConfluencePageModel.findOne({
         where: {
           connectorId,
           pageId: pageId.toString(),
@@ -194,7 +194,7 @@ export const confluence = async ({
     case "update-parents": {
       // Not passing a spaceId means that all spaces have to be checked out here.
       if (!args.spaceId) {
-        const spaces = await ConfluenceSpace.findAll({
+        const spaces = await ConfluenceSpaceModel.findAll({
           attributes: ["spaceId"],
           where: { connectorId: args.connectorId },
         });
@@ -258,7 +258,7 @@ export const confluence = async ({
         pageId
       );
 
-      const confluencePage = await ConfluencePage.findOne({
+      const confluencePage = await ConfluencePageModel.findOne({
         where: {
           connectorId,
           pageId,
@@ -358,7 +358,7 @@ export const confluence = async ({
       }
 
       // Get space information from database
-      const dbSpace = await ConfluenceSpace.findOne({
+      const dbSpace = await ConfluenceSpaceModel.findOne({
         where: {
           connectorId,
           spaceId: matchingSpace.id,
@@ -366,7 +366,7 @@ export const confluence = async ({
       });
 
       // Count pages in this space
-      const pageCount = await ConfluencePage.count({
+      const pageCount = await ConfluencePageModel.count({
         where: {
           connectorId,
           spaceId: matchingSpace.id,

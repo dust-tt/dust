@@ -15,6 +15,7 @@ import type { CellContext } from "@tanstack/react-table";
 import { isLeft } from "fp-ts/lib/Either";
 import { useCallback, useState } from "react";
 
+import { clientFetch } from "@app/lib/egress/client";
 import { useNotionLastSyncedUrls } from "@app/lib/swr/data_sources";
 import type { DataSourceType, WorkspaceType } from "@app/types";
 import { GetPostNotionSyncResponseBodySchema } from "@app/types";
@@ -196,7 +197,7 @@ export function AdvancedNotionManagement({
     setUrlStatus(null);
 
     try {
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_status`,
         {
           method: "POST",
@@ -217,6 +218,7 @@ export function AdvancedNotionManagement({
         dust: data.dust,
         summary: data.summary,
       });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       sendNotification({
         type: "error",
@@ -235,7 +237,7 @@ export function AdvancedNotionManagement({
 
     try {
       if (trimmedUrls.length && validateUrls(trimmedUrls)) {
-        const r = await fetch(
+        const r = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/notion_url_sync`,
           {
             method: "POST",
@@ -287,6 +289,7 @@ export function AdvancedNotionManagement({
         }
         await mutate();
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       sendNotification({
         type: "error",

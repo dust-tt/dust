@@ -3,6 +3,10 @@ import { faker } from "@faker-js/faker";
 import { Authenticator } from "@app/lib/auth";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import type { WorkspaceType } from "@app/types";
+import type {
+  WebhookProvider,
+  WebhookSourceSignatureAlgorithm,
+} from "@app/types/triggers/webhooks";
 
 export class WebhookSourceFactory {
   private workspace: WorkspaceType;
@@ -15,9 +19,11 @@ export class WebhookSourceFactory {
     options: {
       name?: string;
       secret?: string;
+      urlSecret?: string;
       signatureHeader?: string;
-      signatureAlgorithm?: "sha1" | "sha256" | "sha512";
-      customHeaders?: Record<string, string>;
+      signatureAlgorithm?: WebhookSourceSignatureAlgorithm;
+      provider?: WebhookProvider;
+      subscribedEvents?: string[];
     } = {}
   ) {
     const cachedName =
@@ -27,15 +33,15 @@ export class WebhookSourceFactory {
       this.workspace.sId
     );
 
-    const result = await WebhookSourceResource.makeNew(auth, {
+    return WebhookSourceResource.makeNew(auth, {
       workspaceId: this.workspace.id,
       name: cachedName,
+      urlSecret: options.urlSecret ?? faker.string.alphanumeric(64),
       secret: options.secret ?? null,
       signatureHeader: options.signatureHeader ?? null,
       signatureAlgorithm: options.signatureAlgorithm ?? null,
-      customHeaders: options.customHeaders ?? null,
+      provider: options.provider ?? null,
+      subscribedEvents: options.subscribedEvents ?? [],
     });
-
-    return result;
   }
 }

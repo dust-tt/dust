@@ -1,5 +1,6 @@
 import {
   continueAsNew,
+  patched,
   proxyActivities,
   sleep,
   workflowInfo,
@@ -8,7 +9,8 @@ import PQueue from "p-queue";
 
 import type * as activities from "@connectors/connectors/notion/temporal/activities";
 import {
-  INTERVAL_BETWEEN_SYNCS_MS,
+  GC_BATCHES_PER_RUN,
+  INTERVAL_BETWEEN_GC_SYNCS_MS,
   MAX_CONCURRENT_CHILD_WORKFLOWS,
   MAX_PENDING_GARBAGE_COLLECTION_ACTIVITIES,
   MAX_SEARCH_PAGE_GARBAGE_COLLECTION_INDEX,
@@ -142,7 +144,10 @@ export async function notionGarbageCollectionWorkflow({
         })
       );
 
-      if (pageIndex % 512 === 0) {
+      const batchesPerRun = patched("reduce-gc-batches-per-run")
+        ? GC_BATCHES_PER_RUN
+        : 512;
+      if (pageIndex % batchesPerRun === 0) {
         return { isComplete: false, pageIndex };
       }
       // There are too many search result pages, we're likely in an infinite loop (notion bug).
@@ -241,7 +246,7 @@ export async function notionGarbageCollectionWorkflow({
   // Once done, clear all the redis keys used for garbage collection
   await completeGarbageCollectionRun(connectorId, nbOfBatches);
 
-  await sleep(INTERVAL_BETWEEN_SYNCS_MS);
+  await sleep(INTERVAL_BETWEEN_GC_SYNCS_MS);
 
   await continueAsNew<typeof notionGarbageCollectionWorkflow>({
     connectorId,

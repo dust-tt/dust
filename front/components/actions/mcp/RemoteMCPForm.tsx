@@ -3,7 +3,9 @@ import {
   ActionIcons,
   Button,
   CloudArrowLeftRightIcon,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   ExclamationCircleIcon,
   IconPicker,
@@ -16,7 +18,7 @@ import {
 import { useCallback, useState } from "react";
 import { useController, useFieldArray, useFormContext } from "react-hook-form";
 
-import type { InfoFormValues } from "@app/components/actions/mcp/forms/infoFormSchema";
+import type { MCPServerFormValues } from "@app/components/actions/mcp/forms/mcpServerFormSchema";
 import { McpServerHeaders } from "@app/components/actions/mcp/MCPServerHeaders";
 import type { RemoteMCPServerType } from "@app/lib/api/mcp";
 import { useSyncRemoteMCPServer } from "@app/lib/swr/mcp_servers";
@@ -31,15 +33,15 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
   const [isSynchronizing, setIsSynchronizing] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  const form = useFormContext<InfoFormValues>();
-  const { field: iconField } = useController<InfoFormValues, "icon">({
+  const form = useFormContext<MCPServerFormValues>();
+  const { field: iconField } = useController<MCPServerFormValues, "icon">({
     name: "icon",
   });
 
   const { url, lastError, lastSyncAt } = mcpServer;
 
   const { fields: headerFields, replace } = useFieldArray<
-    InfoFormValues,
+    MCPServerFormValues,
     "customHeaders"
   >({
     name: "customHeaders",
@@ -136,22 +138,12 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
         </div>
       </div>
 
-      <CollapsibleComponent
-        triggerChildren={<div className="heading-lg">Networking & Headers</div>}
-        contentChildren={
-          <div className="space-y-2">
-            <McpServerHeaders
-              headers={headerFields.map(({ key, value }) => ({ key, value }))}
-              onHeadersChange={(rows) => replace(rows)}
-            />
-          </div>
-        }
-      />
-
       {!mcpServer.authorization && (
-        <CollapsibleComponent
-          triggerChildren={<div className="heading-lg">Advanced Settings</div>}
-          contentChildren={
+        <Collapsible>
+          <CollapsibleTrigger>
+            <div className="heading-lg">Advanced Settings</div>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <div className="space-y-2">
               <Input
                 {...form.register("sharedSecret")}
@@ -165,9 +157,25 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
                 Bearer token in the headers.
               </p>
             </div>
-          }
-        />
+          </CollapsibleContent>
+        </Collapsible>
       )}
+
+      <Collapsible>
+        <CollapsibleTrigger>
+          <div className="heading-lg">
+            Networking & Headers ({headerFields.length})
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-2">
+            <McpServerHeaders
+              headers={headerFields.map(({ key, value }) => ({ key, value }))}
+              onHeadersChange={(rows) => replace(rows)}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

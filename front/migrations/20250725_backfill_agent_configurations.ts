@@ -3,12 +3,11 @@ import { Op } from "sequelize";
 
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { isArrayEqual2DUnordered, normalizeArrays } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -22,7 +21,7 @@ interface AgentUpdateStats {
 
 async function updateAgentConfigurationGroupIds(
   auth: Authenticator,
-  agent: AgentConfiguration,
+  agent: AgentConfigurationModel,
   execute: boolean,
   logger: Logger
 ): Promise<{ updated: boolean; error?: string }> {
@@ -57,22 +56,17 @@ async function updateAgentConfigurationGroupIds(
     }
 
     // Calculate the correct group IDs using the updated function
-    const newRequestedGroupIds = await getAgentConfigurationGroupIdsFromActions(
-      auth,
-      { actions: ac.actions }
-    );
-
-    // Normalize the arrays for comparison
-    const normalizedNewGroupIds = normalizeArrays(newRequestedGroupIds);
-    const normalizedCurrentGroupIds = normalizeArrays(agent.requestedGroupIds);
+    const newRequirements =
+      await getAgentConfigurationRequirementsFromCapabilities(auth, {
+        actions: ac.actions,
+        skills: [],
+      });
 
     // Check if the group IDs have changed
-    if (
-      isArrayEqual2DUnordered(normalizedNewGroupIds, normalizedCurrentGroupIds)
-    ) {
+    if (_.isEqual(newRequirements.requestedSpaceIds, agent.requestedSpaceIds)) {
       logger.debug(
         { agentId: agent.sId },
-        "Agent group IDs are already up to date"
+        "Agent requirements are already up to date"
       );
       return { updated: false };
     }
@@ -81,16 +75,16 @@ async function updateAgentConfigurationGroupIds(
       {
         agentId: agent.sId,
         agentName: agent.name,
-        currentGroupIds: normalizedCurrentGroupIds,
-        newGroupIds: normalizedNewGroupIds,
         execute,
       },
-      "Updating agent configuration group IDs for dust app permissions"
+      "Updating agent configuration requirements for permissions"
     );
 
     if (execute) {
-      await AgentConfiguration.update(
-        { requestedGroupIds: normalizedNewGroupIds },
+      await AgentConfigurationModel.update(
+        {
+          requestedSpaceIds: newRequirements.requestedSpaceIds,
+        },
         { where: { sId: agent.sId } }
       );
     }
@@ -126,12 +120,12 @@ async function updateAgentsForWorkspace(
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
   // Find all active agent configurations that have MCP actions with dust apps
-  const agentsWithDustApps = await AgentConfiguration.findAll({
+  const agentsWithDustApps = await AgentConfigurationModel.findAll({
     where: {
       workspaceId,
       status: "active",
       id: {
-        [Op.in]: await AgentMCPServerConfiguration.findAll({
+        [Op.in]: await AgentMCPServerConfigurationModel.findAll({
           where: {
             workspaceId,
             appId: { [Op.not]: null },
@@ -191,7 +185,7 @@ async function updateAgentsForWorkspace(
 
 async function getWorkspacesWithDustApps(): Promise<number[]> {
   // Find all workspaces that have agents with dust app configurations
-  const workspaceIds = await AgentMCPServerConfiguration.findAll({
+  const workspaceIds = await AgentMCPServerConfigurationModel.findAll({
     where: {
       appId: { [Op.not]: null },
     },

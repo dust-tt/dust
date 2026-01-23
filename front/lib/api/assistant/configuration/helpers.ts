@@ -3,8 +3,9 @@ import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { TemplateResource } from "@app/lib/resources/template_resource";
 import { tagsSorter } from "@app/lib/utils";
@@ -16,7 +17,7 @@ import type {
 } from "@app/types";
 
 function getModelForAgentConfiguration(
-  agent: AgentConfiguration
+  agent: AgentConfigurationModel
 ): AgentModelConfigurationType {
   const model: AgentModelConfigurationType = {
     providerId: agent.providerId,
@@ -75,7 +76,7 @@ export async function getAgentSIdFromName(
 ): Promise<string | null> {
   const owner = auth.getNonNullableWorkspace();
 
-  const agent = await AgentConfiguration.findOne({
+  const agent = await AgentConfigurationModel.findOne({
     attributes: ["sId"],
     where: {
       workspaceId: owner.id,
@@ -96,7 +97,7 @@ export async function getAgentSIdFromName(
  */
 export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   auth: Authenticator,
-  agentConfigurations: AgentConfiguration[],
+  agentConfigurations: AgentConfigurationModel[],
   {
     variant,
     agentIdsForUserAsEditor,
@@ -113,12 +114,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   let editorIds = agentIdsForUserAsEditor;
   if (!editorIds) {
     const agentIdsForGroups = user
-      ? await GroupResource.findAgentIdsForGroups(auth, [
-          ...auth
-            .groups()
-            .filter((g) => g.kind === "agent_editors")
-            .map((g) => g.id),
-        ])
+      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
       : [];
 
     editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);
@@ -142,7 +138,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   for (const agent of agentConfigurations) {
     const actions =
       variant === "full"
-        ? mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? []
+        ? (mcpServerActionsConfigurationsPerAgent.get(agent.id) ?? [])
         : [];
 
     const model = getModelForAgentConfiguration(agent);
@@ -167,17 +163,17 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
       actions,
       versionAuthorId: agent.authorId,
       maxStepsPerRun: agent.maxStepsPerRun,
-      visualizationEnabled: agent.visualizationEnabled ?? false,
       templateId: agent.templateId
         ? TemplateResource.modelIdToSId({ id: agent.templateId })
         : null,
-      requestedGroupIds: agent.requestedGroupIds.map((groups) =>
-        groups.map((id) =>
-          GroupResource.modelIdToSId({
-            id,
-            workspaceId: auth.getNonNullableWorkspace().id,
-          })
-        )
+      // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+      visualizationEnabled: false,
+      requestedGroupIds: [],
+      requestedSpaceIds: agent.requestedSpaceIds.map((spaceId) =>
+        SpaceResource.modelIdToSId({
+          id: spaceId,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
       ),
       tags: tags.map((t) => t.toJSON()).sort(tagsSorter),
       canRead: isAuthor || isMember || agent.scope === "visible",

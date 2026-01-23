@@ -39,13 +39,18 @@ export const withLogging = (handler: any) => {
 
       statsDClient.increment("api_errors.count", 1, tags);
 
-      // Try to return a 500 as it's likely nothing was returned yet.
-      res.status(500).json({
-        error: {
-          type: "internal_server_error",
-          message: `Unhandled internal server error: ${err}`,
-        },
-      });
+      // For webhooks, we often have already sent a response.
+      if (!res.headersSent) {
+        res.status(500).json({
+          error: {
+            type: "internal_server_error",
+            message: `Unhandled internal server error: ${err}`,
+          },
+        });
+      } else {
+        // Optionally log or handle the error (but don't send another response)
+        logger.warn({ err }, "Tried to send response after headers were sent");
+      }
       return;
     }
 

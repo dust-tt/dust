@@ -3,7 +3,7 @@ import { Err, Ok, removeNulls } from "@dust-tt/client";
 import { getChannelsToSync } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
-import { SlackMessages } from "@connectors/lib/models/slack";
+import { SlackMessagesModel } from "@connectors/lib/models/slack";
 import { getTemporalClient } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -110,7 +110,7 @@ export async function launchSlackSyncOneThreadWorkflow(
     return new Ok(undefined);
   }
 
-  const thread = await SlackMessages.findOne({
+  const thread = await SlackMessagesModel.findOne({
     where: {
       connectorId: connectorId,
       channelId: channelId,
@@ -186,7 +186,7 @@ export async function launchSlackSyncOneMessageWorkflow(
     return new Ok(undefined);
   }
 
-  const thread = await SlackMessages.findOne({
+  const thread = await SlackMessagesModel.findOne({
     where: {
       connectorId: connectorId,
       channelId: channelId,

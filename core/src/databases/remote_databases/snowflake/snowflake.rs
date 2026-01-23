@@ -253,7 +253,7 @@ impl SnowflakeRemoteDatabase {
                 role: Some(role),
                 database: None,
                 schema: None,
-                timeout: Some(std::time::Duration::from_secs(30)),
+                timeout: Some(std::time::Duration::from_secs(60)),
             },
         )
         .map_err(|e| {

@@ -2,57 +2,72 @@ import assert from "assert";
 import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
+import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import config from "@app/lib/api/config";
 import { hardDeleteDataSource } from "@app/lib/api/data_sources";
 import { hardDeleteSpace } from "@app/lib/api/spaces";
 import { deleteWorksOSOrganizationWithWorkspace } from "@app/lib/api/workos/organization";
 import { areAllSubscriptionsCanceled } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import {
-  AgentConfiguration,
-  AgentUserRelation,
-  GlobalAgentSettings,
-} from "@app/lib/models/assistant/agent";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+  AgentConfigurationModel,
+  AgentUserRelationModel,
+  GlobalAgentSettingsModel,
+} from "@app/lib/models/agent/agent";
+import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipInvitationModel } from "@app/lib/models/membership_invitation";
-import { Subscription } from "@app/lib/models/plan";
+import { SubscriptionModel } from "@app/lib/models/plan";
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { AppResource } from "@app/lib/resources/app_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
-import { Provider } from "@app/lib/resources/storage/models/apps";
+import { ProviderModel } from "@app/lib/resources/storage/models/apps";
+import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
+import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import {
   LabsTranscriptsConfigurationModel,
   LabsTranscriptsHistoryModel,
 } from "@app/lib/resources/storage/models/labs_transcripts";
+import {
+  UserMetadataModel,
+  UserToolApprovalModel,
+} from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -153,9 +168,48 @@ export async function scrubSpaceActivity({
       workspaceId,
     });
   }
+
+  // Delete all conversations in the space.
+  // Won't scale if there's tons of conversations in spaces.
+  await deleteSpaceConversations(auth, space);
+
   hardDeleteLogger.info({ space: space.sId, workspaceId }, "Deleting space");
 
   await hardDeleteSpace(auth, space);
+}
+
+async function deleteSpaceConversations(
+  auth: Authenticator,
+  space: SpaceResource
+) {
+  const conversations = await ConversationResource.listConversationsInSpace(
+    auth,
+    {
+      spaceId: space.sId,
+      options: {
+        includeDeleted: true,
+        dangerouslySkipPermissionFiltering: true,
+      },
+    }
+  );
+
+  hardDeleteLogger.info(
+    { spaceId: space.sId, conversationsCount: conversations.length },
+    "Deleting conversations in space."
+  );
+
+  await concurrentExecutor(
+    conversations,
+    async (conversation) => {
+      const result = await destroyConversation(auth, {
+        conversationId: conversation.sId,
+      });
+      if (result.isErr() && result.error.type !== "conversation_not_found") {
+        throw result.error;
+      }
+    },
+    { concurrency: 8 }
+  );
 }
 
 export async function isWorkflowDeletableActivity({
@@ -199,40 +253,33 @@ export async function deleteAgentsActivity({
     throw new Error("Could not find the workspace.");
   }
 
-  const agents = await AgentConfiguration.findAll({
+  const agents = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
     },
   });
 
-  await GlobalAgentSettings.destroy({
+  await GlobalAgentSettingsModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
   });
   for (const agent of agents) {
-    const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
-      where: {
-        agentConfigurationId: agent.id,
-        workspaceId: workspace.id,
-      },
-    });
-    await AgentDataSourceConfiguration.destroy({
+    const mcpServerConfigurations =
+      await AgentMCPServerConfigurationModel.findAll({
+        where: {
+          agentConfigurationId: agent.id,
+          workspaceId: workspace.id,
+        },
+      });
+    await AgentDataSourceConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
         },
       },
     });
-    await AgentTablesQueryConfigurationTable.destroy({
-      where: {
-        mcpServerConfigurationId: {
-          [Op.in]: mcpServerConfigurations.map((r) => r.id),
-        },
-      },
-    });
-
-    await AgentReasoningConfiguration.destroy({
+    await AgentTablesQueryConfigurationTableModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => r.id),
@@ -240,7 +287,7 @@ export async function deleteAgentsActivity({
       },
     });
 
-    await AgentChildAgentConfiguration.destroy({
+    await AgentChildAgentConfigurationModel.destroy({
       where: {
         mcpServerConfigurationId: {
           [Op.in]: mcpServerConfigurations.map((r) => `${r.id}`),
@@ -248,14 +295,14 @@ export async function deleteAgentsActivity({
         workspaceId: workspace.id,
       },
     });
-    await AgentMCPServerConfiguration.destroy({
+    await AgentMCPServerConfigurationModel.destroy({
       where: {
         agentConfigurationId: agent.id,
         workspaceId: workspace.id,
       },
     });
 
-    await AgentUserRelation.destroy({
+    await AgentUserRelationModel.destroy({
       where: {
         agentConfiguration: agent.sId,
       },
@@ -310,7 +357,7 @@ export async function deleteAppsActivity({
 
   await KeyResource.deleteAllForWorkspace(auth);
 
-  await Provider.destroy({
+  await ProviderModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
@@ -404,21 +451,6 @@ export const deleteRemoteMCPServersActivity = async ({
   }
 };
 
-export const deleteTrackersActivity = async ({
-  workspaceId,
-}: {
-  workspaceId: string;
-}) => {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
-    includeDeleted: true,
-  });
-
-  for (const tracker of trackers) {
-    await tracker.delete(auth, { hardDelete: true });
-  }
-};
-
 export async function deleteMembersActivity({
   workspaceId,
 }: {
@@ -469,6 +501,7 @@ export async function deleteMembersActivity({
             userId: user.id,
           },
         });
+        await OnboardingTaskResource.deleteAllForUser(auth, user.toJSON());
 
         await user.delete(auth, {});
       }
@@ -484,6 +517,35 @@ export async function deleteMembersActivity({
   }
 }
 
+export async function deleteSkillsActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  await SkillResource.deleteAllForWorkspace(auth);
+
+  hardDeleteLogger.info({ workspaceId }, "Deleted all skills");
+}
+
+export async function deleteWebhookSourcesActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+
+  const webhookSources = await WebhookSourceResource.listByWorkspace(auth);
+  for (const webhookSource of webhookSources) {
+    await WebhookRequestResource.deleteByWebhookSourceId(
+      auth,
+      webhookSource.id
+    );
+    await webhookSource.delete(auth);
+  }
+}
+
 export async function deleteSpacesActivity({
   workspaceId,
 }: {
@@ -492,6 +554,7 @@ export async function deleteSpacesActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
+    includeProjectSpaces: true,
     includeDeleted: true,
   });
 
@@ -553,6 +616,18 @@ export async function deleteSpacesActivity({
       await mcpServerView.delete(auth, { hardDelete: false });
     }
 
+    // Delete all the webhook source views of the space.
+    const webhookSourceViews = await WebhookSourcesViewResource.listBySpace(
+      auth,
+      space,
+      {
+        includeDeleted: true,
+      }
+    );
+    for (const webhookSourceView of webhookSourceViews) {
+      await webhookSourceView.hardDelete(auth);
+    }
+
     await scrubSpaceActivity({
       spaceId: space.sId,
       workspaceId,
@@ -575,10 +650,20 @@ export async function deleteWorkspaceActivity({
 }: {
   workspaceId: string;
 }) {
-  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  let auth: Authenticator;
+  try {
+    auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (err) {
+    hardDeleteLogger.warn(
+      { workspaceId },
+      "Workspace not found, nothing to delete."
+    );
+    return;
+  }
   const workspace = auth.getNonNullableWorkspace();
 
-  await Subscription.destroy({
+  await SubscriptionModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
@@ -587,34 +672,43 @@ export async function deleteWorkspaceActivity({
   await FileResource.deleteAllForWorkspace(auth);
   await RunResource.deleteAllForWorkspace(auth);
   await MembershipResource.deleteAllForWorkspace(auth);
+  await GroupMembershipModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
+  await GroupModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
   await WorkspaceHasDomainModel.destroy({
     where: { workspaceId: workspace.id },
   });
-  await AgentUserRelation.destroy({
+  await AgentUserRelationModel.destroy({
     where: { workspaceId: workspace.id },
   });
   await ExtensionConfigurationResource.deleteForWorkspace(auth, {});
-  await DustAppSecret.destroy({
+  await DustAppSecretModel.destroy({
     where: {
       workspaceId: workspace.id,
     },
   });
-  await FeatureFlag.destroy({
-    where: {
-      workspaceId: workspace.id,
-    },
-  });
+  await FeatureFlagResource.deleteAllForWorkspace(auth);
   await AgentMemoryResource.deleteAllForWorkspace(auth);
+  await OnboardingTaskResource.deleteAllForWorkspace(auth);
+  await RemoteMCPServerToolMetadataModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
+  await CreditResource.deleteAllForWorkspace(auth);
+  await ProgrammaticUsageConfigurationResource.deleteAllForWorkspace(auth);
+  await WorkspaceVerificationAttemptResource.deleteAllForWorkspace(auth);
 
   hardDeleteLogger.info({ workspaceId }, "Deleting Workspace");
 
+  await AgentDataRetentionModel.destroy({
+    where: { workspaceId: workspace.id },
+  });
   await WorkspaceModel.destroy({
     where: {
       id: workspace.id,
     },
-  });
-  await AgentDataRetentionModel.destroy({
-    where: { workspaceId: workspace.id },
   });
 }
 
@@ -657,6 +751,47 @@ export async function deleteTagsActivity({
   for (const tag of tags) {
     await tag.delete(auth);
   }
+}
+
+export async function deleteWorkspaceUserMetadataActivity({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const workspace = await WorkspaceModel.findOne({
+    where: { sId: workspaceId },
+  });
+
+  if (!workspace) {
+    logger.warn(
+      { workspaceId },
+      "Workspace not found, skipping user metadata deletion"
+    );
+    return;
+  }
+
+  // Delete all workspace-scoped user metadata
+  const deletedCount = await UserMetadataModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deletedCount },
+    "Deleted workspace-scoped user metadata"
+  );
+
+  const deleteCountApproval = await UserToolApprovalModel.destroy({
+    where: {
+      workspaceId: workspace.id,
+    },
+  });
+
+  logger.info(
+    { workspaceId, deleteCountApproval },
+    "Deleted workspace-scoped user tool approvals"
+  );
 }
 
 export async function deleteWorkOSOrganization({

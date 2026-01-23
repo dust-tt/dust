@@ -1,14 +1,37 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, PostSpaceRequestBodySchema } from "@app/types";
+import { assertNever } from "@app/types";
+
+const PostSpaceRequestBodySchema = t.intersection([
+  t.type({
+    isRestricted: t.boolean,
+    name: t.string,
+    spaceKind: t.union([t.literal("regular"), t.literal("project")]),
+  }),
+  t.union([
+    t.type({
+      memberIds: t.array(t.string),
+      managementMode: t.literal("manual"),
+    }),
+    t.type({
+      groupIds: t.array(t.string),
+      managementMode: t.literal("group"),
+    }),
+  ]),
+]);
+
+export type PostSpaceRequestBodyType = t.TypeOf<
+  typeof PostSpaceRequestBodySchema
+>;
 
 export type GetSpacesResponseBody = {
   spaces: SpaceType[];
@@ -30,7 +53,6 @@ async function handler(
       const { role, kind } = req.query;
 
       if (
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         (role && typeof role !== "string") ||
         (kind && typeof kind !== "string")
       ) {
@@ -98,10 +120,7 @@ async function handler(
         });
       }
 
-      const spaceRes = await createRegularSpaceAndGroup(
-        auth,
-        bodyValidation.right
-      );
+      const spaceRes = await createSpaceAndGroup(auth, bodyValidation.right);
       if (spaceRes.isErr()) {
         switch (spaceRes.error.code) {
           case "limit_reached":

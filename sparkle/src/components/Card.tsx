@@ -12,39 +12,10 @@ import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
 export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
-
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
-const variantClasses: Record<CardVariantType, string> = {
-  primary: cn(
-    "s-bg-muted-background",
-    "s-border-border/0",
-    "dark:s-bg-muted-background-night",
-    "dark:s-border-border-night/0"
-  ),
-  secondary: cn(
-    "s-bg-background",
-    "s-border-border",
-    "dark:s-bg-background-night",
-    "dark:s-border-border-night"
-  ),
-  tertiary: cn(
-    "s-bg-background",
-    "s-border-border/0",
-    "dark:s-bg-background-night",
-    "dark:s-border-border-night/0"
-  ),
-};
-
-export const CARD_VARIANTS_SIZES = ["sm", "md", "lg"] as const;
-
-export type CardSizeType = (typeof CARD_VARIANTS_SIZES)[number];
-
-const sizeVariants: Record<CardSizeType, string> = {
-  sm: "s-p-3 s-rounded-xl",
-  md: "s-p-4 s-rounded-2xl",
-  lg: "s-p-5 s-rounded-3xl",
-};
+export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
+export type CardSizeType = (typeof CARD_SIZES)[number];
 
 const interactiveClasses = cn(
   "s-cursor-pointer",
@@ -64,12 +35,45 @@ const cardVariants = cva(
   ),
   {
     variants: {
-      variant: variantClasses,
-      size: sizeVariants,
+      variant: {
+        primary: cn(
+          "s-bg-muted-background",
+          "s-border-border/0",
+          "dark:s-bg-muted-background-night",
+          "dark:s-border-border-night/0"
+        ),
+        secondary: cn(
+          "s-bg-background",
+          "s-border-border",
+          "dark:s-bg-background-night",
+          "dark:s-border-border-night"
+        ),
+        tertiary: cn(
+          "s-bg-background",
+          "s-border-border/0",
+          "dark:s-bg-background-night",
+          "dark:s-border-border-night/0"
+        ),
+      },
+      size: {
+        xs: "s-px-2 s-py-1.5 s-rounded-lg",
+        sm: "s-p-3 s-rounded-xl",
+        md: "s-p-4 s-rounded-2xl",
+        lg: "s-p-5 s-rounded-3xl",
+      },
+      selected: {
+        true: cn(
+          "s-border-highlight-300 dark:s-border-highlight-300-night",
+          "s-ring-2 s-ring-highlight-200/70 dark:s-ring-highlight-300/60",
+          "s-shadow-sm"
+        ),
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "primary",
       size: "md",
+      selected: false,
     },
   }
 );
@@ -78,6 +82,7 @@ interface CommonProps {
   variant?: CardVariantType;
   size?: CardSizeType;
   className?: string;
+  selected?: boolean;
 }
 
 interface CardLinkProps extends CommonProps, LinkWrapperProps {
@@ -85,8 +90,7 @@ interface CardLinkProps extends CommonProps, LinkWrapperProps {
 }
 
 interface CardButtonProps
-  extends CommonProps,
-    React.ButtonHTMLAttributes<HTMLDivElement> {
+  extends CommonProps, React.ButtonHTMLAttributes<HTMLDivElement> {
   href?: never;
   target?: never;
   rel?: never;
@@ -109,6 +113,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
       rel = "",
       replace,
       shallow,
+      selected,
       ...props
     },
     ref
@@ -118,9 +123,11 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
 
     // Determine if the card is interactive based on href or onClick
     const isInteractive = Boolean(href || onClick);
+    const isSelected = Boolean(selected);
+    const hasSelectionProp = typeof selected !== "undefined";
 
     const cardButtonClassNames = cn(
-      cardVariants({ variant, size }),
+      cardVariants({ variant, size, selected: isSelected }),
       // Apply interactive styles when either href or onClick is present
       isInteractive ? interactiveClasses : "",
       className
@@ -135,6 +142,7 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
           shallow={shallow}
           target={target}
           rel={rel}
+          aria-selected={hasSelectionProp ? isSelected : undefined}
         >
           {children}
         </Link>
@@ -146,6 +154,11 @@ const InnerCard = React.forwardRef<HTMLDivElement, InnerCardProps>(
         ref={ref}
         className={cardButtonClassNames}
         onClick={onClick}
+        role={isInteractive ? "button" : undefined}
+        aria-pressed={
+          isInteractive && hasSelectionProp ? isSelected : undefined
+        }
+        aria-selected={hasSelectionProp ? isSelected : undefined}
         {...props}
       >
         {children}
@@ -163,15 +176,13 @@ interface CardPropsBase {
 }
 
 interface CardPropsWithLink
-  extends CardPropsBase,
-    Omit<CardLinkProps, keyof CardPropsBase> {
+  extends CardPropsBase, Omit<CardLinkProps, keyof CardPropsBase> {
   href: string;
   onClick?: never;
 }
 
 interface CardPropsWithButton
-  extends CardPropsBase,
-    Omit<CardButtonProps, keyof CardPropsBase> {
+  extends CardPropsBase, Omit<CardButtonProps, keyof CardPropsBase> {
   href?: never;
 }
 
@@ -202,8 +213,8 @@ const CardActions = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "s-absolute s-right-2 s-top-2 s-opacity-0 s-transition-opacity",
-        "s-opacity-0 group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
+        "s-absolute s-right-2 s-top-2 s-transition-opacity sm:s-opacity-0",
+        "group-focus-within/card:s-opacity-100 group-hover/card:s-opacity-100"
       )}
       {...props}
     >

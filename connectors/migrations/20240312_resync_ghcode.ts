@@ -1,5 +1,5 @@
 import { launchGithubFullSyncWorkflow } from "@connectors/connectors/github/temporal/client";
-import { GithubConnectorState } from "@connectors/lib/models/github";
+import { GithubConnectorStateModel } from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { LIVE } = process.env;
@@ -9,7 +9,7 @@ async function main() {
   const connectors = await ConnectorModel.findAll({
     include: [
       {
-        model: GithubConnectorState,
+        model: GithubConnectorStateModel,
         where: {
           codeSyncEnabled: true,
         },
@@ -28,12 +28,13 @@ async function main() {
           LIVE ? "LIVE" : "DRY"
         })`
       );
-      LIVE &&
-        (await launchGithubFullSyncWorkflow({
+      if (LIVE) {
+        await launchGithubFullSyncWorkflow({
           connectorId: connector.id,
           syncCodeOnly: true,
           forceCodeResync: true,
-        }));
+        });
+      }
     }
     await new Promise((resolve) => setTimeout(resolve, 5000));
   }

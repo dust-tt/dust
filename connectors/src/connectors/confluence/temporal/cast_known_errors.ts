@@ -8,9 +8,7 @@ import type {
 import { ProviderWorkflowError } from "@connectors/lib/error";
 import { ConfluenceClientError } from "@connectors/types";
 
-export class ConfluenceCastKnownErrorsInterceptor
-  implements ActivityInboundCallsInterceptor
-{
+export class ConfluenceCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">
@@ -29,6 +27,7 @@ export class ConfluenceCastKnownErrorsInterceptor
               throw ApplicationFailure.create({
                 message: `${err.message}. Retry after ${err.retryAfterMs}ms`,
                 nextRetryDelay: err.retryAfterMs,
+                cause: err,
               });
             }
 

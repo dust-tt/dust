@@ -5,83 +5,43 @@ import type { StreamableHTTPClientTransportOptions } from "@modelcontextprotocol
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 import type { OAuthTokens } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { Implementation, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
-import { ProxyAgent } from "undici";
+import type { ProxyAgent } from "undici";
 
-import {
-  DEFAULT_MCP_ACTION_DESCRIPTION,
-  DEFAULT_MCP_ACTION_NAME,
-  DEFAULT_MCP_ACTION_VERSION,
-} from "@app/lib/actions/constants";
 import {
   getConnectionForMCPServer,
   MCPServerPersonalAuthenticationRequiredError,
+  MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
 import { MCPServerNotFoundError } from "@app/lib/actions/mcp_errors";
-import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import {
-  DEFAULT_MCP_SERVER_ICON,
-  isInternalAllowedIcon,
-} from "@app/lib/actions/mcp_icons";
+  doesInternalMCPServerRequireBearerToken,
+  getServerTypeAndIdFromSId,
+} from "@app/lib/actions/mcp_helper";
 import { connectToInternalMCPServer } from "@app/lib/actions/mcp_internal_actions";
 import { InMemoryWithAuthTransport } from "@app/lib/actions/mcp_internal_actions/in_memory_with_auth_transport";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import { MCPOAuthRequiredError } from "@app/lib/actions/mcp_oauth_error";
 import { MCPOAuthProvider } from "@app/lib/actions/mcp_oauth_provider";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_side";
-import config from "@app/lib/api/config";
-import type {
-  InternalMCPServerDefinitionType,
-  MCPServerDefinitionType,
-  MCPServerType,
-  MCPToolType,
-} from "@app/lib/api/mcp";
+import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
+import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
-import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
-import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
-import { validateJsonSchema } from "@app/lib/utils/json_schemas";
-import logger from "@app/logger/logger";
-import type { MCPOAuthUseCase, OAuthProvider, Result } from "@app/types";
 import {
-  assertNever,
-  EnvironmentConfig,
-  Err,
-  isOAuthProvider,
-  normalizeError,
-  Ok,
-} from "@app/types";
+  getStaticIPProxyAgent,
+  getUntrustedEgressAgent,
+} from "@app/lib/egress/server";
+import { isWorkspaceUsingStaticIP } from "@app/lib/misc";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
+import logger from "@app/logger/logger";
+import type { MCPOAuthUseCase, Result } from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
-export type AuthorizationInfo = {
-  provider: OAuthProvider;
-  supported_use_cases: MCPOAuthUseCase[];
-  scope?: string;
-};
-
-export function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {
-  return (
-    typeof a === "object" &&
-    a !== null &&
-    "provider" in a &&
-    isOAuthProvider(a.provider) &&
-    "supported_use_cases" in a
-  );
-}
-
-export function isInternalMCPServerDefinition(
-  server: Implementation
-): server is InternalMCPServerDefinitionType {
-  return (
-    "authorization" in server &&
-    (isAuthorizationInfo(server.authorization) ||
-      server.authorization === null) &&
-    "description" in server &&
-    typeof server.description === "string" &&
-    "icon" in server &&
-    typeof server.icon === "string" &&
-    isInternalAllowedIcon(server.icon)
-  );
-}
+const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -89,11 +49,11 @@ interface ConnectViaMCPServerId {
   oAuthUseCase: MCPOAuthUseCase | null;
 }
 
-export const isConnectViaMCPServerId = (
+export function isConnectViaMCPServerId(
   params: MCPConnectionParams
-): params is ConnectViaMCPServerId => {
+): params is ConnectViaMCPServerId {
   return params.type === "mcpServerId";
-};
+}
 
 interface ConnectViaRemoteMCPServerUrl {
   type: "remoteMCPServerUrl";
@@ -108,11 +68,11 @@ interface ConnectViaClientSideMCPServer {
   mcpServerId: string;
 }
 
-export const isConnectViaClientSideMCPServer = (
+export function isConnectViaClientSideMCPServer(
   params: MCPConnectionParams
-): params is ConnectViaClientSideMCPServer => {
+): params is ConnectViaClientSideMCPServer {
   return params.type === "clientSideMCPServerId";
-};
+}
 
 export type ServerSideMCPConnectionParams =
   | ConnectViaMCPServerId
@@ -124,29 +84,34 @@ export type MCPConnectionParams =
   | ServerSideMCPConnectionParams
   | ClientSideMCPConnectionParams;
 
-function createMCPDispatcher(auth: Authenticator): ProxyAgent | undefined {
-  // Default to the generic proxy.
-  let proxyHost = config.getUntrustedEgressProxyHost();
-  let proxyPort = config.getUntrustedEgressProxyPort();
+async function createMCPDispatcher(
+  auth: Authenticator,
+  host: string
+): Promise<ProxyAgent | undefined> {
+  const workspace = auth.getNonNullableWorkspace();
 
-  if (isWorkspaceUsingStaticIP(auth.getNonNullableWorkspace())) {
-    proxyHost = `${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_NAME"
-    )}:${EnvironmentConfig.getEnvVariable(
-      "PROXY_USER_PASSWORD"
-    )}@${EnvironmentConfig.getEnvVariable("PROXY_HOST")}`;
-    proxyPort = EnvironmentConfig.getEnvVariable("PROXY_PORT");
+  // Check if workspace should use static IP:
+  // 1. Legacy hardcoded check for specific workspaces
+  // 2. Domain-based check: host is under any verified domain for this workspace
+  const useStaticIP =
+    isWorkspaceUsingStaticIP(workspace) ||
+    (await isHostUnderVerifiedDomain(auth, host));
+
+  if (useStaticIP) {
+    const staticIPProxy = getStaticIPProxyAgent();
+    if (staticIPProxy) {
+      logger.info(
+        { workspaceId: workspace.sId, host, useStaticIP },
+        "Using static IP proxy for MCP request"
+      );
+      return staticIPProxy;
+    }
   }
 
-  if (proxyHost && proxyPort) {
-    const proxyUrl = `http://${proxyHost}:${proxyPort}`;
-    return new ProxyAgent(proxyUrl);
-  }
-
-  return undefined;
+  return getUntrustedEgressAgent();
 }
 
-export const connectToMCPServer = async (
+export async function connectToMCPServer(
   auth: Authenticator,
   {
     params,
@@ -157,7 +122,7 @@ export const connectToMCPServer = async (
   }
 ): Promise<
   Result<Client, Error | MCPServerPersonalAuthenticationRequiredError>
-> => {
+> {
   // This is where we route the MCP client to the right server.
   const mcpClient = new Client({
     name: "dust-mcp-client",
@@ -184,12 +149,36 @@ export const connectToMCPServer = async (
 
           // For internal servers, to avoid any unnecessary work, we only try to fetch the token if we are trying to run a tool.
           if (agentLoopContext?.runContext) {
-            const metadata = await extractMetadataFromServerVersion(
+            const bearerTokenCredentials =
+              doesInternalMCPServerRequireBearerToken(params.mcpServerId)
+                ? await InternalMCPServerCredentialModel.findOne({
+                    where: {
+                      workspaceId: auth.getNonNullableWorkspace().id,
+                      internalMCPServerId: params.mcpServerId,
+                    },
+                  })
+                : null;
+
+            const metadata = extractMetadataFromServerVersion(
               mcpClient.getServerVersion()
             );
 
-            // The server requires authentication.
-            if (metadata.authorization) {
+            if (bearerTokenCredentials) {
+              const authInfo: AuthInfo = {
+                token: bearerTokenCredentials.sharedSecret ?? "",
+                expiresAt: undefined,
+                clientId: "",
+                scopes: [],
+                extra: {
+                  customHeaders:
+                    bearerTokenCredentials.customHeaders ?? undefined,
+                  connectionType: "workspace",
+                },
+              };
+
+              client.setAuthInfo(authInfo);
+              server.setAuthInfo(authInfo);
+            } else if (metadata.authorization) {
               if (!params.oAuthUseCase) {
                 throw new Error(
                   "Internal server requires authentication but no use case was provided - Should never happen"
@@ -203,14 +192,14 @@ export const connectToMCPServer = async (
                     ? "personal"
                     : "workspace",
               });
-              if (c) {
+              if (c.isOk()) {
                 const authInfo: AuthInfo = {
-                  token: c.access_token,
-                  expiresAt: c.access_token_expiry ?? undefined,
+                  token: c.value.access_token,
+                  expiresAt: c.value.access_token_expiry ?? undefined,
                   clientId: "",
                   scopes: [],
                   extra: {
-                    ...c.connection.metadata,
+                    ...c.value.connection.metadata,
                     connectionType:
                       params.oAuthUseCase === "personal_actions"
                         ? "personal"
@@ -227,10 +216,32 @@ export const connectToMCPServer = async (
                     workspaceId: auth.getNonNullableWorkspace().sId,
                     mcpServerId: params.mcpServerId,
                     oAuthUseCase: params.oAuthUseCase,
+                    error: c.error,
                   },
                   "Internal server requires workspace authentication but no connection found"
                 );
                 if (params.oAuthUseCase === "personal_actions") {
+                  // Check if admin connection exists for the server.
+                  // We only check if the connection resource exists (not if the token is valid)
+                  // because for personal_actions we just need to know if admin setup is done.
+                  const adminConnectionRes =
+                    await MCPServerConnectionResource.findByMCPServer(auth, {
+                      mcpServerId: params.mcpServerId,
+                      connectionType: "workspace",
+                    });
+                  // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                  if (
+                    adminConnectionRes.isErr() &&
+                    adminConnectionRes.error.message === "connection_not_found"
+                  ) {
+                    return new Err(
+                      new MCPServerRequiresAdminAuthenticationError(
+                        params.mcpServerId,
+                        metadata.authorization.provider,
+                        metadata.authorization.scope
+                      )
+                    );
+                  }
                   return new Err(
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
@@ -238,8 +249,17 @@ export const connectToMCPServer = async (
                       metadata.authorization.scope
                     )
                   );
+                } else if (params.oAuthUseCase === "platform_actions") {
+                  // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                  return new Err(
+                    new MCPServerRequiresAdminAuthenticationError(
+                      params.mcpServerId,
+                      metadata.authorization.provider,
+                      metadata.authorization.scope
+                    )
+                  );
                 } else {
-                  // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
+                  assertNever(params.oAuthUseCase);
                 }
               }
             }
@@ -285,27 +305,47 @@ export const connectToMCPServer = async (
               mcpServerId: params.mcpServerId,
               connectionType: connectionType,
             });
-            if (c) {
+            if (c.isOk()) {
               token = {
-                access_token: c.access_token,
+                access_token: c.value.access_token,
                 token_type: "bearer",
-                expires_in: c.access_token_expiry ?? undefined,
-                scope: c.connection.metadata.scope,
+                expires_in: c.value.access_token_expiry ?? undefined,
+                scope: c.value.connection.metadata.scope,
               };
             } else {
-              if (
-                params.oAuthUseCase === "personal_actions" &&
-                connectionType === "personal"
-              ) {
+              if (connectionType === "personal") {
+                // Check if admin connection exists for the server.
+                const adminConnection = await getConnectionForMCPServer(auth, {
+                  mcpServerId: params.mcpServerId,
+                  connectionType: "workspace",
+                });
+                // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                if (adminConnection.isErr()) {
+                  return new Err(
+                    new MCPServerRequiresAdminAuthenticationError(
+                      params.mcpServerId,
+                      remoteMCPServer.authorization.provider,
+                      remoteMCPServer.authorization.scope
+                    )
+                  );
+                }
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
                     remoteMCPServer.authorization.provider
                   )
                 );
+              } else if (connectionType === "workspace") {
+                // For platform actions, we return an error to display a message to the user saying that the server requires the admin to setup the connection.
+                return new Err(
+                  new MCPServerRequiresAdminAuthenticationError(
+                    params.mcpServerId,
+                    remoteMCPServer.authorization.provider,
+                    remoteMCPServer.authorization.scope
+                  )
+                );
               } else {
-                // TODO(mcp): We return an result to display a message to the user saying that the server requires the admin to setup the connection.
-                // For now, keeping iso.
+                assertNever(connectionType);
               }
             }
           }
@@ -313,13 +353,9 @@ export const connectToMCPServer = async (
           try {
             const req = {
               requestInit: {
-                // Include stored custom headers (excluding Authorization; handled by authProvider)
-                headers: Object.fromEntries(
-                  Object.entries(remoteMCPServer.customHeaders ?? {}).filter(
-                    ([k]) => k.toLowerCase() !== "authorization"
-                  )
-                ),
-                dispatcher: createMCPDispatcher(auth),
+                // Include stored custom headers
+                headers: remoteMCPServer.customHeaders ?? {},
+                dispatcher: await createMCPDispatcher(auth, url.hostname),
               },
               authProvider: new MCPOAuthProvider(auth, token),
             };
@@ -350,7 +386,7 @@ export const connectToMCPServer = async (
       const url = new URL(params.remoteMCPServerUrl);
       const req = {
         requestInit: {
-          dispatcher: createMCPDispatcher(auth),
+          dispatcher: await createMCPDispatcher(auth, url.hostname),
           headers: { ...(params.headers ?? {}) },
         },
         authProvider: new MCPOAuthProvider(auth, undefined),
@@ -412,84 +448,59 @@ export const connectToMCPServer = async (
   }
 
   return new Ok(mcpClient);
-};
+}
 
 // Try to connect via streamableHttpTransport first, and if that fails, fall back to sseTransport.
+// If the URL path ends with /sse, skip HTTP streaming and use SSE directly.
 async function connectToRemoteMCPServer(
   mcpClient: Client,
   url: URL,
   req: SSEClientTransportOptions | StreamableHTTPClientTransportOptions
 ) {
+  // If the URL path ends with /sse, use SSE transport directly.
+  if (url.pathname.endsWith("/sse")) {
+    const sseTransport = new SSEClientTransport(url, req);
+    return mcpClient.connect(sseTransport);
+  }
+
   try {
     const streamableHttpTransport = new StreamableHTTPClientTransport(url, req);
-    await mcpClient.connect(streamableHttpTransport);
+    await mcpClient.connect(streamableHttpTransport, {
+      // The default timeout is 60 seconds, which may exceed the heartbeat timeout.
+      timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
+    });
   } catch (error) {
-    // Check if error message contains "HTTP 4xx" as suggested by the official doc.
+    // Check if the error message contains "HTTP 4xx" as suggested by the official doc.
     // Doc is here https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#client-side-compatibility.
-    if (error instanceof Error && /HTTP 4\d\d/.test(error.message)) {
+    if (
+      error instanceof Error &&
+      /HTTP 4\d\d/.test(error.message) &&
+      !error.message.includes("HTTP 429")
+    ) {
       logger.info(
         {
           url: url.toString(),
-          error: error.message,
+          error,
         },
         "Error establishing connection to remote MCP server via streamableHttpTransport, falling back to sseTransport."
       );
       const sseTransport = new SSEClientTransport(url, req);
-      await mcpClient.connect(sseTransport);
-    } else {
-      throw error;
+      return mcpClient.connect(sseTransport, {
+        timeout: DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS,
+      });
     }
+    throw error;
   }
-}
-
-export function extractMetadataFromServerVersion(
-  r: Implementation | undefined
-): MCPServerDefinitionType {
-  if (r) {
-    return {
-      name: r.name ?? DEFAULT_MCP_ACTION_NAME,
-      version: r.version ?? DEFAULT_MCP_ACTION_VERSION,
-      authorization: isInternalMCPServerDefinition(r) ? r.authorization : null,
-      description: isInternalMCPServerDefinition(r)
-        ? r.description
-        : DEFAULT_MCP_ACTION_DESCRIPTION,
-      icon: isInternalMCPServerDefinition(r) ? r.icon : DEFAULT_MCP_SERVER_ICON,
-      documentationUrl: isInternalMCPServerDefinition(r)
-        ? r.documentationUrl
-        : null,
-      requiresSecret: isInternalMCPServerDefinition(r)
-        ? r.requiresSecret
-        : undefined,
-    };
-  }
-
-  return {
-    name: DEFAULT_MCP_ACTION_NAME,
-    version: DEFAULT_MCP_ACTION_VERSION,
-    description: DEFAULT_MCP_ACTION_DESCRIPTION,
-    icon: DEFAULT_MCP_SERVER_ICON,
-    authorization: null,
-    documentationUrl: null,
-    requiresSecret: undefined,
-  };
 }
 
 export function extractMetadataFromTools(tools: Tool[]): MCPToolType[] {
-  return tools.map((tool) => {
-    let inputSchema: JSONSchema | undefined;
-
-    const { isValid, error } = validateJsonSchema(tool.inputSchema);
-    if (isValid) {
-      inputSchema = tool.inputSchema as JSONSchema;
-    } else {
-      logger.error(
-        `[MCP] Invalid input schema for tool: ${tool.name} (${error}).`
-      );
-    }
+  return tools.map(({ name, description, inputSchema }) => {
     return {
-      name: tool.name,
-      description: tool.description ?? "",
-      inputSchema,
+      name,
+      description: description ?? "",
+      // TODO: the types are slightly incompatible: we have an unknown as the values of `properties`
+      //  whereas JSONSchema expects a JSONSchema7Definition.
+      inputSchema: inputSchema as JSONSchema,
     };
   });
 }

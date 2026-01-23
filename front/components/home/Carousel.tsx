@@ -1,3 +1,4 @@
+import type { RegularButtonProps } from "@dust-tt/sparkle";
 import { Button, ChevronLeftIcon, ChevronRightIcon } from "@dust-tt/sparkle";
 import type { UseEmblaCarouselType } from "embla-carousel-react";
 import useEmblaCarousel from "embla-carousel-react";
@@ -197,7 +198,7 @@ CarouselItem.displayName = "CarouselItem";
 
 const CarouselPrevious = React.forwardRef<
   HTMLButtonElement,
-  React.ComponentProps<typeof Button>
+  RegularButtonProps
 >(({ className, variant = "outline", size = "sm", ...props }, ref) => {
   const { scrollPrev, canScrollPrev, isLooping } = useCarousel();
 
@@ -216,25 +217,24 @@ const CarouselPrevious = React.forwardRef<
 });
 CarouselPrevious.displayName = "CarouselPrevious";
 
-const CarouselNext = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<typeof Button>
->(({ className, variant = "outline", size = "sm", ...props }, ref) => {
-  const { scrollNext, canScrollNext, isLooping } = useCarousel();
+const CarouselNext = React.forwardRef<HTMLButtonElement, RegularButtonProps>(
+  ({ className, variant = "outline", size = "sm", ...props }, ref) => {
+    const { scrollNext, canScrollNext, isLooping } = useCarousel();
 
-  return (
-    <Button
-      ref={ref}
-      variant={variant}
-      size={size}
-      icon={ChevronRightIcon}
-      className={className}
-      disabled={!isLooping && !canScrollNext}
-      onClick={scrollNext}
-      {...props}
-    />
-  );
-});
+    return (
+      <Button
+        ref={ref}
+        variant={variant}
+        size={size}
+        icon={ChevronRightIcon}
+        className={className}
+        disabled={!isLooping && !canScrollNext}
+        onClick={scrollNext}
+        {...props}
+      />
+    );
+  }
+);
 CarouselNext.displayName = "CarouselNext";
 
 export {

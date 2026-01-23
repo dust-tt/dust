@@ -1,20 +1,22 @@
 import {
+  Chip,
   Dialog,
   DialogContainer,
   DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  InformationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
-import { isEntreprisePlan } from "@app/lib/plans/plan_codes";
+import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
 import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
 import type {
@@ -67,7 +69,7 @@ export function SpaceLayout({
     space,
     subscription,
   } = pageProps;
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaces } = useSpacesAsAdmin({
     workspaceId: owner.sId,
@@ -75,7 +77,7 @@ export function SpaceLayout({
   });
 
   const isLimitReached = isPrivateSpacesLimitReached(spaces, plan);
-  const isEnterprise = isEntreprisePlan(plan.code);
+  const isEnterprise = isEntreprisePlanPrefix(plan.code);
 
   const closeSpaceCreationModal = useCallback(() => {
     setSpaceCreationModalState((prev) => ({ ...prev, isOpen: false }));
@@ -102,6 +104,20 @@ export function SpaceLayout({
     >
       <div className="flex w-full flex-col">
         <Page.Vertical gap="lg" align="stretch">
+          {
+            // Message to admins that are not members of the space.
+            // No need to show it for system space since it's a no-member space.
+            !canReadInSpace && space.kind !== "system" && (
+              <div>
+                <Chip
+                  color="rose"
+                  label="You are not a member of this space."
+                  size="sm"
+                  icon={InformationCircleIcon}
+                />
+              </div>
+            )
+          }
           <SpaceSearchInput
             category={category}
             canReadInSpace={canReadInSpace}

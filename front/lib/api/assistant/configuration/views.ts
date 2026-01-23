@@ -1,5 +1,6 @@
 import { Op, Sequelize } from "sequelize";
 
+import { filterAgentsByRequestedSpaces } from "@app/lib/api/assistant/configuration/agent";
 import { enrichAgentConfigurations } from "@app/lib/api/assistant/configuration/helpers";
 import type {
   SortStrategy,
@@ -7,11 +8,11 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import { getGlobalAgents } from "@app/lib/api/assistant/global_agents/global_agents";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import {
-  AgentConfiguration,
-  AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
+  AgentConfigurationModel,
+  AgentUserRelationModel,
+} from "@app/lib/models/agent/agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type {
   AgentConfigurationType,
@@ -130,7 +131,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     owner: WorkspaceType;
     sort?: SortStrategyType;
   }
-): Promise<AgentConfiguration[]> {
+): Promise<AgentConfigurationModel[]> {
   const sortStrategy = sort && sortStrategies[sort];
 
   const baseWhereConditions = {
@@ -151,13 +152,13 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
 
   switch (agentsGetView) {
     case "admin_internal":
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseWhereConditions,
       });
     case "current_user":
       const authorId = auth.getNonNullableUser().id;
-      const r = await AgentConfiguration.findAll({
+      const r = await AgentConfigurationModel.findAll({
         attributes: ["sId"],
         group: "sId",
         where: {
@@ -166,7 +167,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         },
       });
 
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
@@ -176,7 +177,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "archived":
       // Get the latest version of all archived agents.
       // For each sId, we want to fetch the one with the highest version, only if its status is "archived".
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         attributes: [[Sequelize.fn("MAX", Sequelize.col("id")), "maxId"]],
         group: "sId",
         raw: true,
@@ -191,7 +192,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
           (id) => agentIdsForUserAsEditor.includes(id) || auth.isAdmin()
         );
 
-        return AgentConfiguration.findAll({
+        return AgentConfigurationModel.findAll({
           where: {
             id: {
               [Op.in]: filteredIds,
@@ -202,13 +203,13 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       });
 
     case "all":
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseConditionsAndScopesIn(["workspace", "published", "visible"]),
       });
 
     case "published":
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: baseConditionsAndScopesIn(["published", "visible"]),
       });
@@ -216,7 +217,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
     case "list":
     case "manage":
       const user = auth.user();
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
@@ -236,7 +237,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
       if (!userId) {
         return [];
       }
-      const relations = await AgentUserRelation.findAll({
+      const relations = await AgentUserRelationModel.findAll({
         where: {
           workspaceId: owner.id,
           userId,
@@ -249,7 +250,7 @@ async function fetchWorkspaceAgentConfigurationsWithoutActions(
         return [];
       }
 
-      return AgentConfiguration.findAll({
+      return AgentConfigurationModel.findAll({
         ...baseAgentsSequelizeQuery,
         where: {
           ...baseWhereConditions,
@@ -270,40 +271,43 @@ async function fetchWorkspaceAgentConfigurationsForView(
     limit,
     sort,
     variant,
+    dangerouslySkipPermissionFiltering,
   }: {
     agentPrefix?: string;
     agentsGetView: Exclude<AgentsGetViewType, "global">;
     limit?: number;
     sort?: SortStrategyType;
     variant: AgentFetchVariant;
+    dangerouslySkipPermissionFiltering?: boolean;
   }
 ) {
   const user = auth.user();
 
   const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, [
-        ...auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id),
-      ])
+    ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
     : [];
 
   const agentIdsForUserAsEditor = agentIdsForGroups.map(
     (g) => g.agentConfigurationId
   );
 
-  const agentConfigurations =
-    await fetchWorkspaceAgentConfigurationsWithoutActions(auth, {
+  const agentModels = await fetchWorkspaceAgentConfigurationsWithoutActions(
+    auth,
+    {
       agentPrefix,
       agentsGetView,
       agentIdsForUserAsEditor,
       limit,
       owner,
       sort,
-    });
+    }
+  );
 
-  return enrichAgentConfigurations(auth, agentConfigurations, {
+  const allowedAgentModels = dangerouslySkipPermissionFiltering
+    ? agentModels
+    : await filterAgentsByRequestedSpaces(auth, agentModels);
+
+  return enrichAgentConfigurations(auth, allowedAgentModels, {
     variant,
     agentIdsForUserAsEditor,
   });
@@ -372,6 +376,8 @@ export async function getAgentConfigurationsForView<
     return applySortAndLimit(allGlobalAgents);
   }
 
+  // Only workspace agents are filtered by requested spaces (unless dangerouslySkipPermissionFiltering is true)
+  // Global agents are not linked to any space.
   const allAgentConfigurations = await Promise.all([
     fetchGlobalAgentConfigurationForView(auth, {
       agentPrefix,
@@ -384,22 +390,9 @@ export async function getAgentConfigurationsForView<
       limit,
       sort,
       variant,
+      dangerouslySkipPermissionFiltering,
     }),
   ]);
 
-  // Filter out agents that the user does not have access to user should be in all groups that are
-  // in the agent's groupIds
-  const allowedAgentConfigurations = dangerouslySkipPermissionFiltering
-    ? allAgentConfigurations
-    : allAgentConfigurations
-        .flat()
-        .filter((a) =>
-          auth.canRead(
-            Authenticator.createResourcePermissionsFromGroupIds(
-              a.requestedGroupIds
-            )
-          )
-        );
-
-  return applySortAndLimit(allowedAgentConfigurations.flat());
+  return applySortAndLimit(allAgentConfigurations.flat());
 }

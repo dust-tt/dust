@@ -8,7 +8,6 @@ import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./index";
 
@@ -16,18 +15,16 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace, authenticator } =
+  const { req, res, workspace, authenticator, globalSpace, systemSpace } =
     await createPrivateApiMockRequest({
       role,
       method,
     });
 
-  const systemSpace = await SpaceFactory.system(workspace);
-
   // Set up common query parameters
   req.query.wId = workspace.sId;
 
-  return { req, res, workspace, systemSpace, auth: authenticator };
+  return { req, res, workspace, globalSpace, systemSpace, auth: authenticator };
 }
 
 describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
@@ -55,12 +52,14 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
   });
 
   it("should return 400 when trying to update non-system view", async () => {
-    const { req, res, workspace } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, globalSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
     const server = await RemoteMCPServerFactory.create(workspace);
 
     // Create a view in global space (not system space)
-    const globalSpace = await SpaceFactory.global(workspace);
     const serverView = await MCPServerViewFactory.create(
       workspace,
       server.sId,
@@ -83,7 +82,10 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
   });
 
   it("should update oAuthUseCase for all views of the same MCP server when admin", async () => {
-    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, auth, globalSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
     const server = await RemoteMCPServerFactory.create(workspace);
 
@@ -98,7 +100,6 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
     req.query.viewId = systemView!.sId;
 
     // Create additional views in global space for the same server
-    const globalSpace = await SpaceFactory.global(workspace);
     await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
 
     // Verify initial state
@@ -131,7 +132,10 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
   });
 
   it("should update name and description for all views of the same MCP server when admin", async () => {
-    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, auth, globalSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
     const server = await RemoteMCPServerFactory.create(workspace);
 
@@ -144,7 +148,6 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
     expect(systemView).toBeDefined();
 
     // Create additional views in global space for the same server
-    const globalSpace = await SpaceFactory.global(workspace);
     await MCPServerViewFactory.create(workspace, server.sId, globalSpace);
 
     // Update via system view
@@ -195,7 +198,10 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
   });
 
   it("should work with internal MCP servers and update all views", async () => {
-    const { req, res, workspace, auth } = await setupTest("admin", "PATCH");
+    const { req, res, workspace, auth, globalSpace } = await setupTest(
+      "admin",
+      "PATCH"
+    );
 
     // Create an internal MCP server
     await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
@@ -213,7 +219,6 @@ describe("PATCH /api/w/[wId]/mcp/views/[viewId]", () => {
     expect(systemView).toBeDefined();
 
     // Create additional views in global space
-    const globalSpace = await SpaceFactory.global(workspace);
     await MCPServerViewFactory.create(workspace, server.id, globalSpace);
 
     // Verify initial state

@@ -3,10 +3,12 @@ import { useCallback, useState } from "react";
 import type { KeyedMutator } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import {
   useLabsTranscriptsDefaultConfiguration,
   useLabsTranscriptsIsConnectorConnected,
 } from "@app/lib/swr/labs";
+import datadogLogger from "@app/logger/datadogLogger";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
 import type {
   LabsTranscriptsConfigurationType,
@@ -60,17 +62,20 @@ export function ProviderSelection({
       useConnectorConnection?: boolean
     ) => {
       try {
-        const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            connectionId,
-            provider,
-            useConnectorConnection,
-          }),
-        });
+        const response = await clientFetch(
+          `/api/w/${owner.sId}/labs/transcripts`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              connectionId,
+              provider,
+              useConnectorConnection,
+            }),
+          }
+        );
         if (!response.ok) {
           sendNotification({
             type: "error",
@@ -95,6 +100,7 @@ export function ProviderSelection({
           title: "Failed to connect provider",
           description:
             "Unexpected error trying to connect to your transcripts provider. Please try again. Error: " +
+            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
             error,
         });
       }
@@ -125,16 +131,19 @@ export function ProviderSelection({
 
   const saveApiConnection = useCallback(
     async (apiKey: string, provider: string) => {
-      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          apiKey,
-          provider,
-        }),
-      });
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/labs/transcripts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            apiKey,
+            provider,
+          }),
+        }
+      );
 
       return response;
     },
@@ -143,14 +152,70 @@ export function ProviderSelection({
 
   const saveConnectorConnection = useCallback(
     async (provider: string) => {
-      const response = await fetch(`/api/w/${owner.sId}/labs/transcripts`, {
-        method: "POST",
-        body: JSON.stringify({ provider, useConnectorConnection: true }),
-      });
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/labs/transcripts`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ provider, useConnectorConnection: true }),
+        }
+      );
       return response;
     },
     [owner.sId]
   );
+
+  const handleConnectGongTranscriptsSource = useCallback(async () => {
+    try {
+      const response = await saveConnectorConnection("gong");
+      if (!response.ok) {
+        const errorText = await response.text();
+        datadogLogger.error(
+          {
+            status: response.status,
+            error: errorText,
+            workspaceId: owner.sId,
+          },
+          "[Labs Transcripts] Failed to connect Gong"
+        );
+        sendNotification({
+          type: "error",
+          title: "Failed to connect Gong",
+          description: "Could not connect to Gong. Please try again.",
+        });
+        return;
+      }
+
+      sendNotification({
+        type: "success",
+        title: "Gong connected",
+        description:
+          "Your transcripts provider has been connected successfully.",
+      });
+
+      await mutateTranscriptsConfiguration();
+    } catch (error) {
+      datadogLogger.error(
+        {
+          error: error instanceof Error ? error.message : String(error),
+          workspaceId: owner.sId,
+        },
+        "[Labs Transcripts] Exception connecting Gong"
+      );
+      sendNotification({
+        type: "error",
+        title: "Failed to connect Gong",
+        description: "Could not connect to Gong. Please try again.",
+      });
+    }
+  }, [
+    saveConnectorConnection,
+    sendNotification,
+    mutateTranscriptsConfiguration,
+    owner.sId,
+  ]);
 
   const handleConnectModjoTranscriptsSource = useCallback(
     async ({
@@ -199,6 +264,7 @@ export function ProviderSelection({
         });
 
         await mutateTranscriptsConfiguration();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -226,7 +292,7 @@ export function ProviderSelection({
             transcriptsConfiguration={transcriptsConfiguration}
             setIsDeleteProviderDialogOpened={setIsDeleteProviderDialogOpened}
             isGongConnectorConnected={isGongConnectorConnected}
-            onConnect={() => saveConnectorConnection("gong")}
+            onConnect={handleConnectGongTranscriptsSource}
           />
         );
       case "modjo":

@@ -11,22 +11,24 @@ import {
 import type { Organization } from "@workos-inc/node";
 import { useState } from "react";
 
+import { MultiDomainAutoJoinModal } from "@app/components/workspace/sso/MultiDomainAutoJoinModal";
 import { UpgradePlanDialog } from "@app/components/workspace/UpgradePlanDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type { PlanType, WorkspaceDomain, WorkspaceType } from "@app/types";
 import { pluralize } from "@app/types";
 
-type DomainAutoJoinModalProps = {
-  domains: Organization["domains"];
+interface DomainAutoJoinModalProps {
+  workspaceVerifiedDomains: WorkspaceDomain[];
   domainAutoJoinEnabled: boolean;
   isOpen: boolean;
   onClose: () => void;
   owner: WorkspaceType;
-};
+}
 
 function DomainAutoJoinModal({
-  domains,
+  workspaceVerifiedDomains,
   domainAutoJoinEnabled,
   isOpen,
   onClose,
@@ -42,16 +44,16 @@ function DomainAutoJoinModal({
     "New members will need to be invited in order to gain access to your Dust Workspace."
   ) : (
     <span>
-      Anyone with Google{" "}
+      Anyone with a{" "}
       <span className="font-bold">
-        {domains.map((d) => `"@${d.domain}"`).join(", ")}
+        {workspaceVerifiedDomains.map((d) => `"@${d.domain}"`).join(", ")}
       </span>{" "}
-      account will have access to your Dust Workspace.
+      email will have access to your Dust Workspace.
     </span>
   );
 
   async function handleUpdateWorkspace(): Promise<void> {
-    const res = await fetch(`/api/w/${owner.sId}`, {
+    const res = await clientFetch(`/api/w/${owner.sId}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -126,18 +128,34 @@ export function AutoJoinToggle({
   const domainAutoJoinEnabled =
     workspaceVerifiedDomains.length > 0 &&
     workspaceVerifiedDomains.every((d) => d.domainAutoJoinEnabled);
+  const isMultiDomain = workspaceVerifiedDomains.length > 1;
+  const isAnyDomainAutoJoinEnabled = workspaceVerifiedDomains.some(
+    (d) => d.domainAutoJoinEnabled
+  );
+  const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
 
   return (
     <>
-      <DomainAutoJoinModal
-        domainAutoJoinEnabled={domainAutoJoinEnabled}
-        isOpen={isActivateAutoJoinOpened}
-        onClose={() => {
-          setIsActivateAutoJoinOpened(false);
-        }}
-        domains={domains}
-        owner={owner}
-      />
+      {isMultiDomain ? (
+        <MultiDomainAutoJoinModal
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
+          isOpen={isActivateAutoJoinOpened}
+          onClose={() => {
+            setIsActivateAutoJoinOpened(false);
+          }}
+          owner={owner}
+        />
+      ) : (
+        <DomainAutoJoinModal
+          domainAutoJoinEnabled={domainAutoJoinEnabled}
+          isOpen={isActivateAutoJoinOpened}
+          onClose={() => {
+            setIsActivateAutoJoinOpened(false);
+          }}
+          workspaceVerifiedDomains={workspaceVerifiedDomains}
+          owner={owner}
+        />
+      )}
       <UpgradePlanDialog
         isOpen={showUpgradePlanDialog}
         onClose={() => setShowUpgradePlanDialog(false)}
@@ -162,11 +180,44 @@ export function AutoJoinToggle({
             </Page.P>
           </div>
           <div className="flex justify-end">
-            {domainAutoJoinEnabled ? (
+            {isMultiDomain ? (
+              <Button
+                label={
+                  isAnyDomainAutoJoinEnabled ? "Configure" : "Enable Auto-join"
+                }
+                size="sm"
+                variant={isAnyDomainAutoJoinEnabled ? "outline" : "primary"}
+                tooltip={
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : domains.length === 0
+                      ? "Add a domain to enable Auto-join"
+                      : !hasVerifiedDomains
+                        ? "Verify a domain to enable Auto-join"
+                        : undefined
+                }
+                disabled={
+                  !domains.length || !!owner.ssoEnforced || !hasVerifiedDomains
+                }
+                onClick={() => {
+                  if (isUpgraded(plan)) {
+                    setIsActivateAutoJoinOpened(true);
+                  } else {
+                    setShowUpgradePlanDialog(true);
+                  }
+                }}
+              />
+            ) : domainAutoJoinEnabled ? (
               <Button
                 label="De-activate Auto-join"
                 size="sm"
                 variant="outline"
+                disabled={owner.ssoEnforced}
+                tooltip={
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : undefined
+                }
                 onClick={() => {
                   if (isUpgraded(plan)) {
                     setIsActivateAutoJoinOpened(true);
@@ -181,11 +232,17 @@ export function AutoJoinToggle({
                 size="sm"
                 variant="primary"
                 tooltip={
-                  domains.length === 0
-                    ? "Add a domain to enable Auto-join"
-                    : undefined
+                  owner.ssoEnforced
+                    ? "Auto-join is not available when SSO is enforced"
+                    : domains.length === 0
+                      ? "Add a domain to enable Auto-join"
+                      : !hasVerifiedDomains
+                        ? "Verify a domain to enable Auto-join"
+                        : undefined
                 }
-                disabled={!domains.length}
+                disabled={
+                  !domains.length || !!owner.ssoEnforced || !hasVerifiedDomains
+                }
                 onClick={() => {
                   if (isUpgraded(plan)) {
                     setIsActivateAutoJoinOpened(true);

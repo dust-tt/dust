@@ -1,19 +1,19 @@
 import assert from "assert";
 
-import type {
-  MCPApproveExecutionEvent,
-  MCPToolConfigurationType,
-} from "@app/lib/actions/mcp";
+import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
+import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import type { ToolInputContext } from "@app/lib/actions/tool_status";
+import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
-import { getExecutionStatusFromConfig } from "@app/lib/actions/utils";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import type {
@@ -23,7 +23,7 @@ import type {
   ConversationWithoutContentType,
   ModelId,
 } from "@app/types";
-import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 export interface ActionBlob {
   actionId: ModelId;
@@ -44,12 +44,14 @@ export async function createToolActionsActivity(
     stepContexts,
     functionCallStepContentIds,
     step,
+    runIds,
   }: {
-    runAgentData: RunAgentExecutionData;
+    runAgentData: AgentLoopExecutionData;
     actions: AgentActionsEvent["actions"];
     stepContexts: StepContext[];
     functionCallStepContentIds: Record<string, ModelId>;
     step: number;
+    runIds: string[];
   }
 ): Promise<CreateToolActionsResult> {
   const { agentConfiguration, agentMessage, agentMessageRow, conversation } =
@@ -76,6 +78,7 @@ export async function createToolActionsActivity(
       stepContentId,
       stepContext: stepContexts[index],
       step,
+      runIds,
     });
 
     if (result) {
@@ -117,15 +120,17 @@ async function createActionForTool(
     stepContentId,
     stepContext,
     step,
+    runIds,
   }: {
     actionConfiguration: MCPToolConfigurationType;
     agentConfiguration: AgentConfigurationType;
     agentMessage: AgentMessageType;
-    agentMessageRow: AgentMessage;
+    agentMessageRow: AgentMessageModel;
     conversation: ConversationWithoutContentType;
     stepContentId: ModelId;
     stepContext: StepContext;
     step: number;
+    runIds: string[];
   }
 ): Promise<{
   actionBlob: ActionBlob;
@@ -134,14 +139,11 @@ async function createActionForTool(
     "isLastBlockingEventForStep"
   >;
 } | void> {
-  const { status } = await getExecutionStatusFromConfig(
+  // First, get the step content and parse inputs - we need this for medium stake checks
+  const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
     auth,
-    actionConfiguration,
-    agentMessage
+    stepContentId
   );
-
-  const stepContent =
-    await AgentStepContentResource.fetchByModelId(stepContentId);
   assert(
     stepContent,
     `Step content not found for stepContentId: ${stepContentId}`
@@ -153,6 +155,19 @@ async function createActionForTool(
   );
 
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
+
+  // Build context for medium stake per-argument approval checks
+  const mediumStakeContext: ToolInputContext = {
+    agentId: agentConfiguration.sId,
+    toolInputs: rawInputs,
+  };
+
+  const { status } = await getExecutionStatusFromConfig(
+    auth,
+    actionConfiguration,
+    agentMessage,
+    mediumStakeContext
+  );
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
@@ -196,16 +211,15 @@ async function createActionForTool(
     stepContext,
   });
 
-  // Publish the tool params event.
+  // Publish the tool params event with runIds so they're saved when workflow exits early.
   await updateResourceAndPublishEvent(auth, {
     event: {
       type: "tool_params",
       created: Date.now(),
       configurationId: agentConfiguration.sId,
       messageId: agentMessage.sId,
-      // TODO: cleanup the type field from the public API users and remove everywhere.
-      // TODO: move the output field to a separate field.
       action: { ...action.toJSON(), output: null, generatedFiles: [] },
+      runIds,
     },
     agentMessageRow,
     conversation,
@@ -223,19 +237,25 @@ async function createActionForTool(
       status === "blocked_validation_required"
         ? {
             type: "tool_approve_execution",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            conversationId: conversation.sId,
             actionId: action.sId,
+            configurationId: agentConfiguration.sId,
+            conversationId: conversation.sId,
+            created: Date.now(),
             inputs: action.augmentedInputs,
+            messageId: agentMessage.sId,
             stake: actionConfiguration.permission,
+            userId: auth.user()?.sId,
             metadata: {
               toolName: actionConfiguration.originalName,
               mcpServerName: actionConfiguration.mcpServerName,
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
             },
+            argumentsRequiringApproval: isServerSideMCPToolConfiguration(
+              actionConfiguration
+            )
+              ? actionConfiguration.argumentsRequiringApproval
+              : undefined,
           }
         : undefined,
   };

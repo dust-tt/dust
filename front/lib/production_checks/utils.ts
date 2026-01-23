@@ -11,6 +11,7 @@ let frontReplicaDbInstance: Sequelize | null = null;
 let frontPrimaryDbInstance: Sequelize | null = null;
 
 export function getConnectorsReplicaDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!connectorsReplicaDbInstance) {
     connectorsReplicaDbInstance = new Sequelize(
       config.getConnectorsDatabaseReadReplicaUri(),
@@ -24,6 +25,7 @@ export function getConnectorsReplicaDbConnection() {
 }
 
 export function getCoreReplicaDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!coreReplicaDbInstance) {
     coreReplicaDbInstance = new Sequelize(
       config.getCoreDatabaseReadReplicaUri(),
@@ -37,6 +39,7 @@ export function getCoreReplicaDbConnection() {
 }
 
 export function getFrontReplicaDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!frontReplicaDbInstance) {
     frontReplicaDbInstance = new Sequelize(
       config.getFrontDatabaseReadReplicaUri(),
@@ -50,6 +53,7 @@ export function getFrontReplicaDbConnection() {
 }
 
 export function getConnectorsPrimaryDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!connectorsPrimaryDbInstance) {
     connectorsPrimaryDbInstance = new Sequelize(
       config.getConnectorsDatabasePrimaryUri(),
@@ -63,6 +67,7 @@ export function getConnectorsPrimaryDbConnection() {
 }
 
 export function getCorePrimaryDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!corePrimaryDbInstance) {
     corePrimaryDbInstance = new Sequelize(config.getCoreDatabasePrimaryUri(), {
       logging: false,
@@ -73,6 +78,7 @@ export function getCorePrimaryDbConnection() {
 }
 
 export function getFrontPrimaryDbConnection() {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!frontPrimaryDbInstance) {
     frontPrimaryDbInstance = new Sequelize(
       config.getFrontDatabasePrimaryUri(),

@@ -2,24 +2,32 @@ import {
   Avatar,
   BellIcon,
   Button,
+  Chip,
   ClockIcon,
   DataTable,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   PencilSquareIcon,
   SearchInput,
   Spinner,
-  XMarkIcon,
+  TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import cronstrue from "cronstrue";
 import { useCallback, useMemo, useState } from "react";
 
-import {
-  useRemoveTriggerSubscriber,
-  useUserTriggers,
-} from "@app/lib/swr/agent_triggers";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useDeleteTrigger, useUserTriggers } from "@app/lib/swr/agent_triggers";
 import { classNames } from "@app/lib/utils";
 import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
+import type { TriggerType } from "@app/types/assistant/triggers";
 
 interface ProfileTriggersTabProps {
   owner: WorkspaceType;
@@ -30,12 +38,7 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     workspaceId: owner.sId,
   });
 
-  const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-
-  const unsubscribe = useRemoveTriggerSubscriber({
-    workspaceId: owner.sId,
-  });
 
   const getEditionURL = useCallback(
     (agentConfigurationId: string) => {
@@ -43,6 +46,41 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
     },
     [owner.sId]
   );
+
+  const [triggerToDelete, setTriggerToDelete] = useState<TriggerType | null>(
+    null
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const deleteTrigger = useDeleteTrigger({
+    workspaceId: owner.sId,
+    agentConfigurationId: triggerToDelete?.agentConfigurationId ?? "",
+  });
+
+  const handleDeleteTrigger = async () => {
+    if (!triggerToDelete) {
+      return;
+    }
+    setIsDeleting(true);
+    const success = await deleteTrigger(triggerToDelete.sId);
+    setIsDeleting(false);
+    setTriggerToDelete(null);
+
+    if (success) {
+      sendNotification({
+        type: "success",
+        title: "Trigger deleted",
+        description: `The trigger "${triggerToDelete.name}" has been deleted.`,
+      });
+    } else {
+      sendNotification({
+        type: "error",
+        title: "Failed to delete trigger",
+        description: "An error occurred while deleting the trigger.",
+      });
+    }
+  };
 
   const filteredTriggers = useMemo(() => {
     return triggers.filter(
@@ -67,6 +105,12 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
               <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
                 {row.original.agentName}
               </div>
+              {row.original.status !== "enabled" && (
+                <Chip size="xs" color="primary">
+                  {row.original.status.charAt(0).toUpperCase() +
+                    row.original.status.slice(1)}
+                </Chip>
+              )}
             </div>
           </DataTable.CellContent>
         ),
@@ -114,44 +158,31 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
       {
         header: "Action",
         accessorKey: "actions",
-        cell: ({ row }) => (
-          <DataTable.CellContent>
-            <div className="flex justify-end">
-              {row.original.isEditor ? (
-                <Button
-                  label="Manage"
-                  href={getEditionURL(row.original.agentConfigurationId)}
-                  variant="outline"
-                  size="sm"
-                  icon={PencilSquareIcon}
-                />
-              ) : (
-                <Button
-                  label="Unsubscribe"
-                  icon={XMarkIcon}
-                  variant="outline"
-                  size="sm"
-                  isLoading={isLoading}
-                  disabled={isLoading}
-                  onClick={async () => {
-                    setIsLoading(true);
-                    await unsubscribe(
-                      row.original.sId,
-                      row.original.agentConfigurationId
-                    );
-                    setIsLoading(false);
-                  }}
-                />
-              )}
-            </div>
-          </DataTable.CellContent>
-        ),
+        cell: ({ row }) => {
+          const buttonProps = isGlobalAgentId(row.original.agentConfigurationId)
+            ? {
+                onClick: () => setTriggerToDelete(row.original),
+                icon: TrashIcon,
+                label: "Delete",
+              }
+            : {
+                href: getEditionURL(row.original.agentConfigurationId),
+                icon: PencilSquareIcon,
+                label: "Manage",
+              };
+
+          return (
+            <DataTable.CellContent>
+              <Button variant="outline" size="sm" {...buttonProps} />
+            </DataTable.CellContent>
+          );
+        },
         meta: {
           className: "w-32",
         },
       },
     ],
-    [unsubscribe, getEditionURL, isLoading]
+    [getEditionURL]
   );
 
   return (
@@ -177,13 +208,50 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
         />
       ) : triggers.length === 0 ? (
         <div className="py-8 text-center text-muted-foreground">
-          You are not involved with any triggers yet.
+          You haven't created any triggers yet.
         </div>
       ) : (
         <div className="py-8 text-center text-muted-foreground">
           No triggers match your search criteria.
         </div>
       )}
+
+      <Dialog
+        open={triggerToDelete !== null}
+        onOpenChange={(open) => !open && setTriggerToDelete(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete trigger</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the trigger "
+              {triggerToDelete?.name}"?
+            </DialogDescription>
+          </DialogHeader>
+          {isDeleting ? (
+            <div className="flex justify-center py-8">
+              <Spinner variant="dark" size="md" />
+            </div>
+          ) : (
+            <>
+              <DialogContainer>
+                <b>This action cannot be undone.</b>
+              </DialogContainer>
+              <DialogFooter
+                leftButtonProps={{
+                  label: "Cancel",
+                  variant: "outline",
+                }}
+                rightButtonProps={{
+                  label: "Delete",
+                  variant: "warning",
+                  onClick: handleDeleteTrigger,
+                }}
+              />
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

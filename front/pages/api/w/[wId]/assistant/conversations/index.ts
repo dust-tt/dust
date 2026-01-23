@@ -14,6 +14,8 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -27,7 +29,6 @@ import {
   ConversationError,
   InternalPostConversationsRequestBodySchema,
 } from "@app/types";
-import { ExecutionModeSchema } from "@app/types/assistant/agent_run";
 
 export type GetConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];
@@ -53,10 +54,20 @@ async function handler(
     case "GET":
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
-      res.status(200).json({ conversations });
+      res.status(200).json({
+        conversations: conversations
+          .filter((c) => !c.spaceId)
+          .map((c) => c.toJSON()),
+      });
       return;
 
     case "POST":
+      // Normalize spaceId: undefined -> null for backward compatibility
+      // (users who haven't refreshed their browser may send undefined)
+      if (req.body && req.body.spaceId === undefined) {
+        req.body.spaceId = null;
+      }
+
       const bodyValidation = InternalPostConversationsRequestBodySchema.decode(
         req.body
       );
@@ -73,16 +84,8 @@ async function handler(
         });
       }
 
-      const { title, visibility, message, contentFragments } =
+      const { title, visibility, spaceId, message, contentFragments } =
         bodyValidation.right;
-
-      const executionModeParseResult = ExecutionModeSchema.safeParse(
-        req.query.execution
-      );
-
-      const executionMode = executionModeParseResult.success
-        ? executionModeParseResult.data
-        : undefined;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -106,9 +109,26 @@ async function handler(
         }
       }
 
+      // Validate spaceId if provided and convert to model ID
+      let spaceModelId: number | null = null;
+      if (spaceId) {
+        const space = await SpaceResource.fetchById(auth, spaceId);
+        if (!space || !space.canReadOrAdministrate(auth)) {
+          return apiError(req, res, {
+            status_code: 404,
+            api_error: {
+              type: "space_not_found",
+              message: "Space not found or access denied",
+            },
+          });
+        }
+        spaceModelId = space.id;
+      }
+
       let conversation = await createConversation(auth, {
         title,
         visibility,
+        spaceId: spaceModelId,
       });
 
       const newContentFragments: ContentFragmentType[] = [];
@@ -194,6 +214,30 @@ async function handler(
           }
         }
 
+        // If JIT skills are selected, add them to the conversation before posting the message.
+        if (message.context.selectedSkillIds) {
+          const skills = await SkillResource.fetchByIds(
+            auth,
+            message.context.selectedSkillIds
+          );
+
+          const r = await SkillResource.upsertConversationSkills(auth, {
+            conversationId: conversation.id,
+            skills,
+            enabled: true,
+          });
+
+          if (r.isErr()) {
+            return apiError(req, res, {
+              status_code: 500,
+              api_error: {
+                type: "internal_server_error",
+                message: "Failed to add skills to conversation",
+              },
+            });
+          }
+        }
+
         // If a message was provided we do await for the message to be created before returning the
         // conversation along with the message.
         const messageRes = await postUserMessage(auth, {
@@ -206,13 +250,12 @@ async function handler(
             fullName: user.fullName(),
             email: user.email,
             profilePictureUrl: message.context.profilePictureUrl,
-            origin: "web",
+            origin: message.context.origin ?? "web",
             clientSideMCPServerIds:
               message.context.clientSideMCPServerIds ?? [],
           },
           // For now we never skip tools when interacting with agents from the web client.
           skipToolsValidation: false,
-          executionMode,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

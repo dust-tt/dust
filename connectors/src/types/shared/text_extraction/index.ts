@@ -221,6 +221,7 @@ export class TextExtraction {
               "Content-Type": contentType,
               ...additionalHeaders,
             },
+            // @ts-expect-error -- migration to tsgo
             body: fileBuffer,
           }),
         {

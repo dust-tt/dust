@@ -1,7 +1,7 @@
 import { isGoogleDriveFolder } from "@connectors/connectors/google_drive/temporal/mime_types";
-import type { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import type { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 
-export function getPermissionViewType(file: GoogleDriveFiles) {
+export function getPermissionViewType(file: GoogleDriveFilesModel) {
   if (isGoogleDriveFolder(file)) {
     return "folder";
   }

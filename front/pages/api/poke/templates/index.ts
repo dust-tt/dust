@@ -20,6 +20,7 @@ export interface CreateTemplateResponseBody {
 
 interface PokeFetchAssistantTemplatesResponse {
   templates: AssistantTemplateListType[];
+  dustRegionSyncEnabled: boolean;
 }
 
 async function handler(
@@ -47,9 +48,10 @@ async function handler(
     case "GET":
       const templates = await TemplateResource.listAll();
 
-      return res
-        .status(200)
-        .json({ templates: templates.map((t) => t.toListJSON()) });
+      return res.status(200).json({
+        templates: templates.map((t) => t.toListJSON()),
+        dustRegionSyncEnabled: regionConfig.getDustRegionSyncEnabled(),
+      });
 
     case "POST":
       const bodyValidation = CreateTemplateFormSchema.decode(req.body);
@@ -112,7 +114,9 @@ async function handler(
         presetInstructions: body.presetInstructions ?? null,
         presetModelId: model.modelId,
         presetProviderId: model.providerId,
-        presetTemperature: body.presetTemperature ?? null,
+        // Not configurable in the template, keeping the column for now since some templates do
+        // have a custom temperature.
+        presetTemperature: "balanced",
         tags: body.tags,
         visibility: body.visibility,
       });

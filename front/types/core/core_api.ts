@@ -1,9 +1,10 @@
 import { createParser } from "eventsource-parser";
 import * as t from "io-ts";
+import chunk from "lodash/chunk";
 
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { EmbeddingProviderIdType } from "@app/types";
 import { dustManagedCredentials } from "@app/types/api/credentials";
-import type { EmbeddingProviderIdType } from "@app/types/assistant/assistant";
 import type { ProviderVisibility } from "@app/types/connectors/connectors_api";
 import type { CoreAPIContentNode } from "@app/types/core/content_node";
 import type {
@@ -20,7 +21,6 @@ import type {
 } from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
-import type { GroupType } from "@app/types/groups";
 import type { Project } from "@app/types/project";
 import type { CredentialsType } from "@app/types/provider";
 import type {
@@ -35,6 +35,7 @@ import type { LoggerInterface } from "@app/types/shared/logger";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 import { errorToString } from "@app/types/shared/utils/error_utils";
+import type { TokenizerConfig } from "@app/types/tokenizer";
 import type { LightWorkspaceType } from "@app/types/user";
 
 export const MAX_CHUNK_SIZE = 512;
@@ -84,7 +85,6 @@ export type CoreAPIDatasetWithoutData = CoreAPIDatasetVersion & {
 };
 
 export type CoreAPIDataset = CoreAPIDatasetWithoutData & {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: { [key: string]: any }[];
 };
 
@@ -107,7 +107,7 @@ type CoreAPICreateRunParams = {
   specification?: string | null;
   specificationHash?: string | null;
   datasetId?: string | null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   inputs?: any[] | null;
   config: RunConfig;
   credentials: CredentialsType;
@@ -229,6 +229,11 @@ export const CoreAPIDatasourceViewFilterSchema = t.intersection([
   }),
   t.partial({
     search_scope: CoreAPISearchScopeSchema,
+    filter: t.array(t.string),
+    tags: t.type({
+      in: t.union([t.readonlyArray(t.string), t.null]),
+      not: t.union([t.readonlyArray(t.string), t.null]),
+    }),
   }),
 ]);
 
@@ -367,6 +372,9 @@ function topKSortedDocuments(
   return result;
 }
 
+const BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES = 100;
+const CORE_API_CALLS_CONCURRENCY = 10;
+
 export class CoreAPI {
   _url: string;
   declare _logger: LoggerInterface;
@@ -457,7 +465,7 @@ export class CoreAPI {
   }: {
     projectId: string;
     datasetId: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     data: any[];
   }): Promise<CoreAPIResponse<{ dataset: CoreAPIDatasetWithoutData }>> {
     const response = await this._fetchWithError(
@@ -495,7 +503,7 @@ export class CoreAPI {
   async createRun(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groups: GroupType[],
+    groupIds: string[],
     {
       projectId,
       runType,
@@ -517,7 +525,7 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },
@@ -541,7 +549,7 @@ export class CoreAPI {
   async createRunStream(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groups: GroupType[],
+    groupIds: string[],
     {
       projectId,
       runType,
@@ -568,7 +576,7 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },
@@ -998,17 +1006,23 @@ export class CoreAPI {
     const searchResults = await concurrentExecutor(
       searches,
       async (search) => {
-        return this.searchDataSource(search.projectId, search.dataSourceId, {
-          query: query,
-          topK: topK,
-          filter: search.filter,
-          view_filter: search.view_filter,
-          fullText: fullText,
-          credentials: credentials,
-          target_document_tokens: target_document_tokens,
-        });
+        const r = await this.searchDataSource(
+          search.projectId,
+          search.dataSourceId,
+          {
+            query: query,
+            topK: topK,
+            filter: search.filter,
+            view_filter: search.view_filter,
+            fullText: fullText,
+            credentials: credentials,
+            target_document_tokens: target_document_tokens,
+          }
+        );
+
+        return r;
       },
-      { concurrency: 10 }
+      { concurrency: CORE_API_CALLS_CONCURRENCY }
     );
 
     // Check if all search results are successful, if not return the first error
@@ -1023,6 +1037,75 @@ export class CoreAPI {
     );
 
     const sortedDocuments = topKSortedDocuments(query, topK, allDocuments);
+
+    return new Ok({
+      documents: sortedDocuments,
+    });
+  }
+
+  async bulkSearchDataSources(
+    query: string,
+    topK: number,
+    credentials: { [key: string]: string },
+    fullText: boolean,
+    searches: {
+      projectId: string;
+      dataSourceId: string;
+      filter?: CoreAPISearchFilter | null;
+      view_filter: CoreAPISearchFilter;
+    }[],
+    target_document_tokens?: number | null
+  ): Promise<CoreAPIResponse<{ documents: CoreAPIDocument[] }>> {
+    const dataSourceChunks = chunk(
+      searches,
+      BULK_SEARCH_DATA_SOURCE_MAX_DATA_SOURCES
+    );
+
+    const results = await concurrentExecutor(
+      dataSourceChunks,
+      async (chunk) => {
+        const response = await this._fetchWithError(
+          `${this._url}/data_sources/search/bulk`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              query,
+              full_text: fullText,
+              credentials,
+              top_k: topK,
+              searches: chunk.map((search) => ({
+                project_id: parseInt(search.projectId),
+                data_source_id: search.dataSourceId,
+                top_k: topK,
+                filter: search.filter,
+                view_filter: search.view_filter,
+                target_document_tokens: target_document_tokens,
+              })),
+            }),
+          }
+        );
+
+        return this._resultFromResponse<{
+          documents: CoreAPIDocument[];
+        }>(response);
+      },
+      { concurrency: CORE_API_CALLS_CONCURRENCY }
+    );
+
+    const errors = results.filter((result) => result.isErr());
+    if (errors.length > 0) {
+      // If any of the bulk search requests failed, return the first error.
+      return errors[0];
+    }
+
+    const sortedDocuments = topKSortedDocuments(
+      query,
+      topK,
+      results.flatMap((r) => (r.isOk() ? r.value.documents : []))
+    );
 
     return new Ok({
       documents: sortedDocuments,
@@ -1144,7 +1227,7 @@ export class CoreAPI {
     CoreAPIResponse<{
       text: string;
       total_characters: number;
-      offset: number;
+      offset: number | null;
       limit: number | null;
     }>
   > {
@@ -1439,10 +1522,12 @@ export class CoreAPI {
     text,
     modelId,
     providerId,
+    tokenizer,
   }: {
     text: string;
     modelId: string;
     providerId: string;
+    tokenizer: TokenizerConfig;
   }): Promise<CoreAPIResponse<{ tokens: CoreAPITokenType[] }>> {
     const credentials = dustManagedCredentials();
     const response = await this._fetchWithError(`${this._url}/tokenize`, {
@@ -1456,6 +1541,7 @@ export class CoreAPI {
         model_id: modelId,
         provider_id: providerId,
         credentials,
+        tokenizer,
       }),
     });
 
@@ -1485,6 +1571,40 @@ export class CoreAPI {
         credentials,
       }),
     });
+
+    return this._resultFromResponse(response);
+  }
+
+  async tokenizeBatchCount({
+    texts,
+    modelId,
+    providerId,
+    tokenizer,
+  }: {
+    texts: string[];
+    modelId: string;
+    providerId: string;
+    tokenizer: TokenizerConfig;
+  }): Promise<CoreAPIResponse<{ counts: number[] }>> {
+    const credentials = dustManagedCredentials();
+
+    const response = await this._fetchWithError(
+      `${this._url}/tokenize/batch/count`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        keepalive: false,
+        body: JSON.stringify({
+          texts,
+          model_id: modelId,
+          tokenizer,
+          provider_id: providerId,
+          credentials,
+        }),
+      }
+    );
 
     return this._resultFromResponse(response);
   }
@@ -2244,6 +2364,7 @@ export class CoreAPI {
           Authorization: `Bearer ${this._apiKey}`,
         };
       }
+      // eslint-disable-next-line no-restricted-globals
       const res = await fetch(url, params);
       return new Ok({ response: res, duration: Date.now() - now });
     } catch (e) {

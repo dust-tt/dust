@@ -2,6 +2,7 @@ import type { ConnectorProvider } from "@dust-tt/client";
 import {
   BigQueryLogo,
   ConfluenceLogo,
+  DiscordLogo,
   DriveLogo,
   FolderIcon,
   GithubLogo,
@@ -126,6 +127,25 @@ export const CONNECTOR_CONFIGURATIONS: Record<
   gong: {
     name: "Gong",
     getLogoComponent: () => {
+      return GongLogo;
+    },
+  },
+  discord_bot: {
+    name: "Discord (Bot)",
+    getLogoComponent: () => {
+      return DiscordLogo;
+    },
+  },
+  microsoft_bot: {
+    name: "Microsoft (Bot)",
+    getLogoComponent: () => {
+      return MicrosoftLogo;
+    },
+  },
+  dust_project: {
+    name: "Dust Project",
+    getLogoComponent: () => {
+      //TODO(project): replace with Dust project logo
       return GongLogo;
     },
   },

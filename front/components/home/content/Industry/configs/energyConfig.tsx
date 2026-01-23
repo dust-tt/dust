@@ -4,6 +4,11 @@ import type { IndustryPageConfig } from "@app/components/home/content/Industry/c
 import { createLayoutConfig } from "@app/components/home/content/Industry/configs/utils";
 
 export const energyConfig: IndustryPageConfig = {
+  seo: {
+    title: "Dust for Energy & Utilities",
+    description:
+      "Streamline operations, reduce costs, and improve customer satisfaction with AI-powered automation for the energy sector.",
+  },
   layout: createLayoutConfig([
     "hero",
     "painPoints",
@@ -179,43 +184,6 @@ export const energyConfig: IndustryPageConfig = {
       },
     ],
   },
-  customerStories: {
-    title: "Customer stories",
-    stories: [
-      {
-        title:
-          "20%+ productivity gains in Sales: Insights from Alan and Payfit",
-        content:
-          "Leading companies share how Dust agents deliver significant productivity improvements and measurable ROI in sales operations.",
-        href: "https://blog.dust.tt/generative-ai-insights-alan-payfit-leaders/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/Founder.jpg",
-      },
-      {
-        title:
-          "50% Time Savings: How Didomi Transformed Privacy Compliance with AI",
-        content:
-          "Didomi's legal team cuts workload by 50% using Dust's AI assistants for privacy compliance and legal document management.",
-        href: "https://blog.dust.tt/how-thomas-uses-ai-assistants-to-manage-legal-and-data-privacy-at-didomi/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/01/dust_didomi.png",
-      },
-      {
-        title:
-          "50,000 Hours Saved: How Qonto Revolutionized Compliance and Risk Assessment with AI",
-        content:
-          "Germi, Qonto's AI assistant, analyzes German industry codes and screens prohibited activities, automating compliance checks across European markets.",
-        href: "https://blog.dust.tt/qonto-dust-ai-partnership/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2025/07/Qonto-__-Dust.jpg",
-      },
-      {
-        title: "Kyriba's adoption of Dust across all functions",
-        content:
-          "43% of Kyriba employees save more than 3 hours weekly leveraging Dust for RFPs.",
-        href: "https://blog.dust.tt/kyriba-accelerating-innovation-with-dust/",
-        src: "https://blog.dust.tt/content/images/size/w2000/2024/10/kyriba_dust.jpg",
-      },
-    ],
-  },
-
   justUseDust: {
     title: "Just use Dust",
     titleColor: "text-blue-600",

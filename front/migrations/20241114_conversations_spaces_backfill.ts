@@ -31,7 +31,7 @@ async function backfillWorkspacesGroup(execute: boolean) {
                   kind: "conversations",
                   workspaceId: w.id,
                 },
-                [workspaceGroup]
+                { members: [workspaceGroup] }
               );
             } catch (error) {
               if (

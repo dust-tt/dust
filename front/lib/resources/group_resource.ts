@@ -1,25 +1,24 @@
-import type {
-  DirectoryGroup,
-  DirectoryGroup as WorkOSGroup,
-} from "@workos-inc/node";
+import type { DirectoryGroup } from "@workos-inc/node";
 import assert from "assert";
 import type {
   Attributes,
   CreationAttributes,
   Includeable,
+  InferAttributes,
   ModelStatic,
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -31,6 +30,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  CombinedResourcePermissions,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -38,12 +38,12 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
-  RolePermission,
   UserType,
 } from "@app/types";
 import {
   AGENT_GROUP_PREFIX,
   Err,
+  GROUP_KINDS,
   normalizeError,
   Ok,
   removeNulls,
@@ -54,8 +54,11 @@ export const BUILDER_GROUP_NAME = "dust-builders";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupResource extends ReadonlyAttributesType<GroupModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface GroupResource extends ReadonlyAttributesType<GroupModel> {
+  // Optional property added by Sequelize when loading through belongsToMany with GroupSpaceModel
+  group_vaults?: InferAttributes<GroupSpaceModel>;
+}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupResource extends BaseResource<GroupModel> {
   static model: ModelStatic<GroupModel> = GroupModel;
@@ -66,9 +69,26 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async makeNew(
     blob: CreationAttributes<GroupModel>,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      memberIds,
+      transaction,
+    }: { memberIds?: ModelId[]; transaction?: Transaction } = {}
   ) {
     const group = await GroupModel.create(blob, { transaction });
+
+    // If memberIds are provided, create memberships
+    if (memberIds && memberIds.length > 0) {
+      await GroupMembershipModel.bulkCreate(
+        memberIds.map((userId) => ({
+          groupId: group.id,
+          userId,
+          workspaceId: blob.workspaceId,
+          startAt: new Date(),
+          status: "active" as const,
+        })),
+        { transaction }
+      );
+    }
 
     return new this(GroupModel, group.get());
   }
@@ -79,7 +99,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    */
   static async makeNewAgentEditorsGroup(
     auth: Authenticator,
-    agent: AgentConfiguration,
+    agent: AgentConfigurationModel,
     { transaction }: { transaction?: Transaction } = {}
   ) {
     const user = auth.getNonNullableUser();
@@ -99,21 +119,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
-      { transaction }
-    );
-
-    // Add user to the newly created group. For the specific purpose of
-    // agent_editors group creation, we don't use addMembers, since admins or
-    // existing members of the group can add/remove members this way. We create
-    // the relation directly.
-    await GroupMembershipModel.create(
-      {
-        groupId: defaultGroup.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: new Date(),
-      },
-      { transaction }
+      { transaction, memberIds: [user.id] }
     );
 
     // Associate the group with the agent configuration.
@@ -146,6 +152,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       attributes: ["agentConfigurationId", "groupId"],
     });
+
     return groupAgents.map((ga) => ({
       agentConfigurationId: ga.agentConfigurationId,
       groupId: ga.groupId,
@@ -175,7 +182,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       },
       attributes: ["groupId"],
     });
-
     if (groupAgents.length === 0) {
       return new Err(
         new DustError(
@@ -194,21 +200,21 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const groupAgent = groupAgents[0];
-
-    const group = await GroupResource.fetchById(
-      auth,
-      GroupResource.modelIdToSId({
+    const [groupAgent] = groupAgents;
+    const groups = await this.baseFetch(auth, {
+      where: {
         id: groupAgent.groupId,
-        workspaceId: owner.id,
-      })
-    );
+      },
+    });
 
-    if (group.isErr()) {
-      return group;
+    const [group] = groups.filter((g) => g.canRead(auth));
+    if (!group) {
+      return new Err(
+        new DustError("group_not_found", "Editor group not found for agent.")
+      );
     }
 
-    if (group.value.kind !== "agent_editors") {
+    if (group.kind !== "agent_editors") {
       // Should not happen based on creation logic, but good to check.
       // Might change when we allow other group kinds to be associated with agents.
       return new Err(
@@ -219,7 +225,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    return group;
+    return new Ok(group);
   }
 
   /**
@@ -248,40 +254,42 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    const groups = await GroupResource.fetchByIds(
-      auth,
-      groupAgents.map((ga) =>
-        GroupResource.modelIdToSId({
-          id: ga.groupId,
-          workspaceId: owner.id,
-        })
-      )
-    );
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: groupAgents.map((ga) => ga.groupId),
+        },
+      },
+    });
 
-    if (groups.isErr()) {
-      return groups;
+    const accessibleGroups = groups.filter((group) => group.canRead(auth));
+    const groupMap: Record<ModelId, GroupResource> = {};
+
+    for (const group of accessibleGroups) {
+      groupMap[group.id] = group;
     }
 
-    if (groups.value.some((g) => g.kind !== "agent_editors")) {
-      // Should not happen based on creation logic, but good to check.
-      // Might change when we allow other group kinds to be associated with agents.
-      return new Err(
-        new Error("Associated group is not an agent_editors group.")
-      );
-    }
-
-    const r = groupAgents.reduce<Record<string, GroupResource>>((acc, ga) => {
+    const r: Record<string, GroupResource> = {};
+    for (const ga of groupAgents) {
       if (ga.agentConfigurationId) {
         const agentConfiguration = agent.find(
           (a) => a.id === ga.agentConfigurationId
         );
-        const group = groups.value.find((g) => g.id === ga.groupId);
-        if (group && agentConfiguration) {
-          acc[agentConfiguration.sId] = group;
+        const group = groupMap[ga.groupId];
+
+        if (group.kind !== "agent_editors") {
+          return new Err(
+            new DustError(
+              "group_not_found",
+              "Associated group is not an agent_editors group."
+            )
+          );
+        }
+        if (agentConfiguration) {
+          r[agentConfiguration.sId] = group;
         }
       }
-      return acc;
-    }, {});
+    }
 
     return new Ok(r);
   }
@@ -315,36 +323,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       globalGroup,
     };
   }
-
-  static async makeNewProvisionedGroup(
-    auth: Authenticator,
-    {
-      workspace,
-      workOSGroup,
-    }: {
-      workspace: LightWorkspaceType;
-      workOSGroup: WorkOSGroup;
-    }
-  ): Promise<{ success: boolean }> {
-    const groupsWithSameName = await this.baseFetch(auth, {
-      where: {
-        name: workOSGroup.name, // Relying on the index (workspaceId, name).
-      },
-    });
-    if (groupsWithSameName.length > 0) {
-      return { success: false };
-    }
-
-    await this.makeNew({
-      kind: "provisioned",
-      name: workOSGroup.name,
-      workOSGroupId: workOSGroup.id,
-      workspaceId: workspace.id,
-    });
-
-    return { success: true };
-  }
-
   // sId
 
   get sId(): string {
@@ -372,7 +350,13 @@ export class GroupResource extends BaseResource<GroupModel> {
   // Use with care as this gives access to all groups in the workspace.
   static async internalFetchAllWorkspaceGroups({
     workspaceId,
-    groupKinds = ["global", "regular", "system", "provisioned"],
+    groupKinds = [
+      "global",
+      "regular",
+      "space_editors",
+      "system",
+      "provisioned",
+    ],
     transaction,
   }: {
     workspaceId: ModelId;
@@ -394,7 +378,13 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async listWorkspaceGroupsFromKey(
     key: KeyResource,
-    groupKinds: GroupKind[] = ["global", "regular", "system", "provisioned"]
+    groupKinds: GroupKind[] = [
+      "global",
+      "regular",
+      "space_editors",
+      "system",
+      "provisioned",
+    ]
   ): Promise<GroupResource[]> {
     let groups: GroupModel[] = [];
 
@@ -409,7 +399,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
     } else if (key.scope === "restricted_group_only") {
       // Special case for restricted keys.
-      // Those are regular keys for witch we want to restrict access to the global group.
+      // Those are regular keys for which we want to restrict access to the global group.
       groups = await this.model.findAll({
         where: {
           workspaceId: key.workspaceId,
@@ -510,6 +500,16 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groupModels.map((b) => new this(this.model, b.get()));
   }
 
+  static async fetchByModelIds(auth: Authenticator, ids: ModelId[]) {
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: ids,
+        },
+      },
+    });
+  }
+
   static async fetchById(
     auth: Authenticator,
     id: string
@@ -568,7 +568,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: auth.getNonNullableWorkspace().sId,
           unreadableGroupIds: unreadableGroups.map((g) => g.sId),
           authRole: auth.role(),
-          authGroupIds: auth.groups().map((g) => g.sId),
+          authGroupIds: auth.groupIds(),
         },
         "[GroupResource.fetchByIds] User cannot read some groups"
       );
@@ -590,6 +590,19 @@ export class GroupResource extends BaseResource<GroupModel> {
     const [group] = await this.baseFetch(auth, {
       where: {
         workOSGroupId,
+      },
+    });
+
+    return group ?? null;
+  }
+
+  static async fetchByName(
+    auth: Authenticator,
+    name: string
+  ): Promise<GroupResource | null> {
+    const [group] = await this.baseFetch(auth, {
+      where: {
+        name,
       },
     });
 
@@ -629,34 +642,35 @@ export class GroupResource extends BaseResource<GroupModel> {
     isDeletionFlow = false,
   }: {
     auth: Authenticator;
-    agentConfiguration: AgentConfiguration | AgentConfigurationType;
+    agentConfiguration: AgentConfigurationModel | AgentConfigurationType;
     isDeletionFlow?: boolean;
   }): Promise<GroupResource | null> {
     const workspace = auth.getNonNullableWorkspace();
-    const groupAgents = await GroupAgentModel.findAll({
+
+    const agentGroups = await GroupAgentModel.findAll({
       where: {
         agentConfigurationId: agentConfiguration.id,
         workspaceId: workspace.id,
       },
-      include: [
-        {
-          model: GroupModel,
-          where: {
-            workspaceId: workspace.id,
-            kind: "agent_editors",
-          },
-          required: true,
+    });
+
+    const groups = await this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: agentGroups.map((ag) => ag.groupId),
         },
-      ],
+        kind: "agent_editors",
+      },
     });
 
     if (
       agentConfiguration.status === "draft" ||
       agentConfiguration.scope === "global"
     ) {
-      if (groupAgents.length === 0) {
+      if (groups.length === 0) {
         return null;
       }
+
       throw new Error(
         "Unexpected: draft or global agent shouldn't have an editor group."
       );
@@ -665,20 +679,24 @@ export class GroupResource extends BaseResource<GroupModel> {
     // In the case of agents deletion, it is possible that the agent has no
     // editor group associated with it, because the group may have been deleted
     // when deleting another version of the agent with the same sId.
-    if (isDeletionFlow && groupAgents.length === 0) {
+    if (isDeletionFlow && groups.length === 0) {
       return null;
     }
 
     // In other cases, the agent should always have exactly one editor group.
-    if (groupAgents.length !== 1) {
+    if (groups.length !== 1) {
       throw new Error(
         "Unexpected: agent should have exactly one editor group."
       );
     }
 
-    const group = await groupAgents[0].getGroup();
+    const [group] = groups;
 
-    return new this(GroupModel, group.get());
+    if (!group.canRead(auth)) {
+      return null;
+    }
+
+    return group;
   }
 
   static async fetchWorkspaceSystemGroup(
@@ -730,7 +748,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     options: { groupKinds?: GroupKind[] } = {}
   ): Promise<GroupResource[]> {
-    const { groupKinds = ["global", "regular", "provisioned"] } = options;
+    const {
+      groupKinds = ["global", "regular", "space_editors", "provisioned"],
+    } = options;
     const groups = await this.baseFetch(auth, {
       where: {
         kind: {
@@ -770,7 +790,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     const groupIds = groupSpaces.map((gs) => gs.groupId);
     const { groupKinds } = options;
 
-    const whereClause: any = {
+    const whereClause: WhereOptions<GroupModel> = {
       id: {
         [Op.in]: groupIds,
       },
@@ -790,17 +810,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
-  static async listUserGroupsInWorkspace({
+  static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
-    groupKinds = ["global", "regular", "provisioned", "agent_editors"],
+    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
     transaction?: Transaction;
-  }): Promise<GroupResource[]> {
+  }): Promise<ModelId[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -814,9 +834,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // If yes, we can fetch the groups the user is a member of.
     // First the global group which has no db entries and is always present.
-    let globalGroup = null;
+    let globalGroup: GroupModel | null = null;
+
     if (groupKinds.includes("global")) {
       globalGroup = await this.model.findOne({
+        attributes: ["id"],
         where: {
           workspaceId: workspace.id,
           kind: "global",
@@ -829,33 +851,94 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    const userGroups = await GroupModel.findAll({
-      include: [
-        {
-          model: GroupMembershipModel,
-          where: {
-            userId: user.id,
-            workspaceId: workspace.id,
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-          },
-          required: true,
+    // eslint-disable-next-line dust/no-raw-sql -- We are using a raw query to optimize memory usage as people may have a lot of groups.
+    const userGroupModelIds = await frontSequelize.query<{ id: ModelId }>(
+      `
+      SELECT id FROM groups
+      WHERE "workspaceId" = :workspaceId
+      AND kind IN (:kind)
+      AND id IN (
+        SELECT "groupId" FROM group_memberships
+        WHERE "userId" = :userId
+        AND "workspaceId" = :workspaceId
+        AND "startAt" <= :now
+        AND ("endAt" IS NULL OR "endAt" > :now)
+        AND status = 'active'
+      )
+    `,
+      {
+        replacements: {
+          workspaceId: workspace.id,
+          kind: groupKinds.filter((k) => k !== "global") as GroupKind[],
+          userId: user.id,
+          now: new Date(),
         },
-      ],
+        type: QueryTypes.SELECT,
+        transaction,
+        raw: true,
+      }
+    );
+
+    const groups = [
+      ...(globalGroup ? [globalGroup] : []),
+      ...userGroupModelIds,
+    ];
+
+    return groups.map((group) => group.id);
+  }
+
+  // Warning, this function can be very memory hungry if there are a lot of groups (such as a workspace with a lot of agents and editors groups).
+  // If you can, just use the listUserGroupModelIdsInWorkspace instead that returns only the ids of the groups.
+  static async listUserGroupsInWorkspace({
+    user,
+    workspace,
+    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    groupKinds?: Omit<GroupKind, "system">[];
+    transaction?: Transaction;
+  }): Promise<GroupResource[]> {
+    const groupIds = await this.listUserGroupModelIdsInWorkspace({
+      user,
+      workspace,
+      groupKinds,
+      transaction,
+    });
+
+    const groups = await GroupModel.findAll({
       where: {
-        workspaceId: workspace.id,
-        kind: {
-          // The 'as' clause is tautological but required by TS who does not
-          // understand that groupKinds.filter() returns a GroupKind[]
-          [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
+        id: {
+          [Op.in]: groupIds,
         },
+        workspaceId: workspace.id,
       },
       transaction,
     });
 
-    const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
-
     return groups.map((group) => new this(GroupModel, group.get()));
+  }
+
+  static async getActiveMembershipsForGroups(
+    auth: Authenticator,
+    groups: GroupResource[]
+  ): Promise<Record<ModelId, ModelId[]>> {
+    const owner = auth.getNonNullableWorkspace();
+    const res = await GroupMembershipModel.findAll({
+      where: {
+        workspaceId: owner.id,
+        groupId: groups.map((g) => g.id),
+        status: "active",
+        startAt: { [Op.lte]: new Date() },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+      },
+    });
+
+    return res.reduce<Record<ModelId, ModelId[]>>((acc, m) => {
+      acc[m.groupId] = [...(acc[m.groupId] || []), m.userId];
+      return acc;
+    }, {});
   }
 
   async isMember(user: UserResource): Promise<boolean> {
@@ -873,13 +956,59 @@ export class GroupResource extends BaseResource<GroupModel> {
         startAt: { [Op.lte]: new Date() },
         [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         userId: user.id,
+        status: "active",
       },
     });
 
     return !!membership;
   }
 
-  async getActiveMembers(auth: Authenticator): Promise<UserResource[]> {
+  async getActiveMembers(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<UserResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    let memberships: GroupMembershipModel[] | MembershipResource[];
+
+    // The global group does not have a DB entry for each workspace member.
+    if (this.isGlobal()) {
+      const { memberships: m } = await MembershipResource.getActiveMemberships({
+        workspace: auth.getNonNullableWorkspace(),
+        transaction,
+      });
+      memberships = m;
+    } else {
+      memberships = await GroupMembershipModel.findAll({
+        where: {
+          workspaceId: owner.id,
+          groupId: this.id,
+          status: "active",
+          startAt: { [Op.lte]: new Date() },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+        },
+        transaction,
+      });
+    }
+
+    const users = await UserResource.fetchByModelIds(
+      memberships.map((m) => m.userId)
+    );
+
+    const { memberships: workspaceMemberships } =
+      await MembershipResource.getActiveMemberships({
+        users,
+        workspace: owner,
+        transaction,
+      });
+
+    // Only return users that have an active membership in the workspace.
+    return users.filter((user) =>
+      workspaceMemberships.some((m) => m.userId === user.id)
+    );
+  }
+
+  async getAllMembers(auth: Authenticator): Promise<UserResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
     let memberships: GroupMembershipModel[] | MembershipResource[];
@@ -891,12 +1020,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       });
       memberships = m;
     } else {
+      // Get all members regardless of status (active, suspended)
       memberships = await GroupMembershipModel.findAll({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          // Note: No status filter here - we want all statuses
         },
       });
     }
@@ -929,8 +1060,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     } else {
       return GroupMembershipModel.count({
         where: {
-          groupId: this.id,
           workspaceId: owner.id,
+          groupId: this.id,
+          status: "active",
           startAt: { [Op.lte]: new Date() },
           [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
         },
@@ -940,8 +1072,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -949,11 +1088,18 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "unauthorized"
         | "user_not_found"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -969,14 +1115,16 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     const userIds = users.map((u) => u.sId);
     const userResources = await UserResource.fetchByIds(userIds);
+
     if (userResources.length !== userIds.length) {
-      new Err(
+      return new Err(
         new DustError(
           "user_not_found",
           userIds.length === 1 ? "User not found" : "Some users were not found"
         )
       );
     }
+
     const { memberships: workspaceMemberships } =
       await MembershipResource.getActiveMemberships({
         users: userResources,
@@ -996,12 +1144,34 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, agent_editors or provisioned groups.
-    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
+    // Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups.
+    if (
+      ![
+        "regular",
+        "space_editors",
+        "agent_editors",
+        "skill_editors",
+        "provisioned",
+      ].includes(this.kind)
+    ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be added to regular, agent_editors or provisioned groups."
+          "Users can only be added to regular, space_editors, agent_editors, skill_editors or provisioned groups."
+        )
+      );
+    }
+
+    if (
+      this.kind === "skill_editors" &&
+      workspaceMemberships.some((member) => !member.isBuilder)
+    ) {
+      return new Err(
+        new DustError(
+          "group_requirements_not_met",
+          userIds.length === 1
+            ? "Cannot add: user is not a builder in the workspace"
+            : "Cannot add: some users are not builders in the workspace"
         )
       );
     }
@@ -1030,6 +1200,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         userId: user.id,
         workspaceId: owner.id,
         startAt: new Date(),
+        status: "active" as const,
       })),
       { transaction }
     );
@@ -1039,16 +1210,45 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
-    return this.addMembers(auth, [user], { transaction });
+    {
+      user,
+      requestedPermissions,
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_already_member"
+        | "group_requirements_not_met"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    return this.addMembers(auth, {
+      users: [user],
+      requestedPermissions,
+      transaction,
+    });
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1060,7 +1260,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1099,12 +1305,20 @@ export class GroupResource extends BaseResource<GroupModel> {
       );
     }
 
-    // Users can only be added to regular, agent_editors or provisioned groups.
-    if (!["regular", "agent_editors", "provisioned"].includes(this.kind)) {
+    // Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups.
+    if (
+      ![
+        "regular",
+        "space_editors",
+        "agent_editors",
+        "skill_editors",
+        "provisioned",
+      ].includes(this.kind)
+    ) {
       return new Err(
         new DustError(
           "system_or_global_group",
-          "Users can only be removed from regular, agent_editors or provisioned groups."
+          "Users can only be removed from regular, space_editors, agent_editors, skill_editors or provisioned groups."
         )
       );
     }
@@ -1146,16 +1360,44 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    users: UserType,
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<Result<undefined, DustError>> {
-    return this.removeMembers(auth, [users], { transaction });
+    {
+      user,
+      requestedPermissions,
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
+  ): Promise<
+    Result<
+      undefined,
+      DustError<
+        | "unauthorized"
+        | "user_not_found"
+        | "user_not_member"
+        | "system_or_global_group"
+      >
+    >
+  > {
+    return this.removeMembers(auth, {
+      users: [user],
+      requestedPermissions,
+      transaction,
+    });
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1164,11 +1406,18 @@ export class GroupResource extends BaseResource<GroupModel> {
         | "user_not_found"
         | "user_not_member"
         | "user_already_member"
+        | "group_requirements_not_met"
         | "system_or_global_group"
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1178,7 +1427,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
 
     const userIds = users.map((u) => u.sId);
-    const currentMembers = await this.getActiveMembers(auth);
+    const currentMembers = await this.getActiveMembers(auth, { transaction });
     const currentMemberIds = currentMembers.map((member) => member.sId);
 
     // Add new members.
@@ -1186,7 +1435,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd, {
+      const addResult = await this.addMembers(auth, {
+        users: usersToAdd,
+        requestedPermissions,
         transaction,
       });
       if (addResult.isErr()) {
@@ -1199,7 +1450,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove, {
+      const removeResult = await this.removeMembers(auth, {
+        users: usersToRemove,
+        requestedPermissions,
         transaction,
       });
       if (removeResult.isErr()) {
@@ -1230,11 +1483,12 @@ export class GroupResource extends BaseResource<GroupModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
+    const owner = auth.getNonNullableWorkspace();
     try {
       await KeyModel.destroy({
         where: {
           groupId: this.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1242,6 +1496,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupSpaceModel.destroy({
         where: {
           groupId: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1249,6 +1504,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupAgentModel.destroy({
         where: {
           groupId: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1256,6 +1512,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await GroupMembershipModel.destroy({
         where: {
           groupId: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1263,6 +1520,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: owner.id,
         },
         transaction,
       });
@@ -1282,42 +1540,68 @@ export class GroupResource extends BaseResource<GroupModel> {
    * 1. Group-based: The group's members get read access
    * 2. Role-based: Workspace admins get read and write access
    *
-   * For agent_editors groups, the permissions are:
+   * For agent_editors and skill_editors groups, the permissions are:
    * 1. Group-based: The group's members get read and write access
    * 2. Role-based: Workspace admins get read and write access. All users can
-   *    read "agent_editors" groups.
+   *    read "agent_editors" and "skill_editors" groups.
    *
    * CAUTION: if / when editing, note that for role permissions, permissions are
-   * NOT inherited, i.e. if you set a permission for role "user", an "admin"
+   * NOT inherited, i.e., if you set a permission for role "user", an "admin"
    * will NOT have it
    *
    * @returns Array of ResourcePermission objects defining the default access
    * configuration
    */
   requestedPermissions(): ResourcePermission[] {
-    const userReadPermissions: RolePermission[] = [
-      {
-        role: "user",
-        permissions: ["read"],
-      },
-      {
-        role: "builder",
-        permissions: ["read"],
-      },
-    ];
+    if (this.kind === "agent_editors" || this.kind === "skill_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read", "write"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            {
+              role: "user",
+              permissions: ["read"],
+            },
+            {
+              role: "builder",
+              permissions: ["read"],
+            },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
+    if (this.kind === "space_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["admin", "read", "write"],
+            },
+          ],
+          roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
+
     return [
       {
         groups: [
           {
             id: this.id,
-            permissions:
-              this.kind === "agent_editors" ? ["read", "write"] : ["read"],
+            permissions: ["read"],
           },
         ],
-        roles: [
-          { role: "admin", permissions: ["read", "write", "admin"] },
-          ...(this.kind === "agent_editors" ? userReadPermissions : []),
-        ],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
     ];
@@ -1382,7 +1666,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     transaction,
   }: {
     auth: Authenticator;
-    agentConfiguration: AgentConfiguration;
+    agentConfiguration: AgentConfigurationModel;
     transaction?: Transaction;
   }): Promise<Result<void, Error>> {
     assert(

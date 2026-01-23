@@ -8,7 +8,7 @@ import { TemplateResource } from "@app/lib/resources/template_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { WithAPIErrorResponse } from "@app/types";
 
 export type PullTemplatesResponseBody = {
@@ -46,6 +46,7 @@ async function handler(
   switch (req.method) {
     case "POST":
       const mainRegionUrl = config.getDustRegionSyncMasterUrl();
+      // eslint-disable-next-line no-restricted-globals
       const response = await fetch(`${mainRegionUrl}/api/templates`, {
         method: "GET",
       });
@@ -65,6 +66,7 @@ async function handler(
       let count = 0;
 
       for (const templateFromList of templatesResponse.templates) {
+        // eslint-disable-next-line no-restricted-globals
         const templateResponse = await fetch(
           `${mainRegionUrl}/api/templates/${templateFromList.sId}`,
           {
@@ -79,7 +81,7 @@ async function handler(
           continue;
         }
 
-        const template: FetchAssistantTemplateResponse =
+        const template: FetchAgentTemplateResponse =
           await templateResponse.json();
 
         await TemplateResource.upsertByHandle(template);

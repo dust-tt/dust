@@ -4,8 +4,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
@@ -85,7 +85,7 @@ async function handler(
       });
 
       if (agentIds) {
-        const agentsToTag = await AgentConfiguration.findAll({
+        const agentsToTag = await AgentConfigurationModel.findAll({
           where: {
             sId: agentIds,
             workspaceId: auth.getNonNullableWorkspace().id,

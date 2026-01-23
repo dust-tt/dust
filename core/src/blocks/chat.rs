@@ -322,9 +322,6 @@ impl Block for Chat {
                 if let Some(Value::Object(s)) = v.get("anthropic_thinking") {
                     extras["anthropic_thinking"] = json!(s.clone());
                 }
-                if let Some(Value::Bool(s)) = v.get("prompt_caching") {
-                    extras["prompt_caching"] = json!(s.clone());
-                }
                 if let Some(Value::Array(a)) = v.get("anthropic_beta_flags") {
                     extras["anthropic_beta_flags"] = json!(a
                         .iter()
@@ -338,7 +335,7 @@ impl Block for Chat {
                         .collect::<Result<Vec<String>>>()?);
                 }
 
-                match extras.as_object().unwrap().keys().len() {
+                match extras.as_object().ok_or(anyhow!("Invalid `extras` in configuration for chat block `{}`: expecting an object", name))?.keys().len() {
                     0 => None,
                     _ => Some(extras),
                 }

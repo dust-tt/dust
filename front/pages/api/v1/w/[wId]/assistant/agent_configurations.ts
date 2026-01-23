@@ -166,6 +166,4 @@ async function handler(
   }
 }
 
-export default withPublicAPIAuthentication(handler, {
-  requiredScopes: { GET: "read:agent" },
-});
+export default withPublicAPIAuthentication(handler);

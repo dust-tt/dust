@@ -14,6 +14,7 @@ const ANIMATED_TEXT_VARIANTS = [
   "blue",
   "rose",
   "golden",
+  "white",
 ] as const;
 
 type AnimatedTextVariantType = (typeof ANIMATED_TEXT_VARIANTS)[number];
@@ -59,6 +60,10 @@ const animatedVariants: Record<AnimatedTextVariantType, string> = {
     "s-from-golden-800 s-via-golden-950 s-via-50% s-to-golden-800",
     "dark:s-from-golden-800-night dark:s-via-golden-950-night dark:s-via-50% dark:s-to-golden-800-night"
   ),
+  white: cn(
+    "s-from-primary-800 s-via-primary-950 s-via-50% s-to-primary-800",
+    "dark:s-from-primary-800-night dark:s-via-primary-950-night dark:s-via-50% dark:s-to-primary-800-night"
+  ),
 };
 
 const animVariants = cva(
@@ -84,6 +89,7 @@ const animatedTextVariants: Record<AnimatedTextVariantType, string> = {
   blue: "s-text-sky-800 dark:s-text-sky-800-night",
   rose: "s-text-rose-800 dark:s-text-rose-800-night",
   golden: "s-text-golden-800 dark:s-text-rose-golden-night",
+  white: "s-text-primary-800 dark:s-text-primary-800-night",
 };
 
 const textVariants = cva("s-absolute s-inset-0", {

@@ -5,7 +5,7 @@ const {
   DUST_MANAGED_AZURE_OPENAI_API_KEY = "",
   DUST_MANAGED_AZURE_OPENAI_ENDPOINT = "",
   DUST_MANAGED_OPENAI_API_KEY = "",
-  DUST_MANAGED_OPENAI_API_KEY_EU = "",
+  DUST_MANAGED_OPENAI_BASE_URL = "",
   DUST_MANAGED_TEXTSYNTH_API_KEY = "",
   DUST_MANAGED_MISTRAL_API_KEY = "",
   DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY = "",
@@ -16,7 +16,8 @@ const {
   DUST_MANAGED_FIREWORKS_API_KEY = "",
   DUST_MANAGED_XAI_API_KEY = "",
   DUST_MANAGED_FIRECRAWL_API_KEY = "",
-  DUST_REGION = "",
+  DUST_MANAGED_ELEVENLABS_API_KEY = "",
+  REGION = "",
 } = process.env;
 
 export const credentialsFromProviders = (
@@ -85,20 +86,16 @@ export const credentialsFromProviders = (
   return credentials;
 };
 
-export const dustManagedCredentials = (options?: {
-  useOpenAIEUKeyFlag?: boolean;
-}): CredentialsType => {
-  const useOpenAIEU =
-    options?.useOpenAIEUKeyFlag && DUST_REGION === "europe-west1";
+export const dustManagedCredentials = (): CredentialsType => {
   return {
     ANTHROPIC_API_KEY: DUST_MANAGED_ANTHROPIC_API_KEY,
     AZURE_OPENAI_API_KEY: DUST_MANAGED_AZURE_OPENAI_API_KEY,
     AZURE_OPENAI_ENDPOINT: DUST_MANAGED_AZURE_OPENAI_ENDPOINT,
     MISTRAL_API_KEY: DUST_MANAGED_MISTRAL_API_KEY,
-    OPENAI_API_KEY: useOpenAIEU
-      ? DUST_MANAGED_OPENAI_API_KEY_EU
-      : DUST_MANAGED_OPENAI_API_KEY,
-    OPENAI_USE_EU_ENDPOINT: useOpenAIEU ? "true" : "false",
+    OPENAI_API_KEY: DUST_MANAGED_OPENAI_API_KEY,
+    OPENAI_BASE_URL: DUST_MANAGED_OPENAI_BASE_URL,
+    // In Core this will determine the openai endpoint we use (EU vs US).
+    OPENAI_USE_EU_ENDPOINT: REGION === "europe-west1" ? "true" : "false",
     TEXTSYNTH_API_KEY: DUST_MANAGED_TEXTSYNTH_API_KEY,
     GOOGLE_AI_STUDIO_API_KEY: DUST_MANAGED_GOOGLE_AI_STUDIO_API_KEY,
     SERP_API_KEY: DUST_MANAGED_SERP_API_KEY,
@@ -108,5 +105,6 @@ export const dustManagedCredentials = (options?: {
     FIREWORKS_API_KEY: DUST_MANAGED_FIREWORKS_API_KEY,
     XAI_API_KEY: DUST_MANAGED_XAI_API_KEY,
     FIRECRAWL_API_KEY: DUST_MANAGED_FIRECRAWL_API_KEY,
+    ELEVENLABS_API_KEY: DUST_MANAGED_ELEVENLABS_API_KEY,
   };
 };

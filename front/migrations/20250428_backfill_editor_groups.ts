@@ -4,8 +4,8 @@ import type { Logger } from "pino";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
-import { GroupAgentModel } from "@app/lib/models/assistant/group_agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -20,7 +20,7 @@ import { AGENT_GROUP_PREFIX } from "@app/types";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
-  agentConfigs: AgentConfiguration[],
+  agentConfigs: AgentConfigurationModel[],
   workspace: LightWorkspaceType,
   execute: boolean,
   logger: Logger
@@ -126,10 +126,9 @@ async function backfillAgentEditorsGroup(
   );
 
   if (execute && editorGroup) {
-    const result = await editorGroup.setMembers(
-      auth,
-      usersToAdd.map((user) => user.toJSON())
-    );
+    const result = await editorGroup.setMembers(auth, {
+      users: usersToAdd.map((user) => user.toJSON()),
+    });
 
     if (result.isErr()) {
       throw result.error;
@@ -145,7 +144,7 @@ const migrateWorkspaceEditorsGroups = async (
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const agents = await (async () => {
     try {
-      return await AgentConfiguration.findAll({
+      return await AgentConfigurationModel.findAll({
         where: {
           workspaceId: workspace.id,
           status: {

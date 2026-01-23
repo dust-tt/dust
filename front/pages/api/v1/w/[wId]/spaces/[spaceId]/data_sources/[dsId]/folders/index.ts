@@ -17,6 +17,7 @@ import { CoreAPI } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<GetFoldersResponseType>>,
   auth: Authenticator,
   { dataSource }: { dataSource: DataSourceResource }

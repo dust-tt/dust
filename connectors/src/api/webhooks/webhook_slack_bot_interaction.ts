@@ -368,6 +368,7 @@ const _webhookSlackBotInteractionsAPIHandler = async (
               slackChannelId: payload.container.channel_id,
               slackMessageTs: payload.container.message_ts,
               slackThreadTs: payload.container.thread_ts,
+              responseUrl,
             });
           } catch (error) {
             logger.error(
@@ -402,6 +403,7 @@ async function handleViewSubmission(
       slackChannelId: string;
       slackMessageTs: string;
       slackThreadTs: string;
+      responseUrl: string;
     };
 
     // Extract feedback values from the modal
@@ -430,6 +432,7 @@ async function handleViewSubmission(
         slackChannelId: metadata.slackChannelId,
         slackMessageTs: metadata.slackMessageTs,
         slackThreadTs: metadata.slackThreadTs,
+        responseUrl: metadata.responseUrl,
       });
     }
   }

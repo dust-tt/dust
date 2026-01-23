@@ -94,6 +94,7 @@ export class TextExtraction {
     fileStream: Readable,
     contentType: SupportedContentTypes
   ): Promise<Readable> {
+    // eslint-disable-next-line no-restricted-globals
     const response = await fetch(`${this.url}/tika/`, {
       method: "PUT",
       headers: {
@@ -103,6 +104,12 @@ export class TextExtraction {
       body: Readable.toWeb(fileStream),
       duplex: "half",
     } as RequestInitWithDuplex);
+
+    if (!response.ok) {
+      throw new Error(
+        `Text extraction failed with status ${response.status} ${response.statusText}`
+      );
+    }
 
     if (!response.body) {
       throw new Error("Response body is null");

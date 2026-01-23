@@ -238,6 +238,9 @@ const colorNames = Object.keys(colors).filter(
 );
 
 module.exports = {
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   theme: {
     screens: {
       xxs: "384px",

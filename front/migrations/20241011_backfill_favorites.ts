@@ -1,14 +1,14 @@
 import _ from "lodash";
 import { Op } from "sequelize";
 
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
   // table is ~234K rows at the time of writing
   let lastSeenId = 0;
   do {
-    const relations = await AgentUserRelation.findAll({
+    const relations = await AgentUserRelationModel.findAll({
       where: {
         id: {
           [Op.gt]: lastSeenId,
@@ -35,7 +35,10 @@ makeScript({}, async ({ execute }, logger) => {
   } while (lastSeenId !== -1);
 });
 
-async function updateRelation(relation: AgentUserRelation, execute: boolean) {
+async function updateRelation(
+  relation: AgentUserRelationModel,
+  execute: boolean
+) {
   if (execute) {
     // ~233K rows 'in-list' at the time of writing
     // @ts-expect-error column removed in a later migration

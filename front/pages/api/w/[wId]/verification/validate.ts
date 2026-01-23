@@ -1,0 +1,93 @@
+import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
+import * as reporter from "io-ts-reporters";
+import type { NextApiRequest, NextApiResponse } from "next";
+
+import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { validateVerification } from "@app/lib/api/workspace_verification";
+import type { Authenticator } from "@app/lib/auth";
+import { apiError } from "@app/logger/withlogging";
+import {
+  E164PhoneNumber,
+  getStatusCodeForError,
+  OtpCode,
+} from "@app/pages/api/w/[wId]/verification/start";
+import type { WithAPIErrorResponse } from "@app/types";
+import type {
+  VerificationErrorResponse,
+  VerifyCodeResponse,
+} from "@app/types/workspace_verification";
+
+const PostValidateVerificationRequestBody = t.type({
+  phoneNumber: E164PhoneNumber,
+  code: OtpCode,
+});
+
+async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse<
+    WithAPIErrorResponse<VerifyCodeResponse | VerificationErrorResponse>
+  >,
+  auth: Authenticator
+): Promise<void> {
+  if (!auth.isAdmin()) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "workspace_auth_error",
+        message:
+          "Only users that are `admins` for the current workspace can validate verification.",
+      },
+    });
+  }
+
+  switch (req.method) {
+    case "POST": {
+      const bodyValidation = PostValidateVerificationRequestBody.decode(
+        req.body
+      );
+      if (isLeft(bodyValidation)) {
+        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid request body: ${pathError}`,
+          },
+        });
+      }
+
+      const { phoneNumber, code } = bodyValidation.right;
+
+      const result = await validateVerification(auth, phoneNumber, code);
+
+      if (result.isErr()) {
+        const error = result.error;
+        return res.status(getStatusCodeForError(error.type)).json({
+          error: {
+            type: error.type,
+            message: error.message,
+          },
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        verified: true,
+      });
+    }
+
+    default:
+      return apiError(req, res, {
+        status_code: 405,
+        api_error: {
+          type: "method_not_supported_error",
+          message: "The method passed is not supported.",
+        },
+      });
+  }
+}
+
+export default withSessionAuthenticationForWorkspace(handler, {
+  doesNotRequireCanUseProduct: true,
+});

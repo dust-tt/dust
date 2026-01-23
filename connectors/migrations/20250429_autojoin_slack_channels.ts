@@ -6,7 +6,7 @@ import {
   joinChannel,
 } from "@connectors/connectors/slack/lib/channels";
 import { getSlackClient } from "@connectors/connectors/slack/lib/slack_client";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import type Logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -34,7 +34,7 @@ async function setupSlackChannel({
   }
 
   // Find existing channel in DB
-  const existingChannel = await SlackChannel.findOne({
+  const existingChannel = await SlackChannelModel.findOne({
     where: {
       connectorId: connector.id,
       slackChannelId: channel.id,
@@ -49,7 +49,7 @@ async function setupSlackChannel({
     });
     logger.info(`Updated configuration for channel #${channel.name}`);
   } else {
-    await SlackChannel.create({
+    await SlackChannelModel.create({
       connectorId: connector.id,
       slackChannelId: channel.id,
       slackChannelName: channel.name,

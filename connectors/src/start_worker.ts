@@ -6,6 +6,7 @@ import { hideBin } from "yargs/helpers";
 
 import { runBigQueryWorker } from "@connectors/connectors/bigquery/temporal/worker";
 import { runConfluenceWorker } from "@connectors/connectors/confluence/temporal/worker";
+import { runDustProjectWorker } from "@connectors/connectors/dust_project/temporal/worker";
 import { runGongWorker } from "@connectors/connectors/gong/temporal/worker";
 import { runMicrosoftWorker } from "@connectors/connectors/microsoft/temporal/worker";
 import { runSalesforceWorker } from "@connectors/connectors/salesforce/temporal/worker";
@@ -50,7 +51,7 @@ Runtime.install({
 });
 
 type WorkerType =
-  | Exclude<ConnectorProvider, "slack_bot">
+  | Exclude<ConnectorProvider, "slack_bot" | "discord_bot" | "microsoft_bot">
   | "notion_garbage_collector";
 
 const workerFunctions: Record<WorkerType, () => Promise<void>> = {
@@ -68,6 +69,7 @@ const workerFunctions: Record<WorkerType, () => Promise<void>> = {
   bigquery: runBigQueryWorker,
   salesforce: runSalesforceWorker,
   gong: runGongWorker,
+  dust_project: runDustProjectWorker,
 };
 
 const ALL_WORKERS = Object.keys(workerFunctions) as WorkerType[];

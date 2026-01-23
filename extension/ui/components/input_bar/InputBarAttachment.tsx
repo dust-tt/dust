@@ -46,10 +46,13 @@ export function InputBarAttachments({
       files?.service.fileBlobs.map((blob) => ({
         type: "file",
         id: blob.id,
-        title: blob.id,
+        title: blob.filename,
         preview: blob.preview,
         isUploading: blob.isUploading,
         onRemove: () => files.service.removeFile(blob.id),
+        iconName: blob.iconName,
+        provider: blob.provider,
+        sourceUrl: blob.sourceUrl,
       })) || []
     );
   }, [files?.service]);
@@ -98,7 +101,7 @@ export function InputBarAttachments({
   }
 
   return (
-    <CitationGrid className="mr-3 border-b border-separator dark:border-separator-night pb-3 pt-3">
+    <CitationGrid className="border-separator dark:border-separator-night mr-3 border-b pb-3 pt-3">
       {allAttachments.map((attachment) => {
         const attachmentCitation = attachmentToAttachmentCitation(attachment);
         return (

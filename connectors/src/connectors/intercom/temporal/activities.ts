@@ -41,6 +41,7 @@ import {
 } from "@connectors/lib/models/intercom";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import logger from "@connectors/logger/logger";
+import { statsDClient } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
@@ -570,10 +571,12 @@ export async function getNextConversationBatchToSyncActivity({
   connectorId,
   teamId,
   cursor,
+  closedAfterTimeWindowMinutes,
 }: {
   connectorId: ModelId;
   teamId?: string;
   cursor: string | null;
+  closedAfterTimeWindowMinutes?: number;
 }): Promise<{ conversationIds: string[]; nextPageCursor: string | null }> {
   const connector = await _getIntercomConnectorOrRaise(connectorId);
 
@@ -589,6 +592,9 @@ export async function getNextConversationBatchToSyncActivity({
   let result;
 
   const accessToken = await getIntercomAccessToken(connector.connectionId);
+  const closedAfter = closedAfterTimeWindowMinutes
+    ? Math.floor((Date.now() - closedAfterTimeWindowMinutes * 60 * 1000) / 1000)
+    : undefined;
 
   if (teamId) {
     result = await fetchIntercomConversations({
@@ -597,6 +603,7 @@ export async function getNextConversationBatchToSyncActivity({
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
+      closedAfter,
     });
   } else {
     result = await fetchIntercomConversations({
@@ -604,7 +611,18 @@ export async function getNextConversationBatchToSyncActivity({
       slidingWindow: intercomWorkspace.conversationsSlidingWindow,
       cursor,
       pageSize: INTERCOM_CONVO_BATCH_SIZE,
+      closedAfter,
     });
+  }
+
+  const [oldestConversation] = result.conversations;
+  if (oldestConversation) {
+    const oldestCreatedAtMs = oldestConversation.created_at * 1000;
+    statsDClient.gauge(
+      "connectors.intercom.conversations.sync_max_age",
+      oldestCreatedAtMs,
+      [`connector_id:${connectorId}`]
+    );
   }
 
   const conversationIds = result.conversations.map((c) => c.id);
@@ -709,6 +727,26 @@ export async function syncAllTeamsActivity({
 }
 
 /**
+ * This activity is responsible for getting the list of team ids
+ * that can be synced for a given connector.
+ */
+export async function getTeamIdsToSyncActivity({
+  connectorId,
+}: {
+  connectorId: ModelId;
+}): Promise<string[]> {
+  const teamsWithReadPermission = await IntercomTeamModel.findAll({
+    where: {
+      connectorId,
+      permission: "read",
+    },
+    attributes: ["teamId"],
+  });
+
+  return teamsWithReadPermission.map((team) => team.teamId);
+}
+
+/**
  * This activity is responsible for deleting the data_sources_folders for the teams that are not allowed.
  */
 export async function deleteRevokedTeamsActivity({
@@ -767,19 +805,31 @@ export async function getNextRevokedConversationsBatchToDeleteActivity({
 
 /**
  * This activity is responsible for fetching a batch of conversations
- * that are older than 90 days and ready to be deleted.
+ * that are older than the configured sliding window and ready to be deleted.
  */
 export async function getNextOldConversationsBatchToDeleteActivity({
   connectorId,
 }: {
   connectorId: ModelId;
 }): Promise<string[]> {
+  const intercomWorkspace = await IntercomWorkspaceModel.findOne({
+    where: {
+      connectorId,
+    },
+  });
+  if (!intercomWorkspace) {
+    throw new Error("[Intercom] Workspace not found");
+  }
+
   const conversations = await IntercomConversationModel.findAll({
     attributes: ["conversationId"],
     where: {
       connectorId,
       conversationCreatedAt: {
-        [Op.lt]: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000), // 90 days ago
+        [Op.lt]: new Date(
+          Date.now() -
+            intercomWorkspace.conversationsSlidingWindow * 24 * 60 * 60 * 1000
+        ),
       },
     },
     limit: INTERCOM_CONVO_BATCH_SIZE,

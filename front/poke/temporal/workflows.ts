@@ -16,11 +16,13 @@ const {
   deleteMembersActivity,
   deletePluginRunsActivity,
   deleteRemoteMCPServersActivity,
+  deleteSkillsActivity,
   deleteSpacesActivity,
+  deleteWebhookSourcesActivity,
   deleteTagsActivity,
-  deleteTrackersActivity,
   deleteTranscriptsActivity,
   deleteWorkOSOrganization,
+  deleteWorkspaceUserMetadataActivity,
   isWorkflowDeletableActivity,
   scrubDataSourceActivity,
   scrubSpaceActivity,
@@ -68,13 +70,15 @@ export async function deleteWorkspaceWorkflow({
   }
 
   await deleteConversationsActivity({ workspaceId });
+  await deleteSkillsActivity({ workspaceId });
   await deleteRemoteMCPServersActivity({ workspaceId });
   await deleteAgentsActivity({ workspaceId });
   await deleteRunOnDustAppsActivity({ workspaceId });
   await deleteAppsActivity({ workspaceId });
-  await deleteTrackersActivity({ workspaceId });
   await deleteMembersActivity({ workspaceId });
+  await deleteWorkspaceUserMetadataActivity({ workspaceId });
   await deleteTagsActivity({ workspaceId });
+  await deleteWebhookSourcesActivity({ workspaceId });
   await deleteSpacesActivity({ workspaceId });
   await deleteTranscriptsActivity({ workspaceId });
   await deletePluginRunsActivity({ workspaceId });

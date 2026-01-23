@@ -10,7 +10,7 @@ import { useDustAPI } from "@app/shared/lib/dust_api";
 import { getRandomGreetingForName } from "@app/shared/lib/greetings";
 import type { ContentFragmentsType } from "@app/shared/lib/types";
 import type { StoredUser } from "@app/shared/services/auth";
-import { AssistantFavorites } from "@app/ui/components/assistants/AssistantFavorites";
+import { AgentFavorites } from "@app/ui/components/agents/AgentFavorites";
 import { ConversationViewer } from "@app/ui/components/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/ui/components/conversation/GenerationContextProvider";
 import { ReachedLimitPopup } from "@app/ui/components/conversation/ReachedLimitPopup";
@@ -83,84 +83,101 @@ export function ConversationContainer({
 
   const { serverId } = useMcpServer();
 
-  const handlePostMessage = async (
-    input: string,
-    mentions: AgentMentionType[],
-    contentFragments: ContentFragmentsType
-  ) => {
-    if (!conversationId) {
-      return null;
-    }
-    const messageData = {
-      input,
-      mentions,
-      contentFragments,
-      mcpServerIds: serverId ? [serverId] : [],
-    };
-    try {
-      await mutateConversation(
-        async (currentConversation) => {
-          const result = await postMessage(platform, {
-            dustAPI,
-            conversationId,
-            messageData,
-          });
+  const { submit: handlePostMessage, isSubmitting: isPostingMessage } =
+    useSubmitFunction(
+      useCallback(
+        async (
+          input: string,
+          mentions: AgentMentionType[],
+          contentFragments: ContentFragmentsType
+        ) => {
+          if (!conversationId) {
+            return;
+          }
+          const messageData = {
+            input,
+            mentions,
+            contentFragments,
+            mcpServerIds: serverId ? [serverId] : [],
+          };
+          try {
+            await mutateConversation(
+              async (currentConversation) => {
+                const result = await postMessage(platform, {
+                  dustAPI,
+                  conversationId,
+                  messageData,
+                });
 
-          if (result.isOk()) {
-            const { message, contentFragments: createdContentFragments } =
-              result.value;
+                if (result.isOk()) {
+                  const { message, contentFragments: createdContentFragments } =
+                    result.value;
 
-            // Save content fragment IDs for tab contents to the local storage.
-            await platform.saveFilesContentFragmentIds({
-              conversationId,
-              uploadedFiles: contentFragments.uploaded,
-              createdContentFragments,
-            });
+                  // Save content fragment IDs for tab contents to the local storage.
+                  await platform.saveFilesContentFragmentIds({
+                    conversationId,
+                    uploadedFiles: contentFragments.uploaded,
+                    createdContentFragments,
+                  });
 
-            return updateConversationWithOptimisticData(
-              currentConversation,
-              message
+                  return updateConversationWithOptimisticData(
+                    currentConversation,
+                    message
+                  );
+                }
+
+                if (result.error.type === "plan_limit_reached_error") {
+                  setPlanLimitReached(true);
+                } else {
+                  sendNotification({
+                    title: result.error.title,
+                    description: result.error.message,
+                    type: "error",
+                  });
+                }
+
+                throw result.error;
+              },
+              {
+                optimisticData: (currentConversation) => {
+                  const placeholderMessage = createPlaceholderUserMessage({
+                    input,
+                    mentions,
+                    user,
+                  });
+                  return updateConversationWithOptimisticData(
+                    currentConversation,
+                    placeholderMessage
+                  );
+                },
+                revalidate: false,
+                // Rollback optimistic update on errors.
+                rollbackOnError: true,
+                populateCache: true,
+              }
             );
+          } catch (err) {
+            // If the API errors, the original data will be
+            // rolled back by SWR automatically.
+            console.error("Failed to post message:", err);
           }
-
-          if (result.error.type === "plan_limit_reached_error") {
-            setPlanLimitReached(true);
-          } else {
-            sendNotification({
-              title: result.error.title,
-              description: result.error.message,
-              type: "error",
-            });
-          }
-
-          throw result.error;
         },
-        {
-          optimisticData: (currentConversation) => {
-            const placeholderMessage = createPlaceholderUserMessage({
-              input,
-              mentions,
-              user,
-            });
-            return updateConversationWithOptimisticData(
-              currentConversation,
-              placeholderMessage
-            );
-          },
-          revalidate: false,
-          // Rollback optimistic update on errors.
-          rollbackOnError: true,
-          populateCache: true,
-        }
-      );
-    } catch (err) {
-      // If the API errors, the original data will be
-      // rolled back by SWR automatically.
-      console.error("Failed to post message:", err);
-    }
-  };
+        [
+          conversationId,
+          platform,
+          dustAPI,
+          mutateConversation,
+          sendNotification,
+          user,
+          serverId,
+        ]
+      )
+    );
 
-  const { submit: handlePostConversation, isSubmitting } = useSubmitFunction(
+  const {
+    submit: handlePostConversation,
+    isSubmitting: isPostingConversation,
+  } = useSubmitFunction(
     useCallback(
       async (
         input: string,
@@ -233,7 +250,7 @@ export function ConversationContainer({
   if (conversationId) {
     return (
       <GenerationContextProvider>
-        <div className="h-full flex flex-col">
+        <div className="flex h-full flex-col">
           <div className="flex-1">
             <ConversationViewer
               conversationId={conversationId}
@@ -243,9 +260,9 @@ export function ConversationContainer({
             />
           </div>
           <div
-            id="assistant-input-header"
+            id="agent-input-header"
             className={cn(
-              "sticky bottom-0 pb-4 z-20  w-full",
+              "sticky bottom-0 z-20 w-full pb-4",
               "bg-background text-foreground",
               "dark:bg-background-night dark:text-foreground-night"
             )}
@@ -258,6 +275,7 @@ export function ConversationContainer({
               setIncludeTab={(includeTab) => {
                 setIncludeContent(includeTab);
               }}
+              isSubmitting={isPostingMessage}
               conversation={conversation ?? undefined}
             />
           </div>
@@ -274,11 +292,11 @@ export function ConversationContainer({
 
   return (
     <GenerationContextProvider>
-      <div className="h-full flex flex-col">
-        <div className="pb-4 w-full">
+      <div className="flex h-full flex-col">
+        <div className="w-full pb-4">
           <Page.Header title={greeting} />
         </div>
-        <div id="assistant-input-header" className="w-full pb-4">
+        <div id="agent-input-header" className="w-full pb-4">
           <AssistantInputBar
             owner={owner}
             onSubmit={handlePostConversation}
@@ -287,11 +305,11 @@ export function ConversationContainer({
             setIncludeTab={(includeTab) => {
               setIncludeContent(includeTab);
             }}
-            isSubmitting={isSubmitting}
+            isSubmitting={isPostingConversation}
             conversation={conversation ?? undefined}
           />
         </div>
-        <AssistantFavorites user={user} />
+        <AgentFavorites user={user} />
         <ReachedLimitPopup
           isOpened={planLimitReached}
           onClose={() => setPlanLimitReached(false)}

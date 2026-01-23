@@ -7,55 +7,109 @@ import {
 import { fetchMessageInConversation } from "@app/lib/api/assistant/messages";
 import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
+import { TERMINAL_AGENT_MESSAGE_EVENT_TYPES } from "@app/lib/api/assistant/streaming/types";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
 import { Authenticator as AuthenticatorClass } from "@app/lib/auth";
-import type { AgentMessage } from "@app/lib/models/assistant/conversation";
+import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationWithoutContentType } from "@app/types";
-import type { RunAgentAsynchronousArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
-import { maybeTrackTokenUsageCost } from "@app/lib/api/public_api_limits";
+import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
+import type {
+  ConversationWithoutContentType,
+  ToolErrorEvent,
+} from "@app/types";
+import { ConversationError } from "@app/types";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
+
+export async function markAgentMessageAsFailed(
+  agentMessageRow: AgentMessageModel,
+  error: ToolErrorEvent["error"]
+): Promise<void> {
+  await agentMessageRow.update({
+    completedAt: new Date(),
+    errorCode: error.code,
+    errorMessage: error.message,
+    errorMetadata: error.metadata,
+    status: "failed",
+  });
+}
 
 // Process database operations for agent events before publishing to Redis.
 async function processEventForDatabase(
-  event: AgentMessageEvents,
-  agentMessageRow: AgentMessage,
-  step: number
+  auth: Authenticator,
+  {
+    event,
+    agentMessageRow,
+    step,
+    conversation,
+    modelInteractionDurationMs,
+  }: {
+    event: AgentMessageEvents;
+    agentMessageRow: AgentMessageModel;
+    step: number;
+    conversation: ConversationWithoutContentType;
+    modelInteractionDurationMs?: number;
+  }
 ): Promise<void> {
+  // If we have a model interaction duration, store it.
+  if (modelInteractionDurationMs) {
+    await agentMessageRow.update({
+      modelInteractionDurationMs:
+        (agentMessageRow.modelInteractionDurationMs ?? 0) +
+        Math.round(modelInteractionDurationMs),
+    });
+  }
+
+  // Merge runIds from events that include them. This ensures runIds are persisted
+  // incrementally as events are published.
+  if ("runIds" in event && event.runIds && event.runIds.length > 0) {
+    const existingRunIds = agentMessageRow.runIds ?? [];
+    // Merge and deduplicate runIds
+    const mergedRunIds = [...new Set([...existingRunIds, ...event.runIds])];
+    await agentMessageRow.update({
+      runIds: mergedRunIds,
+    });
+  }
+
   switch (event.type) {
     case "agent_error":
-    case "tool_error":
       // Store error in database.
-      await agentMessageRow.update({
-        status: "failed",
-        errorCode: event.error.code,
-        errorMessage: event.error.message,
-        errorMetadata: event.error.metadata,
-        completedAt: new Date(),
+      await markAgentMessageAsFailed(agentMessageRow, event.error);
+
+      // Mark the conversation as errored.
+      await ConversationResource.markHasError(auth, {
+        conversation,
       });
 
-      if (event.type === "agent_error") {
-        await AgentStepContentResource.createNewVersion({
-          workspaceId: agentMessageRow.workspaceId,
-          agentMessageId: agentMessageRow.id,
-          step,
-          index: 0, // Errors are the only content for this step
+      await AgentStepContentResource.createNewVersion({
+        workspaceId: agentMessageRow.workspaceId,
+        agentMessageId: agentMessageRow.id,
+        step,
+        index: 0, // Errors are the only content for this step
+        type: "error",
+        value: {
           type: "error",
           value: {
-            type: "error",
-            value: {
-              code: event.error.code,
-              message: event.error.message,
-              metadata: {
-                ...event.error.metadata,
-                category: event.error.metadata?.category ?? "",
-              },
+            code: event.error.code,
+            message: event.error.message,
+            metadata: {
+              ...event.error.metadata,
+              category: event.error.metadata?.category ?? "",
             },
           },
-        });
-      }
+        },
+      });
+      break;
+
+    case "tool_error":
+      await markAgentMessageAsFailed(agentMessageRow, event.error);
+
+      // Mark the conversation as errored.
+      await ConversationResource.markHasError(auth, {
+        conversation,
+      });
       break;
 
     case "agent_generation_cancelled":
@@ -67,12 +121,15 @@ async function processEventForDatabase(
       break;
 
     case "agent_message_success":
-      // Store success and run IDs in database.
-      await agentMessageRow.update({
-        runIds: event.runIds,
-        status: "succeeded",
-        completedAt: new Date(),
-      });
+      await Promise.all([
+        // Store success in database. runIds are already merged above.
+        agentMessageRow.update({
+          status: "succeeded",
+          completedAt: new Date(),
+        }),
+        // Mark the conversation as updated
+        ConversationResource.markAsUpdated(auth, { conversation }),
+      ]);
 
       break;
 
@@ -90,14 +147,8 @@ async function processEventForUnreadState(
     conversation,
   }: { event: AgentMessageEvents; conversation: ConversationWithoutContentType }
 ) {
-  const agentMessageDoneEventTypes: AgentMessageEvents["type"][] = [
-    "agent_message_success",
-    "agent_generation_cancelled",
-    "agent_error",
-    "tool_error",
-  ];
   // If the event is a done event, we want to mark the conversation as unread for all participants.
-  if (agentMessageDoneEventTypes.includes(event.type)) {
+  if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
     // No excluded user because the message is created by the agent.
     await ConversationResource.markAsUnreadForOtherParticipants(auth, {
       conversation,
@@ -112,19 +163,12 @@ async function processEventForUnreadState(
         configurationId: event.configurationId,
         conversationId: conversation.sId,
         messageId: event.messageId,
+        status:
+          event.type === "agent_error" || event.type === "tool_error"
+            ? "error"
+            : "success",
       },
     });
-  }
-}
-
-// Process potential token usage tracking for agent events before publishing to Redis.
-async function processEventForTokenUsageTracking(
-  auth: Authenticator,
-  { event }: { event: AgentMessageEvents }
-) {
-  if (event.type === "agent_message_success") {
-    const { runIds } = event;
-    await maybeTrackTokenUsageCost(auth, { dustRunIds: runIds });
   }
 }
 
@@ -135,42 +179,68 @@ export async function updateResourceAndPublishEvent(
     agentMessageRow,
     conversation,
     step,
+    modelInteractionDurationMs,
   }: {
     event: AgentMessageEvents;
-    agentMessageRow: AgentMessage;
+    agentMessageRow: AgentMessageModel;
     conversation: ConversationWithoutContentType;
     step: number;
+    modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Processing of events before publishing to Redis.
+  // Process DB updates and unread state for all events.
   await Promise.all([
-    processEventForDatabase(event, agentMessageRow, step),
+    processEventForDatabase(auth, {
+      event,
+      agentMessageRow,
+      step,
+      conversation,
+      modelInteractionDurationMs,
+    }),
     processEventForUnreadState(auth, { event, conversation }),
-    processEventForTokenUsageTracking(auth, { event }),
   ]);
 
-  await publishConversationRelatedEvent({
+  // All events go through the coalescer, which handles batching logic internally.
+  const key = `${conversation.sId}-${event.messageId}-${step}`;
+  await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
     event,
+    key,
     step,
   });
 }
 
 export async function notifyWorkflowError(
   authType: AuthenticatorType,
-  {
-    conversationId,
-    agentMessageId,
-    agentMessageVersion,
-    error,
-  }: {
-    conversationId: string;
-    agentMessageId: string;
-    agentMessageVersion: number;
-    error: Error;
-  }
+  { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
+  error: Error
 ): Promise<void> {
-  const auth = await AuthenticatorClass.fromJSON(authType);
+  let authResult = await AuthenticatorClass.fromJSON(authType);
+
+  // If subscription changed while the message was running, get a fresh auth with the current
+  // subscription and continue gracefully.
+  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
+    logger.info(
+      {
+        workspaceId: authType.workspaceId,
+        originalSubscriptionId: authType.subscriptionId,
+      },
+      "Subscription changed while message was running, using fresh auth in notifyWorkflowError"
+    );
+
+    // Retry without the subscriptionId constraint to get the current subscription.
+    authResult = await AuthenticatorClass.fromJSON({
+      ...authType,
+      subscriptionId: null,
+    });
+  }
+
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
 
   // Use lighter fetchConversationWithoutContent
   const conversationRes =
@@ -179,6 +249,10 @@ export async function notifyWorkflowError(
       conversationId
     );
   if (conversationRes.isErr()) {
+    if (conversationRes.error.type === "conversation_not_found") {
+      return;
+    }
+
     throw new Error(`Conversation not found: ${conversationId}`);
   }
   const conversation = conversationRes.value;
@@ -187,7 +261,8 @@ export async function notifyWorkflowError(
   const messageRow = await fetchMessageInConversation(
     auth,
     conversation,
-    agentMessageId
+    agentMessageId,
+    agentMessageVersion
   );
 
   if (!messageRow?.agentMessage) {
@@ -208,6 +283,8 @@ export async function notifyWorkflowError(
         errorName: error.name || "UnknownError",
       },
     },
+    // Workflow errors occur outside of LLM execution, so use existing runIds from DB
+    runIds: messageRow.agentMessage.runIds ?? [],
   };
 
   await updateResourceAndPublishEvent(auth, {
@@ -221,15 +298,20 @@ export async function notifyWorkflowError(
 /**
  * Activity executed after a cancel signal
  */
-export async function finalizeCancellationActivity(
+export async function finalizeCancellation(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentAsynchronousArgs
+  agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
-  const runAgentDataRes = await getRunAgentData(authType, {
-    sync: false,
-    idArgs: runAgentArgs,
-  });
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
+    // We ignore conversation_not_found errors; the conversation might have been deleted since.
+    if (
+      runAgentDataRes.error instanceof ConversationError &&
+      runAgentDataRes.error.type === "conversation_not_found"
+    ) {
+      return;
+    }
+
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );
@@ -243,7 +325,7 @@ export async function finalizeCancellationActivity(
   } = runAgentDataRes.value;
 
   // get the last step of the agent message
-  const step = _.maxBy(agentMessage.contents, "step")?.step || 0;
+  const step = _.maxBy(agentMessage.contents, "step")?.step ?? 0;
 
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,

@@ -1,5 +1,6 @@
 import tracer from "dd-trace";
 import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
@@ -17,6 +18,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
   agentConfiguration: LightAgentConfigurationType;
   owner: WorkspaceType;
   user: UserType;
+  isAdmin: boolean;
 }>(async (context, auth) => {
   return tracer.trace("getServerSideProps", async () => {
     const owner = auth.workspace();
@@ -57,12 +59,14 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     }
 
     const user = auth.getNonNullableUser().toJSON();
+    const isAdmin = auth.isAdmin();
 
     return {
       props: {
         agentConfiguration: configuration,
         owner,
         user,
+        isAdmin,
       },
     };
   });
@@ -72,6 +76,7 @@ export default function EditAgent({
   agentConfiguration,
   owner,
   user,
+  isAdmin,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
@@ -82,7 +87,15 @@ export default function EditAgent({
   }
 
   return (
-    <AgentBuilderProvider owner={owner} user={user} assistantTemplate={null}>
+    <AgentBuilderProvider
+      owner={owner}
+      user={user}
+      isAdmin={isAdmin}
+      assistantTemplate={null}
+    >
+      <Head>
+        <title>{`Dust - @${agentConfiguration.name}`}</title>
+      </Head>
       <AgentBuilder agentConfiguration={agentConfiguration} />
     </AgentBuilderProvider>
   );

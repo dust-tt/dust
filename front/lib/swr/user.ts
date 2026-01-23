@@ -1,20 +1,33 @@
-import type { Fetcher } from "swr";
+import type { Fetcher, SWRConfiguration } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import {
+  emptyArray,
   fetcher,
   getErrorFromResponse,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
+import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
+import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
 import type { LightWorkspaceType } from "@app/types";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 
-export function useUser() {
+export function useUser(
+  swrOptions?: SWRConfiguration & {
+    disabled?: boolean;
+  }
+) {
   const userFetcher: Fetcher<GetUserResponseBody> = fetcher;
-  const { data, error, mutate } = useSWRWithDefaults("/api/user", userFetcher);
+  const { data, error, mutate } = useSWRWithDefaults(
+    "/api/user",
+    userFetcher,
+    swrOptions
+  );
 
   return {
     user: data ? data.user : null,
@@ -24,12 +37,24 @@ export function useUser() {
   };
 }
 
-export function useUserMetadata(key: string) {
+export function useUserMetadata(
+  key: string,
+  swrOptions?: SWRConfiguration & {
+    disabled?: boolean;
+    workspaceId?: string;
+  }
+) {
   const userMetadataFetcher: Fetcher<GetUserMetadataResponseBody> = fetcher;
 
+  let url = `/api/user/metadata/${encodeURIComponent(key)}`;
+  if (swrOptions?.workspaceId) {
+    url += `?workspaceId=${encodeURIComponent(swrOptions.workspaceId)}`;
+  }
+
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/user/metadata/${encodeURIComponent(key)}`,
-    userMetadataFetcher
+    url,
+    userMetadataFetcher,
+    swrOptions
   );
 
   return {
@@ -58,12 +83,34 @@ export function useUserApprovals(owner: LightWorkspaceType) {
 
 export function useDeleteMetadata() {
   const deleteMetadata = async (prefix: string) => {
+    // eslint-disable-next-line no-restricted-globals
     return fetch(`/api/user/metadata/${encodeURIComponent(prefix)}`, {
       method: "DELETE",
     });
   };
 
   return { deleteMetadata };
+}
+
+export function useIsOnboardingConversation(
+  conversationId: string | null,
+  workspaceId: string
+) {
+  const { metadata, isMetadataLoading } = useUserMetadata(
+    "onboarding:conversation",
+    {
+      disabled: !conversationId,
+      workspaceId,
+    }
+  );
+
+  return {
+    isOnboardingConversation:
+      !!conversationId &&
+      !!metadata?.value &&
+      metadata.value === conversationId,
+    isLoading: isMetadataLoading,
+  };
 }
 
 export function usePatchUser() {
@@ -74,9 +121,13 @@ export function usePatchUser() {
     firstName: string,
     lastName: string,
     notifySuccess: boolean,
-    jobType?: JobType
+    jobType?: JobType,
+    imageUrl?: string | null,
+    favoritePlatforms?: FavoritePlatform[],
+    emailProvider?: EmailProviderType,
+    workspaceId?: string
   ) => {
-    const res = await fetch("/api/user", {
+    const res = await clientFetch("/api/user", {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -85,6 +136,10 @@ export function usePatchUser() {
         firstName,
         lastName,
         jobType,
+        imageUrl,
+        favoritePlatforms,
+        emailProvider,
+        workspaceId,
       }),
     });
 
@@ -113,4 +168,28 @@ export function usePatchUser() {
   };
 
   return { patchUser };
+}
+
+export function usePendingInvitations({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const pendingInvitationsFetcher: Fetcher<GetPendingInvitationsResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/pending-invitations`,
+    pendingInvitationsFetcher,
+    { disabled }
+  );
+
+  return {
+    pendingInvitations: data?.pendingInvitations ?? emptyArray(),
+    isPendingInvitationsLoading: !error && !data && !disabled,
+    isPendingInvitationsError: error,
+    mutatePendingInvitations: mutate,
+  };
 }

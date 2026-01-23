@@ -43,10 +43,10 @@ import {
   isNotFoundError,
 } from "@connectors/lib/error";
 import {
-  ConfluenceConfiguration,
-  ConfluenceFolder,
-  ConfluencePage,
-  ConfluenceSpace,
+  ConfluenceConfigurationModel,
+  ConfluenceFolderModel,
+  ConfluencePageModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
 import { syncStarted, syncSucceeded } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
@@ -81,7 +81,7 @@ async function fetchConfluenceConnector(connectorId: ModelId) {
 }
 
 export async function getSpaceIdsToSyncActivity(connectorId: ModelId) {
-  const spaces = await ConfluenceSpace.findAll({
+  const spaces = await ConfluenceSpaceModel.findAll({
     attributes: ["spaceId"],
     where: {
       connectorId: connectorId,
@@ -134,6 +134,10 @@ export async function confluenceGetSpaceBlobActivity({
     connectorId,
   });
 
+  const spaceInDb = await ConfluenceSpaceModel.findOne({
+    where: { connectorId, spaceId },
+  });
+
   try {
     const space = await client.getSpaceById(spaceId);
 
@@ -144,7 +148,22 @@ export async function confluenceGetSpaceBlobActivity({
     };
   } catch (err) {
     if (isNotFoundError(err) || isConfluenceNotFoundError(err)) {
+      if (spaceInDb?.deletedAt) {
+        // If the space is already marked as deleted, we still keep it in db
+        // to save the fact that the user selected it.
+        localLogger.info(
+          { deletedAt: spaceInDb.deletedAt },
+          "Could not reach space already marked as deleted."
+        );
+        return null;
+      }
+
       localLogger.info({ error: err }, "Deleting stale Confluence space.");
+
+      if (spaceInDb) {
+        await spaceInDb.update({ deletedAt: new Date() });
+      }
+
       return null;
     }
 
@@ -176,7 +195,7 @@ export async function confluenceUpsertSpaceFolderActivity({
 
   const { id: spaceId, name: spaceName } = space;
 
-  const spaceInDb = await ConfluenceSpace.findOne({
+  const spaceInDb = await ConfluenceSpaceModel.findOne({
     where: { connectorId, spaceId },
   });
 
@@ -190,9 +209,9 @@ export async function confluenceUpsertSpaceFolderActivity({
     sourceUrl: spaceInDb?.urlSuffix && `${baseUrl}/wiki${spaceInDb.urlSuffix}`,
   });
 
-  // Update the space name in db.
-  if (spaceInDb && spaceInDb.name != spaceName) {
-    await spaceInDb.update({ name: spaceName });
+  // Update the space name in db and reset deletedAt if it was set.
+  if (spaceInDb && (spaceInDb.name !== spaceName || spaceInDb.deletedAt)) {
+    await spaceInDb.update({ name: spaceName, deletedAt: null });
   }
 }
 
@@ -451,7 +470,7 @@ export async function confluenceUpdateContentParentIdsActivity(
 ) {
   const connector = await fetchConfluenceConnector(connectorId);
 
-  const pages = await ConfluencePage.findAll({
+  const pages = await ConfluencePageModel.findAll({
     attributes: ["id", "pageId", "parentId", "parentType", "spaceId"],
     where: {
       connectorId,
@@ -460,7 +479,7 @@ export async function confluenceUpdateContentParentIdsActivity(
     },
   });
 
-  const folders = await ConfluenceFolder.findAll({
+  const folders = await ConfluenceFolderModel.findAll({
     attributes: [
       "id",
       "folderId",
@@ -494,7 +513,7 @@ export async function confluenceUpdateContentParentIdsActivity(
   await concurrentExecutor(
     [...pages, ...folders],
     async (e) => {
-      const isPage = e instanceof ConfluencePage;
+      const isPage = e instanceof ConfluencePageModel;
 
       // Retrieve parents using the internal ID, which aligns with the permissions view rendering
       // and RAG requirements.
@@ -599,7 +618,7 @@ export async function fetchConfluenceSpaceIdsForConnectorActivity({
 }: {
   connectorId: ModelId;
 }) {
-  const spacesForConnector = await ConfluenceSpace.findAll({
+  const spacesForConnector = await ConfluenceSpaceModel.findAll({
     attributes: ["spaceId"],
     where: {
       connectorId,
@@ -648,7 +667,7 @@ export async function confluenceUpsertPageWithFullParentsActivity({
   const localLogger = logger.child(loggerArgs);
   const visitedAtMs = new Date().getTime();
 
-  const pageInDb = await ConfluencePage.findOne({
+  const pageInDb = await ConfluencePageModel.findOne({
     attributes: ["parentId", "skipReason"],
     where: { connectorId, pageId },
   });
@@ -734,7 +753,7 @@ interface ConfluenceUserAccountAndConnectorId {
 export async function fetchConfluenceUserAccountAndConnectorIdsActivity(): Promise<
   ConfluenceUserAccountAndConnectorId[]
 > {
-  return ConfluenceConfiguration.findAll({
+  return ConfluenceConfigurationModel.findAll({
     attributes: ["connectorId", "userAccountId"],
   });
 }
@@ -756,7 +775,7 @@ export async function confluenceGetReportPersonalActionActivity(
   }
 
   // We look for the oldest updated data.
-  const oldestPageSync = await ConfluencePage.findOne({
+  const oldestPageSync = await ConfluencePageModel.findOne({
     where: {
       connectorId,
     },

@@ -1,26 +1,35 @@
 import type { Context } from "@temporalio/activity";
 import { Worker } from "@temporalio/worker";
+import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
-import { getTemporalWorkerConnection } from "@app/lib/temporal";
+import {
+  getTemporalWorkerConnection,
+  TEMPORAL_MAXED_CACHED_WORKFLOWS,
+} from "@app/lib/temporal";
 import { ActivityInboundLogInterceptor } from "@app/lib/temporal_monitoring";
 import logger from "@app/logger/logger";
+import { getWorkflowConfig } from "@app/temporal/bundle_helper";
 import * as activities from "@app/temporal/remote_tools/activities";
-
 import { QUEUE_NAME } from "@app/temporal/remote_tools/config";
-import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 export async function runRemoteToolsSyncWorker() {
   const { connection, namespace } = await getTemporalWorkerConnection();
   const worker = await Worker.create({
-    workflowsPath: require.resolve("./workflows"),
+    ...getWorkflowConfig({
+      workerName: "remote_tools_sync",
+      getWorkflowsPath: () => require.resolve("./workflows"),
+    }),
     activities,
     taskQueue: QUEUE_NAME,
     connection,
+    maxCachedWorkflows: TEMPORAL_MAXED_CACHED_WORKFLOWS,
     namespace,
     interceptors: {
-      activityInbound: [
+      activity: [
         (ctx: Context) => {
-          return new ActivityInboundLogInterceptor(ctx, logger);
+          return {
+            inbound: new ActivityInboundLogInterceptor(ctx, logger),
+          };
         },
       ],
     },
@@ -28,7 +37,7 @@ export async function runRemoteToolsSyncWorker() {
       // Update the webpack config to use aliases from our tsconfig.json.
       webpackConfigHook: (config) => {
         const plugins = config.resolve?.plugins ?? [];
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+
         config.resolve!.plugins = [...plugins, new TsconfigPathsPlugin({})];
         return config;
       },

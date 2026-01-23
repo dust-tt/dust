@@ -631,7 +631,7 @@ pub const POSTGRES_TABLES: [&'static str; 16] = [
     );",
 ];
 
-pub const SQL_INDEXES: [&'static str; 34] = [
+pub const SQL_INDEXES: [&'static str; 35] = [
     "CREATE INDEX IF NOT EXISTS
        idx_specifications_project_created ON specifications (project, created);",
     "CREATE INDEX IF NOT EXISTS
@@ -664,6 +664,9 @@ pub const SQL_INDEXES: [&'static str; 34] = [
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_data_source_document_id
        ON data_sources_documents (data_source, document_id);",
+    "CREATE INDEX IF NOT EXISTS
+       idx_ds_documents_data_source_document_id_status_latest
+       ON data_sources_documents (data_source, document_id) WHERE status = 'latest';",
     "CREATE INDEX IF NOT EXISTS
        idx_data_sources_documents_data_source_status_timestamp
        ON data_sources_documents (data_source, status, timestamp);",

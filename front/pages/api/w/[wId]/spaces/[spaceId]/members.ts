@@ -1,4 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -6,26 +7,48 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, PatchSpaceMembersRequestBodySchema } from "@app/types";
+import { assertNever } from "@app/types";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
 }
 
-async function handler(
+const PatchSpaceMembersRequestBodySchema = t.intersection([
+  t.type({
+    isRestricted: t.boolean,
+    name: t.string,
+  }),
+  t.union([
+    t.type({
+      memberIds: t.array(t.string),
+      managementMode: t.literal("manual"),
+    }),
+    t.type({
+      groupIds: t.array(t.string),
+      managementMode: t.literal("group"),
+    }),
+  ]),
+]);
+
+export type PatchSpaceMembersRequestBodyType = t.TypeOf<
+  typeof PatchSpaceMembersRequestBodySchema
+>;
+
+export async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<PatchSpaceMembersResponseBody>>,
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!space.isRegular()) {
+  if (!space.isRegular() && !space.isProject()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only regular spaces can have members.",
+        message: "Only projects and regular spaces can have members.",
       },
     });
   }
@@ -114,6 +137,15 @@ async function handler(
                 message: "Some of the passed ids are invalid.",
               },
             });
+          case "group_requirements_not_met":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Some users have insufficient role privilege to be added to the space.",
+              },
+            });
           case "system_or_global_group":
             return apiError(req, res, {
               status_code: 400,
@@ -126,6 +158,21 @@ async function handler(
           default:
             assertNever(updateRes.error.code);
         }
+      }
+
+      // Audit log when an admin who is not a member of the space updates its permissions.
+      if (!space.canRead(auth)) {
+        const user = auth.user();
+        auditLog(
+          {
+            author: user ? user.toJSON() : "no-author",
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            spaceId: space.sId,
+            spaceName: space.name,
+            action: "space_permissions_updated_by_non_member",
+          },
+          "[Security] Admin updated space permissions without being a member"
+        );
       }
 
       return res.status(200).json({ space: space.toJSON() });

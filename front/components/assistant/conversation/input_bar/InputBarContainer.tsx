@@ -1,6 +1,14 @@
-import { ArrowUpIcon, Button, Chip } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  Chip,
+  cn,
+  TextIcon,
+  VoicePicker,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import React, {
   useCallback,
   useContext,
@@ -10,45 +18,54 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
-import { MentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/MentionDropdown";
-import useAssistantSuggestions from "@app/components/assistant/conversation/input_bar/editor/useAssistantSuggestions";
-import type { CustomEditorProps } from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useCustomEditor from "@app/components/assistant/conversation/input_bar/editor/useCustomEditor";
-import useHandleMentions from "@app/components/assistant/conversation/input_bar/editor/useHandleMentions";
-import { useMentionDropdown } from "@app/components/assistant/conversation/input_bar/editor/useMentionDropdown";
-import useUrlHandler from "@app/components/assistant/conversation/input_bar/editor/useUrlHandler";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { getPastedFileName } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import {
+  getDisplayNameFromPastedFileId,
+  getPastedFileName,
+} from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
+import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
 import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
-import { VoicePicker } from "@app/components/assistant/VoicePicker";
+import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
+import useUrlHandler from "@app/components/editor/input_bar/useUrlHandler";
+import { getIcon } from "@app/components/resources/resources_icons";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useVoiceTranscriberService } from "@app/hooks/useVoiceTranscriberService";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
 import { isNodeCandidate } from "@app/lib/connectors";
-import { getSpaceAccessPriority } from "@app/lib/spaces";
+import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type {
-  AgentMention,
+  ConversationWithoutContentType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
+  RichAgentMention,
+  RichMention,
+  SpaceType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, normalizeError } from "@app/types";
-import { getSupportedFileExtensions } from "@app/types";
+import {
+  assertNever,
+  getSupportedFileExtensions,
+  normalizeError,
+  toRichAgentMentionType,
+} from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const INPUT_BAR_ACTIONS = [
   "tools",
   "attachment",
-  "assistants-list",
-  "assistants-list-with-actions",
+  "agents-list",
+  "agents-list-with-actions",
   "voice",
   "fullscreen",
 ] as const;
@@ -56,56 +73,153 @@ export const INPUT_BAR_ACTIONS = [
 export type InputBarAction = (typeof INPUT_BAR_ACTIONS)[number];
 
 export interface InputBarContainerProps {
-  allAssistants: LightAgentConfigurationType[];
-  agentConfigurations: LightAgentConfigurationType[];
-  onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
-  owner: WorkspaceType;
-  selectedAssistant: AgentMention | null;
-  stickyMentions?: AgentMention[];
   actions: InputBarAction[];
+  allAgents: LightAgentConfigurationType[];
+  attachedNodes: DataSourceViewContentNode[];
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
   disableAutoFocus: boolean;
-  disableSendButton: boolean;
-  disableTextInput: boolean;
+  disableInput: boolean;
   fileUploaderService: FileUploaderService;
+  getDraft: () => { text: string } | null;
+  isSubmitting: boolean;
+  onEnterKeyDown: CustomEditorProps["onEnterKeyDown"];
+  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
+  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
   onNodeSelect: (node: DataSourceViewContentNode) => void;
   onNodeUnselect: (node: DataSourceViewContentNode) => void;
-  attachedNodes: DataSourceViewContentNode[];
-  onMCPServerViewSelect: (serverView: MCPServerViewType) => void;
-  onMCPServerViewDeselect: (serverView: MCPServerViewType) => void;
+  onSkillDeselect: (skill: SkillType) => void;
+  onSkillSelect: (skill: SkillType) => void;
+  owner: WorkspaceType;
+  saveDraft: (markdown: string) => void;
+  selectedAgent: RichAgentMention | null;
   selectedMCPServerViews: MCPServerViewType[];
+  selectedSkills: SkillType[];
+  stickyMentions?: RichMention[];
 }
 
 const InputBarContainer = ({
-  allAssistants,
-  agentConfigurations,
+  allAgents,
   onEnterKeyDown,
   owner,
-  selectedAssistant,
+  conversation,
+  space,
+  selectedAgent,
   stickyMentions,
   actions,
   disableAutoFocus,
-  disableSendButton,
-  disableTextInput,
+  isSubmitting,
+  disableInput,
   fileUploaderService,
+  getDraft,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
   onMCPServerViewSelect,
   onMCPServerViewDeselect,
   selectedMCPServerViews,
+  onSkillSelect,
+  onSkillDeselect,
+  selectedSkills,
+  saveDraft,
 }: InputBarContainerProps) => {
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const suggestions = useAssistantSuggestions(agentConfigurations, owner);
+  const isMobile = useIsMobile();
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
     UrlCandidate | NodeCandidate | null
   >(null);
   const [pastedCount, setPastedCount] = useState(0);
+  const [isEmpty, setIsEmpty] = useState(true);
 
   const [selectedNode, setSelectedNode] =
     useState<DataSourceViewContentNode | null>(null);
 
   // Create a ref to hold the editor instance
   const editorRef = useRef<Editor | null>(null);
+  const pastedAttachmentIdsRef = useRef<Set<string>>(new Set());
+
+  const removePastedAttachmentChip = useCallback(
+    (fileId: string) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return;
+      }
+
+      editorInstance.commands.command(({ state, tr }) => {
+        let removed = false;
+        state.doc.descendants((node, pos) => {
+          if (
+            node.type.name === "pastedAttachment" &&
+            node.attrs?.fileId === fileId
+          ) {
+            tr.delete(pos, pos + node.nodeSize);
+            removed = true;
+            return false;
+          }
+          return true;
+        });
+
+        if (removed) {
+          pastedAttachmentIdsRef.current.delete(fileId);
+        }
+
+        return removed;
+      });
+    },
+    [editorRef]
+  );
+
+  const insertPastedAttachmentChip = useCallback(
+    ({
+      fileId,
+      title,
+      from,
+      to,
+      textContent,
+    }: {
+      fileId: string;
+      title: string;
+      from: number;
+      to: number;
+      textContent: string;
+    }) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return false;
+      }
+
+      const { doc } = editorInstance.state;
+
+      let needsLeadingSpace = false;
+      if (from > 0) {
+        const $from = doc.resolve(from);
+        const textBefore = doc.textBetween($from.start(), from, " ");
+        needsLeadingSpace = !!textBefore && !/\s$/.test(textBefore);
+      }
+
+      const content = [
+        ...(needsLeadingSpace ? [{ type: "text", text: " " }] : []),
+        {
+          type: "pastedAttachment",
+          attrs: { fileId, title, textContent },
+          text: `:pasted_content[${title}]{pastedId=${fileId}}`,
+        },
+        { type: "text", text: " " },
+      ];
+
+      const success = editorInstance
+        .chain()
+        .focus()
+        .insertContentAt({ from, to }, content)
+        .run();
+
+      if (success) {
+        pastedAttachmentIdsRef.current.add(fileId);
+      }
+
+      return success;
+    },
+    [editorRef]
+  );
 
   const handleUrlDetected = useCallback(
     (candidate: UrlCandidate | NodeCandidate | null) => {
@@ -120,27 +234,92 @@ const InputBarContainer = ({
     setNodeOrUrlCandidate(null);
   };
 
-  // Pass the editor ref to the mention dropdown hook
-  const mentionDropdown = useMentionDropdown(suggestions, editorRef);
+  const sendNotification = useSendNotification();
+
+  const handleInlineText = useCallback(
+    async (fileId: string, textContent: string) => {
+      const editorInstance = editorRef.current;
+      if (!editorInstance) {
+        return;
+      }
+
+      try {
+        // Find the pasted attachment node to get its position
+        let nodePos: number | null = null;
+        editorInstance.state.doc.descendants((node, pos) => {
+          if (
+            node.type.name === "pastedAttachment" &&
+            node.attrs?.fileId === fileId
+          ) {
+            nodePos = pos;
+            return false;
+          }
+          return true;
+        });
+
+        if (nodePos === null) {
+          return;
+        }
+
+        // Replace the chip with the text content
+        const node = editorInstance.state.doc.nodeAt(nodePos);
+        if (node) {
+          editorInstance
+            .chain()
+            .focus()
+            // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+            .deleteRange({ from: nodePos, to: nodePos + node.nodeSize })
+            .insertContentAt(nodePos, textContent)
+            .run();
+        }
+
+        // Remove the file from the uploader service
+        fileUploaderService.removeFile(fileId);
+      } catch (e) {
+        sendNotification({
+          type: "error",
+          title: "Failed to inline text",
+          description: normalizeError(e).message,
+        });
+      }
+    },
+    [editorRef, fileUploaderService, sendNotification]
+  );
 
   const { editor, editorService } = useCustomEditor({
-    suggestions,
     onEnterKeyDown,
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
-    suggestionHandler: mentionDropdown.getSuggestionHandler(),
     owner,
-    onLongTextPaste: async (text: string) => {
+    conversationId: conversation?.sId,
+    onInlineText: handleInlineText,
+    onLongTextPaste: async ({ text, from, to }) => {
+      let filename = "";
+      let inserted = false;
       try {
         const newCount = pastedCount + 1;
         setPastedCount(newCount);
-        const filename = getPastedFileName(newCount);
+        filename = getPastedFileName(newCount);
+        const displayName = getDisplayNameFromPastedFileId(filename);
+
+        inserted = insertPastedAttachmentChip({
+          fileId: filename,
+          title: displayName,
+          from,
+          to,
+          textContent: text,
+        });
+
         const file = new File([text], filename, {
           type: "text/vnd.dust.attachment.pasted",
         });
 
         const uploaded = await fileUploaderService.handleFilesUpload([file]);
         if (!(uploaded && uploaded.length > 0)) {
+          if (inserted) {
+            removePastedAttachmentChip(filename);
+            inserted = false;
+          }
           sendNotification({
             type: "error",
             title: "Failed to attach pasted text",
@@ -148,6 +327,9 @@ const InputBarContainer = ({
           });
         }
       } catch (e) {
+        if (inserted && filename) {
+          removePastedAttachmentChip(filename);
+        }
         sendNotification({
           type: "error",
           title: "Failed to attach pasted text",
@@ -156,6 +338,25 @@ const InputBarContainer = ({
       }
     },
   });
+
+  useEffect(() => {
+    // If an attachment disappears from the uploader, remove its chip from the editor
+    const currentPastedIds = new Set(
+      fileUploaderService.fileBlobs
+        .filter(
+          (blob) => blob.contentType === "text/vnd.dust.attachment.pasted"
+        )
+        .map((blob) => blob.id)
+    );
+
+    const idsInEditor = Array.from(pastedAttachmentIdsRef.current);
+    idsInEditor.forEach((id) => {
+      if (!currentPastedIds.has(id)) {
+        removePastedAttachmentChip(id);
+        pastedAttachmentIdsRef.current.delete(id);
+      }
+    });
+  }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
 
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,
@@ -168,6 +369,7 @@ const InputBarContainer = ({
             break;
           case "mention":
             editorService.insertMention({
+              type: "agent",
               id: message.id,
               label: message.name,
             });
@@ -177,12 +379,42 @@ const InputBarContainer = ({
         }
       }
     },
+    onError: (error) => {
+      sendNotification({
+        type: "error",
+        title: "Failed to transcribe voice",
+        description: normalizeError(error).message,
+      });
+    },
   });
 
-  // Update the editor ref when the editor is created.
+  // Update the editor ref when the editor is created and listen for updates to the editor.
   useEffect(() => {
+    const handleUpdate = () => {
+      setIsEmpty(editorService.isEmpty());
+
+      // Auto-save draft when content changes.
+      const { markdown } = editorService.getMarkdownAndMentions();
+      saveDraft(markdown);
+    };
+
+    if (editorRef.current) {
+      editorRef.current.off("update", handleUpdate);
+    }
+
+    if (editor) {
+      editor.on("update", handleUpdate);
+    }
     editorRef.current = editor;
-  }, [editor]);
+
+    return () => {
+      if (editor) {
+        editor.off("update", handleUpdate);
+      }
+    };
+  }, [editor, editorService, saveDraft]);
+
+  const disableTextInput = isSubmitting || disableInput;
 
   // Disable the editor when disableTextInput is true.
   useEffect(() => {
@@ -195,15 +427,26 @@ const InputBarContainer = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !nodeOrUrlCandidate,
   });
+
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
 
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
     [spaces]
   );
-
-  const sendNotification = useSendNotification();
 
   const { searchResultNodes, isSearchLoading } = useSpacesSearch(
     isNodeCandidate(nodeOrUrlCandidate)
@@ -214,34 +457,39 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
+          prioritizeSpaceAccess: true,
         }
       : {
           // TextSearchParams
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          search: nodeOrUrlCandidate?.url || "",
+          search: nodeOrUrlCandidate?.url ?? "",
           searchSourceUrls: true,
           includeDataSources: false,
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
+          prioritizeSpaceAccess: true,
         }
   );
 
   useEffect(() => {
-    if (!nodeOrUrlCandidate || !onNodeSelect || isSearchLoading) {
+    if (
+      !nodeOrUrlCandidate ||
+      !onNodeSelect ||
+      isSearchLoading ||
+      isSpacesLoading
+    ) {
       return;
     }
 
     if (searchResultNodes.length > 0) {
       const nodesWithViews = searchResultNodes.flatMap((node) => {
         const { dataSourceViews, ...rest } = node;
+
         return dataSourceViews.map((view) => ({
           ...rest,
           dataSourceView: view,
-          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-          spaceName: spacesMap[view.spaceId]?.name,
         }));
       });
 
@@ -254,12 +502,7 @@ const InputBarContainer = ({
       );
 
       if (nodes.length > 0) {
-        const sortedNodes = nodes.sort(
-          (a, b) =>
-            b.spacePriority - a.spacePriority ||
-            a.spaceName.localeCompare(b.spaceName)
-        );
-        const node = sortedNodes[0];
+        const node = nodes[0];
         onNodeSelect(node);
         setSelectedNode(node);
         return;
@@ -280,24 +523,47 @@ const InputBarContainer = ({
     spacesMap,
     nodeOrUrlCandidate,
     sendNotification,
+    isSpacesLoading,
   ]);
 
-  // When input bar animation is requested it means the new button was clicked (removing focus from
+  // When input bar animation is requested, it means the new button was clicked (removing focus from
   // the input bar), we grab it back.
   const { animate } = useContext(InputBarContext);
   useEffect(() => {
     if (animate) {
-      editorService.focusEnd();
+      // Schedule focus to avoid flushing during render lifecycle.
+      queueMicrotask(() => editorService.focusEnd());
     }
   }, [animate, editorService]);
 
+  // Restore draft when switching conversations (including new conversations).
+  useEffect(() => {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
+      return;
+    }
+
+    const draft = getDraft();
+    // Only restore draft if editor is empty to avoid overwriting existing content or sticky mentions.
+    if (draft && editorService.isEmpty()) {
+      editorService.setContent(draft.text);
+    }
+  }, [conversation, editor, editorService, getDraft]);
+
   useHandleMentions(
     editorService,
-    agentConfigurations,
     stickyMentions,
-    selectedAssistant,
+    selectedAgent,
     disableAutoFocus
   );
+
+  const buttonSize = useMemo(() => {
+    return isMobile ? "sm" : "xs";
+  }, [isMobile]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -307,6 +573,9 @@ const InputBarContainer = ({
     "whitespace-pre-wrap font-normal",
     "px-3 sm:pl-4 sm:pt-3.5 pt-3"
   );
+
+  const [isToolbarOpen, setIsToolbarOpen] = useState(false);
+  const isRecording = voiceTranscriberService.status === "recording";
 
   return (
     <div
@@ -331,124 +600,221 @@ const InputBarContainer = ({
             "max-h-[40vh] min-h-14 sm:min-h-16"
           )}
         />
-        <div className="flex w-full flex-col px-1 px-2 py-1.5 sm:pb-2 sm:pr-3">
-          <div className="mb-1 flex flex-wrap items-center">
-            {selectedMCPServerViews.map((msv) => (
-              <>
+        <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
+          <Toolbar editor={editor} className="hidden sm:inline-flex" />
+        </BubbleMenu>
+        <div className="flex w-full flex-col py-1.5 sm:pb-2">
+          <div className="mb-1 flex flex-wrap items-center px-2">
+            {selectedSkills.map((skill) => (
+              <React.Fragment key={skill.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
                 <Chip
-                  key={msv.sId}
+                  size="xs"
+                  label={skill.name}
+                  icon={getSkillIcon(skill.icon)}
+                  className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onSkillDeselect(skill);
+                        }
+                  }
+                />
+                <Chip
+                  size="xs"
+                  icon={getSkillIcon(skill.icon)}
+                  className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onSkillDeselect(skill);
+                        }
+                  }
+                />
+              </React.Fragment>
+            ))}
+            {selectedMCPServerViews.map((msv) => (
+              <React.Fragment key={msv.sId}>
+                {/* Two Chips: one for larger screens (desktop), one for smaller screens (mobile). */}
+                <Chip
                   size="xs"
                   label={getMcpServerViewDisplayName(msv)}
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
                 <Chip
-                  key={`mobile-${msv.sId}`}
                   size="xs"
                   icon={getIcon(msv.server.icon)}
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
-                  onRemove={() => {
-                    onMCPServerViewDeselect(msv);
-                  }}
+                  onRemove={
+                    disableInput
+                      ? undefined
+                      : () => {
+                          onMCPServerViewDeselect(msv);
+                        }
+                  }
                 />
-              </>
+              </React.Fragment>
             ))}
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              {actions.includes("attachment") && (
-                <>
-                  <input
-                    accept={getSupportedFileExtensions().join(",")}
-                    onChange={async (e) => {
-                      await fileUploaderService.handleFileChange(e);
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = "";
-                      }
-                      editorService.focusEnd();
-                    }}
-                    ref={fileInputRef}
-                    style={{ display: "none" }}
-                    type="file"
-                    multiple={true}
-                  />
-                  <InputBarAttachmentsPicker
-                    fileUploaderService={fileUploaderService}
-                    owner={owner}
-                    isLoading={false}
-                    onNodeSelect={onNodeSelect}
-                    onNodeUnselect={onNodeUnselect}
-                    attachedNodes={attachedNodes}
-                    disabled={disableTextInput}
-                  />
-                </>
-              )}
-              {actions.includes("tools") && (
-                <ToolsPicker
-                  owner={owner}
-                  selectedMCPServerViews={selectedMCPServerViews}
-                  onSelect={onMCPServerViewSelect}
-                  onDeselect={onMCPServerViewDeselect}
-                  disabled={disableTextInput}
-                />
-              )}
-              {(actions.includes("assistants-list") ||
-                actions.includes("assistants-list-with-actions")) && (
-                <AssistantPicker
-                  owner={owner}
-                  size="xs"
-                  onItemClick={(c) => {
-                    editorService.insertMention({ id: c.sId, label: c.name });
-                  }}
-                  assistants={allAssistants}
-                  showDropdownArrow={false}
-                  showFooterButtons={actions.includes(
-                    "assistants-list-with-actions"
-                  )}
-                  disabled={disableTextInput}
-                />
-              )}
-            </div>
-            <div className="grow" />
-            <div className="flex items-center gap-2 md:gap-1">
-              {featureFlags.hasFeature("simple_audio_transcription") &&
-                actions.includes("voice") && (
-                  <VoicePicker
-                    voiceTranscriberService={voiceTranscriberService}
-                    disabled={disableTextInput}
-                  />
+          <div className="relative flex w-full items-center justify-between">
+            {!isRecording && (
+              <MobileToolbar
+                editor={editor}
+                className={cn(
+                  "sm:hidden",
+                  isToolbarOpen
+                    ? "pointer-events-auto w-full"
+                    : "pointer-events-none hidden w-[120px]"
                 )}
-              <Button
-                size="xs"
-                isLoading={disableSendButton}
-                icon={ArrowUpIcon}
-                variant="highlight"
-                disabled={
-                  editorService.isEmpty() ||
-                  disableSendButton ||
-                  voiceTranscriberService.isRecording ||
-                  voiceTranscriberService.isTranscribing
-                }
-                onClick={async () => {
-                  onEnterKeyDown(
-                    editorService.isEmpty(),
-                    editorService.getMarkdownAndMentions(),
-                    () => {
-                      editorService.clearEditor();
-                    },
-                    editorService.setLoading
-                  );
+                onClose={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  e.stopPropagation();
+                  setIsToolbarOpen(false);
                 }}
               />
+            )}
+            <div
+              className={cn(
+                "flex w-full items-center px-2",
+                isToolbarOpen && "opacity-0"
+              )}
+            >
+              {!isRecording && (
+                <div className="flex items-center">
+                  <Button
+                    variant="ghost-secondary"
+                    icon={TextIcon}
+                    size={buttonSize}
+                    className="flex sm:hidden"
+                    onClick={() => setIsToolbarOpen(!isToolbarOpen)}
+                  />
+                  {actions.includes("attachment") && (
+                    <>
+                      <input
+                        accept={getSupportedFileExtensions().join(",")}
+                        onChange={async (e) => {
+                          await fileUploaderService.handleFileChange(e);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                          }
+                          editorService.focusEnd();
+                        }}
+                        ref={fileInputRef}
+                        style={{ display: "none" }}
+                        type="file"
+                        multiple={true}
+                      />
+                      <InputBarAttachmentsPicker
+                        fileUploaderService={fileUploaderService}
+                        owner={owner}
+                        isLoading={false}
+                        onNodeSelect={onNodeSelect}
+                        onNodeUnselect={onNodeUnselect}
+                        attachedNodes={attachedNodes}
+                        disabled={disableTextInput}
+                        buttonSize={buttonSize}
+                        conversation={conversation}
+                        space={space}
+                      />
+                    </>
+                  )}
+                  {actions.includes("tools") && (
+                    <ToolsPicker
+                      owner={owner}
+                      selectedMCPServerViews={selectedMCPServerViews}
+                      onSelect={onMCPServerViewSelect}
+                      onDeselect={onMCPServerViewDeselect}
+                      selectedSkills={selectedSkills}
+                      onSkillSelect={onSkillSelect}
+                      onSkillDeselect={onSkillDeselect}
+                      disabled={disableTextInput}
+                      buttonSize={buttonSize}
+                    />
+                  )}
+                  {(actions.includes("agents-list") ||
+                    actions.includes("agents-list-with-actions")) && (
+                    <AgentPicker
+                      owner={owner}
+                      size={buttonSize}
+                      onItemClick={(c) => {
+                        editorService.insertMention(toRichAgentMentionType(c));
+                      }}
+                      agents={allAgents}
+                      showDropdownArrow={false}
+                      showFooterButtons={actions.includes(
+                        "agents-list-with-actions"
+                      )}
+                      disabled={disableTextInput}
+                    />
+                  )}
+                </div>
+              )}
+              <div className="grow" />
+              <div className="flex items-center gap-2 md:gap-1">
+                {owner.metadata?.allowVoiceTranscription !== false &&
+                  actions.includes("voice") && (
+                    <VoicePicker
+                      status={voiceTranscriberService.status}
+                      level={voiceTranscriberService.level}
+                      elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                      onRecordStart={voiceTranscriberService.startRecording}
+                      onRecordStop={voiceTranscriberService.stopRecording}
+                      disabled={disableTextInput}
+                      size={buttonSize}
+                      showStopLabel={!isMobile}
+                    />
+                  )}
+                <Button
+                  size={buttonSize}
+                  isLoading={
+                    isSubmitting &&
+                    voiceTranscriberService.status !== "transcribing"
+                  }
+                  icon={ArrowUpIcon}
+                  variant="highlight"
+                  disabled={
+                    isEmpty ||
+                    disableTextInput ||
+                    voiceTranscriberService.status !== "idle"
+                  }
+                  onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (disableAutoFocus) {
+                      editorService.blur();
+                      // wait a bit for the keyboard to be closed on mobile
+                      if (isMobile) {
+                        editorService.setLoading(true);
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 500)
+                        );
+                        editorService.setLoading(false);
+                      }
+                    }
+                    onEnterKeyDown(
+                      editorService.isEmpty(),
+                      editorService.getMarkdownAndMentions(),
+                      () => {
+                        editorService.clearEditor();
+                      },
+                      editorService.setLoading
+                    );
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      <MentionDropdown mentionDropdownState={mentionDropdown} />
     </div>
   );
 };

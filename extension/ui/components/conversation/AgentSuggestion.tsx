@@ -1,7 +1,7 @@
 import { useDustAPI } from "@app/shared/lib/dust_api";
 import { GLOBAL_AGENTS_SID } from "@app/shared/lib/global_agents";
-import { AssistantPicker } from "@app/ui/components/assistants/AssistantPicker";
-import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
+import { AgentPicker } from "@app/ui/components/agents/AgentPicker";
+import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import type {
   LightAgentConfigurationType,
@@ -16,7 +16,7 @@ import {
   Spinner,
   useSendNotification,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 interface AgentSuggestionProps {
   conversationId: string;
@@ -32,7 +32,9 @@ export function AgentSuggestion({
   const { agentConfigurations } = usePublicAgentConfigurations();
   const sendNotification = useSendNotification();
 
+  const autoSelectedMessageIdRef = useRef<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuggestion, setShowSuggestion] = useState(false);
   const dustAPI = useDustAPI();
 
   const { submit: handleSelectSuggestion } = useSubmitFunction(
@@ -59,8 +61,22 @@ export function AgentSuggestion({
           description: mRes.error.message,
         });
       }
+      // In case the auto-selection failed, we show the suggestion.
+      if (dustAgent && !showSuggestion) {
+        setShowSuggestion(true);
+      }
     }
   );
+
+  const dustAgent = agentConfigurations.find(
+    (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST && agent.status === "active"
+  );
+
+  useEffect(() => {
+    if (!dustAgent) {
+      setShowSuggestion(true);
+    }
+  }, [dustAgent]);
 
   const [topAgents, otherAgents] = useMemo(() => {
     const agents = agentConfigurations.sort((a, b) => {
@@ -69,16 +85,34 @@ export function AgentSuggestion({
     return [agents.slice(0, 3), agents.slice(3)];
   }, [agentConfigurations]);
 
+  useEffect(() => {
+    if (
+      !dustAgent ||
+      userMessage.id === -1 ||
+      userMessage.sId.startsWith("placeholder") ||
+      userMessage.sId === autoSelectedMessageIdRef.current
+    ) {
+      return;
+    }
+
+    autoSelectedMessageIdRef.current = userMessage.sId;
+    void handleSelectSuggestion(dustAgent);
+  }, [dustAgent, userMessage.id, userMessage.sId, handleSelectSuggestion]);
+
+  if (!showSuggestion) {
+    return null;
+  }
+
   return (
     <>
       <div className="pt-4">
         <div className="flex items-center gap-2">
-          <span className="grow text-sm text-muted-foreground dark:text-muted-foreground-night">
+          <span className="text-muted-foreground dark:text-muted-foreground-night grow text-sm">
             Which Agent would you like to chat with?
           </span>
-          <AssistantPicker
+          <AgentPicker
             owner={owner}
-            assistants={otherAgents}
+            agents={otherAgents}
             onItemClick={async (agent) => {
               if (!isLoading) {
                 setIsLoading(true);
@@ -142,9 +176,9 @@ function sortAgents(
     return 1;
   }
 
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
-  } else if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  } else if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 

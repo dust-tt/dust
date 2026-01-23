@@ -32,14 +32,13 @@ export const Basic: Story = {
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
+          <DialogTitle>Enable notifications for new messages</DialogTitle>
           <DialogDescription>
             Make changes to your profile settings here
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          Your profile details will be updated based on the information you
-          provide.
+          Get notified in your browser when messages arrive.
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

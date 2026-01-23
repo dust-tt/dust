@@ -5,7 +5,8 @@ import {
   DialogFooter,
   DialogHeader,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
+
+import { useAppRouter } from "@app/lib/platform";
 
 interface UpgradePlanDialogProps {
   isOpen: boolean;
@@ -22,7 +23,7 @@ export function UpgradePlanDialog({
   title = "Free plan",
   description = "You cannot enable auto-join with the free plan. Upgrade your plan to invite other members.",
 }: UpgradePlanDialogProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   return (
     <Dialog open={isOpen}>
@@ -30,16 +31,13 @@ export function UpgradePlanDialog({
         <DialogHeader>{title}</DialogHeader>
         {description}
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose}>
-            Cancel
-          </Button>
+          <Button variant="outline" label="Cancel" onClick={onClose} />
           <Button
+            label="Check Dust plans"
             onClick={() => {
               void router.push(`/w/${workspaceId}/subscription`);
             }}
-          >
-            Check Dust plans
-          </Button>
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

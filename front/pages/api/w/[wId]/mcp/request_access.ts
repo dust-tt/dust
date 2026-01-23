@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -120,7 +121,7 @@ async function handler(
 
   const result = await sendEmailWithTemplate({
     to: mcpServerView.editedByUser.email,
-    from: { name: "Dust team", email: "support@dust.help" },
+    from: config.getSupportEmailAddress(),
     replyTo: emailRequester,
     subject: `[Dust] Tools request from ${emailRequester}`,
     body,
@@ -135,9 +136,7 @@ async function handler(
       },
     });
   }
-  return res
-    .status(200)
-    .json({ success: true, emailTo: mcpServerView.editedByUser.email });
+  return res.status(200).json({ success: true });
 }
 
 export default withSessionAuthenticationForWorkspace(handler);

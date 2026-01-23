@@ -78,6 +78,7 @@ import { CoreAPI } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<WithAPIErrorResponse<GetDocumentsResponseType>>,
   auth: Authenticator
 ): Promise<void> {

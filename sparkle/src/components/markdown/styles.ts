@@ -1,5 +1,8 @@
 import { blockquoteVariants } from "@sparkle/components/markdown/BlockquoteBlock";
-import { codeBlockVariants } from "@sparkle/components/markdown/CodeBlock";
+import {
+  codeBlockVariants,
+  codeInlineVariants,
+} from "@sparkle/components/markdown/CodeBlock";
 import {
   liBlockVariants,
   olBlockVariants,
@@ -12,7 +15,8 @@ import { preBlockVariants } from "@sparkle/components/markdown/PreBlock";
 // It is used in the InputBar component.
 export const markdownStyles = {
   blockquote: blockquoteVariants,
-  code: codeBlockVariants,
+  codeInline: codeInlineVariants,
+  codeBlock: codeBlockVariants,
   list: liBlockVariants,
   orderedList: olBlockVariants,
   paragraph: paragraphBlockVariants,

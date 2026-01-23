@@ -1,5 +1,6 @@
 import { Button, Div3D, Hover3D, RocketIcon } from "@dust-tt/sparkle";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { ExtensibilitySection } from "@app/components/home/content/Product/ExtensibilitySection";
@@ -10,16 +11,13 @@ import { ImgBlock, QuoteSection } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.galaxy),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
@@ -32,8 +30,15 @@ export const DemoVideo: DemoVideoProps = {
 };
 
 export default function DustPlatform() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust AI Platform: Build Custom AI Agents for Your Organization"
+        description="The enterprise platform for building, deploying, and managing AI agents. Connect your tools, customize workflows, and maintain security and compliance."
+        pathname={router.asPath}
+      />
       <PlatformIntroSection />
       <Grid>
         <div
@@ -73,12 +78,12 @@ export default function DustPlatform() {
             </Hover3D>
           </ImgBlock>
           <ImgBlock
-            title={<>Dust Apps: Expand your agents' capabilities</>}
+            title={<>Custom Webhooks: Connect agents to your workflow</>}
             content={[
               <>
-                Orchestrate complex workflows by calling models, APIs, executing
-                code, or consulting data sources. Build custom actions, chain
-                models, or even call into your own infrastructure.
+                Build webhook endpoints to trigger agents from any external
+                system. Receive events from GitHub, Jira, Slack, or your own
+                services with full company context.
               </>,
             ]}
           >
@@ -88,16 +93,13 @@ export default function DustPlatform() {
               className={classNames("relative")}
             >
               <Div3D depth={-20}>
-                <img src="/static/landing/apps/apps1.png" />
+                <img src="/static/landing/webhooks/Webhooks.png" />
               </Div3D>
               <Div3D depth={0} className="absolute top-0">
-                <img src="/static/landing/apps/apps2.png" />
+                <img src="/static/landing/webhooks/Webhooks3.png" />
               </Div3D>
               <Div3D depth={15} className="absolute top-0">
-                <img src="/static/landing/apps/apps3.png" />
-              </Div3D>
-              <Div3D depth={60} className="absolute top-0">
-                <img src="/static/landing/apps/apps4.png" />
+                <img src="/static/landing/webhooks/Webhooks2.png" />
               </Div3D>
             </Hover3D>
           </ImgBlock>
@@ -146,7 +148,15 @@ export default function DustPlatform() {
       >
         <div className="mt-4 flex justify-center gap-4">
           <Link href="/home/contact" shallow={true}>
-            <Button variant="outline" size="md" label="Request a demo" />
+            <Button
+              variant="outline"
+              size="md"
+              label="Request a demo"
+              onClick={withTracking(
+                TRACKING_AREAS.SOLUTIONS,
+                "platform_footer_cta_secondary"
+              )}
+            />
           </Link>
 
           <Link href="/home/pricing" shallow={true}>
@@ -155,6 +165,10 @@ export default function DustPlatform() {
               size="md"
               label="Try Dust now"
               icon={RocketIcon}
+              onClick={withTracking(
+                TRACKING_AREAS.SOLUTIONS,
+                "platform_footer_cta_primary"
+              )}
             />
           </Link>
         </div>

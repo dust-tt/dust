@@ -1,6 +1,6 @@
 import { Button } from "@dust-tt/sparkle";
-import Head from "next/head";
 import Link from "next/link";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { BenefitsSection } from "@app/components/home/content/Solutions/BenefitsSection";
@@ -12,10 +12,10 @@ import {
   pageSettings,
   Quote,
   salesFAQItems,
-  Stories,
+  // Stories,
   UseCases,
 } from "@app/components/home/content/Solutions/configs/salesConfig";
-import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
+// import { CustomerStoriesSection } from "@app/components/home/content/Solutions/CustomerStoriesSection";
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
 import { HeroSection } from "@app/components/home/content/Solutions/HeroSection";
 import { UseCasesSection } from "@app/components/home/content/Solutions/UseCasesSection";
@@ -27,17 +27,14 @@ import { Grid } from "@app/components/home/ContentComponents";
 import { FAQ } from "@app/components/home/FAQ";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.octahedron),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
@@ -52,20 +49,21 @@ const GRID_SECTION_CLASSES = classNames(
 );
 
 export default function Sales() {
+  const router = useRouter();
+
   return (
     <>
-      <Head>
-        <title key="title">
-          AI sales Agents: build custom agents in minutes | Dust
-        </title>
-        <meta
-          key="description"
-          name="description"
-          content="Build custom AI sales agents that integrate with your CRM and tools. Automate RFPs, personalize outreach, boost team performance. Deploy in minutes, no coding required. Start free."
-        />
-      </Head>
+      <PageMetadata
+        title={pageSettings.seo.title}
+        description={pageSettings.seo.description}
+        pathname={router.asPath}
+      />
       <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
-        <HeroSection {...Hero} accentColor={pageSettings.accentColor} />
+        <HeroSection
+          {...Hero}
+          accentColor={pageSettings.accentColor}
+          trackingPrefix="sales_hero"
+        />
         <Grid>
           <div className={GRID_SECTION_CLASSES}>
             <BenefitsSection benefits={Benefits} />
@@ -82,12 +80,12 @@ export default function Sales() {
           <div className={GRID_SECTION_CLASSES}>
             <QuoteSection {...Quote} />
           </div>
-          <div className={GRID_SECTION_CLASSES}>
+          {/* <div className={GRID_SECTION_CLASSES}>
             <CustomerStoriesSection
               title="Customer stories"
               stories={Stories}
             />
-          </div>
+          </div> */}
           <TrustedBy />
           <div className={GRID_SECTION_CLASSES}>
             <FAQ title="FAQ" items={salesFAQItems} />
@@ -102,6 +100,10 @@ export default function Sales() {
                       size="md"
                       label={Hero.ctaButtons.primary.label}
                       icon={Hero.ctaButtons.primary.icon}
+                      onClick={withTracking(
+                        TRACKING_AREAS.SOLUTIONS,
+                        "sales_footer_cta_primary"
+                      )}
                     />
                   </Link>
                 )}
@@ -111,6 +113,10 @@ export default function Sales() {
                     size="md"
                     label={Hero.ctaButtons.secondary.label}
                     href={Hero.ctaButtons.secondary.href}
+                    onClick={withTracking(
+                      TRACKING_AREAS.SOLUTIONS,
+                      "sales_footer_cta_secondary"
+                    )}
                   />
                 )}
               </div>

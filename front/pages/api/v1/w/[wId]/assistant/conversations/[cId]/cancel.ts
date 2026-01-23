@@ -123,5 +123,4 @@ async function handler(
 
 export default withPublicAPIAuthentication(handler, {
   isStreaming: true,
-  requiredScopes: { POST: "update:conversation" },
 });

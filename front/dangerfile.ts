@@ -4,9 +4,20 @@ import fs from "fs";
 const sdkAckLabel = "sdk-ack";
 const migrationAckLabel = "migration-ack";
 const documentationAckLabel = "documentation-ack";
-const auth0UpdateLabelAck = "auth0-update-ack";
 const rawSqlAckLabel = "raw-sql-ack";
 const sparkleVersionAckLabel = "sparkle-version-ack";
+
+const REMOVE_INDEX_WARNING =
+  "\n\nBefore deleting an index, make sure it is actually not used by running:" +
+  "\n```sql" +
+  "\nSELECT s.relname AS table_name," +
+  "\n       indexrelname AS index_name," +
+  "\n       i.indisunique," +
+  "\n       idx_scan AS index_scans" +
+  "\nFROM   pg_catalog.pg_stat_user_indexes s," +
+  "\n       pg_index i" +
+  "\nWHERE  i.indexrelid = s.indexrelid;" +
+  "\n```";
 
 const hasLabel = (label: string) => {
   return danger.github.issue.labels.some((l) => l.name === label);
@@ -19,7 +30,8 @@ function failMigrationAck() {
       ` 1. Addition: migrate and deploy\n` +
       ` 2. Deletion: deploy and migrate\n\n` +
       `Please add the \`${migrationAckLabel}\` label to acknowledge ` +
-      `that a migration will be needed once merged into 'main'.`
+      `that a migration will be needed once merged into 'main'.` +
+      REMOVE_INDEX_WARNING
   );
 }
 
@@ -27,7 +39,8 @@ function warnMigrationAck(migrationAckLabel: string) {
   warn(
     "Files in `**/lib/models/` have been modified and the PR has the `" +
       migrationAckLabel +
-      "` label. Don't forget to run the migration from prodbox."
+      "` label. Don't forget to run the migration from prodbox." +
+      REMOVE_INDEX_WARNING
   );
 }
 
@@ -67,29 +80,6 @@ function checkDeployPlanSection() {
       "Please include a detailed Deploy Plan section in your PR description, at least 20 characters long."
     );
   }
-}
-
-function checkAuth0UpdateLabel() {
-  if (!hasLabel(auth0UpdateLabelAck)) {
-    failAuth0UpdateLabel();
-  } else {
-    warnAuth0UpdateLabel(auth0UpdateLabelAck);
-  }
-}
-
-function failAuth0UpdateLabel() {
-  fail(
-    "`**/lib/utils/blacklisted_email_domains.ts` has been modified. " +
-      `Please add the \`${auth0UpdateLabelAck}\` label to acknowledge that the Auth0 blacklist has been updated.`
-  );
-}
-
-function warnAuth0UpdateLabel(auth0UpdateLabelAck: string) {
-  warn(
-    "`**/lib/utils/blacklisted_email_domains.ts` has been modified and the PR has the `" +
-      auth0UpdateLabelAck +
-      "` label. Don't forget to update the Auth0 blacklist."
-  );
 }
 
 function checkDocumentationLabel() {
@@ -214,6 +204,44 @@ async function checkRawSqlRegistry(filePaths: string[]) {
 }
 
 /**
+ * Check if added lines contain new WorkspaceAwareModel definitions
+ */
+async function checkWorkspaceAwareModels(filePaths: string[]) {
+  const workspaceAwarePatterns = [
+    /extends\s+WorkspaceAwareModel/,
+    /extends\s+SoftDeletableWorkspaceAwareModel/,
+  ];
+
+  const filesWithNewModels: string[] = [];
+
+  await Promise.all(
+    filePaths.map(async (file) => {
+      try {
+        const content = await danger.git.diffForFile(file);
+
+        if (
+          content !== null &&
+          workspaceAwarePatterns.some((pattern) => pattern.test(content.added))
+        ) {
+          filesWithNewModels.push(file);
+        }
+      } catch (error) {
+        console.error(`Error checking file ${file}:`, error);
+      }
+    })
+  );
+
+  if (filesWithNewModels.length > 0) {
+    for (const file of filesWithNewModels) {
+      warn(
+        `File "${file}" introduces a new WorkspaceAwareModel or SoftDeletableWorkspaceAwareModel. ` +
+          `Please ensure it is included in workspace/space deletion workflow to avoid crashing temporal.`
+      );
+    }
+  }
+}
+
+/**
  * Triggers related checks based on modified files
  */
 async function warnTriggersWorkflowChanges() {
@@ -242,6 +270,7 @@ async function checkDiffFiles() {
   if (modifiedModelFiles.length > 0) {
     checkMigrationLabel();
     checkDeployPlanSection();
+    await checkWorkspaceAwareModels(modifiedModelFiles);
   }
 
   // Public API files
@@ -251,15 +280,6 @@ async function checkDiffFiles() {
 
   if (modifiedPublicApiFiles.length > 0) {
     checkDocumentationLabel();
-  }
-
-  // Auth0 files
-  const modifiedAuth0Files = diffFiles.filter((path) => {
-    return path.startsWith("front/lib/utils/blacklisted_email_domains.ts");
-  });
-
-  if (modifiedAuth0Files.length > 0) {
-    checkAuth0UpdateLabel();
   }
 
   // SDK files

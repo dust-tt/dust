@@ -1,6 +1,7 @@
 import {
   Button,
   Hoverable,
+  LinkWrapper,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -8,7 +9,6 @@ import {
   SearchInput,
 } from "@dust-tt/sparkle";
 import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
@@ -126,7 +126,7 @@ export default function DataSourcePicker({
         {readOnly ? (
           selectedDataSourceView ? (
             <MaybeLink href={getEditLink(selectedDataSourceView)}>
-              <div className="max-w-20 mr-1 truncate">
+              <div className="mr-1 max-w-20 truncate">
                 {selectedDataSourceView.dataSource.name}
               </div>
             </MaybeLink>
@@ -161,7 +161,7 @@ export default function DataSourcePicker({
                   size="xs"
                 />
               ) : (
-                <Link
+                <LinkWrapper
                   href={`/w/${owner.sId}/spaces/${space.sId}`}
                   className={classNames(
                     readOnly
@@ -170,7 +170,7 @@ export default function DataSourcePicker({
                   )}
                 >
                   Create DataSource
-                </Link>
+                </LinkWrapper>
               )}
             </PopoverTrigger>
 

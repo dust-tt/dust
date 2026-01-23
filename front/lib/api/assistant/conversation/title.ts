@@ -1,37 +1,72 @@
-import { runActionStreamed } from "@app/lib/actions/server";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
+import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
+import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { publishConversationEvent } from "@app/lib/api/assistant/streaming/events";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { getDustProdAction } from "@app/lib/registry";
-import { cloneBaseConfig } from "@app/lib/registry";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
-import type { ConversationType, Result } from "@app/types";
-import { Err, getLargeNonAnthropicWhitelistedModel, Ok } from "@app/types";
-import type { RunAgentArgs } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import type {
+  ConversationType,
+  ModelConfigurationType,
+  Result,
+  UserMessageType,
+  WorkspaceType,
+} from "@app/types";
+import {
+  CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
+  ConversationError,
+  Err,
+  GEMINI_2_5_FLASH_MODEL_CONFIG,
+  getSmallWhitelistedModel,
+  GPT_5_1_MODEL_CONFIG,
+  isProviderWhitelisted,
+  Ok,
+} from "@app/types";
+import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
-const MIN_GENERATION_TOKENS = 1024;
-
-export async function ensureConversationTitle(
+export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgs
+  agentLoopArgs: AgentLoopArgs
 ): Promise<string | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
+    if (
+      runAgentDataRes.error instanceof ConversationError &&
+      runAgentDataRes.error.type === "conversation_not_found"
+    ) {
+      return null;
+    }
+
     throw runAgentDataRes.error;
   }
 
   const { conversation, userMessage } = runAgentDataRes.value;
 
+  const authResult = await Authenticator.fromJSON(authType);
+  if (authResult.isErr()) {
+    throw new Error(
+      `Failed to deserialize authenticator: ${authResult.error.code}`
+    );
+  }
+  const auth = authResult.value;
+
+  return ensureConversationTitle(auth, { conversation, userMessage });
+}
+
+export async function ensureConversationTitle(
+  auth: Authenticator,
+  {
+    conversation,
+    userMessage,
+  }: { conversation: ConversationType; userMessage: UserMessageType }
+): Promise<string | null> {
   // If the conversation has a title, return early.
   if (conversation.title) {
     return conversation.title;
   }
-  const auth = await Authenticator.fromJSON(authType);
 
-  // TODO(DURABLE-AGENTS 2025-07-15): Add back the agent message before generating the title.
   const titleRes = await generateConversationTitle(auth, {
     ...conversation,
     content: [...conversation.content, [userMessage]],
@@ -66,26 +101,49 @@ export async function ensureConversationTitle(
   return title;
 }
 
+const FUNCTION_NAME = "update_title";
+
+const specifications: AgentActionSpecification[] = [
+  {
+    name: FUNCTION_NAME,
+    description: "Update the title of the conversation",
+    inputSchema: {
+      type: "object",
+      properties: {
+        conversation_title: {
+          type: "string",
+          description: "A short title that summarizes the conversation.",
+        },
+      },
+      required: ["conversation_title"],
+    },
+  },
+];
+
 async function generateConversationTitle(
   auth: Authenticator,
   conversation: ConversationType
 ): Promise<Result<string, Error>> {
   const owner = auth.getNonNullableWorkspace();
 
-  const model = getLargeNonAnthropicWhitelistedModel(owner);
+  const model = getFastModelConfig(owner);
   if (!model) {
     return new Err(
       new Error("Failed to find a whitelisted model to generate title")
     );
   }
 
+  const prompt =
+    "Generate a concise conversation title (3-8 words) based on the user's message and context. " +
+    "The title should capture the main topic or request without being too generic.";
+
   // Turn the conversation into a digest that can be presented to the model.
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
     model,
-    prompt: "", // There is no prompt for title generation.
+    prompt,
     tools: "",
-    allowedTokenCount: model.contextSize - MIN_GENERATION_TOKENS,
+    allowedTokenCount: model.contextSize - model.generationTokensCount,
     excludeActions: true,
     excludeImages: true,
   });
@@ -106,71 +164,55 @@ async function generateConversationTitle(
     );
   }
 
-  // Note: the last message is generally not a user message (though it can happen if no agent were
-  // mentioned) which, without stitching, will cause the title generation to fail since models
-  // expect a user message to be the last message. The stitching is done in the
-  // `assistant-v2-title-generator` app.
-  const config = cloneBaseConfig(
-    getDustProdAction("assistant-v2-title-generator").config
-  );
-  config.MODEL.provider_id = model.providerId;
-  config.MODEL.model_id = model.modelId;
-
-  const res = await runActionStreamed(
+  const res = await runMultiActionsAgent(
     auth,
-    "assistant-v2-title-generator",
-    config,
-    [
-      {
-        conversation: conv,
-      },
-    ],
     {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
+      providerId: model.providerId,
+      modelId: model.modelId,
+      functionCall: FUNCTION_NAME,
+      useCache: false,
+    },
+    {
+      conversation: conv,
+      prompt: prompt,
+      specifications,
+      forceToolCall: FUNCTION_NAME,
+    },
+    {
+      context: {
+        operationType: "conversation_title_suggestion",
+        conversationId: conversation.sId,
+        userId: auth.user()?.sId,
+        workspaceId: owner.sId,
+      },
     }
   );
 
   if (res.isErr()) {
-    return new Err(
-      new Error(`Error generating conversation title: ${res.error}`)
-    );
+    return new Err(res.error);
   }
 
-  const { eventStream } = res.value;
-  let title: string | null = null;
-
-  for await (const event of eventStream) {
-    if (event.type === "error") {
-      return new Err(
-        new Error(
-          `Error generating conversation title: ${event.content.message}`
-        )
-      );
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        return new Err(
-          new Error(`Error generating conversation title: ${e.error}`)
-        );
-      }
-
-      if (event.content.block_name === "OUTPUT" && e.value) {
-        const v = e.value as any;
-        if (v.conversation_title) {
-          title = v.conversation_title;
-        }
-      }
-    }
+  // Extract title from function call result.
+  if (res.value.actions?.[0]?.arguments?.conversation_title) {
+    const title = res.value.actions[0].arguments.conversation_title;
+    return new Ok(title);
   }
 
-  if (title === null) {
-    return new Err(
-      new Error("Error generating conversation title: malformed output")
-    );
+  return new Err(new Error("No title found in LLM response"));
+}
+
+function getFastModelConfig(
+  owner: WorkspaceType
+): ModelConfigurationType | null {
+  if (isProviderWhitelisted(owner, "openai")) {
+    return GPT_5_1_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "anthropic")) {
+    return CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG;
+  }
+  if (isProviderWhitelisted(owner, "google_ai_studio")) {
+    return GEMINI_2_5_FLASH_MODEL_CONFIG;
   }
 
-  return new Ok(title);
+  return getSmallWhitelistedModel(owner);
 }

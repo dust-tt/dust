@@ -1,37 +1,49 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
+import { assertNeverAndIgnore } from "@app/shared/lib/assertNeverAndIgnore";
 import { retryMessage } from "@app/shared/lib/conversation";
 import { formatTimestring } from "@app/shared/lib/utils";
 import type { StoredUser } from "@app/shared/services/auth";
 import type {
   AgentMessageStateEvent,
   MessageTemporaryState,
-} from "@app/ui/components/assistants/state/messageReducer";
-import { messageReducer } from "@app/ui/components/assistants/state/messageReducer";
+} from "@app/ui/components/agents/state/messageReducer";
+import { messageReducer } from "@app/ui/components/agents/state/messageReducer";
 import { ActionValidationContext } from "@app/ui/components/conversation/ActionValidationProvider";
 import { AgentMessageActions } from "@app/ui/components/conversation/AgentMessageActions";
-import type { FeedbackSelectorProps } from "@app/ui/components/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/ui/components/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/ui/components/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
+import { MCPServerAuthRequired } from "@app/ui/components/conversation/MCPServerAuthRequired";
+import {
+  AgentMentionBlock,
+  agentMentionDirective,
+} from "@app/ui/components/markdown/AgentMentionBlock";
 import {
   CitationsContext,
   CiteBlock,
   getCiteDirective,
 } from "@app/ui/components/markdown/CiteBlock";
+import {
+  getImgPlugin,
+  imgDirective,
+} from "@app/ui/components/markdown/ImageBlock";
 import type { MarkdownCitation } from "@app/ui/components/markdown/MarkdownCitation";
 import {
-  MentionBlock,
-  mentionDirective,
-} from "@app/ui/components/markdown/MentionBlock";
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/ui/components/markdown/UserMentionBlock";
 import { useSubmitFunction } from "@app/ui/components/utils/useSubmitFunction";
 import { useEventSource } from "@app/ui/hooks/useEventSource";
 import type {
   AgentMessagePublicType,
+  LightAgentConfigurationType,
   LightWorkspaceType,
   SearchResultResourceType,
+  UserMessageType,
   WebsearchResultResourceType,
 } from "@dust-tt/client";
 import {
-  assertNever,
+  isAgentMessage,
   isRunAgentResultResourceType,
   isSearchResultResourceType,
   isWebsearchResultResourceType,
@@ -55,7 +67,6 @@ import {
   FaviconIcon,
   InformationCircleIcon,
   Markdown,
-  Page,
   Popover,
   useCopyToClipboard,
   useSendNotification,
@@ -73,16 +84,6 @@ import {
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import { visit } from "unist-util-visit";
-
-export const FeedbackSelectorPopoverContent = () => {
-  return (
-    <div className="mb-4 mt-2 flex flex-col gap-2">
-      <Page.P variant="secondary">
-        Your feedback is available to editors of the agent.
-      </Page.P>
-    </div>
-  );
-};
 
 export function visualizationDirective() {
   return (tree: any) => {
@@ -173,7 +174,8 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   message: AgentMessagePublicType;
-  messageFeedback: FeedbackSelectorProps;
+  userAndAgentMessages: (UserMessageType | AgentMessagePublicType)[];
+  messageFeedback: FeedbackSelectorBaseProps;
   owner: LightWorkspaceType;
   user: StoredUser;
 }
@@ -210,6 +212,7 @@ export function AgentMessage({
   conversationId,
   isLastMessage,
   message,
+  userAndAgentMessages,
   messageFeedback,
   owner,
   user,
@@ -235,24 +238,39 @@ export function AgentMessage({
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
 
-  const isGlobalAgent = message.configuration.id === -1;
-
   const { showValidationDialog } = useContext(ActionValidationContext);
 
-  const shouldStream = (() => {
-    if (message.status !== "created") {
-      return false;
-    }
+  const [blockedAuthAction, setBlockedAuthAction] = useState<{
+    mcpServerDisplayName: string;
+  } | null>(null);
 
+  // Ref to track blocked state for use in callbacks (avoids stale closure issues).
+  const blockedAuthActionRef = useRef(blockedAuthAction);
+  useEffect(() => {
+    blockedAuthActionRef.current = blockedAuthAction;
+  }, [blockedAuthAction]);
+
+  useEffect(() => {
+    if (
+      blockedAuthAction &&
+      (message.status === "succeeded" || message.status === "cancelled")
+    ) {
+      setBlockedAuthAction(null);
+    }
+  }, [message.status, blockedAuthAction]);
+
+  const shouldStream = (() => {
     switch (messageStreamState.message.status) {
       case "succeeded":
-      case "failed":
       case "cancelled":
         return false;
+      case "failed":
+        return !!blockedAuthActionRef.current;
       case "created":
         return true;
       default:
-        assertNever(messageStreamState.message.status);
+        assertNeverAndIgnore(messageStreamState.message.status);
+        return false;
     }
   })();
 
@@ -281,7 +299,6 @@ export function AgentMessage({
       } = JSON.parse(eventStr);
       const eventType = eventPayload.data.type;
 
-      // Handle validation dialog separately.
       if (eventType === "tool_approve_execution") {
         showValidationDialog({
           actionId: eventPayload.data.actionId,
@@ -295,15 +312,30 @@ export function AgentMessage({
 
         return;
       }
+      if (eventType === "tool_personal_auth_required") {
+        setBlockedAuthAction({
+          mcpServerDisplayName: eventPayload.data.metadata.mcpServerDisplayName,
+        });
+        return;
+      }
 
-      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
-      // end of the stream to the client. The message reducer does not, and should not, handle this
-      // event, so we just return.
       if (eventType === "end-of-stream") {
         return;
       }
 
       dispatch(eventPayload.data);
+
+      // Clear blocked auth action when agent progresses past the auth block.
+      // Done after dispatch so the reducer updates status before we clear the block,
+      // avoiding a flash where blockedAuthAction is null but status is still "failed".
+      if (
+        blockedAuthActionRef.current &&
+        (eventType === "tool_params" ||
+          eventType === "generation_tokens" ||
+          eventType === "agent_action_success")
+      ) {
+        setBlockedAuthAction(null);
+      }
     },
     [showValidationDialog, owner.sId, message.sId, conversationId]
   );
@@ -316,20 +348,13 @@ export function AgentMessage({
   );
 
   const agentMessageToRender = ((): AgentMessagePublicType => {
-    switch (message.status) {
-      case "succeeded":
-      case "failed":
-        return message;
-      case "cancelled":
-        if (messageStreamState.message.status === "created") {
-          return { ...messageStreamState.message, status: "cancelled" };
-        }
-        return message;
-      case "created":
-        return messageStreamState.message;
-      default:
-        assertNever(message.status);
+    if (shouldStream || blockedAuthAction) {
+      if (message.status === "cancelled") {
+        return { ...messageStreamState.message, status: "cancelled" };
+      }
+      return messageStreamState.message;
     }
+    return message;
   })();
 
   // Autoscroll is performed when a message is generating and the page is
@@ -412,7 +437,7 @@ export function AgentMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       visualization: () => (
-        <div className="w-full flex justify-center">
+        <div className="flex w-full justify-center">
           <Button
             label="See visualization on Dust website"
             onClick={() => {
@@ -424,13 +449,22 @@ export function AgentMessage({
         </div>
       ),
       sup: CiteBlock,
-      mention: MentionBlock,
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: AgentMentionBlock,
+      mention_user: getUserMentionPlugin(),
+      dustimg: getImgPlugin(),
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId]
+    [owner, conversationId, message.sId, agentConfiguration.sId, user]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [mentionDirective, getCiteDirective(), visualizationDirective],
+    () => [
+      agentMentionDirective,
+      userMentionDirective,
+      getCiteDirective(),
+      visualizationDirective,
+      imgDirective,
+    ],
     []
   );
 
@@ -439,10 +473,7 @@ export function AgentMessage({
     [activeReferences]
   );
 
-  const PopoverContent = useCallback(
-    () => <FeedbackSelectorPopoverContent />,
-    []
-  );
+  const isGlobalAgent = message.configuration.id === -1;
 
   async function handleCopyToClipboard() {
     const messageContent = agentMessageToRender.content || "";
@@ -508,46 +539,134 @@ export function AgentMessage({
     );
   }
 
-  const buttons =
-    message.status === "failed" || messageStreamState.agentState === "thinking"
-      ? []
-      : [
-          <Button
-            key="copy-msg-button"
-            tooltip="Copy to clipboard"
-            variant="ghost"
-            size="xs"
-            onClick={handleCopyToClipboard}
-            icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-            className="text-muted-foreground dark:text-muted-foreground-night"
-          />,
+  // Hacky logic for handoff looping through messages, we need to find out:
+  // - If the agent message is handing over (to not display the retry button)
+  // - If the agent message is taking over (to display the parent agent name in a chip).
+  const { isHandingOver, parentAgent } = useMemo(() => {
+    // Check if the agent message is handing over.
+    const handoverOrigins = new Set(
+      userAndAgentMessages
+        .filter(
+          (msg): msg is UserMessageType =>
+            msg.type === "user_message" &&
+            msg.agenticMessageData?.type === "agent_handover"
+        )
+        .map((msg) => msg.agenticMessageData?.originMessageId)
+    );
+    const handingOver = handoverOrigins.has(message.sId);
+
+    // Check if the agent message is taking over to save the parent agent configuration.
+    let parent: LightAgentConfigurationType | null = null;
+    if (isAgentMessage(message) && message.parentAgentMessageId) {
+      const agentMessagesMap = new Map(
+        userAndAgentMessages.filter(isAgentMessage).map((msg) => [msg.sId, msg])
+      );
+      const parentMsg = agentMessagesMap.get(message.parentAgentMessageId);
+      if (parentMsg) {
+        parent = parentMsg.configuration;
+      }
+    }
+
+    return { isHandingOver: handingOver, parentAgent: parent };
+  }, [message, userAndAgentMessages]);
+
+  const showButtons = useMemo(
+    () =>
+      message.status !== "failed" &&
+      messageStreamState.agentState !== "thinking",
+    [message.status, messageStreamState.agentState]
+  );
+
+  const showRetryButton = useMemo(
+    () => showButtons && !isHandingOver,
+    [showButtons, isHandingOver]
+  );
+
+  const showFeedbackSection = useMemo(
+    () => showButtons && agentMessageToRender.configuration.status !== "draft",
+    [showButtons, agentMessageToRender.configuration.status]
+  );
+
+  const handleRetry = useCallback(() => {
+    void retryHandler(agentMessageToRender);
+  }, [agentMessageToRender]);
+
+  const buttons = useMemo(() => {
+    const buttonList = [];
+
+    if (showButtons) {
+      buttonList.push(
+        <Button
+          key="copy-msg-button"
+          tooltip="Copy to clipboard"
+          variant="ghost"
+          size="xs"
+          onClick={handleCopyToClipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground dark:text-muted-foreground-night"
+        />
+      );
+
+      if (showRetryButton) {
+        buttonList.push(
           <Button
             key="retry-msg-button"
             tooltip="Retry"
             variant="ghost"
             size="xs"
-            onClick={() => {
-              void retryHandler(agentMessageToRender);
-            }}
+            onClick={handleRetry}
             icon={ArrowPathIcon}
             className="text-muted-foreground dark:text-muted-foreground-night"
             disabled={isRetryHandlerProcessing || shouldStream}
-          />,
-          // One cannot leave feedback on global agents.
-          ...(isGlobalAgent ||
-          agentMessageToRender.configuration.status === "draft"
-            ? []
-            : [
-                <div key="separator" className="flex items-center">
-                  <div className="h-5 w-px bg-border dark:bg-border-night" />
-                </div>,
-                <FeedbackSelector
-                  key="feedback-selector"
-                  {...messageFeedback}
-                  getPopoverInfo={PopoverContent}
-                />,
-              ]),
-        ];
+          />
+        );
+      }
+
+      if (showFeedbackSection) {
+        buttonList.push(
+          <div key="separator" className="flex items-center">
+            <div className="bg-border dark:bg-border-night h-5 w-px" />
+          </div>,
+          <FeedbackSelector
+            key="feedback-selector"
+            {...messageFeedback}
+            isGlobalAgent={isGlobalAgent}
+          />
+        );
+      }
+    }
+
+    return buttonList;
+  }, [
+    showButtons,
+    showRetryButton,
+    showFeedbackSection,
+    handleCopyToClipboard,
+    handleRetry,
+    isCopied,
+    isRetryHandlerProcessing,
+    shouldStream,
+    messageFeedback,
+    isGlobalAgent,
+  ]);
+
+  const renderName = useCallback(
+    () => (
+      <span className="inline-flex items-center">
+        <span>{agentConfiguration.name}</span>
+        {parentAgent && (
+          <Chip
+            label={`Handoff from @${parentAgent.name}`}
+            size="xs"
+            className="ml-1"
+            color="primary"
+            isBusy={agentMessageToRender.status === "created"}
+          />
+        )}
+      </span>
+    ),
+    [agentConfiguration.name, parentAgent, agentMessageToRender.status]
+  );
 
   return (
     <ConversationMessage
@@ -555,16 +674,11 @@ export function AgentMessage({
       name={agentConfiguration.name}
       buttons={buttons}
       avatarBusy={agentMessageToRender.status === "created"}
-      renderName={() => {
-        return (
-          <span>
-            {/* TODO(Ext) Any CTA here ? */}
-            {agentConfiguration.name}
-          </span>
-        );
-      }}
+      renderName={renderName}
       type="agent"
-      timestamp={formatTimestring(agentMessageToRender.created)}
+      timestamp={
+        parentAgent ? undefined : formatTimestring(agentMessageToRender.created)
+      }
       citations={citations}
     >
       <div>
@@ -592,6 +706,18 @@ export function AgentMessage({
     streaming: boolean;
     lastTokenClassification: null | "tokens" | "chain_of_thought";
   }) {
+    // Show auth required UI if blocked on authentication.
+    if (blockedAuthAction) {
+      return (
+        <MCPServerAuthRequired
+          dustDomain={user.dustDomain}
+          workspaceId={owner.sId}
+          conversationId={conversationId}
+          mcpServerDisplayName={blockedAuthAction.mcpServerDisplayName}
+        />
+      );
+    }
+
     if (agentMessage.status === "failed") {
       return (
         <ErrorMessage
@@ -745,7 +871,7 @@ function ErrorMessage({
           }
           content={
             <div className="flex flex-col gap-3">
-              <div className="whitespace-normal text-sm font-normal text-warning">
+              <div className="text-warning whitespace-normal text-sm font-normal">
                 {debugInfo}
               </div>
               <div className="self-end">

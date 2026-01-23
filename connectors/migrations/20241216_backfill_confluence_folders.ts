@@ -4,7 +4,7 @@ import { makeSpaceInternalId } from "@connectors/connectors/confluence/lib/inter
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
-import { ConfluenceSpace } from "@connectors/lib/models/confluence";
+import { ConfluenceSpaceModel } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 const FOLDER_CONCURRENCY = 10;
@@ -13,7 +13,7 @@ makeScript({}, async ({ execute }, logger) => {
   const connectors = await ConnectorResource.listByType("confluence", {});
 
   for (const connector of connectors) {
-    const confluenceSpaces = await ConfluenceSpace.findAll({
+    const confluenceSpaces = await ConfluenceSpaceModel.findAll({
       attributes: ["spaceId", "name"],
       where: { connectorId: connector.id },
     });

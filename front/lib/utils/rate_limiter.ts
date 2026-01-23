@@ -8,7 +8,7 @@ import type {
   MaxMessagesTimeframeType,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 export class RateLimitError extends Error {}
 
@@ -27,6 +27,7 @@ async function getRedisClient({
     throw new Error("REDIS_URI is not defined");
   }
 
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!rateLimiterRedisClient) {
     rateLimiterRedisClient = await redisClient({
       origin,
@@ -154,6 +155,32 @@ export async function expireRateLimiterKey({
   }
 }
 
+export async function getRateLimiterCount({
+  key,
+  timeframeSeconds,
+  redisUri,
+}: {
+  timeframeSeconds: number;
+} & RateLimiterOptionsBase): Promise<Result<number, Error>> {
+  let redis: undefined | Awaited<ReturnType<typeof redisClient>> = undefined;
+
+  try {
+    redis = await getRedisClient({ origin: "rate_limiter", redisUri });
+    const redisKey = makeRateLimiterKey(key);
+
+    // Get current server time and calculate the window
+    const windowMs = timeframeSeconds * 1000;
+    const trimBeforeMs = Date.now() - windowMs;
+
+    // Count entries in the sorted set within the time window
+    const count = await redis.zCount(redisKey, trimBeforeMs, "+inf");
+
+    return new Ok(count);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+}
+
 export function getTimeframeSecondsFromLiteral(
   timeframeLiteral: MaxMessagesTimeframeType
 ): number {
@@ -166,6 +193,6 @@ export function getTimeframeSecondsFromLiteral(
       return 60 * 60 * 24 * 30; // 30 days.
 
     default:
-      return 0;
+      assertNever(timeframeLiteral);
   }
 }

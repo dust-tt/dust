@@ -22,14 +22,14 @@ import {
   renderMarkdownSection,
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
+import { DataSourceQuotaExceededError } from "@connectors/lib/error";
 import {
   IntercomConversationModel,
   IntercomTeamModel,
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
 import logger from "@connectors/logger/logger";
-import type { ModelId } from "@connectors/types";
-import type { DataSourceConfig } from "@connectors/types";
+import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 const turndownService = new TurndownService();
@@ -324,24 +324,41 @@ export async function syncConversation({
     parents.push(getTeamsInternalId(connectorId));
   }
 
-  await upsertDataSourceDocument({
-    dataSourceConfig,
-    documentId,
-    documentContent: renderedPage,
-    documentUrl: conversationUrl,
-    timestampMs: updatedAtDate.getTime(),
-    tags: datasourceTags,
-    parents,
-    parentId: parents[1] || null,
-    loggerArgs: {
-      ...loggerArgs,
-      conversationId: conversation.id,
-    },
-    upsertContext: {
-      sync_type: syncType,
-    },
-    title: convoTitle,
-    mimeType: INTERNAL_MIME_TYPES.INTERCOM.CONVERSATION,
-    async: true,
-  });
+  try {
+    await upsertDataSourceDocument({
+      dataSourceConfig,
+      documentId,
+      documentContent: renderedPage,
+      documentUrl: conversationUrl,
+      timestampMs: updatedAtDate.getTime(),
+      tags: datasourceTags,
+      parents,
+      parentId: parents[1] || null,
+      loggerArgs: {
+        ...loggerArgs,
+        conversationId: conversation.id,
+      },
+      upsertContext: {
+        sync_type: syncType,
+      },
+      title: convoTitle,
+      mimeType: INTERNAL_MIME_TYPES.INTERCOM.CONVERSATION,
+      async: true,
+    });
+  } catch (error) {
+    if (error instanceof DataSourceQuotaExceededError) {
+      logger.warn(
+        {
+          connectorId,
+          error,
+          documentId,
+          conversationId: conversation.id,
+          ...loggerArgs,
+        },
+        "Skipping Intercom conversation exceeding plan document size limit."
+      );
+      return;
+    }
+    throw error;
+  }
 }

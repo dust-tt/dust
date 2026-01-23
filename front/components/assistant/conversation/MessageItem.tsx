@@ -1,49 +1,55 @@
-import { cn } from "@dust-tt/sparkle";
-import React from "react";
-import { useSWRConfig } from "swr";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import React, { useMemo } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
-import {
-  AttachmentCitation,
-  contentFragmentToAttachmentCitation,
-} from "@app/components/assistant/conversation/AttachmentCitation";
-import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
-import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
-import { useSendNotification } from "@app/hooks/useNotification";
-import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
-import { useSubmitFunction } from "@app/lib/client/utils";
+import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
+import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
+import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
+import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
+import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
-  MessageWithContentFragmentsType,
-  UserType,
-  WorkspaceType,
-} from "@app/types";
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  getMessageDate,
+  isHiddenMessage,
+  isMessageTemporayState,
+  isUserMessage,
+} from "@app/components/assistant/conversation/types";
+import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
+import { useReaction } from "@app/hooks/useReaction";
+import { useSubmitFunction } from "@app/lib/client/utils";
+import { classNames } from "@app/lib/utils";
+import type { UserType } from "@app/types";
 
 interface MessageItemProps {
-  conversationId: string;
-  messageFeedback: AgentMessageFeedbackType | undefined;
-  isInModal: boolean;
-  isLastMessage: boolean;
-  message: MessageWithContentFragmentsType;
-  owner: WorkspaceType;
-  user: UserType;
+  data: VirtuosoMessage;
+  context: VirtuosoMessageListContext;
+  index: number;
+  nextData: VirtuosoMessage | null;
+  prevData: VirtuosoMessage | null;
 }
 
-const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
+export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
   function MessageItem(
-    {
-      conversationId,
-      messageFeedback,
-      isLastMessage,
-      message,
-      owner,
-      user,
-    }: MessageItemProps,
+    { data, context, prevData, nextData }: MessageItemProps,
     ref
   ) {
-    const { sId, type } = message;
-    const sendNotification = useSendNotification();
+    const sId = data.sId;
 
-    const { mutate } = useSWRConfig();
+    const methods = useVirtuosoMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >();
+
+    const submitFeedback = useMessageFeedback({
+      owner: context.owner,
+      conversationId: context.conversation?.sId,
+    });
+
     const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
       useSubmitFunction(
         async ({
@@ -57,37 +63,25 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           feedbackContent: string | null;
           isConversationShared: boolean;
         }) => {
-          const res = await fetch(
-            `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/feedbacks`,
-            {
-              method: shouldRemoveExistingFeedback ? "DELETE" : "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                thumbDirection: thumb,
-                feedbackContent,
-                isConversationShared,
-              }),
-            }
-          );
-          if (res.ok) {
-            if (feedbackContent && !shouldRemoveExistingFeedback) {
-              sendNotification({
-                title: "Feedback submitted",
-                description:
-                  "Your comment has been submitted successfully to the Builder of this agent. Thank you!",
-                type: "success",
-              });
-            }
-            await mutate(
-              `/api/w/${owner.sId}/assistant/conversations/${conversationId}/feedbacks`
-            );
-          }
+          await submitFeedback({
+            messageId: sId,
+            thumbDirection: thumb,
+            feedbackContent,
+            isConversationShared,
+            shouldRemoveExistingFeedback,
+          });
         }
       );
 
-    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+    const { onReactionToggle } = useReaction({
+      owner: context.owner,
+      conversationId: context.conversation?.sId,
+      message: data,
+    });
+
+    const messageFeedback = context.feedbacksByMessageId[sId];
+
+    const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
       feedback: messageFeedback
         ? {
             thumb: messageFeedback.thumbDirection,
@@ -99,60 +93,123 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       isSubmittingThumb,
     };
 
-    switch (type) {
-      case "user_message":
-        const citations = message.contentFragments
-          ? message.contentFragments.map((contentFragment) => {
-              const attachmentCitation =
-                contentFragmentToAttachmentCitation(contentFragment);
+    const citations =
+      isUserMessage(data) && data.contentFragments.length > 0
+        ? data.contentFragments.map((contentFragment, index) => {
+            const attachmentCitation =
+              contentFragmentToAttachmentCitation(contentFragment);
 
-              return (
-                <AttachmentCitation
-                  key={attachmentCitation.id}
-                  attachmentCitation={attachmentCitation}
-                />
-              );
-            })
-          : undefined;
+            return (
+              <AttachmentCitation
+                owner={context.owner}
+                key={index}
+                attachmentCitation={attachmentCitation}
+                conversationId={context.conversation?.sId}
+              />
+            );
+          })
+        : undefined;
 
-        return (
-          <div
-            key={`message-id-${sId}`}
-            ref={ref}
-            className="mb-6 min-w-60 max-w-full md:mb-8"
-          >
+    const areSameDate =
+      prevData &&
+      getMessageDate(prevData).toDateString() ===
+        getMessageDate(data).toDateString();
+
+    const triggeringUser = useMemo((): UserType | null => {
+      if (isMessageTemporayState(data)) {
+        const parentMessageId = data.parentMessageId;
+        const messages = methods.data.get();
+        const parentUserMessage = messages
+          .filter(isUserMessage)
+          .find((m) => m.sId === parentMessageId);
+        return parentUserMessage?.user ?? null;
+      } else {
+        return data.user;
+      }
+    }, [data, methods.data]);
+
+    if (isHiddenMessage(data)) {
+      // This is hacky but in case of handover we generate a user message from the agent and we want to hide it in the conversation
+      // because it has no value to display.
+      return null;
+    }
+
+    // No message without a conversation
+    if (!context.conversation) {
+      return null;
+    }
+
+    return (
+      <>
+        {!areSameDate && <MessageDateIndicator message={data} />}
+        <div
+          key={`message-id-${sId}`}
+          ref={ref}
+          className={classNames("mx-auto min-w-60", "mb-4", "max-w-4xl")}
+        >
+          {isUserMessage(data) && (
             <UserMessage
               citations={citations}
-              conversationId={conversationId}
-              isLastMessage={isLastMessage}
-              message={message}
-              owner={owner}
+              conversationId={context.conversation.sId}
+              enableExtendedActions={context.enableExtendedActions}
+              currentUserId={context.user.sId}
+              isLastMessage={!nextData}
+              message={data}
+              owner={context.owner}
+              onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
             />
-          </div>
-        );
-
-      case "agent_message":
-        return (
-          <div
-            key={`message-id-${sId}`}
-            ref={ref}
-            className={cn("w-full", !isLastMessage ? "mb-6 md:mb-8" : "")}
-          >
+          )}
+          {isMessageTemporayState(data) && (
             <AgentMessage
-              conversationId={conversationId}
-              isLastMessage={isLastMessage}
-              message={message}
+              user={context.user}
+              triggeringUser={triggeringUser}
+              conversationId={context.conversation.sId}
+              isLastMessage={!nextData}
+              agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
-              owner={owner}
-              user={user}
+              owner={context.owner}
+              handleSubmit={context.handleSubmit}
+              enableExtendedActions={context.enableExtendedActions}
             />
-          </div>
-        );
+          )}
+          {data.visibility !== "deleted" &&
+            data.richMentions.map((mention, index) => {
+              // To please the type checker
+              if (!context.conversation) {
+                return null;
+              }
 
-      default:
-        console.error("Unknown message type", message);
-    }
+              // :warning: make sure to use the index in the key, as the mention.id is the userId
+
+              if (mention.status === "pending") {
+                return (
+                  <MentionValidationRequired
+                    key={index}
+                    mention={mention}
+                    message={data}
+                    owner={context.owner}
+                    triggeringUser={triggeringUser}
+                    conversation={context.conversation}
+                  />
+                );
+              } else if (
+                mention.status === "user_restricted_by_conversation_access" ||
+                mention.status === "agent_restricted_by_space_usage"
+              ) {
+                return (
+                  <MentionInvalid
+                    key={index}
+                    mention={mention}
+                    message={data}
+                    owner={context.owner}
+                    triggeringUser={triggeringUser}
+                    conversationId={context.conversation.sId}
+                  />
+                );
+              }
+            })}
+        </div>
+      </>
+    );
   }
 );
-
-export default MessageItem;

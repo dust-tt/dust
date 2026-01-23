@@ -1,6 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 import { hash as blake3 } from "blake3";
 import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
@@ -22,6 +22,7 @@ export interface KeyAuthType {
   name: string | null;
   isSystem: boolean;
   role: RoleType;
+  monthlyCapMicroUsd: number | null;
 }
 
 export const SECRET_KEY_PREFIX = "sk-";
@@ -226,13 +227,14 @@ export class KeyResource extends BaseResource<KeyModel> {
       id: this.id,
       createdAt: this.createdAt.getTime(),
       lastUsedAt: this.lastUsedAt?.getTime() ?? null,
-      creator: formatUserFullName(this.user),
+      creator: this.user ? formatUserFullName(this.user) : null,
       name: this.name,
       secret,
       status: this.status,
       groupId: this.groupId,
       role: this.role,
       scope: this.scope,
+      monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }
 
@@ -243,6 +245,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       isSystem: this.isSystem,
       role: this.role,
+      monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }
 
@@ -252,5 +255,13 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   async updateRole({ newRole }: { newRole: RoleType }) {
     await this.update({ role: newRole });
+  }
+
+  async updateMonthlyCap({
+    monthlyCapMicroUsd,
+  }: {
+    monthlyCapMicroUsd: number | null;
+  }) {
+    await this.update({ monthlyCapMicroUsd });
   }
 }

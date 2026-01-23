@@ -2,16 +2,16 @@ import { IconButton, LinkWrapper, TrashIcon } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import type { TriggerWithProviderType } from "@app/pages/api/poke/workspaces/[wId]/triggers";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
 } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
-type TriggerDisplayType = TriggerType & {
-  agentName?: string;
-};
+type TriggerDisplayType = TriggerWithProviderType;
 
 export function makeColumnsForTriggers(
   owner: LightWorkspaceType,
@@ -91,13 +91,39 @@ export function makeColumnsForTriggers(
       },
       accessorFn: (row) => {
         const agent = agentConfigMap.get(row.agentConfigurationId);
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        return agent?.name || row.agentConfigurationId;
+        return agent?.name ?? row.agentConfigurationId;
       },
     },
     {
       accessorKey: "kind",
       header: "Kind",
+    },
+    {
+      accessorKey: "provider",
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Provider</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const trigger = row.original;
+        if (trigger.kind === "webhook") {
+          return trigger.provider ?? "Custom";
+        }
+        return "-";
+      },
+      filterFn: (row, id, value) => {
+        return value.includes(row.getValue(id));
+      },
     },
     {
       accessorKey: "configuration",
@@ -115,6 +141,36 @@ export function makeColumnsForTriggers(
       header: "Enabled",
       cell: ({ row }) => {
         return row.getValue("enabled") ? "Yes" : "No";
+      },
+    },
+    {
+      id: "editorEmail",
+      accessorFn: (row) => {
+        if (row.editorUser) {
+          return row.editorUser.email;
+        }
+        return row.editor?.toString() ?? "";
+      },
+      header: ({ column }) => {
+        return (
+          <div className="flex space-x-2">
+            <p>Editor</p>
+            <IconButton
+              variant="outline"
+              icon={ArrowsUpDownIcon}
+              onClick={() =>
+                column.toggleSorting(column.getIsSorted() === "asc")
+              }
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const trigger = row.original;
+        if (trigger.editorUser) {
+          return `${trigger.editorUser.email}`;
+        }
+        return trigger.editor?.toString() ?? "-";
       },
     },
     {
@@ -172,7 +228,7 @@ async function deleteTrigger(
   }
 
   try {
-    const r = await fetch(
+    const r = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/triggers?tId=${trigger.sId}`,
       {
         method: "DELETE",

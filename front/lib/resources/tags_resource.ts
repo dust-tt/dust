@@ -8,15 +8,11 @@ import type {
 import sequelize from "sequelize/lib/sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { TagAgentModel } from "@app/lib/models/assistant/tag_agent";
+import { TagAgentModel } from "@app/lib/models/agent/tag_agent";
 import { TagModel } from "@app/lib/models/tags";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import {
-  getResourceIdFromSId,
-  isResourceSId,
-  makeSId,
-} from "@app/lib/resources/string_ids";
+import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok, removeNulls } from "@app/types";
@@ -24,7 +20,7 @@ import type { TagKind, TagTypeWithUsage } from "@app/types/tag";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface TagResource extends ReadonlyAttributesType<TagModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -248,6 +244,7 @@ export class TagResource extends BaseResource<TagModel> {
       await TagAgentModel.destroy({
         where: {
           tagId: this.id,
+          workspaceId: auth.getNonNullableWorkspace().id,
         },
         transaction,
       });
@@ -284,10 +281,6 @@ export class TagResource extends BaseResource<TagModel> {
       id,
       workspaceId,
     });
-  }
-
-  static isTagSId(sId: string): boolean {
-    return isResourceSId("tag", sId);
   }
 
   toJSON() {

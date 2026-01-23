@@ -5,6 +5,7 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import config from "@app/lib/api/config";
 import { sendEmailWithTemplate } from "@app/lib/api/email";
 import type { Authenticator } from "@app/lib/auth";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
@@ -96,7 +97,7 @@ async function handler(
 
   const result = await sendEmailWithTemplate({
     to: "support@dust.tt",
-    from: { name: "Dust team", email: "support@dust.help" },
+    from: config.getSupportEmailAddress(),
     subject: `[Dust] Labs Feature Request: ${featureName} from ${emailRequester}`,
     replyTo: emailRequester,
     body,

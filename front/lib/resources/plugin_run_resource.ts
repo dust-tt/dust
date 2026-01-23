@@ -1,6 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type {
@@ -22,7 +22,7 @@ import type {
   PluginResourceTarget,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok, safeParseJSON } from "@app/types";
 import type { PluginRunType } from "@app/types/poke/plugins";
 
 import type { UserResource } from "./user_resource";
@@ -65,8 +65,7 @@ function trimPluginRunResultOrError(result: PluginResponse | string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface PluginRunResource
-  extends ReadonlyAttributesType<PluginRunModel> {}
+export interface PluginRunResource extends ReadonlyAttributesType<PluginRunModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;
@@ -107,11 +106,44 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   }
 
   static async findByWorkspaceId(auth: Authenticator) {
-    const workspace = auth.workspace();
+    const workspace = auth.getNonNullableWorkspace();
 
     const pluginRuns = await this.model.findAll({
       where: {
-        workspaceId: workspace?.id ?? null,
+        workspaceId: workspace.id,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return pluginRuns.map(
+      (pluginRun) => new this(PluginRunResource.model, pluginRun.get())
+    );
+  }
+
+  static async findGlobalRuns() {
+    const pluginRuns = await this.model.findAll({
+      where: {
+        workspaceId: null,
+      },
+      order: [["createdAt", "DESC"]],
+    });
+
+    return pluginRuns.map(
+      (pluginRun) => new this(PluginRunResource.model, pluginRun.get())
+    );
+  }
+
+  static async findByWorkspaceAndResource(
+    auth: Authenticator,
+    { resourceId, resourceType }: { resourceId: string; resourceType: string }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    const pluginRuns = await this.model.findAll({
+      where: {
+        workspaceId: workspace.id,
+        resourceType,
+        resourceId,
       },
       order: [["createdAt", "DESC"]],
     });
@@ -135,11 +167,15 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
     );
   }
 
-  async recordResult(result: PluginResponse) {
+  async recordResult(result: PluginResponse, plugin?: AllPlugins) {
+    const resultToStore = plugin?.manifest?.redactResult
+      ? "REDACTED"
+      : trimPluginRunResultOrError(result);
+
     await this.model.update(
       {
         status: "success",
-        result: trimPluginRunResultOrError(result),
+        result: resultToStore,
       },
       {
         where: {
@@ -168,6 +204,9 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
   }
 
   toJSON(): PluginRunType {
+    // The value in DB is truncated to POKE_PLUGIN_RUN_MAX_ARGS_LENGTH so may not be a valid JSON.
+    const parsedArgsResult = this.args ? safeParseJSON(this.args) : new Ok({});
+
     return {
       createdAt: this.createdAt.getTime(),
       author: this.author,
@@ -175,7 +214,11 @@ export class PluginRunResource extends BaseResource<PluginRunModel> {
       status: this.status,
       resourceType: this.resourceType,
       resourceId: this.resourceId,
-      args: this.args ? JSON.parse(this.args) : {},
+      args: parsedArgsResult.isOk()
+        ? (parsedArgsResult.value ?? {})
+        : { rawContent: this.args },
+      result: this.result,
+      error: this.error,
     };
   }
 

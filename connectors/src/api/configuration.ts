@@ -11,8 +11,8 @@ import type {
 } from "@connectors/types";
 import type { WithConnectorsAPIErrorReponse } from "@connectors/types";
 import {
-  ioTsParsePayload,
   WebCrawlerConfigurationTypeSchema,
+  zodParsePayload,
 } from "@connectors/types";
 
 type PatchConnectorConfigurationResBody =
@@ -40,7 +40,7 @@ const _patchConnectorConfiguration = async (
   let patchRes: Result<void, Error> | null = null;
   switch (connector.type) {
     case "webcrawler": {
-      const parseRes = ioTsParsePayload(
+      const parseRes = zodParsePayload(
         req.body.configuration,
         WebCrawlerConfigurationTypeSchema
       );
@@ -48,7 +48,7 @@ const _patchConnectorConfiguration = async (
         return apiError(req, res, {
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid configuration: ${parseRes.error.join(", ")}`,
+            message: `Invalid configuration: ${parseRes.error}`,
           },
           status_code: 400,
         });
@@ -57,22 +57,27 @@ const _patchConnectorConfiguration = async (
       patchRes = await getConnectorManager({
         connectorId: connector.id,
         connectorProvider: "webcrawler",
-      }).configure({ configuration: parseRes.value });
+      }).configure({
+        configuration: parseRes.value,
+      });
       break;
     }
 
     case "notion":
     case "confluence":
+    case "discord_bot":
     case "github":
     case "google_drive":
     case "intercom":
     case "microsoft":
+    case "microsoft_bot":
     case "snowflake":
     case "bigquery":
     case "zendesk":
     case "gong":
     case "slack_bot":
-    case "slack": {
+    case "slack":
+    case "dust_project": {
       throw new Error(
         `Connector type ${connector.type} does not support configuration patching`
       );

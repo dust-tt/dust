@@ -1,10 +1,6 @@
-import type {
-  Result} from "@dust-tt/client";
-import type {GetAgentConfigurationsResponseType} from "@dust-tt/client";
-import {
-  Err,
-  Ok
-} from "@dust-tt/client";
+import type { Result } from "@dust-tt/client";
+import type { GetAgentConfigurationsResponseType } from "@dust-tt/client";
+import { Err, Ok } from "@dust-tt/client";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import type { Request, Response } from "express";
@@ -114,7 +110,7 @@ export async function startMcpServer(
                   fullName: user.fullName,
                   email: user.email,
                   profilePictureUrl: user.image,
-                  origin: "api",
+                  origin: "cli",
                 },
               },
               contentFragment: undefined,
@@ -277,7 +273,8 @@ export async function startMcpServer(
 
       httpServer.listen(port, () => {
         const address = httpServer.address();
-        const boundPort = typeof address === "string" ? 0 : address?.port ?? 0;
+        const boundPort =
+          typeof address === "string" ? 0 : (address?.port ?? 0);
         resolve(boundPort);
       });
     });

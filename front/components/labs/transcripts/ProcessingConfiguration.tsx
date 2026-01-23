@@ -2,7 +2,7 @@ import { Page, SliderToggle } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import type { KeyedMutator } from "swr";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUpdateTranscriptsConfiguration } from "@app/lib/swr/labs";
 import type { GetLabsTranscriptsConfigurationResponseBody } from "@app/pages/api/w/[wId]/labs/transcripts";
@@ -30,10 +30,10 @@ export function ProcessingConfiguration({
   const [assistantSelected, setAssistantSelected] =
     useState<LightAgentConfigurationType | null>(
       transcriptsConfiguration.agentConfigurationId
-        ? agents.find(
+        ? (agents.find(
             (agent) =>
               agent.sId === transcriptsConfiguration.agentConfigurationId
-          ) ?? null
+          ) ?? null)
         : null
     );
 
@@ -48,7 +48,6 @@ export function ProcessingConfiguration({
   ) => {
     setAssistantSelected(assistant);
     const response = await doUpdate({
-      isActive: transcriptsConfiguration.isActive,
       agentConfigurationId: assistant.sId,
     });
 
@@ -68,8 +67,10 @@ export function ProcessingConfiguration({
     }
   };
 
-  const handleSetIsActive = async (isActive: boolean) => {
-    const response = await doUpdate({ isActive });
+  const handleSetStatus = async (active: boolean) => {
+    const response = await doUpdate({
+      status: active ? "active" : "disabled",
+    });
 
     if (response.isOk()) {
       await mutateTranscriptsConfiguration();
@@ -79,10 +80,10 @@ export function ProcessingConfiguration({
   useEffect(() => {
     setAssistantSelected(
       transcriptsConfiguration.agentConfigurationId
-        ? agents.find(
+        ? (agents.find(
             (agent) =>
               agent.sId === transcriptsConfiguration.agentConfigurationId
-          ) ?? null
+          ) ?? null)
         : null
     );
   }, [agents, transcriptsConfiguration.agentConfigurationId]);
@@ -100,11 +101,11 @@ export function ProcessingConfiguration({
       <Page.Layout direction="vertical">
         <Page.Layout direction="vertical">
           <Page.Layout direction="horizontal">
-            <AssistantPicker
+            <AgentPicker
               owner={owner}
               size="sm"
               onItemClick={(assistant) => handleSelectAssistant(assistant)}
-              assistants={agents}
+              agents={agents}
               showFooterButtons={false}
             />
             {assistantSelected && (
@@ -127,8 +128,10 @@ export function ProcessingConfiguration({
       </Page.Layout>
       <Page.Layout direction="horizontal" gap="xl">
         <SliderToggle
-          selected={transcriptsConfiguration.isActive}
-          onClick={() => handleSetIsActive(!transcriptsConfiguration.isActive)}
+          selected={transcriptsConfiguration.status === "active"}
+          onClick={() =>
+            handleSetStatus(transcriptsConfiguration.status !== "active")
+          }
           disabled={!assistantSelected}
         />
         <Page.P>Enable transcripts email processing</Page.P>

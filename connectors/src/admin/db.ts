@@ -2,18 +2,23 @@ import type { Sequelize } from "sequelize";
 
 import { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import {
-  ConfluenceConfiguration,
-  ConfluenceFolder,
-  ConfluencePage,
-  ConfluenceSpace,
+  ConfluenceConfigurationModel,
+  ConfluenceFolderModel,
+  ConfluencePageModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
+import { DiscordConfigurationModel } from "@connectors/lib/models/discord";
 import {
-  GithubCodeDirectory,
-  GithubCodeFile,
-  GithubCodeRepository,
-  GithubConnectorState,
-  GithubDiscussion,
-  GithubIssue,
+  DustProjectConfigurationModel,
+  DustProjectConversationModel,
+} from "@connectors/lib/models/dust_project";
+import {
+  GithubCodeDirectoryModel,
+  GithubCodeFileModel,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
+  GithubDiscussionModel,
+  GithubIssueModel,
 } from "@connectors/lib/models/github";
 import {
   GongConfigurationModel,
@@ -21,11 +26,11 @@ import {
   GongUserModel,
 } from "@connectors/lib/models/gong";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
-  GoogleDriveSyncToken,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
+  GoogleDriveSheetModel,
+  GoogleDriveSyncTokenModel,
 } from "@connectors/lib/models/google_drive";
 import {
   IntercomArticleModel,
@@ -41,12 +46,16 @@ import {
   MicrosoftRootModel,
 } from "@connectors/lib/models/microsoft";
 import {
-  NotionConnectorBlockCacheEntry,
-  NotionConnectorPageCacheEntry,
-  NotionConnectorResourcesToCheckCacheEntry,
-  NotionConnectorState,
-  NotionDatabase,
-  NotionPage,
+  MicrosoftBotConfigurationModel,
+  MicrosoftBotMessageModel,
+} from "@connectors/lib/models/microsoft_bot";
+import {
+  NotionConnectorBlockCacheEntryModel,
+  NotionConnectorPageCacheEntryModel,
+  NotionConnectorResourcesToCheckCacheEntryModel,
+  NotionConnectorStateModel,
+  NotionDatabaseModel,
+  NotionPageModel,
 } from "@connectors/lib/models/notion";
 import {
   RemoteDatabaseModel,
@@ -59,17 +68,17 @@ import {
 } from "@connectors/lib/models/salesforce";
 import {
   SlackBotWhitelistModel,
-  SlackChannel,
-  SlackChatBotMessage,
+  SlackChannelModel,
+  SlackChatBotMessageModel,
   SlackConfigurationModel,
-  SlackMessages,
+  SlackMessagesModel,
 } from "@connectors/lib/models/slack";
 import { SnowflakeConfigurationModel } from "@connectors/lib/models/snowflake";
 import {
-  WebCrawlerConfigurationHeader,
+  WebCrawlerConfigurationHeaderModel,
   WebCrawlerConfigurationModel,
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import {
   ZendeskArticleModel,
@@ -80,7 +89,7 @@ import {
   ZendeskTimestampCursorModel,
 } from "@connectors/lib/models/zendesk";
 import logger from "@connectors/logger/logger";
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import { sendInitDbMessage } from "@connectors/types";
 
@@ -90,35 +99,38 @@ async function main(): Promise<void> {
     logger: logger,
   });
   await ConnectorModel.sync({ alter: true });
-  await ConfluenceConfiguration.sync({ alter: true });
-  await ConfluenceFolder.sync({ alter: true });
-  await ConfluencePage.sync({ alter: true });
-  await ConfluenceSpace.sync({ alter: true });
+  await ConfluenceConfigurationModel.sync({ alter: true });
+  await ConfluenceFolderModel.sync({ alter: true });
+  await ConfluencePageModel.sync({ alter: true });
+  await ConfluenceSpaceModel.sync({ alter: true });
+  await DiscordConfigurationModel.sync({ alter: true });
   await SlackConfigurationModel.sync({ alter: true });
-  await SlackMessages.sync({ alter: true });
-  await SlackChannel.sync({ alter: true });
-  await SlackChatBotMessage.sync({ alter: true });
+  await SlackMessagesModel.sync({ alter: true });
+  await SlackChannelModel.sync({ alter: true });
+  await SlackChatBotMessageModel.sync({ alter: true });
   await SlackBotWhitelistModel.sync({ alter: true });
-  await NotionPage.sync({ alter: true });
-  await NotionDatabase.sync({ alter: true });
-  await NotionConnectorState.sync({ alter: true });
-  await GithubConnectorState.sync({ alter: true });
-  await GithubIssue.sync({ alter: true });
-  await GithubDiscussion.sync({ alter: true });
-  await GithubCodeRepository.sync({ alter: true });
-  await GithubCodeFile.sync({ alter: true });
-  await GithubCodeDirectory.sync({ alter: true });
-  await GoogleDriveFolders.sync({ alter: true });
-  await GoogleDriveFiles.sync({ alter: true });
-  await GoogleDriveSheet.sync({ alter: true });
-  await GoogleDriveSyncToken.sync({ alter: true });
+  await NotionPageModel.sync({ alter: true });
+  await NotionDatabaseModel.sync({ alter: true });
+  await NotionConnectorStateModel.sync({ alter: true });
+  await GithubConnectorStateModel.sync({ alter: true });
+  await GithubIssueModel.sync({ alter: true });
+  await GithubDiscussionModel.sync({ alter: true });
+  await GithubCodeRepositoryModel.sync({ alter: true });
+  await GithubCodeFileModel.sync({ alter: true });
+  await GithubCodeDirectoryModel.sync({ alter: true });
+  await GoogleDriveFoldersModel.sync({ alter: true });
+  await GoogleDriveFilesModel.sync({ alter: true });
+  await GoogleDriveSheetModel.sync({ alter: true });
+  await GoogleDriveSyncTokenModel.sync({ alter: true });
   await MicrosoftConfigurationModel.sync({ alter: true });
   await MicrosoftRootModel.sync({ alter: true });
   await MicrosoftNodeModel.sync({ alter: true });
-  await NotionConnectorBlockCacheEntry.sync({ alter: true });
-  await NotionConnectorPageCacheEntry.sync({ alter: true });
-  await NotionConnectorResourcesToCheckCacheEntry.sync({ alter: true });
-  await GoogleDriveConfig.sync({ alter: true });
+  await MicrosoftBotConfigurationModel.sync({ alter: true });
+  await MicrosoftBotMessageModel.sync({ alter: true });
+  await NotionConnectorBlockCacheEntryModel.sync({ alter: true });
+  await NotionConnectorPageCacheEntryModel.sync({ alter: true });
+  await NotionConnectorResourcesToCheckCacheEntryModel.sync({ alter: true });
+  await GoogleDriveConfigModel.sync({ alter: true });
   await IntercomWorkspaceModel.sync({ alter: true });
   await IntercomHelpCenterModel.sync({ alter: true });
   await IntercomCollectionModel.sync({ alter: true });
@@ -126,9 +138,9 @@ async function main(): Promise<void> {
   await IntercomTeamModel.sync({ alter: true });
   await IntercomConversationModel.sync({ alter: true });
   await WebCrawlerConfigurationModel.sync({ alter: true });
-  await WebCrawlerFolder.sync({ alter: true });
-  await WebCrawlerPage.sync({ alter: true });
-  await WebCrawlerConfigurationHeader.sync({ alter: true });
+  await WebCrawlerFolderModel.sync({ alter: true });
+  await WebCrawlerPageModel.sync({ alter: true });
+  await WebCrawlerConfigurationHeaderModel.sync({ alter: true });
   await SnowflakeConfigurationModel.sync({ alter: true });
   await BigQueryConfigurationModel.sync({ alter: true });
   await RemoteDatabaseModel.sync({ alter: true });
@@ -145,18 +157,20 @@ async function main(): Promise<void> {
   await GongConfigurationModel.sync({ alter: true });
   await GongTranscriptModel.sync({ alter: true });
   await GongUserModel.sync({ alter: true });
+  await DustProjectConfigurationModel.sync({ alter: true });
+  await DustProjectConversationModel.sync({ alter: true });
 
   // enable the `unaccent` extension
-  await sequelizeConnection.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
+  await connectorsSequelize.query("CREATE EXTENSION IF NOT EXISTS unaccent;");
 
   await addSearchVectorTrigger(
-    sequelizeConnection,
+    connectorsSequelize,
     "notion_pages",
     "notion_pages_vector_update",
     "notion_pages_trigger"
   );
   await addSearchVectorTrigger(
-    sequelizeConnection,
+    connectorsSequelize,
     "notion_databases",
     "notion_databases_vector_update",
     "notion_databases_trigger"

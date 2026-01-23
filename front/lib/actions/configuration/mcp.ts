@@ -1,23 +1,22 @@
 import type { IncludeOptions, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
 import {
   renderDataSourceConfiguration,
   renderTableConfiguration,
 } from "@app/lib/actions/configuration/helpers";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
-  AgentChildAgentConfiguration,
-  AgentMCPServerConfiguration,
-} from "@app/lib/models/assistant/actions/mcp";
-import { AgentReasoningConfiguration } from "@app/lib/models/assistant/actions/reasoning";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+  AgentChildAgentConfigurationModel,
+  AgentMCPServerConfigurationModel,
+} from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
@@ -40,12 +39,13 @@ export async function fetchMCPServerActionConfigurations(
     return new Map();
   }
 
-  const mcpServerConfigurations = await AgentMCPServerConfiguration.findAll({
-    where: {
-      agentConfigurationId: { [Op.in]: configurationIds },
-      workspaceId: auth.getNonNullableWorkspace().id,
-    },
-  });
+  const mcpServerConfigurations =
+    await AgentMCPServerConfigurationModel.findAll({
+      where: {
+        agentConfigurationId: { [Op.in]: configurationIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
 
   if (mcpServerConfigurations.length === 0) {
     return new Map();
@@ -54,10 +54,9 @@ export async function fetchMCPServerActionConfigurations(
   const workspace = auth.getNonNullableWorkspace();
 
   const whereClause: WhereOptions<
-    AgentDataSourceConfiguration &
-      AgentTablesQueryConfigurationTable &
-      AgentReasoningConfiguration &
-      AgentChildAgentConfiguration
+    AgentDataSourceConfigurationModel &
+      AgentTablesQueryConfigurationTableModel &
+      AgentChildAgentConfigurationModel
   > = {
     workspaceId: workspace.id,
     mcpServerConfigurationId: {
@@ -84,26 +83,21 @@ export async function fetchMCPServerActionConfigurations(
 
   // Find the associated data sources configurations.
   const allDataSourceConfigurations =
-    await AgentDataSourceConfiguration.findAll({
+    await AgentDataSourceConfigurationModel.findAll({
       where: whereClause,
       include: includeDataSourceViewClause,
     });
 
   // Find the associated tables configurations.
   const allTablesConfigurations =
-    await AgentTablesQueryConfigurationTable.findAll({
+    await AgentTablesQueryConfigurationTableModel.findAll({
       where: whereClause,
       include: includeDataSourceViewClause,
     });
 
-  // Find the associated reasoning configurations.
-  const allReasoningConfigurations = await AgentReasoningConfiguration.findAll({
-    where: whereClause,
-  });
-
   // Find the associated child agent configurations.
   const allChildAgentConfigurations =
-    await AgentChildAgentConfiguration.findAll({ where: whereClause });
+    await AgentChildAgentConfigurationModel.findAll({ where: whereClause });
 
   const actionsByConfigurationId = new Map<
     ModelId,
@@ -121,9 +115,6 @@ export async function fetchMCPServerActionConfigurations(
     const childAgentConfigurations = allChildAgentConfigurations.filter(
       (ca) => ca.mcpServerConfigurationId === config.id
     );
-    const reasoningConfigurations = allReasoningConfigurations.filter(
-      (rc) => rc.mcpServerConfigurationId === config.id
-    );
 
     const dustApp = allDustApps.filter((app) => app.sId === config.appId)[0];
 
@@ -133,8 +124,10 @@ export async function fetchMCPServerActionConfigurations(
     );
     let serverName: string | null = null;
     let serverDescription: string | null = null;
-    let serverIcon: InternalAllowedIconType | CustomServerIconType | undefined =
-      undefined;
+    let serverIcon:
+      | InternalAllowedIconType
+      | CustomResourceIconType
+      | undefined = undefined;
 
     if (!mcpServerView) {
       logger.warn(
@@ -165,10 +158,14 @@ export async function fetchMCPServerActionConfigurations(
         icon: serverIcon,
         mcpServerViewId: mcpServerView?.sId ?? "",
         internalMCPServerId: config.internalMCPServerId,
-        dataSources: dataSourceConfigurations.map(
-          renderDataSourceConfiguration
-        ),
-        tables: tablesConfigurations.map(renderTableConfiguration),
+        dataSources:
+          dataSourceConfigurations.length > 0
+            ? dataSourceConfigurations.map(renderDataSourceConfiguration)
+            : null,
+        tables:
+          tablesConfigurations.length > 0
+            ? tablesConfigurations.map(renderTableConfiguration)
+            : null,
         dustAppConfiguration: dustApp
           ? {
               id: dustApp.id,
@@ -185,15 +182,6 @@ export async function fetchMCPServerActionConfigurations(
             ? childAgentConfigurations[0].agentConfigurationId
             : null,
         additionalConfiguration: config.additionalConfiguration,
-        reasoningModel:
-          reasoningConfigurations.length > 0
-            ? {
-                providerId: reasoningConfigurations[0].providerId,
-                modelId: reasoningConfigurations[0].modelId,
-                temperature: reasoningConfigurations[0].temperature,
-                reasoningEffort: reasoningConfigurations[0].reasoningEffort,
-              }
-            : null,
         timeFrame: config.timeFrame,
         jsonSchema: config.jsonSchema,
         secretName: config.secretName,

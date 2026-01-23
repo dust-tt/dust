@@ -62,25 +62,28 @@ export const LoginPage = () => {
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex flex-1 flex-col items-center justify-center gap-8">
-          <div className="flex flex-col items-center text-center space-y-9 max-w-[400px]">
+        <div className="flex flex-1 flex-col items-center justify-center gap-4">
+          <div className="flex max-w-[400px] flex-col items-center space-y-9 text-center">
             <Link to="https://dust.tt" target="_blank">
-              <DustLogo className="h-12 w-48" />
+              <DustLogo className="h-8 w-36" />
             </Link>
-            <Page.SectionHeader title="Get more done, faster, with the power of your agents at your fingertips." />
+          </div>
+          <div className="max-w-[400px] text-center">
+            <Page.H variant="h4">
+              Get more done, faster, with the power of your agents at your
+              fingertips.
+            </Page.H>
           </div>
           {authError && authError.code === "user_not_found" && (
-            <>
-              <div className="text-center">
-                Please sign up on the web to start using Dust extension.
-              </div>
-            </>
+            <div className="text-md text-center">
+              Please sign up on the web to start using Dust extension.
+            </div>
           )}
           {authError && authError.code !== "user_not_found" && (
-            <div className="text-center">{authError.message}</div>
+            <div className="text-md text-center">{authError.message}</div>
           )}
 
-          <div className="text-center gap-2 flex">
+          <div className="m-1 flex gap-2 text-center">
             {authError && authError.code === "user_not_found" && (
               <Link to="https://dust.tt/home">
                 <Button
@@ -93,7 +96,7 @@ export const LoginPage = () => {
                       "_blank"
                     );
                   }}
-                  size="md"
+                  size="sm"
                 />
               </Link>
             )}
@@ -104,11 +107,11 @@ export const LoginPage = () => {
               label="Sign in"
               onClick={() => handleLogin()}
               disabled={isLoading}
-              size="md"
+              size="sm"
             />
           </div>
         </div>
-        <p className="text-center text-muted-foreground dark:text-muted-foreground-night max-w-[300px] mx-auto">
+        <p className="text-muted-foreground dark:text-muted-foreground-night mx-auto max-w-[300px] text-center">
           By signing in, you agree to Dust's{" "}
           <Link to={TERMS_OF_USE_URL} target="_blank" className="underline">
             Terms of Use
@@ -133,7 +136,7 @@ export const LoginPage = () => {
         )}
       >
         <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
-          <Page.SectionHeader title="Almost there" />
+          <Page.SectionHeader title="Almost there!" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -168,7 +171,7 @@ export const LoginPage = () => {
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex flex-col gap-2 h-screen items-center justify-center text-center">
+        <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
           <Page.SectionHeader title="You are not a member of any workspace." />
           <Button
             label="Sign up on Dust"
@@ -200,7 +203,7 @@ export const LoginPage = () => {
           "dark:bg-background-night dark:text-foreground-night"
         )}
       >
-        <div className="flex flex-col gap-2 h-screen items-center justify-center text-center">
+        <div className="flex h-screen flex-col items-center justify-center gap-2 text-center">
           <Page.SectionHeader title={authError.message} />
           {authError.code === "user_not_found" ? (
             <>
@@ -236,7 +239,7 @@ export const LoginPage = () => {
         "dark:bg-background-night dark:text-foreground-night"
       )}
     >
-      <div className="flex flex-col h-screen items-center justify-center text-center">
+      <div className="flex h-screen flex-col items-center justify-center text-center">
         <Page.SectionHeader title="Something unexpected occured, please contact us at support@dust.tt!" />
         <Button label="Logout" onClick={() => handleLogout()} />
       </div>

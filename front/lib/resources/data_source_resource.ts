@@ -8,9 +8,11 @@ import type {
 import { Op } from "sequelize";
 
 import { getDataSourceUsage } from "@app/lib/api/agent_data_sources";
+import { default as config } from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
@@ -31,13 +33,20 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import {
+  ConnectorsAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import { DataSourceViewModel } from "./storage/models/data_source_view";
 
 export type FetchDataSourceOrigin =
   | "registry_lookup"
   | "v1_data_sources_search"
+  | "v1_data_sources_check_upsert_queue"
   | "v1_data_sources_documents"
   | "v1_data_sources_documents_document_get_or_upsert"
   | "v1_data_sources_documents_document_parents"
@@ -59,9 +68,8 @@ export type FetchDataSourceOptions = {
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceResource
-  extends ReadonlyAttributesType<DataSourceModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface DataSourceResource extends ReadonlyAttributesType<DataSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static model: ModelStatic<DataSourceModel> = DataSourceModel;
@@ -143,6 +151,9 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
         ...this.getOptions(fetchDataSourceOptions),
         ...options,
         includeDeleted,
+        // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
+        // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+        dangerouslyBypassWorkspaceIsolationSecurity: true,
       },
       transaction
     );
@@ -273,6 +284,23 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     return dataSource ?? null;
   }
 
+  static async fetchByConversationModelIds(
+    auth: Authenticator,
+    conversationModelIds: ModelId[],
+    options?: FetchDataSourceOptions
+  ): Promise<DataSourceResource[]> {
+    if (conversationModelIds.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(auth, options, {
+      where: {
+        conversationId: { [Op.in]: conversationModelIds },
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  }
+
   // TODO(DATASOURCE_SID): remove
   static async fetchByNames(
     auth: Authenticator,
@@ -301,6 +329,9 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
       where: {
         id: ids,
       },
+      // WORKSPACE_ISOLATION_BYPASS: Data sources can be public, preventing to enforce a
+      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
   }
 
@@ -368,19 +399,22 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
   static async listBySpace(
     auth: Authenticator,
     space: SpaceResource,
-    options?: FetchDataSourceOptions
+    options?: FetchDataSourceOptions,
+    connectorProvider?: ConnectorProvider
   ) {
-    return this.listBySpaces(auth, [space], options);
+    return this.listBySpaces(auth, [space], options, connectorProvider);
   }
 
   static async listBySpaces(
     auth: Authenticator,
     spaces: SpaceResource[],
-    options?: FetchDataSourceOptions
+    options?: FetchDataSourceOptions,
+    connectorProvider?: ConnectorProvider
   ) {
     return this.baseFetch(auth, options, {
       where: {
         vaultId: spaces.map((s) => s.id),
+        ...(connectorProvider ? { connectorProvider } : {}),
       },
     });
   }
@@ -437,16 +471,62 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<number, Error>> {
-    await AgentDataSourceConfiguration.destroy({
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    // If this is a project datasource, delete the auto-created dust_project connector first
+    if (this.connectorProvider === "dust_project" && this.connectorId) {
+      // Delete the connector
+      const connectorsAPI = new ConnectorsAPI(
+        config.getConnectorsAPIConfig(),
+        logger
+      );
+
+      const connDeleteRes = await connectorsAPI.deleteConnector(
+        this.connectorId.toString(),
+        true // force delete
+      );
+
+      if (connDeleteRes.isErr()) {
+        // If connector not found, that's okay - it might have been deleted already
+        if (connDeleteRes.error.type !== "connector_not_found") {
+          return new Err(
+            new Error(
+              `Failed to delete connector: ${connDeleteRes.error.message}`
+            )
+          );
+        }
+        logger.info("Connector not found, may have been deleted already");
+      }
+
+      logger.info(
+        {
+          connectorId: this.connectorId,
+          dataSourceId: this.sId,
+        },
+        "Successfully deleted dust_project connector for datasource"
+      );
+    }
+
+    await AgentDataSourceConfigurationModel.destroy({
       where: {
         dataSourceId: this.id,
+        workspaceId,
       },
       transaction,
     });
 
-    await AgentTablesQueryConfigurationTable.destroy({
+    await AgentTablesQueryConfigurationTableModel.destroy({
       where: {
         dataSourceId: this.id,
+        workspaceId,
+      },
+      transaction,
+    });
+
+    await SkillDataSourceConfigurationModel.destroy({
+      where: {
+        dataSourceId: this.id,
+        workspaceId,
       },
       transaction,
     });
@@ -454,8 +534,8 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     // Directly delete the DataSourceViewModel here to avoid a circular dependency.
     await DataSourceViewModel.destroy({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
         dataSourceId: this.id,
+        workspaceId,
       },
       transaction,
       // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
@@ -466,6 +546,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     const deletedCount = await DataSourceModel.destroy({
       where: {
         id: this.id,
+        workspaceId,
       },
       transaction,
       // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
@@ -516,7 +597,7 @@ export class DataSourceResource extends ResourceWithSpace<DataSourceModel> {
     });
   }
 
-  async setConnectorId(connectorId: string) {
+  async setConnectorId(connectorId: string | null) {
     return this.update({
       connectorId,
     });

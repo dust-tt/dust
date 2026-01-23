@@ -7,7 +7,7 @@ import handler from "./check_bigquery_locations";
 
 vi.mock("@google-cloud/bigquery");
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 vi.mock(import("../../../../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
@@ -87,12 +87,11 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
       },
     ];
 
-    vi.mocked(BigQuery).mockImplementation(
-      () =>
-        ({
-          getDatasets: vi.fn().mockResolvedValue([mockDatasets]),
-        }) as any
-    );
+    vi.mocked(BigQuery).mockImplementation(function () {
+      return {
+        getDatasets: vi.fn().mockResolvedValue([mockDatasets]),
+      } as any;
+    });
 
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",
@@ -110,11 +109,7 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
       locations: {
         us: ["dataset1.table1", "dataset1.table2"],
         eu: ["dataset2.table3"],
-        "eu-central1": [
-          "dataset2.table3",
-          "dataset3.table4",
-          "dataset4.table5",
-        ],
+        "eu-central1": ["dataset3.table4", "dataset4.table5"],
       },
     });
   });
@@ -137,12 +132,11 @@ describe("POST /api/w/[wId]/credentials/check_bigquery_locations", () => {
   });
 
   it("returns 400 when BigQuery client throws an error", async () => {
-    vi.mocked(BigQuery).mockImplementation(
-      () =>
-        ({
-          getDatasets: vi.fn().mockRejectedValue(new Error("BigQuery error")),
-        }) as any
-    );
+    vi.mocked(BigQuery).mockImplementation(function () {
+      return {
+        getDatasets: vi.fn().mockRejectedValue(new Error("BigQuery error")),
+      } as any;
+    });
 
     const { req, res } = await createPrivateApiMockRequest({
       method: "POST",

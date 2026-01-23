@@ -2,14 +2,14 @@ import { revokeAndTrackMembership } from "@app/lib/api/membership";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExternalUser, SessionWithUser } from "@app/lib/iam/provider";
 import {
-  AgentConfiguration,
-  AgentUserRelation,
-} from "@app/lib/models/assistant/agent";
+  AgentConfigurationModel,
+  AgentUserRelationModel,
+} from "@app/lib/models/agent/agent";
 import {
   ConversationParticipantModel,
-  UserMessage,
-} from "@app/lib/models/assistant/conversation";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -21,8 +21,58 @@ import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
 import logger from "@app/logger/logger";
+import type { LightWorkspaceType } from "@app/types";
 import type { Result } from "@app/types";
 import { Err, Ok, sanitizeString } from "@app/types";
+
+// WorkOS custom attributes to sync to user metadata.
+// These are normalized by WorkOS and can come from SCIM or SSO.
+export const CUSTOM_ATTRIBUTES_TO_SYNC = [
+  "job_title",
+  "department_name",
+] as const;
+export type CustomAttributeKey = (typeof CUSTOM_ATTRIBUTES_TO_SYNC)[number];
+export const WORKOS_METADATA_KEY_PREFIX = "workos:";
+
+// Syncs custom attributes to user metadata.
+// Stores attributes with workspace scope and "workos:" prefix.
+// Removes attributes that are no longer present.
+async function syncCustomAttributesToUserMetadata(
+  user: UserResource,
+  workspace: LightWorkspaceType,
+  attributes: Record<string, string | null>
+): Promise<void> {
+  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+    const metadataKey = `${WORKOS_METADATA_KEY_PREFIX}${attr}`;
+    const value = attributes[attr] ?? null;
+
+    if (value !== null) {
+      await user.setMetadata(metadataKey, value, workspace.id);
+      logger.info(
+        {
+          userId: user.sId,
+          workspaceId: workspace.sId,
+          attribute: attr,
+          value,
+        },
+        "Synced custom attribute to user metadata"
+      );
+    } else {
+      // Remove attribute if no longer present.
+      const existing = await user.getMetadata(metadataKey, workspace.id);
+      if (existing) {
+        await user.deleteMetadata({
+          key: metadataKey,
+          workspaceId: workspace.id,
+        });
+        logger.info(
+          { userId: user.sId, workspaceId: workspace.sId, attribute: attr },
+          "Removed custom attribute from user metadata"
+        );
+      }
+    }
+  }
+}
 
 /**
  * Soft HTML escaping that prevents HTML tag injection while preserving apostrophes and other common characters.
@@ -46,7 +96,7 @@ export async function maybeUpdateFromExternalUser(
   user: UserResource,
   externalUser: ExternalUser
 ) {
-  if (externalUser.picture && externalUser.picture !== user.imageUrl) {
+  if (!user.imageUrl && externalUser.picture) {
     void UserModel.update(
       {
         imageUrl: externalUser.picture,
@@ -64,11 +114,16 @@ export async function createOrUpdateUser({
   user,
   externalUser,
   forceNameUpdate = false,
+  workspace,
 }: {
   user: UserResource | null;
   externalUser: ExternalUser;
   forceNameUpdate?: boolean;
+  workspace?: LightWorkspaceType;
 }): Promise<{ user: UserResource; created: boolean }> {
+  let resultUser: UserResource;
+  let created: boolean;
+
   if (user) {
     const updateArgs: { [key: string]: string } = {};
 
@@ -133,7 +188,8 @@ export async function createOrUpdateUser({
       }
     }
 
-    return { user, created: false };
+    resultUser = user;
+    created = false;
   } else {
     let { firstName, lastName } = guessFirstAndLastNameFromFullName(
       externalUser.name
@@ -154,7 +210,6 @@ export async function createOrUpdateUser({
 
     const u = await UserResource.makeNew({
       sId: generateRandomModelSId(),
-      auth0Sub: externalUser.auth0Sub,
       workOSUserId: existingWorkOSUser ? null : externalUser.workOSUserId,
       provider: null, ///session.provider
       username: externalUser.nickname,
@@ -177,8 +232,20 @@ export async function createOrUpdateUser({
       );
     }
 
-    return { user: u, created: true };
+    resultUser = u;
+    created = true;
   }
+
+  // Sync custom attributes to user metadata if workspace is provided.
+  if (workspace && externalUser.customAttributes) {
+    await syncCustomAttributesToUserMetadata(
+      resultUser,
+      workspace,
+      externalUser.customAttributes
+    );
+  }
+
+  return { user: resultUser, created };
 }
 
 export async function mergeUserIdentities({
@@ -235,7 +302,7 @@ export async function mergeUserIdentities({
   }
 
   // Migrate authorship of agent configurations from the secondary user to the primary user.
-  await AgentConfiguration.update(
+  await AgentConfigurationModel.update(
     {
       authorId: primaryUser.id,
     },
@@ -275,12 +342,12 @@ export async function mergeUserIdentities({
   // Replace all conversation participants for the secondary user with the primary user.
   await ConversationParticipantModel.update(userIdValues, userIdOptions);
   // Migrate authorship of user messages from the secondary user to the primary user.
-  await UserMessage.update(userIdValues, userIdOptions);
+  await UserMessageModel.update(userIdValues, userIdOptions);
   // Migrate authorship of content fragments from the secondary user to the primary user.
   await ContentFragmentModel.update(userIdValues, userIdOptions);
   // Migrate authorship of files from the secondary user to the primary user.
   await FileModel.update(userIdValues, userIdOptions);
-  await DustAppSecret.update(userIdValues, userIdOptions);
+  await DustAppSecretModel.update(userIdValues, userIdOptions);
   // Migrate authorship of agent memories from the secondary user to the primary user.
   await AgentMemoryModel.update(userIdValues, userIdOptions);
 
@@ -303,14 +370,14 @@ export async function mergeUserIdentities({
   await GroupMembershipModel.update(userIdValues, userIdOptions);
 
   // Delete all agent-user relations for the secondary user that already have a relation.
-  const agentConfigurations = await AgentUserRelation.findAll({
+  const agentConfigurations = await AgentUserRelationModel.findAll({
     where: {
       userId: primaryUser.id,
       workspaceId: workspaceId,
     },
     attributes: ["agentConfiguration"],
   });
-  await AgentUserRelation.destroy({
+  await AgentUserRelationModel.destroy({
     where: {
       userId: secondaryUser.id,
       agentConfiguration: agentConfigurations.map((p) => p.agentConfiguration),
@@ -318,7 +385,7 @@ export async function mergeUserIdentities({
     },
   });
   // Migrate agent-user relations from the secondary user to the primary user.
-  await AgentUserRelation.update(userIdValues, userIdOptions);
+  await AgentUserRelationModel.update(userIdValues, userIdOptions);
 
   // Migrate authorship of keys from the secondary user to the primary user.
   await KeyModel.update(userIdValues, userIdOptions);
@@ -352,10 +419,7 @@ export async function mergeUserIdentities({
   }
 
   if (revokeSecondaryUser) {
-    await revokeAndTrackMembership(
-      auth.getNonNullableWorkspace(),
-      secondaryUser
-    );
+    await revokeAndTrackMembership(auth, secondaryUser);
   }
 
   return new Ok({

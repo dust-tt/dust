@@ -27,10 +27,20 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import {
+  isProPlan,
+  isWhitelistedBusinessPlan,
+} from "@app/lib/plans/plan_codes";
+import {
+  useFeatureFlags,
+  usePerSeatPricing,
+  useSubscriptionTrialInfo,
+  useWorkspaceSeatsCount,
+} from "@app/lib/swr/workspaces";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
   SubscriptionPerSeatPricing,
@@ -41,49 +51,20 @@ import type {
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  trialDaysRemaining: number | null;
-  workspaceSeats: number;
-  perSeatPricing: SubscriptionPerSeatPricing | null;
 }>(async (context, auth) => {
   const owner = auth.workspace();
-  const subscriptionResource = auth.subscriptionResource();
+  const subscription = auth.subscription();
   const user = auth.user();
-  if (!owner || !auth.isAdmin() || !user || !subscriptionResource) {
+  if (!owner || !auth.isAdmin() || !user || !subscription) {
     return {
       notFound: true,
     };
   }
 
-  let trialDaysRemaining = null;
-  const subscription = subscriptionResource.toJSON();
-
-  if (subscription.trialing && subscription.stripeSubscriptionId) {
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      return {
-        notFound: true,
-      };
-    }
-    stripeSubscription;
-    trialDaysRemaining = stripeSubscription.trial_end
-      ? Math.ceil(
-          (stripeSubscription.trial_end * 1000 - Date.now()) /
-            (1000 * 60 * 60 * 24)
-        )
-      : null;
-  }
-
-  const workspaceSeats = await countActiveSeatsInWorkspace(owner.sId);
-  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
   return {
     props: {
       owner,
       subscription,
-      trialDaysRemaining,
-      workspaceSeats,
-      perSeatPricing,
     },
   };
 });
@@ -91,9 +72,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function Subscription({
   owner,
   subscription,
-  trialDaysRemaining,
-  workspaceSeats,
-  perSeatPricing,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const sendNotification = useSendNotification();
@@ -103,6 +81,20 @@ export default function Subscription({
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { trialDaysRemaining, isTrialInfoLoading } = useSubscriptionTrialInfo({
+    workspaceId: owner.sId,
+  });
+  const { seatsCount: workspaceSeats, isSeatsCountLoading } =
+    useWorkspaceSeatsCount({ workspaceId: owner.sId });
+  const { perSeatPricing, isPerSeatPricingLoading } = usePerSeatPricing({
+    workspaceId: owner.sId,
+  });
+
+  const isLoading =
+    isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
+
   useEffect(() => {
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
@@ -132,7 +124,7 @@ export default function Subscription({
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {
-      const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -173,10 +165,41 @@ export default function Subscription({
     window.open(`/w/${owner.sId}/subscription/manage`, "_blank");
   });
 
+  const {
+    submit: handleUpgradeToBusiness,
+    isSubmitting: isUpgradingToBusiness,
+  } = useSubmitFunction(async () => {
+    const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "upgrade_to_business",
+      } satisfies t.TypeOf<typeof PatchSubscriptionRequestBody>),
+    });
+
+    if (!res.ok) {
+      sendNotification({
+        type: "error",
+        title: "Upgrade failed",
+        description: "Failed to upgrade to Enterprise seat-based plan.",
+      });
+    } else {
+      sendNotification({
+        type: "success",
+        title: "Upgrade successful",
+        description:
+          "Your workspace has been upgraded to Enterprise seat-based plan.",
+      });
+      router.reload();
+    }
+  });
+
   const { submit: skipFreeTrial, isSubmitting: skipFreeTrialIsSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -208,7 +231,7 @@ export default function Subscription({
   const { submit: cancelFreeTrial, isSubmitting: cancelFreeTrialSubmitting } =
     useSubmitFunction(async () => {
       try {
-        const res = await fetch(`/api/w/${owner.sId}/subscriptions`, {
+        const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -236,9 +259,15 @@ export default function Subscription({
       }
     });
 
-  const isProcessing = isSubscribingPlan || isGoingToStripePortal;
-
   const plan = subscription.plan;
+  const isWorkspaceOnProPlan = isProPlan(plan);
+  const isWorkspaceWhitelistedBusinessPlan = isWhitelistedBusinessPlan(owner);
+  const canUpsellToBusinessPlan =
+    isWorkspaceOnProPlan && isWorkspaceWhitelistedBusinessPlan;
+
+  const isProcessing =
+    isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
+
   const chipColor = !isUpgraded(plan) ? "green" : "blue";
 
   const onClickProPlan = async () => handleSubscribePlan();
@@ -258,11 +287,33 @@ export default function Subscription({
       })
     : null;
 
+  if (isLoading) {
+    return (
+      <AppCenteredLayout
+        subscription={subscription}
+        owner={owner}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "subscription",
+          featureFlags,
+        })}
+      >
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AppCenteredLayout>
+    );
+  }
+
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "subscription" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "subscription",
+        featureFlags,
+      })}
     >
       {perSeatPricing && (
         <>
@@ -326,7 +377,13 @@ export default function Subscription({
                     subscription.stripeSubscriptionId && (
                       <Button
                         label="Manage my subscription"
-                        onClick={handleGoToStripePortal}
+                        onClick={withTracking(
+                          TRACKING_AREAS.AUTH,
+                          "subscription_manage",
+                          () => {
+                            void handleGoToStripePortal();
+                          }
+                        )}
                         variant="outline"
                       />
                     )}
@@ -338,18 +395,29 @@ export default function Subscription({
             <Page.Vertical>
               <Page.Horizontal gap="sm">
                 <Button
-                  onClick={() => setShowSkipFreeTrialDialog(true)}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_skip_trial",
+                    () => {
+                      setShowSkipFreeTrialDialog(true);
+                    }
+                  )}
                   label="End trial & get full access"
                 />
                 <Button
                   label="Cancel subscription"
                   variant="ghost"
-                  onClick={() => setShowCancelFreeTrialDialog(true)}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_cancel_trial",
+                    () => {
+                      setShowCancelFreeTrialDialog(true);
+                    }
+                  )}
                 />
               </Page.Horizontal>
             </Page.Vertical>
           )}
-          <div className="h-4"></div>
           {subscription.stripeSubscriptionId && (
             <Page.Vertical gap="sm">
               <Page.H variant="h5">Billing</Page.H>
@@ -393,7 +461,36 @@ export default function Subscription({
                   icon={CardIcon}
                   label="Your billing dashboard on Stripe"
                   variant="ghost"
-                  onClick={handleGoToStripePortal}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_stripe_portal",
+                    () => {
+                      void handleGoToStripePortal();
+                    }
+                  )}
+                />
+              </div>
+            </Page.Vertical>
+          )}
+          {canUpsellToBusinessPlan && (
+            <Page.Vertical gap="sm">
+              <Page.H variant="h5">Upgrade your plan</Page.H>
+              <Page.P>
+                You are eligible to upgrade to the Enteprise seat-based plan
+                with additional features.
+              </Page.P>
+              <div>
+                <Button
+                  label="Upgrade to Enterprise seat-based plan"
+                  variant="primary"
+                  disabled={isProcessing}
+                  onClick={withTracking(
+                    TRACKING_AREAS.AUTH,
+                    "subscription_upgrade_to_business",
+                    () => {
+                      void handleUpgradeToBusiness();
+                    }
+                  )}
                 />
               </div>
             </Page.Vertical>
@@ -404,6 +501,7 @@ export default function Subscription({
                 <Page.H variant="h5">Manage my plan</Page.H>
                 <div className="h-full w-full pt-2">
                   <PricePlans
+                    owner={owner}
                     plan={plan}
                     onClickProPlan={onClickProPlan}
                     isProcessing={isProcessing}

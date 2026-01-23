@@ -1,6 +1,6 @@
 import type { Attributes } from "sequelize";
 
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/plan";
 import {
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
@@ -8,7 +8,7 @@ import {
 import { isDevelopment, isTest } from "@app/types";
 
 export type PlanAttributes = Omit<
-  Attributes<Plan>,
+  Attributes<PlanModel>,
   "id" | "createdAt" | "updatedAt"
 >;
 
@@ -35,6 +35,7 @@ if (isDevelopment() || isTest()) {
     name: "Pro",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxVaultsInWorkspace: 1,
@@ -60,6 +61,7 @@ if (isDevelopment() || isTest()) {
     name: "Pro Business",
     maxMessages: -1,
     maxMessagesTimeframe: "lifetime",
+    isDeepDiveAllowed: true,
     maxImagesPerWeek: 100,
     maxUsersInWorkspace: 1000,
     maxVaultsInWorkspace: 5,
@@ -83,17 +85,22 @@ if (isDevelopment() || isTest()) {
 }
 
 /**
- * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
+ * Function to call when we edit something in PRO_PLANS_DATA to update the database. It will create or update the plans.
+ * @param planCode - Optional plan code to upsert. If not provided, all plans are upserted.
  */
-export const upsertProPlans = async () => {
-  for (const planData of PRO_PLANS_DATA) {
-    const plan = await Plan.findOne({
+export const upsertProPlans = async (planCode?: string) => {
+  const plansToUpsert = planCode
+    ? PRO_PLANS_DATA.filter((p) => p.code === planCode)
+    : PRO_PLANS_DATA;
+
+  for (const planData of plansToUpsert) {
+    const plan = await PlanModel.findOne({
       where: {
         code: planData.code,
       },
     });
     if (plan === null) {
-      await Plan.create(planData);
+      await PlanModel.create(planData);
       // console.log(`Pro plan ${planData.code} created.`);
     } else {
       await plan.update(planData);

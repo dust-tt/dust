@@ -1,12 +1,12 @@
 import { Op } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types";
 
 const updateAllAgentMaxSteps = async (execute: boolean) => {
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: {
       maxStepsPerRun: { [Op.lt]: MAX_STEPS_USE_PER_RUN_LIMIT },
       status: "active",

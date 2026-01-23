@@ -4,7 +4,7 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
 import { getConnectorManager } from "@connectors/connectors";
-import { getClient } from "@connectors/connectors/microsoft";
+import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
   getItem,
   getParentReferenceInternalId,
@@ -28,6 +28,7 @@ import {
 } from "@connectors/lib/data_sources";
 import { terminateWorkflow } from "@connectors/lib/temporal";
 import logger, { getActivityLogger } from "@connectors/logger/logger";
+import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { MicrosoftNodeResource } from "@connectors/resources/microsoft_resource";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 import type {
@@ -80,34 +81,27 @@ function parseInternalIds(idsFile?: string, internalId?: string): string[] {
   }
 }
 
-const getConnector = async (args: { [key: string]: string | undefined }) => {
-  if (args.wId) {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        workspaceId: `${args.wId}`,
-        type: "microsoft",
-      },
-    });
-    if (!connector) {
-      throw new Error(`Could not find connector for workspace ${args.wId}`);
-    }
-    return connector;
+async function getConnector(args: MicrosoftCommandType["args"]) {
+  if (!args.connectorId && !(args.wId && args.dsId)) {
+    throw new Error("Missing --connectorId or --wId and --dsId argument");
   }
+
+  let connector;
   if (args.connectorId) {
-    const connector = await ConnectorModel.findOne({
-      where: {
-        id: args.connectorId,
-      },
+    connector = await ConnectorResource.fetchById(args.connectorId);
+  } else if (args.dsId && args.wId) {
+    connector = await ConnectorResource.findByDataSource({
+      workspaceId: args.wId,
+      dataSourceId: args.dsId,
     });
-    if (!connector) {
-      throw new Error(
-        `Could not find connector for connectorId ${args.connectorId}`
-      );
-    }
-    return connector;
   }
-  throw new Error("Missing --connectorId or --wId argument");
-};
+
+  if (!connector) {
+    throw new Error("Could not find connector");
+  }
+
+  return connector;
+}
 
 export const microsoft = async ({
   command,
@@ -123,12 +117,14 @@ export const microsoft = async ({
         },
       });
       for (const connector of connectors) {
-        await throwOnError(
-          getConnectorManager({
-            connectorId: connector.id,
-            connectorProvider: "microsoft",
-          }).garbageCollect()
-        );
+        if (!connector.pausedAt) {
+          await throwOnError(
+            getConnectorManager({
+              connectorId: connector.id,
+              connectorProvider: "microsoft",
+            }).garbageCollect()
+          );
+        }
       }
       return { success: true };
     }
@@ -142,7 +138,7 @@ export const microsoft = async ({
         args.internalId
       );
       const logger = getActivityLogger(connector);
-      const client = await getClient(connector.connectionId);
+      const client = await getMicrosoftClient(connector.connectionId);
       const driveItem = (await getItem(
         logger,
         client,
@@ -253,7 +249,7 @@ export const microsoft = async ({
       const internalIds = parseInternalIds(idsFile, internalId);
 
       // Get node from MS Graph API.
-      const client = await getClient(connector.connectionId);
+      const client = await getMicrosoftClient(connector.connectionId);
 
       for (const internalId of internalIds) {
         const node = await MicrosoftNodeResource.fetchByInternalId(
@@ -392,7 +388,7 @@ export const microsoft = async ({
 
       const internalIds = parseInternalIds(idsFile, internalId);
 
-      const client = await getClient(connector.connectionId);
+      const client = await getMicrosoftClient(connector.connectionId);
 
       for (const internalId of internalIds) {
         const { nodeType, itemAPIPath } = typeAndPathFromInternalId(internalId);

@@ -4,7 +4,7 @@ import {
   getAuthObject,
   getDriveClient,
 } from "@connectors/connectors/google_drive/temporal/utils";
-import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFoldersModel } from "@connectors/lib/models/google_drive";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 async function main() {
@@ -43,7 +43,7 @@ async function main() {
           }
           const rootId = myDriveRes.data.id;
 
-          const selectedFolders = await GoogleDriveFolders.findAll({
+          const selectedFolders = await GoogleDriveFoldersModel.findAll({
             where: {
               connectorId: c.id,
             },

@@ -3,7 +3,6 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
 import handler from "./sync";
 
@@ -11,18 +10,17 @@ async function setupTest(
   role: "builder" | "user" | "admin" = "admin",
   method: RequestMethod = "GET"
 ) {
-  const { req, res, workspace } = await createPrivateApiMockRequest({
-    role,
-    method,
-  });
-
-  const space = await SpaceFactory.system(workspace);
+  const { req, res, workspace, systemSpace } =
+    await createPrivateApiMockRequest({
+      role,
+      method,
+    });
 
   // Set up common query parameters
   req.query.wId = workspace.sId;
-  req.query.spaceId = space.sId;
+  req.query.spaceId = systemSpace.sId;
 
-  return { req, res, workspace, space };
+  return { req, res, workspace, space: systemSpace };
 }
 
 vi.mock(import("@app/lib/actions/mcp_actions"), async (importOriginal) => {

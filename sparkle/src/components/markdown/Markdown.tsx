@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type ReactMarkdownProps } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
-import rehypeKatex from "rehype-katex";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { visit } from "unist-util-visit";
 
-import { Chip } from "@sparkle/components";
-import { MemoBlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
-import { MemoCodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import { Checkbox, Chip } from "@sparkle/components";
+import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
+import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
+import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   markdownHeaderClasses,
   MemoH1Block,
@@ -42,13 +42,16 @@ import {
   MemoHorizontalRuleBlock,
   MemoStrongBlock,
 } from "@sparkle/components/markdown/TextFormattingBlocks";
-import { sanitizeContent } from "@sparkle/components/markdown/utils";
+import {
+  preserveLineBreaks,
+  sanitizeContent,
+} from "@sparkle/components/markdown/utils";
 import { cn } from "@sparkle/lib/utils";
 
 import { useAnimatedText } from "./useAnimatedText";
 
 const sizes = {
-  p: "s-copy-sm @sm:s-text-base @sm:s-leading-7",
+  p: "s-text-base s-leading-7",
   ...markdownHeaderClasses,
 };
 
@@ -71,19 +74,29 @@ export function Markdown({
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
+  compactSpacing = false,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
+  canCopyQuotes = true,
 }: {
   content: string;
   isStreaming?: boolean;
   shouldHaveStreamingAnimation?: boolean;
   textColor?: string;
   isLastMessage?: boolean;
+  compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
   forcedTextSize?: string;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  canCopyQuotes?: boolean;
 }) {
-  const processedContent = useMemo(() => sanitizeContent(content), [content]);
+  const processedContent = useMemo(() => {
+    let sanitized = sanitizeContent(content);
+    if (compactSpacing) {
+      sanitized = preserveLineBreaks(sanitized);
+    }
+    return sanitized;
+  }, [content, compactSpacing]);
 
   const markdownContent = useAnimatedText(
     processedContent,
@@ -144,6 +157,7 @@ export function Markdown({
           textColor={textColor}
           textSize={forcedTextSize ? forcedTextSize : sizes.p}
           node={node}
+          compactSpacing={compactSpacing}
         >
           {children}
         </MemoParagraphBlock>
@@ -210,13 +224,19 @@ export function Markdown({
       strong: ({ children, node }) => (
         <MemoStrongBlock node={node}>{children}</MemoStrongBlock>
       ),
-      input: MemoInputBlock,
-      blockquote: MemoBlockquoteBlock,
-      hr: MemoHorizontalRuleBlock,
-      code: MemoCodeBlockWithExtendedSupport,
+      input: Input,
+      blockquote: ({ children }) => (
+        <BlockquoteBlock buttonDisplay={canCopyQuotes ? "inside" : null}>
+          {children}
+        </BlockquoteBlock>
+      ),
+      hr: () => (
+        <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
+      ),
+      code: CodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
-  }, [textColor, additionalMarkdownComponents]);
+  }, [textColor, compactSpacing, additionalMarkdownComponents]);
 
   const markdownPlugins: PluggableList = useMemo(
     () => [
@@ -229,11 +249,13 @@ export function Markdown({
     [additionalMarkdownPlugins]
   );
 
-  const rehypePlugins = [[rehypeKatex, { output: "mathml" }]] as PluggableList;
+  const rehypePlugins = [
+    [safeRehypeKatex, { output: "mathml" }],
+  ] as PluggableList;
 
   try {
     return (
-      <div className={cn("s-w-full")}>
+      <div className="s-w-full">
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
@@ -254,7 +276,7 @@ export function Markdown({
     );
   } catch (error) {
     return (
-      <div className={cn("s-w-full")}>
+      <div className="s-w-full">
         <Chip color="warning">
           There was an error parsing this markdown content
         </Chip>
@@ -262,4 +284,76 @@ export function Markdown({
       </div>
     );
   }
+}
+
+function LinkBlock({
+  href,
+  children,
+}: {
+  href?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      title={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        "s-break-all s-font-semibold s-transition-all s-duration-200 s-ease-in-out hover:s-underline",
+        "s-text-highlight dark:s-text-highlight-night",
+        "hover:s-text-highlight-400 dark:hover:s-text-highlight-400-night",
+        "active:s-text-highlight-dark dark:active:s-text-highlight-dark-night"
+      )}
+    >
+      {children}
+    </a>
+  );
+}
+
+type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
+  ReactMarkdownProps & {
+    ref?: React.Ref<HTMLInputElement>;
+  };
+
+function Input({
+  type,
+  checked,
+  className,
+  onChange,
+  ref,
+  ...props
+}: InputProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  React.useImperativeHandle(ref, () => inputRef.current!);
+
+  if (type !== "checkbox") {
+    return (
+      <input
+        ref={inputRef}
+        type={type}
+        checked={checked}
+        className={className}
+        {...props}
+      />
+    );
+  }
+
+  const handleCheckedChange = (isChecked: boolean) => {
+    onChange?.({
+      target: { type: "checkbox", checked: isChecked },
+    } as React.ChangeEvent<HTMLInputElement>);
+  };
+
+  return (
+    <div className="s-inline-flex s-items-center">
+      <Checkbox
+        ref={inputRef as React.Ref<HTMLButtonElement>}
+        size="xs"
+        checked={checked}
+        className="s-translate-y-[3px]"
+        onCheckedChange={handleCheckedChange}
+      />
+    </div>
+  );
 }

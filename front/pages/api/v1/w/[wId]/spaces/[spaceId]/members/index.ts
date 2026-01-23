@@ -20,6 +20,7 @@ import { assertNever, isString } from "@app/types";
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       PostSpaceMembersResponseBody | GetSpaceMembersResponseBody
@@ -139,6 +140,15 @@ async function handler(
               api_error: {
                 type: "user_not_found",
                 message: "The user was not found in the workspace.",
+              },
+            });
+          case "group_requirements_not_met":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Some users have insufficient role privilege to be added to the space.",
               },
             });
           case "system_or_global_group":

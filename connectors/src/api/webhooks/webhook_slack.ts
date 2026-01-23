@@ -1,4 +1,4 @@
-import { removeNulls } from "@dust-tt/client";
+import { DustAPI, removeNulls } from "@dust-tt/client";
 import { JSON } from "@jsonjoy.com/util/lib/json-brand";
 import type { Request, Response } from "express";
 
@@ -27,11 +27,12 @@ import {
   launchSlackSyncOneMessageWorkflow,
   launchSlackSyncOneThreadWorkflow,
 } from "@connectors/connectors/slack/temporal/client";
+import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { upsertDataSourceFolder } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import mainLogger from "@connectors/logger/logger";
 import { apiError, withLogging } from "@connectors/logger/withlogging";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -79,8 +80,10 @@ const _webhookSlackAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations =
-      await SlackConfigurationResource.listForTeamId(teamId);
+    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+      teamId,
+      "slack"
+    );
     if (slackConfigurations.length === 0) {
       return apiError(req, res, {
         api_error: {
@@ -159,7 +162,10 @@ const _webhookSlackAPIHandler = async (
             // Message from an actual user (a human)
             await handleDeprecatedChatBot(req, res, logger);
             break;
-          } else if (event.channel_type === "channel") {
+          } else if (
+            event.channel_type === "channel" ||
+            event.channel_type === "group"
+          ) {
             if (!event.channel) {
               return apiError(req, res, {
                 api_error: {
@@ -176,7 +182,7 @@ const _webhookSlackAPIHandler = async (
             // Get valid slack configurations for this channel once
             const validConfigurations = await Promise.all(
               slackConfigurations.map(async (c) => {
-                const slackChannel = await SlackChannel.findOne({
+                const slackChannel = await SlackChannelModel.findOne({
                   where: {
                     connectorId: c.connectorId,
                     slackChannelId: channel,
@@ -214,6 +220,50 @@ const _webhookSlackAPIHandler = async (
                       permission: slackChannel.permission,
                     },
                     "Ignoring message because channel permission is not read or read_write"
+                  );
+                  return null;
+                }
+
+                // Check if workspace is in maintenance mode
+                const connector = await ConnectorResource.fetchById(
+                  c.connectorId
+                );
+                if (!connector) {
+                  logger.info(
+                    {
+                      connectorId: c.connectorId,
+                      slackChannelId: channel,
+                    },
+                    "Skipping webhook: Connector not found"
+                  );
+                  return null;
+                }
+
+                const dataSourceConfig =
+                  dataSourceConfigFromConnector(connector);
+                const dustAPI = new DustAPI(
+                  {
+                    url: apiConfig.getDustFrontAPIUrl(),
+                  },
+                  {
+                    apiKey: dataSourceConfig.workspaceAPIKey,
+                    workspaceId: dataSourceConfig.workspaceId,
+                  },
+                  logger
+                );
+
+                // Make a simple API call to check if workspace is accessible
+                const spacesRes = await dustAPI.getSpaces();
+                if (spacesRes.isErr()) {
+                  logger.info(
+                    {
+                      connectorId: connector.id,
+                      slackTeamId: teamId,
+                      slackChannelId: channel,
+                      workspaceId: dataSourceConfig.workspaceId,
+                      error: spacesRes.error.message,
+                    },
+                    "Skipping webhook: workspace is unavailable (likely in maintenance)"
                   );
                   return null;
                 }

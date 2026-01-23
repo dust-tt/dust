@@ -53,6 +53,7 @@ export function SelectField<T extends FieldValues>({
                 <div className="bg-muted-background dark:bg-muted-background-night">
                   {options.map((option) => (
                     <PokeSelectItem key={option.value} value={option.value}>
+                      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                       {option.display ? option.display : option.value}
                     </PokeSelectItem>
                   ))}
@@ -93,6 +94,16 @@ export function InputField<T extends FieldValues>({
               type={type}
               {...field}
               value={field.value}
+              onChange={
+                type === "number"
+                  ? (e) => {
+                      const parsed = Number(e.target.value);
+                      if (isFinite(parsed)) {
+                        field.onChange(parsed);
+                      }
+                    }
+                  : field.onChange
+              }
             />
           </PokeFormControl>
           <PokeFormMessage />

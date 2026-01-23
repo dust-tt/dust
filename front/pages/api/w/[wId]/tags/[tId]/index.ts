@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { TagResource } from "@app/lib/resources/tags_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 const PatchBodySchema = t.type({
   name: t.string,
@@ -23,7 +24,7 @@ async function handler(
     query: { tId },
   } = req;
 
-  if (!tId || typeof tId !== "string") {
+  if (!isString(tId)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

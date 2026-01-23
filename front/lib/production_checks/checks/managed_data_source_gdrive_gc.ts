@@ -1,12 +1,12 @@
 import { QueryTypes } from "sequelize";
 
 import { getCoreDocuments } from "@app/lib/production_checks/managed_ds";
-import type { CheckFunction } from "@app/lib/production_checks/types";
 import {
   getConnectorsReplicaDbConnection,
   getFrontReplicaDbConnection,
 } from "@app/lib/production_checks/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { ActionLink, CheckFunction } from "@app/types";
 import { withRetries } from "@app/types";
 
 export const managedDataSourceGCGdriveCheck: CheckFunction = async (
@@ -25,10 +25,23 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       { type: QueryTypes.SELECT }
     );
 
+  if (GdriveDataSources.length === 0) {
+    reportSuccess({ message: "No Google Drive data sources to check" });
+    return;
+  }
+
   const CONCURRENCY = 8;
   await concurrentExecutor(
     GdriveDataSources,
     async (ds) => {
+      logger.info(
+        {
+          reportPayload: {
+            connectorId: ds.connectorId,
+          },
+        },
+        "Check started"
+      );
       heartbeat();
 
       // Retrieve all documents from the connector (first) in batches using an id cursor
@@ -43,7 +56,6 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
           logger,
           async () =>
             connectorsReplica.query(
-              // eslint-disable-next-line dust/no-raw-sql -- Legit
               'SELECT id, "dustFileId" as "coreDocumentId" FROM google_drive_files WHERE "connectorId" = :connectorId AND id > :lastId ORDER BY id ASC LIMIT :batchSize',
               {
                 replacements: {
@@ -79,7 +91,7 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
       const coreDocumentsRes = await getCoreDocuments(ds.id);
       if (coreDocumentsRes.isErr()) {
         reportFailure(
-          { frontDataSourceId: ds.id },
+          { frontDataSourceId: ds.id, actionLinks: [] },
           "Could not get core documents"
         );
         return;
@@ -91,14 +103,18 @@ export const managedDataSourceGCGdriveCheck: CheckFunction = async (
         (coreId) => !connectorDocumentIds.has(coreId)
       );
       if (notDeleted.length > 0) {
+        const actionLinks: ActionLink[] = [
+          {
+            label: `${notDeleted.length} document${notDeleted.length > 1 ? "s" : ""} not GC'd (connector: ${ds.connectorId})`,
+            url: `/poke/connectors/${ds.connectorId}`,
+          },
+        ];
         reportFailure(
-          { notDeleted, connectorId: ds.connectorId },
+          { notDeleted, connectorId: ds.connectorId, actionLinks },
           "Google Drive documents not properly Garbage collected"
         );
       } else {
-        reportSuccess({
-          connectorId: ds.connectorId,
-        });
+        reportSuccess();
       }
     },
     { concurrency: CONCURRENCY }

@@ -7,14 +7,24 @@ import { MarkdownNode } from "./types";
 import { sameNodePosition } from "./utils";
 
 export const blockquoteVariants = cva(
-  ["s-w-full s-text-base s-italic s-rounded-2xl s-py-3 s-pl-5 s-pr-12"],
+  [
+    "s-w-full s-text-base s-italic s-p-3",
+    "s-relative",
+    "before:s-content-[''] before:s-absolute before:s-left-0 before:s-top-3 before:s-bottom-3",
+    "before:s-w-1 before:s-bg-faint dark:before:s-bg-faint-night",
+    "before:s-rounded-full",
+  ],
   {
     variants: {
       variant: {
         surface: [
           "s-text-foreground dark:s-text-foreground-night",
-          "s-bg-muted-background dark:s-bg-muted-background-night",
+          "s-bg-transparent",
         ],
+      },
+      buttonDisplay: {
+        inside: ["s-pr-12"],
+        outside: [],
       },
     },
   }
@@ -24,10 +34,15 @@ interface BlockquoteBlockProps {
   children: React.ReactNode;
   variant?: "surface";
   node?: MarkdownNode;
+  buttonDisplay?: "inside" | "outside" | null; // null to hide buttons
 }
 
 export const MemoBlockquoteBlock = memo(
-  ({ children, variant = "surface" }: BlockquoteBlockProps) => {
+  ({
+    children,
+    variant = "surface",
+    buttonDisplay = "inside",
+  }: BlockquoteBlockProps) => {
     const elementAt1 = React.Children.toArray(children)[1];
     const childrenContent =
       elementAt1 && React.isValidElement(elementAt1)
@@ -36,7 +51,7 @@ export const MemoBlockquoteBlock = memo(
 
     // Convert array content to string if necessary
     const contentAsString = Array.isArray(childrenContent)
-      ? childrenContent.join("")
+      ? childrenContent.filter((c) => typeof c === "string").join("")
       : childrenContent;
 
     // Only pass content if it exists
@@ -45,15 +60,34 @@ export const MemoBlockquoteBlock = memo(
       : undefined;
 
     return (
-      <ContentBlockWrapper content={clipboardContent} className="s-my-2">
-        <blockquote className={blockquoteVariants({ variant })}>
+      <ContentBlockWrapper
+        content={clipboardContent}
+        className="s-my-2"
+        buttonDisplay={buttonDisplay}
+      >
+        <blockquote className={blockquoteVariants({ variant, buttonDisplay })}>
           {children}
         </blockquote>
       </ContentBlockWrapper>
     );
   },
   (prev, next) =>
-    sameNodePosition(prev.node, next.node) && prev.variant === next.variant
+    sameNodePosition(prev.node, next.node) &&
+    prev.variant === next.variant &&
+    prev.buttonDisplay === next.buttonDisplay
 );
 
 MemoBlockquoteBlock.displayName = "BlockquoteBlock";
+
+// Export non-memoized version for compatibility
+export function BlockquoteBlock({
+  children,
+  variant = "surface",
+  buttonDisplay = "inside",
+}: Omit<BlockquoteBlockProps, "node">) {
+  return (
+    <MemoBlockquoteBlock variant={variant} buttonDisplay={buttonDisplay}>
+      {children}
+    </MemoBlockquoteBlock>
+  );
+}

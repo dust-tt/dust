@@ -13,7 +13,7 @@ import {
   upsertDataSourceDocument,
 } from "@connectors/lib/data_sources";
 import { DataSourceQuotaExceededError } from "@connectors/lib/error";
-import { GithubCodeFile } from "@connectors/lib/models/github";
+import { GithubCodeFileModel } from "@connectors/lib/models/github";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
@@ -98,7 +98,7 @@ export async function upsertCodeFile({
   const sourceUrl = `${getRepoUrl(repoLogin, repoName)}/blob/${defaultBranch}/${relativePath}`;
 
   // Find file or create it with an empty contentHash.
-  const [githubCodeFile] = await GithubCodeFile.findOrCreate({
+  const [githubCodeFile] = await GithubCodeFileModel.findOrCreate({
     where: {
       connectorId: connector.id,
       repoId: repoId.toString(),

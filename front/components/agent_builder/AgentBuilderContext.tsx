@@ -1,16 +1,20 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { DataSourceViewsProvider } from "@app/components/agent_builder/DataSourceViewsContext";
-import { MCPServerViewsProvider } from "@app/components/agent_builder/MCPServerViewsContext";
 import { PreviewPanelProvider } from "@app/components/agent_builder/PreviewPanelContext";
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
-import type { FetchAssistantTemplateResponse } from "@app/pages/api/templates/[tId]";
+import { SkillsProvider } from "@app/components/shared/skills/SkillsContext";
+import { MCPServerViewsProvider } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { FetchAgentTemplateResponse } from "@app/pages/api/templates/[tId]";
 import type { TemplateActionPreset, UserType, WorkspaceType } from "@app/types";
 
 type AgentBuilderContextType = {
   owner: WorkspaceType;
   user: UserType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
+  isAdmin: boolean;
+  assistantTemplate: FetchAgentTemplateResponse | null;
   presetActionToAdd: TemplateActionPreset | null;
   setPresetActionToAdd: (preset: TemplateActionPreset | null) => void;
 };
@@ -22,16 +26,15 @@ export const AgentBuilderContext = createContext<
 interface AgentBuilderProviderProps {
   owner: WorkspaceType;
   user: UserType;
-  assistantTemplate: FetchAssistantTemplateResponse | null;
-  children: React.ReactNode;
+  isAdmin: boolean;
+  assistantTemplate: FetchAgentTemplateResponse | null;
+  children: ReactNode;
 }
 
-// TODO: Move all the components from Assistant Builder to Agent builder
-// and remove the context providers from /assistant_builder
-// (seb) FYI yuka, I did some refactoring to assistant_builder.
 export function AgentBuilderProvider({
   owner,
   user,
+  isAdmin,
   assistantTemplate,
   children,
 }: AgentBuilderProviderProps) {
@@ -42,23 +45,28 @@ export function AgentBuilderProvider({
     () => ({
       owner,
       user,
+      isAdmin,
       assistantTemplate,
       presetActionToAdd,
       setPresetActionToAdd,
     }),
-    [owner, user, assistantTemplate, presetActionToAdd]
+    [owner, user, isAdmin, assistantTemplate, presetActionToAdd]
   );
 
   return (
     <AgentBuilderContext.Provider value={value}>
       <PreviewPanelProvider>
-        <SpacesProvider owner={owner}>
-          <MCPServerViewsProvider owner={owner}>
-            <DataSourceViewsProvider owner={owner}>
-              {children}
-            </DataSourceViewsProvider>
-          </MCPServerViewsProvider>
-        </SpacesProvider>
+        <CopilotPanelProvider>
+          <SpacesProvider owner={owner}>
+            <MCPServerViewsProvider owner={owner}>
+              <SkillsProvider owner={owner}>
+                <DataSourceViewsProvider owner={owner}>
+                  {children}
+                </DataSourceViewsProvider>
+              </SkillsProvider>
+            </MCPServerViewsProvider>
+          </SpacesProvider>
+        </CopilotPanelProvider>
       </PreviewPanelProvider>
     </AgentBuilderContext.Provider>
   );

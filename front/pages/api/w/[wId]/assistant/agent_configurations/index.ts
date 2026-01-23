@@ -1,28 +1,38 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import _ from "lodash";
+import keyBy from "lodash/keyBy";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
-import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
+import type {
+  MCPServerConfigurationType,
+  ServerSideMCPServerConfigurationType,
+} from "@app/lib/actions/mcp";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   createAgentConfiguration,
+  restoreAgentConfiguration,
   unsafeHardDeleteAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
-import { getAgentConfigurationGroupIdsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
+import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -37,6 +47,7 @@ import {
   GetAgentConfigurationsQuerySchema,
   Ok,
   PostOrPatchAgentConfigurationRequestBodySchema,
+  removeNulls,
 } from "@app/types";
 
 export type GetAgentConfigurationsResponseBody = {
@@ -89,6 +100,7 @@ async function handler(
         withEditors,
         sort,
       } = queryValidation.right;
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       let viewParam = view ? view : "all";
       // @ts-expect-error: added for backwards compatibility
       viewParam = viewParam === "assistant-search" ? "list" : viewParam;
@@ -125,12 +137,12 @@ async function handler(
             });
           }
         );
-        const usageMap = _.keyBy(mentionCounts, "agentId");
+        const usageMap = keyBy(mentionCounts, "agentId");
         agentConfigurations = agentConfigurations.map((agentConfiguration) =>
           usageMap[agentConfiguration.sId]
             ? {
                 ...agentConfiguration,
-                usage: _.omit(usageMap[agentConfiguration.sId], ["agentId"]),
+                usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
               }
             : agentConfiguration
         );
@@ -304,20 +316,74 @@ export async function createOrUpgradeAgentConfiguration({
     await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
   ).map((e) => e.toJSON());
 
+  let skills: SkillResource[] = [];
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (
+    featureFlags.includes("skills") &&
+    assistant.skills &&
+    assistant.skills.length > 0
+  ) {
+    skills = await SkillResource.fetchByIds(
+      auth,
+      assistant.skills.map((s) => s.sId)
+    );
+  }
+
+  const requirements = await getAgentConfigurationRequirementsFromCapabilities(
+    auth,
+    {
+      actions,
+      skills,
+    }
+  );
+
+  let allRequestedSpaceIds = requirements.requestedSpaceIds;
+
+  // Collect additional requestedSpaceIds
+  if (
+    assistant.additionalRequestedSpaceIds &&
+    assistant.additionalRequestedSpaceIds.length > 0
+  ) {
+    const additionalSpaces = await SpaceResource.fetchByIds(
+      auth,
+      assistant.additionalRequestedSpaceIds
+    );
+
+    // Validate that all requested spaces were found and user can read them
+    const readableSpaceIds = new Set(
+      additionalSpaces.filter((s) => s.canRead(auth)).map((s) => s.sId)
+    );
+    const inaccessibleSpaces = assistant.additionalRequestedSpaceIds.filter(
+      (sId) => !readableSpaceIds.has(sId)
+    );
+    if (inaccessibleSpaces.length > 0) {
+      return new Err(
+        new Error(
+          `User does not have access to the following spaces: ${inaccessibleSpaces.join(", ")}`
+        )
+      );
+    }
+
+    const additionalSpaceModelIds = removeNulls(
+      additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
+    );
+
+    allRequestedSpaceIds = uniq(
+      allRequestedSpaceIds.concat(additionalSpaceModelIds)
+    );
+  }
+
   const agentConfigurationRes = await createAgentConfiguration(auth, {
     name: assistant.name,
     description: assistant.description,
     instructions: assistant.instructions ?? null,
-    visualizationEnabled: assistant.visualizationEnabled,
     pictureUrl: assistant.pictureUrl,
     status: assistant.status,
     scope: assistant.scope,
     model: assistant.model,
     agentConfigurationId,
     templateId: assistant.templateId ?? null,
-    requestedGroupIds: await getAgentConfigurationGroupIdsFromActions(auth, {
-      actions,
-    }),
+    requestedSpaceIds: allRequestedSpaceIds,
     tags: assistant.tags,
     editors,
   });
@@ -338,7 +404,6 @@ export async function createOrUpgradeAgentConfiguration({
         mcpServerViewId: action.mcpServerViewId,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         dataSources: action.dataSources || null,
-        reasoningModel: action.reasoningModel,
         tables: action.tables,
         childAgentId: action.childAgentId,
         additionalConfiguration: action.additionalConfiguration,
@@ -365,10 +430,64 @@ export async function createOrUpgradeAgentConfiguration({
         auth,
         agentConfigurationRes.value
       );
+      // If we were upgrading an existing agent (i.e., creating a new
+      // version for an existing `agentConfigurationId`), we archived the
+      // previous version just before creating this one. Since creation of
+      // an action failed and we are cleaning up the new version, restore
+      // the previous version back to `active` status so the agent remains
+      // available.
+      if (agentConfigurationId) {
+        const restoredResult = await restoreAgentConfiguration(
+          auth,
+          agentConfigurationRes.value.sId
+        );
+        if (restoredResult.isErr()) {
+          logger.error(
+            {
+              error: restoredResult.error,
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentConfigurationRes.value.sId,
+            },
+            "Error while restoring previous agent version after rollback"
+          );
+        } else if (!restoredResult.value.restored) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentConfigurationRes.value.sId,
+            },
+            "Failed to restore previous agent version after action creation error"
+          );
+        }
+      }
       return res;
     }
     actionConfigs.push(res.value);
   }
+
+  // Create skill associations
+  const owner = auth.getNonNullableWorkspace();
+  await concurrentExecutor(
+    assistant.skills ?? [],
+    async (skill) => {
+      // Validate the skill exists and belongs to this workspace
+      const skillResource = await SkillResource.fetchById(auth, skill.sId);
+      if (!skillResource) {
+        logger.warn(
+          {
+            workspaceId: owner.sId,
+            agentConfigurationId: agentConfigurationRes.value.sId,
+            skillSId: skill.sId,
+          },
+          "Skill not found when creating agent configuration, skipping"
+        );
+        return;
+      }
+
+      await skillResource.addToAgent(auth, agentConfigurationRes.value);
+    },
+    { concurrency: 10 }
+  );
 
   const agentConfiguration: AgentConfigurationType = {
     ...agentConfigurationRes.value,

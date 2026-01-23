@@ -1,4 +1,7 @@
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_CONFIGURATIONS,
+  isBotIntegration,
+} from "@app/lib/connector_providers";
 import type { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type {
   ConnectorProvider,
@@ -32,10 +35,13 @@ function getSetupSuffixForDataSource(
   return match[1];
 }
 
-export function getDisplayNameForDataSource(ds: DataSourceType) {
+export function getDisplayNameForDataSource(
+  ds: DataSourceType,
+  aggregateFolder: boolean = false
+) {
   if (ds.connectorProvider) {
     if (ds.connectorProvider === "webcrawler") {
-      return ds.name;
+      return aggregateFolder ? "Websites" : ds.name;
     }
     // Not very satisfying to retro-engineer getDefaultDataSourceName but we don't store the suffix by itself.
     // This is a technical debt to have this function.
@@ -45,7 +51,7 @@ export function getDisplayNameForDataSource(ds: DataSourceType) {
     }
     return CONNECTOR_CONFIGURATIONS[ds.connectorProvider].name;
   } else {
-    return ds.name;
+    return aggregateFolder ? "Folders" : ds.name;
   }
 }
 
@@ -86,6 +92,20 @@ export function isRemoteDatabase(ds: DataSource): ds is DataSource &
   );
 }
 
+// Whether this data source should be included in the default "company data" tool for global agents.
+export function isIncludedInDefaultCompanyData(ds: DataSource): boolean {
+  if (isWebsite(ds)) {
+    return false;
+  }
+  if (ds.connectorProvider && isBotIntegration(ds.connectorProvider)) {
+    return false;
+  }
+  if (isRemoteDatabase(ds)) {
+    return false;
+  }
+  return true;
+}
+
 const STRUCTURED_DATA_SOURCES: ConnectorProvider[] = [
   "google_drive",
   "notion",
@@ -106,9 +126,9 @@ export function supportsDocumentsData(
 export function supportsStructuredData(ds: DataSource): boolean {
   return Boolean(
     isFolder(ds) ||
-      isRemoteDatabase(ds) ||
-      (ds.connectorProvider &&
-        STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
+    isRemoteDatabase(ds) ||
+    (ds.connectorProvider &&
+      STRUCTURED_DATA_SOURCES.includes(ds.connectorProvider))
   );
 }
 

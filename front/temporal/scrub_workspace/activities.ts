@@ -16,6 +16,7 @@ import {
   unsafeGetWorkspacesByModelId,
 } from "@app/lib/api/workspace";
 import { Authenticator } from "@app/lib/auth";
+import { getWorkspaceDataRetention } from "@app/lib/data_retention";
 import {
   FREE_NO_PLAN_CODE,
   FREE_TEST_PLAN_CODE,
@@ -24,12 +25,13 @@ import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -51,6 +53,9 @@ export async function sendDataDeletionEmail({
     if (!ws) {
       throw new Error("No workspace found");
     }
+
+    const subscription = await SubscriptionResource.fetchLastByWorkspace(ws);
+
     const { members: admins } = await getMembers(auth, {
       roles: ["admin"],
       activeOnly: true,
@@ -60,6 +65,7 @@ export async function sendDataDeletionEmail({
         email: a.email,
         workspaceName: ws.name,
         remainingDays,
+        planCode: subscription?.getPlan().code,
         isLast,
       });
     }
@@ -70,6 +76,16 @@ export async function sendDataDeletionEmail({
     );
     throw e;
   }
+}
+
+export async function getWorkspaceRetentionDays({
+  workspaceId,
+}: {
+  workspaceId: string;
+}): Promise<number> {
+  const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
+  const retentionDays = await getWorkspaceDataRetention(auth);
+  return retentionDays;
 }
 
 export async function shouldStillScrubData({
@@ -91,14 +107,23 @@ export async function scrubWorkspaceData({
 }: {
   workspaceId: string;
 }) {
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
+  if (!workspace) {
+    logger.info(
+      { workspaceId },
+      "Workspace not found, it was probably already deleted"
+    );
+    return true;
+  }
+
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId, {
     dangerouslyRequestAllGroups: true,
   });
   await deleteAllConversations(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
+  await deleteOnboardingTasks(auth);
   await deleteTags(auth);
-  await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
@@ -129,7 +154,10 @@ export async function pauseAllTriggers({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const disableResult = await TriggerResource.disableAllForWorkspace(auth);
+  const disableResult = await TriggerResource.disableAllForWorkspace(
+    auth,
+    "downgraded"
+  );
   if (disableResult.isErr()) {
     // Don't fail the whole scrub workflow if we can't disable triggers, just log it.
     logger.error(
@@ -173,7 +201,7 @@ export async function deleteAllConversations(auth: Authenticator) {
       }
     },
     {
-      concurrency: 16,
+      concurrency: 8,
     }
   );
 }
@@ -197,24 +225,14 @@ async function deleteAgentMemories(auth: Authenticator) {
   await AgentMemoryResource.deleteAllForWorkspace(auth);
 }
 
+async function deleteOnboardingTasks(auth: Authenticator) {
+  await OnboardingTaskResource.deleteAllForWorkspace(auth);
+}
+
 async function deleteTags(auth: Authenticator) {
   const tags = await TagResource.findAll(auth);
   for (const tag of tags) {
     await tag.delete(auth);
-  }
-}
-
-async function deleteTrackers(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
-  }
-
-  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
-    includeDeleted: true,
-  });
-  for (const tracker of trackers) {
-    await tracker.delete(auth, { hardDelete: true });
   }
 }
 
@@ -243,7 +261,9 @@ async function deleteDatasources(auth: Authenticator) {
 // Remove all user-created spaces and their associated groups,
 // preserving only the system and global spaces.
 async function deleteSpaces(auth: Authenticator) {
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+  });
 
   // Filter out system and global spaces.
   const filteredSpaces = spaces.filter(
@@ -356,4 +376,25 @@ async function cleanupCustomerio(auth: Authenticator) {
       "Failed to delete workspace on Customer.io"
     );
   });
+}
+
+export async function endSubscriptionFreeEndedWorkspacesActivity(): Promise<{
+  workspaceIds: string[];
+}> {
+  const { workspaces } =
+    await SubscriptionResource.internalFetchWorkspacesWithFreeEndedSubscriptions();
+
+  await concurrentExecutor(
+    workspaces,
+    async (workspace) => {
+      await SubscriptionResource.endActiveSubscription(workspace);
+    },
+    {
+      concurrency: 4,
+    }
+  );
+
+  return {
+    workspaceIds: workspaces.map((w) => w.sId),
+  };
 }

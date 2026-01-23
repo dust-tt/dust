@@ -2,7 +2,6 @@ import {
   BracesIcon,
   Button,
   Chip,
-  DocumentIcon,
   ExternalLinkIcon,
   FolderIcon,
   IconButton,
@@ -16,7 +15,6 @@ import {
   Tree,
 } from "@dust-tt/sparkle";
 import _ from "lodash";
-import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
 import DataSourceViewDocumentModal from "@app/components/DataSourceViewDocumentModal";
@@ -28,12 +26,14 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
+  isRemoteDatabase,
 } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -95,26 +95,30 @@ export function AssistantKnowledgeSection({
           if (!acc[ds.dataSourceViewId]) {
             // First one sets the filter
             acc[ds.dataSourceViewId] = ds;
-          } else {
-            if (ds.filter.parents) {
-              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-              // Merge the filters if they are not null
-              if (existingFilter) {
-                existingFilter.in = existingFilter.in.concat(
-                  ds.filter.parents.in
+          } else if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              if (existingFilter.in !== null || ds.filter.parents.in !== null) {
+                existingFilter.in = (existingFilter.in ?? []).concat(
+                  ds.filter.parents.in ?? []
                 );
-                existingFilter.not = existingFilter.not.concat(
-                  ds.filter.parents.not
-                );
-
-                // We need to remove duplicates
-                existingFilter.in = _.uniq(existingFilter.in);
-                existingFilter.not = _.uniq(existingFilter.not);
               }
-            } else {
-              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-              acc[ds.dataSourceViewId].filter.parents = null;
+              if (
+                existingFilter.not !== null ||
+                ds.filter.parents.not !== null
+              ) {
+                existingFilter.not = (existingFilter.not ?? []).concat(
+                  ds.filter.parents.not ?? []
+                );
+              }
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
             }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
           }
         });
       }
@@ -134,26 +138,30 @@ export function AssistantKnowledgeSection({
           if (!acc[ds.dataSourceViewId]) {
             // First one sets the filter
             acc[ds.dataSourceViewId] = ds;
-          } else {
-            if (ds.filter.parents) {
-              const existingFilter = acc[ds.dataSourceViewId].filter.parents;
-              // Merge the filters if they are not null
-              if (existingFilter) {
-                existingFilter.in = existingFilter.in.concat(
-                  ds.filter.parents.in
+          } else if (ds.filter.parents) {
+            const existingFilter = acc[ds.dataSourceViewId].filter.parents;
+            // Merge the filters if they are not null
+            if (existingFilter) {
+              if (existingFilter.in !== null || ds.filter.parents.in !== null) {
+                existingFilter.in = (existingFilter.in ?? []).concat(
+                  ds.filter.parents.in ?? []
                 );
-                existingFilter.not = existingFilter.not.concat(
-                  ds.filter.parents.not
-                );
-
-                // We need to remove duplicates
-                existingFilter.in = _.uniq(existingFilter.in);
-                existingFilter.not = _.uniq(existingFilter.not);
               }
-            } else {
-              // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
-              acc[ds.dataSourceViewId].filter.parents = null;
+              if (
+                existingFilter.not !== null ||
+                ds.filter.parents.not !== null
+              ) {
+                existingFilter.not = (existingFilter.not ?? []).concat(
+                  ds.filter.parents.not ?? []
+                );
+              }
+              // We need to remove duplicates
+              existingFilter.in = _.uniq(existingFilter.in);
+              existingFilter.not = _.uniq(existingFilter.not);
             }
+          } else {
+            // But if the new one is null, we reset the filter (as it means "all" and all wins over specific)
+            acc[ds.dataSourceViewId].filter.parents = null;
           }
         });
       }
@@ -161,59 +169,115 @@ export function AssistantKnowledgeSection({
     return acc;
   }, [categorizedActions.queryTables, dataSourceViews]);
 
-  const hasDocuments = Object.values(retrievalByDataSources).length > 0;
-  const hasTables = Object.values(queryTableByDataSources).length > 0;
+  // Separate data sources into folders, connections, and warehouses for readability.
+  const { folders, connections, warehouses } = useMemo(() => {
+    const folderConfigs: DataSourceConfiguration[] = [];
+    const connectionConfigs: DataSourceConfiguration[] = [];
+    const warehouseConfigs: DataSourceConfiguration[] = [];
+
+    Object.values(retrievalByDataSources).forEach((dsConfig) => {
+      const dataSourceView = dataSourceViews.find(
+        (dsv) => dsv.sId === dsConfig.dataSourceViewId
+      );
+      if (!dataSourceView) {
+        return;
+      }
+      if (isRemoteDatabase(dataSourceView.dataSource)) {
+        warehouseConfigs.push(dsConfig);
+      } else if (dataSourceView.dataSource.connectorProvider) {
+        connectionConfigs.push(dsConfig);
+      } else {
+        folderConfigs.push(dsConfig);
+      }
+    });
+
+    return {
+      folders: folderConfigs,
+      connections: connectionConfigs,
+      warehouses: warehouseConfigs,
+    };
+  }, [retrievalByDataSources, dataSourceViews]);
+
+  const hasFolders = folders.length > 0;
+  const hasConnections = connections.length > 0;
+  const hasWarehouses = warehouses.length > 0;
+  const hasDocuments = hasFolders || hasConnections;
+  const hasQueryTables = Object.values(queryTableByDataSources).length > 0;
+  const hasTables = hasQueryTables || hasWarehouses;
 
   if (!hasDocuments && !hasTables) {
     return null;
   }
 
-  const dataSourcesDocuments = Object.values(retrievalByDataSources).map(
-    (dataSources, index) => (
-      <div className="flex flex-col gap-2" key={`retrieval-${index}`}>
+  const renderDataSourceConfigs = (
+    configs: DataSourceConfiguration[],
+    keyPrefix: string,
+    viewType: "document" | "table"
+  ) =>
+    configs.map((dsConfig, index) => (
+      <div className="flex flex-col gap-2" key={`${keyPrefix}-${index}`}>
         <DataSourceViewsSection
           owner={owner}
           dataSourceViews={dataSourceViews}
           isLoading={isDataSourceViewsLoading}
-          dataSourceConfigurations={[dataSources]}
-          viewType="document"
+          dataSourceConfigurations={[dsConfig]}
+          viewType={viewType}
         />
       </div>
-    )
+    ));
+
+  const folderItems = renderDataSourceConfigs(folders, "folder", "document");
+  const connectionItems = renderDataSourceConfigs(
+    connections,
+    "connection",
+    "document"
+  );
+  const queryTableItems = renderDataSourceConfigs(
+    Object.values(queryTableByDataSources),
+    "table",
+    "table"
+  );
+  const warehouseItems = renderDataSourceConfigs(
+    warehouses,
+    "warehouse",
+    "table"
   );
 
-  const dataSourcesTables = Object.values(queryTableByDataSources).map(
-    (dataSources, index) => (
-      <div className="flex flex-col gap-2" key={`query-tables-${index}`}>
-        <DataSourceViewsSection
-          owner={owner}
-          dataSourceViews={dataSourceViews}
-          isLoading={isDataSourceViewsLoading}
-          dataSourceConfigurations={[dataSources]}
-          viewType="table"
-        />
-      </div>
-    )
+  const documentItems = (
+    <>
+      {hasConnections && connectionItems}
+      {hasFolders && (
+        <Tree.Item label="Folders" visual={FolderIcon}>
+          {folderItems}
+        </Tree.Item>
+      )}
+    </>
+  );
+  const tableItems = (
+    <>
+      {hasQueryTables && queryTableItems}
+      {hasWarehouses && warehouseItems}
+    </>
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <div className="heading-lg text-foreground dark:text-foreground-night">
         Knowledge
       </div>
       {hasDocuments && hasTables ? (
-        <Tree isBoxed>
-          <Tree.Item label="Documents" visual={DocumentIcon}>
-            {dataSourcesDocuments}
+        <Tree isBoxed className="max-h-[400px] overflow-y-auto">
+          <Tree.Item label="Documents" visual={FolderIcon}>
+            {documentItems}
           </Tree.Item>
           <Tree.Item label="Tables" visual={TableIcon}>
-            {dataSourcesTables}
+            {tableItems}
           </Tree.Item>
         </Tree>
       ) : (
-        <Tree isBoxed>
-          {hasDocuments && dataSourcesDocuments}
-          {hasTables && dataSourcesTables}
+        <Tree isBoxed className="max-h-[400px] overflow-y-auto">
+          {hasDocuments && documentItems}
+          {hasTables && tableItems}
         </Tree>
       )}
     </div>
@@ -246,7 +310,7 @@ function getDataSourceConfigurationsForTableAction(
         }
 
         if (dataSourceView) {
-          dsConfigs[table.dataSourceViewId].filter.parents?.in.push(
+          dsConfigs[table.dataSourceViewId].filter.parents?.in?.push(
             getContentNodeInternalIdFromTableId(dataSourceView, table.tableId)
           );
         }
@@ -273,7 +337,7 @@ function DataSourceViewsSection({
   viewType,
   isLoading,
 }: DataSourceViewsSectionProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { isDark } = useTheme();
   const [dataSourceViewToDisplay, setDataSourceViewToDisplay] =
     useState<DataSourceViewType | null>(null);
@@ -477,63 +541,57 @@ function DataSourceViewSelectedNodes({
     viewType,
   });
 
-  return (
-    <>
-      {nodes.map((node) => (
-        <Tree.Item
-          key={node.internalId}
-          label={node.title}
-          type={node.expandable && viewType !== "table" ? "node" : "leaf"}
-          visual={getVisualForDataSourceViewContentNode(node)}
-          className="whitespace-nowrap"
-          actions={
-            <div className="mr-8 flex flex-row gap-2">
-              <IconButton
-                size="xs"
-                icon={ExternalLinkIcon}
-                onClick={() => {
-                  if (node.sourceUrl) {
-                    window.open(node.sourceUrl, "_blank");
-                  }
-                }}
-                className={classNames(
-                  node.sourceUrl ? "" : "pointer-events-none opacity-0"
-                )}
-                disabled={!node.sourceUrl}
-                variant="ghost"
-              />
-              <IconButton
-                size="xs"
-                icon={BracesIcon}
-                onClick={() => {
-                  if (node.type === "document") {
-                    setDataSourceViewToDisplay(dataSourceView);
-                    setDocumentToDisplay(node.internalId);
-                  }
-                }}
-                className={classNames(
-                  node.type === "document"
-                    ? ""
-                    : "pointer-events-none opacity-0"
-                )}
-                disabled={node.type !== "document"}
-                variant="outline"
-              />
-            </div>
-          }
-        >
-          <DataSourceViewPermissionTree
-            owner={owner}
-            dataSourceView={dataSourceView}
-            parentId={node.internalId}
-            onDocumentViewClick={(documentId: string) => {
-              setDataSourceViewToDisplay(dataSourceView);
-              setDocumentToDisplay(documentId);
+  return nodes.map((node) => (
+    <Tree.Item
+      key={node.internalId}
+      label={node.title}
+      type={node.expandable && viewType !== "table" ? "node" : "leaf"}
+      visual={getVisualForDataSourceViewContentNode(node)}
+      className="whitespace-nowrap"
+      actions={
+        <div className="mr-8 flex flex-row gap-2">
+          <IconButton
+            size="xs"
+            icon={ExternalLinkIcon}
+            onClick={() => {
+              if (node.sourceUrl) {
+                window.open(node.sourceUrl, "_blank");
+              }
             }}
-            viewType="all"
+            className={classNames(
+              node.sourceUrl ? "" : "pointer-events-none opacity-0"
+            )}
+            disabled={!node.sourceUrl}
+            variant="ghost"
           />
-        </Tree.Item>
-      ))}
-    </>
-  );
+          <IconButton
+            size="xs"
+            icon={BracesIcon}
+            onClick={() => {
+              if (node.type === "document") {
+                setDataSourceViewToDisplay(dataSourceView);
+                setDocumentToDisplay(node.internalId);
+              }
+            }}
+            className={classNames(
+              node.type === "document" ? "" : "pointer-events-none opacity-0"
+            )}
+            disabled={node.type !== "document"}
+            variant="outline"
+          />
+        </div>
+      }
+    >
+      <DataSourceViewPermissionTree
+        owner={owner}
+        dataSourceView={dataSourceView}
+        parentId={node.internalId}
+        onDocumentViewClick={(documentId: string) => {
+          setDataSourceViewToDisplay(dataSourceView);
+          setDocumentToDisplay(documentId);
+        }}
+        viewType="all"
+      />
+    </Tree.Item>
+  ));
 }

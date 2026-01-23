@@ -22,7 +22,7 @@
  */
 import type { CreationAttributes } from "sequelize";
 
-import { SlackChannel } from "@connectors/lib/models/slack";
+import { SlackChannelModel } from "@connectors/lib/models/slack";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 
 import { makeScript } from "./helpers";
@@ -110,12 +110,12 @@ makeScript(
         continue;
       }
       const [legacyChannels, existingChannels] = await Promise.all([
-        SlackChannel.findAll({
+        SlackChannelModel.findAll({
           where: {
             connectorId: legacyConnector.id,
           },
         }),
-        SlackChannel.findAll({
+        SlackChannelModel.findAll({
           where: {
             connectorId: connector.id,
           },
@@ -162,7 +162,7 @@ makeScript(
         `🔧 Preparing ${channelsToMigrate.length} channels for migration...`
       );
       const creationRecords = channelsToMigrate.map(
-        (channel): CreationAttributes<SlackChannel> => ({
+        (channel): CreationAttributes<SlackChannelModel> => ({
           connectorId: connector.id, // Update to slack_bot connector ID
           createdAt: channel.createdAt, // Keep the original createdAt field
           updatedAt: channel.updatedAt, // Keep the original updatedAt field
@@ -192,7 +192,7 @@ makeScript(
 
         try {
           const createdChannels =
-            await SlackChannel.bulkCreate(creationRecords);
+            await SlackChannelModel.bulkCreate(creationRecords);
           logger.info(
             `✅ Successfully migrated ${createdChannels.length} channels for workspace ${workspaceId}`
           );

@@ -1,30 +1,33 @@
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import type {
   MCPToolStakeLevelType,
   MCPValidationMetadataType,
 } from "@app/lib/actions/constants";
-import type {
-  CustomServerIconType,
-  InternalAllowedIconType,
-} from "@app/lib/actions/mcp_icons";
 import type { MCPServerAvailability } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
+import type {
+  MCPApproveExecutionEvent,
+  ToolExecution,
+  ToolPersonalAuthRequiredEvent,
+} from "@app/lib/actions/mcp_internal_actions/events";
 import { hideInternalConfiguration } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { ProgressNotificationContentType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
-import type { AdditionalConfigurationType } from "@app/lib/models/assistant/actions/mcp";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type {
   DustAppRunConfigurationType,
   ModelId,
   PersonalAuthenticationRequiredErrorContent,
-  ReasoningModelConfigurationType,
   TimeFrame,
   ToolErrorEvent,
 } from "@app/types";
@@ -49,7 +52,7 @@ export type BaseMCPServerConfigurationType = {
   name: string;
 
   description: string | null;
-  icon?: CustomServerIconType | InternalAllowedIconType;
+  icon?: CustomResourceIconType | InternalAllowedIconType;
 };
 
 // Server-side MCP server = Remote MCP Server OR our own MCP server.
@@ -58,7 +61,6 @@ export type ServerSideMCPServerConfigurationType =
     dataSources: DataSourceConfiguration[] | null;
     tables: TableDataSourceConfiguration[] | null;
     childAgentId: string | null;
-    reasoningModel: ReasoningModelConfigurationType | null;
     timeFrame: TimeFrame | null;
     jsonSchema: JSONSchema | null;
     additionalConfiguration: AdditionalConfigurationType;
@@ -89,6 +91,9 @@ export type ServerSideMCPToolType = Omit<
   toolServerId: string;
   timeoutMs?: number;
   retryPolicy: MCPToolRetryPolicyType;
+  // For "medium" stake tools: defines which arguments require per-agent approval.
+  // When present, the user must approve the specific (agent, tool, argument values) combination.
+  argumentsRequiringApproval?: string[];
 };
 
 export type ClientSideMCPToolType = Omit<
@@ -137,20 +142,6 @@ export type LightMCPToolConfigurationType =
   | LightServerSideMCPToolConfigurationType
   | LightClientSideMCPToolConfigurationType;
 
-export type ToolExecution = {
-  conversationId: string;
-  messageId: string;
-  actionId: string;
-
-  inputs: Record<string, unknown>;
-  stake?: MCPToolStakeLevelType;
-
-  metadata: MCPValidationMetadataType & {
-    mcpServerId?: string;
-    mcpServerDisplayName?: string;
-  };
-};
-
 export type BlockedToolExecution = ToolExecution &
   (
     | {
@@ -172,14 +163,6 @@ export type BlockedToolExecution = ToolExecution &
         authorizationInfo: AuthorizationInfo;
       }
   );
-
-// TODO(durable-agents): cleanup the types of the events.
-export type MCPApproveExecutionEvent = ToolExecution & {
-  type: "tool_approve_execution";
-  created: number;
-  configurationId: string;
-  isLastBlockingEventForStep?: boolean;
-};
 
 export function getMCPApprovalStateFromUserApprovalState(
   userApprovalState: ActionApprovalStateType
@@ -203,6 +186,7 @@ export type MCPParamsEvent = {
   configurationId: string;
   messageId: string;
   action: AgentMCPActionWithOutputType;
+  runIds?: string[];
 };
 
 export type MCPSuccessEvent = {
@@ -272,7 +256,7 @@ export function isMCPApproveExecutionEvent(
   );
 }
 
-function isToolPersonalAuthRequiredEvent(
+function isLegacyToolPersonalAuthRequiredEvent(
   event: unknown
 ): event is ToolErrorEvent & {
   error: PersonalAuthenticationRequiredErrorContent;
@@ -287,6 +271,17 @@ function isToolPersonalAuthRequiredEvent(
   );
 }
 
+function isToolPersonalAuthRequiredEvent(
+  event: unknown
+): event is ToolPersonalAuthRequiredEvent {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    "type" in event &&
+    event.type === "tool_personal_auth_required"
+  );
+}
+
 export function isBlockedActionEvent(
   event: unknown
 ): event is MCPApproveExecutionEvent | ToolPersonalAuthRequiredEvent {
@@ -295,6 +290,7 @@ export function isBlockedActionEvent(
     event !== null &&
     "type" in event &&
     (isMCPApproveExecutionEvent(event) ||
-      isToolPersonalAuthRequiredEvent(event))
+      isToolPersonalAuthRequiredEvent(event) ||
+      isLegacyToolPersonalAuthRequiredEvent(event))
   );
 }

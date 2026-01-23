@@ -3,6 +3,7 @@ import type {
   IntercomCollectionType,
   IntercomConversationType,
   IntercomConversationWithPartsType,
+  IntercomFetchConversationsResponseType,
   IntercomHelpCenterType,
   IntercomTeamType,
 } from "@connectors/connectors/intercom/lib/types";
@@ -15,6 +16,7 @@ import logger from "@connectors/logger/logger";
 /**
  * Utility function to call the Intercom API.
  * It centralizes calling the API and handling global errors.
+ * Returns null in case of 404 errors.
  */
 async function queryIntercomAPI({
   accessToken,
@@ -37,6 +39,10 @@ async function queryIntercomAPI({
     pagination: {
       per_page: number;
       starting_after: string | null;
+    };
+    sort?: {
+      field: string;
+      order: "ascending" | "descending";
     };
   };
 }) {
@@ -88,13 +94,12 @@ async function queryIntercomAPI({
         `405 - ${isCaptchaError ? "Captcha error" : text}`,
         "transient_upstream_activity_error"
       );
-    } else {
-      logger.info(
-        { path, response: text, status: rawResponse.status },
-        "Failed to parse Intercom JSON response."
-      );
-      throw e;
     }
+    logger.info(
+      { path, response: text, status: rawResponse.status },
+      "Failed to parse Intercom JSON response."
+    );
+    throw e;
   }
 }
 
@@ -314,21 +319,17 @@ export async function fetchIntercomConversations({
   slidingWindow,
   cursor = null,
   pageSize = 20,
+  closedAfter,
+  state,
 }: {
   accessToken: string;
   teamId?: string;
   slidingWindow: number;
+  closedAfter?: number;
   cursor: string | null;
   pageSize?: number;
-}): Promise<{
-  conversations: IntercomConversationType[];
-  pages: {
-    next?: {
-      page: number;
-      starting_after: string;
-    };
-  };
-}> {
+  state?: string;
+}): Promise<IntercomFetchConversationsResponseType> {
   const minCreatedAtDate = new Date(
     Date.now() - slidingWindow * 24 * 60 * 60 * 1000
   );
@@ -359,21 +360,48 @@ export async function fetchIntercomConversations({
     });
   }
 
-  const response = await queryIntercomAPI({
-    accessToken,
-    path: `conversations/search`,
-    method: "POST",
-    body: {
-      query: {
-        operator: "AND",
-        value: queryFilters,
+  if (closedAfter) {
+    queryFilters.push({
+      field: "statistics.last_close_at",
+      operator: ">",
+      value: closedAfter,
+    });
+  }
+
+  if (state) {
+    queryFilters.push({
+      field: "state",
+      operator: "=",
+      value: state,
+    });
+  }
+
+  const response: IntercomFetchConversationsResponseType =
+    await queryIntercomAPI({
+      accessToken,
+      path: `conversations/search`,
+      method: "POST",
+      body: {
+        query: {
+          operator: "AND",
+          value: queryFilters,
+        },
+        pagination: {
+          per_page: pageSize,
+          starting_after: cursor,
+        },
+        sort: {
+          field: "created_at",
+          order: "ascending",
+        },
       },
-      pagination: {
-        per_page: pageSize,
-        starting_after: cursor,
-      },
-    },
-  });
+    });
+
+  if (!response || !response.conversations) {
+    // response might be null in case of 404
+    // conversations might not be defined if there is no conversations
+    return { conversations: [], pages: {} };
+  }
 
   return response;
 }

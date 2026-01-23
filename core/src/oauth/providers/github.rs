@@ -34,15 +34,23 @@ lazy_static! {
     };
     static ref OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET: String =
         std::env::var("OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET").unwrap();
+    static ref OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID: String =
+        std::env::var("OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID").unwrap();
+    static ref OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_SECRET: String =
+        std::env::var("OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_SECRET").unwrap();
 }
 
-/// We support two Github apps. Our default `connection` app (for data source connection) and a
-/// `platform_actions` app (for agent actions).
+/// We support multiple Github apps for different use cases:
+/// - `connection`: Default app for data source connections (GitHub App)
+/// - `platform_actions`: App for agent actions (GitHub App)
+/// - `personal_actions`: OAuth flow for personal user access (OAuth App)
+/// - `webhooks`: OAuth flow for webhook management (OAuth App)
 #[derive(Debug, PartialEq, Clone)]
 pub enum GithubUseCase {
     Connection,
     PlatformActions,
     PersonalActions,
+    Webhooks,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -92,8 +100,8 @@ impl GithubConnectionProvider {
 
                 Ok(token)
             }
-            GithubUseCase::PersonalActions => {
-                Err(anyhow!("JWT not required for personal OAuth flow"))?
+            GithubUseCase::PersonalActions | GithubUseCase::Webhooks => {
+                Err(anyhow!("JWT not required for OAuth flow"))?
             }
         }
     }
@@ -146,7 +154,22 @@ impl GithubConnectionProvider {
     async fn refresh_oauth_token(
         &self,
         refresh_token: &str,
+        app_type: GithubUseCase,
     ) -> Result<RefreshResult, ProviderError> {
+        let (client_id, client_secret) = match app_type {
+            GithubUseCase::PersonalActions => (
+                OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
+                OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
+            ),
+            GithubUseCase::Webhooks => (
+                OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID.as_str(),
+                OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_SECRET.as_str(),
+            ),
+            _ => Err(anyhow!(
+                "refresh_oauth_token only supports PersonalActions and Webhooks use cases"
+            ))?,
+        };
+
         let req = self
             .reqwest_client()
             .post("https://github.com/login/oauth/access_token")
@@ -154,14 +177,8 @@ impl GithubConnectionProvider {
             .header("User-Agent", "dust/oauth")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .form(&[
-                (
-                    "client_id",
-                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
-                ),
-                (
-                    "client_secret",
-                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
-                ),
+                ("client_id", client_id),
+                ("client_secret", client_secret),
                 ("grant_type", "refresh_token"),
                 ("refresh_token", refresh_token),
             ]);
@@ -194,7 +211,22 @@ impl GithubConnectionProvider {
         &self,
         code: &str,
         redirect_uri: &str,
+        app_type: GithubUseCase,
     ) -> Result<FinalizeResult, ProviderError> {
+        let (client_id, client_secret) = match app_type {
+            GithubUseCase::PersonalActions => (
+                OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
+                OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
+            ),
+            GithubUseCase::Webhooks => (
+                OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_ID.as_str(),
+                OAUTH_GITHUB_APP_WEBHOOKS_CLIENT_SECRET.as_str(),
+            ),
+            _ => Err(anyhow!(
+                "finalize_oauth_flow only supports PersonalActions and Webhooks use cases"
+            ))?,
+        };
+
         let req = self
             .reqwest_client()
             .post("https://github.com/login/oauth/access_token")
@@ -202,14 +234,8 @@ impl GithubConnectionProvider {
             .header("User-Agent", "dust/oauth")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .form(&[
-                (
-                    "client_id",
-                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_ID.as_str(),
-                ),
-                (
-                    "client_secret",
-                    OAUTH_GITHUB_APP_PLATFORM_ACTIONS_CLIENT_SECRET.as_str(),
-                ),
+                ("client_id", client_id),
+                ("client_secret", client_secret),
                 ("code", code),
                 ("redirect_uri", redirect_uri),
             ]);
@@ -222,20 +248,27 @@ impl GithubConnectionProvider {
             Some(token) => token,
             None => Err(anyhow!("Missing `access_token` in response from Github"))?,
         };
-        let refresh_token = match raw_json["refresh_token"].as_str() {
-            Some(token) => token,
-            None => Err(anyhow!("Missing `refresh_token` in response from Github"))?,
-        };
 
-        let expires_in = raw_json["expires_in"].as_u64().unwrap_or(28800); // Default 8 hours
-        let expiry_timestamp = (utils::now_secs() + expires_in) * 1000;
+        // Refresh tokens are optional for GitHub OAuth Apps
+        // They're only provided if the app is configured for expiring tokens
+        let refresh_token = raw_json["refresh_token"].as_str();
+
+        let (access_token_expiry, refresh_token_value) = if let Some(rt) = refresh_token {
+            // Token expires, use expiration from response
+            let expires_in = raw_json["expires_in"].as_u64().unwrap_or(28800);
+            let expiry_timestamp = (utils::now_secs() + expires_in) * 1000;
+            (Some(expiry_timestamp), Some(rt.to_string()))
+        } else {
+            // No refresh token means non-expiring token (classic OAuth App)
+            (None, None)
+        };
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: access_token.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: Some(expiry_timestamp),
-            refresh_token: Some(refresh_token.to_string()),
+            access_token_expiry,
+            refresh_token: refresh_token_value,
             raw_json,
             extra_metadata: None,
         })
@@ -260,16 +293,18 @@ impl Provider for GithubConnectionProvider {
                 "connection" => GithubUseCase::Connection,
                 "platform_actions" => GithubUseCase::PlatformActions,
                 "personal_actions" => GithubUseCase::PersonalActions,
+                "webhooks" => GithubUseCase::Webhooks,
                 _ => Err(anyhow!("Github use_case format invalid"))?,
             },
             None => Err(anyhow!("Github use_case missing"))?,
         };
 
-        if app_type == GithubUseCase::PersonalActions {
-            return self.finalize_oauth_flow(code, redirect_uri).await;
+        if app_type == GithubUseCase::PersonalActions || app_type == GithubUseCase::Webhooks {
+            return self.finalize_oauth_flow(code, redirect_uri, app_type).await;
         }
 
-        // `code` is the installation_id returned by Github.
+        // `code` is the installation_id returned by Github for GitHub App installations
+        // This includes Connection and PlatformActions
         let (token, expiry, raw_json) = self.refresh_installation_token(app_type, code).await?;
 
         // We store the installation_id as `code` which will be used to refresh tokens.
@@ -294,17 +329,18 @@ impl Provider for GithubConnectionProvider {
                 "connection" => GithubUseCase::Connection,
                 "platform_actions" => GithubUseCase::PlatformActions,
                 "personal_actions" => GithubUseCase::PersonalActions,
+                "webhooks" => GithubUseCase::Webhooks,
                 _ => Err(anyhow!("Github use_case format invalid"))?,
             },
             None => Err(anyhow!("Github use_case missing"))?,
         };
 
-        if app_type == GithubUseCase::PersonalActions {
+        if app_type == GithubUseCase::PersonalActions || app_type == GithubUseCase::Webhooks {
             let refresh_token = connection
                 .unseal_refresh_token()?
                 .ok_or(ProviderError::TokenRevokedError)?;
 
-            return self.refresh_oauth_token(&refresh_token).await;
+            return self.refresh_oauth_token(&refresh_token, app_type).await;
         }
 
         let code = match connection.unseal_authorization_code()? {

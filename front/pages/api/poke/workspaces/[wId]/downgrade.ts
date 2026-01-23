@@ -5,6 +5,7 @@ import { pluginManager } from "@app/lib/api/poke/plugin_manager";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
@@ -50,6 +51,21 @@ async function handler(
           resourceType: "workspaces",
         }
       );
+
+      const programmaticUsageConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      if (programmaticUsageConfig?.paygCapMicroUsd) {
+        const errorMessage =
+          "Cannot downgrade while PAYG is enabled. Please disable PAYG first.";
+        await pluginRun.recordError(errorMessage);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: errorMessage,
+          },
+        });
+      }
 
       await SubscriptionResource.internalSubscribeWorkspaceToFreeNoPlan({
         workspaceId: owner.sId,

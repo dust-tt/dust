@@ -5,11 +5,12 @@
 import sgMail from "@sendgrid/mail";
 
 import config from "@app/lib/api/config";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 
-let sgMailClient: sgMail.MailService | null = null;
+let sgMailClient: typeof sgMail | null = null;
 
 export function getSgMailClient(): any {
   if (!sgMailClient) {
@@ -23,13 +24,30 @@ export function getSgMailClient(): any {
 export async function sendGitHubDeletionEmail(email: string): Promise<void> {
   await sendEmailWithTemplate({
     to: email,
-    from: {
-      name: "Dust team",
-      email: "support@dust.help",
-    },
+    from: config.getSupportEmailAddress(),
     subject: "[Dust] GitHub connection deleted - important information",
     body: `<p>Your Dust connection to GitHub was deleted, along with all the related data on Dust servers.</p>
     <p>You can now uninstall the Dust app from your GitHub account to revoke authorizations initially granted to Dust when you connected the GitHub account.</p>
+    <p>Please reply to this email if you have any questions.</p>`,
+  });
+}
+
+export async function sendModjoDisconnectionEmail(
+  email: string,
+  workspaceName: string
+): Promise<void> {
+  await sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: "[Dust] Modjo connection disconnected - action required",
+    body: `<p>Your Modjo connection for the workspace "${workspaceName}" has been automatically disconnected.</p>
+    <p>This happened because your Modjo API key is no longer valid or your Modjo tenant has been deactivated.</p>
+    <p>To resume syncing your Modjo transcripts, please:</p>
+    <ol>
+      <li>Verify that your Modjo account is still active</li>
+      <li>Generate a new API key in Modjo if needed</li>
+      <li>Reconnect your Modjo account in Dust settings</li>
+    </ol>
     <p>Please reply to this email if you have any questions.</p>`,
   });
 }
@@ -50,10 +68,7 @@ export async function sendCancelSubscriptionEmail(
 
   await sendEmailWithTemplate({
     to: email,
-    from: {
-      name: "Dust team",
-      email: "support@dust.help",
-    },
+    from: config.getSupportEmailAddress(),
     subject: `[Dust] Subscription canceled - important information`,
     body: `
       <p>You just canceled your subscription. It will be terminated at the end of your current billing period (${formattedDate}). You can reactivate your subscription at any time before then. If you do not reactivate your subscription, you will then be switched back to our free plan:</p>
@@ -74,10 +89,7 @@ export async function sendReactivateSubscriptionEmail(
 ): Promise<void> {
   await sendEmailWithTemplate({
     to: email,
-    from: {
-      name: "Dust team",
-      email: "support@dust.help",
-    },
+    from: config.getSupportEmailAddress(),
     subject: `[Dust] Your subscription has been reactivated`,
     body: `<p>You have requested to reactivate your subscription.</p>
       <p>Therefore, your subscription will not be canceled at the end of the billing period, no downgrade actions will take place, and you can continue using Dust as usual.</p>
@@ -92,10 +104,7 @@ export async function sendAdminSubscriptionPaymentFailedEmail(
 ): Promise<void> {
   await sendEmailWithTemplate({
     to: email,
-    from: {
-      name: "Dust team",
-      email: "support@dust.help",
-    },
+    from: config.getSupportEmailAddress(),
     subject: `[Dust] Your payment has failed`,
     body: `
       <p>Your payment has failed. Please visit ${customerPortailUrl} to edit your payment information.</p>
@@ -110,27 +119,34 @@ export async function sendAdminDataDeletionEmail({
   email,
   workspaceName,
   remainingDays,
+  planCode,
   isLast,
 }: {
   email: string;
   workspaceName: string;
   remainingDays: number;
+  planCode: string | undefined;
   isLast: boolean;
 }): Promise<void> {
   await sendEmailWithTemplate({
     to: email,
-    from: {
-      name: "Dust team",
-      email: "support@dust.help",
-    },
+    from: config.getSupportEmailAddress(),
     subject: `${
       isLast ? "Last Reminder: " : ""
     }Your Dust data will be deleted in ${remainingDays} days`,
-    body: `
+    body:
+      planCode === FREE_TRIAL_PHONE_PLAN_CODE
+        ? `
+      <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. Your trial period has ended.</p>
+      <p>To continue using Dust and avoid losing your data, please subscribe within the next ${remainingDays} days. After this period, your data will be permanently deleted and you will no longer be able to access your workspace.</p>
+      <p>Subscribe now to keep all your conversations, custom agents, data sources, and continue using Dust without interruption.</p>
+      <p>If you have any questions about Dust, simply reply to this email.</p>
+      ${isLast ? "<p>This is our last message before data deletion.</p>" : ""}`
+        : `
       <p>You're receiving this as Admin of the Dust workspace ${workspaceName}. You recently canceled your Dust subscription.</p>
       <p>To protect your privacy and maintain the highest security standards, your data will be permanently deleted in ${remainingDays} days.</p>
       <p>To keep your data, please resubscribe within the next ${remainingDays} days to recover your account. After this period, data recovery will not be possible.</p>
-      <p>If you have any question about Dust, simply reply to this email.</p>
+      <p>If you have any questions about Dust, simply reply to this email.</p>
       ${isLast ? "<p>This is our last message before data deletion.</p>" : ""}`,
   });
 }
@@ -154,6 +170,46 @@ export async function sendProactiveTrialCancelledEmail(
       <p>If you did intend to continue on Dust, you can subscribe again. If you'd like to extend further, feel free to just email me.</p>
 
       <p>Thanks again for trying Dust out. If you have a second, please let me know if you have any thoughts about what we could do to improve Dust for your needs!</p>`,
+  });
+}
+
+export async function sendCreditUsageAlertEmail({
+  email,
+  workspaceName,
+  workspaceSId,
+  percentUsed,
+  totalInitialMicroUsd,
+  totalConsumedMicroUsd,
+}: {
+  email: string;
+  workspaceName: string;
+  workspaceSId: string;
+  percentUsed: number;
+  totalInitialMicroUsd: number;
+  totalConsumedMicroUsd: number;
+}): Promise<void> {
+  const remainingMicroUsd = totalInitialMicroUsd - totalConsumedMicroUsd;
+  const formatCents = (microUsd: number) =>
+    `$${(microUsd / 1_000_000).toFixed(2)}`;
+
+  await sendEmailWithTemplate({
+    to: email,
+    from: config.getSupportEmailAddress(),
+    subject: `[Dust] Credit usage alert - ${percentUsed}% of your credits consumed`,
+    body: `
+      <p>You're receiving this as Admin of the Dust workspace <strong>${workspaceName}</strong>.</p>
+      <p>Your workspace has consumed <strong>${percentUsed}%</strong> of its available programmatic usage credits.</p>
+      <ul>
+        <li>Total credits: ${formatCents(totalInitialMicroUsd)}</li>
+        <li>Consumed: ${formatCents(totalConsumedMicroUsd)}</li>
+        <li>Remaining: ${formatCents(remainingMicroUsd)}</li>
+      </ul>
+      <p>To avoid service interruption:</p>
+      <ul>
+        <li><strong><a href="https://dust.tt/w/${workspaceSId}/developers/credits-usage">Purchase additional credits</a></strong> in the Developers > Credits section</li>
+        <li>Learn more about <a href="https://dust-tt.notion.site/Programmatic-usage-at-Dust-2b728599d94181ceb124d8585f794e2e">programmatic usage at Dust</a></li>
+      </ul>
+      <p>Please reply to this email if you have any questions.</p>`,
   });
 }
 

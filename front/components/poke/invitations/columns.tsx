@@ -1,18 +1,23 @@
-import { ClipboardIcon, IconButton, TrashIcon } from "@dust-tt/sparkle";
+import {
+  ClipboardIcon,
+  IconButton,
+  MovingMailIcon,
+  TrashIcon,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types";
 
 export function makeColumnsForInvitations(
-  onRevokeInvitation: (email: string) => Promise<void>
+  onRevokeInvitation: (email: string) => Promise<void>,
+  onResendInvitation: (invitationId: string) => Promise<void>
 ): ColumnDef<MembershipInvitationTypeWithLink>[] {
   return [
     {
       accessorKey: "sId",
       header: "ID",
     },
-
     {
       accessorKey: "inviteEmail",
       header: "email",
@@ -20,6 +25,10 @@ export function makeColumnsForInvitations(
     {
       accessorKey: "status",
       header: "Status",
+    },
+    {
+      accessorKey: "isExpired",
+      header: "Expired",
     },
     {
       accessorKey: "inviteLink",
@@ -46,6 +55,25 @@ export function makeColumnsForInvitations(
               }
             />
           </>
+        );
+      },
+    },
+    {
+      id: "resend",
+      header: "Resend",
+      cell: ({ row }) => {
+        const invitation = row.original;
+
+        return (
+          <IconButton
+            icon={MovingMailIcon}
+            size="xs"
+            variant="outline"
+            tooltip="Resend invitation email"
+            onClick={async () => {
+              await onResendInvitation(invitation.sId);
+            }}
+          />
         );
       },
     },

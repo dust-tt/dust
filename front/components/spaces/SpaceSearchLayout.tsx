@@ -4,7 +4,6 @@ import { DATA_SOURCE_MIME_TYPE } from "@dust-tt/client";
 import type { MenuItem } from "@dust-tt/sparkle";
 import { cn, ScrollableDataTable, SearchInput } from "@dust-tt/sparkle";
 import type { SortingState } from "@tanstack/table-core";
-import { useRouter } from "next/router";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 
 import { DocumentOrTableDeleteDialog } from "@app/components/data_source/DocumentOrTableDeleteDialog";
@@ -36,6 +35,9 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
+import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import type {
@@ -48,7 +50,10 @@ import type {
   LightWorkspaceType,
   SpaceType,
 } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import {
+  DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES,
+  MIN_SEARCH_QUERY_SIZE,
+} from "@app/types";
 
 const DEFAULT_VIEW_TYPE = "all";
 
@@ -81,6 +86,19 @@ function isBackendSearch(
   return props.useBackendSearch === true;
 }
 
+function getSearchInputPlaceholder(
+  space: SpaceType,
+  category?: DataSourceViewCategory,
+  dataSourceView?: DataSourceViewType
+) {
+  if (dataSourceView) {
+    return `Search in ${getDisplayNameForDataSource(dataSourceView.dataSource)}`;
+  } else if (category) {
+    return `Search in ${DATA_SOURCE_VIEW_CATEGORIES_DISPLAY_NAMES[category]}`;
+  }
+  return `Search in ${space.name}`;
+}
+
 export function SpaceSearchInput(props: SpaceSearchInputProps) {
   // Common code for both backend and frontend search.
   const [isSearchDisabled, setIsSearchDisabled] =
@@ -91,7 +109,7 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   const [actionButtons, setActionButtons] =
     React.useState<React.ReactNode | null>(null);
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   // Reset the search term when the URL changes.
   React.useEffect(() => {
@@ -383,11 +401,12 @@ function BackendSearch({
       setSearchHitCount(searchResults.length);
     }
   }, [isLoading, isSearchValidating, searchResults]);
+
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder={`Search in ${space.name}`}
+        placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
         value={searchTerm}
         onChange={handleSearchChange}
         disabled={isSearchDisabled}
@@ -488,7 +507,7 @@ function FrontendSearch({
     <SpaceSearchContext.Provider value={searchContextValue}>
       <SearchInput
         name="search"
-        placeholder={`Search in ${space.name}`}
+        placeholder={getSearchInputPlaceholder(space, category, dataSourceView)}
         value={searchTerm}
         onChange={searchParam.setParam}
         disabled={isSearchDisabled}
@@ -556,9 +575,10 @@ function SearchResultsTable({
   onClearSearch,
   scrollableDataTableRef,
 }: SearchResultsTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaces } = useSpaces({
+    kinds: ["global", "regular"],
     workspaceId: owner.sId,
   });
 
@@ -581,7 +601,7 @@ function SearchResultsTable({
       try {
         let res;
         if (existingViewForSpace) {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views/${existingViewForSpace.sId}`,
             {
               method: "PATCH",
@@ -594,7 +614,7 @@ function SearchResultsTable({
             }
           );
         } else {
-          res = await fetch(
+          res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${spaceId}/data_source_views`,
             {
               method: "POST",
@@ -636,6 +656,7 @@ function SearchResultsTable({
 
   // Transform search results into format for DataTable.
   const rows: RowData[] = React.useMemo(() => {
+    // eslint-disable-next-line react-hooks/refs
     return searchResultNodes.map((node) => {
       const { dataSourceView, internalId: parentId } = node;
 

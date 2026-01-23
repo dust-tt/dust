@@ -5,13 +5,14 @@ import type { ImperativePanelHandle } from "react-resizable-panels";
 import { DEFAULT_RIGHT_PANEL_SIZE } from "@app/components/assistant/conversation/constant";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
 
 interface ConversationSidePanelContainerProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 
@@ -22,6 +23,8 @@ export default function ConversationSidePanelContainer({
   const { currentPanel, setPanelRef, onPanelClosed } =
     useConversationSidePanelContext();
   const panelRef = useRef<ImperativePanelHandle | null>(null);
+
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setPanelRef(panelRef.current);
@@ -37,9 +40,13 @@ export default function ConversationSidePanelContainer({
 
   return (
     <>
-      {/* Resizable Handle for Panels */}
-      {currentPanel && <ResizableHandle withHandle className="z-50" />}
-      {/* Panel Container - either Content Creation or Actions */}
+      {/* Resizable Handle for Panels - Always render but control visibility */}
+      <ResizableHandle
+        withHandle={currentPanel && !isMobile}
+        disabled={!currentPanel || isMobile}
+        className="z-50"
+      />
+      {/* Panel Container - either Interactive Content or Actions */}
       <ResizablePanel
         ref={panelRef}
         minSize={20}

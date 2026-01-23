@@ -1,21 +1,35 @@
-import type { NextRouter } from "next/router";
+import type { AppRouter } from "@app/lib/platform";
 
 export const setQueryParam = (
-  router: NextRouter,
+  router: AppRouter,
   key: string,
   value: string
 ) => {
   const q = router.query;
   q[key] = value;
 
-  void router.push(
-    {
-      pathname: router.pathname,
-      query: q,
-    },
-    undefined,
-    { shallow: true }
-  );
+  // Preserve the hash when updating query params
+  const hash = window.location.hash;
+
+  void router
+    .push(
+      {
+        pathname: router.pathname,
+        query: q,
+      },
+      undefined,
+      { shallow: true }
+    )
+    .then(() => {
+      // Restore hash after router.push (Next.js doesn't preserve it)
+      if (hash && window.location.hash !== hash) {
+        window.history.replaceState(
+          null,
+          "",
+          `${window.location.pathname}${window.location.search}${hash}`
+        );
+      }
+    });
 };
 
 export const parseQueryString = (url: string) => {
@@ -42,14 +56,35 @@ export const getAgentBuilderRoute = (
   return queryParams ? `${fullPath}?${queryParams}` : fullPath;
 };
 
-export const getAgentRoute = (
+export const getSkillBuilderRoute = (
+  workspaceId: string,
+  route: string,
+  queryParams?: string
+): string => {
+  const basePath = "skills";
+  const fullPath = `/w/${workspaceId}/builder/${basePath}${route === "manage" ? "" : `/${route}`}`;
+  return queryParams ? `${fullPath}?${queryParams}` : fullPath;
+};
+
+export const getConversationRoute = (
   workspaceId: string,
   conversationIdOrNew: string | null = "new",
   queryParams?: string,
   baseUrl?: string
 ): string => {
   const conversationId = conversationIdOrNew ?? "new";
-  const fullPath = `/w/${workspaceId}/agent/${conversationId}`;
+  const fullPath = `/w/${workspaceId}/conversation/${conversationId}`;
   const route = queryParams ? `${fullPath}?${queryParams}` : fullPath;
   return baseUrl ? `${baseUrl}${route}` : route;
+};
+
+export const getSpaceRoute = (workspaceId: string, spaceId: string) => {
+  return `/w/${workspaceId}/spaces/${spaceId}`;
+};
+
+export const getSpaceConversationsRoute = (
+  workspaceId: string,
+  spaceId: string
+) => {
+  return `/w/${workspaceId}/conversation/space/${spaceId}`;
 };

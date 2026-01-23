@@ -4,6 +4,7 @@ import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
@@ -39,8 +40,22 @@ async function handler(
     });
   }
 
+  const conversation = await ConversationResource.fetchById(auth, cId);
+
+  if (!conversation) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "conversation_not_found",
+        message: "Conversation not found.",
+      },
+    });
+  }
   const blockedActions =
-    await AgentMCPActionResource.listBlockedActionsForConversation(auth, cId);
+    await AgentMCPActionResource.listBlockedActionsForConversation(
+      auth,
+      conversation
+    );
 
   res.status(200).json({ blockedActions });
 }

@@ -26,12 +26,11 @@ describe("GET /api/w/[wId]/spaces/[spaceId]/mcp/available", () => {
     // Create workspace and space
     const space = await SpaceFactory.regular(workspace);
     await GroupSpaceFactory.associate(space, globalGroup);
-    await SpaceFactory.system(workspace);
 
     // Get auth
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    // Mock the INTERNAL_MCP_SERVERS to override the "think" server config
+    // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
     // so that the test passes even if we edit the server config.
     const originalPrimitiveTypesDebuggerConfig =
       INTERNAL_MCP_SERVERS["primitive_types_debugger"];

@@ -38,7 +38,6 @@ const {
   updateSingleDocumentParents,
   getParentPageOrDb,
   maybeUpdateOrphaneResourcesParents,
-  clearParentsLastUpdatedAt,
   getAllOrphanedResources,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "10 minute",
@@ -272,8 +271,6 @@ export async function updateOrphanedResourcesParentsWorkflow({
 
     cursor = nextCursor;
   } while (cursor);
-
-  await clearParentsLastUpdatedAt({ connectorId });
 }
 
 async function upsertParent({

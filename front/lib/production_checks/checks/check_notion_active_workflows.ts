@@ -1,11 +1,14 @@
 import type { Client } from "@temporalio/client";
-import type { LoggerOptions } from "pino";
 import type pino from "pino";
 import { QueryTypes } from "sequelize";
 
-import type { CheckFunction } from "@app/lib/production_checks/types";
+import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { getTemporalClientForConnectorsNamespace } from "@app/lib/temporal";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
+import type { ActionLink, CheckFunction } from "@app/types";
 import { getNotionWorkflowId } from "@app/types";
 import { withRetries } from "@app/types";
 
@@ -36,7 +39,7 @@ async function getDescriptionsAndHistories({
 }: {
   client: Client;
   notionConnector: NotionConnector;
-  logger: pino.Logger<LoggerOptions>;
+  logger: pino.Logger;
 }) {
   logger.info(
     {
@@ -94,7 +97,7 @@ async function getDescriptionsAndHistories({
 async function areTemporalWorkflowsRunning(
   client: Client,
   notionConnector: NotionConnector,
-  logger: pino.Logger<LoggerOptions>
+  logger: pino.Logger
 ) {
   try {
     const { descriptions, histories } = await withRetries(
@@ -143,8 +146,8 @@ async function areTemporalWorkflowsRunning(
     return {
       isRunning,
       isNotStalled: latests.every(
-        // Check `latest` is less than 4h old.
-        (d) => d && new Date().getTime() - d.getTime() < 4 * 60 * 60 * 1000
+        // Check `latest` is less than 12h old.
+        (d) => d && new Date().getTime() - d.getTime() < 12 * 60 * 60 * 1000
       ),
       details,
     };
@@ -166,17 +169,43 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
 ) => {
   const notionConnectors = await listAllNotionConnectors();
 
+  const workspaceIds = [...new Set(notionConnectors.map((c) => c.workspaceId))];
+  const workspaceResources = await WorkspaceResource.fetchByIds(workspaceIds);
+  const workspaces = workspaceResources.map((w) =>
+    renderLightWorkspaceType({ workspace: w })
+  );
+  const subscriptionByWorkspaceSId =
+    await SubscriptionResource.fetchActiveByWorkspaces(workspaces);
+
   const client = await getTemporalClientForConnectorsNamespace();
 
   logger.info(`Found ${notionConnectors.length} Notion connectors.`);
 
-  const missingActiveWorkflows: any[] = [];
-  const stalledWorkflows: any[] = [];
+  type MissingWorkflow = {
+    connectorId: number;
+    workspaceId: string;
+    details: string;
+  };
+
+  type StalledWorkflow = {
+    connectorId: number;
+    workspaceId: string;
+  };
+
+  const missingActiveWorkflows: MissingWorkflow[] = [];
+  const stalledWorkflows: StalledWorkflow[] = [];
 
   for (const notionConnector of notionConnectors) {
     if (notionConnector.pausedAt) {
       continue;
     }
+
+    const subscription =
+      subscriptionByWorkspaceSId[notionConnector.workspaceId];
+    if (!subscription || !isUpgraded(subscription.getPlan())) {
+      continue;
+    }
+
     heartbeat();
 
     const { isRunning, isNotStalled, details } =
@@ -199,11 +228,21 @@ export const checkNotionActiveWorkflows: CheckFunction = async (
   }
 
   if (missingActiveWorkflows.length > 0) {
+    const actionLinks: ActionLink[] = [
+      ...missingActiveWorkflows.map((c) => ({
+        label: `Missing: connector ${c.connectorId}`,
+        url: `/poke/connectors/${c.connectorId}`,
+      })),
+      ...stalledWorkflows.map((c) => ({
+        label: `Stalled: connector ${c.connectorId}`,
+        url: `/poke/connectors/${c.connectorId}`,
+      })),
+    ];
     reportFailure(
-      { missingActiveWorkflows, stalledWorkflows },
+      { missingActiveWorkflows, stalledWorkflows, actionLinks },
       "Missing or stalled Notion temporal workflows"
     );
   } else {
-    reportSuccess({});
+    reportSuccess();
   }
 };

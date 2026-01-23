@@ -17,14 +17,14 @@ import {
 import type { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 
-import { TagsSuggestDialog } from "@app/components/assistant_builder/TagsSuggestDialog";
+import { TagCreationDialog } from "@app/components/assistant/TagCreationDialog";
+import { TagsSuggestDialog } from "@app/components/assistant/TagsSuggestDialog";
+import { EditTagDialog } from "@app/components/assistant/TagUpdateDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useTagsUsage } from "@app/lib/swr/tags";
 import type { WorkspaceType } from "@app/types";
 import type { TagTypeWithUsage } from "@app/types/tag";
 
-import { TagCreationDialog } from "../assistant_builder/TagCreationDialog";
-import { EditTagDialog } from "../assistant_builder/TagUpdateDialog";
 import { DeleteTagDialog } from "./DeleteTagDialog";
 
 const columns = [

@@ -1,3 +1,4 @@
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   APIError,
   BuilderSuggestionsType,
@@ -16,7 +17,7 @@ export async function getNameSuggestions({
   description: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
   try {
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/builder/suggestions`,
       {
         method: "POST",
@@ -35,6 +36,7 @@ export async function getNameSuggestions({
       return new Err({
         type: "internal_server_error",
         message:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorData.error?.message ||
           `HTTP ${res.status}: Failed to get name suggestions`,
       });
@@ -63,7 +65,7 @@ export async function getDescriptionSuggestion({
   name: string;
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
   try {
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/assistant/builder/suggestions`,
       {
         method: "POST",
@@ -82,6 +84,7 @@ export async function getDescriptionSuggestion({
       return new Err({
         type: "internal_server_error",
         message:
+          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           errorData.error?.message ||
           `HTTP ${res.status}: Failed to get description suggestion`,
       });
@@ -105,12 +108,13 @@ export async function fetchWithErr<T>(
   init?: RequestInit
 ): Promise<Result<T, APIError>> {
   try {
-    const response = await fetch(input, init);
+    const response = await clientFetch(input, init);
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage;
       try {
         const errorData = JSON.parse(errorText);
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         errorMessage = errorData.error?.message || errorData.error || errorText;
       } catch {
         errorMessage = errorText;

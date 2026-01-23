@@ -1,38 +1,54 @@
-import { clientExecutableContentType } from "@app/types";
+import { frameContentType } from "@app/types";
 
 export const VIZ_REACT_COMPONENT_GUIDELINES = `
 ### React Component Guidelines:
-- The generated component should always be exported as default
-- There is no internet access in the visualization environment
-- External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe
+- The generated component should always be exported as default.
+- All code must be wrapped in a proper React function component - never generate standalone JSX outside a component.
+- When displaying text with < or > symbols in JSX, use HTML entities: &lt; for < and &gt; for >, or wrap in curly braces like {"< 100"}.
+- There is no internet access in the visualization environment.
+- External links: All anchor tags (<a>) with external URLs must include target="_blank" attribute since content is rendered inside an iframe.
 - Supported React features:
-  - React elements, e.g. \`<strong>Hello World!</strong>\`
-  - React pure functional components, e.g. \`() => <strong>Hello World!</strong>\`
-  - React functional components with Hooks
-  - React component classes
+  - React elements, e.g. \`<strong>Hello World!</strong>\`.
+  - React pure functional components, e.g. \`() => <strong>Hello World!</strong>\`.
+  - React functional components with Hooks.
+  - React component classes.
 - Unsupported React features:
-  - React.createElement is not supported
+  - React.createElement is not supported.
 - Props:
-  - The generated component should not have any required props / parameters
+  - The generated component should not have any required props / parameters.
+- Hook Usage Rules:
+  - All hooks (useState, useEffect, useFile, etc.) must be called at the top level of your React function.
+  - Do not call hooks inside loops, conditions, or nested functions.
 - Responsiveness:
-  - Use ChartContainer for charts to adapt to parent dimensions
-  - Leave adequate padding around charts for labels and legends
-  - Content should adapt gracefully to different widths
-  - For multi-chart layouts, use flex or grid to maintain spacing
-  - The component should be able to adapt to different screen sizes
-  - The content should never overflow the viewport and should never have horizontal or vertical scrollbars
+  - Use ChartContainer for charts to adapt to parent dimensions.
+  - Leave adequate padding around charts for labels and legends.
+  - Content should adapt gracefully to different widths.
+  - For multi-chart layouts, use flex or grid to maintain spacing.
+  - The component should be able to adapt to different screen sizes.
+  - The content should never overflow the viewport and should never have horizontal or vertical scrollbars.
 `;
 
 export const VIZ_STYLING_GUIDELINES = `
 - Styling:
-  - **ALWAYS USE shadcn/ui components** - Wrap visualizations in Card components for professional appearance
+  - **Premium, Minimalist Aesthetic**: Design components to look sleek, premium, and minimalist with professional quality
+  - **Icons over Emojis**: Use lucide-react icons instead of emojis. Import from \`lucide-react\`
+  - **Cohesive Color Palette**: Stick to a minimal color palette - avoid unnecessary colors
+  - **Perfect Spacing**: Components must be spaced precisely - not too close, not too dispersed
+  - **Responsive Design**: Ensure components work elegantly on both desktop and mobile devices
+  - **ALWAYS USE shadcn/ui components** - Use Cards strategically for charts and key metrics:
+    - **Use Cards for**: Individual charts, data visualizations, key metrics/KPIs
+    - **Don't use Cards for**: Controls/inputs, navigation elements, simple text content
+    - **Avoid nested Cards** - Keep Card usage flat and purposeful
   - **Chart Colors**: Use shadcn's chart color variables instead of hardcoded colors:
     - \`stroke="var(--chart-1)"\` for first data series
     - \`fill="var(--chart-2)"\` for second data series
     - Available: \`--chart-1\` through \`--chart-5\` (automatically theme-aware)
-  - Tailwind's arbitrary values like \`h-[600px]\` STRICTLY FORBIDDEN, and will cause immediate failure. ANY class with square brackets [ ] is prohibited.
-  - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`, \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
-  - ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`, \`border-2\`, \`p-5\`, \`m-2\`
+  - Tailwind's arbitrary values like \`h-[600px]\` are NOT allowed. ANY class with square brackets
+    [ ] will trigger validation warnings that you must fix immediately with targeted edits.
+  - FORBIDDEN EXAMPLES: \`h-[600px]\`, \`w-[800px]\`, \`text-[14px]\`, \`bg-[#ff0000]\`,
+    \`border-[2px]\`, \`p-[20px]\`, \`m-[10px]\`
+  - ALLOWED ALTERNATIVES: Use predefined classes: \`h-96\`, \`w-full\`, \`text-sm\`, \`bg-red-500\`,
+    \`border-2\`, \`p-5\`, \`m-2\`
   - For specific values: Use the \`style\` prop instead: \`style={{ height: '600px', width: '800px' }}\`
   - Always use padding around plots to ensure elements are fully visible and labels/legends do not overlap with the plot or with each other.
   - Use shadcn's background classes (bg-background, bg-card) instead of hardcoded bg-white for automatic theme compatibility.
@@ -40,9 +56,11 @@ export const VIZ_STYLING_GUIDELINES = `
 `;
 
 export const VIZ_FILE_HANDLING_GUIDELINES = `
-- Using any file from the \`list_conversation_files\` action when available:
-  - Files from the conversation as returned by \`list_conversation_files\` can be accessed using the \`useFile()\` hook (all files can be accessed by the hook irrespective of their status).
+- Using any file from the \`conversation_files__list_files\` action when available:
+  - Files from the conversation as returned by \`conversation_files__list_files\` can be accessed using the \`useFile()\` React hook (all files can be accessed by the hook irrespective of their status).
   - \`useFile\` has to be imported from \`"@dust/react-hooks"\`.
+  - Like any React hook, \`useFile\` must be called inside a React component at the top level (not in event handlers, loops, or conditions).
+  - File IDs must always start with "fil_" prefix.
   - Once/if the file is available, \`useFile()\` will return a non-null \`File\` object. The \`File\` object is a browser File object. Examples of using \`useFile\` are available below.
   - \`file.text()\` is ASYNC - Always use await \`file.text()\` inside useEffect with async function. Never call \`file.text()\` directly in render logic as it returns a Promise, not a string.
   - Always use \`papaparse\` to parse CSV files.
@@ -50,6 +68,16 @@ export const VIZ_FILE_HANDLING_GUIDELINES = `
   - To let users download data from the visualization, use the \`triggerUserFileDownload()\` function.
   - \`triggerUserFileDownload\` has to be imported from \`"@dust/react-hooks"\`.
   - Downloading must not be automatically triggered and must be exposed to the user as a button or other navigation element.
+- Taking screenshots of the visualization:
+  - To capture a screenshot of the current visualization, use the \`captureScreenshot()\` function.
+  - \`captureScreenshot\` has to be imported from \`"@dust/react-hooks"\`.
+  - The function takes an optional filename parameter and automatically downloads the screenshot as PNG.
+  - Example: \`await captureScreenshot("my-chart.png")\` or simply \`await captureScreenshot()\` for default naming.
+\n+- Using image files from the conversation:
+  - Always load images via \`useFile()\` to obtain a \`File\` object — never reference images directly by URL/path or by copying the \`<attachment/>\` tag contents.
+  - Create a local object URL from the \`File\` when rendering (e.g. \`const src = URL.createObjectURL(file)\`).
+  - Use the resulting object URL for \`<img src={src} alt="..." />\` or as a background image; do not attempt to fetch remote images (no internet access).
+  - When creating custom components that render files, always use \`fileId\` as the prop name for file identifiers (e.g., \`<EventPhoto fileId="fil_abc123" caption="..." />\`). This naming convention ensures proper file prefetching during server-side rendering.
 `;
 
 export const VIZ_LIBRARY_USAGE = `
@@ -74,11 +102,12 @@ export const VIZ_LIBRARY_USAGE = `
     - Import chart components from \`shadcn\`: \`import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "shadcn"\`
     - Import other UI components from \`shadcn\`, e.g. \`import { Card, CardContent, CardHeader, CardTitle } from "shadcn"\`
     - Available components include: Card, Button, Badge, Tooltip, Separator, Progress, Tabs, Select, and many others
-  - **Button Interaction States**: Always add hover states to buttons for better user experience:
-    - Use hover: variants for color changes: \`hover:bg-blue-600\`, \`hover:text-white\`
-    - Consider focus states for accessibility: \`focus:ring-2 focus:ring-blue-500\`
-    - Example: \`<Button className="bg-blue-500 hover:bg-blue-600 text-white">Click me</Button>\`
-    - Always use Card + ChartContainer pattern: \`<Card><CardHeader><CardTitle>Chart Title</CardTitle></CardHeader><CardContent><ChartContainer config={chartConfig}>...</ChartContainer></CardContent></Card>\`
+  - **Button Styling**: Use shadcn Button variants instead of custom colors:
+    - Use semantic variants: \`variant="default"\`, \`variant="secondary"\`, \`variant="outline"\`, \`variant="destructive"\`
+    - Let shadcn handle hover states automatically - don't add custom hover colors
+    - Example: \`<Button variant="default">Click me</Button>\` or \`<Button variant="outline">Secondary action</Button>\`
+    - Use Card + ChartContainer for individual charts: \`<Card><CardHeader><CardTitle>Chart Title</CardTitle></CardHeader><CardContent><ChartContainer config={chartConfig}>...</ChartContainer></CardContent></Card>\`
+    - Create separate Cards for each chart/metric rather than wrapping the entire component in one Card
     - **Chart Configuration**: Define a \`chartConfig\` object with color mappings: \`{ desktop: { label: "Desktop", color: "var(--chart-1)" } }\`
     - Use \`var(--color-keyName)\` in chart elements to reference config colors: \`fill="var(--color-desktop)"\`
     - These color variables automatically support both light and dark themes
@@ -102,8 +131,8 @@ import React, { useState, useEffect } from "react";
 import { useFile } from "@dust/react-hooks";
 import Papa from "papaparse";
 
-function DataChart() {
-  const file = useFile("fil_abc123"); 
+function DataChartComponent() {
+  const file = useFile("fil_abc123");
   const [data, setData] = useState([]);
   const [fileContent, setFileContent] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -134,10 +163,10 @@ function DataChart() {
     </div>
   );
 }
-export default DataChart;
+export default DataChartComponent;
 \`\`\`
 
-\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`list_conversation_files\` action.
+\`fileId\` can be extracted from the \`<attachment id="\${FILE_ID}" type... name...>\` tags returned by the \`conversation_files__list_files\` action.
 
 Example using the \`triggerUserFileDownload\` hook:
 
@@ -196,7 +225,7 @@ const chartConfig = {
 
 const SineCosineChart = () => {
   return (
-    <div className="w-full max-w-4xl mx-auto p-4">
+    <div className="w-full max-w-4xl mx-auto p-4 space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="text-center">Sine and Cosine Functions</CardTitle>
@@ -231,6 +260,29 @@ const SineCosineChart = () => {
                 type="monotone"
                 dataKey="cosine"
                 stroke="var(--color-cosine)"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ChartContainer>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tangent Function</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChartContainer config={tangentConfig} className="h-full w-full">
+            <LineChart data={tangentData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="x" />
+              <YAxis domain={[-10, 10]} />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <Line
+                type="monotone"
+                dataKey="tangent"
+                stroke="var(--color-tangent)"
                 strokeWidth={2}
                 dot={false}
               />
@@ -304,4 +356,4 @@ const CHART_COLORS = [
 </PieChart>
 `;
 
-export const VIZ_MIME_TYPE = clientExecutableContentType;
+export const VIZ_MIME_TYPE = frameContentType;

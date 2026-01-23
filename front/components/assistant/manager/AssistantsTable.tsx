@@ -12,16 +12,16 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
-import { DeleteAssistantDialog } from "@app/components/assistant/DeleteAssistantDialog";
-import { SCOPE_INFO } from "@app/components/assistant/details/AssistantDetails";
+import { DeleteAgentDialog } from "@app/components/assistant/DeleteAgentDialog";
+import { SCOPE_INFO } from "@app/components/assistant/details/AgentDetails";
 import { GlobalAgentAction } from "@app/components/assistant/manager/GlobalAgentAction";
 import { TableTagSelector } from "@app/components/assistant/manager/TableTagSelector";
 import { assistantUsageMessage } from "@app/components/assistant/Usage";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
+import { useAppRouter } from "@app/lib/platform";
 import { useTags } from "@app/lib/swr/tags";
 import {
   classNames,
@@ -58,13 +58,9 @@ type RowData = {
   canArchive: boolean;
 };
 
-function getDisabledClass(
-  canArchive: boolean,
-  isBatchEdit: boolean
-): string | undefined {
-  return !canArchive && isBatchEdit
-    ? "cursor-not-allowed opacity-50"
-    : undefined;
+// Global agents (canArchive: false) cannot be edited, so we disable them in batch edit.
+function isDisabled(canArchive: boolean, isBatchEdit: boolean): boolean {
+  return !canArchive && isBatchEdit;
 }
 
 const getTableColumns = ({
@@ -99,11 +95,7 @@ const getTableColumns = ({
             accessorKey: "select",
             cell: (info: CellContext<RowData, boolean>) => (
               <DataTable.CellContent
-                className={
-                  !info.row.original.canArchive && isBatchEdit
-                    ? "cursor-not-allowed opacity-50"
-                    : undefined
-                }
+                disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               >
                 <Checkbox
                   checked={info.row.original.isSelected}
@@ -124,17 +116,14 @@ const getTableColumns = ({
       accessorKey: "name",
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
-          className={getDisabledClass(
-            info.row.original.canArchive,
-            isBatchEdit
-          )}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           <div className={classNames("flex flex-row items-center gap-2 py-3")}>
             <div>
               <Avatar visual={info.row.original.pictureUrl} size="sm" />
             </div>
             <div className="flex min-w-0 grow flex-col">
-              <div className="overflow-hidden truncate text-sm font-semibold text-foreground dark:text-foreground-night">
+              <div className="heading-sm overflow-hidden truncate text-foreground dark:text-foreground-night">
                 {`@${info.getValue()}`}
               </div>
               <div className="overflow-hidden truncate text-sm text-muted-foreground dark:text-muted-foreground-night">
@@ -153,10 +142,7 @@ const getTableColumns = ({
       accessorKey: "scope",
       cell: (info: CellContext<RowData, AgentConfigurationScope>) => (
         <DataTable.CellContent
-          className={getDisabledClass(
-            info.row.original.canArchive,
-            isBatchEdit
-          )}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           {info.getValue() !== "hidden" && (
             <Chip
@@ -181,10 +167,7 @@ const getTableColumns = ({
         if (!editors) {
           return (
             <DataTable.BasicCellContent
-              className={getDisabledClass(
-                info.row.original.canArchive,
-                isBatchEdit
-              )}
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               label="-"
             />
           );
@@ -192,21 +175,14 @@ const getTableColumns = ({
 
         return (
           <DataTable.CellContent
-            className={getDisabledClass(
-              info.row.original.canArchive,
-              isBatchEdit
-            )}
-          >
-            <Avatar.Stack
-              avatars={editors.map((editor) => ({
+            avatarStack={{
+              items: editors.map((editor) => ({
                 name: editor.fullName,
                 visual: editor.image,
-              }))}
-              nbVisibleItems={4}
-              size="xs"
-              isRounded
-            />
-          </DataTable.CellContent>
+              })),
+              nbVisibleItems: 4,
+            }}
+          />
         );
       },
       meta: {
@@ -219,10 +195,8 @@ const getTableColumns = ({
       cell: (info: CellContext<RowData, string>) => (
         <DataTable.CellContent
           grow
-          className={classNames(
-            "flex flex-row items-center",
-            getDisabledClass(info.row.original.canArchive, isBatchEdit) ?? null
-          )}
+          className={classNames("flex flex-row items-center")}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
         >
           <div className="group flex flex-row items-center gap-1">
             <div className="truncate text-muted-foreground dark:text-muted-foreground-night">
@@ -253,10 +227,8 @@ const getTableColumns = ({
       accessorFn: (row: RowData) => row.usage?.messageCount ?? 0,
       cell: (info: CellContext<RowData, AgentUsageType | undefined>) => (
         <DataTable.BasicCellContent
-          className={classNames(
-            "font-semibold",
-            getDisabledClass(info.row.original.canArchive, isBatchEdit) ?? null
-          )}
+          className="font-mono"
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={assistantUsageMessage({
             assistantName: info.row.original.name,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -287,11 +259,8 @@ const getTableColumns = ({
           const feedbacksCount = `${f.up + f.down} feedback${pluralize(f.up + f.down)} over the last 30 days`;
           return (
             <DataTable.BasicCellContent
-              className={classNames(
-                "font-semibold",
-                getDisabledClass(info.row.original.canArchive, isBatchEdit) ??
-                  null
-              )}
+              className="font-mono"
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
               tooltip={feedbacksCount}
               label={`${f.up + f.down}`}
             />
@@ -308,10 +277,7 @@ const getTableColumns = ({
       accessorKey: "lastUpdate",
       cell: (info: CellContext<RowData, number>) => (
         <DataTable.BasicCellContent
-          className={getDisabledClass(
-            info.row.original.canArchive,
-            isBatchEdit
-          )}
+          disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           tooltip={formatTimestampToFriendlyDate(info.getValue(), "long")}
           label={
             info.getValue()
@@ -329,10 +295,7 @@ const getTableColumns = ({
         if (info.row.original.scope === "global") {
           return (
             <DataTable.CellContent
-              className={getDisabledClass(
-                info.row.original.canArchive,
-                isBatchEdit
-              )}
+              disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
             >
               {info.row.original.action}
             </DataTable.CellContent>
@@ -341,10 +304,7 @@ const getTableColumns = ({
         return (
           <DataTable.MoreButton
             menuItems={info.row.original.menuItems}
-            className={getDisabledClass(
-              info.row.original.canArchive,
-              isBatchEdit
-            )}
+            disabled={isDisabled(info.row.original.canArchive, isBatchEdit)}
           />
         );
       },
@@ -358,7 +318,7 @@ const getTableColumns = ({
 type AssistantsTableProps = {
   owner: WorkspaceType;
   agents: LightAgentConfigurationType[];
-  setShowDetails: (agent: LightAgentConfigurationType) => void;
+  setDetailedAgentId: (sId: string) => void;
   handleToggleAgentStatus: (
     agent: LightAgentConfigurationType
   ) => Promise<void>;
@@ -373,7 +333,7 @@ type AssistantsTableProps = {
 export function AssistantsTable({
   owner,
   agents,
-  setShowDetails,
+  setDetailedAgentId,
   handleToggleAgentStatus,
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
@@ -392,7 +352,7 @@ export function AssistantsTable({
     open: false,
     agentConfiguration: undefined,
   });
-  const router = useRouter();
+  const router = useAppRouter();
   const { pagination, setPagination } = usePaginationFromUrl({});
 
   const rows: RowData[] = useMemo(
@@ -447,7 +407,7 @@ export function AssistantsTable({
                 );
               }
             } else {
-              setShowDetails(agentConfiguration);
+              setDetailedAgentId(agentConfiguration.sId);
             }
           },
           menuItems:
@@ -488,14 +448,14 @@ export function AssistantsTable({
                     icon: EyeIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
-                      setShowDetails(agentConfiguration);
+                      setDetailedAgentId(agentConfiguration.sId);
                     },
                     kind: "item" as const,
                   },
                   {
                     label: "Duplicate (New)",
-                    "data-gtm-label": "assistantDuplicationButton",
-                    "data-gtm-location": "assistantDetails",
+                    "data-gtm-label": "agentDuplicationButton",
+                    "data-gtm-location": "agentDetails",
                     icon: ClipboardIcon,
                     onClick: (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -530,7 +490,7 @@ export function AssistantsTable({
     [
       agents,
       owner,
-      setShowDetails,
+      setDetailedAgentId,
       setShowDisabledFreeWorkspacePopup,
       showDisabledFreeWorkspacePopup,
       selection,
@@ -541,7 +501,7 @@ export function AssistantsTable({
 
   return (
     <>
-      <DeleteAssistantDialog
+      <DeleteAgentDialog
         owner={owner}
         isOpen={showDeleteDialog.open}
         agentConfiguration={showDeleteDialog.agentConfiguration}

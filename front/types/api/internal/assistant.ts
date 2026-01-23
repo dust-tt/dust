@@ -1,7 +1,19 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES_VALUES } from "@dust-tt/client";
 import * as t from "io-ts";
 
 import { getSupportedNonImageMimeTypes } from "../../files";
+
+const AgentMentionSchema = t.type({
+  // TODO: add a type="agent" but this requires to be backwards compatible with the old API, not doing for now
+  configurationId: t.string,
+});
+const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
+
+const UserMessageOriginSchema = t.union([
+  t.literal("web"),
+  t.literal("agent_copilot"),
+]);
 
 export const MessageBaseSchema = t.type({
   content: t.refinement(
@@ -9,7 +21,7 @@ export const MessageBaseSchema = t.type({
     (s): s is string => s.length > 0,
     "NonEmptyString"
   ),
-  mentions: t.array(t.type({ configurationId: t.string })),
+  mentions: t.array(t.union([AgentMentionSchema, UserMentionSchema])),
   context: t.intersection([
     t.type({
       timezone: t.string,
@@ -18,7 +30,9 @@ export const MessageBaseSchema = t.type({
     t.partial({
       clientSideMCPServerIds: t.array(t.string),
       selectedMCPServerViewIds: t.array(t.string),
+      selectedSkillIds: t.array(t.string),
       originMessageId: t.string,
+      origin: UserMessageOriginSchema,
     }),
   ]),
 });
@@ -86,6 +100,7 @@ export const isSupportedContentNodeFragmentContentType = (
   ).includes(contentType);
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ContentFragmentInputWithContentSchema = t.intersection([
   ContentFragmentBaseSchema,
   t.type({
@@ -185,6 +200,7 @@ export const InternalPostConversationsRequestBodySchema = t.type({
     t.literal("deleted"),
     t.literal("test"),
   ]),
+  spaceId: t.union([t.string, t.null]),
   message: t.union([MessageBaseSchema, t.null]),
   contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
 });
@@ -197,15 +213,6 @@ export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
   t.type({
     type: t.literal("emoji"),
     inputs: t.type({ instructions: t.string }),
-  }),
-  t.type({
-    type: t.literal("autocompletion"),
-    inputs: t.type({
-      description: t.union([t.null, t.string]),
-      instructions: t.string,
-      name: t.union([t.null, t.string]),
-      tools: t.string, // Stringified array of {name: string, description: string}.
-    }),
   }),
   t.type({
     type: t.literal("instructions"),
@@ -233,10 +240,25 @@ export type BuilderSuggestionsRequestType = t.TypeOf<
   typeof InternalPostBuilderSuggestionsRequestBodySchema
 >;
 
+export type BuilderSuggestionInputType =
+  BuilderSuggestionsRequestType["inputs"];
+
+export type BuilderSuggestionType = BuilderSuggestionsRequestType["type"];
+
+const BuilderTextSuggestionTypeSchema = t.union([
+  t.array(t.string),
+  t.null,
+  t.undefined,
+]);
+
+export type BuilderTextSuggestionsType = t.TypeOf<
+  typeof BuilderTextSuggestionTypeSchema
+>;
+
 export const BuilderSuggestionsResponseBodySchema = t.union([
   t.type({
     status: t.literal("ok"),
-    suggestions: t.union([t.array(t.string), t.null, t.undefined]),
+    suggestions: BuilderTextSuggestionTypeSchema,
   }),
   t.type({
     status: t.literal("unavailable"),

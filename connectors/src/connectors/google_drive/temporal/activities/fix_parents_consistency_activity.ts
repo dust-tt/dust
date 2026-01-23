@@ -1,8 +1,8 @@
 import { Op } from "sequelize";
 
 import { fixParentsConsistency } from "@connectors/connectors/google_drive/lib";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
-import logger from "@connectors/logger/logger";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
@@ -17,18 +17,15 @@ export async function fixParentsConsistencyActivity({
   execute: boolean;
   startTs: number;
 }) {
-  const localLogger = logger.child({
-    provider: "google_drive",
-    connectorId: connectorId,
-    activity: "fixParentsConsistencyActivity",
-  });
-
   const connector = await ConnectorResource.fetchById(connectorId);
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
+
+  const localLogger = getActivityLogger(connector);
+
   const limit = 1000;
-  const files = await GoogleDriveFiles.findAll({
+  const files = await GoogleDriveFilesModel.findAll({
     where: {
       connectorId: connector.id,
       id: { [Op.gt]: fromId },

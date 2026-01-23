@@ -1,36 +1,33 @@
 import type { Authenticator } from "@app/lib/auth";
 import {
-  Message,
-  MessageReaction,
-} from "@app/lib/models/assistant/conversation";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
+  MessageModel,
+  MessageReactionModel,
+} from "@app/lib/models/agent/conversation";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import type {
+  ConversationError,
   ConversationMessageReactions,
-  ConversationType,
   ConversationWithoutContentType,
   MessageReactionType,
+  ModelId,
   Result,
 } from "@app/types";
 import type { UserType } from "@app/types";
-import { ConversationError, Err, Ok } from "@app/types";
+import { Ok } from "@app/types";
 
 /**
  * We retrieve the reactions for a whole conversation, not just a single message.
  */
-export async function getMessageReactions(
+export async function getConversationMessagesReactions(
   auth: Authenticator,
-  conversation: ConversationType | ConversationWithoutContentType
+  conversation: ConversationWithoutContentType
 ): Promise<Result<ConversationMessageReactions, ConversationError>> {
   const owner = auth.workspace();
   if (!owner) {
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  if (!ConversationResource.canAccessConversation(auth, conversation)) {
-    return new Err(new ConversationError("conversation_access_restricted"));
-  }
-
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       workspaceId: owner.id,
       conversationId: conversation.id,
@@ -38,7 +35,7 @@ export async function getMessageReactions(
     attributes: ["sId"],
     include: [
       {
-        model: MessageReaction,
+        model: MessageReactionModel,
         as: "reactions",
         required: false,
       },
@@ -48,35 +45,77 @@ export async function getMessageReactions(
   return new Ok(
     messages.map((m) => ({
       messageId: m.sId,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      reactions: _renderMessageReactions(m.reactions || []),
+      reactions: _renderMessageReactions(m.reactions ?? []),
     }))
   );
 }
 
+export async function getMessagesReactions(
+  auth: Authenticator,
+  { messageIds }: { messageIds: ModelId[] }
+) {
+  const owner = auth.workspace();
+  if (!owner) {
+    throw new Error("Unexpected `auth` without `workspace`.");
+  }
+
+  const reactions = await MessageReactionModel.findAll({
+    where: {
+      workspaceId: owner.id,
+      messageId: messageIds,
+    },
+    include: [
+      {
+        model: UserModel,
+        as: "user",
+        attributes: ["sId", "firstName", "lastName", "username"],
+        required: true,
+      },
+    ],
+  });
+
+  //group by message id
+  const groupedReactions = reactions.reduce(
+    (acc, reaction) => {
+      const messageId = reaction.messageId;
+      if (!acc[messageId]) {
+        acc[messageId] = [];
+      }
+      acc[messageId].push(reaction);
+      return acc;
+    },
+    {} as { [key: ModelId]: MessageReactionModel[] }
+  );
+
+  const result: { [key: ModelId]: MessageReactionType[] } = {};
+  for (const messageId in groupedReactions) {
+    result[messageId] = _renderMessageReactions(groupedReactions[messageId]);
+  }
+
+  return result;
+}
+
 function _renderMessageReactions(
-  reactions: MessageReaction[]
+  reactions: MessageReactionModel[]
 ): MessageReactionType[] {
   return reactions.reduce<MessageReactionType[]>(
-    (acc: MessageReactionType[], r: MessageReaction) => {
+    (acc: MessageReactionType[], r: MessageReactionModel) => {
+      if (!r.user) {
+        return acc;
+      }
+
+      const userData = {
+        userId: r.user.sId,
+        username: r.user.username,
+        fullName: [r.user.firstName, r.user.lastName].filter(Boolean).join(" "),
+      };
+
       const reaction = acc.find((r2) => r2.emoji === r.reaction);
+
       if (reaction) {
-        reaction.users.push({
-          userId: r.userId,
-          username: r.userContextUsername,
-          fullName: r.userContextFullName,
-        });
+        reaction.users.push(userData);
       } else {
-        acc.push({
-          emoji: r.reaction,
-          users: [
-            {
-              userId: r.userId,
-              username: r.userContextUsername,
-              fullName: r.userContextFullName,
-            },
-          ],
-        });
+        acc.push({ emoji: r.reaction, users: [userData] });
       }
       return acc;
     },
@@ -86,7 +125,7 @@ function _renderMessageReactions(
 
 /**
  * We create a reaction for a single message.
- * As user can be null (user from Slack), we also store the user context, as we do for messages.
+ * As a user can be null (user from Slack), we also store the user context, as we do for messages.
  */
 export async function createMessageReaction(
   auth: Authenticator,
@@ -98,7 +137,7 @@ export async function createMessageReaction(
     reaction,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType | null;
     context: {
       username: string;
@@ -109,7 +148,7 @@ export async function createMessageReaction(
 ): Promise<boolean | null> {
   const owner = auth.getNonNullableWorkspace();
 
-  const message = await Message.findOne({
+  const message = await MessageModel.findOne({
     where: {
       sId: messageId,
       conversationId: conversation.id,
@@ -121,7 +160,7 @@ export async function createMessageReaction(
     return null;
   }
 
-  const newReaction = await MessageReaction.create({
+  const newReaction = await MessageReactionModel.create({
     messageId: message.id,
     userId: user ? user.id : null,
     userContextUsername: context.username,
@@ -129,6 +168,7 @@ export async function createMessageReaction(
     reaction,
     workspaceId: owner.id,
   });
+
   return newReaction !== null;
 }
 
@@ -146,7 +186,7 @@ export async function deleteMessageReaction(
     reaction,
   }: {
     messageId: string;
-    conversation: ConversationType | ConversationWithoutContentType;
+    conversation: ConversationWithoutContentType;
     user: UserType | null;
     context: {
       username: string;
@@ -160,7 +200,7 @@ export async function deleteMessageReaction(
     throw new Error("Unexpected `auth` without `workspace`.");
   }
 
-  const message = await Message.findOne({
+  const message = await MessageModel.findOne({
     where: {
       sId: messageId,
       conversationId: conversation.id,
@@ -172,7 +212,7 @@ export async function deleteMessageReaction(
     return null;
   }
 
-  const deletedReaction = await MessageReaction.destroy({
+  const deletedReaction = await MessageReactionModel.destroy({
     where: {
       messageId: message.id,
       userId: user ? user.id : null,

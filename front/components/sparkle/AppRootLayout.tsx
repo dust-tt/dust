@@ -1,12 +1,16 @@
-import Head from "next/head";
-import Script from "next/script";
+import type { Novu } from "@novu/js";
 import React, { useEffect } from "react";
 
 import { WelcomeTourGuideProvider } from "@app/components/assistant/WelcomeTourGuideProvider";
 import { DesktopNavigationProvider } from "@app/components/navigation/DesktopNavigationContext";
 import { QuickStartGuide } from "@app/components/QuickStartGuide";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
+import { useBrowserNotification } from "@app/hooks/useBrowserNotification";
 import { useDatadogLogs } from "@app/hooks/useDatadogLogs";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useNovuClient } from "@app/hooks/useNovuClient";
+import { ConversationsUpdatedEvent } from "@app/lib/notifications/events";
+import { Head, Script, useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { getFaviconPath } from "@app/lib/utils";
 
@@ -18,9 +22,12 @@ export default function AppRootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const { push } = useAppRouter();
   const { user } = useUser();
+  const { novuClient } = useNovuClient();
   useDatadogLogs();
   const faviconPath = getFaviconPath();
+  const sendNotification = useSendNotification();
 
   useEffect(() => {
     if (typeof window !== "undefined" && user?.sId) {
@@ -41,6 +48,89 @@ export default function AppRootLayout({
       }
     }
   }, [user?.email, user?.fullName, user?.sId]);
+
+  const { allowBrowserNotification, notify } = useBrowserNotification();
+
+  useEffect(() => {
+    const setupNotifications = async (novuClient: Novu) => {
+      const dustFacingUrl =
+        process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL ?? "https://dust.tt";
+
+      const unsubscribe = novuClient.on(
+        "notifications.notification_received",
+        (notification) => {
+          if (
+            notification.result.tags?.includes("conversations") &&
+            window !== undefined
+          ) {
+            if (
+              window.location.pathname !==
+                notification.result.primaryAction?.redirect?.url ||
+              !window.document.hasFocus()
+            ) {
+              // If we are not already on the conversation page, dispatch the event to update the conversations list.
+              window.dispatchEvent(new ConversationsUpdatedEvent());
+            }
+          }
+
+          if (!allowBrowserNotification) {
+            sendNotification({
+              title: notification.result.subject ?? "New notification",
+              description: notification.result.body
+                .replaceAll("\n", " ")
+                .trim(),
+              type: "success",
+            });
+          }
+
+          if (
+            !notification.result.data?.skipPushNotification &&
+            allowBrowserNotification
+          ) {
+            notify(notification.result.subject ?? "New notification", {
+              body: notification.result.body.replaceAll("\n", " ").trim(),
+              icon:
+                notification.result.avatar ??
+                `${dustFacingUrl}/static/landing/logos/dust/Dust_LogoSquare.svg`,
+              onClick: async () => {
+                if (notification.result.primaryAction?.redirect) {
+                  const url = notification.result.primaryAction.redirect.url;
+                  const startWithDustDomain = url.startsWith(dustFacingUrl);
+                  const isRelativeUrl =
+                    url.startsWith("/") && !url.startsWith("//");
+
+                  if (startWithDustDomain || isRelativeUrl) {
+                    await push(url);
+                  }
+                }
+              },
+            });
+          }
+
+          // If the notification has the autoDelete flag, delete the notification immediately after it is received.
+          if (notification.result.data?.autoDelete) {
+            void novuClient.notifications.delete({
+              notificationId: notification.result.id,
+            });
+          }
+        }
+      );
+      return { unsubscribe };
+    };
+    if (novuClient) {
+      try {
+        const result = setupNotifications(novuClient);
+
+        return () => {
+          void result.then((result) => {
+            result?.unsubscribe();
+          });
+        };
+      } catch (error) {
+        console.error("Failed to setup notifications", { error });
+      }
+    }
+  }, [allowBrowserNotification, notify, novuClient, push, sendNotification]);
 
   return (
     <ThemeProvider>

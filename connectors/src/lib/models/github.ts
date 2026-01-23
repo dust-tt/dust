@@ -1,10 +1,10 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class GithubConnectorState extends ConnectorBaseModel<GithubConnectorState> {
+export class GithubConnectorStateModel extends ConnectorBaseModel<GithubConnectorStateModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -12,7 +12,7 @@ export class GithubConnectorState extends ConnectorBaseModel<GithubConnectorStat
   declare webhooksEnabledAt?: Date | null;
   declare codeSyncEnabled: boolean;
 }
-GithubConnectorState.init(
+GithubConnectorStateModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -39,7 +39,7 @@ GithubConnectorState.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "github_connector_states",
     indexes: [
       { fields: ["connectorId"], unique: true },
@@ -49,7 +49,7 @@ GithubConnectorState.init(
   }
 );
 
-export class GithubIssue extends ConnectorBaseModel<GithubIssue> {
+export class GithubIssueModel extends ConnectorBaseModel<GithubIssueModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -58,7 +58,7 @@ export class GithubIssue extends ConnectorBaseModel<GithubIssue> {
   declare repoId: string;
   declare issueNumber: number;
 }
-GithubIssue.init(
+GithubIssueModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -84,7 +84,7 @@ GithubIssue.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["repoId", "issueNumber", "connectorId"], unique: true },
       { fields: ["connectorId"] },
@@ -94,14 +94,14 @@ GithubIssue.init(
   }
 );
 
-export class GithubDiscussion extends ConnectorBaseModel<GithubDiscussion> {
+export class GithubDiscussionModel extends ConnectorBaseModel<GithubDiscussionModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
   declare repoId: string;
   declare discussionNumber: number;
 }
-GithubDiscussion.init(
+GithubDiscussionModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -123,7 +123,7 @@ GithubDiscussion.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["repoId", "discussionNumber", "connectorId"], unique: true },
       { fields: ["connectorId"] },
@@ -133,7 +133,7 @@ GithubDiscussion.init(
   }
 );
 
-export class GithubCodeRepository extends ConnectorBaseModel<GithubCodeRepository> {
+export class GithubCodeRepositoryModel extends ConnectorBaseModel<GithubCodeRepositoryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -148,7 +148,7 @@ export class GithubCodeRepository extends ConnectorBaseModel<GithubCodeRepositor
 
   declare sourceUrl: string;
 }
-GithubCodeRepository.init(
+GithubCodeRepositoryModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -197,13 +197,13 @@ GithubCodeRepository.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [{ fields: ["connectorId", "repoId"], unique: true }],
     modelName: "github_code_repositories",
   }
 );
 
-export class GithubCodeFile extends ConnectorBaseModel<GithubCodeFile> {
+export class GithubCodeFileModel extends ConnectorBaseModel<GithubCodeFileModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -219,7 +219,7 @@ export class GithubCodeFile extends ConnectorBaseModel<GithubCodeFile> {
 
   declare skipReason: string | null;
 }
-GithubCodeFile.init(
+GithubCodeFileModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -271,7 +271,7 @@ GithubCodeFile.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "repoId", "documentId"], unique: true },
       { fields: ["connectorId", "repoId", "lastSeenAt"] },
@@ -280,7 +280,7 @@ GithubCodeFile.init(
   }
 );
 
-export class GithubCodeDirectory extends ConnectorBaseModel<GithubCodeDirectory> {
+export class GithubCodeDirectoryModel extends ConnectorBaseModel<GithubCodeDirectoryModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastSeenAt: CreationOptional<Date>;
@@ -293,7 +293,7 @@ export class GithubCodeDirectory extends ConnectorBaseModel<GithubCodeDirectory>
   declare dirName: string;
   declare sourceUrl: string;
 }
-GithubCodeDirectory.init(
+GithubCodeDirectoryModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -337,7 +337,7 @@ GithubCodeDirectory.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "repoId", "internalId"], unique: true },
       { fields: ["connectorId", "repoId", "lastSeenAt"] },

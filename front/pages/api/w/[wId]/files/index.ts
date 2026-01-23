@@ -56,6 +56,15 @@ const FileUploadUrlRequestSchema = t.union([
       t.undefined,
     ]),
   }),
+  t.type({
+    contentType: t.string,
+    fileName: t.string,
+    fileSize: t.number,
+    useCase: t.literal("project_context"),
+    useCaseMetadata: t.type({
+      spaceId: t.string,
+    }),
+  }),
 ]);
 
 export interface FileUploadRequestResponseBody {
@@ -114,7 +123,7 @@ async function handler(
         });
       }
 
-      if (!isUploadSupported({ contentType, useCase })) {
+      if (!isUploadSupported({ auth, contentType, useCase })) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

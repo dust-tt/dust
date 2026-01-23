@@ -1,13 +1,18 @@
-import { Spinner } from "@dust-tt/sparkle";
+import { Chip, Spinner } from "@dust-tt/sparkle";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AgentActionsPanelHeader } from "@app/components/assistant/conversation/actions/AgentActionsPanelHeader";
+import { AgentActionSummary } from "@app/components/assistant/conversation/actions/AgentActionsPanelSummary";
 import { PanelAgentStep } from "@app/components/assistant/conversation/actions/PanelAgentStep";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
-import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
+import { useAgentMessageStreamLegacy } from "@app/hooks/useAgentMessageStreamLegacy";
 import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
-import { useConversationMessage } from "@app/lib/swr/conversations";
+import { getSkillIcon } from "@app/lib/skill";
+import {
+  useAgentMessageSkills,
+  useConversationMessage,
+} from "@app/lib/swr/conversations";
 import type {
   AgentMessageType,
   ConversationWithoutContentType,
@@ -39,8 +44,14 @@ function AgentActionsPanelContent({
 }: AgentActionsPanelContentProps) {
   const [currentStreamingStep, setCurrentStreamingStep] = useState(1);
 
+  const { skills, mutateSkills } = useAgentMessageSkills({
+    conversation,
+    owner,
+    messageId,
+  });
+
   const { messageStreamState, shouldStream, isFreshMountWithContent } =
-    useAgentMessageStream({
+    useAgentMessageStreamLegacy({
       message: getLightAgentMessageFromAgentMessage(fullAgentMessage),
       conversationId: conversation?.sId ?? null,
       owner,
@@ -61,18 +72,28 @@ function AgentActionsPanelContent({
 
   useEffect(() => {
     if (
-      fullAgentMessage?.type === "agent_message" &&
-      fullAgentMessage?.status === "created" &&
-      !!fullAgentMessage.chainOfThought
+      fullAgentMessage.type !== "agent_message" ||
+      !fullAgentMessage.chainOfThought
     ) {
-      isFreshMountWithContent.current = true;
+      return;
     }
-  }, [fullAgentMessage, isFreshMountWithContent]);
+
+    if (fullAgentMessage.status === "created") {
+      // eslint-disable-next-line react-hooks/immutability
+      isFreshMountWithContent.current = true;
+    } else if (fullAgentMessage.status === "succeeded") {
+      void mutateSkills();
+    }
+  }, [fullAgentMessage, isFreshMountWithContent, mutateSkills]);
 
   const steps =
     fullAgentMessage?.type === "agent_message"
       ? fullAgentMessage.parsedContents
       : {};
+
+  const nbSteps = Object.entries(steps || {}).filter(
+    ([, entries]) => Array.isArray(entries) && entries.length > 0
+  ).length;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   // Track whether the user is currently scrolled to the bottom of the panel
@@ -155,7 +176,7 @@ function AgentActionsPanelContent({
 
   const streamActionProgress = messageStreamState?.actionProgress ?? new Map();
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-background dark:bg-background-night">
       <AgentActionsPanelHeader
         title="Breakdown of the tools used"
         onClose={closePanel}
@@ -166,15 +187,6 @@ function AgentActionsPanelContent({
         onScroll={handleScroll}
       >
         <div className="flex h-full flex-col gap-4">
-          {!shouldStream &&
-            agentMessageToRender.actions.length === 0 &&
-            !agentMessageToRender.chainOfThought && (
-              <div className="flex h-full items-center justify-center">
-                <span className="text-sm text-muted-foreground">
-                  There's no step to display for this message.
-                </span>
-              </div>
-            )}
           {/* Render all parsed steps in order */}
           {Object.entries(steps || {})
             .sort(([a], [b]) => parseInt(a, 10) - parseInt(b, 10))
@@ -233,9 +245,30 @@ function AgentActionsPanelContent({
                 showSeparator={currentStreamingStep > 1}
               />
             )}
+          {!shouldStream && (
+            <AgentActionSummary
+              agentMessageToRender={agentMessageToRender}
+              nbSteps={nbSteps}
+            />
+          )}
           <div>&nbsp;</div>
         </div>
       </div>
+      {skills.length > 0 && (
+        <div className="flex flex-col gap-4 border-t border-separator bg-background p-4 dark:border-separator-night dark:bg-background-night">
+          <span className="text-semibold text-sm">Skills used</span>
+          <div className="flex flex-wrap items-center gap-1">
+            {skills.map((skill) => (
+              <Chip
+                key={skill.sId}
+                size="xs"
+                label={skill.name}
+                icon={getSkillIcon(skill.icon)}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,17 +19,17 @@ export function ChromeCaptureActions({
         : currentDomain.endsWith(d)
     );
 
-  const handleCapture = () => {
+  const handleCaptureText = () => {
     void fileUploaderService.uploadContentTab({
       includeContent: true,
       includeCapture: false,
     });
   };
 
-  const handleCapturePageContent = () => {
+  const handleCaptureScreenshot = () => {
     void fileUploaderService.uploadContentTab({
-      includeContent: true,
-      includeCapture: false,
+      includeContent: false,
+      includeCapture: true,
     });
   };
 
@@ -46,7 +46,7 @@ export function ChromeCaptureActions({
           variant="ghost-secondary"
           size="xs"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
-          onClick={handleCapture}
+          onClick={handleCaptureText}
           disabled={isLoading || isBlacklisted}
         />
       </div>
@@ -60,7 +60,7 @@ export function ChromeCaptureActions({
           }
           variant="ghost-secondary"
           size="xs"
-          onClick={handleCapturePageContent}
+          onClick={handleCaptureScreenshot}
           disabled={isLoading || isBlacklisted}
         />
       </div>
@@ -76,7 +76,7 @@ export function ChromeCaptureActions({
           variant="ghost-secondary"
           size="xs"
           className={isBlinking ? "animate-[bgblink_200ms_3]" : ""}
-          onClick={handleCapture}
+          onClick={handleCaptureText}
           disabled={isLoading || isBlacklisted}
         />
       </div>
@@ -91,12 +91,7 @@ export function ChromeCaptureActions({
           }
           variant="ghost-secondary"
           size="xs"
-          onClick={() =>
-            fileUploaderService.uploadContentTab({
-              includeContent: false,
-              includeCapture: true,
-            })
-          }
+          onClick={handleCaptureScreenshot}
           disabled={isLoading || isBlacklisted}
         />
       </div>

@@ -7,7 +7,7 @@ import type {
 import type FirecrawlApp from "@mendable/firecrawl-js";
 import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
-import { randomUUID } from "crypto";
+import { createHash, randomUUID } from "crypto";
 import path from "path";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
@@ -33,8 +33,8 @@ import {
 } from "@connectors/lib/data_sources";
 import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import {
   reportInitialSyncProgress,
@@ -268,7 +268,7 @@ async function startCrawlJob(
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     logger.info(
-      { crawlerId: crawlerResponse.id, url },
+      { crawlerId: crawlerResponse.id, url, connectorId: connector.id },
       "Firecrawl crawler started"
     );
 
@@ -277,7 +277,11 @@ async function startCrawlJob(
     } else {
       // Shouldn't happen, but based on the types, let's make sure
       logger.warn(
-        { webCrawlerConfigId: webCrawlerConfig.id, url },
+        {
+          webCrawlerConfigId: webCrawlerConfig.id,
+          url,
+          connectorId: connector.id,
+        },
         "No ID found when creating a Firecrawl crawler"
       );
     }
@@ -301,7 +305,11 @@ async function startBatchScrapeJob(
 
   if (!mapUrlResult.success) {
     logger.error(
-      { url, connector: connector.id, webCrawlerConfigId: webCrawlerConfig.id },
+      {
+        url,
+        connectorId: connector.id,
+        webCrawlerConfigId: webCrawlerConfig.id,
+      },
       `Error mapping rootUrl: ${mapUrlResult.error}`
     );
     return;
@@ -331,7 +339,7 @@ async function startBatchScrapeJob(
     await syncFailed(connector.id, "webcrawling_error");
   } else {
     logger.info(
-      { jobId: batchScrapeResponse.id, url },
+      { jobId: batchScrapeResponse.id, url, connectorId: connector.id },
       "Firecrawl crawler started"
     );
 
@@ -340,7 +348,11 @@ async function startBatchScrapeJob(
     } else {
       // Shouldn't happen, but based on the types, let's make sure
       logger.warn(
-        { webCrawlerConfigId: webCrawlerConfig.id, url },
+        {
+          webCrawlerConfigId: webCrawlerConfig.id,
+          url,
+          connectorId: connector.id,
+        },
         "No ID found when creating a Firecrawl crawler"
       );
     }
@@ -363,9 +375,9 @@ export async function webCrawlerGarbageCollector(
     throw new Error(`Webcrawler configuration not found for connector.`);
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  let pagesToDelete: WebCrawlerPage[] = [];
+  let pagesToDelete: WebCrawlerPageModel[] = [];
   do {
-    pagesToDelete = await WebCrawlerPage.findAll({
+    pagesToDelete = await WebCrawlerPageModel.findAll({
       where: {
         connectorId,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -379,14 +391,16 @@ export async function webCrawlerGarbageCollector(
       Context.current().heartbeat({
         type: "delete_page",
       });
-      await deleteDataSourceDocument(dataSourceConfig, page.documentId);
+      await deleteDataSourceDocument(dataSourceConfig, page.documentId, {
+        connectorId,
+      });
       await page.destroy();
     }
   } while (pagesToDelete.length > 0);
 
-  let foldersToDelete: WebCrawlerFolder[] = [];
+  let foldersToDelete: WebCrawlerFolderModel[] = [];
   do {
-    foldersToDelete = await WebCrawlerFolder.findAll({
+    foldersToDelete = await WebCrawlerFolderModel.findAll({
       where: {
         connectorId,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -403,6 +417,7 @@ export async function webCrawlerGarbageCollector(
       await deleteDataSourceFolder({
         dataSourceConfig,
         folderId: folder.internalId,
+        loggerArgs: { connectorId },
       });
       await folder.destroy();
     }
@@ -550,8 +565,9 @@ export async function firecrawlCrawlPage(
     const logicalParent = isTopFolder(sourceUrl)
       ? null
       : getFolderForUrl(folder);
-    const [webCrawlerFolder] = await WebCrawlerFolder.upsert({
+    const [webCrawlerFolder] = await WebCrawlerFolderModel.upsert({
       url: folder,
+      urlMd5: createHash("md5").update(folder).digest("hex"),
       parentUrl: logicalParent,
       connectorId: connector.id,
       webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -582,8 +598,9 @@ export async function firecrawlCrawlPage(
     ressourceType: "document",
   });
 
-  await WebCrawlerPage.upsert({
+  await WebCrawlerPageModel.upsert({
     url: sourceUrl,
+    urlMd5: createHash("md5").update(sourceUrl).digest("hex"),
     parentUrl: isTopFolder(sourceUrl) ? null : getFolderForUrl(sourceUrl),
     connectorId: connector.id,
     webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -647,6 +664,7 @@ export async function firecrawlCrawlPage(
         tags: [`title:${stripNullBytes(pageTitle)}`],
         parents: parentFolderIds,
         parentId: parentFolderIds[1] || null,
+        loggerArgs: { connectorId },
         upsertContext: {
           sync_type: "batch",
         },
@@ -681,7 +699,7 @@ export async function firecrawlCrawlPage(
   if (!connector?.firstSuccessfulSyncTime) {
     // If this is the first sync we report the progress. This is a bit racy but that's not a big
     // problem as this is simple reporting of initial progress.
-    const pagesCount = await WebCrawlerPage.count({
+    const pagesCount = await WebCrawlerPageModel.count({
       where: {
         connectorId,
         webcrawlerConfigurationId: webCrawlerConfig.id,

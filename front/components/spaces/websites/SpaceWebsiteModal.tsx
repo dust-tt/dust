@@ -8,13 +8,14 @@ import {
   SheetTitle,
   TrashIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useEffect, useReducer, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
 import { SpaceWebsiteForm } from "@app/components/spaces/websites/SpaceWebsiteForm";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { createWebsite, updateWebsite } from "@app/lib/api/website";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useDataSourceViewConnectorConfiguration } from "@app/lib/swr/data_source_views";
 import { useSpaceDataSourceViews } from "@app/lib/swr/spaces";
 import { urlToDataSourceName } from "@app/lib/webcrawler";
@@ -136,7 +137,7 @@ export default function SpaceWebsiteModal({
   space,
   canWriteInSpace,
 }: SpaceWebsiteModalProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -268,7 +269,7 @@ export default function SpaceWebsiteModal({
     }
     setIsSaving(true);
     try {
-      const res = await fetch(
+      const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${space.sId}/data_sources/${dataSourceView.dataSource.sId}`,
         { method: "DELETE" }
       );
@@ -335,7 +336,7 @@ export default function SpaceWebsiteModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: async (event: Event) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await handleSubmit();
             },

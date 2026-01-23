@@ -7,7 +7,9 @@ import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
 } from "@app/lib/api/files/upsert";
+import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import type { FileVersion } from "@app/lib/resources/file_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
@@ -15,6 +17,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { FileType, WithAPIErrorResponse } from "@app/types";
+import { isConversationFileUseCase } from "@app/types";
 
 export interface FileUploadedRequestResponseBody {
   file: FileType;
@@ -104,28 +107,58 @@ async function handler(
 
   let space: SpaceResource | null = null;
   if (file.useCaseMetadata?.spaceId) {
+    if (file.useCase === "project_context") {
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (!featureFlags.includes("projects")) {
+        return apiError(req, res, {
+          status_code: 500,
+          api_error: {
+            type: "internal_server_error",
+            message: "Feature not supported",
+          },
+        });
+      }
+    }
+
     space = await SpaceResource.fetchById(auth, file.useCaseMetadata.spaceId);
   }
-  if (file.useCase === "folders_document" && (!space || !space.canRead(auth))) {
-    return apiError(req, res, {
-      status_code: 404,
-      api_error: {
-        type: "file_not_found",
-        message: "File not found.",
-      },
-    });
+  if (
+    file.useCase === "folders_document" ||
+    file.useCase === "project_context"
+  ) {
+    if (!space || !space.canRead(auth)) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: {
+          type: "file_not_found",
+          message: "File not found.",
+        },
+      });
+    }
+
+    if (space.kind !== "project" && file.useCase === "project_context") {
+      return apiError(req, res, {
+        status_code: 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Space is not a project",
+        },
+      });
+    }
   }
 
   // Check permissions based on useCase and useCaseMetadata
-  if (file.useCase === "conversation" && file.useCaseMetadata?.conversationId) {
+  if (
+    isConversationFileUseCase(file.useCase) &&
+    file.useCaseMetadata?.conversationId
+  ) {
     const conversation = await ConversationResource.fetchById(
       auth,
       file.useCaseMetadata.conversationId
     );
-    if (
-      !conversation ||
-      !ConversationResource.canAccessConversation(auth, conversation)
-    ) {
+    if (!conversation) {
       return apiError(req, res, {
         status_code: 404,
         api_error: {
@@ -300,6 +333,31 @@ async function handler(
               },
             });
           }
+        }
+      } else if (
+        file.useCase === "project_context" &&
+        space &&
+        isFileTypeUpsertableForUseCase(file)
+      ) {
+        const upsertRes = await upsertProjectContextFile(auth, file);
+
+        if (upsertRes.isErr()) {
+          logger.error({
+            fileModelId: file.id,
+            workspaceId: auth.workspace()?.sId,
+            contentType: file.contentType,
+            useCase: file.useCase,
+            useCaseMetadata: file.useCaseMetadata,
+            message: "Failed to upsert the file.",
+            error: upsertRes.error,
+          });
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: "Failed to upsert the file.",
+            },
+          });
         }
       }
 

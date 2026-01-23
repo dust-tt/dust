@@ -1,10 +1,12 @@
 import { usePlatform } from "@app/shared/context/PlatformContext";
 import { useAuth } from "@app/ui/components/auth/AuthProvider";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export const useAuthErrorCheck = (error: any, mutate: () => any) => {
   const platform = usePlatform();
   const { setAuthError, redirectToSSOLogin, workspace } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleError = async () => {
@@ -39,6 +41,10 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
 
           case "user_not_found":
             setAuthError(error);
+            break;
+
+          case "workspace_can_use_product_required_error":
+            navigate("/subscribe");
             break;
         }
       }

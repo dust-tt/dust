@@ -1,4 +1,3 @@
-import mermaid from "mermaid";
 import React, { memo, useContext, useEffect, useRef, useState } from "react";
 import {
   amber,
@@ -178,7 +177,13 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
   const graphRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (graphRef.current) {
+    const renderMermaid = async () => {
+      if (!graphRef.current) {
+        return;
+      }
+
+      const mermaid = (await import("mermaid")).default;
+
       mermaid.initialize({
         startOnLoad: false,
         theme: "base",
@@ -280,8 +285,10 @@ const MermaidGraph: React.FC<{ chart: string }> = ({ chart }) => {
       });
 
       graphRef.current.textContent = chart;
-      void mermaid.run(undefined);
-    }
+      await mermaid.run(undefined);
+    };
+
+    void renderMermaid();
   }, [chart]);
 
   return (
@@ -356,6 +363,7 @@ export const MemoCodeBlockWithExtendedSupport = memo(
       if (language === "mermaid") {
         const checkValidMermaid = async () => {
           try {
+            const mermaid = (await import("mermaid")).default;
             await mermaid.parse(validChildrenContent);
             setIsValidMermaid(true);
             setShowMermaid(true);
@@ -444,6 +452,44 @@ export const MemoCodeBlockWithExtendedSupport = memo(
             <PrettyJsonViewer data={parsedJson} />
           ) : (
             <CodeBlock className={className} inline={inline}>
+              {children}
+            </CodeBlock>
+          )}
+        </ContentBlockWrapper>
+      );
+    }
+
+    if (parsedJson !== null) {
+      return (
+        <ContentBlockWrapper
+          content={validChildrenContent}
+          getContentToDownload={getContentToDownload}
+          actions={
+            <Button
+              className="s-font-sans"
+              size="xs"
+              variant={"outline"}
+              label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
+              icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const newValue = !showPrettyJson;
+                setShowPrettyJson(newValue);
+                setPrettyJsonPreference(newValue);
+              }}
+              tooltip={
+                showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
+              }
+            />
+          }
+          displayActions="hover"
+          buttonDisplay="inside"
+        >
+          {showPrettyJson ? (
+            <PrettyJsonViewer data={parsedJson} />
+          ) : (
+            <CodeBlock className={className} inline={inline} wrapLongLines>
               {children}
             </CodeBlock>
           )}

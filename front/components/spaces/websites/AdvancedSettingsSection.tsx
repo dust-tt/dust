@@ -1,6 +1,8 @@
 import {
   Button,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
   XMarkIcon,
@@ -40,10 +42,9 @@ export function AdvancedSettingsSection({
   };
 
   return (
-    <CollapsibleComponent
-      rootProps={{ defaultOpen: false }}
-      triggerProps={{ label: "Advanced settings", variant: "secondary" }}
-      contentChildren={
+    <Collapsible>
+      <CollapsibleTrigger label="Advanced settings" variant="secondary" />
+      <CollapsibleContent>
         <div className="flex w-full flex-col gap-6">
           <div className="flex w-full flex-col gap-3">
             <Label>Custom Headers</Label>
@@ -84,7 +85,7 @@ export function AdvancedSettingsSection({
             <Button variant="outline" label="Add Header" onClick={addHeader} />
           </div>
         </div>
-      }
-    />
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

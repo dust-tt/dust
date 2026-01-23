@@ -69,26 +69,29 @@ path = "bin/salesforce.rs"
 
 # MIGRATIONS
 
-[[bin]]
-name = "create_nodes"
-path = "bin/migrations/20241204_create_nodes.rs"
+# [[bin]]
+# name = "create_nodes"
+# path = "bin/migrations/20241204_create_nodes.rs"
 
-[[bin]]
-name = "fix_created_dsdocs"
-path = "bin/migrations/20241203_fix_created_dsdocs.rs"
+# [[bin]]
+# name = "fix_created_dsdocs"
+# path = "bin/migrations/20241203_fix_created_dsdocs.rs"
 
-[[bin]]
-name = "elasticsearch_backfill_document_tags_index"
-path = "bin/migrations/20250205_backfill_document_tags_index.rs"
+# [[bin]]
+# name = "elasticsearch_backfill_document_tags_index"
+# path = "bin/migrations/20250205_backfill_document_tags_index.rs"
 
-[[bin]]
-name = "backfill_elasticsearch_text_size"
-path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
+# [[bin]]
+# name = "backfill_elasticsearch_text_size"
+# path = "bin/migrations/20250226_backfill_elasticsearch_text_size.rs"
 
-[[bin]]
-name = "backfill_tables_gcs_files"
-path = "bin/migrations/20250701_backfill_tables_gcs_files.rs"
+# [[bin]]
+# name = "backfill_tables_gcs_files"
+# path = "bin/migrations/20250701_backfill_tables_gcs_files.rs"
 
+# [[bin]]
+# name = "migrate_slack_to_slack_tools_platform_actions"
+# path = "bin/migrations/20251208_migrate_slack_to_slack_tools_platform_actions.rs"
 
 [[bin]]
 name = "check_table"
@@ -137,6 +140,7 @@ hyper = { version = "1.3.1", features = ["full"] }
 init-tracing-opentelemetry =  { version = "0.29.0", features = ["tracing_subscriber_ext"] }
 itertools = "0.10"
 jsonwebtoken = "9.3.0"
+openssl = { version = "0.10", features = ["vendored"] }
 lazy_static = "1.4"
 once_cell = "1.18"
 opentelemetry = "0.30.0"
@@ -147,7 +151,7 @@ parking_lot = "0.12"
 pest = "2.7"
 pest_derive = "2.7"
 pkcs8 = { version = "0.10", features = ["pem", "pkcs5", "encryption"] }
-qdrant-client = "1.11"
+qdrant-client = "1.15"
 rand = "0.8"
 rayon = "1.10"
 redis = { version = "0.24.0", features = ["tokio-comp"] }
@@ -182,3 +186,4 @@ unicode-normalization = "0.1.24"
 url = "2.5"
 urlencoding = "2.1"
 uuid = { version = "1.8", features = ["v4"] }
+zeroize = "1"

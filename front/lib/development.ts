@@ -1,3 +1,4 @@
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   LightWorkspaceType,
   UserType,
@@ -24,20 +25,51 @@ export async function forceUserRole(
     return new Err(`Already in the role ${role}`);
   }
 
-  const response = await fetch(`/api/w/${owner.sId}/members/${user.sId}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      role,
-      force: "true",
-    }),
-  });
+  const response = await clientFetch(
+    `/api/w/${owner.sId}/members/${user.sId}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        role,
+        force: "true",
+      }),
+    }
+  );
 
   if (response.ok) {
     return new Ok(`Role updated to ` + role);
   } else {
     return new Err("Error updating role");
+  }
+}
+
+export async function sendOnboardingConversation(
+  owner: LightWorkspaceType,
+  featureFlags: WhitelistableFeature[]
+): Promise<
+  { isOk: true; conversationSId: string } | { isOk: false; error: string }
+> {
+  if (!showDebugTools(featureFlags)) {
+    return { isOk: false, error: "Not allowed" };
+  }
+
+  const response = await clientFetch(
+    `/api/w/${owner.sId}/assistant/conversations/send-onboarding`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (response.ok) {
+    const data = await response.json();
+    return { isOk: true, conversationSId: data.conversationSId };
+  } else {
+    return { isOk: false, error: "Error sending onboarding conversation" };
   }
 }

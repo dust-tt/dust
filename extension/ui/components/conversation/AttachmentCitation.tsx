@@ -1,4 +1,9 @@
 import { getConnectorProviderLogoWithFallback } from "@app/shared/lib/connector_providers";
+import {
+  getIcon,
+  isCustomResourceIconType,
+  isInternalAllowedIcon,
+} from "@app/shared/lib/resources_icons";
 import type { ContentFragmentType } from "@dust-tt/client";
 import {
   Citation,
@@ -25,6 +30,9 @@ export type FileAttachment = {
   preview?: string;
   isUploading: boolean;
   onRemove: () => void;
+  iconName?: string;
+  provider?: string;
+  sourceUrl?: string;
 };
 
 export type NodeAttachment = {
@@ -89,7 +97,7 @@ export function AttachmentCitation({
           <Icon visual={attachmentCitation.spaceIcon} />
           <p>{attachmentCitation.spaceName}</p>
         </div>
-        <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+        <div className="text-muted-foreground dark:text-muted-foreground-night text-sm">
           {attachmentCitation.path}
         </div>
       </div>
@@ -135,9 +143,49 @@ export function AttachmentCitation({
   );
 }
 
+export type ContentFragmentExpiredReason = "data_source_deleted";
+
+function isExpiredContentFragment(
+  arg: ContentFragmentType
+): arg is ContentFragmentType & {
+  expiredReason: ContentFragmentExpiredReason;
+} {
+  return arg.expiredReason !== null;
+}
+
+function getFileVisual({
+  isImage,
+  iconName,
+}: {
+  isImage: boolean;
+  iconName?: string | null;
+}): React.ReactNode {
+  if (isImage) {
+    return <Icon visual={ImageIcon} size="md" />;
+  }
+
+  if (
+    iconName &&
+    (isCustomResourceIconType(iconName) || isInternalAllowedIcon(iconName))
+  ) {
+    return (
+      <DoubleIcon
+        mainIcon={DocumentIcon}
+        secondaryIcon={getIcon(iconName)}
+        size="md"
+      />
+    );
+  }
+
+  return <Icon visual={DocumentIcon} size="md" />;
+}
+
 export function contentFragmentToAttachmentCitation(
   contentFragment: ContentFragmentType
-): AttachmentCitation {
+): AttachmentCitation | null {
+  if (isExpiredContentFragment(contentFragment)) {
+    return null;
+  }
   if (contentFragment.contentFragmentType === "content_node") {
     const { provider, nodeType } = contentFragment.contentNodeData;
     const logo = getConnectorProviderLogoWithFallback({ provider });
@@ -172,13 +220,15 @@ export function contentFragmentToAttachmentCitation(
     };
   }
 
-  const isImageType = contentFragment.contentType.startsWith("image/");
   return {
     type: "file",
     id: contentFragment.sId,
     title: contentFragment.title,
     sourceUrl: contentFragment.sourceUrl,
-    visual: <Icon visual={isImageType ? ImageIcon : DocumentIcon} size="md" />,
+    visual: getFileVisual({
+      isImage: contentFragment.contentType.startsWith("image/"),
+      iconName: contentFragment.sourceIcon,
+    }),
   };
 }
 
@@ -192,13 +242,11 @@ export function attachmentToAttachmentCitation(
       title: attachment.title,
       preview: attachment.preview,
       isUploading: attachment.isUploading,
-      visual: (
-        <Icon
-          visual={attachment.preview ? ImageIcon : DocumentIcon}
-          size="md"
-        />
-      ),
-      sourceUrl: null,
+      visual: getFileVisual({
+        isImage: !!attachment.preview,
+        iconName: attachment.iconName,
+      }),
+      sourceUrl: attachment.sourceUrl,
     };
   } else {
     return {

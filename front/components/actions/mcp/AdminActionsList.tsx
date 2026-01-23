@@ -8,9 +8,9 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 
-import { AddActionMenu } from "@app/components/actions/mcp/AddActionMenu";
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AddToolsMenu } from "@app/components/actions/mcp/AddToolsMenu";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHeaders";
 import { UsedByButton } from "@app/components/spaces/UsedByButton";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
@@ -19,6 +19,7 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
   mcpServersSortingFn,
+  requiresBearerTokenConfiguration,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { DefaultRemoteMCPServerConfig } from "@app/lib/actions/mcp_internal_actions/remote_servers";
@@ -145,7 +146,10 @@ export const AdminActionsList = ({
   };
 
   const onCreateInternalMCPServer = async (mcpServer: MCPServerType) => {
-    if (mcpServer.authorization) {
+    if (
+      mcpServer.authorization ??
+      requiresBearerTokenConfiguration(mcpServer)
+    ) {
       setInternalMCPServerToCreate(mcpServer);
       setDefaultServerConfig(undefined);
       setIsCreateOpen(true);
@@ -189,7 +193,12 @@ export const AdminActionsList = ({
             },
           };
         })
-        .sort(mcpServersSortingFn),
+        .sort((a, b) =>
+          mcpServersSortingFn(
+            { mcpServer: a.mcpServer, mcpServerView: a.mcpServerView },
+            { mcpServer: b.mcpServer, mcpServerView: b.mcpServerView }
+          )
+        ),
     [
       connections,
       mcpServers,
@@ -213,8 +222,15 @@ export const AdminActionsList = ({
         filterFn: (row, id, filterValue) =>
           filterMCPServer(row.original.mcpServer, filterValue),
         sortingFn: (rowA, rowB) => {
-          return rowA.original.mcpServer.name.localeCompare(
-            rowB.original.mcpServer.name
+          return mcpServersSortingFn(
+            {
+              mcpServer: rowA.original.mcpServer,
+              mcpServerView: rowA.original.mcpServerView,
+            },
+            {
+              mcpServer: rowB.original.mcpServer,
+              mcpServerView: rowB.original.mcpServerView,
+            }
           );
         },
         meta: {
@@ -247,7 +263,7 @@ export const AdminActionsList = ({
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
                 {globalSpace
-                  ? "Everyone"
+                  ? "Workspace"
                   : info
                       .getValue()
                       .filter((s) => s.kind === "regular")
@@ -309,10 +325,10 @@ export const AdminActionsList = ({
 
   return (
     <>
-      <AssistantDetails
+      <AgentDetails
         owner={owner}
         user={user}
-        assistantId={assistantSId}
+        agentId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
       <CreateMCPServerDialog
@@ -326,7 +342,7 @@ export const AdminActionsList = ({
       />
       {rows.length > 0 &&
         portalToHeader(
-          <AddActionMenu
+          <AddToolsMenu
             owner={owner}
             enabledMCPServers={mcpServers}
             setIsLoading={setIsLoading}
@@ -346,7 +362,7 @@ export const AdminActionsList = ({
           <EmptyCTA
             message="You don’t have any tools yet."
             action={
-              <AddActionMenu
+              <AddToolsMenu
                 buttonVariant="outline"
                 owner={owner}
                 enabledMCPServers={mcpServers}

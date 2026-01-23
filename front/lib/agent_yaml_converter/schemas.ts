@@ -1,11 +1,9 @@
 import { z } from "zod";
 
-import { additionalConfigurationSchema } from "@app/components/agent_builder/AgentBuilderFormContext";
-import {
-  MODEL_IDS,
-  MODEL_PROVIDER_IDS,
-  REASONING_EFFORT_IDS,
-} from "@app/types/assistant/assistant";
+import { additionalConfigurationSchema } from "@app/components/shared/tools_picker/types";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
+import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 
 export const agentYAMLBasicInfoSchema = z.object({
   handle: z.string().min(1, "Handle is required"),
@@ -20,7 +18,7 @@ export const agentYAMLGenerationSettingsSchema = z.object({
   model_id: z.enum(MODEL_IDS),
   provider_id: z.enum(MODEL_PROVIDER_IDS),
   temperature: z.number().min(0).max(1, "Temperature must be between 0 and 1"),
-  reasoning_effort: z.enum(REASONING_EFFORT_IDS),
+  reasoning_effort: z.enum(REASONING_EFFORTS),
   response_format: z.string().optional(),
 });
 
@@ -76,20 +74,7 @@ export const timeFrameActionConfigurationSchema =
 /**
  * YAML Action Schemas
  */
-export const agentYAMLDataVisualizationActionSchema =
-  baseAgentYAMLActionSchema.extend({
-    type: z.literal("DATA_VISUALIZATION"),
-    configuration: z.object({}), // Empty configuration
-  });
-
-export const agentYAMLReasoningModelSchema = z
-  .object({
-    model_id: z.enum(MODEL_IDS),
-    provider_id: z.enum(MODEL_PROVIDER_IDS),
-    temperature: z.number().min(0).max(1).nullable().optional(),
-    reasoning_effort: z.enum(REASONING_EFFORT_IDS).nullable().optional(),
-  })
-  .nullable();
+export const agentYAMLDataVisualizationActionSchema = baseAgentYAMLActionSchema;
 
 export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
   type: z.literal("MCP"),
@@ -100,13 +85,11 @@ export const agentYAMLMCPActionSchema = baseAgentYAMLActionSchema.extend({
       .optional(),
     time_frame: agentYAMLTimeFrameSchema.optional(),
     json_schema: z.object({}).nullable().optional(),
-    reasoning_model: agentYAMLReasoningModelSchema.optional(),
     additional_configuration: additionalConfigurationSchema.optional(),
   }),
 });
 
 export const agentYAMLActionSchema = z.discriminatedUnion("type", [
-  agentYAMLDataVisualizationActionSchema,
   agentYAMLMCPActionSchema,
 ]);
 

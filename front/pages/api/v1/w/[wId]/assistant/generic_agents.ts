@@ -15,6 +15,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { getLargeWhitelistedModel } from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 
 export const CreateGenericAgentRequestSchema = t.type({
   name: t.string,
@@ -49,7 +50,7 @@ function getAgentPictureUrl(
       backgroundColor
     );
   } else {
-    return "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+    return DUST_AVATAR_URL;
   }
 }
 

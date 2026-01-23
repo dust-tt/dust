@@ -79,6 +79,7 @@ async function handler(
         }
 
         res.status(200).json({ tools });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         return apiError(req, res, {
           status_code: 500,
@@ -140,6 +141,7 @@ async function handler(
         }
 
         res.status(200).json({ success: true });
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         return apiError(req, res, {
           status_code: 500,

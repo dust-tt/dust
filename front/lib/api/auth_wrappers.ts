@@ -6,9 +6,10 @@ import { getUserFromWorkOSToken, verifyWorkOSToken } from "@app/lib/api/workos";
 import {
   Authenticator,
   getAPIKey,
-  getAuthType,
+  getApiKeyNameFromHeaders,
   getBearerToken,
   getSession,
+  isOAuthToken,
 } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import type { UserResource } from "@app/lib/resources/user_resource";
@@ -25,25 +26,31 @@ import type { APIErrorWithStatusCode } from "@app/types/error";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
-export const SUPPORTED_METHODS = [
-  "GET",
-  "POST",
-  "PUT",
-  "PATCH",
-  "DELETE",
-] as const;
-export type MethodType = (typeof SUPPORTED_METHODS)[number];
+function getMaintenanceError(
+  maintenance: string | number | true | object
+): APIErrorWithStatusCode {
+  // During relocation, we return 503, but once relocation is done, we return 404 since
+  // at that point, the workspace should be treated as if it did not exist in this region anymore.
+  // And that matches what will happen it gets purged later.
+  // This also avoids getting constant alerts if the user is still sending requests to the old endpoint.
+  if (maintenance === "relocation-done") {
+    return {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: `The workspace was not found. [${maintenance}]`,
+      },
+    };
+  }
 
-export type ScopeType =
-  | "read:user_profile"
-  | "read:conversation"
-  | "update:conversation"
-  | "create:conversation"
-  | "read:file"
-  | "update:file"
-  | "create:file"
-  | "delete:file"
-  | "read:agent";
+  return {
+    status_code: 503,
+    api_error: {
+      type: "service_unavailable",
+      message: `Service is currently unavailable. [${maintenance}]`,
+    },
+  };
+}
 
 /**
  * This function is a wrapper for API routes that require session authentication.
@@ -115,10 +122,6 @@ export function withSessionAuthenticationForPoke<T>(
  * This function is a wrapper for API routes that require session authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /w/[wId]/).
  *
- * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the user is not a
- * member of the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
- *
  * @param handler
  * @param opts
  * @returns
@@ -132,7 +135,6 @@ export function withSessionAuthenticationForWorkspace<T>(
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
-    allowUserOutsideCurrentWorkspace?: boolean;
     doesNotRequireCanUseProduct?: boolean;
   } = {}
 ) {
@@ -182,13 +184,7 @@ export function withSessionAuthenticationForWorkspace<T>(
 
       const maintenance = owner.metadata?.maintenance;
       if (maintenance) {
-        return apiError(req, res, {
-          status_code: 503,
-          api_error: {
-            type: "service_unavailable",
-            message: `Service is currently unavailable. [${maintenance}]`,
-          },
-        });
+        return apiError(req, res, getMaintenanceError(maintenance));
       }
 
       const user = auth.user();
@@ -203,9 +199,7 @@ export function withSessionAuthenticationForWorkspace<T>(
       }
       req.addResourceToLog?.(user);
 
-      // If `allowUserOutsideCurrentWorkspace` is not set or false then we check that the user is a
-      // member of the workspace.
-      if (!auth.isUser() && !opts.allowUserOutsideCurrentWorkspace) {
+      if (!auth.isUser()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -225,28 +219,24 @@ export function withSessionAuthenticationForWorkspace<T>(
  * This function is a wrapper for Public API routes that require authentication for a workspace.
  * It must be used on all routes that require workspace authentication (prefix: /v1/w/[wId]/).
  *
- * opts.allowUserOutsideCurrentWorkspace allows the handler to be called even if the key is not a
- * associated with the workspace. This is useful for routes that share data across workspaces (eg apps
- * runs).
- *
  * @param handler
  * @param opts
  * @returns
  */
-export function withPublicAPIAuthentication<T, U extends boolean>(
+export function withPublicAPIAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     auth: Authenticator,
-    keyAuth: U extends true ? Authenticator : null
+    // Null is passed for compatibility with withResourceFetchingFromRoute which uses
+    // the 4th parameter to determine legacy endpoint support (null = API route).
+    _sessionOrKeyAuth: null
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
-    allowUserOutsideCurrentWorkspace?: U;
-    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
   } = {}
 ) {
-  const { allowUserOutsideCurrentWorkspace, isStreaming } = opts;
+  const { isStreaming } = opts;
 
   return withLogging(
     async (
@@ -276,15 +266,14 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
       const token = bearerTokenRes.value;
-      const authMethod = getAuthType(token);
 
-      // Authentification with  token.
+      // Authentification with a token.
       // Straightforward since the token is attached to the user.
-      if (authMethod === "access_token") {
+      if (isOAuthToken(token)) {
         try {
           const authRes = await handleWorkOSAuth(req, res, token, wId);
           if (authRes.isErr()) {
-            // If WorkOS errors and Auth0 also fails, return an ApiError.
+            // If WorkOS errors return an ApiError.
             return apiError(req, res, authRes.error);
           }
 
@@ -310,25 +299,37 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
             });
           }
 
-          req.addResourceToLog?.(auth.getNonNullableUser());
-
-          const maintenance = auth.workspace()?.metadata?.maintenance;
-          if (maintenance) {
+          const owner = auth.workspace();
+          const plan = auth.plan();
+          if (!owner || !plan) {
             return apiError(req, res, {
-              status_code: 503,
+              status_code: 404,
               api_error: {
-                type: "not_authenticated",
-                message: `Service is currently unavailable. [${maintenance}]`,
+                type: "workspace_not_found",
+                message: "The workspace was not found.",
               },
             });
           }
 
-          return await handler(
-            req,
-            res,
-            auth,
-            null as U extends true ? Authenticator : null
-          );
+          if (!plan.limits.canUseProduct) {
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_can_use_product_required_error",
+                message:
+                  "Your current plan does not allow API access. Please upgrade your plan.",
+              },
+            });
+          }
+
+          req.addResourceToLog?.(auth.getNonNullableUser());
+
+          const maintenance = auth.workspace()?.metadata?.maintenance;
+          if (maintenance) {
+            return apiError(req, res, getMaintenanceError(maintenance));
+          }
+
+          return await handler(req, res, auth, null);
         } catch (error) {
           logger.error({ error }, "Failed to verify token");
           return apiError(req, res, {
@@ -354,7 +355,6 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         getGroupIdsFromHeaders(req.headers),
         getRoleFromHeaders(req.headers)
       );
-      const { keyAuth } = keyAndWorkspaceAuth;
       let { workspaceAuth } = keyAndWorkspaceAuth;
 
       const owner = workspaceAuth.workspace();
@@ -369,20 +369,25 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
         });
       }
 
-      const maintenance = owner.metadata?.maintenance;
-      if (maintenance) {
+      if (!plan.limits.canUseProduct) {
         return apiError(req, res, {
-          status_code: 503,
+          status_code: 403,
           api_error: {
-            type: "service_unavailable",
-            message: `Service is currently unavailable. [${maintenance}]`,
+            type: "workspace_can_use_product_required_error",
+            message:
+              "Your current plan does not allow API access. Please upgrade your plan.",
           },
         });
       }
 
-      // Authenticator created from the a key has the builder role if the key is associated with
+      const maintenance = owner.metadata?.maintenance;
+      if (maintenance) {
+        return apiError(req, res, getMaintenanceError(maintenance));
+      }
+
+      // Authenticator created from a key has the builder role if the key is associated with
       // the workspace.
-      if (!workspaceAuth.isBuilder() && !allowUserOutsideCurrentWorkspace) {
+      if (!workspaceAuth.isBuilder()) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -399,7 +404,7 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
       // 1. The user associated with the email is a member of the current workspace.
       // 2. The system key is being used for authentication.
       const userEmailFromHeader = getUserEmailFromHeaders(req.headers);
-      if (userEmailFromHeader && !allowUserOutsideCurrentWorkspace) {
+      if (userEmailFromHeader) {
         workspaceAuth =
           (await workspaceAuth.exchangeSystemKeyForUserAuthByEmail(
             workspaceAuth,
@@ -409,14 +414,20 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
           )) ?? workspaceAuth;
       }
 
-      return handler(
-        req,
-        res,
-        workspaceAuth,
-        (opts.allowUserOutsideCurrentWorkspace
-          ? keyAuth
-          : null) as U extends true ? Authenticator : null
-      );
+      // If we have a system key, we can override the key name from http headers.
+      // This is only used for run_agent API call, to keep the original key name and get proper analytics.
+      const apiKeyNameFromHeader = getApiKeyNameFromHeaders(req.headers);
+      const key = workspaceAuth.key();
+      if (apiKeyNameFromHeader && key && key.isSystem) {
+        workspaceAuth = workspaceAuth.exchangeKey({
+          id: key.id,
+          name: apiKeyNameFromHeader,
+          isSystem: key.isSystem,
+          role: key.role,
+          monthlyCapMicroUsd: key.monthlyCapMicroUsd,
+        });
+      }
+      return handler(req, res, workspaceAuth, null);
     },
     isStreaming
   );
@@ -424,19 +435,14 @@ export function withPublicAPIAuthentication<T, U extends boolean>(
 
 /**
  * This function is a wrapper for Public API routes that require authentication without a workspace.
- * It automatically detects whether to use Auth0 or WorkOS authentication based on the token's issuer.
+ * It automatically detects whether to use WorkOS authentication based on the token's issuer.
  */
 export function withTokenAuthentication<T>(
   handler: (
     req: NextApiRequest,
     res: NextApiResponse<WithAPIErrorResponse<T>>,
     user: UserTypeWithWorkspaces
-  ) => Promise<void> | void,
-  // TODO(workos): Handle required scopes.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  opts: {
-    requiredScopes?: Partial<Record<MethodType, ScopeType>>;
-  } = {}
+  ) => Promise<void> | void
 ) {
   return withLogging(
     async (
@@ -455,9 +461,8 @@ export function withTokenAuthentication<T>(
         });
       }
       const bearerToken = bearerTokenRes.value;
-      const authMethod = getAuthType(bearerToken);
 
-      if (authMethod !== "access_token") {
+      if (!isOAuthToken(bearerToken)) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -489,7 +494,7 @@ export function withTokenAuthentication<T>(
         }
 
         if (workOSDecoded.isErr()) {
-          // We were not able to decode the token for Workos, nor Auth0,
+          // We were not able to decode the token for Workos,
           // so we log the error and return an API error.
           logger.error(
             {
@@ -599,21 +604,32 @@ async function handleWorkOSAuth<T>(
 }
 
 /**
- * Checks if the current session has a user that is an active member of the specified workspace.
- * Returns true if the user is authenticated and is a member of the workspace.
- * Returns false if not authenticated or not a member.
+ * Creates an authenticator for shared/publicly accessible endpoints.
+ *
+ * Use this for endpoints that can be accessed by anyone with the link:
+ * - Frames
+ *
+ * Still maintains proper authentication via cookies but designed for endpoints
+ * that don't require users to be logged into the main application.
+ *
+ * @returns Authenticated workspace-scoped authenticator for shared content, or null if not authenticated
  */
-export async function isSessionWithUserFromWorkspace(
+export async function getAuthForSharedEndpointWorkspaceMembersOnly(
   req: NextApiRequest,
   res: NextApiResponse,
   workspaceId: string
-): Promise<boolean> {
+): Promise<Authenticator | null> {
   const session = await getSession(req, res);
   if (!session) {
-    return false;
+    return null;
   }
 
   const auth = await Authenticator.fromSession(session, workspaceId);
 
-  return auth.isUser();
+  // If the user is not part of the workspace, return null.
+  if (!auth.isUser()) {
+    return null;
+  }
+
+  return auth;
 }

@@ -1,6 +1,8 @@
 import type { NotificationType } from "@dust-tt/sparkle";
+// eslint-disable-next-line dust/no-direct-sparkle-notification
 import { useSendNotification as useSendNotificationWithoutLogging } from "@dust-tt/sparkle";
 import { useCallback } from "react";
+
 import datadogLogger from "@app/logger/datadogLogger";
 
 export const useSendNotification = (disableLogging: boolean = false) => {

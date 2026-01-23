@@ -12,9 +12,17 @@ import { apiError } from "@app/logger/withlogging";
 import type { UserMessageType, WithAPIErrorResponse } from "@app/types";
 import { isUserMessageType } from "@app/types";
 
+const AgentMentionSchema = t.type({
+  configurationId: t.string,
+});
+const UserMentionSchema = t.type({
+  type: t.literal("user"),
+  userId: t.string,
+});
+
 const PostEditRequestBodySchema = t.type({
   content: t.string,
-  mentions: t.array(t.type({ configurationId: t.string })),
+  mentions: t.array(t.union([AgentMentionSchema, UserMentionSchema])),
 });
 
 async function handler(

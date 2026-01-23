@@ -1,7 +1,7 @@
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import type { AppResource } from "@app/lib/resources/app_resource";
-import { Dataset } from "@app/lib/resources/storage/models/apps";
+import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import logger from "@app/logger/logger";
 import type { AppType } from "@app/types";
 import type { DatasetSchema, DatasetType } from "@app/types";
@@ -16,7 +16,7 @@ export async function getDatasets(
     return [];
   }
 
-  const datasets = await Dataset.findAll({
+  const datasets = await DatasetModel.findAll({
     where: {
       workspaceId: owner.id,
       appId: app.id,
@@ -43,7 +43,7 @@ export async function getDatasetSchema(
     return null;
   }
 
-  const dataset = await Dataset.findOne({
+  const dataset = await DatasetModel.findOne({
     where: {
       workspaceId: owner.id,
       appId: app.id,
@@ -70,7 +70,7 @@ export async function getDatasetHash(
     return null;
   }
 
-  const dataset = await Dataset.findOne({
+  const dataset = await DatasetModel.findOne({
     where: {
       workspaceId: owner.id,
       appId: app.id,

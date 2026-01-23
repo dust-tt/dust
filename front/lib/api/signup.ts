@@ -61,10 +61,13 @@ export async function createAndLogMembership({
 // `membershipInvite` flow: we know we can add the user to the associated `workspaceId` as all the
 // checks (decoding the JWT) have been run before. Simply create the membership if it does not
 // already exist and mark the invitation as consumed.
-export async function handleMembershipInvite(
-  user: UserResource,
-  membershipInvite: MembershipInvitationResource
-): Promise<
+export async function handleMembershipInvite({
+  user,
+  membershipInvite,
+}: {
+  user: UserResource;
+  membershipInvite: MembershipInvitationResource;
+}): Promise<
   Result<
     {
       flow: "joined";
@@ -121,6 +124,7 @@ export async function handleMembershipInvite(
       workspace: lightWorkspace,
       newRole: membershipInvite.initialRole,
       allowTerminated: true,
+      author: "no-author",
     });
 
     if (updateRes.isErr()) {
@@ -189,10 +193,10 @@ export async function handleEnterpriseSignUpFlow(
 
   // Look if there is a pending membership invitation for the user at the workspace.
   const pendingMembershipInvitation =
-    await MembershipInvitationResource.getPendingForEmailAndWorkspace(
-      user.email,
-      workspace.id
-    );
+    await MembershipInvitationResource.getPendingForEmailAndWorkspace({
+      email: user.email,
+      workspace,
+    });
 
   // Initialize membership if it's not present or has been previously revoked. In the case of
   // enterprise connections, Dust access is overridden by the identity management service.
@@ -218,6 +222,7 @@ export async function handleEnterpriseSignUpFlow(
 export async function handleRegularSignupFlow(
   session: SessionWithUser,
   user: UserResource,
+  activeMemberships: MembershipResource[],
   targetWorkspaceId?: string
 ): Promise<
   Result<
@@ -228,14 +233,9 @@ export async function handleRegularSignupFlow(
     AuthFlowError | SSOEnforcedError
   >
 > {
-  const { memberships: activeMemberships, total } =
-    await MembershipResource.getActiveMemberships({
-      users: [user],
-    });
-
   // Return early if the user is already a member of a workspace and is not attempting to join
   // another one.
-  if (total !== 0 && !targetWorkspaceId) {
+  if (activeMemberships.length > 0 && !targetWorkspaceId) {
     return new Ok({
       flow: null,
       workspace: null,
@@ -282,6 +282,11 @@ export async function handleRegularSignupFlow(
       await SubscriptionResource.fetchActiveByWorkspace(
         renderLightWorkspaceType({ workspace: existingWorkspace })
       );
+
+    if (!workspaceSubscription) {
+      throw new Error("Unreachable: Workspace subscription not found");
+    }
+
     const hasAvailableSeats = await evaluateWorkspaceSeatAvailability(
       existingWorkspace,
       workspaceSubscription.toJSON()

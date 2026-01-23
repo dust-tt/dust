@@ -3,25 +3,24 @@ import type { FindOptions, Order, WhereOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
-  isEntreprisePlan,
+  isEntreprisePlanPrefix,
   isFreePlan,
   isFriendsAndFamilyPlan,
   isOldFreePlan,
-  isProPlan,
+  isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
 import { renderSubscriptionFromModels } from "@app/lib/plans/renderers";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain, isEmailValid } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { apiError } from "@app/logger/withlogging";
@@ -47,7 +46,7 @@ export type GetPokeWorkspacesResponseBody = {
 };
 
 const getPlanPriority = (planCode: string) => {
-  if (isEntreprisePlan(planCode)) {
+  if (isEntreprisePlanPrefix(planCode)) {
     return 1;
   }
 
@@ -55,7 +54,7 @@ const getPlanPriority = (planCode: string) => {
     return 2;
   }
 
-  if (isProPlan(planCode)) {
+  if (isProPlanPrefix(planCode)) {
     return 3;
   }
 
@@ -189,14 +188,11 @@ async function handler(
 
         let isSearchByDomain = false;
         if (isDomain(searchTerm)) {
-          const workspaceDomain = await WorkspaceHasDomainModel.findOne({
-            where: { domain: searchTerm },
-          });
-
-          if (workspaceDomain) {
+          const workspace = await WorkspaceResource.fetchByDomain(searchTerm);
+          if (workspace) {
             isSearchByDomain = true;
             conditions.push({
-              id: workspaceDomain.workspaceId,
+              id: workspace.id,
             });
           }
         }
@@ -234,13 +230,13 @@ async function handler(
         limit,
         include: [
           {
-            model: Subscription,
+            model: SubscriptionModel,
             as: "subscriptions",
             where: { status: "active" },
             required: false,
             include: [
               {
-                model: Plan,
+                model: PlanModel,
                 as: "plan",
               },
             ],
@@ -314,8 +310,13 @@ async function handler(
                 activeOnly: true,
               });
 
+            const workspaceResource = await WorkspaceResource.fetchById(ws.sId);
+            if (!workspaceResource) {
+              throw new Error(`Workspace not found: ${ws.sId}`);
+            }
+
             const verifiedDomains =
-              await getWorkspaceVerifiedDomains(lightWorkspace);
+              await workspaceResource.getVerifiedDomains();
 
             return {
               ...lightWorkspace,

@@ -17,6 +17,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  LabsTranscriptsConfigurationStatus,
   LabsTranscriptsConfigurationType,
   LabsTranscriptsProviderType,
   LightWorkspaceType,
@@ -27,10 +28,9 @@ import { Err, normalizeError, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface LabsTranscriptsConfigurationResource
-  extends ReadonlyAttributesType<LabsTranscriptsConfigurationModel> {}
+export interface LabsTranscriptsConfigurationResource extends ReadonlyAttributesType<LabsTranscriptsConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTranscriptsConfigurationModel> {
   static model: ModelStatic<LabsTranscriptsConfigurationModel> =
@@ -44,14 +44,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async makeNew(
-    blob: Omit<
-      CreationAttributes<LabsTranscriptsConfigurationModel>,
-      "isActive"
-    >
+    blob: Omit<CreationAttributes<LabsTranscriptsConfigurationModel>, "status">
   ): Promise<LabsTranscriptsConfigurationResource> {
     const configuration = await LabsTranscriptsConfigurationModel.create({
       ...blob,
-      isActive: false,
+      status: "disabled",
     });
 
     return new LabsTranscriptsConfigurationResource(
@@ -162,14 +159,31 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   static async fetchById(
-    sId: string,
-    transaction?: Transaction
+    auth: Authenticator,
+    sId: string
   ): Promise<LabsTranscriptsConfigurationResource | null> {
     const resourceId = getResourceIdFromSId(sId);
     if (!resourceId) {
       return null;
     }
-    return this.fetchByModelId(resourceId, transaction);
+
+    const owner = auth.getNonNullableWorkspace();
+
+    const configuration = await LabsTranscriptsConfigurationModel.findOne({
+      where: {
+        id: resourceId,
+        workspaceId: owner.id,
+      },
+    });
+
+    if (!configuration) {
+      return null;
+    }
+
+    return new LabsTranscriptsConfigurationResource(
+      LabsTranscriptsConfigurationModel,
+      configuration.get()
+    );
   }
 
   async getUser(): Promise<UserResource | null> {
@@ -188,12 +202,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return this.update({ agentConfigurationId });
   }
 
-  async setIsActive(isActive: boolean) {
-    if (this.isActive === isActive) {
+  async setStatus(status: LabsTranscriptsConfigurationStatus) {
+    if (this.status === status) {
       return;
     }
 
-    return this.update({ isActive });
+    return this.update({ status });
+  }
+
+  isActive(): boolean {
+    return this.status === "active";
   }
 
   async setIsDefault(isDefault: boolean) {
@@ -245,10 +263,11 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     try {
-      await this.deleteHistory(auth, transaction);
+      await this.deleteHistory(transaction);
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: this.workspaceId,
         },
         transaction,
       });
@@ -285,13 +304,16 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     return history.get();
   }
 
-  async setConversationHistory(
-    auth: Authenticator,
-    { conversationId, fileId }: { conversationId: string; fileId: string }
-  ): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
+  async setConversationHistory({
+    conversationId,
+    fileId,
+  }: {
+    conversationId: string;
+    fileId: string;
+  }): Promise<InferAttributes<LabsTranscriptsHistoryModel> | null> {
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
+        workspaceId: this.workspaceId,
         configurationId: this.id,
         fileId,
       },
@@ -304,6 +326,22 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     await history?.update({ conversationId });
 
     return history.get();
+  }
+
+  async deleteHistoryByFileId(fileId: string): Promise<Result<boolean, Error>> {
+    try {
+      const deletedCount = await LabsTranscriptsHistoryModel.destroy({
+        where: {
+          workspaceId: this.workspaceId,
+          configurationId: this.id,
+          fileId,
+        },
+      });
+
+      return new Ok(deletedCount > 0);
+    } catch (err) {
+      return new Err(normalizeError(err));
+    }
   }
 
   async setStorageStatusForFileId(
@@ -347,6 +385,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     const count = await LabsTranscriptsHistoryModel.count({
       where: {
         configurationId: this.id,
+        workspaceId: this.workspaceId,
       },
     });
 
@@ -357,6 +396,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
     const history = await LabsTranscriptsHistoryModel.findOne({
       where: {
         configurationId: this.id,
+        workspaceId: this.workspaceId,
       },
       order: [["createdAt", "DESC"]],
     });
@@ -365,13 +405,12 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
   }
 
   private async deleteHistory(
-    auth: Authenticator,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
     try {
       await LabsTranscriptsHistoryModel.destroy({
         where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
+          workspaceId: this.workspaceId,
           configurationId: this.id,
         },
         transaction,
@@ -390,7 +429,7 @@ export class LabsTranscriptsConfigurationResource extends BaseResource<LabsTrans
       workspaceId: this.workspaceId,
       provider: this.provider,
       agentConfigurationId: this.agentConfigurationId,
-      isActive: this.isActive,
+      status: this.status,
       isDefaultWorkspaceConfiguration: this.isDefaultWorkspaceConfiguration,
       credentialId: this.credentialId,
       dataSourceViewId: this.dataSourceViewId,

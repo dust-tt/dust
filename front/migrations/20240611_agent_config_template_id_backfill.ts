@@ -1,6 +1,6 @@
 import { QueryTypes } from "sequelize";
 
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import { makeScript } from "@app/scripts/helpers";
@@ -8,7 +8,7 @@ import { makeScript } from "@app/scripts/helpers";
 // Backfilling AgentConfiguration.templateId by computing a similarity score between
 // the instructions of the AgentConfiguration and the presetInstructions of the templates.
 makeScript({}, async ({ execute }) => {
-  const acs = await AgentConfiguration.findAll({
+  const acs = await AgentConfigurationModel.findAll({
     where: {
       templateId: null,
     },

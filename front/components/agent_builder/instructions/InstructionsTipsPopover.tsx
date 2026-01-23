@@ -1,17 +1,17 @@
 import {
+  Button,
   ContentMessage,
+  LightbulbIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
   Spinner,
 } from "@dust-tt/sparkle";
-import { LightbulbIcon } from "@dust-tt/sparkle";
-import { Button } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useRef, useState } from "react";
-import React from "react";
 import { useWatch } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   APIError,
   BuilderSuggestionsType,
@@ -179,19 +179,22 @@ async function getRankedSuggestions({
   currentInstructions: string;
   formerSuggestions: string[];
 }): Promise<Result<BuilderSuggestionsType, APIError>> {
-  const res = await fetch(`/api/w/${owner.sId}/assistant/builder/suggestions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      type: "instructions",
-      inputs: {
-        current_instructions: currentInstructions,
-        former_suggestions: formerSuggestions,
+  const res = await clientFetch(
+    `/api/w/${owner.sId}/assistant/builder/suggestions`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        type: "instructions",
+        inputs: {
+          current_instructions: currentInstructions,
+          former_suggestions: formerSuggestions,
+        },
+      }),
+    }
+  );
 
   if (!res.ok) {
     return new Err({

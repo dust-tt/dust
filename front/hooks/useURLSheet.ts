@@ -1,8 +1,9 @@
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
+
 export function useURLSheet(paramName: string) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -14,10 +15,13 @@ export function useURLSheet(paramName: string) {
   const onOpenChange = useCallback(
     (open: boolean) => {
       const { [paramName]: _, ...restQuery } = router.query;
+      const hash = router.asPath.split("#")[1] || undefined;
+
       void router.push(
         {
           pathname: router.pathname,
           query: open ? { ...restQuery, [paramName]: "true" } : restQuery,
+          hash,
         },
         undefined,
         { shallow: true }

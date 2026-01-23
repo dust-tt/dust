@@ -84,6 +84,11 @@ const useUrlHandler = (
     const nodeId = isUrlCandidate(candidate)
       ? selectedNode.sourceUrl
       : selectedNode.internalId;
+
+    if (!nodeId) {
+      return;
+    }
+
     const pendingUrl = pendingUrls.get(nodeId);
 
     if (!pendingUrl) {

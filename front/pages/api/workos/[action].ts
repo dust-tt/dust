@@ -12,12 +12,14 @@ import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
-import { setRegionForUser } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
+import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
+import { validateRelativePath } from "@app/types/shared/utils/url_utils";
 
 function isValidScreenHint(
   screenHint: string | string[] | undefined
@@ -77,15 +79,22 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       }
     }
 
+    // Validate and sanitize returnTo to ensure it's a relative path
+    const validatedReturnTo = validateRelativePath(returnTo);
+    const sanitizedReturnTo = validatedReturnTo.valid
+      ? validatedReturnTo.sanitizedPath
+      : null;
+
     const state = {
-      ...(returnTo ? { returnTo } : {}),
+      ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
     };
 
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
       // Specify that we'd like AuthKit to handle the authentication flow
       provider: "authkit",
-      redirectUri: `${config.getClientFacingUrl()}/api/workos/callback`,
+      // Use auth redirect base URL for WorkOS callbacks
+      redirectUri: `${config.getAuthRedirectBaseUrl()}/api/workos/callback`,
       clientId: config.getWorkOSClientId(),
       ...enterpriseParams,
       state:
@@ -175,12 +184,16 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       sessionData: sealedSession,
       organizationId,
       authenticationMethod,
-      region: decodedPayload["https://dust.tt/region"],
+      region:
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        decodedPayload["https://dust.tt/region"] ||
+        multiRegionsConfig.getCurrentRegion(),
       workspaceId: decodedPayload["https://dust.tt/workspaceId"],
     };
 
     const sealedCookie = await sealData(sessionCookie, {
       password: config.getWorkOSCookiePassword(),
+      ttl: 0,
     });
 
     const currentRegion = multiRegionsConfig.getCurrentRegion();
@@ -189,12 +202,18 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // If user has a region, redirect to the region page.
     const userSessionRegion = sessionCookie.region;
 
+    // Validate returnTo from state to ensure it's a relative path
+    const validatedReturnTo = validateRelativePath(stateObj.returnTo);
+    const sanitizedReturnTo = validatedReturnTo.valid
+      ? validatedReturnTo.sanitizedPath
+      : null;
+
     let invite: MembershipInvitationResource | null = null;
     if (
-      isString(stateObj.returnTo) &&
-      stateObj.returnTo.startsWith("/api/login?inviteToken=")
+      sanitizedReturnTo &&
+      sanitizedReturnTo.startsWith("/api/login?inviteToken=")
     ) {
-      const inviteUrl = new URL(stateObj.returnTo, config.getClientFacingUrl());
+      const inviteUrl = new URL(sanitizedReturnTo, config.getClientFacingUrl());
       const inviteToken = inviteUrl.searchParams.get("inviteToken");
       if (inviteToken) {
         const inviteRes =
@@ -208,7 +227,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     if (invite) {
       // User has an invite on the current region - we want to keep the user here.
       targetRegion = currentRegion;
-      await setRegionForUser(user, targetRegion);
     } else if (userSessionRegion) {
       targetRegion = userSessionRegion;
     } else {
@@ -227,8 +245,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       } else {
         targetRegion = multiRegionsConfig.getCurrentRegion();
       }
-
-      await setRegionForUser(user, targetRegion);
     }
 
     // Safety check for target region
@@ -241,7 +257,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
         "Invalid target region during WorkOS callback"
       );
       targetRegion = multiRegionsConfig.getCurrentRegion();
-      await setRegionForUser(user, targetRegion);
     }
 
     // If wrong region, redirect to login with prompt=none on correct domain
@@ -256,15 +271,8 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       const targetRegionInfo = multiRegionsConfig.getOtherRegionInfo();
       const params = new URLSearchParams();
 
-      let returnTo = "/";
-      try {
-        if (isString(stateObj.returnTo)) {
-          const url = new URL(stateObj.returnTo);
-          returnTo = url.pathname + url.search;
-        }
-      } catch {
-        // Fallback if URL parsing fails
-      }
+      // Use sanitizedReturnTo if available, otherwise default to "/"
+      const returnTo = sanitizedReturnTo ?? "/";
 
       params.set("returnTo", returnTo);
       if (organizationId) {
@@ -278,19 +286,31 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 
     // Set session cookie and redirect to returnTo URL
     const domain = config.getWorkOSSessionCookieDomain();
+    // In development (localhost), omit Secure flag as it requires HTTPS
+    // Safari strictly enforces this and will not set cookies with Secure flag on HTTP
+    const secureFlag = isDevelopment() ? "" : "; Secure";
+
+    // Indicator cookie for client-side session detection (UI only, not for auth).
+    // Not HttpOnly so it can be read by JavaScript. Max-Age matches workos_session (30 days).
+    const indicatorCookie = domain
+      ? `${DUST_HAS_SESSION}=1; Domain=${domain}; Path=/${secureFlag}; SameSite=Lax; Max-Age=2592000`
+      : `${DUST_HAS_SESSION}=1; Path=/${secureFlag}; SameSite=Lax; Max-Age=2592000`;
+
     if (domain) {
       res.setHeader("Set-Cookie", [
-        "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
-        `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+        `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
+        indicatorCookie,
       ]);
     } else {
       res.setHeader("Set-Cookie", [
-        `workos_session=${sealedCookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `workos_session=${sealedCookie}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
+        indicatorCookie,
       ]);
     }
 
-    if (isString(stateObj.returnTo)) {
-      res.redirect(stateObj.returnTo);
+    if (sanitizedReturnTo) {
+      res.redirect(sanitizedReturnTo);
       return;
     }
 
@@ -303,9 +323,6 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const returnTo = req.query.returnTo || config.getClientFacingUrl();
-
   const session = await getSession(req, res);
 
   if (session && session.type === "workos") {
@@ -320,16 +337,30 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const domain = config.getWorkOSSessionCookieDomain();
+  // In development (localhost), omit Secure flag as it requires HTTPS
+  const secureFlag = isDevelopment() ? "" : "; Secure";
+
+  // Clear both session cookie and indicator cookie
   if (domain) {
     res.setHeader("Set-Cookie", [
-      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
-      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`,
+      `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
     ]);
   } else {
     res.setHeader("Set-Cookie", [
-      "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+      `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
     ]);
   }
 
-  res.redirect(returnTo as string);
+  // Validate and sanitize returnTo parameter
+  const { returnTo } = req.query;
+  const validatedReturnTo = validateRelativePath(returnTo);
+  const sanitizedReturnTo = validatedReturnTo.valid
+    ? validatedReturnTo.sanitizedPath
+    : "/";
+
+  res.redirect(sanitizedReturnTo);
 }

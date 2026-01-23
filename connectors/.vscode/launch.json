@@ -1,0 +1,16 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node-terminal",
+      "name": "Debug connectors server",
+      "request": "launch",
+      "command": "npx tsx ./src/start.ts -p 3002",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env.local"
+    }
+  ]
+}

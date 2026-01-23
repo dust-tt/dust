@@ -166,6 +166,7 @@ export async function getPagesAndDatabasesEditedSince({
     ...loggerArgs,
     cursors,
     sinceTs,
+    filter,
   });
 
   const notionClient = new Client({
@@ -189,6 +190,7 @@ export async function getPagesAndDatabasesEditedSince({
       maxTries: retry.retries,
     });
 
+    const now = Date.now();
     try {
       resultsPage = await wrapNotionAPITokenErrors(async () => {
         return notionClient.search({
@@ -205,7 +207,7 @@ export async function getPagesAndDatabasesEditedSince({
       });
     } catch (e) {
       tryLogger.error(
-        { error: e },
+        { error: e, duration: Date.now() - now },
         "Error fetching result page from Notion API."
       );
       tries += 1;
@@ -475,8 +477,13 @@ export async function isAccessibleAndUnarchived(
         e.code === "validation_error"
       ) {
         loggerToUse.info(
-          { errorCode: e.code },
-          "Skipping page/database due to unauthorized status code."
+          {
+            notion_error: {
+              code: e.code,
+              message: e.message,
+            },
+          },
+          "Skipping page/database due to unauthorized status code or validation error."
         );
         return false;
       }
@@ -506,7 +513,7 @@ async function getBlockParent(
   // we attempt to go up the tree of blocks until we find a page or a database (or the workspace)
   // - after 8 levels of block parents, we give up and return null
   // - if we encounter a block that is not a full block, or we get a non-retriable error, we give up and return null
-  // - if we get 5 transient errors in a row, we throw an error (we let the tempooral activity manage the retries)
+  // - if we get 5 transient errors in a row, we throw an error (we let the temporal activity manage the retries)
   const max_depth = 8;
 
   const notionClient = new Client({
@@ -536,14 +543,25 @@ async function getBlockParent(
 
       if (!isFullBlock(block)) {
         // Not much we can do here to get the parent page.
+        localLogger.info(
+          { parentId: block.id, blockId },
+          "Parent block is not a full block."
+        );
         return null;
       }
 
       const parent = getPageOrBlockParent(block);
       if (parent.type === "unknown") {
-        localLogger.warn("Unknown block parent type.");
+        localLogger.warn(
+          { parentId: parent.id, parentType: parent.type, blockId },
+          "Unknown block parent type."
+        );
         return null;
       } else if (parent.type !== "block") {
+        localLogger.info(
+          { parentId: parent.id, parentType: parent.type, blockId },
+          "Found block parent that is not a block."
+        );
         return {
           parentId: parent.id,
           parentType: parent.type,
@@ -610,7 +628,15 @@ export async function getParsedDatabase(
         // it's not useful to retry.
         e.code === "validation_error")
     ) {
-      localLogger.info("Database not found.");
+      localLogger.info(
+        {
+          notion_error: {
+            code: e.code,
+            message: e.message,
+          },
+        },
+        "Got access or validation error trying to retrieve database (expected for linked databases)."
+      );
       return null;
     }
     localLogger.error(
@@ -718,7 +744,7 @@ export async function retrievePage({
             message: e.message,
           },
         },
-        "Page not found."
+        "retrievePage: Page not found or validation error."
       );
       return null;
     }
@@ -865,7 +891,6 @@ export function getPageOrBlockParent(
         id: "workspace",
       };
     default:
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       ((_x: never) => {
         //
       })(type);

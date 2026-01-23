@@ -1,11 +1,77 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
+import { MembershipModel } from "@app/lib/resources/storage/models/membership";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { Ok } from "@app/types";
 
 import handler from "./search";
+
+// Mock the searchUsers function to use SQL instead of Elasticsearch
+vi.mock("@app/lib/user_search/search", () => ({
+  searchUsers: vi.fn(
+    async ({
+      owner,
+      searchTerm,
+      offset,
+      limit,
+    }: {
+      owner: { sId: string; id: number };
+      searchTerm: string;
+      offset: number;
+      limit: number;
+    }) => {
+      // Load all users that are members of the workspace
+      const users = await UserModel.findAll({
+        include: [
+          {
+            model: MembershipModel,
+            as: "memberships",
+            required: true,
+            where: {
+              workspaceId: owner.id,
+            },
+          },
+        ],
+      });
+
+      // Filter by search term (case-insensitive matching on email or full name)
+      // If searchTerm is empty or undefined, return all users
+      const filteredUsers =
+        searchTerm && searchTerm.trim()
+          ? users.filter((user) => {
+              const lowerSearchTerm = searchTerm.toLowerCase();
+              const email = user.email?.toLowerCase() || "";
+              const fullName =
+                `${user.firstName ?? ""} ${user.lastName ?? ""}`.toLowerCase();
+              return (
+                email.includes(lowerSearchTerm) ||
+                fullName.includes(lowerSearchTerm)
+              );
+            })
+          : users;
+
+      // Apply pagination
+      const paginatedUsers = filteredUsers.slice(offset, offset + limit);
+
+      // Convert to UserSearchDocument format
+      const userDocs = paginatedUsers.map((user) => ({
+        user_id: user.sId,
+        email: user.email,
+        full_name: `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+        updated_at: user.updatedAt,
+      }));
+
+      return new Ok({
+        users: userDocs,
+        total: filteredUsers.length,
+      });
+    }
+  ),
+}));
 
 describe("GET /api/w/[wId]/members/search", () => {
   // We need search to work for all users as they can be added as editors of an agent by anyone.
@@ -167,6 +233,181 @@ describe("GET /api/w/[wId]/members/search", () => {
     });
 
     req.query.searchTerm = "NonexistentUser";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(0);
+    expect(data.members).toHaveLength(0);
+  });
+
+  it("returns all members when searchTerm is empty string", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // Create additional users
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all(
+      users.map((user) =>
+        MembershipFactory.associate(workspace, user, { role: "user" })
+      )
+    );
+
+    req.query.searchTerm = "";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // Should return all 4 users (3 created + 1 from createPrivateApiMockRequest)
+    expect(data.total).toBe(4);
+    expect(data.members).toHaveLength(4);
+  });
+
+  it("filters to only builders and admins when buildersOnly=true", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    // Create users with different roles
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "admin" }),
+      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+      MembershipFactory.associate(workspace, users[3], { role: "user" }),
+    ]);
+
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    // Should return 3 members: the admin from createPrivateApiMockRequest + 2 builders
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+    // Verify all returned members are builders or admins
+    data.members.forEach((member: any) => {
+      expect(["admin", "builder"]).toContain(member.workspace.role);
+    });
+  });
+
+  it("returns all members when buildersOnly=false", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[1], { role: "user" }),
+    ]);
+
+    req.query.buildersOnly = "false";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+  });
+
+  it("returns all members when buildersOnly is not provided", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const users = await Promise.all([UserFactory.basic(), UserFactory.basic()]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[1], { role: "user" }),
+    ]);
+
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(3);
+    expect(data.members).toHaveLength(3);
+  });
+
+  it("combines buildersOnly filter with searchTerm", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const users = await Promise.all([
+      UserFactory.basic(),
+      UserFactory.basic(),
+      UserFactory.basic(),
+    ]);
+
+    await Promise.all([
+      MembershipFactory.associate(workspace, users[0], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[1], { role: "builder" }),
+      MembershipFactory.associate(workspace, users[2], { role: "user" }),
+    ]);
+
+    // Search for a specific builder
+    req.query.searchTerm = users[0].email;
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data.total).toBe(1);
+    expect(data.members).toHaveLength(1);
+    expect(data.members[0].email).toBe(users[0].email);
+    expect(data.members[0].workspace.role).toBe("builder");
+  });
+
+  it("returns empty when searching for non-builder with buildersOnly=true", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      method: "GET",
+      role: "admin",
+    });
+
+    const user = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, user, { role: "user" });
+
+    req.query.searchTerm = user.email;
+    req.query.buildersOnly = "true";
+    req.query.offset = "0";
+    req.query.limit = "25";
 
     await handler(req, res);
 

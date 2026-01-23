@@ -10,17 +10,12 @@ import handler from "./not_activated";
 
 describe("GET /api/w/[wId]/spaces/[spaceId]/mcp_views/not_activated", () => {
   it("returns activable MCP servers views", async () => {
-    const { req, res, workspace, globalGroup } =
+    const { req, res, workspace, globalGroup, globalSpace, systemSpace } =
       await createPrivateApiMockRequest({
         role: "admin",
       });
 
-    // Create a system space
-    const systemSpace = await SpaceFactory.system(workspace);
     req.query.spaceId = systemSpace.sId;
-
-    // Create global space
-    const globalSpace = await SpaceFactory.global(workspace);
 
     // Create a regular space to test the endpoint on
     const space = await SpaceFactory.regular(workspace);

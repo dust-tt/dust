@@ -389,7 +389,7 @@ pub async fn tables_retrieve_blob(
             &format!("No table found for id `{}`", table_id),
             None,
         ),
-        Ok(Some(table)) => match table.retrieve_api_blob(state.databases_store.clone()).await {
+        Ok(Some(table)) => match table.retrieve_api_blob().await {
             Err(e) => error_response(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "internal_server_error",

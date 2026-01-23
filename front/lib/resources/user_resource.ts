@@ -1,4 +1,6 @@
 import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
 import type {
   Attributes,
   ModelStatic,
@@ -14,29 +16,28 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
   UserMetadataModel,
   UserModel,
+  UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
-import type {
-  LightWorkspaceType,
-  ModelId,
-  Result,
-  UserProviderType,
-  UserType,
-} from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { searchUsers } from "@app/lib/user_search/search";
+import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
+import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
+import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
+import { Err, md5, normalizeError, Ok } from "@app/types";
+import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {
-  orderColumn: "name";
-  orderDirection: "asc" | "desc";
   offset: number;
   limit: number;
 }
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const TOOLS_VALIDATION_WILDCARD = "*";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface UserResource extends ReadonlyAttributesType<UserModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -63,7 +64,18 @@ export class UserResource extends BaseResource<UserModel> {
   ): Promise<UserResource> {
     const lowerCaseEmail = blob.email?.toLowerCase();
     const user = await UserModel.create({ ...blob, email: lowerCaseEmail });
-    return new this(UserModel, user.get());
+    const userResource = new this(UserModel, user.get());
+
+    // Update user search index across all workspaces.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: userResource.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    return userResource;
   }
 
   static async fetchByIds(userIds: string[]): Promise<UserResource[]> {
@@ -163,23 +175,115 @@ export class UserResource extends BaseResource<UserModel> {
     return user ? new UserResource(UserModel, user.get()) : null;
   }
 
-  async updateAuth0Sub({
-    sub,
-    provider,
-  }: {
-    sub: string;
-    provider: UserProviderType;
-  }) {
-    return this.update({
-      auth0Sub: sub,
-      provider,
+  static async listUserWithExactEmails(
+    owner: LightWorkspaceType,
+    emails: string[]
+  ): Promise<UserResource[]> {
+    const users = await UserModel.findAll({
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          where: {
+            workspaceId: owner.id,
+            startAt: { [Op.lte]: new Date() },
+            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+          },
+          required: true,
+        },
+      ],
+      where: {
+        email: emails,
+      },
     });
+
+    return users.map((user) => new UserResource(UserModel, user.get()));
   }
 
-  async updateWorkOSUserId({ workOSUserId }: { workOSUserId: string }) {
-    return this.update({
-      workOSUserId,
+  static async searchUsers(
+    auth: Authenticator,
+    {
+      searchTerm,
+      offset,
+      limit,
+    }: {
+      searchTerm: string;
+      offset: number;
+      limit: number;
+    }
+  ): Promise<Result<{ users: UserResource[]; total: number }, Error>> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // Search users in Elasticsearch
+    const searchResult = await searchUsers({
+      owner,
+      searchTerm,
+      offset,
+      limit,
     });
+    if (searchResult.isErr()) {
+      return searchResult;
+    }
+
+    const { users: userDocs, total } = searchResult.value;
+    const userIds = userDocs.map((doc) => doc.user_id);
+
+    if (userIds.length === 0) {
+      return new Ok({ users: [], total: 0 });
+    }
+
+    // Note that UserResource has stored sIds, not generated ones.
+    const users = await UserModel.findAll({
+      where: {
+        sId: { [Op.in]: userIds },
+      },
+      include: [
+        {
+          model: MembershipModel,
+          as: "memberships",
+          required: true, // INNER JOIN
+          where: {
+            workspaceId: owner.id,
+            startAt: { [Op.lte]: new Date() },
+            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
+          },
+        },
+      ],
+    });
+
+    // Check if we found fewer users than expected (means some were revoked)
+    if (users.length < userIds.length) {
+      const foundUserIds = new Set(users.map((u) => u.sId));
+      const missingUserIds = userIds.filter((sId) => !foundUserIds.has(sId));
+
+      statsDClient.increment("user_search.revoked_users_in_results.count", 1);
+
+      logger.error(
+        {
+          workspaceId: owner.sId,
+          missingUserSIds: missingUserIds,
+          owner: "spolu",
+        },
+        // This log is expected as user search queries may happen before the index update completes
+        // (temporal workflow + ES indexing asynchronously). We keep it to ensure that volume stays
+        // flat. An increase would indicate a synchronization problem.
+        "[user_search] Found revoked users in search results"
+      );
+    }
+
+    // Create a map to maintain the order from Elasticsearch results
+    const userResourceMap = new Map<string, UserResource>();
+    users.forEach((u) => {
+      const userBlob = u.get();
+      userResourceMap.set(u.sId, new UserResource(UserModel, userBlob));
+    });
+
+    // Return users in the order from Elasticsearch results
+    const orderedUsers = userIds
+      .map((sId) => userResourceMap.get(sId))
+      .filter((user): user is UserResource => user !== undefined);
+
+    return new Ok({ users: orderedUsers, total });
   }
 
   async updateName(firstName: string, lastName: string | null) {
@@ -187,9 +291,26 @@ export class UserResource extends BaseResource<UserModel> {
     if (lastName) {
       lastName = escape(lastName);
     }
-    return this.update({
+    const result = await this.update({
       firstName,
       lastName,
+    });
+
+    // Update user search index across all workspaces.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: this.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    return result;
+  }
+
+  async updateImage(imageUrl: string | null) {
+    return this.update({
+      imageUrl,
     });
   }
 
@@ -205,13 +326,24 @@ export class UserResource extends BaseResource<UserModel> {
       lastName = escape(lastName);
     }
     const lowerCaseEmail = email.toLowerCase();
-    return this.update({
+    const result = await this.update({
       username,
       firstName,
       lastName,
       email: lowerCaseEmail,
       workOSUserId,
     });
+
+    // Update user search index across all workspaces.
+    const workflowResult = await launchIndexUserSearchWorkflow({
+      userId: this.sId,
+    });
+    if (workflowResult.isErr()) {
+      // Throw if it fails to launch (unexpected).
+      throw workflowResult.error;
+    }
+
+    return result;
   }
 
   async recordLoginActivity(date?: Date) {
@@ -224,7 +356,7 @@ export class UserResource extends BaseResource<UserModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await this.deleteAllMetadata();
+    await this.deleteAllMetadata(auth);
 
     try {
       await this.model.destroy({
@@ -257,20 +389,26 @@ export class UserResource extends BaseResource<UserModel> {
     }
   }
 
-  async getMetadata(key: string) {
+  async getMetadata(key: string, workspaceModelId?: number | null) {
     return UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
+        workspaceId: workspaceModelId ?? null,
       },
     });
   }
 
-  async setMetadata(key: string, value: string) {
+  async setMetadata(
+    key: string,
+    value: string,
+    workspaceModelId?: number | null
+  ) {
     const metadata = await UserMetadataModel.findOne({
       where: {
         userId: this.id,
         key,
+        workspaceId: workspaceModelId ?? null,
       },
     });
 
@@ -279,6 +417,7 @@ export class UserResource extends BaseResource<UserModel> {
         userId: this.id,
         key,
         value,
+        workspaceId: workspaceModelId ?? null,
       });
       return;
     }
@@ -334,12 +473,21 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async deleteAllMetadata() {
-    return UserMetadataModel.destroy({
+  async deleteAllMetadata(auth: Authenticator) {
+    await UserMetadataModel.destroy({
       where: {
         userId: this.id,
       },
     });
+
+    await UserToolApprovalModel.destroy({
+      where: {
+        userId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return;
   }
 
   async getToolValidations(): Promise<
@@ -365,8 +513,105 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  /**
+   * Create a tool approval for this user.
+   *
+   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
+   * For medium stake (per-agent, per-args): pass agentId and argsAndValues
+   */
+  async createToolApproval(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
+  ): Promise<void> {
+    // Sort keys to ensure consistent JSONB storage for unique constraint.
+    const sortedArgsAndValues = argsAndValues
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
+      : null;
+
+    const argsAndValuesMd5 = md5(JSON.stringify(sortedArgsAndValues));
+
+    const findClause = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId: agentId ?? { [Op.is]: null },
+      argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
+    };
+
+    await UserToolApprovalModel.findOrCreate({
+      where: findClause,
+      defaults: {
+        ...findClause,
+        agentId,
+        argsAndValues: sortedArgsAndValues,
+        argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
+      },
+    });
+  }
+
+  async hasApprovedTool(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
+  ): Promise<boolean> {
+    const sortedArgsAndValues = argsAndValues
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
+      : null;
+
+    // For low-stake tools (agentId=null, argsAndValues=null), also check for
+    // wildcard "*" approval which approves all tools for the server.
+    const isLowStake = agentId === null && argsAndValues === null;
+
+    const approval = await UserToolApprovalModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: this.id,
+        mcpServerId,
+        toolName: isLowStake
+          ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
+          : toolName,
+        agentId: agentId ?? { [Op.is]: null },
+        argsAndValuesMd5: argsAndValues
+          ? md5(JSON.stringify(sortedArgsAndValues))
+          : { [Op.is]: null },
+      },
+    });
+
+    return approval !== null;
+  }
+
   fullName(): string {
     return [this.firstName, this.lastName].filter(Boolean).join(" ");
+  }
+
+  toUserSearchDocument(workspace: LightWorkspaceType): UserSearchDocument {
+    return {
+      workspace_id: workspace.sId,
+      user_id: this.sId,
+      email: this.email,
+      full_name: this.fullName(),
+      updated_at: this.updatedAt,
+    };
   }
 
   toJSON(): UserType {
@@ -382,70 +627,6 @@ export class UserResource extends BaseResource<UserModel> {
       fullName: this.fullName(),
       image: this.imageUrl,
       lastLoginAt: this.lastLoginAt?.getTime() ?? null,
-    };
-  }
-
-  static async listUserWithExactEmails(
-    owner: LightWorkspaceType,
-    emails: string[]
-  ): Promise<UserResource[]> {
-    const users = await UserModel.findAll({
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
-          required: true,
-        },
-      ],
-      where: {
-        email: emails,
-      },
-    });
-
-    return users.map((user) => new UserResource(UserModel, user.get()));
-  }
-
-  static async listUsersWithEmailPredicat(
-    owner: LightWorkspaceType,
-    options: {
-      email?: string;
-    },
-    paginationParams: SearchMembersPaginationParams
-  ): Promise<{ users: UserResource[]; total: number }> {
-    const userWhereClause: any = {};
-    if (options.email) {
-      userWhereClause.email = {
-        [Op.iLike]: `%${options.email}%`,
-      };
-    }
-
-    const { count, rows: users } = await UserModel.findAndCountAll({
-      where: userWhereClause,
-      include: [
-        {
-          model: MembershipModel,
-          as: "memberships",
-          where: {
-            workspaceId: owner.id,
-            startAt: { [Op.lte]: new Date() },
-            endAt: { [Op.or]: [{ [Op.eq]: null }, { [Op.gte]: new Date() }] },
-          },
-          required: true,
-        },
-      ],
-      order: [[paginationParams.orderColumn, paginationParams.orderDirection]],
-      limit: paginationParams.limit,
-      offset: paginationParams.offset,
-    });
-
-    return {
-      users: users.map((u) => new UserResource(UserModel, u.get())),
-      total: count,
     };
   }
 

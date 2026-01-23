@@ -29,6 +29,9 @@ interface FileBlob {
   preview?: string;
   size: number;
   publicUrl?: string;
+  sourceUrl?: string;
+  iconName?: string;
+  provider?: string;
 }
 
 type FileBlobUploadErrorCode =
@@ -182,16 +185,20 @@ export function useFileUploaderService(
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
     const uploadPromises = newFileBlobs.map(async (fileBlob) => {
       // Get upload URL from server.
+      let useCaseMetadata = undefined;
+      if (conversationId) {
+        useCaseMetadata = {
+          conversationId,
+          ...(fileBlob.provider && { sourceProvider: fileBlob.provider }),
+          ...(fileBlob.iconName && { sourceIcon: fileBlob.iconName }),
+        };
+      }
       const fileRes = await dustAPI.uploadFile({
         contentType: fileBlob.contentType,
         fileName: fileBlob.filename,
         fileSize: fileBlob.size,
         useCase: "conversation",
-        useCaseMetadata: conversationId
-          ? {
-              conversationId: conversationId,
-            }
-          : undefined,
+        useCaseMetadata,
         fileObject: fileBlob.file,
       });
       if (fileRes.isErr()) {
@@ -393,7 +400,7 @@ export function useFileUploaderService(
         const blobs = await Promise.all(
           tabContent.captures.map(async (c) => {
             const response = await fetch(c);
-            return await response.blob();
+            return response.blob();
           })
         );
 
@@ -445,7 +452,35 @@ export function useFileUploaderService(
     return fileBlobs.filter(fileBlobHasFileId);
   };
 
+  const addUploadedFile = (fileData: {
+    fileId: string;
+    filename: string;
+    contentType: SupportedFileContentType;
+    size: number;
+    id?: string;
+    sourceUrl?: string;
+    iconName?: string;
+    provider?: string;
+  }) => {
+    const blob: FileBlob = {
+      id: fileData.id ?? fileData.filename,
+      fileId: fileData.fileId,
+      filename: fileData.filename,
+      contentType: fileData.contentType,
+      file: new File([], fileData.filename, { type: fileData.contentType }),
+      kind: "attachment",
+      isUploading: false,
+      size: fileData.size,
+      sourceUrl: fileData.sourceUrl,
+      iconName: fileData.iconName,
+      provider: fileData.provider,
+    };
+
+    setFileBlobs((prevFiles) => [...prevFiles, blob]);
+  };
+
   return {
+    addUploadedFile,
     fileBlobs,
     getFileBlobs,
     handleFileChange,

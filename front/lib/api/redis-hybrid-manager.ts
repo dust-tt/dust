@@ -1,12 +1,18 @@
+import tracer from "dd-trace";
 import { EventEmitter } from "events";
 import type { RedisClientType } from "redis";
-import { createClient } from "redis";
+import { commandOptions, createClient } from "redis";
 
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
 import { fromEvent } from "@app/lib/utils/events";
 import logger from "@app/logger/logger";
+import { statsDClient } from "@app/logger/statsDClient";
 
 type EventCallback = (event: EventPayload | "close") => void;
+
+// Conservative value to prevent memory spikes during deployment reconnection bursts.
+// Clients automatically paginate if more history is needed.
+const HISTORY_FETCH_COUNT = 50;
 
 export type EventPayload = {
   id: string;
@@ -31,6 +37,11 @@ class RedisHybridManager {
 
   private CHANNEL_PREFIX = "channel:";
   private STREAM_PREFIX = "stream:";
+
+  // Track active subscriptions for monitoring.
+  private activeSubscriptionCount = 0;
+  // Track concurrent history fetches to identify overload.
+  private concurrentHistoryFetches = 0;
 
   private constructor() {}
 
@@ -98,6 +109,10 @@ class RedisHybridManager {
           reconnectStrategy: (retries) => {
             return Math.min(retries * 100, 3000); // Exponential backoff with max 3s
           },
+        },
+        isolationPoolOptions: {
+          min: 1,
+          max: 100, // Pool of 100 connections for concurrent stream operations.
         },
       });
 
@@ -252,92 +267,160 @@ class RedisHybridManager {
     callback: EventCallback,
     lastEventId: string | null = null,
     origin: string
-  ): Promise<{ history: EventPayload[]; unsubscribe: () => void }> {
-    const subscriptionClient = await this.getSubscriptionClient();
-    const streamClient = await this.getStreamAndPublishClient();
-    const streamName = this.getStreamName(channelName);
-    const pubSubChannelName = this.getPubSubChannelName(channelName);
+  ): Promise<{
+    history: EventPayload[];
+    unsubscribe: () => void;
+  }> {
+    return tracer.trace(
+      "redis.hybrid.subscribe",
+      { resource: origin },
+      async () => {
+        const subscribeStartMs = Date.now();
 
-    // Make sure the subscribers map is initialized
-    if (!this.subscribers.has(pubSubChannelName)) {
-      this.subscribers.set(pubSubChannelName, new Set());
-      // Subscribe to the channel if this is the first subscriber
-      await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
-    }
+        const clientsStartMs = Date.now();
+        const subscriptionClient = await this.getSubscriptionClient();
+        const streamClient = await this.getStreamAndPublishClient();
+        const clientsDurationMs = Date.now() - clientsStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.get_clients_duration_ms",
+          clientsDurationMs
+        );
 
-    const eventsDuringHistoryFetch: EventPayload[] = [];
-    const eventsDuringHistoryFetchCallback: EventCallback = (
-      event: EventPayload | "close"
-    ) => {
-      if (event !== "close") {
-        eventsDuringHistoryFetch.push(event);
-      }
-    };
+        const streamName = this.getStreamName(channelName);
+        const pubSubChannelName = this.getPubSubChannelName(channelName);
 
-    // Add to subscribers map during history fetch to avoid race condition
-    this.subscribers
-      .get(pubSubChannelName)!
-      .add(eventsDuringHistoryFetchCallback);
+        // Make sure the subscribers map is initialized
+        const channelSetupStartMs = Date.now();
+        if (!this.subscribers.has(pubSubChannelName)) {
+          this.subscribers.set(pubSubChannelName, new Set());
+          // Subscribe to the channel if this is the first subscriber
+          await subscriptionClient.subscribe(pubSubChannelName, this.onMessage);
+        }
+        const channelSetupDurationMs = Date.now() - channelSetupStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.channel_setup_duration_ms",
+          channelSetupDurationMs
+        );
 
-    const history: EventPayload[] = await this.getHistory(
-      streamClient,
-      streamName,
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      lastEventId || "0-0"
-    );
+        const eventsDuringHistoryFetch: EventPayload[] = [];
+        const eventsDuringHistoryFetchCallback: EventCallback = (
+          event: EventPayload | "close"
+        ) => {
+          if (event !== "close") {
+            eventsDuringHistoryFetch.push(event);
+          }
+        };
 
-    // Remove the temporary callback from the subscribers map
-    this.subscribers
-      .get(pubSubChannelName)!
-      .delete(eventsDuringHistoryFetchCallback);
+        // Add to subscribers map during history fetch to avoid race condition
+        this.subscribers
+          .get(pubSubChannelName)!
+          .add(eventsDuringHistoryFetchCallback);
 
-    // Immediately add the real callback to the subscribers map
-    this.subscribers.get(pubSubChannelName)!.add(callback);
+        const historyFetchStartMs = Date.now();
+        const { events: history, hasMore: historyHasMore } =
+          await this.getHistory(
+            streamClient,
+            streamName,
+            // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            lastEventId || "0-0"
+          );
+        const historyFetchDurationMs = Date.now() - historyFetchStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.history_fetch_duration_ms",
+          historyFetchDurationMs
+        );
 
-    // Append the events during history fetch to the history, if any
-    if (eventsDuringHistoryFetch.length > 0) {
-      for (const event of eventsDuringHistoryFetch) {
-        // deduplicate events
-        if (history.find((h) => h.id === event.id)) {
-          continue;
+        // Remove the temporary callback from the subscribers map
+        this.subscribers
+          .get(pubSubChannelName)!
+          .delete(eventsDuringHistoryFetchCallback);
+
+        // Immediately add the real callback to the subscribers map
+        this.subscribers.get(pubSubChannelName)!.add(callback);
+
+        // Track active subscription count for monitoring.
+        this.activeSubscriptionCount++;
+        statsDClient.gauge(
+          "sse.active_subscriptions",
+          this.activeSubscriptionCount
+        );
+        // Track subscription rate (increment counter to get rate per second).
+        statsDClient.increment("sse.subscription_established", 1);
+
+        // Append the events during history fetch to the history, if any
+        const dedupeStartMs = Date.now();
+        if (eventsDuringHistoryFetch.length > 0) {
+          // Use Set for O(1) deduplication instead of O(n) find
+          const historyIds = new Set(history.map((h) => h.id));
+
+          for (const event of eventsDuringHistoryFetch) {
+            // deduplicate events
+            if (!historyIds.has(event.id)) {
+              history.push(event);
+            }
+          }
+          // Sort the history just in case
+          history.sort((a, b) => a.id.localeCompare(b.id));
+        }
+        const dedupeDurationMs = Date.now() - dedupeStartMs;
+        statsDClient.distribution(
+          "sse.subscribe.dedupe_duration_ms",
+          dedupeDurationMs
+        );
+
+        if (historyHasMore) {
+          // Force the client to re-subscribe with the latest event id it had in order to get more events from history.
+          callback("close");
         }
 
-        history.push(event);
-      }
-      // Sort the history just in case
-      history.sort((a, b) => a.id.localeCompare(b.id));
-    }
+        // Track total subscription establishment time.
+        const subscribeDurationMs = Date.now() - subscribeStartMs;
+        statsDClient.timing(
+          "sse.subscription.total_duration_ms",
+          subscribeDurationMs
+        );
 
-    return {
-      history,
-      unsubscribe: async () => {
-        const subscribers = this.subscribers.get(pubSubChannelName);
-        if (subscribers) {
-          callback("close");
-          subscribers.delete(callback);
+        return {
+          history,
+          unsubscribe: async () => {
+            const subscribers = this.subscribers.get(pubSubChannelName);
+            if (subscribers) {
+              callback("close");
+              subscribers.delete(callback);
 
-          if (subscribers.size === 0) {
-            // No more subscribers for this channel
-            this.subscribers.delete(pubSubChannelName);
-            // Unsubscribe from the channel
-            if (this.subscriptionClient) {
-              try {
-                await this.subscriptionClient.unsubscribe(pubSubChannelName);
-              } catch (error) {
-                logger.error(
-                  { error, channel: pubSubChannelName },
-                  "Error unsubscribing from channel"
+              // Track active subscription count for monitoring.
+              this.activeSubscriptionCount--;
+              statsDClient.gauge(
+                "sse.active_subscriptions",
+                this.activeSubscriptionCount
+              );
+
+              if (subscribers.size === 0) {
+                // No more subscribers for this channel
+                this.subscribers.delete(pubSubChannelName);
+                // Unsubscribe from the channel
+                if (this.subscriptionClient) {
+                  try {
+                    await this.subscriptionClient.unsubscribe(
+                      pubSubChannelName
+                    );
+                  } catch (error) {
+                    logger.error(
+                      { error, channel: pubSubChannelName },
+                      "Error unsubscribing from channel"
+                    );
+                  }
+                }
+                logger.debug(
+                  { pubSubChannelName: pubSubChannelName, origin },
+                  "Unsubscribed from Redis channel"
                 );
               }
             }
-            logger.debug(
-              { pubSubChannelName: pubSubChannelName, origin },
-              "Unsubscribed from Redis channel"
-            );
-          }
-        }
-      },
-    };
+          },
+        };
+      }
+    ); // End tracer.trace("redis.hybrid.subscribe")
   }
 
   public async removeEvent(
@@ -346,16 +429,23 @@ class RedisHybridManager {
   ): Promise<void> {
     const streamClient = await this.getStreamAndPublishClient();
     const streamName = this.getStreamName(channel);
-    const history: EventPayload[] = await this.getHistory(
-      streamClient,
-      streamName
-    );
+    let historyHasMore = true;
+    let lastEventId: string | undefined = undefined;
+    while (historyHasMore) {
+      const { events: history, hasMore } = await this.getHistory(
+        streamClient,
+        streamName,
+        lastEventId
+      );
 
-    for (const event of history) {
-      if (predicate(event)) {
-        await streamClient.xDel(streamName, event.id);
-        logger.debug({ channel }, "Deleted event from Redis stream");
+      for (const event of history) {
+        if (predicate(event)) {
+          await streamClient.xDel(streamName, event.id);
+          logger.debug({ channel }, "Deleted event from Redis stream");
+        }
       }
+      historyHasMore = hasMore;
+      lastEventId = history.at(-1)?.id ?? lastEventId;
     }
   }
 
@@ -363,32 +453,95 @@ class RedisHybridManager {
     streamClient: RedisClientType,
     streamName: string,
     lastEventId: string = "0-0"
-  ): Promise<EventPayload[]> {
-    try {
-      return await streamClient
-        .xRead({ key: streamName, id: lastEventId }, { COUNT: 100 })
-        .then((events) => {
-          if (events) {
-            return events.flatMap((event) =>
-              event.messages.map((message) => ({
-                id: message.id,
-                message: { payload: message.message["payload"] },
-              }))
-            );
-          }
-          return [];
-        });
-    } catch (error) {
-      logger.error(
-        {
-          error,
-          streamName,
-          lastEventId,
-        },
-        "Error fetching history from stream"
-      );
-      return Promise.resolve([]);
-    }
+  ): Promise<{ events: EventPayload[]; hasMore: boolean }> {
+    return tracer.trace(
+      "redis.xread.history",
+      { resource: streamName },
+      async () => {
+        const historyStartMs = Date.now();
+
+        this.concurrentHistoryFetches++;
+        statsDClient.gauge(
+          "sse.history.concurrent_fetches",
+          this.concurrentHistoryFetches
+        );
+        statsDClient.increment("sse.history.fetch_started");
+
+        try {
+          const xReadStartMs = Date.now();
+          const result = await tracer
+            .trace("redis.xread.command", async () => {
+              return streamClient.xRead(
+                commandOptions({ isolated: true }),
+                { key: streamName, id: lastEventId },
+                { COUNT: HISTORY_FETCH_COUNT }
+              );
+            })
+            .then((events) => {
+              const xReadDurationMs = Date.now() - xReadStartMs;
+              statsDClient.distribution(
+                "sse.history.xread_duration_ms",
+                xReadDurationMs
+              );
+
+              const parseStartMs = Date.now();
+              if (events) {
+                const finalEvents = events.flatMap((event) =>
+                  event.messages.map((message) => ({
+                    id: message.id,
+                    message: { payload: message.message["payload"] },
+                  }))
+                );
+
+                const eventCount = finalEvents.length;
+                const hasMore = eventCount >= HISTORY_FETCH_COUNT;
+
+                const parseDurationMs = Date.now() - parseStartMs;
+                statsDClient.distribution(
+                  "sse.history.parse_duration_ms",
+                  parseDurationMs
+                );
+
+                // Track all event replays, including from-beginning fetches during deployment.
+                statsDClient.histogram(
+                  "sse.history.events_replayed",
+                  eventCount
+                );
+
+                return {
+                  events: finalEvents,
+                  hasMore,
+                };
+              }
+              return { events: [], hasMore: false };
+            });
+
+          const totalHistoryDurationMs = Date.now() - historyStartMs;
+          statsDClient.distribution(
+            "sse.history.total_duration_ms",
+            totalHistoryDurationMs
+          );
+
+          return result;
+        } catch (error) {
+          logger.error(
+            {
+              error,
+              streamName,
+              lastEventId,
+            },
+            "Error fetching history from stream"
+          );
+          return await Promise.resolve({ events: [], hasMore: false });
+        } finally {
+          this.concurrentHistoryFetches--;
+          statsDClient.gauge(
+            "sse.history.concurrent_fetches",
+            this.concurrentHistoryFetches
+          );
+        }
+      }
+    ); // End tracer.trace("redis.xread.history")
   }
 
   private onMessage = (message: string, channel: string) => {
@@ -495,6 +648,18 @@ class RedisHybridManager {
         unsubscribe();
       },
     };
+  }
+
+  /**
+   * Ping Redis to check connectivity.
+   * Used by startup probe to verify Redis is accessible before accepting traffic.
+   */
+  public async ping(): Promise<void> {
+    const streamClient = await this.getStreamAndPublishClient();
+    const subscriptionClient = await this.getSubscriptionClient();
+
+    await streamClient.ping();
+    await subscriptionClient.ping();
   }
 }
 

@@ -16,9 +16,7 @@ export function makeUrlForEmojiAndBackground(
     unified,
   });
 
-  const url = `${EMOJI_AVATAR_BASE_URL}${avatarUrlSuffix}`;
-
-  return url;
+  return `${EMOJI_AVATAR_BASE_URL}${avatarUrlSuffix}`;
 }
 
 export function buildSelectedEmojiType(
@@ -39,19 +37,4 @@ export function buildSelectedEmojiType(
   }
 
   return null;
-}
-
-export function getDefaultAvatarUrlForPreview(): string | null {
-  const emoji = buildSelectedEmojiType("🤖");
-  if (!emoji) {
-    return null;
-  }
-  return makeUrlForEmojiAndBackground(
-    {
-      id: emoji.id,
-      unified: emoji.unified,
-      native: emoji.native,
-    },
-    `bg-blue-200`
-  );
 }

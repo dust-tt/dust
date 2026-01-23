@@ -10,7 +10,7 @@ import {
   findSpaceFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
-import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import {
   getDataSourceNameFromView,
   isRemoteDatabase,
@@ -42,7 +42,11 @@ export function DataSourceViewTable({
     () =>
       spaceDataSourceViews
         .filter((dsv) => {
-          if (dsv.dataSource.connectorProvider === "slack_bot") {
+          const connectorConfig = dsv.dataSource.connectorProvider
+            ? CONNECTOR_UI_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+            : null;
+
+          if (connectorConfig?.isHiddenAsDataSource) {
             return false;
           }
 
@@ -59,12 +63,12 @@ export function DataSourceViewTable({
           const provider = dsv.dataSource.connectorProvider;
 
           const connectorProvider = provider
-            ? CONNECTOR_CONFIGURATIONS[provider]
+            ? CONNECTOR_UI_CONFIGURATIONS[provider]
             : null;
 
           const icon = provider
-            ? connectorProvider?.getLogoComponent(isDark) ??
-              CATEGORY_DETAILS[dsv.category].icon
+            ? (connectorProvider?.getLogoComponent(isDark) ??
+              CATEGORY_DETAILS[dsv.category].icon)
             : FolderIcon;
 
           return {

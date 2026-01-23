@@ -8,7 +8,6 @@ import type {
   UpsertDatabaseTableRequestType,
   UpsertTableFromCsvRequestType,
 } from "@dust-tt/client";
-import { DustAPI } from "@dust-tt/client";
 import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import type { AxiosError } from "axios";
 import axios from "axios";
@@ -22,6 +21,7 @@ import { toMarkdown } from "mdast-util-to-markdown";
 import { gfm } from "micromark-extension-gfm";
 
 import { apiConfig } from "@connectors/lib/api/config";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
 import { DustConnectorWorkflowError, TablesError } from "@connectors/lib/error";
 import logger from "@connectors/logger/logger";
 import { statsDClient } from "@connectors/logger/withlogging";
@@ -80,19 +80,6 @@ export type UpsertDataSourceDocumentParams = {
   mimeType: string;
   async: boolean;
 };
-
-function getDustAPI(dataSourceConfig: DataSourceConfig) {
-  return new DustAPI(
-    {
-      url: apiConfig.getDustFrontInternalAPIUrl(),
-    },
-    {
-      apiKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-    logger
-  );
-}
 
 export const upsertDataSourceDocument = withRetries(
   logger,
@@ -544,7 +531,7 @@ async function tokenize(text: string, ds: DataSourceConfig) {
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TOKENIZE_TIMEOUT_MS);
-  const tokensRes = await getDustAPI(ds).tokenize(
+  const tokensRes = await getDustAPI(ds, { useInternalAPI: true }).tokenize(
     sanitizedText,
     ds.dataSourceId,
     { signal: controller.signal }
@@ -1083,7 +1070,7 @@ export async function upsertDataSourceTableFromCsv({
     );
   }
 
-  const dustAPI = getDustAPI(dataSourceConfig);
+  const dustAPI = getDustAPI(dataSourceConfig, { useInternalAPI: true });
 
   const fileRes = await dustAPI.uploadFile({
     contentType: "text/csv",
@@ -1552,7 +1539,9 @@ export async function _upsertDataSourceFolder({
 }) {
   const now = new Date();
 
-  const r = await getDustAPI(dataSourceConfig).upsertFolder({
+  const r = await getDustAPI(dataSourceConfig, {
+    useInternalAPI: true,
+  }).upsertFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
     timestamp: timestampMs ? timestampMs : now.getTime(),
@@ -1577,12 +1566,73 @@ export async function deleteDataSourceFolder({
   folderId: string;
   loggerArgs?: Record<string, string | number>;
 }) {
-  const r = await getDustAPI(dataSourceConfig).deleteFolder({
+  const r = await getDustAPI(dataSourceConfig, {
+    useInternalAPI: true,
+  }).deleteFolder({
     dataSourceId: dataSourceConfig.dataSourceId,
     folderId,
   });
 
   if (r.isErr()) {
     throw r.error;
+  }
+}
+
+/**
+ * Checks the status of the upsert queue for a data source.
+ * Returns the number of currently running upsert workflows.
+ */
+export async function checkDataSourceUpsertQueueStatus({
+  dataSourceConfig,
+  loggerArgs = {},
+}: {
+  dataSourceConfig: DataSourceConfig;
+  loggerArgs?: Record<string, string | number>;
+}): Promise<number> {
+  const localLogger = logger.child({
+    ...loggerArgs,
+    dataSourceId: dataSourceConfig.dataSourceId,
+    workspaceId: dataSourceConfig.workspaceId,
+  });
+
+  const endpoint =
+    `${apiConfig.getDustFrontInternalAPIUrl()}/api/v1/w/${dataSourceConfig.workspaceId}` +
+    `/data_sources/${dataSourceConfig.dataSourceId}/check_upsert_queue`;
+  const dustRequestConfig: AxiosRequestConfig = {
+    headers: {
+      Authorization: `Bearer ${dataSourceConfig.workspaceAPIKey}`,
+    },
+    timeout: 10000, // 10 seconds per request
+  };
+
+  try {
+    const dustRequestResult = await axiosWithTimeout.get(
+      endpoint,
+      dustRequestConfig
+    );
+
+    if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
+      const runningCount = dustRequestResult.data.running_count as number;
+      localLogger.info(
+        { runningCount },
+        "Checked upsert queue status for data source."
+      );
+      return runningCount;
+    } else {
+      localLogger.error(
+        {
+          status: dustRequestResult.status,
+        },
+        "Error checking upsert queue for data source."
+      );
+      // Checking is a best-effort, so we return 0 on error, allowing the workflow to proceed.
+      return 0;
+    }
+  } catch (e) {
+    localLogger.error(
+      { error: e },
+      "Error checking upsert queue for data source."
+    );
+    return 0;
   }
 }

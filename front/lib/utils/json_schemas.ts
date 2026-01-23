@@ -112,8 +112,55 @@ export function findSchemaAtPath(
 }
 
 /**
+ * Ensures that intermediate objects/arrays exist in the path.
+ * Creates objects for string keys and arrays when the next key is numeric.
+ * Note: For configuration storage, paths like ["filter", "items", "items", "field"]
+ * are stored as nested objects, not actual arrays.
+ */
+export function ensurePathExists(
+  obj: Record<string, unknown>,
+  path: (string | number)[]
+): void {
+  if (path.length === 0) {
+    return;
+  }
+
+  let current: Record<string, unknown> = obj;
+
+  for (let i = 0; i < path.length - 1; i++) {
+    const key = path[i];
+    const nextKey = path[i + 1];
+
+    if (typeof key === "string") {
+      // Check if the next key is numeric to decide whether to create an array or object
+      const shouldCreateArray = typeof nextKey === "number";
+
+      // Initialize if it doesn't exist or is the wrong type
+      if (!current[key] || typeof current[key] !== "object") {
+        current[key] = shouldCreateArray ? [] : {};
+      }
+      current = current[key] as Record<string, unknown>;
+    } else {
+      // Numeric index - ensure parent is an array with enough elements
+      if (!Array.isArray(current)) {
+        return; // Parent should have been an array
+      }
+
+      while (current.length <= key) {
+        // Check if next key is numeric to decide what to push
+        const shouldPushArray = typeof nextKey === "number";
+        current.push(shouldPushArray ? [] : {});
+      }
+
+      current = current[key] as Record<string, unknown>;
+    }
+  }
+}
+
+/**
  * Sets a value at a specific path in a nested object structure.
  * Assumes that intermediate objects already exist.
+ * Use ensurePathExists() first to initialize the path.
  */
 export function setValueAtPath(
   obj: Record<string, unknown>,
@@ -168,6 +215,24 @@ export function getValueAtPath(
 }
 
 /**
+ * Singleton AJV instance to avoid expensive instantiation on every validation.
+ * Creating new AJV instances is costly as we call it frequently (e.g., in MCP tool validation loops).
+ *
+ * AJV internally caches compiled schemas using the schema object as a Map key,
+ * so reusing the same instance provides automatic caching benefits.
+ */
+let ajvInstance: Ajv | null = null;
+
+function getAjvInstance(): Ajv {
+  if (!ajvInstance) {
+    ajvInstance = new Ajv();
+    addFormats(ajvInstance); // Adds "date", "date-time", "time", "email" and many other common formats.
+  }
+
+  return ajvInstance;
+}
+
+/**
  * Validates a generic JSON schema as per the JSON schema specification.
  * Less strict than the JsonSchemaSchema zod schema.
  */
@@ -181,8 +246,8 @@ export function validateJsonSchema(value: object | string | null | undefined): {
 
   try {
     const parsed = typeof value !== "object" ? JSON.parse(value) : value;
-    const ajv = new Ajv();
-    addFormats(ajv); // Adds "date", "date-time", "time", "email" and many other common formats.
+    const ajv = getAjvInstance();
+
     ajv.compile(parsed); // Throws an error if the schema is invalid
     return { isValid: true };
   } catch (e) {

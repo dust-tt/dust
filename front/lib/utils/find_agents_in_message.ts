@@ -1,29 +1,20 @@
-import { runAction } from "@app/lib/actions/server";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
+import type { AugmentedMessageFromLLM } from "@app/lib/api/assistant/voice_agent_finder";
+import { findAgentsInMessageGeneration } from "@app/lib/api/assistant/voice_agent_finder";
 import type { Authenticator } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import logger from "@app/logger/logger";
-import {
-  assertNever,
-  getSmallWhitelistedModel,
-  GPT_4_1_MINI_MODEL_ID,
-  removeNulls,
-} from "@app/types";
+import { assertNever } from "@app/types";
 
-const _ACTION_NAME = "voice-find-agent-and-tools";
-
-export interface Mention {
-  type: "mention";
-  id: string;
-  name: string;
-}
-
-export interface Text {
-  type: "text";
-  text: string;
-}
-
-export type AugmentedMessage = Mention | Text;
+export type AugmentedMessage =
+  | {
+      type: "mention";
+      id: string;
+      name: string;
+    }
+  | {
+      type: "text";
+      text: string;
+    };
 
 async function listAgents(auth: Authenticator) {
   const agents = await getAgentConfigurationsForView({
@@ -38,72 +29,52 @@ async function listAgents(auth: Authenticator) {
   }));
 }
 
-function getActionConfig(auth: Authenticator) {
-  const config = cloneBaseConfig(getDustProdAction(_ACTION_NAME).config);
-  const model = getSmallWhitelistedModel(auth.getNonNullableWorkspace());
-  config.GET_AUGMENTED_MESSAGE.provider_id = model?.providerId ?? "openai";
-  config.GET_AUGMENTED_MESSAGE.model_id =
-    model?.modelId ?? GPT_4_1_MINI_MODEL_ID;
-  return config;
-}
-
 export const findAgentsInMessage = async (
   auth: Authenticator,
   message: string
-) => {
+): Promise<AugmentedMessage[]> => {
   const agents = await listAgents(auth);
-  const config = getActionConfig(auth);
+  const agentListForLLM = agents.map((a) => a.name);
 
-  const res = await runAction(auth, _ACTION_NAME, config, [
-    {
-      agents_list: agents,
-      message,
-    },
-  ]);
+  const res = await findAgentsInMessageGeneration(auth, {
+    agentsList: agentListForLLM,
+    message,
+  });
 
   if (res.isErr()) {
-    logger.error(
-      `Action ${_ACTION_NAME} failed to process message: ${res.error.type} ${res.error.message}`
-    );
-    return [{ type: "message", text: message }];
+    logger.error(`Failed to find agents in message: ${res.error.message}`);
+    return [{ type: "text", text: message }];
   }
 
-  const {
-    status: { run },
-    traces,
-    results,
-    run_id,
-  } = res.value;
+  // Transform the LLM output to something the frontend understands.
+  return res.value.augmentedMessages.map((m) =>
+    messageFromLLMToAugmentedMessage(agents, m)
+  );
+};
 
-  logger.info("Action runId : " + run_id);
-
-  switch (run) {
-    case "errored":
-      const error = removeNulls(traces.map((t) => t[1][0][0].error)).join(", ");
-      logger.error(
-        `Action ${_ACTION_NAME} failed to process message: ${error}`
+const messageFromLLMToAugmentedMessage = (
+  agentLists: { id: string; name: string }[],
+  augmentedMessageFromLLM: AugmentedMessageFromLLM
+): AugmentedMessage => {
+  switch (augmentedMessageFromLLM.type) {
+    case "text":
+      // passthrough if it's a text message
+      return augmentedMessageFromLLM;
+    case "mention":
+      // if it's a mention, we try to find the agent in the list from its name
+      const found = agentLists.find(
+        (a) =>
+          a.name.trim().toLowerCase() ===
+          augmentedMessageFromLLM.name.trim().toLowerCase()
       );
-
-      return [{ type: "message", text: message }];
-    case "succeeded":
-      if (!results || results.length === 0) {
-        logger.error(
-          `Action ${_ACTION_NAME} failed to process message: no results returned while run was successful`
-        );
-        return [{ type: "message", text: message }];
+      if (found) {
+        // if we found it, we return a mention
+        return { type: "mention", id: found.id, name: found.name };
       }
 
-      logger.debug(
-        `Action ${_ACTION_NAME} output: ${JSON.stringify(results[0][0])}`
-      );
-
-      return results[0][0].value as AugmentedMessage[];
-    case "running":
-      logger.error(
-        `Action ${_ACTION_NAME} is still running, expected to be done`
-      );
-      return [{ type: "message", text: message }];
+      // if we didn't find it, we return a text message with the name of the agent
+      return { type: "text", text: augmentedMessageFromLLM.name };
     default:
-      assertNever(run);
+      assertNever(augmentedMessageFromLLM);
   }
 };

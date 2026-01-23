@@ -18,13 +18,20 @@ import { isRoleType } from "./user";
  *  agent. Has special permissions: not restricted only to admins. Users can
  *  create, and members of the group can update it.
  *
+ * skill_editors group: Group specific to represent skill editors, tied to a
+ *  skill. Has special permissions: not restricted only to admins. Users can
+ *  create, and members of the group can update it.
+ *
  *  provisioned group: Contains all users from a provisioned group.
  */
 export const GROUP_KINDS = [
   "regular",
+  // space_editors is used to know if a member of a manual group can edit the group
+  "space_editors",
   "global",
   "system",
   "agent_editors",
+  "skill_editors",
   "provisioned",
 ] as const;
 export type GroupKind = (typeof GROUP_KINDS)[number];
@@ -43,6 +50,10 @@ export function isAgentEditorGroupKind(value: GroupKind): boolean {
   return value === "agent_editors";
 }
 
+export function isSkillEditorGroupKind(value: GroupKind): boolean {
+  return value === "skill_editors";
+}
+
 export type GroupType = {
   id: ModelId;
   name: string;
@@ -55,7 +66,9 @@ export type GroupType = {
 export const GroupKindCodec = t.keyof({
   global: null,
   regular: null,
+  space_editors: null,
   agent_editors: null,
+  skill_editors: null,
   system: null,
   provisioned: null,
 });
@@ -99,8 +112,7 @@ export function getRoleFromHeaders(
 }
 
 /**
- * Pass the user's role to the API - only use for route which have allowUserOutsideCurrentWorkspace set to
- * true (runApp or runAppStreamed). Other API calls will always require builder/admin role.
+ * Pass the user's role to the API via headers for internal system-key calls (e.g., runApp).
  */
 export function getHeaderFromRole(role: RoleType | undefined) {
   if (!role) {
@@ -112,5 +124,7 @@ export function getHeaderFromRole(role: RoleType | undefined) {
 }
 
 export const AGENT_GROUP_PREFIX = "Group for Agent";
+export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";
+export const PROJECT_GROUP_PREFIX = "Group for project";
 export const GLOBAL_SPACE_NAME = "Company Data";

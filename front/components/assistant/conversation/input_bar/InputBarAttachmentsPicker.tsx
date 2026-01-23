@@ -1,3 +1,4 @@
+import type { DropdownMenuFilterOption } from "@dust-tt/sparkle";
 import {
   AttachmentIcon,
   Button,
@@ -6,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuFilters,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -14,25 +16,53 @@ import {
   MagnifyingGlassIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { NodePathTooltip } from "@app/components/NodePathTooltip";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { useDebounce } from "@app/hooks/useDebounce";
 import type { FileUploaderService } from "@app/hooks/useFileUploaderService";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { useToolFileUpload } from "@app/hooks/useToolFileUpload";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
-  getLocationForDataSourceViewContentNode,
+  getLocationForDataSourceViewContentNodeWithSpace,
+  getVisualForContentNodeType,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { isFolder, isWebsite } from "@app/lib/data_sources";
-import { getSpaceAccessPriority } from "@app/lib/spaces";
 import {
-  useSpaces,
-  useSpacesSearchWithInfiniteScroll,
-} from "@app/lib/swr/spaces";
-import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+  getDisplayNameForDataSource,
+  isFolder,
+  isWebsite,
+} from "@app/lib/data_sources";
+import type {
+  ToolSearchResult,
+  ToolSearchServerResult,
+} from "@app/lib/search/tools/types";
+import { useUnifiedSearch } from "@app/lib/swr/search";
+import { useSpaces } from "@app/lib/swr/spaces";
+import type {
+  ConversationWithoutContentType,
+  DataSourceType,
+  DataSourceViewContentNode,
+  LightWorkspaceType,
+  SpaceType,
+} from "@app/types";
+import {
+  asDisplayToolName,
+  MIN_SEARCH_QUERY_SIZE,
+  removeNulls,
+} from "@app/types";
+
+const getKeyForDataSource = (dataSource: DataSourceType) => {
+  if (dataSource.connectorProvider === "webcrawler") {
+    return `ds-webcrawler`;
+  } else if (!dataSource.connectorProvider) {
+    return `ds-folder`;
+  } else {
+    return `ds-${dataSource.sId}`;
+  }
+};
 
 interface InputBarAttachmentsPickerProps {
   owner: LightWorkspaceType;
@@ -42,9 +72,122 @@ interface InputBarAttachmentsPickerProps {
   attachedNodes: DataSourceViewContentNode[];
   isLoading?: boolean;
   disabled?: boolean;
+  buttonSize?: "xs" | "sm" | "md";
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
 }
 
 const PAGE_SIZE = 25;
+
+interface KnowledgeNodeCheckboxItemProps {
+  item: DataSourceViewContentNode;
+  owner: LightWorkspaceType;
+  attachedNodes: DataSourceViewContentNode[];
+  onNodeSelect: (node: DataSourceViewContentNode) => void;
+  onNodeUnselect: (node: DataSourceViewContentNode) => void;
+  spacesMap?: Record<string, SpaceType>;
+}
+
+const KnowledgeNodeCheckboxItem = ({
+  item,
+  owner,
+  attachedNodes,
+  onNodeSelect,
+  onNodeUnselect,
+  spacesMap,
+}: KnowledgeNodeCheckboxItemProps) => {
+  return (
+    <NodePathTooltip node={item} owner={owner}>
+      <DropdownMenuCheckboxItem
+        label={item.title}
+        icon={
+          isWebsite(item.dataSourceView.dataSource) ||
+          isFolder(item.dataSourceView.dataSource) ? (
+            <Icon
+              visual={getVisualForDataSourceViewContentNode(item)}
+              size="md"
+            />
+          ) : (
+            <DoubleIcon
+              size="md"
+              mainIcon={getVisualForDataSourceViewContentNode(item)}
+              secondaryIcon={getConnectorProviderLogoWithFallback({
+                provider: item.dataSourceView.dataSource.connectorProvider,
+              })}
+            />
+          )
+        }
+        description={getLocationForDataSourceViewContentNodeWithSpace(
+          item,
+          spacesMap
+        )}
+        checked={attachedNodes.some(
+          (attachedNode) =>
+            attachedNode.internalId === item.internalId &&
+            attachedNode.dataSourceView.dataSource.sId ===
+              item.dataSourceView.dataSource.sId
+        )}
+        onCheckedChange={(checked) => {
+          if (checked) {
+            onNodeSelect(item);
+          } else {
+            onNodeUnselect(item);
+          }
+        }}
+        truncateText
+      />
+    </NodePathTooltip>
+  );
+};
+
+interface ToolFileCheckboxItemProps {
+  item: ToolSearchResult;
+  isLoading: boolean;
+  isToolFileAttached: (item: ToolSearchResult) => boolean;
+  isToolFileUploading: (item: ToolSearchResult) => boolean;
+  uploadToolFile: (item: ToolSearchResult) => void;
+  removeToolFile: (item: ToolSearchResult) => void;
+}
+
+const ToolFileCheckboxItem = ({
+  item,
+  isLoading,
+  isToolFileAttached,
+  isToolFileUploading,
+  uploadToolFile,
+  removeToolFile,
+}: ToolFileCheckboxItemProps) => {
+  const isAttached = isToolFileAttached(item);
+  const isUploading = isToolFileUploading(item);
+
+  return (
+    <DropdownMenuCheckboxItem
+      label={item.title}
+      icon={
+        isUploading ? (
+          <Spinner size="sm" />
+        ) : (
+          <DoubleIcon
+            size="md"
+            mainIcon={getVisualForContentNodeType(item.type)}
+            secondaryIcon={getIcon(item.serverIcon)}
+          />
+        )
+      }
+      description={asDisplayToolName(item.serverName)}
+      checked={isAttached}
+      disabled={isLoading || isUploading}
+      onCheckedChange={(checked) => {
+        if (checked && !isAttached && !isUploading) {
+          void uploadToolFile(item);
+        } else if (!checked && isAttached) {
+          removeToolFile(item);
+        }
+      }}
+      truncateText
+    />
+  );
+};
 
 export const InputBarAttachmentsPicker = ({
   owner,
@@ -54,11 +197,15 @@ export const InputBarAttachmentsPicker = ({
   attachedNodes,
   isLoading = false,
   disabled = false,
+  buttonSize = "xs",
+  conversation,
+  space,
 }: InputBarAttachmentsPickerProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const itemsContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
-
+  const [selectedDataSourcesAndTools, setSelectedDataSourcesAndTools] =
+    useState<Record<string, boolean>>({});
   const {
     inputValue: search,
     debouncedValue: searchQuery,
@@ -71,24 +218,41 @@ export const InputBarAttachmentsPicker = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !isOpen,
   });
 
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
+
   const {
-    searchResultNodes,
+    knowledgeResults: searchResultNodes,
+    toolResults: toolFileResults,
     isSearchLoading,
+    isLoadingNextPage,
     isSearchValidating,
     hasMore,
     nextPage,
-  } = useSpacesSearchWithInfiniteScroll({
-    includeDataSources: true,
+  } = useUnifiedSearch({
     owner,
-    search: searchQuery,
-    viewType: "all",
+    query: searchQuery,
     pageSize: PAGE_SIZE,
     disabled: isSpacesLoading || !searchQuery,
-    spaceIds: spaces.map((s) => s.sId),
+    spaceIds,
+    viewType: "all",
+    includeDataSources: true,
     searchSourceUrls: true,
+    includeTools: true,
+    prioritizeSpaceAccess: true,
   });
 
   const spacesMap = useMemo(
@@ -96,29 +260,142 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
-  const pickedSpaceNodes: DataSourceViewContentNode[] = useMemo(() => {
-    return searchResultNodes.map((node) => {
-      const { dataSourceViews, ...rest } = node;
-      const dataSourceView = dataSourceViews
-        .map((view) => ({
-          ...view,
-          spaceName: spacesMap[view.spaceId]?.name,
-          spacePriority: getSpaceAccessPriority(spacesMap[view.spaceId]),
-        }))
-        .sort(
-          (a, b) =>
-            b.spacePriority - a.spacePriority ||
-            a.spaceName.localeCompare(b.spaceName)
-        )[0];
-      return {
-        ...rest,
-        dataSourceView,
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDataSourcesAndTools({});
+    }
+  }, [isOpen, searchQuery]);
+
+  const dataSourcesNodes = useMemo(
+    () =>
+      removeNulls(
+        searchResultNodes.map((node) => {
+          const { dataSourceViews, ...rest } = node;
+
+          const dataSourceView = dataSourceViews.find(
+            (view) => spacesMap[view.spaceId]
+          );
+
+          if (!dataSourceView) {
+            return null;
+          }
+
+          return {
+            ...rest,
+            dataSourceView,
+          };
+        })
+      ),
+    [searchResultNodes, spacesMap]
+  );
+
+  const dataSourcesWithResults: Record<
+    string,
+    { dataSource: DataSourceType; results: DataSourceViewContentNode[] }
+  > = useMemo(() => {
+    return dataSourcesNodes.reduce<
+      Record<
+        string,
+        { dataSource: DataSourceType; results: DataSourceViewContentNode[] }
+      >
+    >((acc, item) => {
+      const key = getKeyForDataSource(item.dataSource);
+      acc[key] = acc[key] ?? {
+        dataSource: item.dataSource,
+        results: [],
       };
-    });
-  }, [searchResultNodes, spacesMap]);
+      acc[key].results.push(item);
+      return acc;
+    }, {});
+  }, [dataSourcesNodes]);
 
-  const showLoader = isSearchLoading || isSearchValidating || isDebouncing;
+  const serversWithResults = useMemo(
+    () =>
+      toolFileResults.reduce<
+        Record<
+          string,
+          { server: ToolSearchServerResult; results: ToolSearchResult[] }
+        >
+      >((acc, item) => {
+        acc[`tools-${item.serverName}`] = acc[`tools-${item.serverName}`] ?? {
+          server: {
+            serverIcon: item.serverIcon,
+            serverName: item.serverName,
+            serverViewId: item.serverViewId,
+          },
+          results: [],
+        };
+        acc[`tools-${item.serverName}`].results.push(item);
+        return acc;
+      }, {}),
+    [toolFileResults]
+  );
 
+  // Auto-select new datasources/tools as they appear
+  useEffect(() => {
+    const allKeys = [
+      ...Object.keys(dataSourcesWithResults),
+      ...Object.keys(serversWithResults),
+    ];
+    if (allKeys.length > 0) {
+      setSelectedDataSourcesAndTools((prev) => {
+        const updated = { ...prev };
+        let hasChanges = false;
+
+        allKeys.forEach((key) => {
+          if (!(key in updated)) {
+            updated[key] = false; // Auto-add as unselected (false = shown when allUnselected)
+            hasChanges = true;
+          }
+        });
+
+        return hasChanges ? updated : prev;
+      });
+    }
+  }, [dataSourcesWithResults, serversWithResults]);
+
+  const handleFilterClick = (key: string) => {
+    setSelectedDataSourcesAndTools((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  const {
+    getToolFileKey,
+    isToolFileAttached,
+    isToolFileUploading,
+    uploadToolFile,
+    removeToolFile,
+  } = useToolFileUpload({
+    owner,
+    fileUploaderService,
+    conversationId: conversation?.sId,
+  });
+
+  const showLoader =
+    isSearchLoading || isLoadingNextPage || isSearchValidating || isDebouncing;
+
+  const availableSources: DropdownMenuFilterOption[] = [
+    ...Object.entries(dataSourcesWithResults).map(([key, r]) => ({
+      value: key,
+      label: getDisplayNameForDataSource(r.dataSource, true),
+    })),
+    ...Object.entries(serversWithResults).map(([key, s]) => ({
+      value: key,
+      label: asDisplayToolName(s.server.serverName),
+    })),
+  ];
+
+  const selectedFilterKeys = useMemo(
+    () =>
+      Object.entries(selectedDataSourcesAndTools)
+        .filter(([, value]) => value)
+        .map(([key]) => key),
+    [selectedDataSourcesAndTools]
+  );
+
+  const allUnselected = selectedFilterKeys.length === 0;
   return (
     <DropdownMenu
       open={isOpen}
@@ -132,7 +409,7 @@ export const InputBarAttachmentsPicker = ({
         <Button
           variant="ghost-secondary"
           icon={AttachmentIcon}
-          size="xs"
+          size={buttonSize}
           disabled={disabled || isLoading}
           onClick={() => setIsOpen(!isOpen)}
         />
@@ -161,7 +438,7 @@ export const InputBarAttachmentsPicker = ({
             <DropdownMenuSearchbar
               autoFocus
               name="search-files"
-              placeholder="Search knowledge"
+              placeholder="Search"
               value={search}
               onChange={setSearch}
               disabled={isLoading}
@@ -189,60 +466,94 @@ export const InputBarAttachmentsPicker = ({
       >
         {searchQuery ? (
           <div ref={itemsContainerRef}>
-            {pickedSpaceNodes.map((item, index) => (
-              <NodePathTooltip key={index} node={item} owner={owner}>
-                <DropdownMenuCheckboxItem
-                  label={item.title}
-                  icon={
-                    isWebsite(item.dataSourceView.dataSource) ||
-                    isFolder(item.dataSourceView.dataSource) ? (
-                      <Icon
-                        visual={getVisualForDataSourceViewContentNode(item)}
-                        size="md"
-                      />
-                    ) : (
-                      <DoubleIcon
-                        size="md"
-                        mainIcon={getVisualForDataSourceViewContentNode(item)}
-                        secondaryIcon={getConnectorProviderLogoWithFallback({
-                          provider:
-                            item.dataSourceView.dataSource.connectorProvider,
-                        })}
-                      />
-                    )
-                  }
-                  description={getLocationForDataSourceViewContentNode(item)}
-                  checked={attachedNodes.some(
-                    (attachedNode) =>
-                      attachedNode.internalId === item.internalId &&
-                      attachedNode.dataSourceView.dataSource.sId ===
-                        item.dataSourceView.dataSource.sId
+            {showLoader ||
+              (availableSources.length > 1 && (
+                <div className="flex flex-wrap items-center gap-0.5 p-2">
+                  {showLoader && (
+                    <div className="flex h-7 items-center justify-center last:grow">
+                      <Spinner size="xs" />
+                    </div>
                   )}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      onNodeSelect(item);
-                    } else {
-                      onNodeUnselect(item);
-                    }
-                  }}
-                  truncateText
-                />
-              </NodePathTooltip>
-            ))}
-            {pickedSpaceNodes.length === 0 && !showLoader && (
+                  {availableSources.length > 1 && (
+                    <DropdownMenuFilters
+                      filters={availableSources}
+                      selectedValues={selectedFilterKeys}
+                      onSelectFilter={handleFilterClick}
+                      className="grow"
+                    />
+                  )}
+                </div>
+              ))}
+            {Object.keys(serversWithResults).length === 0 ? (
+              // No tools results, show knowledge nodes as returned by the search.
+              dataSourcesNodes
+                .filter(
+                  (item) =>
+                    allUnselected ||
+                    selectedDataSourcesAndTools[
+                      getKeyForDataSource(item.dataSource)
+                    ]
+                )
+                .map((item) => (
+                  <KnowledgeNodeCheckboxItem
+                    key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                    item={item}
+                    owner={owner}
+                    attachedNodes={attachedNodes}
+                    onNodeSelect={onNodeSelect}
+                    onNodeUnselect={onNodeUnselect}
+                    spacesMap={spacesMap}
+                  />
+                ))
+            ) : (
+              // Show grouped results, first knowledge nodes, then tools.
+              <>
+                {Object.entries(dataSourcesWithResults).map(([key, r]) => {
+                  const isSelected =
+                    allUnselected || selectedDataSourcesAndTools[key];
+                  return isSelected
+                    ? r.results.map((item) => (
+                        <KnowledgeNodeCheckboxItem
+                          key={`knowledge-${item.dataSourceView.dataSource.sId}-${item.internalId}`}
+                          item={item}
+                          owner={owner}
+                          attachedNodes={attachedNodes}
+                          onNodeSelect={onNodeSelect}
+                          onNodeUnselect={onNodeUnselect}
+                        />
+                      ))
+                    : null;
+                })}
+                {Object.entries(serversWithResults).map(([key, r]) => {
+                  const isSelected =
+                    allUnselected || selectedDataSourcesAndTools[key];
+                  return isSelected
+                    ? r.results.map((item) => (
+                        <ToolFileCheckboxItem
+                          key={`tool-${getToolFileKey(item)}`}
+                          item={item}
+                          isLoading={isLoading}
+                          isToolFileAttached={isToolFileAttached}
+                          isToolFileUploading={isToolFileUploading}
+                          uploadToolFile={uploadToolFile}
+                          removeToolFile={removeToolFile}
+                        />
+                      ))
+                    : null;
+                })}
+              </>
+            )}
+            {availableSources.length === 0 && !showLoader && (
               <div className="flex items-center justify-center py-4 text-sm text-muted-foreground dark:text-muted-foreground-night">
                 No results found
               </div>
             )}
+
             <InfiniteScroll
               nextPage={nextPage}
               hasMore={hasMore}
               showLoader={showLoader}
-              loader={
-                <div className="flex justify-center py-4">
-                  <Spinner variant="dark" size="sm" />
-                </div>
-              }
+              loader={<div />}
             />
           </div>
         ) : (

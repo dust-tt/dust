@@ -1,6 +1,5 @@
 import { DataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import * as React from "react";
 
@@ -14,6 +13,7 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useAddMCPServerToSpace,
   useMCPServerViews,
@@ -51,7 +51,7 @@ export const SpaceActionsList = ({
   isAdmin,
   space,
 }: SpaceActionsListProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { q: searchParam } = useQueryParams(["q"]);
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const searchTerm = searchParam.value || "";
@@ -155,12 +155,14 @@ export const SpaceActionsList = ({
 
   const rows: RowData[] = React.useMemo(
     () =>
-      serverViews.map((serverView) => ({
-        id: serverView.sId,
-        name: getMcpServerViewDisplayName(serverView),
-        description: getMcpServerViewDescription(serverView),
-        avatar: getAvatar(serverView.server),
-      })) || [],
+      serverViews
+        .map((serverView) => ({
+          id: serverView.sId,
+          name: getMcpServerViewDisplayName(serverView),
+          description: getMcpServerViewDescription(serverView),
+          avatar: getAvatar(serverView.server),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name)) || [],
     [serverViews]
   );
 
@@ -202,7 +204,7 @@ export const SpaceActionsList = ({
     <>
       {!isEmpty && portalToHeader(actionButton)}
       {isEmpty ? (
-        <div className="flex h-36 w-full max-w-4xl items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
+        <div className="flex h-36 w-full items-center justify-center gap-2 rounded-lg bg-muted-background dark:bg-muted-background-night">
           {actionButton}
         </div>
       ) : (

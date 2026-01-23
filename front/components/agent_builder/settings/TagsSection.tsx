@@ -113,6 +113,7 @@ export function TagsSection() {
             .slice(0, 3);
         }
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (err) {
       sendNotification({
         title: "Could not get tag suggestions.",

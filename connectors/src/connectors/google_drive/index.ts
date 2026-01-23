@@ -43,10 +43,10 @@ import {
 import { concurrentExecutor } from "@connectors/lib/async_utils";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
-  GoogleDriveFolders,
-  GoogleDriveSheet,
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
+  GoogleDriveFoldersModel,
+  GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import { syncSucceeded } from "@connectors/lib/sync_status";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
@@ -115,6 +115,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       largeFilesEnabled: false,
       csvEnabled: false,
+      useParallelSync: true,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -265,7 +266,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       if (filterPermission === "read") {
         if (parentDriveId === null) {
           // Return the list of folders explicitly selected by the user.
-          const folders = await GoogleDriveFolders.findAll({
+          const folders = await GoogleDriveFoldersModel.findAll({
             where: {
               connectorId: this.connectorId,
             },
@@ -286,7 +287,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           return new Ok(nodes);
         } else {
           // Return the list of all folders and files synced in a parent folder.
-          const where: WhereOptions<InferAttributes<GoogleDriveFiles>> = {
+          const where: WhereOptions<InferAttributes<GoogleDriveFilesModel>> = {
             connectorId: this.connectorId,
             parentId: parentDriveId,
           };
@@ -298,12 +299,12 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
               "application/vnd.google-apps.spreadsheet",
             ];
           }
-          const folderOrFiles = await GoogleDriveFiles.findAll({
+          const folderOrFiles = await GoogleDriveFilesModel.findAll({
             where,
           });
-          let sheets: GoogleDriveSheet[] = [];
+          let sheets: GoogleDriveSheetModel[] = [];
           if (isTablesView) {
-            sheets = await GoogleDriveSheet.findAll({
+            sheets = await GoogleDriveSheetModel.findAll({
               where: {
                 connectorId: this.connectorId,
                 driveFileId: parentDriveId,
@@ -400,7 +401,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   this.connectorId,
                   driveObject.id
                 ),
-                permission: (await GoogleDriveFolders.findOne({
+                permission: (await GoogleDriveFoldersModel.findOne({
                   where: {
                     connectorId: this.connectorId,
                     folderId: driveObject.id,
@@ -495,7 +496,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
                   driveObject.id
                 ),
                 lastUpdatedAt: driveObject.updatedAtMs || null,
-                permission: (await GoogleDriveFolders.findOne({
+                permission: (await GoogleDriveFoldersModel.findOne({
                   where: {
                     connectorId: this.connectorId,
                     folderId: driveObject.id,
@@ -548,21 +549,31 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
+    // Fetch existing synced folders to avoid re-syncing already synced folders.
+    const existingFolders = await GoogleDriveFoldersModel.findAll({
+      where: { connectorId: this.connectorId },
+      attributes: ["folderId"],
+    });
+    const existingFolderIds = new Set(existingFolders.map((f) => f.folderId));
+
     const addedFolderIds: string[] = [];
     const removedFolderIds: string[] = [];
     for (const [internalId, permission] of Object.entries(permissions)) {
       const id = getDriveFileId(internalId);
       if (permission === "none") {
         removedFolderIds.push(id);
-        await GoogleDriveFolders.destroy({
+        await GoogleDriveFoldersModel.destroy({
           where: {
             connectorId: this.connectorId,
             folderId: id,
           },
         });
       } else if (permission === "read") {
-        addedFolderIds.push(id);
-        await GoogleDriveFolders.upsert({
+        // Only trigger sync for folders that are not already synced.
+        if (!existingFolderIds.has(id)) {
+          addedFolderIds.push(id);
+        }
+        await GoogleDriveFoldersModel.upsert({
           connectorId: this.connectorId,
           folderId: id,
         });
@@ -573,19 +584,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    if (addedFolderIds.length > 0) {
+    if (addedFolderIds.length > 0 || removedFolderIds.length > 0) {
       const res = await launchGoogleDriveFullSyncWorkflow(
         this.connectorId,
         null,
-        addedFolderIds
+        addedFolderIds,
+        removedFolderIds
       );
-      if (res.isErr()) {
-        return res;
-      }
-    } else if (removedFolderIds.length > 0) {
-      // If we have added folders, the garbage collector will be automatically at the end of the full sync,
-      // but if we only removed folders, we need launch it manually.
-      const res = await launchGoogleGarbageCollector(this.connectorId);
       if (res.isErr()) {
         return res;
       }
@@ -613,7 +618,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new Error(`Connector not found with id ${this.connectorId}`)
       );
     }
-    const config = await GoogleDriveConfig.findOne({
+    const config = await GoogleDriveConfigModel.findOne({
       where: { connectorId: this.connectorId },
     });
     if (!config) {
@@ -637,8 +642,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -651,8 +655,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -665,8 +668,19 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(void 0);
+      }
+      case "useParallelSync": {
+        await config.update({
+          useParallelSync: configValue === "true",
+        });
+        const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -741,7 +755,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         new Error(`Connector not found with id ${this.connectorId}`)
       );
     }
-    const config = await GoogleDriveConfig.findOne({
+    const config = await GoogleDriveConfigModel.findOne({
       where: { connectorId: this.connectorId },
     });
     if (!config) {
@@ -761,6 +775,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       case "csvEnabled": {
         return new Ok(config.csvEnabled ? "true" : "false");
       }
+      case "useParallelSync": {
+        return new Ok(config.useParallelSync ? "true" : "false");
+      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -777,8 +794,15 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
     return launchGoogleGarbageCollector(this.connectorId);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
-    await terminateAllWorkflowsForConnectorId(this.connectorId);
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
+    await terminateAllWorkflowsForConnectorId({
+      connectorId: this.connectorId,
+      stopReason: reason,
+    });
     return new Ok(undefined);
   }
 
@@ -798,7 +822,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, []);
+    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs);
   }
 
   async configure(): Promise<Result<void, Error>> {
@@ -812,7 +836,7 @@ async function getFoldersAsContentNodes({
   viewType,
 }: {
   authCredentials: OAuth2Client;
-  folders: GoogleDriveFolders[];
+  folders: GoogleDriveFoldersModel[];
   viewType: ContentNodesViewType;
 }) {
   return concurrentExecutor(
@@ -849,9 +873,9 @@ async function getFoldersAsContentNodes({
 }
 
 export function getSourceUrlForGoogleDriveFiles(
-  f: GoogleDriveFiles | GoogleDriveObjectType
+  f: GoogleDriveFilesModel | GoogleDriveObjectType
 ): string {
-  const driveFileId = f instanceof GoogleDriveFiles ? f.driveFileId : f.id;
+  const driveFileId = f instanceof GoogleDriveFilesModel ? f.driveFileId : f.id;
 
   if (isGoogleDriveSpreadSheetFile(f)) {
     return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit`;
@@ -863,10 +887,11 @@ export function getSourceUrlForGoogleDriveFiles(
 }
 
 export function getSourceUrlForGoogleDriveSheet(
-  s: GoogleDriveSheet | Sheet
+  s: GoogleDriveSheetModel | Sheet
 ): string {
   const driveFileId =
-    s instanceof GoogleDriveSheet ? s.driveFileId : s.spreadsheet.id;
-  const driveSheetId = s instanceof GoogleDriveSheet ? s.driveSheetId : s.id;
+    s instanceof GoogleDriveSheetModel ? s.driveFileId : s.spreadsheet.id;
+  const driveSheetId =
+    s instanceof GoogleDriveSheetModel ? s.driveSheetId : s.id;
   return `https://docs.google.com/spreadsheets/d/${driveFileId}/edit#gid=${driveSheetId}`;
 }

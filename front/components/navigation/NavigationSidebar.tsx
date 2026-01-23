@@ -2,6 +2,7 @@ import {
   classNames,
   cn,
   CollapseButton,
+  LinkWrapper,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -11,10 +12,9 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
@@ -22,7 +22,9 @@ import { HelpDropdown } from "@app/components/navigation/HelpDropdown";
 import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import type { AppStatus } from "@app/lib/api/status";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -38,7 +40,7 @@ interface NavigationSidebarProps {
   subNavigation?: SidebarNavigation[] | null;
   // TODO(2024-06-19 flav) Move subscription to a hook.
   subscription: SubscriptionType;
-  user: UserTypeWithWorkspaces | null;
+  user: (UserTypeWithWorkspaces & { subscriberHash?: string | null }) | null;
   isMobile?: boolean;
 }
 
@@ -56,13 +58,13 @@ export const NavigationSidebar = React.forwardRef<
   }: NavigationSidebarProps,
   ref
 ) {
-  const router = useRouter();
+  const router = useAppRouter();
   const activePath = useMemo(() => {
-    if (router.isReady && router.route) {
-      return router.route;
+    if (router.isReady && router.pathname) {
+      return router.pathname;
     }
     return "";
-  }, [router.isReady, router.route]);
+  }, [router.isReady, router.pathname]);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -89,21 +91,21 @@ export const NavigationSidebar = React.forwardRef<
 
   const { setSidebarOpen } = useContext(SidebarContext);
 
-  // We display the banner if the end date is in 30 days or less.
-  const endDate = subscription.endDate;
-  const shouldDisplaySubscriptionEndBanner =
-    endDate && endDate < Date.now() + 30 * 24 * 60 * 60 * 1000;
+  const { appStatus } = useAppStatus();
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2 pt-3">
-        <AppStatusBanner />
-        {shouldDisplaySubscriptionEndBanner && endDate && (
-          <SubscriptionEndBanner
-            endDate={endDate}
-            isFreePlan={isFreePlan(subscription.plan.code)}
-          />
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          appStatus?.dustStatus ||
+            appStatus?.providersStatus ||
+            subscription.paymentFailingSince
+            ? ""
+            : "pt-3"
         )}
+      >
+        {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
         )}
@@ -181,6 +183,7 @@ export const NavigationSidebar = React.forwardRef<
                                       label={nav.label}
                                       icon={nav.icon}
                                       className="grow pl-14 pr-4"
+                                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                                       href={nav.href ? nav.href : undefined}
                                       onClick={() => handleTabClick(nav.href)}
                                     />
@@ -198,6 +201,11 @@ export const NavigationSidebar = React.forwardRef<
         )}
       </div>
       <div className="flex grow flex-col">{children}</div>
+      {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
+        <div className="mx-3 mb-3">
+          <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
+        </div>
+      )}
       {user && (
         <div
           className={classNames(
@@ -216,7 +224,7 @@ export const NavigationSidebar = React.forwardRef<
 });
 
 interface StatusBannerProps {
-  variant?: "info" | "warning" | "success";
+  variant?: "info" | "warning" | "success" | "danger";
   title: string;
   description: React.ReactNode;
   footer?: React.ReactNode;
@@ -244,6 +252,11 @@ function StatusBanner({
       "bg-success-100 dark:bg-success-100-night",
       "text-success-900 dark:text-success-900-night"
     ),
+    danger: cn(
+      "border-red-200 dark:border-red-200",
+      "bg-red-100 dark:bg-red-100",
+      "text-red-900 dark:text-red-900"
+    ),
   };
 
   return (
@@ -260,13 +273,11 @@ function StatusBanner({
   );
 }
 
-function AppStatusBanner() {
-  const { appStatus } = useAppStatus();
+interface AppStatusBannerProps {
+  appStatus: AppStatus;
+}
 
-  if (!appStatus) {
-    return null;
-  }
-
+function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
   if (dustStatus) {
@@ -277,9 +288,13 @@ function AppStatusBanner() {
         footer={
           <>
             Check our{" "}
-            <Link href={dustStatus.link} target="_blank" className="underline">
+            <LinkWrapper
+              href={dustStatus.link}
+              target="_blank"
+              className="underline"
+            >
               status page
-            </Link>{" "}
+            </LinkWrapper>{" "}
             for updates.
           </>
         }
@@ -299,52 +314,6 @@ function AppStatusBanner() {
   return null;
 }
 
-function SubscriptionEndBanner({
-  endDate,
-  isFreePlan,
-}: {
-  endDate: number;
-  isFreePlan: boolean;
-}) {
-  const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const variant = isFreePlan ? "success" : "info";
-  const title = isFreePlan
-    ? `Free Trial Ending on ${formattedEndDate}`
-    : `Subscription ending on ${formattedEndDate}`;
-
-  return (
-    <StatusBanner
-      variant={variant}
-      title={title}
-      description={
-        <>
-          Your connections and member access will be removed after this date.
-          Details{" "}
-          <Link
-            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </Link>
-          .
-          {isFreePlan && (
-            <p className="mt-2">
-              Make the best out of the remaining trial period or contact us to
-              subscribe.
-            </p>
-          )}
-        </>
-      }
-    />
-  );
-}
-
 function SubscriptionPastDueBanner() {
   return (
     <StatusBanner
@@ -359,13 +328,13 @@ function SubscriptionPastDueBanner() {
           <br />
           After 3 attempts, your workspace will be downgraded to the free plan.
           Connections will be deleted and members will be revoked. Details{" "}
-          <Link
+          <LinkWrapper
             href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
             target="_blank"
             className="underline"
           >
             here
-          </Link>
+          </LinkWrapper>
           .
         </>
       }

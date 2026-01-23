@@ -1,13 +1,21 @@
 import type { ButtonProps } from "@dust-tt/sparkle";
-import { BarFooter, BarHeader, Button, ScrollArea } from "@dust-tt/sparkle";
-import { XMarkIcon } from "@dust-tt/sparkle";
+import {
+  BarFooter,
+  BarHeader,
+  Button,
+  ScrollArea,
+  XMarkIcon,
+} from "@dust-tt/sparkle";
 import React from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
 import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/capabilities/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
+import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentBuilderLeftPanelProps {
   title: string;
@@ -28,28 +36,43 @@ export function AgentBuilderLeftPanel({
 }: AgentBuilderLeftPanelProps) {
   const { owner } = useAgentBuilderContext();
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
   const handleCancel = async () => {
     onCancel();
   };
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full w-full flex-col">
       <BarHeader
         variant="default"
         className="mx-4"
         title={title}
         rightActions={
-          <Button icon={XMarkIcon} onClick={handleCancel} variant="ghost" />
+          <Button
+            icon={XMarkIcon}
+            onClick={handleCancel}
+            variant="ghost"
+            type="button"
+          />
         }
       />
       <ScrollArea className="flex-1">
-        <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
+        <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />
-          <AgentBuilderCapabilitiesBlock isActionsLoading={isActionsLoading} />
+          {hasFeature("skills") && <AgentBuilderSpacesBlock />}
+          {hasFeature("skills") ? (
+            <AgentBuilderSkillsBlock />
+          ) : (
+            <AgentBuilderCapabilitiesBlock
+              isActionsLoading={isActionsLoading}
+            />
+          )}
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}
+            agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSettingsBlock
             agentConfigurationId={agentConfigurationId}

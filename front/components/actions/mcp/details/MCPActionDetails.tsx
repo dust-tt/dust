@@ -2,7 +2,9 @@ import {
   ActionDocumentTextIcon,
   ClockIcon,
   cn,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   GlobeAltIcon,
   MagnifyingGlassIcon,
@@ -11,39 +13,72 @@ import {
 import { useEffect, useState } from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import {
+  makeQueryTextForDataSourceSearch,
+  makeQueryTextForFind,
+  makeQueryTextForInclude,
+  makeQueryTextForList,
+} from "@app/components/actions/mcp/details/input_rendering";
 import { MCPAgentManagementActionDetails } from "@app/components/actions/mcp/details/MCPAgentManagementActionDetails";
+import {
+  MCPAgentMemoryEditActionDetails,
+  MCPAgentMemoryEraseActionDetails,
+  MCPAgentMemoryRecordActionDetails,
+  MCPAgentMemoryRetrieveActionDetails,
+} from "@app/components/actions/mcp/details/MCPAgentMemoryActionDetails";
 import { MCPBrowseActionDetails } from "@app/components/actions/mcp/details/MCPBrowseActionDetails";
+import { MCPConversationCatFileDetails } from "@app/components/actions/mcp/details/MCPConversationFilesActionDetails";
 import {
   DataSourceNodeContentDetails,
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
+import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
+import {
+  MCPImageEditingActionDetails,
+  MCPImageGenerationActionDetails,
+} from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
-import { MCPReasoningActionDetails } from "@app/components/actions/mcp/details/MCPReasoningActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
+import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
+import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
-import { InternalActionIcons } from "@app/lib/actions/mcp_icons";
+import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
+  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
+  ENABLE_SKILL_TOOL_NAME,
+} from "@app/lib/actions/constants";
+import {
+  AGENT_MEMORY_COMPACT_TOOL_NAME,
+  AGENT_MEMORY_EDIT_TOOL_NAME,
+  AGENT_MEMORY_ERASE_TOOL_NAME,
+  AGENT_MEMORY_RECORD_TOOL_NAME,
+  AGENT_MEMORY_RETRIEVE_TOOL_NAME,
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
+  EDIT_IMAGE_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
   FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  GENERATE_IMAGE_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
-  isInternalMCPServerOfName,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
+  SKILL_MANAGEMENT_SERVER_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
+  TOOLSETS_ENABLE_TOOL_NAME,
+  TOOLSETS_LIST_TOOL_NAME,
   WEBBROWSER_TOOL_NAME,
   WEBSEARCH_TOOL_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
@@ -53,15 +88,17 @@ import {
   isResourceContentWithText,
   isTextContent,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeQueryResource } from "@app/lib/actions/mcp_internal_actions/rendering";
+import {
+  isDataSourceFilesystemFindInputType,
+  isDataSourceFilesystemListInputType,
+  isIncludeInputType,
+  isSearchInputType,
+  isWebsearchInputType,
+} from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
-import {
-  asDisplayName,
-  isSupportedImageContentType,
-  parseTimeFrame,
-} from "@app/types";
+import { asDisplayName, isSupportedImageContentType } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
 export interface MCPActionDetailsProps {
@@ -80,11 +117,11 @@ export function MCPActionDetails({
   messageStatus,
 }: MCPActionDetailsProps) {
   const {
-    functionCallName,
     params,
     status,
     output: baseOutput,
-    mcpServerId,
+    internalMCPServerName,
+    toolName,
   } = action;
 
   const [output, setOutput] = useState(baseOutput);
@@ -106,9 +143,6 @@ export function MCPActionDetails({
     }
   }, [status, baseOutput]);
 
-  const parts = functionCallName ? functionCallName.split("__") : [];
-  const toolName = parts[parts.length - 1];
-
   const toolOutputDetailsProps: ToolExecutionDetailsProps = {
     lastNotification,
     messageStatus,
@@ -119,141 +153,193 @@ export function MCPActionDetails({
   };
 
   if (
-    isInternalMCPServerOfName(mcpServerId, "search") ||
-    isInternalMCPServerOfName(mcpServerId, "data_sources_file_system")
+    internalMCPServerName === "search" ||
+    internalMCPServerName === "data_sources_file_system"
   ) {
-    if (toolName === SEARCH_TOOL_NAME) {
-      const timeFrame = parseTimeFrame(params.relativeTimeFrame as string);
-      const queryResource = makeQueryResource({
-        query: params.query as string,
-        timeFrame: timeFrame,
-        tagsIn: params.tagsIn as string[],
-        tagsNot: params.tagsNot as string[],
-        nodeIds: params.nodeIds as string[],
-      });
-
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          defaultQuery={queryResource.text}
-          actionName={
-            viewType === "conversation" ? "Searching data" : "Search data"
-          }
-          actionOutput={output}
-          visual={MagnifyingGlassIcon}
-        />
-      );
-    }
-
-    if (
-      toolName === FILESYSTEM_LIST_TOOL_NAME ||
-      toolName === FILESYSTEM_FIND_TOOL_NAME
-    ) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation"
-              ? "Browsing data sources"
-              : "Browse data sources"
-          }
-          actionOutput={output}
-          visual={ActionDocumentTextIcon}
-        />
-      );
-    }
-
-    if (toolName === FILESYSTEM_CAT_TOOL_NAME) {
-      return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
-    }
-
-    if (toolName === FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME) {
-      return <FilesystemPathDetails {...toolOutputDetailsProps} />;
-    }
-  }
-
-  if (isInternalMCPServerOfName(mcpServerId, "include_data")) {
-    if (toolName === INCLUDE_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          actionName={
-            viewType === "conversation" ? "Including data" : "Include data"
-          }
-          actionOutput={output}
-          visual={ClockIcon}
-        />
-      );
+    switch (toolName) {
+      case SEARCH_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            actionName={
+              viewType === "conversation" ? "Searching data" : "Search data"
+            }
+            actionOutput={output}
+            visual={MagnifyingGlassIcon}
+            query={
+              isSearchInputType(params)
+                ? makeQueryTextForDataSourceSearch(params)
+                : null
+            }
+          />
+        );
+      case FILESYSTEM_LIST_TOOL_NAME:
+      case FILESYSTEM_FIND_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            actionName={
+              viewType === "conversation"
+                ? "Browsing data sources"
+                : "Browse data sources"
+            }
+            actionOutput={output}
+            query={
+              isDataSourceFilesystemFindInputType(params)
+                ? makeQueryTextForFind(params)
+                : isDataSourceFilesystemListInputType(params)
+                  ? makeQueryTextForList(params)
+                  : null
+            }
+            visual={ActionDocumentTextIcon}
+          />
+        );
+      case FILESYSTEM_CAT_TOOL_NAME:
+        return <DataSourceNodeContentDetails {...toolOutputDetailsProps} />;
+      case FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME:
+        return <FilesystemPathDetails {...toolOutputDetailsProps} />;
     }
   }
 
   if (
-    isInternalMCPServerOfName(mcpServerId, "web_search_&_browse") ||
-    isInternalMCPServerOfName(mcpServerId, "web_search_&_browse_with_summary")
+    internalMCPServerName === "include_data" &&
+    toolName === INCLUDE_TOOL_NAME
   ) {
-    if (toolName === WEBSEARCH_TOOL_NAME) {
-      return (
-        <SearchResultDetails
-          viewType={viewType}
-          defaultQuery={params.query as string}
-          actionName={
-            viewType === "conversation" ? "Searching the web" : "Web search"
-          }
-          actionOutput={output}
-          visual={GlobeAltIcon}
-        />
-      );
-    }
-    if (toolName === WEBBROWSER_TOOL_NAME) {
-      return <MCPBrowseActionDetails {...toolOutputDetailsProps} />;
+    return (
+      <SearchResultDetails
+        viewType={viewType}
+        actionName={
+          viewType === "conversation" ? "Including data" : "Include data"
+        }
+        actionOutput={output}
+        visual={ClockIcon}
+        query={
+          isIncludeInputType(params) ? makeQueryTextForInclude(params) : null
+        }
+      />
+    );
+  }
+
+  if (
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some(
+      (name) => internalMCPServerName === name
+    )
+  ) {
+    switch (toolName) {
+      case WEBSEARCH_TOOL_NAME:
+        return (
+          <SearchResultDetails
+            viewType={viewType}
+            query={isWebsearchInputType(params) ? params.query : null}
+            actionName={
+              viewType === "conversation" ? "Searching the web" : "Web search"
+            }
+            actionOutput={output}
+            visual={GlobeAltIcon}
+          />
+        );
+      case WEBBROWSER_TOOL_NAME:
+        return <MCPBrowseActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, TABLE_QUERY_V2_SERVER_NAME)) {
-    if (toolName === GET_DATABASE_SCHEMA_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === EXECUTE_DATABASE_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
-    }
-  }
-
-  if (isInternalMCPServerOfName(mcpServerId, "reasoning")) {
-    return <MCPReasoningActionDetails {...toolOutputDetailsProps} />;
-  }
-
-  if (isInternalMCPServerOfName(mcpServerId, "extract_data")) {
-    if (toolName === PROCESS_TOOL_NAME) {
-      return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
+  if (internalMCPServerName === TABLE_QUERY_V2_SERVER_NAME) {
+    switch (toolName) {
+      case GET_DATABASE_SCHEMA_TOOL_NAME:
+        return (
+          <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />
+        );
+      case EXECUTE_DATABASE_QUERY_TOOL_NAME:
+        return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "run_agent")) {
+  if (
+    internalMCPServerName === "extract_data" &&
+    toolName === PROCESS_TOOL_NAME
+  ) {
+    return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (internalMCPServerName === "image_generation") {
+    switch (toolName) {
+      case GENERATE_IMAGE_TOOL_NAME:
+        return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
+      case EDIT_IMAGE_TOOL_NAME:
+        return <MCPImageEditingActionDetails {...toolOutputDetailsProps} />;
+    }
+  }
+
+  if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "toolsets")) {
-    return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
+  if (internalMCPServerName === "deep_dive") {
+    return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "agent_management")) {
+  if (internalMCPServerName === "agent_memory") {
+    switch (toolName) {
+      case AGENT_MEMORY_RETRIEVE_TOOL_NAME:
+        return (
+          <MCPAgentMemoryRetrieveActionDetails {...toolOutputDetailsProps} />
+        );
+      case AGENT_MEMORY_RECORD_TOOL_NAME:
+        return (
+          <MCPAgentMemoryRecordActionDetails {...toolOutputDetailsProps} />
+        );
+      case AGENT_MEMORY_ERASE_TOOL_NAME:
+        return <MCPAgentMemoryEraseActionDetails {...toolOutputDetailsProps} />;
+      case AGENT_MEMORY_EDIT_TOOL_NAME:
+      case AGENT_MEMORY_COMPACT_TOOL_NAME:
+        return (
+          <MCPAgentMemoryEditActionDetails
+            {...toolOutputDetailsProps}
+            toolName={toolName}
+          />
+        );
+    }
+  }
+
+  if (internalMCPServerName === "toolsets") {
+    switch (toolName) {
+      case TOOLSETS_ENABLE_TOOL_NAME:
+        return <MCPToolsetsEnableActionDetails {...toolOutputDetailsProps} />;
+      case TOOLSETS_LIST_TOOL_NAME:
+        return <MCPListToolsActionDetails {...toolOutputDetailsProps} />;
+    }
+  }
+
+  if (
+    internalMCPServerName === SKILL_MANAGEMENT_SERVER_NAME &&
+    toolName === ENABLE_SKILL_TOOL_NAME
+  ) {
+    return <MCPSkillEnableActionDetails {...toolOutputDetailsProps} />;
+  }
+
+  if (internalMCPServerName === "agent_management") {
     return <MCPAgentManagementActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (isInternalMCPServerOfName(mcpServerId, "data_warehouses")) {
-    if (
-      [DATA_WAREHOUSES_LIST_TOOL_NAME, DATA_WAREHOUSES_FIND_TOOL_NAME].includes(
-        toolName
-      )
-    ) {
-      return <MCPDataWarehousesBrowseDetails {...toolOutputDetailsProps} />;
+  if (internalMCPServerName === "data_warehouses") {
+    switch (toolName) {
+      case DATA_WAREHOUSES_LIST_TOOL_NAME:
+      case DATA_WAREHOUSES_FIND_TOOL_NAME:
+        return <MCPDataWarehousesBrowseDetails {...toolOutputDetailsProps} />;
+      case DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME:
+        return (
+          <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />
+        );
+      case DATA_WAREHOUSES_QUERY_TOOL_NAME:
+        return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
     }
-    if (toolName === DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME) {
-      return <MCPGetDatabaseSchemaActionDetails {...toolOutputDetailsProps} />;
-    }
-    if (toolName === DATA_WAREHOUSES_QUERY_TOOL_NAME) {
-      return <MCPTablesQueryActionDetails {...toolOutputDetailsProps} />;
-    }
+  }
+
+  if (
+    internalMCPServerName === "conversation_files" &&
+    toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME
+  ) {
+    return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
   }
 
   return (
@@ -297,13 +383,25 @@ export function GenericActionDetails({
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <span className="heading-base">Inputs</span>
-          <RenderToolItemMarkdown text={inputs} type="input" />
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
+              <div
+                className={cn(
+                  "text-foreground dark:text-foreground-night",
+                  "flex flex-row items-center gap-x-2"
+                )}
+              >
+                <span className="heading-base">Inputs</span>
+              </div>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <RenderToolItemMarkdown text={inputs} type="input" />
+            </CollapsibleContent>
+          </Collapsible>
 
           {action.output && (
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: !action.generatedFiles.length }}
-              triggerChildren={
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
                 <div
                   className={cn(
                     "text-foreground dark:text-foreground-night",
@@ -312,8 +410,8 @@ export function GenericActionDetails({
                 >
                   <span className="heading-base">Output</span>
                 </div>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="flex flex-col gap-2">
                   {action.output
                     .filter(
@@ -327,22 +425,25 @@ export function GenericActionDetails({
                       />
                     ))}
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((file) => !file.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (
-                        <div key={file.fileId} className="mr-5">
+                        <div
+                          key={file.fileId}
+                          className="h-24 w-24 flex-shrink-0"
+                        >
                           <img
-                            className="rounded-xl"
+                            className="h-full w-full rounded-xl object-cover"
                             src={`/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />
@@ -377,6 +478,7 @@ const RenderToolItemMarkdown = ({
   text: string | null;
   type: "input" | "output";
 }) => {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!text) {
     text =
       type === "input"

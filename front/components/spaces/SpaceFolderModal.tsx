@@ -11,10 +11,10 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useCreateFolder,
   useDeleteFolderOrWebsite,
@@ -44,7 +44,7 @@ export default function SpaceFolderModal({
       owner,
       spaceId: space.sId,
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      dataSourceViewId: dataSourceViewId || undefined,
+      dataSourceViewId: dataSourceViewId || null,
       disabled: !dataSourceViewId,
     });
 
@@ -61,7 +61,7 @@ export default function SpaceFolderModal({
     spaceId: space.sId,
     category: "folder",
   });
-  const router = useRouter();
+  const router = useAppRouter();
 
   const defaultName = dataSourceView?.dataSource?.name ?? null;
   const defaultDescription = dataSourceView?.dataSource?.description ?? null;
@@ -170,7 +170,7 @@ export default function SpaceFolderModal({
                   setDescription(e.target.value);
                 }}
                 showErrorLabel
-                minRows={2}
+                minRows={6}
               />
 
               {dataSourceView && (
@@ -201,7 +201,7 @@ export default function SpaceFolderModal({
           }}
           rightButtonProps={{
             label: "Save",
-            onClick: async (event: Event) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();
             },

@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 export class SalesforceConfigurationModel extends ConnectorBaseModel<SalesforceConfigurationModel> {
@@ -23,7 +23,7 @@ SalesforceConfigurationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "salesforce_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -78,7 +78,7 @@ SalesforceSyncedQueryModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "salesforce_synced_queries",
     indexes: [{ fields: ["connectorId"], unique: false }],
   }

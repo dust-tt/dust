@@ -2,17 +2,17 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import type { OAuthProvider } from "@app/types";
-import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
-} from "@app/types/assistant/agent_message_content";
 import type {
   ModelIdType,
   ModelProviderIdType,
-} from "@app/types/assistant/assistant";
+  OAuthProvider,
+} from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import type {
+  AgentFunctionCallContentType,
+  AgentReasoningContentType,
+  AgentTextContentType,
+} from "@app/types/assistant/agent_message_content";
 import type { AgentMessageType } from "@app/types/assistant/conversation";
 import { isOAuthProvider, isValidScope } from "@app/types/oauth/lib";
 import type { ModelId } from "@app/types/shared/model_id";
@@ -36,8 +36,11 @@ export type GlobalAgentStatus =
  *   version
  * - "draft" is used for the "try" button in builder, when the agent is not yet
  *   fully created / updated
+ * - "pending" is used when the agent builder is opened for a new agent, before
+ *   it is saved for the first time (allows capturing sId early). It allows having
+ *   a sId before creating the agent.
  */
-export type AgentStatus = "active" | "archived" | "draft";
+export type AgentStatus = "active" | "archived" | "draft" | "pending";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**
@@ -99,7 +102,6 @@ export type AgentModelConfigurationType = {
   temperature: number;
   reasoningEffort?: AgentReasoningEffort;
   responseFormat?: string;
-  promptCaching?: boolean;
 };
 
 export type AgentFetchVariant = "light" | "full" | "extra_light";
@@ -135,19 +137,23 @@ export type LightAgentConfigurationType = {
   feedbacks?: { up: number; down: number };
 
   maxStepsPerRun: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 
   templateId: string | null;
 
-  // Group restrictions for accessing the agent/conversation.
-  // The array of arrays represents permission requirements:
-  // - If empty, no restrictions apply
-  // - Each sub-array represents an OR condition (user must belong to AT LEAST ONE group)
-  // - Sub-arrays are combined with AND logic (user must satisfy ALL sub-arrays)
-  //
-  // Example: [[1,2], [3,4]] means (1 OR 2) AND (3 OR 4)
+  // TODO(2025-10-20 flav): Remove once SDK JS does not rely on it anymore.
+  visualizationEnabled?: boolean;
+
+  // Remove this once we have completely removed from the sdk.
   requestedGroupIds: string[][];
+
+  // Space restrictions for accessing the agent/conversation - replaces group restrictions.
+  // The array represents permission requirements:
+  // - If empty, no restrictions apply
+  // - Each element represents an AND condition (user must belong to ALL spaces)
+  //
+  // Example: [1,2] means (1 AND 2)
+  requestedSpaceIds: string[];
 
   canRead: boolean;
   canEdit: boolean;
@@ -169,7 +175,6 @@ export interface TemplateAgentConfigurationType {
   instructions: string | null;
   isTemplate: true;
   maxStepsPerRun?: number;
-  visualizationEnabled: boolean;
   tags: TagType[];
 }
 
@@ -236,7 +241,7 @@ export type MCPServerPersonalAuthenticationRequiredMetadata = {
   messageId: string;
 };
 
-export function isMCPServerPersonalAuthenticationRequiredMetadata(
+function isMCPServerPersonalAuthenticationRequiredMetadata(
   metadata: unknown
 ): metadata is MCPServerPersonalAuthenticationRequiredMetadata {
   return (
@@ -280,6 +285,7 @@ export type AgentErrorEvent = {
   configurationId: string;
   messageId: string;
   error: GenericErrorContent;
+  runIds?: string[];
 };
 
 // Generic event sent when an agent message is done (could be successful, failed, or cancelled).
@@ -289,6 +295,7 @@ export type AgentMessageDoneEvent = {
   conversationId: string;
   configurationId: string;
   messageId: string;
+  status: "success" | "error";
 };
 
 // Event sent when an error occurred during the tool call.
@@ -379,5 +386,8 @@ export type AgentStepContentEvent = {
   configurationId: string;
   messageId: string;
   index: number;
-  content: TextContentType | FunctionCallContentType | ReasoningContentType;
+  content:
+    | AgentTextContentType
+    | AgentFunctionCallContentType
+    | AgentReasoningContentType;
 };

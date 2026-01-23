@@ -11,12 +11,24 @@ qdrant_storage
 core-api-keys.json
 oauth-api-keys.json
 /extension/build/
-**/.claude/settings.local.json
-CLAUDE.md
+**/.claude/*
+!**/.claude/skills/
+**/.claude/skills/*
+!**/.claude/skills/dust-*/
+**/.claude/skills/dust-hive/
+**/.codex
 **/.yalc
 yalc.lock
 front/public/sitemap.xml
 front/public/robots.txt
 mprocs.log
-tsconfig.tsbuildinfo
+**/tsconfig.tsbuildinfo
 front/.npm-cache
+AGENTS.local.md
+CLAUDE.local.md
+
+# Direnv
+.direnv/
+.envrc
+.envrc.local
+

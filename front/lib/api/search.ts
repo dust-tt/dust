@@ -20,7 +20,7 @@ import type {
   Result,
   SearchWarningCode,
 } from "@app/types";
-import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
+import { CoreAPI, DATA_SOURCE_NODE_ID, Err, Ok, removeNulls } from "@app/types";
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -81,6 +81,12 @@ const BaseSearchBody = t.refinement(
       allowAdminSearch: t.boolean,
       parentId: t.string,
       searchSort: SearchSort,
+      /**
+       * When true, returns only the highest priority data source view per node
+       * based on space access priority (global > non-restricted > restricted).
+       * When false or undefined, returns all matching data source views (default behavior).
+       */
+      prioritizeSpaceAccess: t.boolean,
     }),
   ]),
   ({ spaceIds, dataSourceViewIdsBySpaceId }) => {
@@ -120,31 +126,74 @@ export const SearchRequestBody = t.union([TextSearchBody, NodeIdSearchBody]);
 
 export type SearchRequestBodyType = t.TypeOf<typeof SearchRequestBody>;
 
+function getSpaceAccessPriority(space: SpaceResource) {
+  // Global spaces have highest priority.
+  if (space.isGlobal()) {
+    return 3;
+  }
+
+  // Open spaces have second highest priority.
+  if (space.isRegularAndOpen()) {
+    return 2;
+  }
+
+  // For restricted spaces: provisioned groups get higher priority than manual membership.
+  if (space.groups.some((g) => g.isProvisioned())) {
+    return 1;
+  }
+
+  // Restricted spaces with manual membership have the lowest priority.
+  return 0;
+}
+
+function selectHighestPriorityDataSourceView(
+  views: DataSourceViewResource[]
+): DataSourceViewResource {
+  if (views.length <= 1) {
+    return views[0];
+  }
+
+  const viewsWithPriority = views.map((view) => ({
+    view,
+    priority: getSpaceAccessPriority(view.space),
+    spaceName: view.space.name,
+  }));
+
+  viewsWithPriority.sort(
+    (a, b) => b.priority - a.priority || a.spaceName.localeCompare(b.spaceName)
+  );
+
+  return viewsWithPriority[0].view;
+}
+
 export async function handleSearch(
   req: NextApiRequest,
   auth: Authenticator,
-  searchParams: SearchRequestBodyType
-): Promise<Result<SearchResult, SearchError>> {
-  const {
-    query,
-    includeDataSources,
-    viewType,
-    spaceIds,
-    nodeIds,
-    searchSourceUrls,
+  {
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
+    includeDataSources,
+    nodeIds,
     parentId,
+    prioritizeSpaceAccess,
+    query,
     searchSort,
-  } = searchParams;
+    searchSourceUrls,
+    spaceIds,
+    viewType,
+  }: SearchRequestBodyType
+): Promise<Result<SearchResult, SearchError>> {
+  let spaces;
+  if (allowAdminSearch) {
+    const allWorkspaceSpaces = await SpaceResource.listWorkspaceSpaces(auth);
+    spaces = allWorkspaceSpaces.filter(
+      (s) => s.canAdministrate(auth) || s.canRead(auth)
+    );
+  } else {
+    spaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+  }
 
-  const spaces = allowAdminSearch
-    ? (await SpaceResource.listWorkspaceSpaces(auth)).filter(
-        (s) => s.canAdministrate(auth) || s.canRead(auth)
-      )
-    : await SpaceResource.listWorkspaceSpacesAsMember(auth);
-
-  if (!spaces.length) {
+  if (spaces.length === 0) {
     return new Err({
       status: 400,
       error: {
@@ -174,13 +223,14 @@ export async function handleSearch(
     spacesToSearch
   );
 
+  // If we don't have any data source views, we return an empty result without
+  // failing, allowing the caller to still use other search sources
   if (!allDatasourceViews.length) {
-    return new Err({
-      status: 400,
-      error: {
-        type: "invalid_request_error",
-        message: "No datasource views found in accessible spaces.",
-      },
+    return new Ok({
+      nodes: [],
+      resultsCount: 0,
+      warningCode: null,
+      nextPageCursor: null,
     });
   }
 
@@ -191,7 +241,6 @@ export async function handleSearch(
     : allDatasourceViews;
 
   const excludedNodeMimeTypes =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nodeIds || searchSourceUrls ? [] : NON_SEARCHABLE_NODES_MIME_TYPES;
 
   const searchFilterRes = getSearchFilterFromDataSourceViews(
@@ -230,7 +279,8 @@ export async function handleSearch(
 
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
   const searchRes = await coreAPI.searchNodes({
-    query,
+    // To run an empty search, we need to pass undefined to the API.
+    query: query && query.length > 0 ? query : undefined,
     filter: searchFilter,
     options: {
       cursor: paginationRes.value?.cursor ?? undefined,
@@ -255,7 +305,8 @@ export async function handleSearch(
       const matchingViews = allDatasourceViews.filter(
         (dsv) =>
           dsv.dataSource.dustAPIDataSourceId === node.data_source_id &&
-          (!dsv.parentsIn ||
+          (node.node_id === DATA_SOURCE_NODE_ID ||
+            !dsv.parentsIn ||
             node.parents?.some(
               (p) => !dsv.parentsIn || dsv.parentsIn.includes(p)
             ))
@@ -265,10 +316,14 @@ export async function handleSearch(
         return null;
       }
 
+      const selectedViews = prioritizeSpaceAccess
+        ? [selectHighestPriorityDataSourceView(matchingViews)]
+        : matchingViews;
+
       return {
         ...getContentNodeFromCoreNode(node, viewType),
-        dataSource: matchingViews[0].dataSource.toJSON(),
-        dataSourceViews: matchingViews.map((dsv) => dsv.toJSON()),
+        dataSource: selectedViews[0].dataSource.toJSON(),
+        dataSourceViews: selectedViews.map((dsv) => dsv.toJSON()),
       };
     })
   );

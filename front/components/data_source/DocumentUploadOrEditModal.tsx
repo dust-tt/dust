@@ -38,6 +38,7 @@ import {
   Err,
   getSupportedNonImageFileExtensions,
   normalizeError,
+  slugify,
 } from "@app/types";
 
 const MAX_NAME_CHARS = 32;
@@ -116,45 +117,49 @@ export const DocumentUploadOrEditModal = ({
 
   // Get the processed file content from the file API
   const [fileId, setFileId] = useState<string | null>(null);
-  const { isContentLoading } = useFileProcessedContent(owner, fileId ?? null, {
-    disabled: !fileId,
-    onSuccess: async (response) => {
-      let content = null;
-      // If response is null, either text extract fails or the file is not safe to display.
-      // Fallback to the local file content.
-      if (response === null) {
-        const fileBlob = fileUploaderService.getFileBlobs()[0];
-        if (fileBlob) {
-          content = await fileBlob.file.text();
+  const { isContentLoading } = useFileProcessedContent({
+    owner,
+    fileId: fileId ?? null,
+    config: {
+      disabled: !fileId,
+      onSuccess: async (response) => {
+        let content = null;
+        // If response is null, either text extract fails or the file is not safe to display.
+        // Fallback to the local file content.
+        if (response === null) {
+          const fileBlob = fileUploaderService.getFileBlobs()[0];
+          if (fileBlob) {
+            content = await fileBlob.file.text();
+          }
+        } else {
+          content = await response.text();
         }
-      } else {
-        content = await response.text();
-      }
 
-      if (!content || content.trim().length === 0) {
+        if (!content || content.trim().length === 0) {
+          sendNotification({
+            type: "error",
+            title: "Empty document content",
+            description:
+              "The uploaded file is empty. Please upload a file with content.",
+          });
+          fileUploaderService.resetUpload();
+          return;
+        }
+        setDocumentState((prev) => ({
+          ...prev,
+          text: content,
+        }));
+      },
+      onError: (error) => {
+        fileUploaderService.resetUpload();
         sendNotification({
           type: "error",
-          title: "Empty document content",
-          description:
-            "The uploaded file is empty. Please upload a file with content.",
+          title: "Error fetching document content",
+          description: normalizeError(error).message,
         });
-        fileUploaderService.resetUpload();
-        return;
-      }
-      setDocumentState((prev) => ({
-        ...prev,
-        text: content,
-      }));
+      },
+      shouldRetryOnError: false,
     },
-    onError: (error) => {
-      fileUploaderService.resetUpload();
-      sendNotification({
-        type: "error",
-        title: "Error fetching document content",
-        description: normalizeError(error).message,
-      });
-    },
-    shouldRetryOnError: false,
   });
   const [isUpsertingDocument, setIsUpsertingDocument] = useState(false);
 
@@ -168,12 +173,16 @@ export const DocumentUploadOrEditModal = ({
   const handleDocumentUpload = useCallback(
     async (document: Document) => {
       setIsUpsertingDocument(true);
+      // Use slugified title as document_id for LLM-friendly node IDs.
+      // When editing (initialId is set), keep the original ID.
+      const documentId = initialId ?? slugify(document.title);
       const body = {
-        title: initialId ?? document.title,
+        title: document.title,
+        document_id: documentId,
         mime_type: document.mimeType ?? "text/plain",
         timestamp: null,
         parent_id: null,
-        parents: [initialId ?? document.title],
+        parents: [documentId],
         section: { prefix: null, content: document.text, sections: [] },
         text: null,
         source_url: document.sourceUrl || undefined,
@@ -301,7 +310,7 @@ export const DocumentUploadOrEditModal = ({
           sourceUrl:
             prev.sourceUrl.length > 0
               ? prev.sourceUrl
-              : fileBlobs[0].publicUrl ?? "",
+              : (fileBlobs[0].publicUrl ?? ""),
         }));
         setHasChanged(true);
       } catch (error) {
@@ -328,7 +337,7 @@ export const DocumentUploadOrEditModal = ({
     } else if (document && isCoreAPIDocumentType(document)) {
       setDocumentState((prev) => ({
         ...prev,
-        title: initialId,
+        title: document.title ?? initialId,
         text: document.text ?? "",
         tags: document.tags,
         sourceUrl: document.source_url ?? "",
@@ -560,7 +569,7 @@ export const DocumentUploadOrEditModal = ({
           }}
           rightButtonProps={{
             label: isUpsertingDocument ? "Saving..." : "Save",
-            onClick: async (event: MouseEvent) => {
+            onClick: async (event: React.MouseEvent<HTMLButtonElement>) => {
               event.preventDefault();
               await onSave();
             },

@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
-import { AgentDataRetentionModel } from "@app/lib/models/assistant/agent_data_retention";
+import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -12,7 +12,7 @@ import logger from "@app/logger/logger";
 import type { ModelId } from "@app/types";
 
 const WORKSPACE_CONVERSATIONS_BATCH_SIZE = 200;
-
+const HEARTBEAT_RATE = 100;
 /**
  * Get workspace ids with conversations retention policy.
  */
@@ -69,60 +69,63 @@ export async function purgeConversationsBatchActivity({
 
     const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-    let conversations: ConversationResource[];
-    let nbConversationsDeleted = 0;
-
-    do {
-      conversations = await ConversationResource.listAllBeforeDate({
-        auth,
-        cutoffDate,
+    const conversations = await ConversationResource.listAllBeforeDate(
+      auth,
+      cutoffDate,
+      {
         batchSize: WORKSPACE_CONVERSATIONS_BATCH_SIZE,
-      });
+        includeDeleted: true,
+        includeTest: true,
+      }
+    );
 
-      logger.info(
-        {
-          workspaceId,
-          retentionDays,
-          cutoffDate,
-          nbConversations: conversations.length,
-        },
-        "Purging conversations for workspace."
-      );
+    logger.info(
+      {
+        workspaceId,
+        retentionDays,
+        cutoffDate,
+        nbConversations: conversations.length,
+      },
+      "Purging conversations for workspace."
+    );
+    heartbeat();
 
-      await concurrentExecutor(
-        conversations,
-        async (c) => {
-          const result = await destroyConversation(auth, {
-            conversationId: c.sId,
-          });
-          if (result.isErr()) {
-            if (result.error.type === "conversation_not_found") {
-              logger.warn(
-                {
-                  workspaceId,
-                  conversationId: c.sId,
-                  error: result.error,
-                },
-                "Attempting to delete a non-existing conversation."
-              );
-              return;
-            }
-            throw result.error;
+    let deletedCount = 0;
+    await concurrentExecutor(
+      conversations,
+      async (c) => {
+        const result = await destroyConversation(auth, {
+          conversationId: c.sId,
+        });
+        if (result.isErr()) {
+          if (result.error.type === "conversation_not_found") {
+            logger.warn(
+              {
+                workspaceId,
+                conversationId: c.sId,
+                error: result.error,
+              },
+              "Attempting to delete a non-existing conversation."
+            );
+            return;
           }
-        },
-        {
-          concurrency: 4,
+          throw result.error;
         }
-      );
-
-      nbConversationsDeleted += conversations.length;
-      heartbeat();
-    } while (conversations.length === WORKSPACE_CONVERSATIONS_BATCH_SIZE);
+        deletedCount++;
+        if (deletedCount % HEARTBEAT_RATE === 0) {
+          heartbeat();
+        }
+      },
+      {
+        concurrency: 2,
+      }
+    );
+    heartbeat();
 
     res.push({
       workspaceModelId: workspace.id,
       workspaceId: workspace.sId,
-      nbConversationsDeleted,
+      nbConversationsDeleted: conversations.length,
     });
   }
 
@@ -176,11 +179,17 @@ export async function purgeAgentConversationsBatchActivity({
   cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
 
   const conversationIds =
-    await ConversationResource.listConversationWithAgentCreatedBeforeDate({
+    await ConversationResource.listConversationWithAgentCreatedBeforeDate(
       auth,
-      agentConfigurationId,
-      cutoffDate,
-    });
+      {
+        agentConfigurationId,
+        cutoffDate,
+      },
+      {
+        includeDeleted: true,
+        includeTest: true,
+      }
+    );
 
   await concurrentExecutor(
     conversationIds,
@@ -204,7 +213,7 @@ export async function purgeAgentConversationsBatchActivity({
       }
     },
     {
-      concurrency: 4,
+      concurrency: 2,
     }
   );
 

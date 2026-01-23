@@ -32,8 +32,7 @@ const MultiPageDialogRoot = Dialog;
 const MultiPageDialogTrigger = DialogTrigger;
 const MultiPageDialogClose = DialogClose;
 
-interface MultiPageDialogFooterProps
-  extends React.HTMLAttributes<HTMLDivElement> {
+interface MultiPageDialogFooterProps extends React.HTMLAttributes<HTMLDivElement> {
   addTopSeparator: boolean;
   leftButton?: React.ComponentProps<typeof Button>;
   centerButton?: React.ComponentProps<typeof Button>;
@@ -259,7 +258,7 @@ const MultiPageDialogContent = React.forwardRef<
               {showNavigation && pages.length > 1 && (
                 <div
                   className={cn(
-                    "s-text-xs s-font-semibold s-text-muted-foreground-night",
+                    "s-heading-xs s-text-muted-foreground-night",
                     !hideCloseButton && "s-pr-8"
                   )}
                 >

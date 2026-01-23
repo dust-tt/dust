@@ -3,7 +3,10 @@ import {
   getIssueInternalId,
 } from "@connectors/connectors/github/lib/utils";
 import { updateDataSourceDocumentParents } from "@connectors/lib/data_sources";
-import { GithubDiscussion, GithubIssue } from "@connectors/lib/models/github";
+import {
+  GithubDiscussionModel,
+  GithubIssueModel,
+} from "@connectors/lib/models/github";
 import { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 const { LIVE = null } = process.env;
@@ -24,7 +27,7 @@ async function main() {
 const CHUNK_SIZE = 32;
 
 async function updateParents(connector: ConnectorModel) {
-  const discussions = await GithubDiscussion.findAll({
+  const discussions = await GithubDiscussionModel.findAll({
     where: {
       connectorId: connector.id,
     },
@@ -58,7 +61,7 @@ async function updateParents(connector: ConnectorModel) {
     );
   }
 
-  const issues = await GithubIssue.findAll({
+  const issues = await GithubIssueModel.findAll({
     where: {
       connectorId: connector.id,
     },

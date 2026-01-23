@@ -6,25 +6,27 @@ import type {
   Transaction,
 } from "sequelize";
 
-import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
+import { isPastedFile } from "@app/components/assistant/conversation/input_bar/pasted_utils";
+import type {
+  ConversationAttachmentType,
+  LargePasteType,
+} from "@app/lib/api/assistant/conversation/attachments";
 import {
   conversationAttachmentId,
   getAttachmentFromContentFragment,
   renderAttachmentXml,
+  renderLargePasteXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import appConfig from "@app/lib/api/config";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { getPrivateUploadBucket } from "@app/lib/file_storage";
-import { Message } from "@app/lib/models/assistant/conversation";
+import type { MessageModel } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
-import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
-import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
-import { SpaceModel } from "@app/lib/resources/storage/models/spaces";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import {
   generateRandomModelSId,
@@ -38,7 +40,6 @@ import type {
   ContentFragmentVersion,
   ContentNodeContentFragmentType,
   ContentNodeType,
-  ConversationType,
   FileContentFragmentType,
   ModelConfigurationType,
   ModelId,
@@ -51,6 +52,7 @@ import {
   isSupportedImageContentType,
   normalizeError,
   Ok,
+  removeNulls,
 } from "@app/types";
 
 export const CONTENT_OUTDATED_MSG =
@@ -58,9 +60,8 @@ export const CONTENT_OUTDATED_MSG =
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface ContentFragmentResource
-  extends ReadonlyAttributesType<ContentFragmentModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface ContentFragmentResource extends ReadonlyAttributesType<ContentFragmentModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ContentFragmentResource extends BaseResource<ContentFragmentModel> {
   static model: ModelStatic<ContentFragmentModel> = ContentFragmentModel;
@@ -146,7 +147,7 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
   }
 
   static fromMessage(
-    message: Message & { contentFragment?: ContentFragmentModel }
+    message: MessageModel & { contentFragment?: ContentFragmentModel }
   ) {
     if (!message.contentFragment) {
       throw new Error(
@@ -182,22 +183,6 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     );
   }
 
-  static async fromMessageId(auth: Authenticator, id: ModelId) {
-    const message = await Message.findOne({
-      where: {
-        id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-      },
-      include: [{ model: ContentFragmentModel, as: "contentFragment" }],
-    });
-    if (!message) {
-      throw new Error(
-        "No message found for the given id when trying to create a ContentFragmentResource"
-      );
-    }
-    return ContentFragmentResource.fromMessage(message);
-  }
-
   static async fetchManyByModelIds(auth: Authenticator, ids: Array<ModelId>) {
     const blobs = await ContentFragmentResource.model.findAll({
       where: {
@@ -210,6 +195,54 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
       (b: ContentFragmentModel) =>
         new ContentFragmentResource(ContentFragmentResource.model, b.get())
+    );
+  }
+
+  /**
+   * Batch render content fragments from messages with optimized file fetching.
+   * This method fetches all files in a single query to avoid N+1 queries.
+   *
+   * This is the recommended way to render content fragments.
+   */
+  static async batchRenderFromMessages(
+    auth: Authenticator,
+    {
+      conversationId,
+      messages,
+    }: {
+      conversationId: string;
+      messages: MessageModel[];
+    }
+  ): Promise<ContentFragmentType[]> {
+    const messagesWithContentFragment = messages.filter(
+      (m) => !!m.contentFragment
+    );
+
+    if (messagesWithContentFragment.length === 0) {
+      return [];
+    }
+
+    // Batch fetch all files to avoid N+1 queries.
+    const fileIds = removeNulls(
+      messagesWithContentFragment.map((m) => m.contentFragment?.fileId)
+    );
+    const files = await FileResource.fetchByModelIdsWithAuth(auth, fileIds);
+    const filesByModelId = new Map(files.map((f) => [f.id, f]));
+
+    // Render all content fragments with pre-fetched files.
+    return Promise.all(
+      messagesWithContentFragment.map(async (message: MessageModel) => {
+        const contentFragment = ContentFragmentResource.fromMessage(message);
+        const file = contentFragment.fileId
+          ? filesByModelId.get(contentFragment.fileId)
+          : undefined;
+
+        return contentFragment.renderFromMessage(auth, {
+          conversationId,
+          message,
+          file,
+        });
+      })
     );
   }
 
@@ -268,15 +301,21 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
     return this.update({ sourceUrl });
   }
 
-  async renderFromMessage({
-    auth,
-    conversationId,
-    message,
-  }: {
-    auth: Authenticator;
-    conversationId: string;
-    message: Message;
-  }): Promise<ContentFragmentType> {
+  /**
+   * Use batchRenderFromMessages instead to avoid N+1 queries.
+   */
+  async renderFromMessage(
+    auth: Authenticator,
+    {
+      conversationId,
+      message,
+      file,
+    }: {
+      conversationId: string;
+      message: MessageModel;
+      file?: FileResource;
+    }
+  ): Promise<ContentFragmentType> {
     const owner = auth.workspace();
     if (!owner) {
       throw new Error(
@@ -308,6 +347,35 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       expiredReason: this.expiredReason,
     };
 
+    if (this.expiredReason) {
+      if (contentFragmentType === "file") {
+        return {
+          ...baseContentFragment,
+          contentFragmentType: "file",
+          expiredReason: this.expiredReason,
+          fileId: null,
+          snippet: null,
+          generatedTables: [],
+          textUrl: null,
+          textBytes: null,
+          sourceProvider: null,
+          sourceIcon: null,
+        };
+      } else if (contentFragmentType === "content_node") {
+        return {
+          ...baseContentFragment,
+          contentFragmentType: "content_node",
+          expiredReason: this.expiredReason,
+          nodeId: null,
+          nodeDataSourceViewId: null,
+          nodeType: null,
+          contentNodeData: null,
+        };
+      } else {
+        assertNever(contentFragmentType);
+      }
+    }
+
     if (contentFragmentType === "file") {
       const location = fileAttachmentLocation({
         workspaceId: owner.sId,
@@ -318,26 +386,35 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       let fileStringId: string | null = null;
       let snippet: string | null = null;
       let generatedTables: string[] = [];
-      let file: FileResource | null = null;
-      if (this.fileId) {
-        file = await FileResource.fetchByModelIdWithAuth(auth, this.fileId);
-      }
-      // TODO(durable_agents): make fileId not optional for file content fragments
+      let sourceProvider: string | null = null;
+      let sourceIcon: string | null = null;
 
-      if (file) {
-        fileStringId = file.sId;
-        snippet = file.snippet;
-        generatedTables = file.useCaseMetadata?.generatedTables ?? [];
+      // Use pre-fetched file if provided, otherwise fetch it (for backward compatibility)
+      const fileResource =
+        file ??
+        (this.fileId
+          ? await FileResource.fetchByModelIdWithAuth(auth, this.fileId)
+          : null);
+
+      if (fileResource) {
+        fileStringId = fileResource.sId;
+        snippet = fileResource.snippet;
+        generatedTables = fileResource.useCaseMetadata?.generatedTables ?? [];
+        sourceProvider = fileResource.useCaseMetadata?.sourceProvider ?? null;
+        sourceIcon = fileResource.useCaseMetadata?.sourceIcon ?? null;
       }
 
       return {
         ...baseContentFragment,
         contentFragmentType: "file",
+        expiredReason: null,
         fileId: fileStringId,
         snippet,
         generatedTables,
         textUrl: location.downloadUrl,
         textBytes: this.textBytes,
+        sourceProvider,
+        sourceIcon,
       } satisfies FileContentFragmentType;
     } else if (contentFragmentType === "content_node") {
       assert(
@@ -360,41 +437,28 @@ export class ContentFragmentResource extends BaseResource<ContentFragmentModel> 
       });
       const nodeType: ContentNodeType = this.nodeType;
 
-      const dsView = await DataSourceViewModel.findByPk(
+      const dsViews = await DataSourceViewResource.fetchByModelIds(auth, [
         this.nodeDataSourceViewId,
-        {
-          attributes: [],
-          include: [
-            {
-              model: DataSourceModel,
-              as: "dataSourceForView",
-              attributes: ["connectorProvider"],
-            },
-            {
-              model: SpaceModel,
-              as: "space",
-              foreignKey: "vaultId",
-              attributes: ["name"],
-            },
-          ],
-        }
-      );
+      ]);
       assert(
-        dsView,
+        dsViews.length === 1,
         `Data source view not found for content node content fragment (sId: ${this.sId})`
       );
+
+      const [dsView] = dsViews;
 
       const contentNodeData = {
         nodeId,
         nodeDataSourceViewId,
         nodeType: this.nodeType,
-        provider: dsView.dataSourceForView.connectorProvider,
+        provider: dsView.dataSource.connectorProvider,
         spaceName: dsView.space.name,
       };
 
       return {
         ...baseContentFragment,
         contentFragmentType: "content_node",
+        expiredReason: null,
         nodeId,
         nodeDataSourceViewId,
         nodeType,
@@ -599,6 +663,28 @@ export async function getContentFragmentFromAttachmentFile(
       content = await getOriginalFileContent(auth, fileStringId);
     }
 
+    // Check if this is a pasted content (large paste) - use simplified XML format
+    if (isPastedFile(attachment.contentType)) {
+      const largePaste: LargePasteType = {
+        fileId: fileStringId,
+        title: attachment.title,
+      };
+
+      return new Ok({
+        role: "content_fragment",
+        name: `inject_pasted_content`,
+        content: [
+          {
+            type: "text",
+            text: renderLargePasteXml({
+              largePaste,
+              content,
+            }),
+          },
+        ],
+      });
+    }
+
     return new Ok({
       role: "content_fragment",
       name: `inject_${attachment.contentType}`,
@@ -624,7 +710,6 @@ export async function getContentFragmentFromAttachmentFile(
 export async function renderLightContentFragmentForModel(
   auth: Authenticator,
   message: ContentFragmentType,
-  conversation: ConversationType,
   model: ModelConfigurationType,
   {
     excludeImages,
@@ -632,24 +717,16 @@ export async function renderLightContentFragmentForModel(
     excludeImages: boolean;
   }
 ): Promise<ContentFragmentMessageTypeModel | null> {
-  const { contentType, sId } = message;
+  const { contentType } = message;
 
-  const contentFragment = await ContentFragmentResource.fromMessageId(
-    auth,
-    message.id
-  );
-  if (!contentFragment) {
-    throw new Error(`Content fragment not found for message ${sId}`);
-  }
-
-  if (contentFragment.expiredReason) {
+  if (message.expiredReason) {
     return {
       role: "content_fragment",
       name: `attach_${contentType}`,
       content: [
         {
           type: "text",
-          text: `The content of this file is no longer available. Reason: ${contentFragment.expiredReason}`,
+          text: `The content of this file is no longer available. Reason: ${message.expiredReason}`,
         },
       ],
     };
@@ -660,14 +737,31 @@ export async function renderLightContentFragmentForModel(
     return null;
   }
 
-  const { fileId: fileModelId } = contentFragment;
+  // Get fileId directly from the message based on content fragment type.
+  const fileStringId =
+    message.contentFragmentType === "file" ? message.fileId : null;
 
-  const fileStringId = fileModelId
-    ? FileResource.modelIdToSId({
-        id: fileModelId,
-        workspaceId: conversation.owner.id,
-      })
-    : null;
+  // Check if this is pasted content - render with simplified format
+  if (fileStringId && isPastedFile(contentType)) {
+    const largePaste: LargePasteType = {
+      fileId: fileStringId,
+      title: attachment.title,
+    };
+
+    return {
+      role: "content_fragment",
+      name: `attach_pasted_content`,
+      content: [
+        {
+          type: "text",
+          text: renderLargePasteXml({
+            largePaste,
+            content: attachment.snippet ?? "",
+          }),
+        },
+      ],
+    };
+  }
 
   if (fileStringId && isSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {

@@ -11,7 +11,6 @@ import {
   PlusIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, {
   useCallback,
   useContext,
@@ -26,7 +25,10 @@ import { RequestDataSourceModal } from "@app/components/data_source/RequestDataS
 import SpaceManagedDatasourcesViewsModal from "@app/components/spaces/SpaceManagedDatasourcesViewsModal";
 import { useAwaitableDialog } from "@app/hooks/useAwaitableDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
@@ -71,7 +73,7 @@ export function EditSpaceManagedDataSourcesViews({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showNoConnectionDialog, setShowNoConnectionDialog] = useState(false);
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 
@@ -102,13 +104,18 @@ export function EditSpaceManagedDataSourcesViews({
   });
   const filterSystemSpaceDataSourceViews = useMemo(
     () =>
-      systemSpaceDataSourceViews.filter(
-        (dsv) =>
+      systemSpaceDataSourceViews.filter((dsv) => {
+        const connectorUIConfig = dsv.dataSource.connectorProvider
+          ? CONNECTOR_UI_CONFIGURATIONS[dsv.dataSource.connectorProvider]
+          : null;
+
+        return (
           isManaged(dsv.dataSource) &&
           (!dataSourceView ||
             dsv.dataSource.sId === dataSourceView.dataSource.sId) &&
-          dsv.dataSource.connectorProvider !== "slack_bot"
-      ),
+          !connectorUIConfig?.isHiddenAsDataSource
+        );
+      }),
     [systemSpaceDataSourceViews, dataSourceView]
   );
 
@@ -180,7 +187,7 @@ export function EditSpaceManagedDataSourcesViews({
     const deletePromisesErrors = await Promise.all(
       deletedViews.map(async (deletedView) => {
         try {
-          const res = await fetch(
+          const res = await clientFetch(
             `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${deletedView.sId}?force=true`,
             {
               method: "DELETE",
@@ -232,7 +239,7 @@ export function EditSpaceManagedDataSourcesViews({
                     "it should have been removed. Action: check the DataSourceViewSelector component."
                 );
               } else {
-                res = await fetch(
+                res = await clientFetch(
                   `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views/${existingViewForDs.sId}`,
                   {
                     method: "PATCH",
@@ -244,7 +251,7 @@ export function EditSpaceManagedDataSourcesViews({
                 );
               }
             } else {
-              res = await fetch(
+              res = await clientFetch(
                 `/api/w/${owner.sId}/spaces/${space.sId}/data_source_views`,
                 {
                   method: "POST",

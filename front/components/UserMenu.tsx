@@ -1,6 +1,7 @@
 import { datadogLogs } from "@datadog/browser-logs";
 import {
   Avatar,
+  ChatBubbleBottomCenterPlusIcon,
   ChevronDownIcon,
   ChromeLogo,
   cn,
@@ -8,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -22,13 +24,18 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
 import { WorkspacePickerRadioGroup } from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { usePrivacyMask } from "@app/hooks/usePrivacyMask";
-import { forceUserRole, showDebugTools } from "@app/lib/development";
+import {
+  forceUserRole,
+  sendOnboardingConversation,
+  showDebugTools,
+} from "@app/lib/development";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
@@ -37,22 +44,25 @@ import type {
 } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
-export function UserMenu({
-  user,
-  owner,
-  subscription,
-}: {
+interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
-}) {
-  const router = useRouter();
+}
+
+export function UserMenu({ user, owner, subscription }: UserMenuProps) {
+  const router = useAppRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
 
   const sendNotification = useSendNotification();
   const privacyMask = usePrivacyMask();
+  const { clearAllDraftsFromUser } = useConversationDrafts({
+    workspaceId: owner.sId,
+    userId: user.sId,
+    draftKey: "user-menu",
+  });
 
   const forceRoleUpdate = useMemo(
     () => async (role: "user" | "builder" | "admin") => {
@@ -77,6 +87,31 @@ export function UserMenu({
     [owner, sendNotification, user, featureFlags]
   );
 
+  const handleSendOnboarding = useMemo(
+    () => async () => {
+      const result = await sendOnboardingConversation(owner, featureFlags);
+      if (result.isOk) {
+        sendNotification({
+          title: "Success !",
+          description: "Onboarding conversation created (redirecting...)",
+          type: "success",
+        });
+        setTimeout(() => {
+          void router.push(
+            `/w/${owner.sId}/conversation/${result.conversationSId}`
+          );
+        }, 1000);
+      } else {
+        sendNotification({
+          title: "Error !",
+          description: result.error,
+          type: "error",
+        });
+      }
+    },
+    [owner, sendNotification, featureFlags, router]
+  );
+
   // Check if user has multiple workspaces
   const hasMultipleWorkspaces = useMemo(() => {
     return user.organizations && user.organizations.length > 1;
@@ -90,11 +125,13 @@ export function UserMenu({
           <Avatar
             size="sm"
             visual={
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               user.image
                 ? user.image
                 : "https://gravatar.com/avatar/anonymous?d=mp"
             }
             clickable
+            isRounded
           />
           <div className="flex min-w-0 flex-1 flex-col items-start text-left">
             <span
@@ -158,6 +195,9 @@ export function UserMenu({
           label="Sign&nbsp;out"
           icon={LogoutIcon}
           onClick={() => {
+            // Clear all conversation drafts for this user.
+            clearAllDraftsFromUser();
+
             datadogLogs.clearUser();
             window.DD_RUM.onReady(() => {
               window.DD_RUM.clearUser();
@@ -171,50 +211,61 @@ export function UserMenu({
             <DropdownMenuLabel label="Advanced" />
             <DropdownMenuSub>
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
-              <DropdownMenuSubContent>
-                {router.route === "/w/[wId]/agent/[cId]" && (
-                  <DropdownMenuItem
-                    label="Debug conversation"
-                    onClick={() => {
-                      const regexp = new RegExp(`/w/([^/]+)/agent/([^/]+)`);
-                      const match = window.location.href.match(regexp);
-                      if (match) {
-                        window.open(
-                          `/poke/${match[1]}/conversations/${match[2]}`,
-                          "_blank"
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {router.pathname === "/w/[wId]/conversation/[cId]" && (
+                    <DropdownMenuItem
+                      label="Debug conversation"
+                      onClick={() => {
+                        const regexp = new RegExp(
+                          `/w/([^/]+)/conversation/([^/]+)`
                         );
-                      }
-                    }}
-                    icon={ShapesIcon}
-                  />
-                )}
-                {!isOnlyAdmin(owner) && (
+                        const match = window.location.href.match(regexp);
+                        if (match) {
+                          window.open(
+                            `/poke/${match[1]}/conversation/${match[2]}`,
+                            "_blank"
+                          );
+                        }
+                      }}
+                      icon={ShapesIcon}
+                    />
+                  )}
+                  {!isOnlyAdmin(owner) && (
+                    <DropdownMenuItem
+                      label="Become Admin"
+                      onClick={() => forceRoleUpdate("admin")}
+                      icon={StarIcon}
+                    />
+                  )}
+                  {!isOnlyBuilder(owner) && (
+                    <DropdownMenuItem
+                      label="Become Builder"
+                      onClick={() => forceRoleUpdate("builder")}
+                      icon={LightbulbIcon}
+                    />
+                  )}
+                  {!isOnlyUser(owner) && (
+                    <DropdownMenuItem
+                      label="Become User"
+                      onClick={() => forceRoleUpdate("user")}
+                      icon={UserIcon}
+                    />
+                  )}
                   <DropdownMenuItem
-                    label="Become Admin"
-                    onClick={() => forceRoleUpdate("admin")}
-                    icon={StarIcon}
+                    label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
+                    onClick={privacyMask.toggle}
+                    icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
                   />
-                )}
-                {!isOnlyBuilder(owner) && (
-                  <DropdownMenuItem
-                    label="Become Builder"
-                    onClick={() => forceRoleUpdate("builder")}
-                    icon={LightbulbIcon}
-                  />
-                )}
-                {!isOnlyUser(owner) && (
-                  <DropdownMenuItem
-                    label="Become User"
-                    onClick={() => forceRoleUpdate("user")}
-                    icon={UserIcon}
-                  />
-                )}
-                <DropdownMenuItem
-                  label={`${privacyMask.isEnabled ? "Disable" : "Enable"} Privacy Mask`}
-                  onClick={privacyMask.toggle}
-                  icon={privacyMask.isEnabled ? EyeSlashIcon : EyeIcon}
-                />
-              </DropdownMenuSubContent>
+                  {owner.role === "admin" && (
+                    <DropdownMenuItem
+                      label="Send onboarding conversation"
+                      onClick={handleSendOnboarding}
+                      icon={ChatBubbleBottomCenterPlusIcon}
+                    />
+                  )}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
             </DropdownMenuSub>
           </>
         )}

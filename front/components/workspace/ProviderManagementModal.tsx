@@ -27,7 +27,8 @@ import {
 } from "@app/components/providers/types";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { canUseModel } from "@app/lib/assistant";
+import { isModelAvailable } from "@app/lib/assistant";
+import { clientFetch } from "@app/lib/egress/client";
 import { useFeatureFlags, useWorkspace } from "@app/lib/swr/workspaces";
 import type { ModelProviderIdType, PlanType, WorkspaceType } from "@app/types";
 import { EMBEDDING_PROVIDER_IDS, MODEL_PROVIDER_IDS } from "@app/types";
@@ -43,6 +44,7 @@ const prettyfiedProviderNames: { [key in ModelProviderIdType]: string } = {
   deepseek: "Deepseek",
   fireworks: "Fireworks",
   xai: "xAI",
+  noop: "noop",
 };
 
 interface ProviderManagementModalProps {
@@ -79,7 +81,7 @@ export function ProviderManagementModal({
     [...USED_MODEL_CONFIGS, ...REASONING_MODEL_CONFIGS],
     (m) => m.modelId
   ).filter(
-    (model) => !model.isLegacy && canUseModel(model, featureFlags, plan, owner)
+    (model) => !model.isLegacy && isModelAvailable(model, featureFlags, plan)
   );
 
   const modelProviders = filteredModels.reduce(
@@ -149,7 +151,7 @@ export function ProviderManagementModal({
       });
     } else {
       try {
-        const response = await fetch(`/api/w/${owner.sId}`, {
+        const response = await clientFetch(`/api/w/${owner.sId}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -171,6 +173,7 @@ export function ProviderManagementModal({
 
         // Retrigger a server fetch after a successful update
         await mutateWorkspace();
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotifications({
           type: "error",

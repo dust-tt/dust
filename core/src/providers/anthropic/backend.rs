@@ -97,6 +97,7 @@ impl AnthropicBackend for DirectAnthropicBackend {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum VertexSupportedModel {
     Claude4Sonnet20250514,
+    Claude45Sonnet20250929,
 }
 
 impl FromStr for VertexSupportedModel {
@@ -105,6 +106,7 @@ impl FromStr for VertexSupportedModel {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "claude-4-sonnet-20250514" => Ok(Self::Claude4Sonnet20250514),
+            "claude-sonnet-4-5-20250929" => Ok(Self::Claude45Sonnet20250929),
             _ => Err(anyhow::anyhow!("Model {} not supported on Vertex AI", s)),
         }
     }
@@ -114,6 +116,7 @@ impl VertexSupportedModel {
     pub fn vertex_model_name(self) -> &'static str {
         match self {
             Self::Claude4Sonnet20250514 => "claude-sonnet-4@20250514",
+            Self::Claude45Sonnet20250929 => "claude-sonnet-4-5@20250929",
         }
     }
 }

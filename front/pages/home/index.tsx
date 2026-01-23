@@ -1,6 +1,7 @@
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { BlogSection } from "@app/components/home/content/Product/BlogSection";
+// import { BlogSection } from "@app/components/home/content/Product/BlogSection";
 import { IntroSection } from "@app/components/home/content/Product/IntroSection";
 import { JustUseDustSection as ProductJustUseDustSection } from "@app/components/home/content/Product/JustUseDustSection";
 import { QuoteSection } from "@app/components/home/ContentBlocks";
@@ -10,6 +11,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import UTMPageWrapper from "@app/components/UTMPageWrapper";
 
 export async function getStaticProps() {
@@ -22,8 +24,15 @@ export async function getStaticProps() {
 }
 
 export function Landing() {
+  const router = useRouter();
+
   return (
     <UTMPageWrapper>
+      <PageMetadata
+        title="Dust - Build Custom AI Agents for Your Organization"
+        description="Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents. Deploy in minutes, no coding required."
+        pathname={router.asPath}
+      />
       <IntroSection />
       <div className="mt-16 flex flex-col gap-16 md:gap-20 lg:gap-24">
         <CloudConnectorsSection />
@@ -34,7 +43,7 @@ export function Landing() {
           title="Head of GTM Engineering at Clay"
           logo="/static/landing/logos/color/clay.png"
         />
-        <BlogSection />
+        {/* <BlogSection /> */}
         <ProductJustUseDustSection />
       </div>
     </UTMPageWrapper>

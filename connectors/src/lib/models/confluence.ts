@@ -1,10 +1,10 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
-export class ConfluenceConfiguration extends ConnectorBaseModel<ConfluenceConfiguration> {
+export class ConfluenceConfigurationModel extends ConnectorBaseModel<ConfluenceConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -12,7 +12,7 @@ export class ConfluenceConfiguration extends ConnectorBaseModel<ConfluenceConfig
   declare url: string;
   declare userAccountId: string;
 }
-ConfluenceConfiguration.init(
+ConfluenceConfigurationModel.init(
   {
     cloudId: {
       type: DataTypes.STRING,
@@ -38,7 +38,7 @@ ConfluenceConfiguration.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "confluence_configurations",
     indexes: [
       { fields: ["connectorId"], unique: true },
@@ -49,14 +49,16 @@ ConfluenceConfiguration.init(
 );
 
 // ConfluenceSpace stores the global spaces selected by the user to sync.
-export class ConfluenceSpace extends ConnectorBaseModel<ConfluenceSpace> {
+export class ConfluenceSpaceModel extends ConnectorBaseModel<ConfluenceSpaceModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
+  declare deletedAt: Date | null;
+
   declare name: string;
   declare spaceId: string;
   declare urlSuffix?: string;
 }
-ConfluenceSpace.init(
+ConfluenceSpaceModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -80,16 +82,20 @@ ConfluenceSpace.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "confluence_spaces",
     indexes: [{ fields: ["connectorId", "spaceId"], unique: true }],
   }
 );
 
 // ConfluencePages stores the pages.
-export class ConfluencePage extends ConnectorBaseModel<ConfluencePage> {
+export class ConfluencePageModel extends ConnectorBaseModel<ConfluencePageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare lastVisitedAt: CreationOptional<Date>;
@@ -103,7 +109,7 @@ export class ConfluencePage extends ConnectorBaseModel<ConfluencePage> {
   declare title: string;
   declare version: number;
 }
-ConfluencePage.init(
+ConfluencePageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -156,7 +162,7 @@ ConfluencePage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "pageId"], unique: true },
       { fields: ["connectorId", "spaceId", "parentId"] },
@@ -166,7 +172,7 @@ ConfluencePage.init(
   }
 );
 
-export class ConfluenceFolder extends ConnectorBaseModel<ConfluenceFolder> {
+export class ConfluenceFolderModel extends ConnectorBaseModel<ConfluenceFolderModel> {
   declare createdAt: CreationOptional<Date>;
   declare lastVisitedAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -181,7 +187,7 @@ export class ConfluenceFolder extends ConnectorBaseModel<ConfluenceFolder> {
   declare version: number;
 }
 
-ConfluenceFolder.init(
+ConfluenceFolderModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -234,7 +240,7 @@ ConfluenceFolder.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
       { fields: ["connectorId", "folderId"], unique: true },
       { fields: ["connectorId", "spaceId", "parentId"] },

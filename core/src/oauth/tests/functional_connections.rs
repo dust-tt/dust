@@ -159,3 +159,116 @@ async fn test_oauth_connexion_flow_switching_provider() {
 
     do_failing_api_call(finalize_url, HttpMethod::POST, &finalize_body).await;
 }
+
+#[tokio::test]
+async fn test_slack_connection_auto_creates_system_credential() {
+    let create_url = "/connections".to_string();
+    let create_body = json!({
+        "provider": "slack",
+        "metadata": {
+            "use_case": "connection",
+            "workspace_id": "W123TEST",
+            "user_id": "U456TEST"
+        }
+    });
+
+    let api_response = do_api_call(create_url, HttpMethod::POST, &create_body).await;
+
+    assert!(
+        api_response.error.is_none(),
+        "Expected no error creating Slack connection"
+    );
+
+    let connection: ConnectionExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("connection")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+
+    assert_eq!(connection.provider, "slack");
+    assert_eq!(connection.status, "pending");
+    assert_eq!(connection.metadata.get("use_case").unwrap(), "connection");
+    assert_eq!(connection.metadata.get("workspace_id").unwrap(), "W123TEST");
+    assert_eq!(connection.metadata.get("user_id").unwrap(), "U456TEST");
+}
+
+#[tokio::test]
+async fn test_slack_bot_use_case_does_not_create_credential() {
+    let create_url = "/connections".to_string();
+    let create_body = json!({
+        "provider": "slack",
+        "metadata": {
+            "use_case": "bot",
+            "workspace_id": "W123TEST",
+            "user_id": "U456TEST"
+        }
+    });
+
+    let api_response = do_api_call(create_url, HttpMethod::POST, &create_body).await;
+
+    assert!(
+        api_response.error.is_none(),
+        "Expected no error creating Slack bot connection"
+    );
+
+    let connection: ConnectionExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("connection")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+
+    assert_eq!(connection.provider, "slack");
+    assert_eq!(connection.metadata.get("use_case").unwrap(), "bot");
+}
+
+#[tokio::test]
+async fn test_slack_connection_with_custom_credential() {
+    let create_url = "/connections".to_string();
+    let create_body = json!({
+        "provider": "slack",
+        "metadata": {
+            "use_case": "connection",
+            "workspace_id": "W123TEST",
+            "user_id": "U456TEST"
+        },
+        "related_credential": {
+            "metadata": {
+                "workspace_id": "W123TEST",
+                "user_id": "U456TEST"
+            },
+            "content": {
+                "client_id": "custom_slack_client_id",
+                "client_secret": "custom_slack_client_secret"
+            }
+        }
+    });
+
+    let api_response = do_api_call(create_url, HttpMethod::POST, &create_body).await;
+
+    assert!(
+        api_response.error.is_none(),
+        "Expected no error creating Slack connection with custom credential"
+    );
+
+    let connection: ConnectionExpectedResponse = serde_json::from_value(
+        api_response
+            .response
+            .unwrap()
+            .get("connection")
+            .unwrap()
+            .clone(),
+    )
+    .unwrap();
+
+    assert_eq!(connection.provider, "slack");
+    assert_eq!(connection.status, "pending");
+    assert_eq!(connection.metadata.get("use_case").unwrap(), "connection");
+}

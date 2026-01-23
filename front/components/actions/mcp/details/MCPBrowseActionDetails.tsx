@@ -1,4 +1,4 @@
-import { Button, GlobeAltIcon } from "@dust-tt/sparkle";
+import { FaviconIcon, GlobeAltIcon, LinkWrapper } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
@@ -7,6 +7,8 @@ import {
   isBrowseResultResourceType,
   isToolGeneratedFile,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { isWebbrowseInputType } from "@app/lib/actions/mcp_internal_actions/types";
+import { validateUrl } from "@app/types/shared/utils/url_utils";
 
 export function MCPBrowseActionDetails({
   toolOutput,
@@ -14,7 +16,8 @@ export function MCPBrowseActionDetails({
   viewType,
   owner,
 }: ToolExecutionDetailsProps) {
-  const urls = toolParams.urls as string[];
+  const urls = isWebbrowseInputType(toolParams) ? toolParams.urls : null;
+
   const browseResults =
     toolOutput?.filter(isBrowseResultResourceType).map((o) => o.resource) ?? [];
   const generatedFiles =
@@ -34,9 +37,12 @@ export function MCPBrowseActionDetails({
             {(viewType === "conversation" || browseResults.length === 0) && urls
               ? urls.map((url, idx) => (
                   <div
-                    className="flex max-h-60 flex-col overflow-y-auto overflow-x-hidden pb-1"
+                    className="group flex max-h-60 flex-row items-center gap-x-1 overflow-y-auto overflow-x-hidden pb-1"
                     key={idx}
                   >
+                    <span className="grayscale transition-all duration-150 ease-in-out group-hover:grayscale-0">
+                      <FaviconIcon websiteUrl={url} />
+                    </span>
                     <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
                       {url}
                     </span>
@@ -49,15 +55,22 @@ export function MCPBrowseActionDetails({
                   >
                     {r.responseCode === "200" ? (
                       <>
-                        <Button
-                          icon={GlobeAltIcon}
-                          onClick={() => window.open(r.uri, "_blank")}
-                          label={r.title ?? r.requestedUrl}
-                          variant="outline"
-                        />
-                        <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                          {r.requestedUrl}
-                        </span>
+                        {(() => {
+                          const urlValidation = validateUrl(r.uri);
+                          return urlValidation.valid ? (
+                            <LinkWrapper
+                              href={urlValidation.standardized}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {r.title ?? r.requestedUrl}
+                            </LinkWrapper>
+                          ) : (
+                            <span className="text-sm text-foreground dark:text-foreground-night">
+                              {r.title ?? r.requestedUrl} (invalid URL)
+                            </span>
+                          );
+                        })()}
                         {r.text && (
                           <span className="whitespace-pre-wrap text-sm text-foreground dark:text-foreground-night">
                             {r.description ?? r.text.slice(0, 2048)}
@@ -84,7 +97,6 @@ export function MCPBrowseActionDetails({
               <ToolGeneratedFileDetails
                 key={file.fileId}
                 resource={file}
-                icon={GlobeAltIcon}
                 owner={owner}
               />
             ))}

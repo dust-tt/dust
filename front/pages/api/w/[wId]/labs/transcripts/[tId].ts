@@ -23,7 +23,9 @@ export type GetLabsTranscriptsConfigurationResponseBody = {
 
 export const PatchLabsTranscriptsConfigurationBodySchema = t.partial({
   agentConfigurationId: t.string,
+  // `isActive` is deprecated in favor of `status`, kept for backward compatibility.
   isActive: t.boolean,
+  status: t.union([t.literal("active"), t.literal("disabled")]),
   dataSourceViewId: t.union([t.string, t.null]),
 });
 export type PatchTranscriptsConfiguration = t.TypeOf<
@@ -64,6 +66,7 @@ async function handler(
 
   const transcriptsConfiguration =
     await LabsTranscriptsConfigurationResource.fetchById(
+      auth,
       transcriptsConfigurationId
     );
   // TODO(2024-04-19 flav) Consider adding auth to `fetchById` to move this permission check within the method.
@@ -109,6 +112,7 @@ async function handler(
       const {
         agentConfigurationId: patchAgentId,
         isActive,
+        status,
         dataSourceViewId,
       } = patchBodyValidation.right;
 
@@ -118,16 +122,25 @@ async function handler(
         });
       }
 
-      if (isActive !== undefined) {
+      // Handle status update: prefer `status` over deprecated `isActive`
+      const newStatus =
+        status ??
+        (isActive !== undefined
+          ? isActive
+            ? "active"
+            : "disabled"
+          : undefined);
+
+      if (newStatus !== undefined) {
         logger.info(
           {
             transcriptsConfigurationId: transcriptsConfiguration.id,
             transcriptsConfigurationSid: transcriptsConfiguration.sId,
-            isActive,
+            status: newStatus,
           },
-          "Setting transcript configuration active status."
+          "Setting transcript configuration status."
         );
-        await transcriptsConfiguration.setIsActive(isActive);
+        await transcriptsConfiguration.setStatus(newStatus);
       }
 
       if (dataSourceViewId !== undefined) {
@@ -168,6 +181,7 @@ async function handler(
 
       const updatedTranscriptsConfiguration =
         await LabsTranscriptsConfigurationResource.fetchById(
+          auth,
           transcriptsConfiguration.sId
         );
 
@@ -182,7 +196,7 @@ async function handler(
       }
 
       const shouldStartWorkflow =
-        !!updatedTranscriptsConfiguration.isActive ||
+        updatedTranscriptsConfiguration.isActive() ||
         !!updatedTranscriptsConfiguration.dataSourceViewId;
 
       if (shouldStartWorkflow) {

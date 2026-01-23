@@ -52,7 +52,7 @@ export function FaviconIcon({
   if (!finalFaviconUrl && websiteUrl) {
     try {
       const domain = new URL(websiteUrl).hostname;
-      finalFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+      finalFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=64`;
     } catch {
       // Invalid URL, fallback to icon
     }

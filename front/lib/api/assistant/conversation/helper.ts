@@ -9,6 +9,8 @@ const STATUS_FOR_ERROR_TYPE: Record<ConversationErrorType, number> = {
   conversation_not_found: 404,
   conversation_with_unavailable_agent: 403,
   user_already_participant: 400,
+  message_not_found: 404,
+  message_deletion_not_authorized: 403,
 };
 
 export function apiErrorForConversation(

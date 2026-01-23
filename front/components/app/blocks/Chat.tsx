@@ -2,7 +2,9 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import {
   Checkbox,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Input,
   Label,
   XMarkIcon,
@@ -136,11 +138,13 @@ export default function Chat({
       const parsed = responseFormat.trim()
         ? JSON.parse(responseFormat)
         : undefined;
+      // eslint-disable-next-line no-unused-expressions
       parsed
         ? (b.config.response_format = parsed)
         : delete b.config.response_format;
       setIsResponseFormatJsonValid(true);
       onBlockUpdate(b);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       setIsResponseFormatJsonValid(false);
     }
@@ -260,6 +264,7 @@ export default function Chat({
             <Input
               spellCheck={false}
               readOnly={readOnly}
+              // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               value={block.spec.max_tokens || ""}
               onChange={(e) => handleMaxTokensChange(e.target.value)}
             />
@@ -273,6 +278,7 @@ export default function Chat({
                 )}
               >
                 <div className="flex flex-row items-center space-x-1">
+                  {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
                   {(block.spec.stop || ([] as string[])).map(
                     (stop: string, i: number) => (
                       <div
@@ -323,10 +329,9 @@ export default function Chat({
           </div>
         </div>
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Advanced" }}
-            contentChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger label="Advanced" />
+            <CollapsibleContent>
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
                   <div className="flex items-center space-x-2">
@@ -436,8 +441,8 @@ export default function Chat({
                   </div>
                 ) : null}
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <div className="flex flex-col gap-2 text-sm">
@@ -488,10 +493,9 @@ export default function Chat({
           </div>
         </div>
         <div>
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerProps={{ label: "Functions" }}
-            contentChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger label="Functions" />
+            <CollapsibleContent>
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
@@ -528,8 +532,8 @@ export default function Chat({
                   </div>
                 </div>
               </div>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
     </Block>

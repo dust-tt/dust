@@ -9,14 +9,18 @@ interface RouteMapping {
 }
 
 const ROUTE_MAPPINGS: RouteMapping[] = [
-  // Conversations (both old /assistant/ and new /agent/ URLs)
+  // Conversations (old /assistant/, /agent/, and new /conversation/ URLs)
   {
     pattern: /^\/w\/([^/]+)\/assistant\/([^/]+)$/,
-    pokePath: "/poke/$1/conversations/$2",
+    pokePath: "/poke/$1/conversation/$2",
   },
   {
     pattern: /^\/w\/([^/]+)\/agent\/([^/]+)$/,
-    pokePath: "/poke/$1/conversations/$2",
+    pokePath: "/poke/$1/conversation/$2",
+  },
+  {
+    pattern: /^\/w\/([^/]+)\/conversation\/([^/]+)$/,
+    pokePath: "/poke/$1/conversation/$2",
   },
 
   // Assistants
@@ -80,12 +84,6 @@ const ROUTE_MAPPINGS: RouteMapping[] = [
     pokePath: "/poke/$1/memberships",
   },
 
-  // Trackers (labs)
-  {
-    pattern: /^\/w\/([^/]+)\/labs\/trackers\/([^/]+)$/,
-    pokePath: "/poke/$1/trackers/$2",
-  },
-
   // Data sources (legacy)
   {
     pattern: /^\/w\/([^/]+)\/data_sources\/([^/]+)$/,
@@ -128,12 +126,15 @@ export function convertUrlToPoke(url: string): string | null {
   try {
     const urlObj = new URL(url);
 
-    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt)
+    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt) or localhost
     // Must be exactly dust.tt or *.dust.tt (not *dust.tt which would match notdust.tt)
-    if (
-      urlObj.hostname !== "dust.tt" &&
-      !urlObj.hostname.endsWith(".dust.tt")
-    ) {
+    const isValidHostname =
+      urlObj.hostname === "dust.tt" ||
+      urlObj.hostname.endsWith(".dust.tt") ||
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1";
+
+    if (!isValidHostname) {
       return null;
     }
 
@@ -166,6 +167,7 @@ export function convertUrlToPoke(url: string): string | null {
 
     // No match found
     return null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // Invalid URL
     return null;
@@ -176,12 +178,15 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
   try {
     const urlObj = new URL(pokeUrl);
 
-    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt)
+    // Check if it's a Dust domain (dust.tt or any subdomain like eu.dust.tt) or localhost
     // Must be exactly dust.tt or *.dust.tt (not *dust.tt which would match notdust.tt)
-    if (
-      urlObj.hostname !== "dust.tt" &&
-      !urlObj.hostname.endsWith(".dust.tt")
-    ) {
+    const isValidHostname =
+      urlObj.hostname === "dust.tt" ||
+      urlObj.hostname.endsWith(".dust.tt") ||
+      urlObj.hostname === "localhost" ||
+      urlObj.hostname === "127.0.0.1";
+
+    if (!isValidHostname) {
       return null;
     }
 
@@ -197,7 +202,7 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
 
     // Define reverse mappings
     const reverseMappings: Array<[RegExp, string]> = [
-      [/^([^/]+)\/conversations\/([^/]+)$/, "/w/$1/agent/$2"],
+      [/^([^/]+)\/conversation\/([^/]+)$/, "/w/$1/conversation/$2"],
       [/^([^/]+)\/agents\/([^/]+)$/, "/w/$1/builder/agents/$2"],
       [/^([^/]+)\/spaces\/([^/]+)\/apps\/([^/]+)$/, "/w/$1/spaces/$2/apps/$3"],
       [
@@ -210,7 +215,6 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
       ],
       [/^([^/]+)\/spaces\/([^/]+)$/, "/w/$1/spaces/$2"],
       [/^([^/]+)\/memberships$/, "/w/$1/members"],
-      [/^([^/]+)\/trackers\/([^/]+)$/, "/w/$1/labs/trackers/$2"],
       [/^([^/]+)\/data_sources\/([^/]+)$/, "/w/$1/data_sources/$2"],
       [/^([^/]+)$/, "/w/$1"],
     ];
@@ -230,6 +234,7 @@ export function convertPokeToUrl(pokeUrl: string): string | null {
     }
 
     return null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     return null;
   }

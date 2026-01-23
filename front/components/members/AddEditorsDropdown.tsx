@@ -20,11 +20,13 @@ export function AddEditorDropdown({
   editors,
   onAddEditor,
   trigger,
+  buildersOnly = false,
 }: {
   owner: WorkspaceType;
   editors: UserType[];
   onAddEditor: (member: UserType) => void;
   trigger: JSX.Element;
+  buildersOnly?: boolean;
 }) {
   const [isEditorPickerOpen, setIsEditorPickerOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,6 +37,7 @@ export function AddEditorDropdown({
       searchTerm,
       pageIndex: 0,
       pageSize: 25,
+      buildersOnly,
     });
 
   return (
@@ -68,7 +71,7 @@ export function AddEditorDropdown({
               key={member.sId}
               label={member.fullName}
               description={member.email}
-              icon={() => <Avatar size="sm" visual={member.image} />}
+              icon={() => <Avatar size="sm" visual={member.image} isRounded />}
               onClick={async () => {
                 setSearchTerm("");
                 setIsEditorPickerOpen(false);

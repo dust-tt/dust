@@ -1,8 +1,11 @@
 import { QueryTypes } from "sequelize";
 
-import { isWebhookBasedProvider } from "@app/lib/connector_providers";
-import type { CheckFunction } from "@app/lib/production_checks/types";
+import {
+  isBotTypeProvider,
+  isWebhookBasedProvider,
+} from "@app/lib/connector_providers";
 import { getConnectorsPrimaryDbConnection } from "@app/lib/production_checks/utils";
+import type { ActionLink, CheckFunction } from "@app/types";
 import type { ConnectorProvider } from "@app/types";
 
 interface ConnectorBlob {
@@ -16,15 +19,14 @@ interface ConnectorBlob {
   lastSyncStartTime: Date | null;
 }
 
-const connectorsDb = getConnectorsPrimaryDbConnection();
-
 async function listAllConnectors() {
-  const connectors: ConnectorBlob[] = await connectorsDb.query(
-    `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
-    {
-      type: QueryTypes.SELECT,
-    }
-  );
+  const connectors: ConnectorBlob[] =
+    await getConnectorsPrimaryDbConnection().query(
+      `SELECT id, "dataSourceId", "workspaceId", "pausedAt", "lastSyncSuccessfulTime", "lastSyncStartTime", "createdAt", "type" FROM connectors WHERE "errorType" IS NULL AND "pausedAt" IS NULL AND "type" <> 'webcrawler'`,
+      {
+        type: QueryTypes.SELECT,
+      }
+    );
   return connectors;
 }
 
@@ -65,10 +67,10 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   const stalledLastSyncConnectors: any[] = [];
   const connectors = (await listAllConnectors()).filter(
     (connector) =>
-      // Ignore webhook-based connectors and webcrawlers
+      // Ignore webhook-based connectors, webcrawlers, and bot-type connectors
       !isWebhookBasedProvider(connector.type) &&
-      connector.type !== "webcrawler" &&
-      connector.type !== "slack_bot"
+      !isBotTypeProvider(connector.type) &&
+      connector.type !== "webcrawler"
   );
   heartbeat();
 
@@ -87,11 +89,15 @@ export const checkConnectorsLastSyncSuccess: CheckFunction = async (
   }
 
   if (stalledLastSyncConnectors.length > 0) {
+    const actionLinks: ActionLink[] = stalledLastSyncConnectors.map((c) => ({
+      label: `${c.provider}: ${c.dataSourceId}`,
+      url: `/poke/${c.workspaceId}/data_sources/${c.dataSourceId}`,
+    }));
     reportFailure(
-      { stalledLastSyncConnectors },
+      { stalledLastSyncConnectors, actionLinks },
       `Connectors have not synced in the last week.`
     );
   } else {
-    reportSuccess({});
+    reportSuccess();
   }
 };

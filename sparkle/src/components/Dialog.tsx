@@ -48,10 +48,10 @@ const sizeClasses: Record<DialogSizeType, string> = {
 };
 
 const heightClasses: Record<DialogHeightType, string> = {
-  md: "s-max-h-[90vh] sm:s-h-md",
-  lg: "s-max-h-[90vh] sm:s-h-lg",
-  xl: "s-max-h-[90vh] sm:s-h-xl",
-  "2xl": "s-max-h-[90vh] sm:s-h-2xl",
+  md: "sm:s-h-md",
+  lg: "sm:s-h-lg",
+  xl: "sm:s-h-xl",
+  "2xl": "sm:s-h-2xl",
 };
 
 const dialogVariants = cva(
@@ -59,7 +59,8 @@ const dialogVariants = cva(
     "s-fixed s-left-[50%] s-top-[50%] s-z-50 s-overflow-hidden s-translate-x-[-50%] s-translate-y-[-50%] s-duration-200 data-[state=open]:s-animate-in data-[state=closed]:s-animate-out data-[state=closed]:s-fade-out-0 data-[state=open]:s-fade-in-0 data-[state=closed]:s-zoom-out-95 data-[state=open]:s-zoom-in-95 data-[state=closed]:s-slide-out-to-left-1/2 data-[state=closed]:s-slide-out-to-top-[48%] data-[state=open]:s-slide-in-from-left-1/2 data-[state=open]:s-slide-in-from-top-[48%]",
     "s-rounded-2xl s-flex s-flex-col s-w-full s-border s-border s-shadow-lg s-sm:rounded-lg",
     "s-bg-background dark:s-bg-background-night",
-    "s-border-border dark:s-border-border-night"
+    "s-border-border dark:s-border-border-night",
+    "s-max-h-[90vh]"
   ),
   {
     variants: {
@@ -72,8 +73,9 @@ const dialogVariants = cva(
   }
 );
 
-interface DialogContentProps
-  extends React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> {
+interface DialogContentProps extends React.ComponentPropsWithoutRef<
+  typeof DialogPrimitive.Content
+> {
   size?: DialogSizeType;
   height?: DialogHeightType;
   trapFocusScope?: boolean;
@@ -151,7 +153,7 @@ const DialogHeader = ({
 }: NewDialogHeaderProps) => (
   <div
     className={cn(
-      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-py-4 s-text-left dark:s-bg-background-night",
+      "s-sticky s-top-0 s-z-50 s-flex s-flex-none s-flex-col s-gap-0 s-bg-background s-px-5 s-pt-4 s-text-left dark:s-bg-background-night",
       className
     )}
     {...props}
@@ -224,7 +226,7 @@ const DialogFooter = ({
   <div className="s-flex s-flex-none s-flex-col s-gap-0">
     <div
       className={cn(
-        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3",
+        "s-flex s-flex-none s-flex-row s-justify-end s-gap-2 s-px-3 s-pb-3 s-pt-2",
         className
       )}
       {...props}

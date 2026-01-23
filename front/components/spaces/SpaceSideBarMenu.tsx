@@ -1,5 +1,4 @@
 import {
-  BellIcon,
   BoltIcon,
   Button,
   CloudArrowLeftRightIcon,
@@ -8,24 +7,30 @@ import {
   NavigationListItem,
   NavigationListLabel,
   PlusIcon,
+  ToolsIcon,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReturnTypeOf } from "@octokit/core/types";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
-import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
+import type {
+  CustomResourceIconType,
+  InternalAllowedIconType,
+} from "@app/components/resources/resources_icons";
+import { getAvatarFromIcon } from "@app/components/resources/resources_icons";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { usePersistedNavigationSelection } from "@app/hooks/usePersistedNavigationSelection";
 import { useSpaceSidebarItemFocus } from "@app/hooks/useSpaceSidebarItemFocus";
 import { getMcpServerDisplayName } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
   CATEGORY_DETAILS,
@@ -44,6 +49,7 @@ import {
 } from "@app/lib/swr/spaces";
 import { useWebhookSourceViews } from "@app/lib/swr/webhook_source";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import type {
   AppType,
   DataSourceViewCategory,
@@ -79,6 +85,7 @@ export default function SpaceSideBarMenu({
 
   const { spaces: spacesAsUser, isSpacesLoading: isSpacesAsUserLoading } =
     useSpaces({
+      kinds: ["global", "regular"],
       workspaceId: owner.sId,
     });
 
@@ -110,7 +117,10 @@ export default function SpaceSideBarMenu({
     return <></>;
   }
 
-  const sortedGroupedSpaces = groupSpacesForDisplay(spaces).filter(
+  const sortedGroupedSpaces = groupSpacesForDisplay(
+    // Remove project spaces from the sidebar menu as they are handled differently.
+    spaces.filter((space) => space.kind !== "project")
+  ).filter(
     ({ section, spaces }) => section !== "system" || spaces.length !== 0
   );
 
@@ -247,15 +257,15 @@ const SYSTEM_SPACE_ITEMS: {
   },
   {
     label: "Tools",
-    visual: BoltIcon,
+    visual: ToolsIcon,
     category: "actions",
     flag: null,
   },
   {
     label: "Triggers",
-    visual: BellIcon,
+    visual: BoltIcon,
     category: "triggers",
-    flag: "hootl_webhooks",
+    flag: null,
   },
 ];
 
@@ -308,7 +318,7 @@ const SystemSpaceItem = ({
   visual: IconType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
 
@@ -364,7 +374,7 @@ const SpaceMenuItem = ({
   isMember: boolean;
   hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
@@ -457,7 +467,7 @@ const SpaceDataSourceViewItem = ({
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const { isNodesLoading, nodes, totalNodesCountIsAccurate, totalNodesCount } =
@@ -572,7 +582,7 @@ const SpaceDataSourceViewSubMenu = ({
   category: DataSourceViewCategoryWithoutApps;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
@@ -638,7 +648,7 @@ const SpaceAppItem = ({
   owner: LightWorkspaceType;
 }): ReactElement => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const appPath = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`;
 
@@ -691,7 +701,7 @@ const SpaceAppSubMenu = ({
   category: "apps";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceCategoryPath,
@@ -743,7 +753,7 @@ const SpaceActionsSubMenu = ({
   category: "actions";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceCategoryPath,
@@ -789,8 +799,20 @@ const SpaceActionsSubMenu = ({
   );
 };
 
-const SpaceTriggerItem = ({ label }: { label: string }): ReactElement => {
-  return <Tree.Item type="leaf" label={label} visual={BellIcon} />;
+const SpaceTriggerItem = ({
+  label,
+  icon,
+}: {
+  label: string;
+  icon: InternalAllowedIconType | CustomResourceIconType | null | undefined;
+}): ReactElement => {
+  return (
+    <Tree.Item
+      type="leaf"
+      label={label}
+      visual={() => getAvatarFromIcon(normalizeWebhookIcon(icon), "xs")}
+    />
+  );
 };
 
 const TRIGGERS_CATEGORY: DataSourceViewCategory = "triggers";
@@ -803,7 +825,7 @@ const SpaceTriggersSubMenu = ({
   space: SpaceType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceTriggersPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${TRIGGERS_CATEGORY}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceTriggersPath,
@@ -843,7 +865,8 @@ const SpaceTriggersSubMenu = ({
         <Tree isLoading={isWebhookSourceViewsLoading}>
           {webhookSourceViews.map((webhookView) => (
             <SpaceTriggerItem
-              label={webhookView.customName ?? webhookView.webhookSource.name}
+              label={webhookView.customName}
+              icon={webhookView.icon}
               key={webhookView.sId}
             />
           ))}

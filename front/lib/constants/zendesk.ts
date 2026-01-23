@@ -7,4 +7,5 @@ export const ZENDESK_CONFIG_KEYS = {
   SYNC_UNRESOLVED_TICKETS: "zendeskSyncUnresolvedTicketsEnabled",
   HIDE_CUSTOMER_DETAILS: "zendeskHideCustomerDetails",
   RETENTION_PERIOD: "zendeskRetentionPeriodDays",
+  RATE_LIMIT_TPS: "zendeskRateLimitTransactionsPerSecond",
 } as const;

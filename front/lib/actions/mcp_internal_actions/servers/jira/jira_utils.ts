@@ -9,12 +9,12 @@ import { FIELD_MAPPINGS } from "@app/lib/actions/mcp_internal_actions/servers/ji
 
 // Helper function to escape JQL values that contain spaces or special characters
 export const escapeJQLValue = (value: string): string => {
-  // JQL special characters that need quoting: space, quotes, backslash, forward slash,
-  const hasSpecialChars = /[\s"'\\/]/.test(value);
+  // JQL reserved characters per official Atlassian docs: space, +, ., ,, ;, ?, |, *, /, %, ^, $, #, @, [, ]
+  const hasSpecialChars = /[\s"'\\/@+.,;?|*%^$#[\]]/.test(value);
 
   // JQL reserved words that need quoting
   const isReservedWord =
-    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed|was|in|not|to|from|by|before|after|on|during)$/i.test(
+    /^(and|or|not|in|is|was|from|to|on|by|during|before|after|empty|null|order|asc|desc|changed)$/i.test(
       value
     );
 
@@ -138,6 +138,10 @@ export function shouldConvertToADF(
   return false;
 }
 
+// Fields that cannot be set when creating/updating issues.
+// These are either auto-generated or must be changed via workflow transitions.
+const READ_ONLY_FIELDS = ["status", "id", "key", "self"];
+
 export function processFieldsForJira(
   fields: Record<string, unknown>,
   fieldsMetadata?: Record<
@@ -148,6 +152,11 @@ export function processFieldsForJira(
   >
 ): Record<string, unknown> {
   const processedFields = { ...fields };
+
+  // Remove read-only fields that cannot be set via the API.
+  for (const field of READ_ONLY_FIELDS) {
+    delete processedFields[field];
+  }
 
   for (const [fieldKey, fieldValue] of Object.entries(processedFields)) {
     const fieldMetadata = fieldsMetadata?.[fieldKey];

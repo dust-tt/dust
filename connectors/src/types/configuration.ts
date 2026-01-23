@@ -1,27 +1,31 @@
-import * as t from "io-ts";
+import { z } from "zod";
 
+import type { DiscordBotConfigurationType } from "./discord_bot";
+import { DiscordBotConfigurationTypeSchema } from "./discord_bot";
 import type { SlackConfigurationType } from "./slack";
 import { SlackConfigurationTypeSchema } from "./slack";
 import type { WebCrawlerConfigurationType } from "./webcrawler";
 import { WebCrawlerConfigurationTypeSchema } from "./webcrawler";
 
-export const ConnectorConfigurationTypeSchema = t.union([
+export const ConnectorConfigurationTypeSchema = z.union([
   WebCrawlerConfigurationTypeSchema,
   SlackConfigurationTypeSchema,
-  t.null,
+  DiscordBotConfigurationTypeSchema,
+  z.null(),
 ]);
 
-const UpdateConnectorConfigurationTypeSchema = t.type({
+const UpdateConnectorConfigurationTypeSchema = z.object({
   configuration: ConnectorConfigurationTypeSchema,
 });
 
-export type UpdateConnectorConfigurationType = t.TypeOf<
+export type UpdateConnectorConfigurationType = z.infer<
   typeof UpdateConnectorConfigurationTypeSchema
 >;
 
 export type ConnectorConfiguration =
   | WebCrawlerConfigurationType
   | SlackConfigurationType
+  | DiscordBotConfigurationType
   | null;
 
 export function isWebCrawlerConfiguration(
@@ -44,6 +48,8 @@ export type ConnectorConfigurations = {
   notion: null;
   slack: SlackConfigurationType;
   slack_bot: SlackConfigurationType;
+  discord_bot: DiscordBotConfigurationType;
+  dust_project: null;
   google_drive: null;
   github: null;
   confluence: null;

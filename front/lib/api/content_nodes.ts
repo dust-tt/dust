@@ -2,7 +2,7 @@
 // eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 
-import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes";
+import { SPREADSHEET_INTERNAL_MIME_TYPES } from "@app/lib/content_nodes_constants";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type {
   ContentNodesViewType,
@@ -57,14 +57,17 @@ export function getContentNodeInternalIdFromTableId(
     case "salesforce":
       return tableId;
 
-    case "intercom":
     case "confluence":
     case "github":
-    case "slack":
-    case "slack_bot":
-    case "zendesk":
-    case "webcrawler":
     case "gong":
+    case "intercom":
+    case "microsoft_bot":
+    case "slack_bot":
+    case "slack":
+    case "webcrawler":
+    case "zendesk":
+    case "discord_bot":
+    case "dust_project":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
@@ -106,6 +109,7 @@ export function getContentNodeFromCoreNode(
     parentInternalIds: coreNode.parents,
     type: coreNode.node_type,
     expandable: isExpandable(coreNode, viewType),
+    childrenCount: coreNode.children_count,
     mimeType: coreNode.mime_type,
     preventSelection:
       // In data_warehouse view, all nodes are selectable (databases, schemas, tables)

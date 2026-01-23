@@ -1,19 +1,23 @@
 /**
  * Run agent arguments
  */
-import { z } from "zod";
-
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
-import { AgentMessage, Message } from "@app/lib/models/assistant/conversation";
+import {
+  AgentMessageModel,
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
+import { cacheWithRedis } from "@app/lib/utils/cache";
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, isGlobalAgentId, Ok } from "@app/types";
+import { ConversationError, Err, isGlobalAgentId, Ok } from "@app/types";
 import type { AgentConfigurationType } from "@app/types/assistant/agent";
 import type {
   AgentMessageType,
   ConversationType,
+  UserMessageOrigin,
   UserMessageType,
 } from "@app/types/assistant/conversation";
 import {
@@ -21,69 +25,132 @@ import {
   isUserMessageType,
 } from "@app/types/assistant/conversation";
 
-export const ExecutionModeSchema = z.enum(["sync", "async", "auto"]);
-export type ExecutionMode = z.infer<typeof ExecutionModeSchema>;
+export type ConversationCaching =
+  | { useCachedGetConversation: false }
+  | { useCachedGetConversation: true; unicitySuffix: string; ttlMs: number };
 
-export type RunAgentAsynchronousArgs = {
+// Throws on error because cacheWithRedis expects functions that throw (not Result types).
+// Errors are caught and converted back to Result in getAgentLoopData.
+async function getConversationForAgentLoop(
+  auth: Authenticator,
+  conversationId: string,
+  // These params are only used for cache key uniqueness.
+  _workspaceId: string,
+  _unicitySuffix: string
+): Promise<ConversationType> {
+  const res = await getConversation(auth, conversationId);
+  if (res.isErr()) {
+    throw res.error;
+  }
+  return res.value;
+}
+
+function getCachedGetConversation(ttlMs: number) {
+  return cacheWithRedis(
+    getConversationForAgentLoop,
+    (_auth, conversationId, workspaceId, unicitySuffix) =>
+      `${workspaceId}:${conversationId}:${unicitySuffix}`,
+    {
+      ttlMs,
+      useDistributedLock: true,
+    }
+  );
+}
+
+export type AgentLoopArgs = {
   agentMessageId: string;
   agentMessageVersion: number;
   conversationId: string;
   conversationTitle: string | null;
+
+  // Note that the original user message may not be the same as the parent message as agent might mention other agents.
   userMessageId: string;
   userMessageVersion: number;
+  userMessageOrigin?: UserMessageOrigin | null;
+
+  caching?: ConversationCaching;
 };
 
-export type RunAgentExecutionData = {
+export type AgentMessageRef = {
+  agentMessageId: string;
+  conversationId: string;
+};
+
+export type AgentLoopExecutionData = {
   agentConfiguration: AgentConfigurationType;
   agentMessage: AgentMessageType;
-  agentMessageRow: AgentMessage;
+  agentMessageRow: AgentMessageModel;
   conversation: ConversationType;
   userMessage: UserMessageType;
 };
 
-export type RunAgentArgsInput =
-  | {
-      sync: true;
-      inMemoryData: RunAgentExecutionData;
-      syncToAsyncTimeoutMs?: number;
-    }
-  | {
-      sync: false;
-      idArgs: RunAgentAsynchronousArgs;
-    };
-
-export type RunAgentArgs = RunAgentArgsInput & {
+export type AgentLoopArgsWithTiming = AgentLoopArgs & {
   initialStartTime: number;
 };
 
-export async function getRunAgentData(
+export async function getAgentLoopData(
   authType: AuthenticatorType,
-  runAgentArgs: RunAgentArgsInput
-): Promise<Result<RunAgentExecutionData & { auth: Authenticator }, Error>> {
-  const auth = await Authenticator.fromJSON(authType);
+  agentLoopArgs: AgentLoopArgs
+): Promise<Result<AgentLoopExecutionData & { auth: Authenticator }, Error>> {
+  let authResult = await Authenticator.fromJSON(authType);
 
-  if (runAgentArgs.sync) {
-    return new Ok({
-      ...runAgentArgs.inMemoryData,
-      auth,
+  // If subscription changed while the message was running, get a fresh auth with the current
+  // subscription and continue gracefully.
+  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
+    logger.info(
+      {
+        workspaceId: authType.workspaceId,
+        originalSubscriptionId: authType.subscriptionId,
+      },
+      "Subscription changed while message was running, using fresh auth"
+    );
+
+    // Retry without the subscriptionId constraint to get the current subscription.
+    authResult = await Authenticator.fromJSON({
+      ...authType,
+      subscriptionId: null,
     });
   }
+
+  if (authResult.isErr()) {
+    return new Err(
+      new Error(`Failed to deserialize authenticator: ${authResult.error.code}`)
+    );
+  }
+  const auth = authResult.value;
 
   const {
     agentMessageId,
     agentMessageVersion,
+    caching,
     conversationId,
     userMessageId,
     userMessageVersion,
-  } = runAgentArgs.idArgs;
-  const conversationRes = await getConversation(auth, conversationId);
-  if (conversationRes.isErr()) {
-    return new Err(
-      new Error(`Conversation not found: ${conversationRes.error.message}`)
-    );
-  }
+  } = agentLoopArgs;
 
-  const conversation = conversationRes.value;
+  let conversation: ConversationType;
+  if (caching?.useCachedGetConversation) {
+    try {
+      const cachedGetConversation = getCachedGetConversation(caching.ttlMs);
+      conversation = await cachedGetConversation(
+        auth,
+        conversationId,
+        auth.getNonNullableWorkspace().sId,
+        caching.unicitySuffix
+      );
+    } catch (error) {
+      if (error instanceof ConversationError) {
+        return new Err(error);
+      }
+      throw error;
+    }
+  } else {
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return conversationRes;
+    }
+    conversation = conversationRes.value;
+  }
 
   // Find the agent message by searching all groups in reverse order. Retried messages do not have
   // the same sId as the original message, so we need to search all groups.
@@ -124,7 +191,7 @@ export async function getRunAgentData(
   }
 
   // Get the AgentMessage database row by querying through Message model.
-  const agentMessageRow = await Message.findOne({
+  const agentMessageRow = await MessageModel.findOne({
     where: {
       // Leveraging the index on workspaceId, conversationId, sId.
       conversationId: conversation.id,
@@ -135,7 +202,7 @@ export async function getRunAgentData(
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
       },

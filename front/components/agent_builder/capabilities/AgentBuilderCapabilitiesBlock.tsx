@@ -1,143 +1,31 @@
 import {
-  Avatar,
-  BoltIcon,
   BookOpenIcon,
   Button,
-  Card,
-  CardActionButton,
   CardGrid,
   ContentMessage,
   EmptyCTA,
   Hoverable,
   Spinner,
-  XMarkIcon,
+  ToolsIcon,
 } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 import { useFieldArray, useFormContext } from "react-hook-form";
 
-import type {
-  AgentBuilderDataVizAction,
-  AgentBuilderFormData,
-} from "@app/components/agent_builder/AgentBuilderFormContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { AgentBuilderSectionContainer } from "@app/components/agent_builder/AgentBuilderSectionContainer";
 import { KnowledgeConfigurationSheet } from "@app/components/agent_builder/capabilities/knowledge/KnowledgeConfigurationSheet";
 import type { SheetMode } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { MCPServerViewsSheet } from "@app/components/agent_builder/capabilities/mcp/MCPServerViewsSheet";
 import { usePresetActionHandler } from "@app/components/agent_builder/capabilities/usePresetActionHandler";
-import { getSpaceIdToActionsMap } from "@app/components/agent_builder/get_spaceid_to_actions_map";
-import { useMCPServerViewsContext } from "@app/components/agent_builder/MCPServerViewsContext";
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
-import type { AgentBuilderAction } from "@app/components/agent_builder/types";
-import {
-  getDefaultMCPAction,
-  isDefaultActionName,
-} from "@app/components/agent_builder/types";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getAvatar } from "@app/lib/actions/mcp_icons";
-import {
-  DATA_VISUALIZATION_SPECIFICATION,
-  MCP_SPECIFICATION,
-} from "@app/lib/actions/utils";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
+import { getSpaceIdToActionsMap } from "@app/components/shared/getSpaceIdToActionsMap";
+import { ActionCard } from "@app/components/shared/tools_picker/ActionCard";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
+import { BACKGROUND_IMAGE_STYLE_PROPS } from "@app/components/shared/tools_picker/util";
 import type { TemplateActionPreset } from "@app/types";
-import { asDisplayName, pluralize } from "@app/types";
-
-const dataVisualizationAction = {
-  type: "DATA_VISUALIZATION",
-  ...DATA_VISUALIZATION_SPECIFICATION,
-};
-
-const BACKGROUND_IMAGE_PATH = "/static/IconBar.svg";
-const BACKGROUND_IMAGE_STYLE_PROPS = {
-  backgroundImage: `url("${BACKGROUND_IMAGE_PATH}")`,
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "center 14px",
-  backgroundSize: "auto 60px",
-  paddingTop: "90px",
-};
-
-function actionIcon(
-  action: AgentBuilderAction | AgentBuilderDataVizAction,
-  mcpServerView: MCPServerViewType | null
-) {
-  if (mcpServerView?.server) {
-    return getAvatar(mcpServerView.server, "xs");
-  }
-
-  if (action.type === "DATA_VISUALIZATION") {
-    return (
-      <Avatar icon={DATA_VISUALIZATION_SPECIFICATION.cardIcon} size="xs" />
-    );
-  }
-}
-
-function actionDisplayName(
-  action: AgentBuilderAction | AgentBuilderDataVizAction,
-  mcpServerView: MCPServerViewType | null
-) {
-  if (mcpServerView && action.type === "MCP") {
-    return getMcpServerViewDisplayName(mcpServerView, action);
-  }
-
-  if (action.type === "DATA_VISUALIZATION") {
-    return asDisplayName(action.name);
-  }
-
-  return `${MCP_SPECIFICATION.label}${
-    !isDefaultActionName(action) ? " - " + action.name : ""
-  }`;
-}
-
-interface ActionCardProps {
-  action: AgentBuilderAction | AgentBuilderDataVizAction;
-  onRemove: () => void;
-  onEdit?: () => void;
-}
-
-function ActionCard({ action, onRemove, onEdit }: ActionCardProps) {
-  const { mcpServerViews, isMCPServerViewsLoading } =
-    useMCPServerViewsContext();
-
-  const mcpServerView =
-    action.type === "MCP" && !isMCPServerViewsLoading
-      ? mcpServerViews.find(
-          (mcpServerView) =>
-            mcpServerView.sId === action.configuration.mcpServerViewId
-        ) ?? null
-      : null;
-
-  const displayName = actionDisplayName(action, mcpServerView);
-  const description = action.description ?? "";
-
-  return (
-    <Card
-      variant="primary"
-      className="h-28"
-      onClick={onEdit}
-      action={
-        <CardActionButton
-          size="mini"
-          icon={XMarkIcon}
-          onClick={(e: Event) => {
-            onRemove();
-            e.stopPropagation();
-          }}
-        />
-      }
-    >
-      <div className="flex w-full flex-col gap-2 text-sm">
-        <div className="flex w-full items-center gap-2 font-medium text-foreground dark:text-foreground-night">
-          {actionIcon(action, mcpServerView)}
-          <span className="truncate">{displayName}</span>
-        </div>
-
-        <div className="text-muted-foreground dark:text-muted-foreground-night">
-          <span className="line-clamp-2 break-words">{description}</span>
-        </div>
-      </div>
-    </Card>
-  );
-}
+import { pluralize } from "@app/types";
 
 interface AgentBuilderCapabilitiesBlockProps {
   isActionsLoading: boolean;
@@ -164,16 +52,10 @@ export function AgentBuilderCapabilitiesBlock({
 
   const [dialogMode, setDialogMode] = useState<SheetMode | null>(null);
   const [knowledgeAction, setKnowledgeAction] = useState<{
-    action: AgentBuilderAction;
+    action: BuilderAction;
     index: number | null;
     presetData?: TemplateActionPreset;
   } | null>(null);
-
-  const dataVisualization = fields.some(
-    (field) => field.type === "DATA_VISUALIZATION"
-  )
-    ? null
-    : dataVisualizationAction;
 
   usePresetActionHandler({
     fields,
@@ -181,7 +63,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction,
   });
 
-  const handleEditSave = (updatedAction: AgentBuilderAction) => {
+  const handleEditSave = (updatedAction: BuilderAction) => {
     if (dialogMode?.type === "edit") {
       update(dialogMode.index, updatedAction);
     } else if (knowledgeAction && knowledgeAction.index !== null) {
@@ -193,18 +75,17 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction(null);
   };
 
-  const handleActionEdit = (action: AgentBuilderAction, index: number) => {
+  const handleActionEdit = (action: BuilderAction, index: number) => {
     const mcpServerView = mcpServerViewsWithKnowledge.find(
       (view) => view.sId === action.configuration?.mcpServerViewId
     );
-    const isDataSourceSelectionRequired =
-      action.type === "MCP" && Boolean(mcpServerView);
+    const isDataSourceSelectionRequired = Boolean(mcpServerView);
 
     if (isDataSourceSelectionRequired) {
       setKnowledgeAction({ action, index });
     } else {
       setDialogMode(
-        action.configurable
+        action.configurationRequired
           ? { type: "edit", action, index }
           : { type: "info", action, source: "addedTool" }
       );
@@ -216,7 +97,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction(null);
   };
 
-  const handleMcpActionUpdate = (action: AgentBuilderAction, index: number) => {
+  const handleMcpActionUpdate = (action: BuilderAction, index: number) => {
     update(index, action);
   };
 
@@ -227,7 +108,7 @@ export function AgentBuilderCapabilitiesBlock({
     setKnowledgeAction({
       action: {
         ...action,
-        configurable: true, // it's always required for knowledge
+        configurationRequired: true, // it's always required for knowledge
       },
       index: null,
     });
@@ -257,7 +138,7 @@ export function AgentBuilderCapabilitiesBlock({
         type="button"
         onClick={() => setDialogMode({ type: "add" })}
         label="Add tools"
-        icon={BoltIcon}
+        icon={ToolsIcon}
         variant="outline"
       />
     </div>
@@ -302,7 +183,7 @@ export function AgentBuilderCapabilitiesBlock({
                   type="button"
                   onClick={() => setDialogMode({ type: "add" })}
                   label="Add tools"
-                  icon={BoltIcon}
+                  icon={ToolsIcon}
                   variant="outline"
                 />
               </div>
@@ -331,7 +212,7 @@ export function AgentBuilderCapabilitiesBlock({
                   key={field.id}
                   action={field}
                   onRemove={() => remove(index)}
-                  onEdit={() => handleActionEdit(field, index)}
+                  onClick={() => handleActionEdit(field, index)}
                 />
               ))}
             </CardGrid>
@@ -350,7 +231,6 @@ export function AgentBuilderCapabilitiesBlock({
       />
       <MCPServerViewsSheet
         addTools={append}
-        dataVisualization={dataVisualization}
         mode={dialogMode}
         onModeChange={setDialogMode}
         onActionUpdate={handleMcpActionUpdate}

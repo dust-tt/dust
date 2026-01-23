@@ -1,12 +1,4 @@
-import {
-  Button,
-  Div3D,
-  DustLogo,
-  DustLogoLayer1,
-  DustLogoLayer2,
-  Hover3D,
-  LoginIcon,
-} from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -21,7 +13,15 @@ import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
+import {
+  DUST_COOKIES_ACCEPTED,
+  DUST_HAS_SESSION,
+  hasCookiesAccepted,
+  hasSessionIndicator,
+  shouldCheckGeolocation,
+} from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
 
 export interface LandingLayoutProps {
@@ -44,16 +44,25 @@ export default function LandingLayout({
     utmParams,
   } = pageProps;
 
-  const [cookies, setCookie] = useCookies(["dust-cookies-accepted"], {
-    doNotParse: true,
-  });
+  const [cookies, setCookie] = useCookies(
+    [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
+    {
+      doNotParse: true,
+    }
+  );
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
-  const cookieValue = cookies["dust-cookies-accepted"];
+  const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
-    ["true", "auto"].includes(cookieValue)
+    hasCookiesAccepted(cookieValue, null)
   );
 
-  const shouldCheckGeo = cookieValue === undefined;
+  // Check session cookie only on client to avoid hydration mismatch.
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
+
+  const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
 
   const { geoData, isGeoDataLoading } = useGeolocation({
     disabled: !shouldCheckGeo,
@@ -67,7 +76,7 @@ export default function LandingLayout({
         setHasAcceptedCookies(true);
       }
       setShowCookieBanner(false);
-      setCookie("dust-cookies-accepted", type, {
+      setCookie(DUST_COOKIES_ACCEPTED, type, {
         path: "/",
         maxAge: 183 * 24 * 60 * 60, // 6 months
         sameSite: "lax",
@@ -75,6 +84,14 @@ export default function LandingLayout({
     },
     [setCookie]
   );
+
+  // If you come back to the public site (e.g. pricing page) with browser's back button from the app,
+  // you can have dark theme so we need to remove them manually
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    document.documentElement.classList.remove("s-dark");
+    document.body.classList.remove("bg-background-night");
+  }, []);
 
   useEffect(() => {
     if (cookieValue !== undefined) {
@@ -109,28 +126,53 @@ export default function LandingLayout({
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <Link href="/">
-              <DustLogo className="h-[24px] w-[96px]" />
-            </Link>
+            <PublicWebsiteLogo />
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <UTMButton
-              href="/home/contact"
-              className="hidden xs:inline-flex"
-              variant="outline"
-              size="sm"
-              label="Request a demo"
-            />
-            <Button
-              variant="highlight"
-              size="sm"
-              label="Sign in"
-              icon={LoginIcon}
-              onClick={() => {
-                window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
-              }}
-            />
+            {hasSession ? (
+              <Button
+                variant="highlight"
+                size="sm"
+                label="Open Dust"
+                icon={ArrowRightIcon}
+                onClick={withTracking(
+                  TRACKING_AREAS.NAVIGATION,
+                  "go_to_app",
+                  () => {
+                    // eslint-disable-next-line react-hooks/immutability
+                    window.location.href = "/api/login";
+                  }
+                )}
+              />
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Sign in"
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "sign_in",
+                    () => {
+                      // eslint-disable-next-line react-hooks/immutability
+                      window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                    }
+                  )}
+                />
+                <UTMButton
+                  href="/home/contact"
+                  className="hidden xs:inline-flex"
+                  variant="highlight"
+                  size="sm"
+                  label="Contact sales"
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "contact_sales"
+                  )}
+                />
+              </>
+            )}
           </div>
         </div>
       </ScrollingHeader>
@@ -139,7 +181,7 @@ export default function LandingLayout({
       {/* <div className="fixed bottom-0 left-0 right-0 top-0 -z-40 overflow-hidden transition duration-1000">
         <Particles currentShape={currentShape} />
       </div> */}
-      <main className="z-10 flex flex-col items-center">
+      <main className="z-10 flex w-full flex-col items-center">
         <div
           className={classNames(
             "container flex w-full flex-col",
@@ -212,39 +254,42 @@ const CookieBanner = ({
   return (
     <div
       className={classNames(
-        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-4 border-t border-border bg-blue-100 p-6 shadow-2xl md:flex-row",
+        "fixed bottom-0 left-0 z-30 flex w-full flex-col items-center justify-between gap-6 border-t border-slate-700 bg-slate-900/90 p-8 shadow-2xl backdrop-blur-sm md:flex-row md:gap-8",
         "s-transition-opacity s-duration-300 s-ease-in-out",
         isVisible ? "s-opacity-100" : "s-opacity-0",
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         className || ""
       )}
     >
-      <div className="text-sm font-normal text-foreground md:text-base">
-        We use{" "}
-        <A variant="primary">
-          <Link
-            href="https://dust-tt.notion.site/Cookie-Policy-ec63a7fb72104a7babff1bf413e2c1ec"
-            target="_blank"
+      <div className="flex max-w-2xl flex-col gap-2">
+        <div className="text-base font-medium text-white md:text-lg">
+          We use cookies
+        </div>
+        <div className="text-sm font-normal text-slate-300 md:text-base">
+          By clicking "Accept All Cookies", you agree to the storing of cookies
+          on your device to enhance site navigation, analyze site usage, and
+          assist in our marketing efforts. You can also{" "}
+          <button
+            className="text-slate-400 underline transition-colors hover:text-slate-200"
+            onClick={() => {
+              setIsVisible(false);
+              onClickRefuse();
+            }}
           >
-            cookies
-          </Link>
-        </A>{" "}
-        to improve your experience on our site.
+            reject non-essential cookies
+          </button>
+          . View our{" "}
+          <A variant="primary" href="/home/platform-privacy">
+            Privacy Policy
+          </A>{" "}
+          for more information.
+        </div>
       </div>
-      <div className="flex gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          label="Reject All"
-          onClick={() => {
-            setIsVisible(false);
-            onClickRefuse();
-          }}
-        />
+      <div className="flex shrink-0 gap-3">
         <Button
           variant="highlight"
-          size="sm"
-          label="Accept All"
+          size="md"
+          label="Accept All Cookies"
           onClick={() => {
             setIsVisible(false);
             onClickAccept();
@@ -260,7 +305,6 @@ const Header = () => {
 
   return (
     <Head>
-      <title>Accelerate your entire organization with custom AI agents</title>
       <link rel="icon" type="image/png" href={faviconPath} />
       <link
         rel="preload"
@@ -332,24 +376,13 @@ const Header = () => {
         sizes="228x228"
         href="/static/AppIcon_228.png"
       />
-
-      <meta
-        id="meta-description"
-        name="description"
-        content="The way we work is changing. Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents."
-      />
-      <meta
-        id="og-title"
-        property="og:title"
-        content="Dust - Accelerate your entire organization with custom AI agents"
-      />
-      <meta id="og-image" property="og:image" content="/static/og_image.png" />
     </Head>
   );
 };
 
 interface PublicWebsiteLogoProps {
   size?: "default" | "small";
+  utmParam?: string;
 }
 
 const logoVariants = cva("", {
@@ -366,19 +399,13 @@ const logoVariants = cva("", {
 
 export const PublicWebsiteLogo = ({
   size = "default",
+  utmParam,
 }: PublicWebsiteLogoProps) => {
   const className = logoVariants({ size });
 
   return (
-    <Link href="/home">
-      <Hover3D className={`relative ${className}`}>
-        <Div3D depth={0} className={className}>
-          <DustLogoLayer1 className={className} />
-        </Div3D>
-        <Div3D depth={25} className="absolute top-0">
-          <DustLogoLayer2 className={className} />
-        </Div3D>
-      </Hover3D>
+    <Link href={`/home${utmParam ? `?${utmParam}` : ""}`}>
+      <DustLogo className={className} />
     </Link>
   );
 };

@@ -7,6 +7,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { registerSlackWebhookRouterEntry } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
@@ -134,6 +135,24 @@ async function handler(
               type: "internal_server_error",
               message: "Could not update the connector",
               connectors_error: updateRes.error,
+            },
+          });
+        }
+      }
+
+      // For Slack connections, update the signing secret in the webhook router
+      if (dataSource.connectorProvider === "slack") {
+        const webhookRes = await registerSlackWebhookRouterEntry({
+          connectionId: bodyValidation.right.connectionId,
+          extraConfig: bodyValidation.right.extraConfig,
+        });
+
+        if (webhookRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: webhookRes.error.message,
             },
           });
         }

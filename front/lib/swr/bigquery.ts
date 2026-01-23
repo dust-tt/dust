@@ -4,8 +4,6 @@ import { fetcherWithBody, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { PostCheckBigQueryLocationsResponseBody } from "@app/pages/api/w/[wId]/credentials/check_bigquery_locations";
 import type { CheckBigQueryCredentials, LightWorkspaceType } from "@app/types";
 
-const EMPTY_OBJECT: Record<string, string[]> = Object.freeze({});
-
 export function useBigQueryLocations({
   owner,
   credentials,
@@ -37,9 +35,10 @@ export function useBigQueryLocations({
   );
 
   return {
-    locations: data?.locations ?? EMPTY_OBJECT,
+    locations: data?.locations ?? undefined,
     isLocationsLoading: !error && !data,
     isLocationsError: !!error,
+    error: error?.error,
     mutateLocations: mutate,
   };
 }

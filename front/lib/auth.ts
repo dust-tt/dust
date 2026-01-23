@@ -12,8 +12,8 @@ import config from "@app/lib/api/config";
 import type { WorkOSJwtPayload } from "@app/lib/api/workos";
 import { getWorkOSSession } from "@app/lib/api/workos/user";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
@@ -29,8 +29,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
   APIErrorWithStatusCode,
-  GroupType,
   LightWorkspaceType,
+  ModelId,
   PermissionType,
   PlanType,
   ResourcePermission,
@@ -46,8 +46,10 @@ import {
   isAdmin,
   isBuilder,
   isDevelopment,
+  isString,
   isUser,
   Ok,
+  removeNulls,
   WHITELISTABLE_FEATURES,
 } from "@app/types";
 
@@ -55,14 +57,23 @@ const { ACTIVATE_ALL_FEATURES_DEV = false } = process.env;
 
 const DUST_INTERNAL_EMAIL_REGEXP = /^[^@]+@dust\.tt$/;
 
-export type PublicAPIAuthMethod = "api_key" | "access_token";
+const DustApiKeyNameHeader = "x-dust-api-key-name";
 
-export const getAuthType = (token: string): PublicAPIAuthMethod => {
-  return token.startsWith(SECRET_KEY_PREFIX) ? "api_key" : "access_token";
+export type AuthMethodType =
+  | "system_api_key"
+  | "api_key"
+  | "oauth"
+  | "session"
+  | "internal";
+
+// Any token which do not start with sk- is considered an OAuth token.
+export const isOAuthToken = (token: string): boolean => {
+  return !token.startsWith(SECRET_KEY_PREFIX);
 };
 
 export interface AuthenticatorType {
-  workspaceId: string | null;
+  authMethod: AuthMethodType;
+  workspaceId: string;
   userId: string | null;
   role: RoleType;
   groupIds: string[];
@@ -82,22 +93,25 @@ export class Authenticator {
   _role: RoleType;
   _subscription: SubscriptionResource | null;
   _user: UserResource | null;
-  _groups: GroupResource[];
+  _groupModelIds: ModelId[];
   _workspace: WorkspaceResource | null;
+  _authMethod: AuthMethodType;
 
   // Should only be called from the static methods below.
   constructor({
     workspace,
     user,
     role,
-    groups,
+    groupModelIds,
+    authMethod,
     subscription,
     key,
   }: {
     workspace?: WorkspaceResource | null;
     user?: UserResource | null;
     role: RoleType;
-    groups: GroupResource[];
+    groupModelIds: ModelId[];
+    authMethod: AuthMethodType;
     subscription?: SubscriptionResource | null;
     key?: KeyAuthType;
   }) {
@@ -105,10 +119,11 @@ export class Authenticator {
     this._workspace = workspace || null;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._user = user || null;
-    this._groups = groups;
+    this._groupModelIds = groupModelIds;
     this._role = role;
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     this._subscription = subscription || null;
+    this._authMethod = authMethod;
     this._key = key;
     if (user) {
       tracer.setUser({
@@ -165,10 +180,10 @@ export class Authenticator {
   }
 
   /**
-   * Get a an Authenticator for the target workspace associated with the authentified user from the
-   * Auth0 session.
+   * Get an Authenticator for the target workspace associated with the authentified user from the
+   * workos session.
    *
-   * @param session any Auth0 session
+   * @param session any workos session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
@@ -183,16 +198,16 @@ export class Authenticator {
       ]);
 
       let role = "none" as RoleType;
-      let groups: GroupResource[] = [];
+      let groupModelIds: ModelId[] = [];
       let subscription: SubscriptionResource | null = null;
 
       if (user && workspace) {
-        [role, groups, subscription] = await Promise.all([
+        [role, groupModelIds, subscription] = await Promise.all([
           MembershipResource.getActiveRoleForUserInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
           }),
-          GroupResource.listUserGroupsInWorkspace({
+          GroupResource.listUserGroupModelIdsInWorkspace({
             user,
             workspace: renderLightWorkspaceType({ workspace }),
           }),
@@ -203,10 +218,11 @@ export class Authenticator {
       }
 
       return new Authenticator({
+        authMethod: "session",
         workspace,
         user,
         role,
-        groups,
+        groupModelIds,
         subscription,
       });
     });
@@ -214,11 +230,12 @@ export class Authenticator {
 
   async refresh({ transaction }: { transaction?: Transaction } = {}) {
     if (this._user && this._workspace) {
-      this._groups = await GroupResource.listUserGroupsInWorkspace({
-        user: this._user,
-        workspace: renderLightWorkspaceType({ workspace: this._workspace }),
-        transaction,
-      });
+      this._groupModelIds =
+        await GroupResource.listUserGroupModelIdsInWorkspace({
+          user: this._user,
+          workspace: renderLightWorkspaceType({ workspace: this._workspace }),
+          transaction,
+        });
     } else {
       return;
     }
@@ -226,10 +243,10 @@ export class Authenticator {
 
   /**
    * Get a an Authenticator for the target workspace and the authentified Super User user from the
-   * Auth0 session.
+   * workos session.
    * Super User will have `role` set to `admin` regardless of their actual role in the workspace.
    *
-   * @param session any Auth0 session
+   * @param session any workos session
    * @param wId string target workspace id
    * @returns Promise<Authenticator>
    */
@@ -259,10 +276,11 @@ export class Authenticator {
     }
 
     return new Authenticator({
+      authMethod: "session",
       workspace,
       user,
       role: user?.isDustSuperUser ? "admin" : "none",
-      groups,
+      groupModelIds: groups.map((g) => g.id),
       subscription,
     });
   }
@@ -284,16 +302,16 @@ export class Authenticator {
     ]);
 
     let role: RoleType = "none";
-    let groups: GroupResource[] = [];
+    let groupModelIds: ModelId[] = [];
     let subscription: SubscriptionResource | null = null;
 
     if (user && workspace) {
-      [role, groups, subscription] = await Promise.all([
+      [role, groupModelIds, subscription] = await Promise.all([
         MembershipResource.getActiveRoleForUserInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
-        GroupResource.listUserGroupsInWorkspace({
+        GroupResource.listUserGroupModelIdsInWorkspace({
           user,
           workspace: renderLightWorkspaceType({ workspace }),
         }),
@@ -304,10 +322,11 @@ export class Authenticator {
     }
 
     return new Authenticator({
+      authMethod: "internal",
       workspace,
       user,
       role,
-      groups,
+      groupModelIds,
       subscription,
     });
   }
@@ -335,15 +354,15 @@ export class Authenticator {
     }
 
     let role = "none" as RoleType;
-    let groups: GroupResource[] = [];
+    let groupModelIds: ModelId[] = [];
     let subscription: SubscriptionResource | null = null;
 
-    [role, groups, subscription] = await Promise.all([
+    [role, groupModelIds, subscription] = await Promise.all([
       MembershipResource.getActiveRoleForUserInWorkspace({
         user: user,
         workspace: renderLightWorkspaceType({ workspace }),
       }),
-      GroupResource.listUserGroupsInWorkspace({
+      GroupResource.listUserGroupModelIdsInWorkspace({
         user,
         workspace: renderLightWorkspaceType({ workspace }),
       }),
@@ -354,8 +373,9 @@ export class Authenticator {
 
     return new Ok(
       new Authenticator({
+        authMethod: "oauth",
         workspace,
-        groups,
+        groupModelIds,
         user,
         role,
         subscription,
@@ -444,15 +464,17 @@ export class Authenticator {
 
     return {
       workspaceAuth: new Authenticator({
+        authMethod: key.isSystem ? "system_api_key" : "api_key",
         // If the key is associated with the workspace, we associate the groups.
-        groups: isKeyWorkspace ? allGroups : [],
+        groupModelIds: isKeyWorkspace ? allGroups.map((g) => g.id) : [],
         key: key.toAuthJSON(),
         role,
         subscription: workspaceSubscription,
         workspace,
       }),
       keyAuth: new Authenticator({
-        groups: allGroups,
+        authMethod: key.isSystem ? "system_api_key" : "api_key",
+        groupModelIds: allGroups.map((g) => g.id),
         key: key.toAuthJSON(),
         role: "builder",
         subscription: keySubscription,
@@ -499,7 +521,8 @@ export class Authenticator {
     );
 
     return new Authenticator({
-      groups,
+      authMethod: "internal",
+      groupModelIds: groups.map((g) => g.id),
       role: "builder",
       subscription: null,
       workspace,
@@ -530,9 +553,10 @@ export class Authenticator {
     ]);
 
     return new Authenticator({
+      authMethod: "internal",
       workspace,
       role: "builder",
-      groups: globalGroup ? [globalGroup] : [],
+      groupModelIds: globalGroup ? [globalGroup.id] : [],
       subscription,
     });
   }
@@ -568,9 +592,10 @@ export class Authenticator {
     ]);
 
     return new Authenticator({
+      authMethod: "internal",
       workspace,
       role: "admin",
-      groups,
+      groupModelIds: groups.map((g) => g.id),
       subscription,
     });
   }
@@ -589,6 +614,15 @@ export class Authenticator {
     { userEmail }: { userEmail: string }
   ): Promise<Authenticator | null> {
     if (!auth.isSystemKey()) {
+      logger.error(
+        {
+          keyId: auth.key()?.id,
+          userEmail,
+          workspaceId: auth.workspace()?.sId,
+        },
+        "Attempted to exchange non-system key authenticator for user authenticator"
+      );
+
       throw new Error("Provided authenticator does not have a system key.");
     }
 
@@ -627,19 +661,32 @@ export class Authenticator {
       return null;
     }
 
-    const groups = await GroupResource.listUserGroupsInWorkspace({
+    const groupModelIds = await GroupResource.listUserGroupModelIdsInWorkspace({
       user,
       workspace: renderLightWorkspaceType({ workspace: owner }),
     });
 
     return new Authenticator({
+      authMethod: auth.authMethod(),
       key: auth._key,
       // We limit scope to a user role.
       role: "user",
-      groups,
+      groupModelIds,
       user,
       subscription: auth._subscription,
       workspace: auth._workspace,
+    });
+  }
+
+  exchangeKey(key: KeyAuthType) {
+    return new Authenticator({
+      authMethod: this.authMethod(),
+      key,
+      role: this._role,
+      groupModelIds: this._groupModelIds,
+      user: this._user,
+      subscription: this._subscription,
+      workspace: this._workspace,
     });
   }
 
@@ -665,6 +712,10 @@ export class Authenticator {
 
   isKey(): boolean {
     return !!this._key;
+  }
+
+  authMethod(): AuthMethodType {
+    return this._authMethod;
   }
 
   workspace(): WorkspaceType | null {
@@ -782,8 +833,40 @@ export class Authenticator {
     return isDustInternal && isDustSuperUser;
   }
 
-  groups(): GroupType[] {
-    return this._groups.map((g) => g.toJSON());
+  groupIds(): string[] {
+    const workspaceId = this._workspace?.id;
+    // Group are always tied to a workspace, so we can't have a group without a workspace.
+    if (!workspaceId) {
+      return [];
+    }
+
+    return this._groupModelIds.map((id) =>
+      GroupResource.modelIdToSId({ id, workspaceId })
+    );
+  }
+
+  groupModelIds(): ModelId[] {
+    return this._groupModelIds;
+  }
+
+  hasGroup(groupId: string): boolean {
+    const workspaceId = this._workspace?.id;
+    // Group are always tied to a workspace, so we can't have a group without a workspace.
+    if (!workspaceId) {
+      return false;
+    }
+
+    return this._groupModelIds.some(
+      (id) =>
+        GroupResource.modelIdToSId({
+          id,
+          workspaceId,
+        }) === groupId
+    );
+  }
+
+  hasGroupByModelId(groupId: ModelId): boolean {
+    return this._groupModelIds.includes(groupId);
   }
 
   /**
@@ -853,9 +936,9 @@ export class Authenticator {
     }
 
     // Second path: Group-based permission check.
-    return this.groups().some((userGroup) =>
+    return this._groupModelIds.some((groupId) =>
       resourcePermission.groups.some(
-        (gp) => gp.id === userGroup.id && gp.permissions.includes(permission)
+        (gp) => gp.id === groupId && gp.permissions.includes(permission)
       )
     );
   }
@@ -877,17 +960,23 @@ export class Authenticator {
   }
 
   toJSON(): AuthenticatorType {
+    const workspace = this._workspace;
+    assert(workspace, "Workspace is required to serialize Authenticator");
+
     return {
-      workspaceId: this._workspace?.sId ?? null,
+      authMethod: this._authMethod,
+      workspaceId: workspace.sId,
       userId: this._user?.sId ?? null,
       role: this._role,
-      groupIds: this._groups.map((g) => g.sId),
+      groupIds: this.groupIds(),
       subscriptionId: this._subscription?.sId ?? null,
       key: this._key,
     };
   }
 
-  static async fromJSON(authType: AuthenticatorType): Promise<Authenticator> {
+  static async fromJSON(
+    authType: AuthenticatorType
+  ): Promise<Result<Authenticator, { code: "subscription_mismatch" }>> {
     const [workspace, user] = await Promise.all([
       authType.workspaceId
         ? WorkspaceResource.fetchById(authType.workspaceId)
@@ -904,62 +993,34 @@ export class Authenticator {
         ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
         : null;
 
-    assert(
-      !authType.subscriptionId ||
-        !subscription ||
-        subscription.sId === authType.subscriptionId,
-      `Subscription mismatch: expected ${authType.subscriptionId} but got ${subscription?.sId}`
-    );
-
-    let groups: GroupResource[] = [];
-    if (authType.groupIds.length > 0 && workspace) {
-      // Temporary authenticator used solely to fetch the group resources. We
-      // grant it the `admin` role so that it can read any group in the
-      // workspace, irrespective of membership. The returned authenticator
-      // (see below) will still use the original `authType.role`, so this
-      // escalation is confined to the internal bootstrap step and does not
-      // leak outside of this scope.
-      const tempAuth = new Authenticator({
-        workspace,
-        user,
-        role: "admin",
-        groups: [],
-        subscription,
-        key: authType.key,
-      });
-
-      const groupsResult = await GroupResource.fetchByIds(
-        tempAuth,
-        authType.groupIds
-      );
-
-      if (groupsResult.isOk()) {
-        groups = groupsResult.value;
-      } else {
-        logger.error(
-          {
-            workspaceId: workspace.sId,
-            groupIds: authType.groupIds,
-            error: groupsResult.error,
-          },
-          "[Authenticator.fromJSON] Failed to fetch groups"
-        );
-      }
+    if (
+      authType.subscriptionId &&
+      subscription &&
+      subscription.sId !== authType.subscriptionId
+    ) {
+      return new Err({ code: "subscription_mismatch" });
     }
 
-    return new Authenticator({
-      workspace,
-      user,
-      role: authType.role,
-      groups,
-      subscription,
-      key: authType.key,
-    });
+    const groupIds = removeNulls(
+      authType.groupIds.map((sId) => getResourceIdFromSId(sId))
+    );
+
+    return new Ok(
+      new Authenticator({
+        authMethod: authType.authMethod,
+        workspace,
+        user,
+        role: authType.role,
+        groupModelIds: groupIds,
+        subscription,
+        key: authType.key,
+      })
+    );
   }
 }
 
 /**
- * Retrieves the Auth0 session from the request/response.
+ * Retrieves the workos session from the request/response.
  * @param req NextApiRequest request object
  * @param res NextApiResponse response object
  * @returns Promise<any>
@@ -1134,18 +1195,18 @@ export async function prodAPICredentialsForOwner(
 }
 
 export const getFeatureFlags = memoizer.sync({
-  load: async (workspace: WorkspaceType): Promise<WhitelistableFeature[]> => {
+  load: async (
+    workspace: LightWorkspaceType
+  ): Promise<WhitelistableFeature[]> => {
     if (ACTIVATE_ALL_FEATURES_DEV && isDevelopment()) {
       return [...WHITELISTABLE_FEATURES];
     } else {
-      const res = await FeatureFlag.findAll({
-        where: { workspaceId: workspace.id },
-      });
-      return res.map((flag) => flag.name);
+      const flags = await FeatureFlagResource.listForWorkspace(workspace);
+      return flags.map((flag) => flag.name);
     }
   },
 
-  hash: function (workspace: WorkspaceType) {
+  hash: function (workspace: LightWorkspaceType) {
     return `feature_flags_${workspace.id}`;
   },
 
@@ -1161,4 +1222,25 @@ export async function isRestrictedFromAgentCreation(
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner)
   );
+}
+
+export function getApiKeyNameFromHeaders(headers: {
+  [key: string]: string | string[] | undefined;
+}) {
+  const apiKeyName = headers[DustApiKeyNameHeader];
+  if (isString(apiKeyName)) {
+    return apiKeyName;
+  }
+  return undefined;
+}
+
+export function getApiKeyNameHeader(auth: Authenticator) {
+  const key = auth.key();
+  if (!key || !key.name) {
+    return undefined;
+  }
+
+  return {
+    [DustApiKeyNameHeader]: key.name,
+  };
 }

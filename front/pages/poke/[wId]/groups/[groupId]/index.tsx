@@ -1,93 +1,41 @@
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
-import { ViewGroupTable } from "@app/components/poke/groups/view";
-import { MembersDataTable } from "@app/components/poke/members/table";
+import { GroupPage } from "@app/components/poke/pages/GroupPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getMembers } from "@app/lib/api/workspace";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import type {
-  GroupType,
-  LightWorkspaceType,
-  UserTypeWithWorkspaces,
-} from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  members: UserTypeWithWorkspaces[];
   owner: LightWorkspaceType;
-  group: GroupType;
+  groupId: string;
 }>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner) {
+  const owner = auth.getNonNullableWorkspace();
+
+  const { wId, groupId } = context.params ?? {};
+  if (!isString(wId) || !isString(groupId)) {
     return {
       notFound: true,
     };
   }
-
-  const { groupId } = context.params || {};
-  if (typeof groupId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const groupRes = await GroupResource.fetchById(auth, groupId);
-  if (groupRes.isErr()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const group = groupRes.value;
-
-  const groupMembers = await group.getActiveMembers(auth);
-  const memberships = await getMembers(auth);
-
-  const userWithWorkspaces = groupMembers.reduce<UserTypeWithWorkspaces[]>(
-    (acc, user) => {
-      const member = memberships.members.find((m) => m.sId === user.sId);
-
-      if (member) {
-        acc.push(member);
-      }
-
-      return acc;
-    },
-    []
-  );
 
   return {
     props: {
-      members: userWithWorkspaces,
       owner,
-      group: group.toJSON(),
+      groupId,
     },
   };
 });
 
-export default function GroupPage({
-  members,
+export default function GroupPageNextJS({
   owner,
-  group,
+  groupId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return (
-    <>
-      <h3 className="text-xl font-bold">
-        Group {group.name} ({group.kind}) within workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
-          {owner.name}
-        </a>
-      </h3>
-      <div className="flex flex-row gap-x-6">
-        <ViewGroupTable group={group} />
-        <MembersDataTable members={members} owner={owner} readonly />
-      </div>
-    </>
-  );
+  return <GroupPage owner={owner} groupId={groupId} />;
 }
 
-GroupPage.getLayout = (
+GroupPageNextJS.getLayout = (
   page: ReactElement,
   { owner }: { owner: LightWorkspaceType }
 ) => {

@@ -1,87 +1,45 @@
-import { Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
-import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
+import { MCPServerViewPage } from "@app/components/poke/pages/MCPServerViewPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { mcpServerViewToPokeJSON } from "@app/lib/poke/utils";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { PokeMCPServerViewType, WorkspaceType } from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 
 export const getServerSideProps = withSuperUserAuthRequirements<{
-  mcpServerView: PokeMCPServerViewType;
-  owner: WorkspaceType;
+  owner: LightWorkspaceType;
+  svId: string;
 }>(async (context, auth) => {
   const owner = auth.getNonNullableWorkspace();
 
-  const { svId } = context.params || {};
-  if (typeof svId !== "string") {
+  const { wId, spaceId, svId } = context.params ?? {};
+  if (!isString(wId) || !isString(spaceId) || !isString(svId)) {
     return {
       notFound: true,
     };
   }
-
-  const mcpServerView = await MCPServerViewResource.fetchById(auth, svId);
-  if (!mcpServerView) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const pokeMCPServerView = await mcpServerViewToPokeJSON(mcpServerView);
 
   return {
     props: {
-      mcpServerView: pokeMCPServerView,
       owner,
+      svId,
     },
   };
 });
 
-export default function MCPServerViewPage({
-  mcpServerView,
+export default function MCPServerViewPageNextJS({
   owner,
+  svId,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return (
-    <>
-      <h3 className="text-xl font-bold">
-        MCP Server View {getMcpServerViewDisplayName(mcpServerView)} in space{" "}
-        <a
-          href={`/poke/${owner.sId}/spaces/${mcpServerView.spaceId}`}
-          className="text-highlight-500"
-        >
-          {mcpServerView.space?.name || mcpServerView.spaceId}
-        </a>{" "}
-        within workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
-          {owner.name}
-        </a>
-      </h3>
-      <div className="mt-4">
-        <Page.Vertical align="stretch">
-          <ViewMCPServerViewTable mcpServerView={mcpServerView} owner={owner} />
-        </Page.Vertical>
-      </div>
-    </>
-  );
+  return <MCPServerViewPage owner={owner} svId={svId} />;
 }
 
-MCPServerViewPage.getLayout = (
+MCPServerViewPageNextJS.getLayout = (
   page: ReactElement,
-  {
-    owner,
-    mcpServerView,
-  }: { owner: WorkspaceType; mcpServerView: PokeMCPServerViewType }
+  { owner }: { owner: LightWorkspaceType }
 ) => {
   return (
-    <PokeLayout
-      title={`${owner.name} - ${getMcpServerViewDisplayName(mcpServerView)} in ${
-        mcpServerView.space?.name || mcpServerView.spaceId
-      }`}
-    >
-      {page}
-    </PokeLayout>
+    <PokeLayout title={`${owner.name} - MCP Server View`}>{page}</PokeLayout>
   );
 };

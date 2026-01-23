@@ -6,19 +6,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { makeColumnsForAssistants } from "@app/components/poke/assistants/columns";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { clientFetch } from "@app/lib/egress/client";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
+import type { PokeAgentConfigurationType } from "@app/pages/api/poke/workspaces/[wId]/agent_configurations";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
-import type {
-  LightAgentConfigurationType,
-  LightWorkspaceType,
-} from "@app/types";
+import type { LightWorkspaceType } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
 interface AssistantsDataTableProps {
@@ -28,9 +27,9 @@ interface AssistantsDataTableProps {
 }
 
 function prepareAgentConfigurationForDisplay(
-  agenConfigurations: LightAgentConfigurationType[]
+  agentConfigurations: PokeAgentConfigurationType[]
 ) {
-  return agenConfigurations.filter(
+  return agentConfigurations.filter(
     (ac) =>
       !Object.values(GLOBAL_AGENTS_SID).includes(ac.sId as GLOBAL_AGENTS_SID)
   );
@@ -38,7 +37,7 @@ function prepareAgentConfigurationForDisplay(
 
 const importAssistant = async (
   owner: LightWorkspaceType,
-  router: NextRouter,
+  router: AppRouter,
   setImporting: (importing: boolean) => void
 ) => {
   const input = document.createElement("input");
@@ -51,7 +50,7 @@ const importAssistant = async (
     }
     setImporting(true);
     const fileContent = await file.text();
-    const response = await fetch(
+    const response = await clientFetch(
       `/api/poke/workspaces/${owner.sId}/agent_configurations/import`,
       {
         method: "POST",
@@ -77,10 +76,11 @@ export function AssistantsDataTable({
   agentsRetention,
   loadOnInit,
 }: AssistantsDataTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const [showRestoreAssistantModal, setShowRestoreAssistantModal] =
     useState(false);
   const [importing, setImporting] = useState(false);
+
   const assistantButtons = (
     <div className="flex flex-row gap-2">
       <Button

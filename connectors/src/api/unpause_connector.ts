@@ -27,15 +27,6 @@ const _unpauseConnectorAPIHandler = async (
         status_code: 404,
       });
     }
-    if (!connector.isPaused()) {
-      logger.info(
-        {
-          connectorId: connector.id,
-        },
-        "No-Op: Connector is not paused"
-      );
-      return res.sendStatus(204);
-    }
 
     const unpauseRes = await getConnectorManager({
       connectorProvider: connector.type,

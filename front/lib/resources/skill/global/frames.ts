@@ -1,0 +1,15 @@
+import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
+import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
+
+export const framesSkill = {
+  sId: "frames",
+  name: "Create Frames",
+  userFacingDescription:
+    "Turn insights into interactive dashboards and presentations your team can explore, customize, and share. Living documents that adapt to different stakeholders.",
+  agentFacingDescription:
+    "Create interactive visualizations, charts, dashboards, and presentations as executable React components.",
+  instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
+  internalMCPServerNames: ["interactive_content"],
+  version: 1,
+  icon: "ActionFrameIcon",
+} as const satisfies GlobalSkillDefinition;

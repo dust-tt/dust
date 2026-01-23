@@ -2,12 +2,12 @@ import _ from "lodash";
 import { Sequelize } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
-  AgentMessage,
+  AgentMessageModel,
   ConversationModel,
-  Message,
-} from "@app/lib/models/assistant/conversation";
+  MessageModel,
+} from "@app/lib/models/agent/conversation";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -28,7 +28,7 @@ makeScript({}, async ({ execute }, logger) => {
 });
 
 async function getDistinctWorkspaceIds(): Promise<number[]> {
-  const workspaceIds = await AgentConfiguration.findAll({
+  const workspaceIds = await AgentConfigurationModel.findAll({
     attributes: [
       [Sequelize.fn("DISTINCT", Sequelize.col("workspaceId")), "workspaceId"],
     ],
@@ -88,13 +88,13 @@ async function updateConversation(
   // we get all messages without checking rank, because we only use them to get
   // the agentConfigurationIds. At the time of writing (pre-spaces release), we
   // don't need to consider message version at all for the backfill.
-  const messages = await Message.findAll({
+  const messages = await MessageModel.findAll({
     where: {
       conversationId: conversation.id,
     },
     include: [
       {
-        model: AgentMessage,
+        model: AgentMessageModel,
         as: "agentMessage",
         required: true,
         attributes: ["agentConfigurationId"],
@@ -113,7 +113,7 @@ async function updateConversation(
 
   const groupIds = _.uniq(
     (
-      await AgentConfiguration.findAll({
+      await AgentConfigurationModel.findAll({
         where: { sId: agentConfigurationIds },
       })
     )

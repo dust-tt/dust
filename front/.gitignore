@@ -35,4 +35,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-CLAUDE.md
+# build output
+dist/
+
+# cache
+.cache/
+.eslintcache

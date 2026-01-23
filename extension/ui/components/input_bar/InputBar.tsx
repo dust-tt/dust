@@ -8,7 +8,7 @@ import {
   compareAgentsForSort,
   isEqualNode,
 } from "@app/shared/lib/utils";
-import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
+import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import { useFileDrop } from "@app/ui/components/conversation/FileUploaderContext";
 import { GenerationContext } from "@app/ui/components/conversation/GenerationContextProvider";
 import { InputBarAttachments } from "@app/ui/components/input_bar/InputBarAttachment";
@@ -160,7 +160,7 @@ export function AssistantInputBar({
   }, [baseAgentConfigurations, additionalAgentConfiguration]);
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
-  const { animate, selectedAssistant } = useContext(InputBarContext);
+  const { animate, selectedAgent } = useContext(InputBarContext);
   const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -269,7 +269,7 @@ export function AssistantInputBar({
     const newFiles = getFileBlobs().map((cf) => ({
       title: cf.filename,
       fileId: cf.fileId,
-      url: cf.publicUrl,
+      url: cf.sourceUrl,
       kind: cf.kind,
     }));
 
@@ -290,7 +290,7 @@ export function AssistantInputBar({
           ...files.map((cf) => ({
             title: cf.filename,
             fileId: cf.fileId || "",
-            url: cf.publicUrl,
+            url: cf.sourceUrl,
             kind: cf.kind,
           }))
         );
@@ -316,11 +316,11 @@ export function AssistantInputBar({
         <div className="absolute inset-0 z-50 overflow-hidden">
           <div
             className={classNames(
-              "fixed flex inset-0 backdrop-blur-sm transition-opacity",
+              "fixed inset-0 flex backdrop-blur-sm transition-opacity",
               "bg-muted-background/80 dark:bg-muted-background-night/80"
             )}
           />
-          <div className="fixed top-0 left-0 h-full w-full flex flex-col justify-center items-center gap-4">
+          <div className="fixed left-0 top-0 flex h-full w-full flex-col items-center justify-center gap-4">
             <span className="z-50">
               <Page.Header title="Screen capture in progress..." />
             </span>
@@ -350,7 +350,7 @@ export function AssistantInputBar({
               "rounded-3xl transition-all",
               "bg-muted-background dark:bg-muted-background-night",
               "border",
-              "border-border-dark dark:border-border-dark-night",
+              "border-border-dark dark:border-border-dark/10",
               "sm:border-border-dark/50 sm:focus-within:border-border-dark",
               "dark:focus-within:border-border-dark-night sm:focus-within:border-border-dark",
               "focus-within:ring-1 dark:focus-within:ring-1",
@@ -373,7 +373,7 @@ export function AssistantInputBar({
                 allAssistants={activeAgents}
                 agentConfigurations={agentConfigurations}
                 owner={owner}
-                selectedAssistant={selectedAssistant}
+                selectedAssistant={selectedAgent}
                 onEnterKeyDown={handleSubmit}
                 stickyMentions={stickyMentions}
                 isTabIncluded={isTabIncluded}

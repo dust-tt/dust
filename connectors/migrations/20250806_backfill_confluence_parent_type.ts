@@ -2,7 +2,7 @@ import type { Logger } from "pino";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
 
-import { ConfluencePage } from "@connectors/lib/models/confluence";
+import { ConfluencePageModel } from "@connectors/lib/models/confluence";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types/shared/model_id";
 import { concurrentExecutor } from "@connectors/types/shared/utils/async_utils";
@@ -20,7 +20,7 @@ async function backfillConfluenceParentTypeForConnector(
     const pagesWithParentButWithoutParentType: {
       pageId: string;
       id: ModelId;
-    }[] = await ConfluencePage.findAll({
+    }[] = await ConfluencePageModel.findAll({
       where: {
         connectorId: connector.id,
         parentType: {
@@ -53,7 +53,7 @@ async function backfillConfluenceParentTypeForConnector(
       ]?.id;
 
     if (execute) {
-      await ConfluencePage.update(
+      await ConfluencePageModel.update(
         {
           parentType: "page",
         },

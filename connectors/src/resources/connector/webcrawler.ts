@@ -12,9 +12,7 @@ import { WebCrawlerConfigurationResource } from "@connectors/resources/webcrawle
 import type { WebCrawlerConfiguration } from "@connectors/types";
 import type { ModelId } from "@connectors/types";
 
-export class WebCrawlerStrategy
-  implements ConnectorProviderStrategy<"webcrawler">
-{
+export class WebCrawlerStrategy implements ConnectorProviderStrategy<"webcrawler"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<WebCrawlerConfigurationModel> & {

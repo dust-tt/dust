@@ -1,5 +1,11 @@
 import type { Authenticator } from "@app/lib/auth";
-import { expireRateLimiterKey } from "@app/lib/utils/rate_limiter";
+import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import {
+  expireRateLimiterKey,
+  getRateLimiterCount,
+  getTimeframeSecondsFromLiteral,
+} from "@app/lib/utils/rate_limiter";
 import type { LightWorkspaceType, MaxMessagesTimeframeType } from "@app/types";
 
 export const makeMessageRateLimitKeyForWorkspace = (
@@ -13,6 +19,12 @@ export const makeAgentMentionsRateLimitKeyForWorkspace = (
   maxMessagesTimeframe: MaxMessagesTimeframeType
 ) => {
   return `workspace:${owner.id}:agent_message_count:${maxMessagesTimeframe}`;
+};
+
+export const makeProgrammaticUsageRateLimitKeyForWorkspace = (
+  owner: LightWorkspaceType
+) => {
+  return `workspace:${owner.id}:programmatic_usage_rate_limit`;
 };
 
 export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
@@ -29,4 +41,44 @@ export async function resetMessageRateLimitForWorkspace(auth: Authenticator) {
       plan.limits.assistant.maxMessagesTimeframe
     ),
   });
+}
+
+export async function getMessageUsageCount(auth: Authenticator): Promise<{
+  count: number;
+  limit: number;
+}> {
+  const workspace = auth.getNonNullableWorkspace();
+  const plan = auth.getNonNullablePlan();
+  const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
+
+  if (maxMessages === -1) {
+    // Unlimited messages
+    return { count: 0, limit: -1 };
+  }
+
+  const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+  const effectiveLimit = computeEffectiveMessageLimit({
+    planCode: plan.code,
+    maxMessages,
+    activeSeats,
+  });
+
+  const result = await getRateLimiterCount({
+    key: makeAgentMentionsRateLimitKeyForWorkspace(
+      workspace,
+      maxMessagesTimeframe
+    ),
+    timeframeSeconds: getTimeframeSecondsFromLiteral(maxMessagesTimeframe),
+  });
+
+  if (result.isErr()) {
+    // Return 0 on error to avoid blocking the UI
+    return { count: 0, limit: effectiveLimit };
+  }
+
+  // Cap count at limit to avoid displaying "120/100" if limit decreased.
+  return {
+    count: Math.min(result.value, effectiveLimit),
+    limit: effectiveLimit,
+  };
 }

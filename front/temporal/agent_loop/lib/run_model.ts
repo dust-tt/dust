@@ -1,16 +1,11 @@
 import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
+import tracer from "dd-trace";
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
-import {
-  TOOL_NAME_SEPARATOR,
-  tryListMCPTools,
-} from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  isDustAppChatBlockType,
-  runActionStreamed,
-} from "@app/lib/actions/server";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { computeStepContexts } from "@app/lib/actions/utils";
@@ -20,46 +15,49 @@ import {
   getDelimitersConfiguration,
 } from "@app/lib/api/assistant/agent_message_content_parser";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
-import {
-  categorizeAgentErrorMessage,
-  categorizeConversationRenderErrorMessage,
-} from "@app/lib/api/assistant/errors";
+import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
+import { categorizeConversationRenderErrorMessage } from "@app/lib/api/assistant/errors";
 import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { isLegacyAgentConfiguration } from "@app/lib/api/assistant/legacy_agent";
-import { renderConversationForModel } from "@app/lib/api/assistant/preprocessing";
-import config from "@app/lib/api/config";
+import {
+  fetchMessageInConversation,
+  getCompletionDuration,
+} from "@app/lib/api/assistant/messages";
+import {
+  createSkillKnowledgeFileSystemServer,
+  getSkillDataSourceConfigurations,
+  getSkillServers,
+} from "@app/lib/api/assistant/skill_actions";
+import { getLLM } from "@app/lib/api/llm";
+import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
+import {
+  getUserFacingLLMErrorMessage,
+  LLM_ERROR_TYPE_TO_CATEGORY,
+} from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { config as regionsConfig } from "@app/lib/api/regions/config";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
-import type { AgentActionsEvent, ModelId } from "@app/types";
-import { removeNulls } from "@app/types";
-import type {
-  FunctionCallContentType,
-  ReasoningContentType,
-  TextContentType,
-} from "@app/types/assistant/agent_message_content";
-import type { RunAgentExecutionData } from "@app/types/assistant/agent_run";
+import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
+import { assertNever, isTextContent, removeNulls } from "@app/types";
+import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
-//
-// TODO(DURABLE-AGENTS 2025-07-20): The method mutates agentMessage, this must
-
-// be refactored in a follow up PR.
 export async function runModelActivity(
   auth: Authenticator,
   {
@@ -69,7 +67,7 @@ export async function runModelActivity(
     functionCallStepContentIds,
     autoRetryCount = 0,
   }: {
-    runAgentData: RunAgentExecutionData;
+    runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
@@ -121,25 +119,16 @@ export async function runModelActivity(
 
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  async function publishAgentError(error: {
-    code: string;
-    message: string;
-    metadata: Record<string, string | number | boolean> | null;
-  }): Promise<void> {
+  async function publishAgentError(
+    error: {
+      code: string;
+      message: string;
+      metadata: Record<string, string | number | boolean> | null;
+    },
+    dustRunId?: string
+  ): Promise<void> {
     // Check if this is a multi_actions_error that hit max retries
-    let logMessage = `Agent error: ${error.message}`;
-    if (
-      error.code === "multi_actions_error" &&
-      error.metadata?.retriesAttempted === MAX_AUTO_RETRY
-    ) {
-      logMessage = `Agent error: ${error.message} (max retries reached)`;
-    } else if (
-      error.code === "multi_actions_error" &&
-      error.metadata?.category &&
-      error.metadata.category !== "retryable_model_error"
-    ) {
-      logMessage = `Agent error: ${error.message} (not retryable)`;
-    }
+    const logMessage = `Agent error: ${error.message}`;
 
     localLogger.error(
       {
@@ -155,6 +144,7 @@ export async function runModelActivity(
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
         error,
+        runIds: dustRunId ? [...runIds, dustRunId] : runIds,
       },
       agentMessageRow,
       conversation,
@@ -198,6 +188,32 @@ export async function runModelActivity(
       userMessage.context.clientSideMCPServerIds
     );
 
+  const { enabledSkills, equippedSkills } =
+    await SkillResource.listForAgentLoop(auth, {
+      agentConfiguration,
+      conversation,
+    });
+
+  const skillServers = await getSkillServers(auth, {
+    agentConfiguration,
+    skills: enabledSkills,
+  });
+
+  // Add file system server if skills have attached knowledge.
+  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
+    auth,
+    {
+      skills: enabledSkills,
+    }
+  );
+
+  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+    dataSourceConfigurations,
+  });
+  if (fileSystemServer) {
+    skillServers.push(fileSystemServer);
+  }
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
@@ -209,7 +225,10 @@ export async function runModelActivity(
       agentMessage,
       clientSideActionConfigurations: clientSideMCPActionConfigurations,
     },
-    jitServers
+    {
+      jitServers,
+      skillServers,
+    }
   );
 
   if (mcpToolsListingError) {
@@ -228,11 +247,7 @@ export async function runModelActivity(
   const availableActions = isLastStep ? [] : mcpActions.flatMap((s) => s.tools);
 
   let fallbackPrompt = "You are a conversational agent";
-  if (
-    agentConfiguration.actions.length ||
-    agentConfiguration.visualizationEnabled ||
-    availableActions.length > 0
-  ) {
+  if (agentConfiguration.actions.length || availableActions.length > 0) {
     fallbackPrompt += " with access to tool use.";
   } else {
     fallbackPrompt += ".";
@@ -248,7 +263,9 @@ export async function runModelActivity(
       })
     : null;
 
-  const prompt = await constructPromptMultiActions(auth, {
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+
+  const prompt = constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
     fallbackPrompt,
@@ -256,8 +273,11 @@ export async function runModelActivity(
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
     agentsList,
-    conversationId: conversation.sId,
+    conversation,
     serverToolsAndInstructions: mcpActions,
+    enabledSkills,
+    equippedSkills,
+    featureFlags,
   });
 
   const specifications: AgentActionSpecification[] = [];
@@ -276,13 +296,17 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    tools,
-    allowedTokenCount: model.contextSize - model.generationTokensCount,
-  });
+  const modelConversationRes = await tracer.trace(
+    "renderConversationForModel",
+    async () =>
+      renderConversationForModel(auth, {
+        conversation,
+        model,
+        prompt,
+        tools,
+        allowedTokenCount: model.contextSize - model.generationTokensCount,
+      })
+  );
 
   if (modelConversationRes.isErr()) {
     const categorizedError = categorizeConversationRenderErrorMessage(
@@ -309,6 +333,22 @@ export async function runModelActivity(
     return null;
   }
 
+  // Temporarily adding this to check if we can consider contents property only in llms
+  const unexpectedMessage =
+    modelConversationRes.value.modelConversation.messages.find(
+      (m) => m.role === "assistant" && !m.contents && m.content
+    );
+  if (unexpectedMessage) {
+    logger.error(
+      {
+        conversationId: conversation.sId,
+        agentMessageId: agentMessage.sId,
+        step,
+      },
+      "Found assistant message with legacy content field instead of contents array"
+    );
+  }
+
   // Check that specifications[].name are unique. This can happen if the user overrides two actions
   // names with the same name (advanced settings). We return an actionable error if that's the case
   // as we want to keep that as an invariant when interacting with models.
@@ -318,8 +358,8 @@ export async function runModelActivity(
       await publishAgentError({
         code: "duplicate_specification_name",
         message:
-          `Duplicate action name in agent configuration: ${spec.name}. ` +
-          "Your agents actions must have unique names.",
+          `Found multiple tools named "${spec.name}". ` +
+          "Each tool needs a unique name so the agent can specify which one to use.",
         metadata: null,
       });
 
@@ -328,306 +368,162 @@ export async function runModelActivity(
     seen.add(spec.name);
   }
 
-  const runConfig = cloneBaseConfig(
-    getDustProdAction("assistant-v2-multi-actions-agent").config
-  );
-  if (isLegacyAgent) {
-    runConfig.MODEL.function_call =
-      specifications.length === 1 ? specifications[0].name : null;
-  } else {
-    runConfig.MODEL.function_call = specifications.length === 0 ? null : "auto";
-  }
-  runConfig.MODEL.provider_id = model.providerId;
-  runConfig.MODEL.model_id = model.modelId;
-  runConfig.MODEL.temperature = agentConfiguration.model.temperature;
-
-  const reasoningEffort =
-    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
-
-  if (
-    reasoningEffort !== "none" &&
-    (reasoningEffort !== "light" || model.useNativeLightReasoning)
-  ) {
-    runConfig.MODEL.reasoning_effort = reasoningEffort;
-  }
-
-  if (agentConfiguration.model.responseFormat) {
-    runConfig.MODEL.response_format = JSON.parse(
-      agentConfiguration.model.responseFormat
-    );
-  }
-  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
-  if (anthropicBetaFlags) {
-    runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
-  }
-
-  // Set prompt_caching from agent configuration
-  if (agentConfiguration.model.promptCaching) {
-    runConfig.MODEL.prompt_caching = agentConfiguration.model.promptCaching;
-  }
-
-  const res = await runActionStreamed(
-    auth,
-    "assistant-v2-multi-actions-agent",
-    runConfig,
-    [
-      {
-        conversation: modelConversationRes.value.modelConversation,
-        specifications,
-        prompt,
-      },
-    ],
-    {
-      conversationId: conversation.sId,
-      workspaceId: conversation.owner.sId,
-      userMessageId: userMessage.sId,
-    }
-  );
-
-  // Errors occurring during the multi-actions-agent dust app may be retryable.
-  // Their implicit code should be "multi_actions_error".
-  async function handlePossiblyRetryableError(message: string) {
-    const { category, publicMessage, errorTitle } = categorizeAgentErrorMessage(
-      {
-        code: "multi_actions_error",
-        message,
-      }
-    );
-
-    const isRetryableModelError = [
-      "retryable_model_error",
-      "stream_error",
-    ].includes(category);
-
-    if (isRetryableModelError && autoRetryCount < MAX_AUTO_RETRY) {
-      localLogger.warn(
-        {
-          error: message,
-          retryCount: autoRetryCount + 1,
-          maxRetries: MAX_AUTO_RETRY,
-        },
-        "Auto-retrying multi-actions agent due to retryable model error."
-      );
-
-      // Recursively retry with incremented count
-      return runModelActivity(auth, {
-        runAgentData,
-        runIds,
-        step,
-        functionCallStepContentIds,
-        autoRetryCount: autoRetryCount + 1,
-      });
-    }
-
-    await publishAgentError({
-      code: "multi_actions_error",
-      message: publicMessage,
-      metadata: {
-        category,
-        errorTitle,
-        retriesAttempted: autoRetryCount,
-      },
-    });
-
-    return null;
-  }
-
-  if (res.isErr()) {
-    return handlePossiblyRetryableError(res.error.message);
-  }
-
-  const { eventStream, dustRunId } = res.value;
-  let output: {
-    actions: Array<{
-      functionCallId: string;
-      name: string | null;
-      arguments: Record<string, string | boolean | number> | null;
-    }>;
-    generation: string | null;
-    contents: Array<
-      TextContentType | FunctionCallContentType | ReasoningContentType
-    >;
-  } | null = null;
-
-  let isGeneration = true;
-
   const contentParser = new AgentMessageContentParser(
     agentConfiguration,
     agentMessage.sId,
     getDelimitersConfiguration({ agentConfiguration })
   );
 
-  let nativeChainOfThought = "";
+  const traceContext: LLMTraceContext = {
+    operationType: "agent_conversation",
+    agentConfigurationId: agentConfiguration.sId,
+    conversationId: conversation.sId,
+    userId: auth.user()?.sId,
+    workspaceId: conversation.owner.sId,
+  };
+
+  const llm = await getLLM(auth, {
+    modelId: model.modelId,
+    temperature: agentConfiguration.model.temperature,
+    reasoningEffort: agentConfiguration.model.reasoningEffort,
+    responseFormat: agentConfiguration.model.responseFormat,
+    context: traceContext,
+    // Custom trace input: show only the last user message instead of full conversation.
+    getTraceInput: (conv) => {
+      const lastUserMessage = conv.messages.findLast(
+        (msg) => msg.role === "user"
+      );
+      return lastUserMessage?.content
+        .filter(isTextContent)
+        .map((item) => item.text)
+        .join("\n");
+    },
+    // Custom trace output: only set on final call (no tool calls, has content).
+    getTraceOutput: (output) =>
+      !output.toolCalls?.length && output.content ? output.content : undefined,
+  });
+
+  // Should not happen
+  if (llm === null) {
+    localLogger.error(
+      {
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+      },
+      "LLM is null in runModelActivity, cannot proceed."
+    );
+
+    return null;
+  }
+
+  const metadata = llm.getMetadata();
+
+  // Errors occurring during the multi-actions-agent dust app may be retryable.
+  // Their implicit code should be "multi_actions_error".
+  const handlePossiblyRetryableError = async (
+    errorInfo: LLMErrorInfo,
+    dustRunId?: string
+  ) => {
+    const { isRetryable, message, type } = errorInfo;
+
+    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
+      await publishAgentError(
+        {
+          code: "multi_actions_error",
+          message: getUserFacingLLMErrorMessage(type, metadata),
+          metadata: {
+            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
+            retriesAttempted: autoRetryCount,
+            message: errorInfo.message,
+            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
+          },
+        },
+        dustRunId
+      );
+
+      return null;
+    }
+
+    // Should retry
+    localLogger.warn(
+      {
+        error: message,
+        retryCount: autoRetryCount + 1,
+        maxRetries: MAX_AUTO_RETRY,
+      },
+      "Auto-retrying multi-actions agent due to retryable model error."
+    );
+
+    // Recursively retry with incremented count
+    return runModelActivity(auth, {
+      runAgentData,
+      runIds,
+      step,
+      functionCallStepContentIds,
+      autoRetryCount: autoRetryCount + 1,
+    });
+  };
+
+  const modelInteractionStartDate = performance.now();
+
+  // Heartbeat before starting the LLM stream to ensure the activity is still
+  // considered alive after potentially long setup operations (MCP tools
+  // listing, conversation rendering, etc.).
+  heartbeat();
+
+  const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
+    modelConversationRes,
+    conversation,
+    userMessage,
+    specifications,
+    flushParserTokens,
+    contentParser,
+    agentMessageRow,
+    step,
+    agentConfiguration,
+    agentMessage,
+    model,
+    publishAgentError,
+    prompt,
+    llm,
+    updateResourceAndPublishEvent,
+  });
+
+  const modelInteractionEndDate = performance.now();
+
+  if (getOutputFromActionResponse.isErr()) {
+    const error = getOutputFromActionResponse.error;
+
+    switch (error.type) {
+      case "shouldRetryMessage":
+        // Get the dustRunId from the llm object (if available)
+        const errorDustRunId = llm?.getTraceId();
+        return handlePossiblyRetryableError(error.content, errorDustRunId);
+      case "shouldReturnNull":
+        return null;
+      default:
+        assertNever(error);
+    }
+  }
+
+  const { dustRunId, nativeChainOfThought, output } =
+    getOutputFromActionResponse.value;
 
   // Create a new object to avoid mutation
   const updatedFunctionCallStepContentIds = { ...functionCallStepContentIds };
 
-  for await (const event of eventStream) {
-    if (event.type === "function_call") {
-      isGeneration = false;
-    }
-
-    if (event.type === "error") {
-      await flushParserTokens();
-      return handlePossiblyRetryableError(event.content.message);
-    }
-
-    // Heartbeat allows the activity to be cancelled, e.g. on a "Stop agent" request.
-    heartbeat();
-
-    if (event.type === "tokens" && isGeneration) {
-      for await (const tokenEvent of contentParser.emitTokens(
-        event.content.tokens.text
-      )) {
-        await updateResourceAndPublishEvent(auth, {
-          event: tokenEvent,
-          agentMessageRow,
-          conversation,
-          step,
-        });
-      }
-    }
-
-    if (event.type === "reasoning_tokens") {
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "generation_tokens",
-          classification: "chain_of_thought",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          text: event.content.tokens.text,
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-
-      nativeChainOfThought += event.content.tokens.text;
-    }
-
-    if (event.type === "reasoning_item") {
-      await updateResourceAndPublishEvent(auth, {
-        event: {
-          type: "generation_tokens",
-          classification: "chain_of_thought",
-          created: Date.now(),
-          configurationId: agentConfiguration.sId,
-          messageId: agentMessage.sId,
-          text: "\n\n",
-        },
-        agentMessageRow,
-        conversation,
-        step,
-      });
-
-      nativeChainOfThought += "\n\n";
-    }
-
-    if (event.type === "block_execution") {
-      const e = event.content.execution[0][0];
-      if (e.error) {
-        await flushParserTokens();
-        return handlePossiblyRetryableError(e.error);
-      }
-
-      if (event.content.block_name === "MODEL" && e.value) {
-        // Flush early as we know the generation is terminated here.
-        await flushParserTokens();
-
-        const block = e.value;
-        if (!isDustAppChatBlockType(block)) {
-          return handlePossiblyRetryableError(
-            "Received unparsable MODEL block."
-          );
-        }
-
-        // Extract token usage from block execution metadata
-        const meta = e.meta as {
-          token_usage?: {
-            prompt_tokens: number;
-            completion_tokens: number;
-            reasoning_tokens?: number;
-            cached_tokens?: number;
-          };
-        } | null;
-        const reasoningTokens = meta?.token_usage?.reasoning_tokens ?? 0;
-
-        // Determine the region based on feature flag and current region
-        let region = "us";
-        const workspace = auth.getNonNullableWorkspace();
-        const featureFlags = await getFeatureFlags(workspace);
-
-        if (featureFlags.includes("use_openai_eu_key")) {
-          const currentRegion = regionsConfig.getCurrentRegion();
-          if (currentRegion === "europe-west1") {
-            region = "eu";
-          } else if (currentRegion === "us-central1") {
-            region = "us";
-          }
-        }
-
-        const contents = (block.message.contents ?? []).map((content) => {
-          if (content.type === "reasoning") {
-            return {
-              ...content,
-              value: {
-                ...content.value,
-                tokens: 0, // Will be updated for the last reasoning item
-                provider: model.providerId,
-                region,
-              },
-            } satisfies ReasoningContentType;
-          }
-          return content;
-        });
-
-        // We unfortunately don't currently have a proper breakdown of reasoning tokens per item,
-        // so we set the reasoning token count on the last reasoning item.
-        for (let i = contents.length - 1; i >= 0; i--) {
-          const content = contents[i];
-          if (content.type === "reasoning") {
-            content.value.tokens = reasoningTokens;
-            contents[i] = content;
-            break;
-          }
-        }
-
-        output = {
-          actions: [],
-          generation: null,
-          contents,
-        };
-
-        if (block.message.function_calls?.length) {
-          for (const fc of block.message.function_calls) {
-            try {
-              const args = JSON.parse(fc.arguments);
-              output.actions.push({
-                name: fc.name,
-                functionCallId: fc.id,
-                arguments: args,
-              });
-            } catch (error) {
-              await publishAgentError({
-                code: "function_call_error",
-                message: `Error parsing function call arguments: ${error}`,
-                metadata: null,
-              });
-              return null;
-            }
-          }
-        } else {
-          output.generation = block.message.content ?? null;
-        }
-      }
-    }
-  }
-
-  await flushParserTokens();
-
-  if (!output) {
-    return handlePossiblyRetryableError("Agent execution didn't complete.");
+  // It is possible that temporal requested activity cancellation but the
+  // activity has not yet received the signal. In that case, the agent message
+  // row would have status to cancelled (done via finalizeCancellationActivity).
+  const message = await fetchMessageInConversation(
+    auth,
+    conversation,
+    agentMessage.sId,
+    agentMessage.version
+  );
+  if (message?.agentMessage?.status === "cancelled") {
+    logger.info("Agent message cancelled, stopping");
+    return null;
   }
 
   // Create AgentStepContent for each content item (reasoning, text, function calls)
@@ -670,18 +566,23 @@ export async function runModelActivity(
       );
     }
 
-    // TODO(DURABLE-AGENTS 2025-07-20): Avoid mutating agentMessage here
     const chainOfThought =
       (nativeChainOfThought || contentParser.getChainOfThought()) ?? "";
 
-    if (chainOfThought.length) {
-      if (!agentMessage.chainOfThought) {
-        agentMessage.chainOfThought = "";
-      }
-      agentMessage.chainOfThought += chainOfThought;
-    }
-    agentMessage.content = (agentMessage.content ?? "") + processedContent;
-    agentMessage.status = "succeeded";
+    const completedTs = Date.now();
+
+    const updatedAgentMessage = {
+      ...agentMessage,
+      chainOfThought: (agentMessage.chainOfThought ?? "") + chainOfThought,
+      content: (agentMessage.content ?? "") + processedContent,
+      completedTs,
+      status: "succeeded",
+      completionDurationMs: getCompletionDuration(
+        agentMessage.created,
+        completedTs,
+        agentMessage.actions
+      ),
+    } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {
       event: {
@@ -689,12 +590,15 @@ export async function runModelActivity(
         created: Date.now(),
         configurationId: agentConfiguration.sId,
         messageId: agentMessage.sId,
-        message: agentMessage,
-        runIds: [...runIds, await dustRunId],
+        message: updatedAgentMessage,
+        // TODO(OBSERVABILITY 2025-11-04): Create a row in run with the associated usage.
+        runIds: [...runIds, dustRunId],
       },
       agentMessageRow,
       conversation,
       step,
+      modelInteractionDurationMs:
+        modelInteractionEndDate - modelInteractionStartDate,
     });
     localLogger.info("Agent message generation succeeded");
 
@@ -708,6 +612,30 @@ export async function runModelActivity(
     },
     "[ASSISTANT_TRACE] Action inputs generation"
   );
+
+  // Inject a single newline boundary if we streamed visible content in this iteration
+  // before yielding actions. This prevents the next iteration's streamed tokens from
+  // being appended without whitespace. Only do this if generation tokens are non-empty
+  // and the last character is not already whitespace.
+  const streamedContentSoFar = contentParser.getContent() ?? "";
+  if (
+    streamedContentSoFar.length > 0 &&
+    !/\s/.test(streamedContentSoFar[streamedContentSoFar.length - 1])
+  ) {
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "generation_tokens",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+        text: "\n",
+        classification: "tokens",
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
 
   // If we have actions and we are on the last step, we error since returning actions would require
   // doing one more step.
@@ -788,7 +716,6 @@ export async function runModelActivity(
         dataSources: null,
         tables: null,
         childAgentId: null,
-        reasoningModel: null,
         timeFrame: null,
         jsonSchema: null,
         secretName: null,
@@ -820,6 +747,7 @@ export async function runModelActivity(
     (agentMessage.content ?? "") + (contentParser.getContent() ?? "");
 
   if (chainOfThought.length) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     if (!agentMessage.chainOfThought) {
       agentMessage.chainOfThought = "";
     }
@@ -840,7 +768,7 @@ export async function runModelActivity(
 
   return {
     actions,
-    runId: await dustRunId,
+    runId: dustRunId,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     stepContexts,
   };

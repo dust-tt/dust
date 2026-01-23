@@ -2,7 +2,7 @@ import type { OAuth2Client } from "googleapis-common";
 import { Op } from "sequelize";
 
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
-import { GoogleDriveFolders } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFoldersModel } from "@connectors/lib/models/google_drive";
 import mainLogger from "@connectors/logger/logger";
 import type { ModelId } from "@connectors/types";
 import type { GoogleDriveObjectType } from "@connectors/types";
@@ -54,7 +54,7 @@ async function getFileParents(
   }
 
   // Avoid inserting parents outside of what we sync by checking GoogleDriveFolder.
-  const syncedFolders = await GoogleDriveFolders.findAll({
+  const syncedFolders = await GoogleDriveFoldersModel.findAll({
     where: {
       connectorId: connectorId,
       folderId: {

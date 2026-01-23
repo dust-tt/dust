@@ -1,4 +1,5 @@
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { getFeatureFlags } from "@app/lib/auth";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import type { WhitelistableFeature, WorkspaceType } from "@app/types";
 
 export class FeatureFlagFactory {
@@ -6,9 +7,9 @@ export class FeatureFlagFactory {
     featureName: WhitelistableFeature,
     workspace: WorkspaceType
   ) {
-    return FeatureFlag.create({
-      name: featureName,
-      workspaceId: workspace.id,
-    });
+    await FeatureFlagResource.enable(workspace, featureName);
+
+    // Clear the memoizer cache so that the following calls see the updated feature flags.
+    getFeatureFlags.del(workspace);
   }
 }

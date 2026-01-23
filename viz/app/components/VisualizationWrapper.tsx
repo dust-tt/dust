@@ -1,16 +1,12 @@
 "use client";
 
-import type {
-  CommandResultMap,
-  VisualizationRPCCommand,
-  VisualizationRPCRequestMap,
+import {
+  isDevelopment,
+  type CommandResultMap,
+  type VisualizationRPCCommand,
+  type VisualizationRPCRequestMap,
 } from "@viz/app/types";
-import type {
-  SupportedMessage,
-  SupportedEventType,
-} from "@viz/app/types/messages";
 
-import { validateMessage } from "@viz/app/types/messages";
 import { Spinner } from "@viz/app/components/Components";
 import { ErrorBoundary } from "@viz/app/components/ErrorBoundary";
 import { toBlob, toSvg } from "html-to-image";
@@ -24,10 +20,22 @@ import * as utilsAll from "@viz/lib/utils";
 import * as shadcnAll from "@viz/components/ui";
 import * as lucideAll from "lucide-react";
 import * as dustSlideshowV1 from "@viz/components/dust/slideshow/v1";
+import {
+  SupportedEventType,
+  SupportedMessage,
+  validateMessage,
+} from "@viz/app/types/messages";
+import {
+  VisualizationAPI,
+  VisualizationConfig,
+  VisualizationDataAPI,
+  VisualizationUIAPI,
+} from "@viz/app/lib/visualization-api";
 
-// Regular expression to capture the value inside a className attribute. This pattern assumes
-// double quotes for simplicity.
-const classNameRegex = /className\s*=\s*"([^"]*)"/g;
+// Regular expressions to capture the value inside a className attribute.
+// We check both double and single quotes separately to handle mixed usage.
+const classNameDoubleQuoteRegex = /className\s*=\s*"([^"]*)"/g;
+const classNameSingleQuoteRegex = /className\s*=\s*'([^']*)'/g;
 
 // Regular expression to capture Tailwind arbitrary values:
 // Matches a word boundary, then one or more lowercase letters or hyphens,
@@ -44,10 +52,20 @@ const arbitraryRegex = /\b[a-z-]+-\[[^\]]+\]/g;
  */
 function validateTailwindCode(code: string): void {
   const matches: string[] = [];
-  let classMatch: RegExpExecArray | null = null;
 
-  // Iterate through all occurrences of the className attribute in the code.
-  while ((classMatch = classNameRegex.exec(code)) !== null) {
+  // Check double-quoted className attributes
+  let classMatch: RegExpExecArray | null = null;
+  while ((classMatch = classNameDoubleQuoteRegex.exec(code)) !== null) {
+    const classContent = classMatch[1];
+    if (classContent) {
+      // Find all matching arbitrary values within the class attribute's value.
+      const arbitraryMatches = classContent.match(arbitraryRegex) || [];
+      matches.push(...arbitraryMatches);
+    }
+  }
+
+  // Check single-quoted className attributes
+  while ((classMatch = classNameSingleQuoteRegex.exec(code)) !== null) {
     const classContent = classMatch[1];
     if (classContent) {
       // Find all matching arbitrary values within the class attribute's value.
@@ -71,48 +89,7 @@ function validateTailwindCode(code: string): void {
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
   { allowedOrigins }: { allowedOrigins: string[] }
-) {
-  const [error, setError] = useState<Error | null>(null);
-
-  const fetchCode = useCallback(async (): Promise<string | null> => {
-    try {
-      const result = await sendCrossDocumentMessage("getCodeToExecute", null);
-
-      const { code } = result;
-      if (!code) {
-        setError(new Error("No code found in response from app."));
-        return null;
-      }
-
-      return code;
-    } catch (error) {
-      console.error(error);
-      setError(
-        error instanceof Error
-          ? error
-          : new Error("Failed to fetch visualization code from app.")
-      );
-
-      return null;
-    }
-  }, [sendCrossDocumentMessage]);
-
-  const fetchFile = useCallback(
-    async (fileId: string): Promise<File | null> => {
-      const res = await sendCrossDocumentMessage("getFile", { fileId });
-
-      const { fileBlob: blob } = res;
-
-      if (!blob) {
-        setError(new Error("Failed to fetch file."));
-        return null;
-      }
-
-      return new File([blob], "fileId", { type: blob.type });
-    },
-    [sendCrossDocumentMessage]
-  );
-
+): VisualizationUIAPI {
   const sendHeightToParent = useCallback(
     async ({ height }: { height: number | null }) => {
       if (height === null) {
@@ -145,7 +122,9 @@ export function useVisualizationAPI(
       const messageHandler = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}, expected one of: ${allowedOrigins.join(", ")}`
+            `Ignored message from unauthorized origin: ${
+              event.origin
+            }, expected one of: ${allowedOrigins.join(", ")}`
           );
           return;
         }
@@ -153,7 +132,10 @@ export function useVisualizationAPI(
         // Validate message structure using zod.
         const validatedMessage = validateMessage(event.data);
         if (!validatedMessage) {
-          console.log("Invalid message format received:", event.data);
+          if (isDevelopment()) {
+            // Log to help debug the addition of new event types.
+            console.log("Invalid message format received:", event.data);
+          }
           return;
         }
 
@@ -175,23 +157,17 @@ export function useVisualizationAPI(
     addEventListener,
     displayCode,
     downloadFile,
-    error,
-    fetchCode,
-    fetchFile,
     sendHeightToParent,
   };
 }
 
-const useFile = (
-  fileId: string,
-  fetchFile: (fileId: string) => Promise<File | null>
-) => {
+function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
   const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
       try {
-        const fetchedFile = await fetchFile(fileId);
+        const fetchedFile = await dataAPI.fetchFile(fileId);
         setFile(fetchedFile);
       } catch (err) {
         setFile(null);
@@ -201,10 +177,10 @@ const useFile = (
     if (fileId) {
       fetch();
     }
-  }, [fileId, fetchFile]);
+  }, [dataAPI, fileId]);
 
   return file;
-};
+}
 
 function useDownloadFileCallback(
   downloadFile: (blob: Blob, filename?: string) => Promise<void>
@@ -230,14 +206,11 @@ interface RunnerParams {
 }
 
 export function VisualizationWrapperWithErrorBoundary({
-  identifier,
-  allowedOrigins,
-  isFullHeight = false,
+  config,
 }: {
-  identifier: string;
-  allowedOrigins: string[];
-  isFullHeight?: boolean;
+  config: VisualizationConfig;
 }) {
+  const { identifier, allowedOrigins, isFullHeight = false, dataAPI } = config;
   const sendCrossDocumentMessage = useMemo(
     () =>
       makeSendCrossDocumentMessage({
@@ -246,23 +219,27 @@ export function VisualizationWrapperWithErrorBoundary({
       }),
     [identifier, allowedOrigins]
   );
-  const api = useVisualizationAPI(sendCrossDocumentMessage, {
+
+  const uiAPI = useVisualizationAPI(sendCrossDocumentMessage, {
     allowedOrigins,
   });
+
+  const api: VisualizationAPI = useMemo(
+    () => ({ data: dataAPI, ui: uiAPI }),
+    [dataAPI, uiAPI]
+  );
 
   return (
     <ErrorBoundary
       onErrored={(e) => {
         sendCrossDocumentMessage("setErrorMessage", {
           errorMessage: e instanceof Error ? e.message : `${e}`,
+          fileId: identifier,
+          isInteractiveContent: isFullHeight,
         });
       }}
     >
-      <VisualizationWrapper
-        api={api}
-        identifier={identifier}
-        isFullHeight={isFullHeight}
-      />
+      <VisualizationWrapper config={config} api={api} />
     </ErrorBoundary>
   );
 }
@@ -270,70 +247,103 @@ export function VisualizationWrapperWithErrorBoundary({
 // This component renders the generated code.
 // It gets the generated code via message passing to the host window.
 export function VisualizationWrapper({
+  config,
   api,
-  identifier,
-  isFullHeight = false,
 }: {
-  api: ReturnType<typeof useVisualizationAPI>;
-  identifier: string;
-  isFullHeight?: boolean;
+  config: VisualizationConfig;
+  api: VisualizationAPI;
 }) {
+  const { identifier, isFullHeight = false } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
-  const {
-    fetchCode,
-    fetchFile,
-    error,
-    sendHeightToParent,
-    downloadFile,
-    displayCode,
-    addEventListener,
-  } = api;
+  const { sendHeightToParent, downloadFile, displayCode, addEventListener } =
+    api.ui;
 
   const memoizedDownloadFile = useDownloadFileCallback(downloadFile);
+
+  const { ref } = useResizeDetector({
+    handleHeight: true,
+    refreshMode: "debounce",
+    refreshRate: 500,
+    onResize: sendHeightToParent,
+  });
+
+  const handleScreenshotDownload = useCallback(
+    async (name: string = `visualization-${identifier}.png`) => {
+      if (ref.current) {
+        try {
+          const blob = await toBlob(ref.current, {
+            // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
+            skipFonts: true,
+          });
+          if (blob) {
+            await downloadFile(blob, name);
+          }
+        } catch (err) {
+          console.error("Failed to convert to Blob", err);
+          window.parent.postMessage(
+            {
+              type: "EXPORT_ERROR",
+              identifier,
+              errorMessage:
+                "Failed to export as PNG. This can happen when the content references external images.",
+            },
+            "*"
+          );
+        }
+      }
+    },
+    [ref, downloadFile, identifier]
+  );
 
   useEffect(() => {
     const loadCode = async () => {
       try {
-        const fetchedCode = await fetchCode();
-        if (!fetchedCode) {
-          setErrorMessage(new Error("No visualization code found"));
-        } else {
-          // Validate Tailwind code before processing to catch arbitrary values early. Error gets
-          // exposed to user for retry, providing feedback to the model
-          validateTailwindCode(fetchedCode);
-
-          setRunnerParams({
-            code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
-            scope: {
-              import: {
-                react: reactAll,
-                recharts: rechartsAll,
-                shadcn: shadcnAll,
-                utils: utilsAll,
-                "lucide-react": lucideAll,
-                "@dust/slideshow/v1": dustSlideshowV1,
-                "@dust/generated-code": importCode(fetchedCode, {
-                  import: {
-                    papaparse: papaparseAll,
-                    react: reactAll,
-                    recharts: rechartsAll,
-                    shadcn: shadcnAll,
-                    utils: utilsAll,
-                    "lucide-react": lucideAll,
-                    "@dust/slideshow/v1": dustSlideshowV1,
-                    "@dust/react-hooks": {
-                      triggerUserFileDownload: memoizedDownloadFile,
-                      useFile: (fileId: string) => useFile(fileId, fetchFile),
-                    },
-                  },
-                }),
-              },
-            },
-          });
+        const codeToUse = await api.data.fetchCode();
+        if (!codeToUse) {
+          setErrorMessage(
+            new Error("No code provided to visualization component")
+          );
+          return;
         }
+        // Validate Tailwind code before processing to catch arbitrary values early. Error gets
+        // exposed to user for retry, providing feedback to the model.
+        validateTailwindCode(codeToUse);
+
+        setRunnerParams({
+          code: "() => {import Comp from '@dust/generated-code'; return (<Comp />);}",
+          scope: {
+            import: {
+              react: reactAll,
+              recharts: rechartsAll,
+              shadcn: shadcnAll,
+              utils: utilsAll,
+              "lucide-react": lucideAll,
+              "@dust/slideshow/v1": dustSlideshowV1,
+              "@dust/generated-code": importCode(codeToUse, {
+                import: {
+                  papaparse: papaparseAll,
+                  react: reactAll,
+                  recharts: rechartsAll,
+                  shadcn: shadcnAll,
+                  // Legacy support for utils from previous versions.
+                  utils: utilsAll,
+                  // New location for utils.
+                  "@viz/lib/utils": utilsAll,
+                  "lucide-react": lucideAll,
+                  "@dust/slideshow/v1": dustSlideshowV1,
+                  "@dust/react-hooks": {
+                    captureScreenshot: handleScreenshotDownload,
+                    triggerUserFileDownload: memoizedDownloadFile,
+                    useFile: (fileId: string) => useFile(fileId, api.data),
+                  },
+                },
+              }),
+            },
+          },
+        });
       } catch (error) {
         setErrorMessage(
           error instanceof Error
@@ -344,30 +354,7 @@ export function VisualizationWrapper({
     };
 
     loadCode();
-  }, [fetchCode, fetchFile, memoizedDownloadFile]);
-
-  const { ref } = useResizeDetector({
-    handleHeight: true,
-    refreshMode: "debounce",
-    refreshRate: 500,
-    onResize: sendHeightToParent,
-  });
-
-  const handleScreenshotDownload = useCallback(async () => {
-    if (ref.current) {
-      try {
-        const blob = await toBlob(ref.current, {
-          // Skip embedding fonts in the Blob since we cannot access cssRules from the iframe.
-          skipFonts: true,
-        });
-        if (blob) {
-          await downloadFile(blob, `visualization-${identifier}.png`);
-        }
-      } catch (err) {
-        console.error("Failed to convert to Blob", err);
-      }
-    }
-  }, [ref, downloadFile, identifier]);
+  }, [memoizedDownloadFile, handleScreenshotDownload, api.data]);
 
   const handleSVGDownload = useCallback(async () => {
     if (ref.current) {
@@ -381,6 +368,15 @@ export function VisualizationWrapper({
         await downloadFile(blob, `visualization-${identifier}.svg`);
       } catch (err) {
         console.error("Failed to convert to Blob", err);
+        window.parent.postMessage(
+          {
+            type: "EXPORT_ERROR",
+            identifier,
+            errorMessage:
+              "Failed to export as SVG. This can happen when the content references external images.",
+          },
+          "*"
+        );
       }
     }
   }, [ref, downloadFile, identifier]);
@@ -388,12 +384,6 @@ export function VisualizationWrapper({
   const handleDisplayCode = useCallback(async () => {
     await displayCode();
   }, [displayCode]);
-
-  useEffect(() => {
-    if (error) {
-      setErrorMessage(error);
-    }
-  }, [error]);
 
   // Add message listeners for export requests.
   useEffect(() => {
@@ -430,25 +420,25 @@ export function VisualizationWrapper({
       }`}
     >
       {!isFullHeight && (
-        <div className="flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50">
+        <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
-            onClick={handleScreenshotDownload}
-            title="Download screenshot"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            onClick={() => handleScreenshotDownload()}
+            title='Download screenshot'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Png
           </button>
           <button
             onClick={handleSVGDownload}
-            title="Download SVG"
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            title='Download SVG'
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Svg
           </button>
           <button
-            title="Show code"
+            title='Show code'
             onClick={handleDisplayCode}
-            className="h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white"
+            className='h-7 px-2.5 rounded-lg label-xs inline-flex items-center justify-center border border-border text-primary bg-white'
           >
             Code
           </button>
@@ -482,9 +472,12 @@ export function makeSendCrossDocumentMessage({
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
+
       const listener = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
-          console.log(`Ignored message from unauthorized origin: ${event.origin}`);
+          console.log(
+            `Ignored message from unauthorized origin: ${event.origin}`
+          );
           // Simply ignore messages from unauthorized origins.
           return;
         }

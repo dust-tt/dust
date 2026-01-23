@@ -8,7 +8,7 @@ import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 vi.mock(import("../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
   return {

@@ -1,5 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
-import { DustAppSecret } from "@app/lib/models/dust_app_secret";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import type { DustAppSecretType } from "@app/types";
 import { decrypt, redactString } from "@app/types";
 
@@ -12,7 +12,7 @@ export async function getDustAppSecrets(
     return [];
   }
 
-  const secrets = await DustAppSecret.findAll({
+  const secrets = await DustAppSecretModel.findAll({
     where: {
       workspaceId: owner.id,
     },
@@ -31,13 +31,13 @@ export async function getDustAppSecrets(
 export async function getDustAppSecret(
   auth: Authenticator,
   name: string
-): Promise<DustAppSecret | null> {
+): Promise<DustAppSecretModel | null> {
   const owner = auth.workspace();
   if (!owner) {
     return null;
   }
 
-  const secret = await DustAppSecret.findOne({
+  const secret = await DustAppSecretModel.findOne({
     where: {
       name: name,
       workspaceId: owner.id,

@@ -11,11 +11,11 @@ import {
   updateDataSourceTableParents,
 } from "@connectors/lib/data_sources";
 import {
-  GoogleDriveFiles,
-  GoogleDriveSheet,
+  GoogleDriveFilesModel,
+  GoogleDriveSheetModel,
 } from "@connectors/lib/models/google_drive";
 import { MicrosoftNodeModel } from "@connectors/lib/models/microsoft";
-import { NotionDatabase } from "@connectors/lib/models/notion";
+import { NotionDatabaseModel } from "@connectors/lib/models/notion";
 import type { Logger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { DataSourceConfig } from "@connectors/types";
@@ -62,7 +62,7 @@ export async function googleTables(
 ): Promise<void> {
   logger.info(`Processing Google Drive connector ${connector.id}`);
   const memo = uuidv4();
-  const csvGoogleSheets = await GoogleDriveSheet.findAll({
+  const csvGoogleSheets = await GoogleDriveSheetModel.findAll({
     where: { connectorId: connector.id },
   });
 
@@ -84,7 +84,7 @@ export async function googleTables(
     });
   }
 
-  const csvFiles = await GoogleDriveFiles.findAll({
+  const csvFiles = await GoogleDriveFilesModel.findAll({
     where: {
       mimeType: "text/csv",
       connectorId: connector.id,
@@ -154,7 +154,7 @@ export async function notionTables(
   logger: Logger
 ): Promise<void> {
   logger.info(`Processing Notion connector ${connector.id}`);
-  const notionDatabases = await NotionDatabase.findAll({
+  const notionDatabases = await NotionDatabaseModel.findAll({
     where: {
       connectorId: connector.id,
       structuredDataUpsertedTs: {

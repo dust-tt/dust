@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
 
 export async function getFavoriteStates(
   auth: Authenticator,
@@ -17,7 +17,7 @@ export async function getFavoriteStates(
     return new Map();
   }
 
-  const relations = await AgentUserRelation.findAll({
+  const relations = await AgentUserRelationModel.findAll({
     where: {
       workspaceId: auth.getNonNullableWorkspace().id,
       agentConfiguration: { [Op.in]: configurationIds },

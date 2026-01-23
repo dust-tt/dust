@@ -1,60 +1,101 @@
+import { z } from "zod";
+
 // This defines the commands that the iframe can send to the host window.
 
-// Common base interface.
-interface VisualizationRPCRequestBase {
-  identifier: string;
-  messageUniqueId: string;
-}
+// Common base schema.
+const VisualizationRPCRequestBaseSchema = z.object({
+  identifier: z.string(),
+  messageUniqueId: z.string(),
+});
 
-// Define parameter types for each command.
+// Define parameter schemas for each command.
 
-interface GetFileParams {
-  fileId: string;
-}
+const GetFileParamsSchema = z.object({
+  fileId: z.string(),
+});
 
-interface SetContentHeightParams {
-  height: number;
-}
+type GetFileParams = z.infer<typeof GetFileParamsSchema>;
 
-interface DownloadFileRequestParams {
-  blob: Blob;
-  filename?: string;
-}
+const SetContentHeightParamsSchema = z.object({
+  height: z.number(),
+});
 
-interface setErrorMessageParams {
-  errorMessage: string;
-}
+type SetContentHeightParams = z.infer<typeof SetContentHeightParamsSchema>;
 
-// Define a mapped type to extend the base with specific parameters.
+const DownloadFileRequestParamsSchema = z.object({
+  blob: z.instanceof(Blob),
+  filename: z.string().optional(),
+});
+
+type DownloadFileRequestParams = z.infer<
+  typeof DownloadFileRequestParamsSchema
+>;
+
+const SetErrorMessageParamsSchema = z.object({
+  errorMessage: z.string(),
+  fileId: z.string(),
+  isInteractiveContent: z.boolean(),
+});
+
+type SetErrorMessageParams = z.infer<typeof SetErrorMessageParamsSchema>;
+
+// Define Zod schemas for each RPC request type.
+const GetFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("getFile"),
+  params: GetFileParamsSchema,
+});
+
+const GetCodeToExecuteRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("getCodeToExecute"),
+  params: z.null(),
+});
+
+const SetContentHeightRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("setContentHeight"),
+  params: SetContentHeightParamsSchema,
+});
+
+const SetErrorMessageRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("setErrorMessage"),
+  params: SetErrorMessageParamsSchema,
+});
+
+const DownloadFileRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("downloadFileRequest"),
+  params: DownloadFileRequestParamsSchema,
+});
+
+const DisplayCodeRequestSchema = VisualizationRPCRequestBaseSchema.extend({
+  command: z.literal("displayCode"),
+  params: z.null(),
+});
+
+const VisualizationRPCRequestSchema = z.union([
+  GetFileRequestSchema,
+  GetCodeToExecuteRequestSchema,
+  SetContentHeightRequestSchema,
+  SetErrorMessageRequestSchema,
+  DownloadFileRequestSchema,
+  DisplayCodeRequestSchema,
+]);
+
+// Derive types from Zod schemas.
+export type VisualizationRPCRequest = z.infer<
+  typeof VisualizationRPCRequestSchema
+>;
+export type VisualizationRPCCommand = VisualizationRPCRequest["command"];
+
+// Define a mapped type for backward compatibility.
 export type VisualizationRPCRequestMap = {
   getFile: GetFileParams;
   getCodeToExecute: null;
   setContentHeight: SetContentHeightParams;
-  setErrorMessage: setErrorMessageParams;
+  setErrorMessage: SetErrorMessageParams;
   downloadFileRequest: DownloadFileRequestParams;
   displayCode: null;
 };
 
-// Derive the command type from the keys of the request map
-export type VisualizationRPCCommand = keyof VisualizationRPCRequestMap;
-
-// Create a union type for requests based on the mapped type.
-export type VisualizationRPCRequest = {
-  [K in VisualizationRPCCommand]: VisualizationRPCRequestBase & {
-    command: K;
-    params: VisualizationRPCRequestMap[K];
-  };
-}[VisualizationRPCCommand];
-
-export const validCommands: VisualizationRPCCommand[] = [
-  "getFile",
-  "getCodeToExecute",
-  "setContentHeight",
-  "setErrorMessage",
-];
-
 // Command results.
-
 export interface CommandResultMap {
   getCodeToExecute: { code: string };
   getFile: { fileBlob: Blob | null };
@@ -64,147 +105,45 @@ export interface CommandResultMap {
   displayCode: void;
 }
 
-// TODO(@fontanierh): refactor all these guards to use io-ts instead of manual checks.
-
-// Type guard for getFile.
+// Zod-based type guards.
 export function isGetFileRequest(
   value: unknown
-): value is VisualizationRPCRequest & {
-  command: "getFile";
-  params: GetFileParams;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "getFile" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string" &&
-    typeof v.params === "object" &&
-    v.params !== null &&
-    typeof (v.params as GetFileParams).fileId === "string"
-  );
+): value is z.infer<typeof GetFileRequestSchema> {
+  return GetFileRequestSchema.safeParse(value).success;
 }
 
-// Type guard for getCodeToExecute.
 export function isGetCodeToExecuteRequest(
   value: unknown
-): value is VisualizationRPCRequest & {
-  command: "getCodeToExecute";
-  params: null;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "getCodeToExecute" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string"
-  );
+): value is z.infer<typeof GetCodeToExecuteRequestSchema> {
+  return GetCodeToExecuteRequestSchema.safeParse(value).success;
 }
 
-// Type guard for setContentHeight.
 export function isSetContentHeightRequest(
   value: unknown
-): value is VisualizationRPCRequest & {
-  command: "setContentHeight";
-  params: SetContentHeightParams;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "setContentHeight" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string" &&
-    typeof v.params === "object" &&
-    v.params !== null &&
-    typeof (v.params as SetContentHeightParams).height === "number"
-  );
+): value is z.infer<typeof SetContentHeightRequestSchema> {
+  return SetContentHeightRequestSchema.safeParse(value).success;
 }
 
 export function isSetErrorMessageRequest(
   value: unknown
-): value is VisualizationRPCRequest & {
-  command: "setErrorMessage";
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "setErrorMessage" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string"
-  );
+): value is z.infer<typeof SetErrorMessageRequestSchema> {
+  return SetErrorMessageRequestSchema.safeParse(value).success;
 }
 
 export function isDownloadFileRequest(
   value: unknown
-): value is VisualizationRPCRequest & {
-  command: "downloadFileRequest";
-  params: DownloadFileRequestParams;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "downloadFileRequest" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string" &&
-    typeof v.params === "object" &&
-    v.params !== null &&
-    (v.params as DownloadFileRequestParams).blob instanceof Blob
-  );
+): value is z.infer<typeof DownloadFileRequestSchema> {
+  return DownloadFileRequestSchema.safeParse(value).success;
 }
 
-// Type guard for getCodeToExecute.
 export function isDisplayCodeRequest(
   value: unknown
-): value is VisualizationRPCRequest & {
-  command: "displayCode";
-  params: null;
-} {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  const v = value as Partial<VisualizationRPCRequest>;
-
-  return (
-    v.command === "displayCode" &&
-    typeof v.identifier === "string" &&
-    typeof v.messageUniqueId === "string"
-  );
+): value is z.infer<typeof DisplayCodeRequestSchema> {
+  return DisplayCodeRequestSchema.safeParse(value).success;
 }
 
 export function isVisualizationRPCRequest(
   value: unknown
 ): value is VisualizationRPCRequest {
-  if (typeof value !== "object" || value === null) {
-    return false;
-  }
-
-  return (
-    isGetCodeToExecuteRequest(value) ||
-    isGetFileRequest(value) ||
-    isDownloadFileRequest(value) ||
-    isSetContentHeightRequest(value) ||
-    isSetErrorMessageRequest(value) ||
-    isDisplayCodeRequest(value)
-  );
+  return VisualizationRPCRequestSchema.safeParse(value).success;
 }

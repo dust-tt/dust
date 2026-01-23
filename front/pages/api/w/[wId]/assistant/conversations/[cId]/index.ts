@@ -31,7 +31,7 @@ export type PatchConversationsRequestBody = t.TypeOf<
   typeof PatchConversationsRequestBodySchema
 >;
 
-export type GetConversationsResponseBody = {
+export type GetConversationResponseBody = {
   conversation: ConversationWithoutContentType;
 };
 
@@ -43,7 +43,7 @@ async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      GetConversationsResponseBody | PatchConversationResponseBody | void
+      GetConversationResponseBody | PatchConversationResponseBody | void
     >
   >,
   auth: Authenticator
@@ -61,6 +61,19 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
+      const canAccess = await ConversationResource.canAccess(auth, cId);
+      if (canAccess !== "allowed") {
+        return apiError(req, res, {
+          status_code: canAccess === "conversation_not_found" ? 404 : 403,
+          api_error: {
+            type: canAccess,
+            message:
+              canAccess === "conversation_not_found"
+                ? "Conversation not found."
+                : "You don't have access to this conversation.",
+          },
+        });
+      }
       const conversationRes =
         await ConversationResource.fetchConversationWithoutContent(auth, cId);
 
@@ -74,8 +87,10 @@ async function handler(
     }
 
     case "DELETE": {
+      const { forceDelete } = req.query;
       const result = await deleteOrLeaveConversation(auth, {
         conversationId: cId,
+        forceDelete: forceDelete === "true",
       });
       if (result.isErr()) {
         return apiErrorForConversation(req, res, result.error);

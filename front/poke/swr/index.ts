@@ -2,12 +2,18 @@ import { useCallback, useMemo, useState } from "react";
 import type { Fetcher } from "swr";
 import useSWR from "swr";
 
+import type { LLMTrace } from "@app/lib/api/llm/traces/types";
+import { clientFetch } from "@app/lib/egress/client";
 import { emptyArray, fetcher } from "@app/lib/swr/swr";
 import type { PokeFetchAssistantTemplateResponse } from "@app/pages/api/poke/templates/[tId]";
 import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pull";
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
 import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+
+interface PokeAssistantTemplatesResponse extends FetchAssistantTemplatesResponse {
+  dustRegionSyncEnabled: boolean;
+}
 import type {
   ConversationType,
   DataSourceType,
@@ -20,7 +26,7 @@ export function usePokePullTemplates() {
 
   const doPull = useCallback(async () => {
     setIsPulling(true);
-    const response = await fetch("/api/poke/templates/pull", {
+    const response = await clientFetch("/api/poke/templates/pull", {
       method: "POST",
     });
 
@@ -44,11 +50,10 @@ export function usePokePullTemplates() {
 }
 
 export function usePokeAssistantTemplates() {
-  const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
+  const assistantTemplatesFetcher: Fetcher<PokeAssistantTemplatesResponse> =
     fetcher;
 
   // Templates are shared across workspaces, not specific to a single one.
-  // Use the same endpoint as the front-end to fetch templates.
   const { data, error, mutate } = useSWR(
     "/api/poke/templates",
     assistantTemplatesFetcher
@@ -56,6 +61,7 @@ export function usePokeAssistantTemplates() {
 
   return {
     assistantTemplates: data?.templates ?? emptyArray(),
+    dustRegionSyncEnabled: data?.dustRegionSyncEnabled ?? false,
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,
@@ -76,6 +82,7 @@ export function usePokeAssistantTemplate({
   );
 
   return {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     assistantTemplate: useMemo(() => (data ? data : null), [data]),
     isAssistantTemplateLoading: !error && !data,
     isAssistantTemplateError: error,
@@ -105,6 +112,32 @@ export function usePokeConversation({
     isConversationLoading: !error && !data,
     isConversationError: error,
     mutateConversation: mutate,
+  };
+}
+
+export function usePokeLLMTrace({
+  workspace,
+  runId,
+  disabled,
+}: {
+  workspace: LightWorkspaceType;
+  runId: string | null;
+  disabled?: boolean;
+}) {
+  const llmTraceFetcher: Fetcher<{ trace: LLMTrace | null }> = fetcher;
+
+  const { data, error, mutate } = useSWR(
+    runId && !disabled
+      ? `/api/poke/workspaces/${workspace.sId}/llm-traces/${runId}`
+      : null,
+    llmTraceFetcher
+  );
+
+  return {
+    trace: data ? data.trace : null,
+    isLLMTraceLoading: !error && !data && !disabled,
+    isLLMTraceError: error,
+    mutateLLMTrace: mutate,
   };
 }
 

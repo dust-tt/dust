@@ -7,6 +7,7 @@ import type {
   SortingParams,
 } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { clientFetch } from "@app/lib/egress/client";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   emptyArray,
@@ -22,6 +23,7 @@ import type {
 } from "@app/pages/api/w/[wId]/search";
 import type {
   GetSpacesResponseBody,
+  PostSpaceRequestBodyType,
   PostSpacesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces";
 import type {
@@ -31,21 +33,31 @@ import type {
 import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views";
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
+import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
+import type {
+  GetProjectMetadataResponseBody,
+  PatchProjectMetadataResponseBody,
+} from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_metadata";
 import type {
   ContentNodesViewType,
   DataSourceViewCategoryWithoutApps,
   DataSourceViewType,
   LightWorkspaceType,
+  PatchProjectMetadataBodyType,
+  ProjectMetadataType,
   SearchWarningCode,
+  SpaceKind,
   SpaceType,
 } from "@app/types";
-import { MIN_SEARCH_QUERY_SIZE } from "@app/types";
+import { isString, MIN_SEARCH_QUERY_SIZE } from "@app/types";
 
 export function useSpaces({
   workspaceId,
+  kinds,
   disabled,
 }: {
   workspaceId: string;
+  kinds: SpaceKind[] | "all";
   disabled?: boolean;
 }) {
   const spacesFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
@@ -56,14 +68,25 @@ export function useSpaces({
     { disabled }
   );
 
+  const spaces = useMemo(() => {
+    return (
+      data?.spaces?.filter((s) => kinds === "all" || kinds.includes(s.kind)) ??
+      emptyArray<SpaceType>()
+    );
+    // Serialize the kinds array to a string to avoid unnecessary re-renders
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.spaces, isString(kinds) ? kinds : kinds.toSorted().join(",")]);
+
   return {
-    spaces: data?.spaces ?? emptyArray(),
+    spaces,
     isSpacesLoading: !error && !data && !disabled,
     isSpacesError: error,
     mutate,
   };
 }
 
+// Note that this hook only returns spaces of kind "global", "regular" and "system" (backend enforced).
+// The other kinds are left aside as they are not relevant for the admins point of view.
 export function useSpacesAsAdmin({
   workspaceId,
   disabled,
@@ -91,15 +114,18 @@ export function useSpaceInfo({
   workspaceId,
   spaceId,
   disabled,
+  includeAllMembers = false,
 }: {
   workspaceId: string;
   spaceId: string | null;
   disabled?: boolean;
+  includeAllMembers?: boolean;
 }) {
   const spacesCategoriesFetcher: Fetcher<GetSpaceResponseBody> = fetcher;
 
+  const queryParams = includeAllMembers ? "?includeAllMembers=true" : "";
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${workspaceId}/spaces/${spaceId}`,
+    `/api/w/${workspaceId}/spaces/${spaceId}${queryParams}`,
     spacesCategoriesFetcher,
     {
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -116,15 +142,15 @@ export function useSpaceInfo({
 }
 
 export function useSpaceDataSourceView({
-  owner,
-  spaceId,
   dataSourceViewId,
   disabled,
+  owner,
+  spaceId,
 }: {
-  owner: LightWorkspaceType;
-  spaceId: string;
-  dataSourceViewId?: string;
+  dataSourceViewId: string | null;
   disabled?: boolean;
+  owner: LightWorkspaceType;
+  spaceId: string | null;
 }) {
   const dataSourceViewsFetcher: Fetcher<GetDataSourceViewResponseBody> =
     fetcher;
@@ -240,7 +266,7 @@ export function useCreateFolder({
       return null;
     }
 
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources`,
       {
         method: "POST",
@@ -293,7 +319,7 @@ export function useUpdateFolder({
     if (!dataSourceView || !description) {
       return false;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       {
         method: "PATCH",
@@ -348,7 +374,7 @@ export function useDeleteFolderOrWebsite({
     if (!dataSourceView) {
       return false;
     }
-    const res = await fetch(
+    const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${spaceId}/data_sources/${dataSourceView.dataSource.sId}`,
       { method: "DELETE" }
     );
@@ -376,31 +402,11 @@ export function useDeleteFolderOrWebsite({
   return doDelete;
 }
 
-type DoCreateOrUpdateAllowedParams =
-  | {
-      name: string | null;
-      isRestricted: boolean;
-      managementMode?: never;
-    }
-  | {
-      name: string | null;
-      memberIds: string[];
-      groupIds?: never;
-      isRestricted: true;
-      managementMode: "manual";
-    }
-  | {
-      name: string | null;
-      memberIds?: never;
-      groupIds: string[];
-      isRestricted: true;
-      managementMode: "group";
-    };
-
 export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: "all",
     disabled: true, // Needed just to mutate.
   });
   const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
@@ -408,8 +414,9 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     disabled: true, // Needed just to mutate.
   });
 
-  const doCreate = async (params: DoCreateOrUpdateAllowedParams) => {
-    const { name, managementMode, isRestricted } = params;
+  const doCreate = async (params: PostSpaceRequestBodyType) => {
+    const { name, managementMode, isRestricted, spaceKind } = params;
+
     if (!name) {
       return null;
     }
@@ -417,18 +424,15 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     const url = `/api/w/${owner.sId}/spaces`;
     let res;
 
-    if (managementMode) {
-      const { memberIds, groupIds } = params;
+    if (managementMode === "manual") {
+      const { memberIds } = params;
 
-      // Must have either memberIds or groupIds for restricted spaces
-      if (
-        (!memberIds || memberIds.length < 1) &&
-        (!groupIds || groupIds.length < 1)
-      ) {
+      // Must have memberIds for manual management mode
+      if (isRestricted && (!memberIds || memberIds.length < 1)) {
         return null;
       }
 
-      res = await fetch(url, {
+      res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -436,13 +440,20 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           name,
           memberIds,
-          groupIds,
           managementMode,
           isRestricted,
-        }),
+          spaceKind,
+        } as PostSpaceRequestBodyType),
       });
-    } else {
-      res = await fetch(url, {
+    } else if (managementMode === "group") {
+      const { groupIds } = params;
+
+      // Must have groupIds for group management mode
+      if (isRestricted && (!groupIds || groupIds.length < 1)) {
+        return null;
+      }
+
+      res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -450,8 +461,12 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         body: JSON.stringify({
           name,
           isRestricted,
+          groupIds,
+          managementMode,
         }),
       });
+    } else {
+      return null;
     }
 
     if (!res.ok) {
@@ -485,6 +500,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: "all",
     disabled: true, // Needed just to mutate
   });
   const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
@@ -494,7 +510,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
   const doUpdate = async (
     space: SpaceType,
-    params: DoCreateOrUpdateAllowedParams
+    params: PatchSpaceMembersRequestBodyType
   ) => {
     const { name: newName, managementMode, isRestricted } = params;
 
@@ -504,7 +520,7 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
     if (newName) {
       const spaceUrl = `/api/w/${owner.sId}/spaces/${space.sId}`;
       updatePromises.push(
-        fetch(spaceUrl, {
+        clientFetch(spaceUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -516,35 +532,35 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
       );
     }
 
-    // Prepare space members update request if provided.
     const spaceMembersUrl = `/api/w/${owner.sId}/spaces/${space.sId}/members`;
-    if (managementMode && isRestricted) {
-      const { memberIds, groupIds, isRestricted } = params;
 
+    if (managementMode === "manual") {
       updatePromises.push(
-        fetch(spaceMembersUrl, {
+        clientFetch(spaceMembersUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            memberIds,
-            groupIds,
-            managementMode,
+            name: newName,
             isRestricted,
+            managementMode,
+            memberIds: params.memberIds,
           }),
         })
       );
-    } else {
+    } else if (managementMode === "group") {
       updatePromises.push(
-        fetch(spaceMembersUrl, {
+        clientFetch(spaceMembersUrl, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            managementMode: "manual",
+            name: newName,
             isRestricted,
+            managementMode,
+            groupIds: params.groupIds,
           }),
         })
       );
@@ -593,6 +609,7 @@ export function useDeleteSpace({
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: "all",
     disabled: true, // Needed just to mutate
   });
   const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
@@ -605,7 +622,7 @@ export function useDeleteSpace({
       return false;
     }
     const url = `/api/w/${owner.sId}/spaces/${space.sId}?force=${force}`;
-    const res = await fetch(url, {
+    const res = await clientFetch(url, {
       method: "DELETE",
     });
 
@@ -669,6 +686,7 @@ type BaseSearchParams = {
   allowAdminSearch?: boolean;
   dataSourceViewIdsBySpaceId?: Record<string, string[]>;
   parentId?: string;
+  prioritizeSpaceAccess?: boolean;
 };
 
 // Text search variant
@@ -701,6 +719,7 @@ export function useSpacesSearch({
   allowAdminSearch = false,
   dataSourceViewIdsBySpaceId,
   parentId,
+  prioritizeSpaceAccess = false,
 }: SpacesSearchParams): {
   isSearchLoading: boolean;
   isSearchError: boolean;
@@ -731,11 +750,11 @@ export function useSpacesSearch({
     allowAdminSearch,
     dataSourceViewIdsBySpaceId,
     parentId,
+    prioritizeSpaceAccess,
   };
 
   // Only perform a query if we have a valid search
   const url =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (search && search.length >= MIN_SEARCH_QUERY_SIZE) || nodeIds?.length
       ? `/api/w/${owner.sId}/search?${params}`
       : null;
@@ -765,7 +784,9 @@ export function useSpacesSearch({
     mutate,
     isSearchValidating: isValidating,
     warningCode: data?.warningCode,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     resultsCount: data?.resultsCount || null,
   };
 }
@@ -802,7 +823,6 @@ export function useSpacesSearchWithInfiniteScroll({
 
   // Only perform a query if we have a valid search
   const url =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (search && search.length >= 1) || nodeIds
       ? `/api/w/${owner.sId}/search`
       : null;
@@ -851,5 +871,78 @@ export function useSpacesSearchWithInfiniteScroll({
     nextPage: useCallback(async () => {
       await setSize((size) => size + 1);
     }, [setSize]),
+  };
+}
+
+export function useProjectMetadata({
+  workspaceId,
+  spaceId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  disabled?: boolean;
+}) {
+  const projectMetadataFetcher: Fetcher<GetProjectMetadataResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/project_metadata`,
+    projectMetadataFetcher,
+    { disabled: disabled || spaceId === null }
+  );
+
+  return {
+    projectMetadata: data?.projectMetadata ?? null,
+    isProjectMetadataLoading: !error && !data && !disabled,
+    isProjectMetadataError: error,
+    mutateProjectMetadata: mutate,
+  };
+}
+
+export function useUpdateProjectMetadata({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateProjectMetadata } = useProjectMetadata({
+    workspaceId: owner.sId,
+    spaceId,
+    disabled: true, // Needed just to mutate
+  });
+
+  return async (
+    updates: PatchProjectMetadataBodyType
+  ): Promise<ProjectMetadataType | null> => {
+    const url = `/api/w/${owner.sId}/spaces/${spaceId}/project_metadata`;
+
+    const res = await clientFetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating project metadata",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    void mutateProjectMetadata();
+    sendNotification({
+      type: "success",
+      title: "Project metadata updated",
+      description: "Project metadata was successfully updated.",
+    });
+
+    const response: PatchProjectMetadataResponseBody = await res.json();
+    return response.projectMetadata;
   };
 }

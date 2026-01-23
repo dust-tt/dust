@@ -35,6 +35,7 @@ export type SpaceCategoryInfo = {
 export type GetSpaceResponseBody = {
   space: SpaceType & {
     categories: { [key: string]: SpaceCategoryInfo };
+    isMember: boolean;
     members: UserType[];
   };
 };
@@ -106,20 +107,18 @@ async function handler(
       categories["apps"].count = apps.length;
       categories["actions"].count = actionsCount;
 
+      const includeAllMembers = req.query.includeAllMembers === "true";
       const currentMembers = uniqBy(
         (
           await concurrentExecutor(
-            // Filter the correct group, if we switch back and forth, the space will have 2 group
-            // one provisioned and one regular.
-            // If a user manully remove users from the regular group, they might still appear as they
-            // would still be in the provisioned group
+            // Get members from the regular group only.
             space.groups.filter((g) => {
-              if (space.managementMode === "group") {
-                return g.kind === "provisioned";
-              }
-              return g.kind === "regular" || g.kind === "global";
+              return g.kind === "regular";
             }),
-            (group) => group.getActiveMembers(auth),
+            (group) =>
+              includeAllMembers
+                ? group.getAllMembers(auth)
+                : group.getActiveMembers(auth),
             { concurrency: 10 }
           )
         ).flat(),
@@ -130,6 +129,7 @@ async function handler(
         space: {
           ...space.toJSON(),
           categories,
+          isMember: space.canRead(auth),
           members: currentMembers.map((member) => member.toJSON()),
         },
       });
@@ -188,12 +188,23 @@ async function handler(
               dataSourceConfig.dataSourceId
             );
             if (dataSource) {
-              await DataSourceViewResource.createViewInSpaceFromDataSource(
-                space,
-                dataSource,
-                dataSourceConfig.parentsIn,
-                auth.user()
-              );
+              const dataSourceViewRes =
+                await DataSourceViewResource.createViewInSpaceFromDataSource(
+                  auth,
+                  space,
+                  dataSource,
+                  dataSourceConfig.parentsIn
+                );
+
+              if (dataSourceViewRes.isErr()) {
+                return apiError(req, res, {
+                  status_code: 403,
+                  api_error: {
+                    type: "data_source_auth_error",
+                    message: dataSourceViewRes.error.message,
+                  },
+                });
+              }
             }
           }
         }

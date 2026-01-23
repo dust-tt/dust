@@ -12,11 +12,20 @@ export type MembershipInvitationType = {
   inviteEmail: string;
   initialRole: ActiveRoleType;
   createdAt: number;
+  isExpired: boolean;
 };
 
 export type MembershipInvitationTypeWithLink = MembershipInvitationType & {
   inviteLink: string;
 };
+
+export interface PendingInvitationOption {
+  token: string;
+  workspaceName: string;
+  initialRole: ActiveRoleType;
+  createdAt: number;
+  isExpired: boolean;
+}
 
 // Types for the invite form in Poke.
 

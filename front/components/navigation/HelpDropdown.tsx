@@ -12,21 +12,22 @@ import {
   LightbulbIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useCallback, useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import { createConversationWithMessage } from "@app/components/assistant/conversation/lib";
+import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { getAgentRoute } from "@app/lib/utils/router";
+import { serializeMention } from "@app/lib/mentions/format";
+import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
   MentionType,
   UserTypeWithWorkspaces,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, isAgentMention } from "@app/types";
 
 export function HelpDropdown({
   owner,
@@ -35,21 +36,36 @@ export function HelpDropdown({
   owner: WorkspaceType;
   user: UserTypeWithWorkspaces;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
 
-  const { setSelectedAssistant, setAnimate } = useContext(InputBarContext);
+  const createConversationWithMessage = useCreateConversationWithMessage({
+    owner,
+    user,
+  });
+
+  const { setSelectedAgent } = useContext(InputBarContext);
 
   const handleAskHelp = () => {
-    if (router.pathname === "/w/[wId]/agent/[cId]") {
-      // If we're on /agent/new page, we just set the selected agent on top of what's already there in the input bar if any.
+    if (router.pathname === "/w/[wId]/conversation/[cId]") {
+      // If we're on /conversation/new page, we just set the selected agent on top of what's already there in the input bar if any.
       // This allows to not lose your potential input when you click on the help button.
-      setSelectedAssistant({ configurationId: GLOBAL_AGENTS_SID.HELPER });
-      setAnimate(true);
+      setSelectedAgent({
+        type: "agent",
+        id: GLOBAL_AGENTS_SID.HELPER,
+        label: "Help",
+        pictureUrl:
+          "https://dust.tt/static/systemavatar/helper_avatar_full.png",
+        description: "Help on how to use Dust",
+      });
     } else {
       // Otherwise we just push the route and prefill the input bar with the @help mention.
       void router.push(
-        getAgentRoute(owner.sId, "new", `agent=${GLOBAL_AGENTS_SID.HELPER}`)
+        getConversationRoute(
+          owner.sId,
+          "new",
+          `agent=${GLOBAL_AGENTS_SID.HELPER}`
+        )
       );
     }
   };
@@ -61,7 +77,9 @@ export function HelpDropdown({
           ? input
           : `@help ${input.trimStart()}`;
         const mentionsWithHelp = mentions.some(
-          (mention) => mention.configurationId === GLOBAL_AGENTS_SID.HELPER
+          (mention) =>
+            isAgentMention(mention) &&
+            mention.configurationId === GLOBAL_AGENTS_SID.HELPER
         )
           ? mentions
           : [
@@ -69,10 +87,11 @@ export function HelpDropdown({
               { configurationId: GLOBAL_AGENTS_SID.HELPER } as AgentMention,
             ];
         const conversationRes = await createConversationWithMessage({
-          owner,
-          user,
           messageData: {
-            input: inputWithHelp.replace("@help", ":mention[help]{sId=helper}"),
+            input: inputWithHelp.replace(
+              "@help",
+              serializeMention({ name: "help", sId: GLOBAL_AGENTS_SID.HELPER })
+            ),
             mentions: mentionsWithHelp,
             contentFragments: {
               uploaded: [],
@@ -88,11 +107,11 @@ export function HelpDropdown({
           });
         } else {
           void router.push(
-            `/w/${owner.sId}/assistant/${conversationRes.value.sId}`
+            getConversationRoute(owner.sId, conversationRes.value.sId)
           );
         }
       },
-      [owner, user, router, sendNotification]
+      [createConversationWithMessage, owner, router, sendNotification]
     )
   );
 

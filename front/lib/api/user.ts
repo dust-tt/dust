@@ -21,25 +21,50 @@ import { Err, Ok } from "@app/types";
 import { MembershipResource } from "../resources/membership_resource";
 import { findWorkOSOrganizationsForUserId } from "./workos/organization_membership";
 
-/**
- * This function checks that the user had at least one membership in the past for this workspace
- * otherwise returns null, preventing retrieving user information from their sId.
- */
 export async function getUserForWorkspace(
   auth: Authenticator,
   { userId }: { userId: string }
 ): Promise<UserResource | null> {
   const owner = auth.workspace();
-  if (!owner || !(auth.isAdmin() || auth.user()?.sId === userId)) {
+  if (!owner) {
+    return null;
+  }
+
+  const authUser = auth.user();
+  if (!authUser) {
     return null;
   }
 
   const user = await UserResource.fetchById(userId);
-
   if (!user) {
     return null;
   }
 
+  const shouldReturnUser = await hasSharedMembership(auth, { user });
+
+  return shouldReturnUser ? user : null;
+}
+
+/**
+ * This function checks that both the auth user and the requested user share at least one
+ * workspace membership, and that the requested user had at least one membership in the past
+ * for the auth workspace. Returns false otherwise.
+ */
+export async function hasSharedMembership(
+  auth: Authenticator,
+  { user }: { user: UserResource }
+): Promise<boolean> {
+  const owner = auth.workspace();
+  if (!owner) {
+    return false;
+  }
+
+  const authUser = auth.user();
+  if (!authUser) {
+    return false;
+  }
+
+  // Check that the requested user had at least one membership in the auth workspace.
   const membership =
     await MembershipResource.getLatestMembershipOfUserInWorkspace({
       user,
@@ -47,10 +72,38 @@ export async function getUserForWorkspace(
     });
 
   if (!membership) {
-    return null;
+    return false;
   }
 
-  return user;
+  // Special case for superusers: they can see all users.
+  if (auth.isDustSuperUser()) {
+    return true;
+  }
+
+  // Check that the auth user is part of at least one workspace that the requested user is in.
+  const { memberships: authUserMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: [authUser],
+    });
+
+  const authUserWorkspaceIds = new Set(
+    authUserMemberships.map((m) => m.workspaceId)
+  );
+
+  const { memberships: requestedUserMemberships } =
+    await MembershipResource.getActiveMemberships({
+      users: [user],
+    });
+
+  const hasSharedWorkspace = requestedUserMemberships.some((m) =>
+    authUserWorkspaceIds.has(m.workspaceId)
+  );
+
+  if (!hasSharedWorkspace) {
+    return false;
+  }
+
+  return true;
 }
 
 export async function fetchRevokedWorkspace(

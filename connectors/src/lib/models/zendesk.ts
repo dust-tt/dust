@@ -1,7 +1,7 @@
 import type { CreationOptional } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 
 function throwOnUnsafeInteger(value: number | null) {
@@ -36,7 +36,7 @@ ZendeskTimestampCursorModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "zendesk_timestamp_cursors",
     indexes: [{ fields: ["connectorId"], unique: true }],
   }
@@ -61,6 +61,8 @@ export class ZendeskConfigurationModel extends ConnectorBaseModel<ZendeskConfigu
     id: number;
     name: string;
   }[];
+
+  declare rateLimitTransactionsPerSecond: number | null;
 }
 
 ZendeskConfigurationModel.init(
@@ -115,9 +117,14 @@ ZendeskConfigurationModel.init(
       allowNull: false,
       defaultValue: [],
     },
+    rateLimitTransactionsPerSecond: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null,
+    },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "zendesk_configurations",
     indexes: [{ fields: ["connectorId"], unique: true }],
     relationship: "hasOne",
@@ -182,7 +189,7 @@ ZendeskBrandModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "zendesk_brands",
     indexes: [
       {
@@ -254,7 +261,7 @@ ZendeskCategoryModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "zendesk_categories",
     indexes: [
       {
@@ -331,7 +338,7 @@ ZendeskArticleModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "zendesk_articles",
     indexes: [
       {
@@ -411,7 +418,7 @@ ZendeskTicketModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "zendesk_tickets",
     indexes: [
       {

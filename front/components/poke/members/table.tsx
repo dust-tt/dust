@@ -1,8 +1,8 @@
-import { useRouter } from "next/router";
-
 import type { MemberDisplayType } from "@app/components/poke/members/columns";
 import { makeColumnsForMembers } from "@app/components/poke/members/columns";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import type {
   RoleType,
   UserTypeWithWorkspaces,
@@ -27,17 +27,19 @@ function prepareMembersForDisplay(
 }
 
 interface MembersDataTableProps {
+  groupName?: string;
   members: UserTypeWithWorkspaces[];
   owner: WorkspaceType;
   readonly?: boolean;
 }
 
 export function MembersDataTable({
+  groupName,
   members,
   owner,
   readonly,
 }: MembersDataTableProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const onRevokeMember = async (m: MemberDisplayType) => {
     if (!window.confirm(`Are you sure you want to revoke ${m.email}?`)) {
@@ -45,7 +47,7 @@ export function MembersDataTable({
     }
 
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
+      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/revoke`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -74,7 +76,7 @@ export function MembersDataTable({
     }
 
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/roles`, {
+      const r = await clientFetch(`/api/poke/workspaces/${owner.sId}/roles`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -98,7 +100,9 @@ export function MembersDataTable({
     <>
       <div className="border-material-200 my-4 flex w-full flex-col rounded-lg border p-4">
         <div className="flex justify-between gap-3">
-          <h2 className="text-md mb-4 font-bold">Members:</h2>
+          <h2 className="text-md mb-4 font-bold">
+            {groupName ? `"${groupName}" Members:` : "Members:"}
+          </h2>
         </div>
         <PokeDataTable
           columns={makeColumnsForMembers({

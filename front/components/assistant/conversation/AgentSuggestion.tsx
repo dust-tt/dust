@@ -6,12 +6,20 @@ import {
   Page,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import { useCallback, useMemo, useState } from "react";
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-import { AssistantPicker } from "@app/components/assistant/AssistantPicker";
-import { useSendNotification } from "@app/hooks/useNotification";
+import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
+import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useAgentConfigurations,
   useSuggestedAgentConfigurations,
@@ -19,15 +27,15 @@ import {
 import { setQueryParam } from "@app/lib/utils/router";
 import type {
   LightAgentConfigurationType,
-  UserMessageType,
+  UserMessageTypeWithContentFragments,
   WorkspaceType,
 } from "@app/types";
-import { GLOBAL_AGENTS_SID } from "@app/types";
+import { GLOBAL_AGENTS_SID, toRichAgentMentionType } from "@app/types";
 
 interface AgentSuggestionProps {
   conversationId: string;
   owner: WorkspaceType;
-  userMessage: UserMessageType;
+  userMessage: UserMessageTypeWithContentFragments;
 }
 
 const MAX_SUGGESTED_AGENTS = 4;
@@ -54,41 +62,37 @@ export function AgentSuggestion({
       userMessage.id === -1 || userMessage.sId.startsWith("placeholder"),
   });
 
-  const sendNotification = useSendNotification();
+  const autoSelectedMessageIdRef = useRef<string | null>(null);
+  const [showSuggestion, setShowSuggestion] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useAppRouter();
+  const { setSelectedAgent } = useContext(InputBarContext);
 
-  const router = useRouter();
+  const dustAgent = agentConfigurations.find(
+    (agent) => agent.sId === GLOBAL_AGENTS_SID.DUST && agent.status === "active"
+  );
 
-  const { submit: handleSelectSuggestion } = useSubmitFunction(
+  const addMention = useAddUserMessageMention({
+    owner,
+    conversationId,
+  });
+
+  useEffect(() => {
+    if (!dustAgent) {
+      setShowSuggestion(true);
+    }
+  }, [dustAgent]);
+
+  const { submit: handleSelectSuggestion, isSubmitting } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
-      const editedContent = `:mention[${agent.name}]{sId=${agent.sId}} ${userMessage.content}`;
-      const mRes = await fetch(
-        `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${userMessage.sId}/edit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: editedContent,
-            mentions: [
-              {
-                type: "agent",
-                configurationId: agent.sId,
-              },
-            ],
-          }),
-        }
-      );
+      const success = await addMention({
+        agent,
+        userMessage,
+      });
 
-      if (!mRes.ok) {
-        const data = await mRes.json();
-        sendNotification({
-          type: "error",
-          title: "Error adding mention to message",
-          description: data.error.message,
-        });
+      // In case the auto-selection failed, we show the suggestion.
+      if (!success && dustAgent && !showSuggestion) {
+        setShowSuggestion(true);
       }
     }
   );
@@ -117,15 +121,46 @@ export function AgentSuggestion({
     isSuggestedAgentConfigurationsLoading,
   ]);
 
-  const showAssistantDetails = useCallback(
+  const showAgentDetails = useCallback(
     (agentConfiguration: LightAgentConfigurationType) => {
       setQueryParam(router, "agentDetails", agentConfiguration.sId);
     },
     [router]
   );
 
+  useEffect(() => {
+    if (
+      isSubmitting ||
+      !dustAgent ||
+      userMessage.id === -1 ||
+      userMessage.sId === autoSelectedMessageIdRef.current ||
+      // Only auto-select the dust agent if it is the first user message in the conversation
+      // Rank might be > 0 if there are content fragments (as they account for message ranks)
+      userMessage.rank !== userMessage.contentFragments.length
+    ) {
+      return;
+    }
+
+    autoSelectedMessageIdRef.current = userMessage.sId;
+    setSelectedAgent(toRichAgentMentionType(dustAgent));
+    void handleSelectSuggestion(dustAgent);
+  }, [
+    dustAgent,
+    userMessage.id,
+    userMessage.sId,
+    userMessage.rank,
+    setSelectedAgent,
+    handleSelectSuggestion,
+    userMessage.contentFragments.length,
+    isSubmitting,
+  ]);
+
+  if (!showSuggestion) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col items-start gap-6">
+    <div className="mt-4 flex flex-col items-start gap-6">
       <Page.SectionHeader
         title="Best-matching Agents"
         description="Selected based on agents' descriptions, names, and available tools."
@@ -146,12 +181,17 @@ export function AgentSuggestion({
               subtitle={agent.lastAuthors?.join(", ") ?? ""}
               title={agent.name}
               pictureUrl={agent.pictureUrl}
-              onClick={() => handleSelectSuggestion(agent)}
+              onClick={async () => {
+                if (isSubmitting) {
+                  return;
+                }
+
+                setSelectedAgent(toRichAgentMentionType(agent));
+                await handleSelectSuggestion(agent);
+              }}
               variant="secondary"
               action={
-                <AssistantCardMore
-                  onClick={() => showAssistantDetails(agent)}
-                />
+                <AssistantCardMore onClick={() => showAgentDetails(agent)} />
               }
             />
           ))}
@@ -159,15 +199,15 @@ export function AgentSuggestion({
       )}
       <div className="flex flex-row items-center gap-2">
         <p className="flex text-sm text-muted-foreground">Or</p>
-        <AssistantPicker
+        <AgentPicker
           owner={owner}
-          assistants={allSortedAgents}
+          agents={allSortedAgents}
           onItemClick={async (agent) => {
-            if (!isLoading) {
-              setIsLoading(true);
-              await handleSelectSuggestion(agent);
-              setIsLoading(false);
+            if (isSubmitting) {
+              return;
             }
+            setSelectedAgent(toRichAgentMentionType(agent));
+            await handleSelectSuggestion(agent);
           }}
           pickerButton={
             <Button
@@ -205,10 +245,10 @@ function sortAgents(
   } else if (b.sId === GLOBAL_AGENTS_SID.DUST) {
     return 1;
   }
-  // Dust-deep always second
-  if (a.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  // Deep dive always second
+  if (a.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return -1;
-  } else if (b.sId === GLOBAL_AGENTS_SID.DUST_DEEP) {
+  } else if (b.sId === GLOBAL_AGENTS_SID.DEEP_DIVE) {
     return 1;
   }
 

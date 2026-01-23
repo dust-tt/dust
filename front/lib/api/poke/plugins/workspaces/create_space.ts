@@ -1,5 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { createRegularSpaceAndGroup } from "@app/lib/api/spaces";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Err, Ok } from "@app/types";
 
 export const createSpacePlugin = createPlugin({
@@ -34,16 +34,15 @@ export const createSpacePlugin = createPlugin({
       return new Err(new Error("Name cannot be empty"));
     }
 
-    const spaceRes = await createRegularSpaceAndGroup(
+    const spaceRes = await createSpaceAndGroup(
       auth,
-      isRestricted
-        ? {
-            name: formattedName,
-            memberIds: [],
-            isRestricted: true,
-            managementMode: "manual",
-          }
-        : { name: formattedName, isRestricted: false },
+      {
+        name: formattedName,
+        memberIds: [],
+        isRestricted,
+        managementMode: "manual",
+        spaceKind: "regular",
+      },
       {
         ignoreWorkspaceLimit: args.ignoreWorkspaceLimit,
       }

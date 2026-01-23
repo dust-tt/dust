@@ -1,5 +1,5 @@
-import type { AgentBuilderAction } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { AssistantBuilderMCPConfiguration } from "@app/components/assistant_builder/types";
+import type { AgentBuilderMCPConfiguration } from "@app/components/agent_builder/types";
+import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type {
   AutoInternalMCPServerNameType,
@@ -11,6 +11,7 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   MCPServerType,
+  MCPServerTypeWithViews,
   MCPServerViewType,
   RemoteMCPServerType,
 } from "@app/lib/api/mcp";
@@ -25,7 +26,7 @@ import type {
   MultiActionPreset,
   TemplateActionPreset,
 } from "@app/types";
-import { asDisplayName } from "@app/types";
+import { asDisplayName, asDisplayToolName } from "@app/types";
 
 export const getServerTypeAndIdFromSId = (
   mcpServerId: string
@@ -103,19 +104,22 @@ export const mcpServerViewSortingFn = (
 };
 
 export const mcpServersSortingFn = (
-  a: { mcpServer: MCPServerType },
-  b: { mcpServer: MCPServerType }
-) => {
-  const { serverType: aServerType } = getServerTypeAndIdFromSId(
-    a.mcpServer.sId
-  );
-  const { serverType: bServerType } = getServerTypeAndIdFromSId(
-    b.mcpServer.sId
-  );
-  if (aServerType === bServerType) {
-    return a.mcpServer.name.localeCompare(b.mcpServer.name);
+  a: {
+    mcpServer: MCPServerType | MCPServerTypeWithViews;
+    mcpServerView?: MCPServerViewType;
+  },
+  b: {
+    mcpServer: MCPServerType | MCPServerTypeWithViews;
+    mcpServerView?: MCPServerViewType;
   }
-  return aServerType < bServerType ? -1 : 1;
+) => {
+  const aDisplayName = a.mcpServerView
+    ? getMcpServerViewDisplayName(a.mcpServerView)
+    : getMcpServerDisplayName(a.mcpServer);
+  const bDisplayName = b.mcpServerView
+    ? getMcpServerViewDisplayName(b.mcpServerView)
+    : getMcpServerDisplayName(b.mcpServer);
+  return aDisplayName.localeCompare(bDisplayName);
 };
 
 export function isRemoteMCPServerType(
@@ -132,8 +136,8 @@ export function getMcpServerViewDescription(view: MCPServerViewType): string {
 export function getMcpServerViewDisplayName(
   view: MCPServerViewType,
   action?:
-    | AssistantBuilderMCPConfiguration
-    | AgentBuilderAction
+    | AgentBuilderMCPConfiguration
+    | BuilderAction
     | MCPServerConfigurationType
 ) {
   if (view.name) {
@@ -145,13 +149,13 @@ export function getMcpServerViewDisplayName(
 export function getMcpServerDisplayName(
   server: MCPServerType,
   action?:
-    | AssistantBuilderMCPConfiguration
-    | AgentBuilderAction
+    | AgentBuilderMCPConfiguration
+    | BuilderAction
     | MCPServerConfigurationType
-) {
+): string {
   // Unreleased internal servers are displayed with a suffix in the UI.
   const res = getInternalMCPServerNameAndWorkspaceId(server.sId);
-  let displayName = asDisplayName(server.name);
+  let displayName = asDisplayToolName(server.name);
 
   if (res.isOk()) {
     const isCustomName = action?.name && action.name !== server.name;
@@ -172,6 +176,29 @@ export function getMcpServerDisplayName(
     }
   }
   return displayName;
+}
+
+export function doesInternalMCPServerRequireBearerToken(
+  serverId: string
+): boolean {
+  const res = getInternalMCPServerNameAndWorkspaceId(serverId);
+  if (res.isErr()) {
+    return false;
+  }
+  const serverConfig = INTERNAL_MCP_SERVERS[res.value.name];
+  return (
+    "requiresBearerToken" in serverConfig &&
+    serverConfig.requiresBearerToken === true
+  );
+}
+
+export function requiresBearerTokenConfiguration(
+  server: MCPServerType
+): boolean {
+  if (isRemoteMCPServerType(server)) {
+    return true;
+  }
+  return doesInternalMCPServerRequireBearerToken(server.sId);
 }
 
 // Only includes action types that are actually used in templates.

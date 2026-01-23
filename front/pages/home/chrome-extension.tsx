@@ -1,5 +1,5 @@
 import { Button } from "@dust-tt/sparkle";
-import Head from "next/head";
+import { useRouter } from "next/router";
 import type { ReactElement, ReactNode } from "react";
 
 import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVideoSection";
@@ -13,6 +13,7 @@ import {
 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { classNames } from "@app/lib/utils";
 
@@ -407,29 +408,16 @@ function JustUseDustSection() {
 }
 
 export default function ChromeExtension() {
+  const router = useRouter();
+
   return (
     <>
-      <Head>
-        <title>Dust - Chrome Extension</title>
-        <meta
-          name="description"
-          content="Bring your Dust agents right into your browser. Access company knowledge and AI assistance without leaving your current tab."
-        />
-        <meta property="og:title" content="Dust - Chrome Extension" />
-        <meta
-          property="og:description"
-          content="Bring your Dust agents right into your browser. Access company knowledge and AI assistance without leaving your current tab."
-        />
-        <meta property="og:type" content="website" />
-        <meta
-          property="og:image"
-          content="https://dust.tt/static/landing/hero_dust.png"
-        />
-        <meta
-          property="og:url"
-          content="https://dust.tt/home/chrome-extension"
-        />
-      </Head>
+      <PageMetadata
+        title="Dust Chrome Extension: AI Agents in Your Browser"
+        description="Bring your Dust agents right into your browser. Access company knowledge and AI assistance without leaving your current tab."
+        pathname={router.asPath}
+        ogImage="https://dust.tt/static/landing/hero_dust.png"
+      />
 
       <div className="container flex w-full flex-col gap-16 px-2 py-2">
         <HeroSection />

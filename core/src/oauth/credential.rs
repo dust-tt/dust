@@ -18,6 +18,7 @@ pub enum CredentialProvider {
     Snowflake,
     Bigquery,
     Salesforce,
+    Slack,
     Microsoft,
     MicrosoftTools,
     Modjo,
@@ -30,6 +31,9 @@ pub enum CredentialProvider {
     McpStatic,
     Notion,
     Freshservice,
+    Databricks,
+    UkgReady,
+    Vanta,
 }
 
 impl From<ConnectionProvider> for CredentialProvider {
@@ -38,11 +42,16 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Microsoft => CredentialProvider::Microsoft,
             ConnectionProvider::MicrosoftTools => CredentialProvider::MicrosoftTools,
             ConnectionProvider::Salesforce => CredentialProvider::Salesforce,
+            ConnectionProvider::Slack => CredentialProvider::Slack,
             ConnectionProvider::Gmail => CredentialProvider::Gmail,
             ConnectionProvider::Jira => CredentialProvider::Jira,
             ConnectionProvider::Mcp => CredentialProvider::Mcp,
             ConnectionProvider::McpStatic => CredentialProvider::McpStatic,
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
+            ConnectionProvider::Databricks => CredentialProvider::Databricks,
+            ConnectionProvider::Snowflake => CredentialProvider::Snowflake,
+            ConnectionProvider::UkgReady => CredentialProvider::UkgReady,
+            ConnectionProvider::Vanta => CredentialProvider::Vanta,
             _ => panic!("Unsupported provider: {:?}", provider),
         }
     }
@@ -164,8 +173,12 @@ impl Credential {
 
         let keys_to_check = match provider {
             CredentialProvider::Snowflake => {
-                // Check if it's key-pair auth or password auth
-                if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
+                // Check if it's OAuth (client_id + client_secret) or data warehouse auth
+                if content.contains_key("client_id") && content.contains_key("client_secret") {
+                    // OAuth credentials for MCP server integration (snowflake_account is in metadata)
+                    vec!["client_id", "client_secret"]
+                } else if content.get("auth_type").and_then(|v| v.as_str()) == Some("keypair") {
+                    // Key-pair auth for data warehouse
                     vec![
                         "account",
                         "warehouse",
@@ -175,7 +188,7 @@ impl Credential {
                         "auth_type",
                     ]
                 } else {
-                    // Legacy or explicit password auth
+                    // Legacy or explicit password auth for data warehouse
                     vec!["account", "warehouse", "username", "password", "role"]
                 }
             }
@@ -207,6 +220,9 @@ impl Credential {
             CredentialProvider::Salesforce => {
                 vec!["client_id", "client_secret"]
             }
+            CredentialProvider::Slack => {
+                vec!["client_id", "client_secret"]
+            }
             CredentialProvider::Microsoft => {
                 vec!["client_id", "client_secret"]
             }
@@ -233,6 +249,16 @@ impl Credential {
             }
             CredentialProvider::Freshservice => {
                 vec!["freshservice_domain"]
+            }
+            CredentialProvider::Databricks => {
+                vec!["client_id", "client_secret"]
+            }
+            CredentialProvider::UkgReady => {
+                // PKCE flow doesn't require client_secret
+                vec!["client_id"]
+            }
+            CredentialProvider::Vanta => {
+                vec!["client_id", "client_secret"]
             }
         };
 

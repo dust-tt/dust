@@ -64,8 +64,10 @@ export async function handleDeprecatedChatBot(
     slackTeamId,
   });
 
-  const slackConfigurations =
-    await SlackConfigurationResource.listForTeamId(slackTeamId);
+  const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+    slackTeamId,
+    "slack"
+  );
   // If there are no slack configurations, return 200.
   if (slackConfigurations.length === 0) {
     localLogger.info("No deprecated Slack configurations found.", slackTeamId);

@@ -5,7 +5,6 @@ import pino from "pino";
 
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
 
 function sanitizeError(error: Error) {
   // Override default pino error serializer to handle Axios errors.
@@ -78,10 +77,10 @@ const logger = pino(pinoOptions);
 export default logger;
 export type { Logger } from "pino";
 
-export const getActivityLogger = (
-  connector: ConnectorResource | ConnectorModel,
+export function getLoggerArgs(
+  connector: ConnectorResource,
   loggerArgs?: Record<string, string | number | null>
-) => {
+) {
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const effectiveArgs: Record<string, string | number | null> = {
     workspaceId: dataSourceConfig.workspaceId,
@@ -103,6 +102,12 @@ export const getActivityLogger = (
   } catch (e) {
     // Cannot read context, ignore
   }
+  return effectiveArgs;
+}
 
-  return logger.child(effectiveArgs);
-};
+export function getActivityLogger(
+  connector: ConnectorResource,
+  loggerArgs?: Record<string, string | number | null>
+) {
+  return logger.child(getLoggerArgs(connector, loggerArgs));
+}

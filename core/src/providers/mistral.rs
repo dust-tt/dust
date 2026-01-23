@@ -2,6 +2,7 @@ use crate::providers::chat_messages::{
     AssistantChatMessage, ChatMessage, ContentBlock, MixedContent,
 };
 use crate::providers::embedder::{Embedder, EmbedderVector};
+use crate::providers::llm::TokenizerSingleton;
 use crate::providers::llm::{ChatFunction, ChatFunctionCall};
 use crate::providers::llm::{
     ChatMessageRole, LLMChatGeneration, LLMGeneration, LLMTokenUsage, LLM,
@@ -9,11 +10,11 @@ use crate::providers::llm::{
 use crate::providers::provider::{ModelError, ModelErrorRetryOptions, Provider, ProviderID};
 use crate::providers::sentencepiece::sentencepiece::{
     batch_tokenize_async, decode_async, encode_async,
-    mistral_instruct_tokenizer_240216_model_v2_base_singleton,
     mistral_instruct_tokenizer_240216_model_v3_base_singleton,
     mistral_tokenizer_model_v1_base_singleton,
 };
 use crate::run::Credentials;
+use crate::types::tokenizer::{SentencePieceTokenizerBase, TokenizerConfig};
 use crate::utils::{self, now, ParseError};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
@@ -420,11 +421,33 @@ impl MistralAPIError {
 pub struct MistralAILLM {
     id: String,
     api_key: Option<String>,
+    tokenizer: Option<TokenizerSingleton>,
 }
 
 impl MistralAILLM {
-    pub fn new(id: String) -> Self {
-        MistralAILLM { id, api_key: None }
+    pub fn new(id: String, tokenizer: Option<TokenizerSingleton>) -> Self {
+        MistralAILLM {
+            id: id.clone(),
+            api_key: None,
+            tokenizer: tokenizer.or_else(|| {
+                if id.starts_with("mistral-tiny")
+                    || id.starts_with("open-mistral-7b")
+                    || id.starts_with("open-mixtral-8x7b")
+                {
+                    Some(TokenizerSingleton::SentencePiece(
+                        mistral_tokenizer_model_v1_base_singleton(),
+                    ))
+                } else if id.starts_with("open-mixtral-8x22b") {
+                    Some(TokenizerSingleton::SentencePiece(
+                        mistral_instruct_tokenizer_240216_model_v3_base_singleton(),
+                    ))
+                } else {
+                    TokenizerSingleton::from_config(&TokenizerConfig::SentencePiece {
+                        base: SentencePieceTokenizerBase::ModelV2,
+                    })
+                }
+            }),
+        }
     }
 
     fn chat_uri(&self) -> Result<Uri> {
@@ -441,22 +464,6 @@ impl MistralAILLM {
             .collect::<Result<Vec<_>>>()?;
 
         Ok(mistral_messages)
-    }
-
-    fn tokenizer(&self) -> Arc<RwLock<SentencePieceProcessor>> {
-        if self.id.starts_with("mistral-tiny")
-            || self.id.starts_with("open-mistral-7b")
-            || self.id.starts_with("open-mixtral-8x7b")
-        {
-            return mistral_tokenizer_model_v1_base_singleton();
-        }
-
-        if self.id.starts_with("open-mixtral-8x22b") {
-            return mistral_instruct_tokenizer_240216_model_v3_base_singleton();
-        }
-
-        // default to v2 tokenizer (mistral-small, mistral-medium, mistral-large)
-        return mistral_instruct_tokenizer_240216_model_v2_base_singleton();
     }
 
     async fn streamed_chat_completion(
@@ -927,15 +934,27 @@ impl LLM for MistralAILLM {
     }
 
     async fn encode(&self, text: &str) -> Result<Vec<usize>> {
-        encode_async(self.tokenizer(), text).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .encode(text)
+            .await
     }
 
     async fn decode(&self, tokens: Vec<usize>) -> Result<String> {
-        decode_async(self.tokenizer(), tokens).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .decode(tokens)
+            .await
     }
 
     async fn tokenize(&self, texts: Vec<String>) -> Result<Vec<Vec<(usize, String)>>> {
-        batch_tokenize_async(self.tokenizer(), texts).await
+        self.tokenizer
+            .as_ref()
+            .ok_or_else(|| anyhow!("Tokenizer not initialized"))?
+            .tokenize(texts)
+            .await
     }
 
     async fn chat(
@@ -1066,6 +1085,7 @@ impl LLM for MistralAILLM {
                 prompt_tokens: u.prompt_tokens,
                 cached_tokens: None,
                 reasoning_tokens: None,
+                cache_creation_input_tokens: None,
             }),
             provider_request_id: request_id,
             logprobs: None,
@@ -1310,7 +1330,10 @@ impl Provider for MistralProvider {
             Err(anyhow!("User aborted Mistral AI test."))?;
         }
 
-        let mut llm = self.llm(String::from("mistral-tiny"));
+        let tokenizer = TokenizerSingleton::from_config(&TokenizerConfig::SentencePiece {
+            base: SentencePieceTokenizerBase::ModelV1,
+        });
+        let mut llm = self.llm(String::from("mistral-tiny"), tokenizer);
         llm.initialize(Credentials::new()).await?;
 
         let _ = llm
@@ -1336,8 +1359,8 @@ impl Provider for MistralProvider {
         Ok(())
     }
 
-    fn llm(&self, id: String) -> Box<dyn LLM + Sync + Send> {
-        Box::new(MistralAILLM::new(id))
+    fn llm(&self, id: String, tokenizer: Option<TokenizerSingleton>) -> Box<dyn LLM + Sync + Send> {
+        Box::new(MistralAILLM::new(id, tokenizer))
     }
 
     fn embedder(&self, id: String) -> Box<dyn Embedder + Sync + Send> {

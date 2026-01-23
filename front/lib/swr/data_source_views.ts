@@ -164,6 +164,7 @@ export function useMultipleDataSourceViewsContentNodes({
               dsvIdToPageCursor.set(dsvId, nextPageCursor);
             }
           });
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
           setIsNodesError(true);
           break;
@@ -295,6 +296,7 @@ export function useDataSourceViewContentNodes({
     nodes: data?.nodes ?? emptyArray(),
     totalNodesCount: data ? data.total : 0,
     totalNodesCountIsAccurate: data ? data.totalIsAccurate : true,
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     nextPageCursor: data?.nextPageCursor || null,
   };
 }
@@ -317,7 +319,6 @@ export function useInfiniteDataSourceViewContentNodes({
       (_pageIndex, previousPageData) => {
         // If we reached the end, stop fetching
         if (
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
           (previousPageData && !previousPageData.nextPageCursor) ||
           !dataSourceView
         ) {

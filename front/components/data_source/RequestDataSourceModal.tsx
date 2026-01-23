@@ -19,7 +19,7 @@ import { useEffect, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers";
+import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { sendRequestDataSourceEmail } from "@app/lib/email";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";

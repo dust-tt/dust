@@ -3,21 +3,21 @@ import assert from "assert";
 import { isToolExecutionStatusFinal } from "@app/lib/actions/statuses";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import type { Authenticator, AuthenticatorType } from "@app/lib/auth";
-import { AgentMCPActionModel } from "@app/lib/models/assistant/actions/mcp";
-import { AgentStepContentModel } from "@app/lib/models/assistant/agent_step_content";
-import logger from "@app/logger/logger";
+import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { logAgentLoopStepStart } from "@app/temporal/agent_loop/activities/instrumentation";
 import type { ActionBlob } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { createToolActionsActivity } from "@app/temporal/agent_loop/lib/create_tool_actions";
 import { runModelActivity } from "@app/temporal/agent_loop/lib/run_model";
 import type { ModelId } from "@app/types";
 import { MAX_ACTIONS_PER_STEP } from "@app/types/assistant/agent";
-import { isFunctionCallContent } from "@app/types/assistant/agent_message_content";
+import { isAgentFunctionCallContent } from "@app/types/assistant/agent_message_content";
 import type {
-  RunAgentArgs,
-  RunAgentExecutionData,
+  AgentLoopArgsWithTiming,
+  AgentLoopExecutionData,
 } from "@app/types/assistant/agent_run";
-import { getRunAgentData } from "@app/types/assistant/agent_run";
+import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
 export type RunModelAndCreateActionsResult = {
   actionBlobs: ActionBlob[];
@@ -41,11 +41,11 @@ export async function runModelAndCreateActionsActivity({
   authType: AuthenticatorType;
   autoRetryCount?: number;
   checkForResume?: boolean;
-  runAgentArgs: RunAgentArgs;
+  runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
   step: number;
 }): Promise<RunModelAndCreateActionsResult | null> {
-  const runAgentDataRes = await getRunAgentData(authType, runAgentArgs);
+  const runAgentDataRes = await getAgentLoopData(authType, runAgentArgs);
   if (runAgentDataRes.isErr()) {
     return null;
   }
@@ -56,7 +56,6 @@ export async function runModelAndCreateActionsActivity({
   logAgentLoopStepStart({
     agentMessageId: runAgentData.agentMessage.sId,
     conversationId: runAgentData.conversation.sId,
-    executionMode: runAgentArgs.sync ? "sync" : "async",
     step,
   });
 
@@ -76,9 +75,7 @@ export async function runModelAndCreateActionsActivity({
     }
   }
 
-  // Otherwise, run both activities.
-  const localLogger = logger.child({ step });
-  localLogger.info("Running model and creating actions - normal path");
+  // Otherwise, run the model and create actions.
 
   // Track step content IDs by function call ID for later use in actions.
   const functionCallStepContentIds: Record<string, ModelId> = {};
@@ -109,13 +106,23 @@ export async function runModelAndCreateActionsActivity({
   const actionsToRun = actions.slice(0, MAX_ACTIONS_PER_STEP);
 
   // 2. Create tool actions.
+  // Include the new runId in the runIds array when creating actions
+  const currentRunIds = runId ? [...runIds, runId] : runIds;
   const createResult = await createToolActionsActivity(auth, {
     runAgentData,
     actions: actionsToRun,
     stepContexts,
     functionCallStepContentIds: updatedFunctionCallStepContentIds,
     step,
+    runIds: currentRunIds,
   });
+
+  const needsApproval = createResult.actionBlobs.some((a) => a.needsApproval);
+  if (needsApproval) {
+    await ConversationResource.markAsActionRequired(auth, {
+      conversation: runAgentData.conversation,
+    });
+  }
 
   return {
     runId,
@@ -129,7 +136,7 @@ export async function runModelAndCreateActionsActivity({
  */
 async function getExistingActionsAndBlobs(
   auth: Authenticator,
-  runAgentArgs: RunAgentExecutionData,
+  runAgentArgs: AgentLoopExecutionData,
   step: number
 ): Promise<{
   actionBlobs: ActionBlob[];
@@ -140,6 +147,7 @@ async function getExistingActionsAndBlobs(
   // Find function_call step contents for this step.
   const stepContents = await AgentStepContentModel.findAll({
     where: {
+      workspaceId: runAgentArgs.agentMessageRow.workspaceId,
       agentMessageId: agentMessage.agentMessageId,
       step,
       type: "function_call",
@@ -164,7 +172,7 @@ async function getExistingActionsAndBlobs(
       const [mcpAction] = stepContent.agentMCPActions;
 
       assert(
-        isFunctionCallContent(stepContent.value),
+        isAgentFunctionCallContent(stepContent.value),
         "Unexpected: step content is not a function call"
       );
 

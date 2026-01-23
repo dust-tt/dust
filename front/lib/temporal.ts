@@ -1,5 +1,9 @@
-import type { ConnectionOptions } from "@temporalio/client";
+import type {
+  ConnectionOptions,
+  WorkflowClientInterceptor,
+} from "@temporalio/client";
 import { Client, Connection } from "@temporalio/client";
+import { OpenTelemetryWorkflowClientInterceptor } from "@temporalio/interceptors-opentelemetry";
 import { NativeConnection } from "@temporalio/worker";
 import fs from "fs-extra";
 
@@ -11,11 +15,14 @@ export const temporalWorkspaceToEnvVar: Record<TemporalNamespaces, string> = {
   relocation: "TEMPORAL_RELOCATION_NAMESPACE",
 };
 
+export const TEMPORAL_MAXED_CACHED_WORKFLOWS = 50;
+
 // This is a singleton connection to the Temporal server.
 const TEMPORAL_CLIENTS: Partial<Record<TemporalNamespaces, Client>> = {};
 
 export async function getTemporalClientForNamespace(
-  namespace: TemporalNamespaces
+  namespace: TemporalNamespaces,
+  workflows: WorkflowClientInterceptor[] = []
 ) {
   const cachedClient = TEMPORAL_CLIENTS[namespace];
   if (cachedClient) {
@@ -29,6 +36,9 @@ export async function getTemporalClientForNamespace(
   const client = new Client({
     connection,
     namespace: process.env[envVarForTemporalNamespace],
+    interceptors: {
+      workflow: workflows,
+    },
   });
   TEMPORAL_CLIENTS[namespace] = client;
 
@@ -95,7 +105,9 @@ export async function getTemporalWorkerConnection(): Promise<{
 }
 
 export async function getTemporalClientForAgentNamespace() {
-  return getTemporalClientForNamespace("agent");
+  return getTemporalClientForNamespace("agent", [
+    new OpenTelemetryWorkflowClientInterceptor(),
+  ]);
 }
 
 export async function getTemporalClientForFrontNamespace() {
@@ -104,4 +116,29 @@ export async function getTemporalClientForFrontNamespace() {
 
 export async function getTemporalClientForConnectorsNamespace() {
   return getTemporalClientForNamespace("connectors");
+}
+
+/**
+ * Checks if there are any running upsert workflows for a specific datasource.
+ * Returns the count of running workflows.
+ */
+export async function checkRunningUpsertWorkflows({
+  workspaceId,
+  dataSourceId,
+}: {
+  workspaceId: string;
+  dataSourceId: string;
+}): Promise<number> {
+  const client = await getTemporalClientForFrontNamespace();
+
+  // Query for all Active upsert workflows for this datasource
+  const query = `WorkflowId STARTS_WITH "upsert-queue-document-${workspaceId}-${dataSourceId}-" AND ExecutionStatus="Running"`;
+  const workflows = client.workflow.list({ query });
+
+  let count = 0;
+  for await (const _workflow of workflows) {
+    count++;
+  }
+
+  return count;
 }

@@ -4,6 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { pluginManager } from "@app/lib/api/poke/plugin_manager";
+import { restoreWorkspaceAfterSubscription } from "@app/lib/api/subscription";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { PluginRunResource } from "@app/lib/resources/plugin_run_resource";
@@ -86,6 +87,9 @@ async function handler(
         planCode,
         endDate: endDate ? new Date(endDate) : null,
       });
+
+      // Restore workspace functionality after subscription upgrade
+      await restoreWorkspaceAfterSubscription(auth);
 
       await pluginRun.recordResult({
         display: "text",

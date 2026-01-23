@@ -29,6 +29,9 @@ const CHUNK_SIZE = 3000;
 const TEMPORAL_WORKFLOW_MAX_HISTORY_LENGTH = 10_000;
 const TEMPORAL_CORE_DATA_SOURCE_RELOCATION_CONCURRENCY = 20;
 
+const INITIAL_BACKOFF_DELAY_MS = 1000;
+const MAX_BACKOFF_DELAY_MS = 60_000;
+
 interface RelocationWorkflowBase {
   sourceRegion: RegionType;
   destRegion: RegionType;
@@ -165,6 +168,20 @@ export async function workspaceRelocateFrontWorkflow({
       },
     ],
   });
+
+  // 4) Recreate Elasticsearch indices in the destination region.
+  await executeChild(workspaceRelocateFrontEsIndexationWorkflow, {
+    workflowId: `workspaceRelocateFrontEsIndexationWorkflow-${workspaceId}`,
+    searchAttributes: parentSearchAttributes,
+    args: [
+      {
+        sourceRegion,
+        destRegion,
+        workspaceId,
+      },
+    ],
+    memo,
+  });
 }
 
 export async function workspaceRelocateFrontTableWorkflow({
@@ -204,6 +221,7 @@ export async function workspaceRelocateFrontTableWorkflow({
         tableName,
         sourceRegion,
         destRegion,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CHUNK_SIZE,
       });
 
@@ -283,6 +301,17 @@ export async function workspaceRelocateFrontFileStorageWorkflow({
       await sleep("1m");
     }
   }
+}
+
+export async function workspaceRelocateFrontEsIndexationWorkflow({
+  destRegion,
+  workspaceId,
+}: RelocationWorkflowBase) {
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(destRegion);
+
+  // Recreate user search index.
+  await destinationRegionActivities.recreateUserSearchIndex({ workspaceId });
 }
 
 /**
@@ -581,15 +610,19 @@ export async function workspaceRelocateCoreDataSourceResourcesWorkflow({
   const resourcesRelocationWorkflows = [
     {
       fn: workspaceRelocateDataSourceDocumentsWorkflow,
-      workflowId: `workspaceRelocateDataSourceDocumentsWorkflow`,
+      workflowId: "workspaceRelocateDataSourceDocumentsWorkflow",
     },
     {
       fn: workspaceRelocateDataSourceFoldersWorkflow,
-      workflowId: `workspaceRelocateDataSourceFoldersWorkflow`,
+      workflowId: "workspaceRelocateDataSourceFoldersWorkflow",
     },
     {
       fn: workspaceRelocateDataSourceTablesWorkflow,
-      workflowId: `workspaceRelocateDataSourceTablesWorkflow`,
+      workflowId: "workspaceRelocateDataSourceTablesWorkflow",
+    },
+    {
+      fn: workspaceRelocateTableStorageWorkflow,
+      workflowId: "workspaceRelocateTableStorageWorkflow",
     },
   ];
 
@@ -652,6 +685,7 @@ export async function workspaceRelocateDataSourceDocumentsWorkflow({
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_NODES_BATCH_SIZE,
       });
 
@@ -764,6 +798,7 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
         dataSourceCoreIds,
         sourceRegion,
         workspaceId,
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         limit: limit || CORE_API_LIST_TABLES_BATCH_SIZE,
       });
     if (dataPath) {
@@ -783,6 +818,50 @@ export async function workspaceRelocateDataSourceTablesWorkflow({
     pageCursor = nextPageCursor;
     limit = nextLimit;
   } while (pageCursor);
+}
+
+export async function workspaceRelocateTableStorageWorkflow({
+  dataSourceCoreIds,
+  destIds,
+  destRegion,
+  sourceRegion,
+  workspaceId,
+}: RelocationWorkflowBase & {
+  dataSourceCoreIds: DataSourceCoreIds;
+  destIds: CreateDataSourceProjectResult;
+}) {
+  const sourceRegionActivities = getFrontSourceRegionActivities(sourceRegion);
+  const destinationRegionActivities =
+    getFrontDestinationRegionActivities(destRegion);
+
+  // 1) Relocate tables files.
+  const destTablesBucket =
+    await destinationRegionActivities.getDestinationTablesBucket();
+
+  const tableFilesJobName =
+    await sourceRegionActivities.startTransferCoreTableFiles({
+      dataSourceCoreIds,
+      destBucket: destTablesBucket,
+      destIds,
+      destRegion,
+      sourceRegion,
+      workspaceId,
+    });
+
+  // Wait for the file storage transfer to complete.
+  let isTableFilesTransferComplete = false;
+  let backoffDelayMs = INITIAL_BACKOFF_DELAY_MS;
+  while (!isTableFilesTransferComplete) {
+    isTableFilesTransferComplete =
+      await sourceRegionActivities.isFileStorageTransferComplete({
+        jobName: tableFilesJobName,
+      });
+
+    if (!isTableFilesTransferComplete) {
+      await sleep(backoffDelayMs);
+      backoffDelayMs = Math.min(backoffDelayMs * 2, MAX_BACKOFF_DELAY_MS);
+    }
+  }
 }
 
 export async function workspaceRelocateAppsWorkflow({

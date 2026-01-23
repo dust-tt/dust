@@ -3,10 +3,14 @@ import * as ResizablePrimitive from "react-resizable-panels";
 
 import { cn } from "@sparkle/lib/utils";
 
-const ResizablePanelGroup = ({
+type ResizablePanelGroupProps = React.ComponentProps<
+  typeof ResizablePrimitive.PanelGroup
+>;
+
+const ResizablePanelGroup: React.FC<ResizablePanelGroupProps> = ({
   className,
   ...props
-}: React.ComponentProps<typeof ResizablePrimitive.PanelGroup>) => (
+}) => (
   <ResizablePrimitive.PanelGroup
     className={cn(
       "s-flex s-h-full s-w-full data-[panel-group-direction=vertical]:s-flex-col",

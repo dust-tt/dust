@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { computeSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 
@@ -41,6 +42,47 @@ describe("GET /api/user", () => {
             workOSOrganizationId: workspace.workOSOrganizationId,
           },
         ],
+        subscriberHash: computeSubscriberHash(user.sId),
+      },
+    });
+  });
+
+  it("returns 200 when the user is authenticated and has a subscriber hash when the feature flag is enabled", async () => {
+    const { req, res, user, workspace, membership } =
+      await createPrivateApiMockRequest();
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({
+      user: {
+        id: user.id,
+        sId: user.sId,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        provider: user.provider,
+        fullName: `${user.firstName} ${user.lastName}`,
+        image: user.imageUrl,
+        createdAt: user.createdAt.getTime(),
+        lastLoginAt: user.lastLoginAt?.getTime(),
+        organizations: [],
+        workspaces: [
+          {
+            id: workspace.id,
+            sId: workspace.sId,
+            name: workspace.name,
+            metadata: null,
+            role: membership.role,
+            segmentation: workspace.segmentation,
+            whiteListedProviders: workspace.whiteListedProviders,
+            defaultEmbeddingProvider: workspace.defaultEmbeddingProvider,
+            ssoEnforced: workspace.ssoEnforced,
+            workOSOrganizationId: workspace.workOSOrganizationId,
+          },
+        ],
+        subscriberHash: computeSubscriberHash(user.sId),
       },
     });
   });

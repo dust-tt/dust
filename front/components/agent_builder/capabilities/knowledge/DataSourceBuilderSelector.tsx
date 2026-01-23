@@ -3,13 +3,11 @@ import {
   Breadcrumbs,
   Button,
   CloudArrowLeftRightIcon,
+  cn,
   SearchInput,
+  Separator,
 } from "@dust-tt/sparkle";
-import { Separator } from "@dust-tt/sparkle";
-import { cn } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { DataSourceNavigationView } from "@app/components/agent_builder/capabilities/knowledge/DataSourceNavigationView";
@@ -19,11 +17,20 @@ import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSou
 import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
 import type { NavigationHistoryEntryType } from "@app/components/data_source_view/context/types";
-import { findSpaceFromNavigationHistory } from "@app/components/data_source_view/context/utils";
-import { findDataSourceViewFromNavigationHistory } from "@app/components/data_source_view/context/utils";
-import { getLatestNodeFromNavigationHistory } from "@app/components/data_source_view/context/utils";
+import {
+  findDataSourceViewFromNavigationHistory,
+  findSpaceFromNavigationHistory,
+  getLatestNodeFromNavigationHistory,
+} from "@app/components/data_source_view/context/utils";
 import { useDebounce } from "@app/hooks/useDebounce";
+import type { NodeCandidate, UrlCandidate } from "@app/lib/connectors";
+import {
+  isNodeCandidate,
+  isUrlCandidate,
+  nodeCandidateFromUrl,
+} from "@app/lib/connectors";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import { CATEGORY_DETAILS } from "@app/lib/spaces";
 import { useSpacesSearch, useSystemSpace } from "@app/lib/swr/spaces";
 import type { ContentNodesViewType } from "@app/types";
@@ -40,8 +47,9 @@ export const DataSourceBuilderSelector = ({
   const { spaces } = useSpacesContext();
   const { supportedDataSourceViews: dataSourceViews } =
     useDataSourceViewsContext();
-  const { navigationHistory, navigateTo } = useDataSourceBuilderContext();
-  const router = useRouter();
+  const { navigationHistory, navigateTo, setSpaceEntry, setCategoryEntry } =
+    useDataSourceBuilderContext();
+  const router = useAppRouter();
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
   const currentNavigationEntry =
     navigationHistory[navigationHistory.length - 1];
@@ -55,6 +63,19 @@ export const DataSourceBuilderSelector = ({
     delay: 300,
     minLength: MIN_SEARCH_QUERY_SIZE,
   });
+
+  const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
+    UrlCandidate | NodeCandidate | null
+  >(null);
+
+  useEffect(() => {
+    if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
+      const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
+      setNodeOrUrlCandidate(candidate);
+    } else {
+      setNodeOrUrlCandidate(null);
+    }
+  }, [debouncedSearch]);
 
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
@@ -76,6 +97,24 @@ export const DataSourceBuilderSelector = ({
     () => findDataSourceViewFromNavigationHistory(navigationHistory),
     [navigationHistory]
   );
+
+  // Automatically select the first space if there is only one
+  useEffect(() => {
+    if (filteredSpaces.length === 1) {
+      setSpaceEntry(filteredSpaces[0]);
+    }
+  }, [filteredSpaces, setSpaceEntry]);
+
+  // Automatically select the managed category if we are in a "project" kind of space
+  useEffect(() => {
+    if (
+      currentSpace &&
+      currentSpace.kind === "project" &&
+      currentNavigationEntry.type === "space"
+    ) {
+      setCategoryEntry("managed");
+    }
+  }, [currentSpace, currentNavigationEntry, setCategoryEntry]);
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 
@@ -104,7 +143,15 @@ export const DataSourceBuilderSelector = ({
       }
     }
 
-    if (searchScope === "node" && currentNode && currentNode.internalId) {
+    // When searching by URL/node candidate, we want to search globally (not restricted by parentId).
+    // URLs contain the full document path, so the document might be anywhere in the space,
+    // not necessarily within the current folder the user is navigating.
+    if (
+      searchScope === "node" &&
+      currentNode &&
+      currentNode.internalId &&
+      !nodeOrUrlCandidate
+    ) {
       filter.parentId = currentNode.internalId;
     }
 
@@ -115,24 +162,36 @@ export const DataSourceBuilderSelector = ({
     currentSpace,
     dataSourceViews,
     searchScope,
+    nodeOrUrlCandidate,
   ]);
 
   const {
-    searchResultNodes,
+    searchResultNodes: rawSearchResultNodes,
     isSearchLoading,
     isSearchValidating,
     isSearchError,
   } = useSpacesSearch(
     currentSpace && debouncedSearch
-      ? {
-          owner,
-          spaceIds: [currentSpace.sId],
-          search: debouncedSearch,
-          disabled: !debouncedSearch,
-          includeDataSources: true,
-          viewType,
-          ...searchFilter,
-        }
+      ? isNodeCandidate(nodeOrUrlCandidate) && nodeOrUrlCandidate.node
+        ? {
+            owner,
+            spaceIds: [currentSpace.sId],
+            nodeIds: [nodeOrUrlCandidate.node],
+            disabled: !debouncedSearch,
+            includeDataSources: false,
+            viewType,
+            ...searchFilter,
+          }
+        : {
+            owner,
+            spaceIds: [currentSpace.sId],
+            search: debouncedSearch,
+            searchSourceUrls: isUrlCandidate(nodeOrUrlCandidate),
+            disabled: !debouncedSearch,
+            includeDataSources: true,
+            viewType,
+            ...searchFilter,
+          }
       : {
           owner,
           spaceIds: [],
@@ -142,6 +201,17 @@ export const DataSourceBuilderSelector = ({
           viewType,
         }
   );
+
+  // Process search results and filter by URL if needed
+  const searchResultNodes = useMemo(() => {
+    // Filter results based on URL match if we have a URL candidate
+    if (nodeOrUrlCandidate && !isNodeCandidate(nodeOrUrlCandidate)) {
+      return rawSearchResultNodes.filter(
+        (node) => node.sourceUrl === nodeOrUrlCandidate.url
+      );
+    }
+    return rawSearchResultNodes;
+  }, [rawSearchResultNodes, nodeOrUrlCandidate]);
 
   const isSearching = debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE;
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
@@ -200,7 +270,7 @@ export const DataSourceBuilderSelector = ({
       <div className="flex flex-1 items-center justify-center">
         <div className="flex flex-col gap-2 px-4 text-center">
           <div className="text-lg font-medium text-foreground">
-            No spaces with data sources available
+            No data sources available
           </div>
           <div className="max-w-sm text-muted-foreground">
             Connect data sources or ask your admin to set them up
@@ -296,7 +366,7 @@ function getBreadcrumbConfig(
   switch (entry.type) {
     case "root":
       return {
-        label: "Spaces",
+        label: "All",
       };
     case "space":
       return {

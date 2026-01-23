@@ -132,13 +132,13 @@ module.exports = {
 
       // Should have type parameters
       if (
-        !typeAnnotation.typeParameters ||
-        !typeAnnotation.typeParameters.params.length
+        !typeAnnotation.typeArguments ||
+        !typeAnnotation.typeArguments.params.length
       ) {
         return false;
       }
 
-      const firstParam = typeAnnotation.typeParameters.params[0];
+      const firstParam = typeAnnotation.typeArguments.params[0];
 
       // Should be WithAPIErrorResponse<...>
       if (firstParam.type !== "TSTypeReference") return false;
@@ -148,13 +148,13 @@ module.exports = {
 
       // Should have type parameters for the client type
       if (
-        !firstParam.typeParameters ||
-        !firstParam.typeParameters.params.length
+        !firstParam.typeArguments ||
+        !firstParam.typeArguments.params.length
       ) {
         return false;
       }
 
-      const clientType = firstParam.typeParameters.params[0];
+      const clientType = firstParam.typeArguments.params[0];
 
       // Check if the client type uses imported types from @dust-tt/client
       return containsClientType(clientType);
@@ -180,8 +180,8 @@ module.exports = {
         }
 
         // Check type parameters recursively
-        if (typeNode.typeParameters && typeNode.typeParameters.params) {
-          return typeNode.typeParameters.params.some((param) =>
+        if (typeNode.typeArguments && typeNode.typeArguments.params) {
+          return typeNode.typeArguments.params.some((param) =>
             containsClientType(param)
           );
         }

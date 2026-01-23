@@ -1,0 +1,1 @@
+ALTER TABLE "triggers" ADD COLUMN "origin" VARCHAR(255);

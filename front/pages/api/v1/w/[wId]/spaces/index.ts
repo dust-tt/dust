@@ -53,6 +53,7 @@ type LegacySpacesResponseBody = {
  */
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<GetSpacesResponseType | LegacySpacesResponseBody>
   >,

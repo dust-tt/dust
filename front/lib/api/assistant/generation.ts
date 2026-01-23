@@ -1,13 +1,17 @@
 import moment from "moment-timezone";
 
 import {
-  DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME,
+  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
+  ENABLE_SKILL_TOOL_NAME,
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
+import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  isMCPConfigurationForInternalContentCreation,
   isMCPConfigurationForInternalNotion,
   isMCPConfigurationForInternalSlack,
   isMCPConfigurationForInternalWebsearch,
@@ -15,59 +19,42 @@ import {
   isMCPConfigurationWithDataSource,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
-import { visualizationSystemPrompt } from "@app/lib/api/assistant/visualization";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
+import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
+  WhitelistableFeature,
+  WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
-/**
- * Generation of the prompt for agents with multiple actions.
- *
- * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
- * the instructions, it can be replaced appropriately. The Extract action
- * doesn't need that replacement, and needs to avoid a dependency on
- * getAgentConfigurations here, so it passes null.
- */
-export async function constructPromptMultiActions(
-  auth: Authenticator,
-  {
-    userMessage,
-    agentConfiguration,
-    fallbackPrompt,
-    model,
-    hasAvailableActions,
-    errorContext,
-    agentsList,
-    conversationId,
-    serverToolsAndInstructions,
-  }: {
-    userMessage: UserMessageType;
-    agentConfiguration: AgentConfigurationType;
-    fallbackPrompt?: string;
-    model: ModelConfigurationType;
-    hasAvailableActions: boolean;
-    errorContext?: string;
-    agentsList: LightAgentConfigurationType[] | null;
-    conversationId?: string;
-    serverToolsAndInstructions?: ServerToolsAndInstructions[];
-  }
-) {
+function constructContextSection({
+  userMessage,
+  agentConfiguration,
+  model,
+  conversation,
+  owner,
+  errorContext,
+}: {
+  userMessage: UserMessageType;
+  agentConfiguration: AgentConfigurationType;
+  model: ModelConfigurationType;
+  conversation?: ConversationWithoutContentType;
+  owner: WorkspaceType | null;
+  errorContext?: string;
+}): string {
   const d = moment(new Date()).tz(userMessage.context.timezone);
-  const owner = auth.workspace();
 
-  // CONTEXT section
   let context = "# CONTEXT\n\n";
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
-  if (conversationId) {
-    context += `conversation_id: ${conversationId}\n`;
+  if (conversation?.sId) {
+    context += `conversation_id: ${conversation.sId}\n`;
   }
   if (owner) {
     context += `workspace: ${owner.name}\n`;
@@ -90,7 +77,57 @@ export async function constructPromptMultiActions(
       "\n";
   }
 
-  // TOOLS section
+  return context;
+}
+
+export function constructProjectContextSection(
+  conversation?: ConversationWithoutContentType
+): string | null {
+  if (!conversation?.spaceId) {
+    return null;
+  }
+
+  return `# PROJECT CONTEXT
+  
+This conversation is associated with a project. The project provides:
+- Persistent file storage shared across all conversations in this project
+- Project metadata (description and URLs) for organizational context
+- Semantic search capabilities over project files
+- Collaborative context that persists beyond individual conversations
+
+## Using Project Tools
+
+**project_context_management**: Use these tools to manage persistent project files and metadata
+**search_project_context**: Use this tool to semantically search across all project files when you need to:
+- Find relevant information within the project
+- Locate specific content across multiple files
+- Answer questions based on project knowledge
+
+## Project Files vs Conversation Attachments
+- **Project files**: Persistent, shared across all conversations in the project, managed via project_context_management
+- **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
+
+When information should be preserved for future conversations or context, add it to project files.
+`;
+}
+
+function constructToolsSection({
+  hasAvailableActions,
+  model,
+  agentConfiguration,
+  serverToolsAndInstructions,
+  enabledSkills,
+  equippedSkills,
+  featureFlags,
+}: {
+  hasAvailableActions: boolean;
+  model: ModelConfigurationType;
+  agentConfiguration: AgentConfigurationType;
+  serverToolsAndInstructions?: ServerToolsAndInstructions[];
+  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+  equippedSkills: SkillResource[];
+  featureFlags: WhitelistableFeature[];
+}): string {
   let toolsSection = "# TOOLS\n";
 
   let toolUseDirectives = "\n## TOOL USE DIRECTIVES\n";
@@ -124,11 +161,32 @@ export async function constructPromptMultiActions(
   // All discovered tools from all servers are made available for the agent to call, regardless of
   // whether their server has explicit instructions or is detailed in this specific prompt overview.
   let toolServersPrompt = "";
+
+  const areInstructionsAlreadyIncludedInSkillSection = ({
+    serverName,
+  }: ServerToolsAndInstructions): boolean => {
+    if (serverName !== "interactive_content" && serverName !== "deep_dive") {
+      return false;
+    }
+    return equippedSkills
+      .concat(enabledSkills)
+      .some((skill) => skill.sId === serverName);
+  };
+
   if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
     toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
+      if (
+        featureFlags.includes("skills") &&
+        areInstructionsAlreadyIncludedInSkillSection(serverData)
+      ) {
+        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions
+        // from being duplicated in the prompt if they are already included in the skills section.
+        continue;
+      }
+
       toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
       if (serverData.instructions) {
         toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
@@ -147,19 +205,127 @@ export async function constructPromptMultiActions(
 
   toolsSection += toolServersPrompt;
 
-  const attachmentsSection =
-    "# ATTACHMENTS\n" +
-    "The conversation history may contain file attachments, indicated by <attachment> tags. " +
-    "Attachments may originate from the user directly or from tool outputs. " +
-    "These tags indicate when the file was attached but do not always contain the full contents (it may contain a small snippet or description of the file).\n" +
-    "Each file attachment has a specific content type and status (includable, queryable, searchable):\n\n" +
-    `// includable: full content can be retrieved using \`${DEFAULT_CONVERSATION_INCLUDE_FILE_ACTION_NAME}\`\n` +
-    `// queryable: represents tabular data that can be queried alongside other queryable files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`\n` +
-    `// searchable: content can be searched alongside other searchable files' content using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`\n` +
-    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files mime types to decide which tool to use on which file.\n";
+  return toolsSection;
+}
 
-  // GUIDELINES section
+/**
+ * Get the full instructions for an enabled skill, including extended skill instructions if applicable.
+ */
+function getEnabledSkillInstructions(
+  skill: SkillResource & { extendedSkill: SkillResource | null }
+): string {
+  const { name, instructions, extendedSkill } = skill;
+
+  if (!extendedSkill) {
+    return `<${name}>\n${instructions}\n</${name}>`;
+  }
+
+  return [
+    `<${name}>`,
+    extendedSkill.instructions,
+    "<additional_guidelines>",
+    instructions,
+    "</additional_guidelines>",
+    `</${name}>`,
+  ].join("\n");
+}
+
+function constructSkillsSection({
+  enabledSkills,
+  equippedSkills,
+  featureFlags,
+}: {
+  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+  equippedSkills: SkillResource[];
+  featureFlags: WhitelistableFeature[];
+}): string {
+  if (!featureFlags.includes("skills")) {
+    return "";
+  }
+
+  let skillsSection =
+    "\n## SKILLS\n" +
+    "Skills are modular capabilities that extend your abilities for specific tasks. " +
+    "Each skill includes specialized instructions and may provide additional tools.\n\n" +
+    "Skills can be in two states:\n" +
+    // We do not use the wording `equipped` with the model as `available` is more meaningful in context.
+    // `equipped` is the backend term.
+    "- **Available**: Listed below but not active. Their instructions are not loaded yet. " +
+    `You can enable them using the \`${SKILL_MANAGEMENT_SERVER_NAME}${TOOL_NAME_SEPARATOR}${ENABLE_SKILL_TOOL_NAME}\` ` +
+    "tool when they become relevant to the conversation.\n" +
+    "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
+    "for the rest of the conversation.\n\n" +
+    "Enable skills proactively when a user's request matches a skill's purpose. " +
+    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n";
+
+  if (!enabledSkills.length && !equippedSkills.length) {
+    skillsSection +=
+      "\nNo skills are currently available or enabled for this agent.\n";
+    return skillsSection;
+  }
+
+  // Enabled skills - inject their full instructions
+  if (enabledSkills && enabledSkills.length > 0) {
+    skillsSection += "\n### ENABLED SKILLS\n";
+    skillsSection += "The following skills are currently enabled:\n";
+
+    const skillInstructions = enabledSkills.map((skill) =>
+      getEnabledSkillInstructions(skill)
+    );
+
+    skillsSection += skillInstructions.join("\n");
+  }
+
+  // Equipped but not yet enabled skills - show name and description only
+  if (equippedSkills && equippedSkills.length > 0) {
+    skillsSection += "\n### AVAILABLE SKILLS\n";
+    skillsSection +=
+      `These skills can be enabled using the \`${ENABLE_SKILL_TOOL_NAME}\` tool. ` +
+      "Review their descriptions and enable the appropriate skill when relevant:\n";
+    const skillList = equippedSkills
+      .map(
+        ({ name, agentFacingDescription }) =>
+          `- **${name}**: ${agentFacingDescription}`
+      )
+      .join("\n");
+    skillsSection += skillList + "\n";
+  }
+
+  return skillsSection;
+}
+
+function constructAttachmentsSection(): string {
+  return (
+    "# ATTACHMENTS\n" +
+    'The conversation history may contain file attachments, indicated by attachment tags of the form <attachment id="{FILE_ID}" type="{MIME_TYPE}" title="{TITLE}" version="{VERSION}" isIncludable="{IS_INCLUDABLE}" isQueryable="{IS_QUERYABLE}" isSearchable="{IS_SEARCHABLE}" sourceUrl="{SOURCE_URL}"> . ' +
+    "Attachments may originate from the user directly or from tool outputs. " +
+    "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
+    "Three flags indicate how an attachment can be used:\n\n" +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
+    `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
+    " contents of this attachment will be considered in the search.\n" +
+    "Other tools that accept files (referenced by their id) as arguments can be available. Rely on their description and the files' types to decide which tool to use on which file.\n"
+  );
+}
+
+function constructPastedContentSection(): string {
+  return (
+    "# PASTED CONTENT\n" +
+    "The conversation history may contain large pasted contents, indicated by <pastedContent> tags. " +
+    "These tags contain the full content of the pasted content, so don't try to retrieve it with tools.\n"
+  );
+}
+
+export function constructGuidelinesSection({
+  agentConfiguration,
+  userMessage,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  userMessage: UserMessageType;
+}): string {
   let guidelinesSection = "# GUIDELINES\n";
+
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
       isMCPConfigurationWithDataSource(action) ||
@@ -177,23 +343,16 @@ export async function constructPromptMultiActions(
     guidelinesSection += `\n${citationMetaPrompt(isUsingRunAgent)}\n`;
   }
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  const hasContentCreationServer =
-    featureFlags.includes("interactive_content_server") &&
-    agentConfiguration.actions.some((action) =>
-      isMCPConfigurationForInternalContentCreation(action)
-    );
-
-  // Only inject the visualization system prompt if the Content Creation server is not enabled.
-  if (agentConfiguration.visualizationEnabled && !hasContentCreationServer) {
-    guidelinesSection += `\n${visualizationSystemPrompt()}\n`;
-  }
+  guidelinesSection +=
+    "\n## MATH FORMULAS\n" +
+    "When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. " +
+    "Single dollar $ escape sequences are not supported and " +
+    "parentheses are not sufficient to denote mathematical formulas:\nBAD: \\( \\Delta \\)\nGOOD: $$ \\Delta $$.\n";
 
   guidelinesSection +=
-    "\n## GENERATING LATEX FORMULAS\n" +
-    "When generating latex formulas, ALWAYS rely on the $$ escape sequence, single $ latex sequences are not supported." +
-    "\nEvery latex formula should be inside double dollars $$ blocks." +
-    "\nParentheses cannot be used to enclose mathematical formulas: BAD: \\( \\Delta \\), GOOD: $$ \\Delta $$.\n";
+    "\n## RENDERING MARKDOWN CODE BLOCKS\n" +
+    "When rendering code blocks, always use quadruple backticks (````). " +
+    "To render nested code blocks, always use triple backticks (```) for the inner code blocks.";
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
@@ -201,7 +360,42 @@ export async function constructPromptMultiActions(
     'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
-  // INSTRUCTIONS section
+  const isSlackOrTeams =
+    userMessage.context.origin === "slack" ||
+    userMessage.context.origin === "teams";
+
+  if (!isSlackOrTeams) {
+    guidelinesSection +=
+      `\n## MENTIONING USERS\n` +
+      "You have the abillity to mention users in a message using the markdown directive." +
+      '\nUsers can also refer to mention as "ping".' +
+      `\nUse the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available to the conversation.` +
+      `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user in a message.` +
+      "\nImportant:" +
+      "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
+      "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
+  } else {
+    guidelinesSection +=
+      `\n## MENTIONING USERS\n` +
+      "You have the abillity to mention users in a message using the markdown directive." +
+      '\nUsers can also refer to mention as "ping".' +
+      `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
+      "\nUse a simple @username to mention users in your messages in this conversation.";
+  }
+  return guidelinesSection;
+}
+
+function constructInstructionsSection({
+  agentConfiguration,
+  fallbackPrompt,
+  userMessage,
+  agentsList,
+}: {
+  agentConfiguration: AgentConfigurationType;
+  fallbackPrompt?: string;
+  userMessage: UserMessageType;
+  agentsList: LightAgentConfigurationType[] | null;
+}): string {
   let instructions = "# INSTRUCTIONS\n\n";
 
   if (agentConfiguration.instructions) {
@@ -232,7 +426,86 @@ export async function constructPromptMultiActions(
     );
   }
 
-  const prompt = `${context}\n${toolsSection}\n${attachmentsSection}\n${guidelinesSection}\n${instructions}`;
+  return instructions;
+}
 
-  return prompt;
+/**
+ * Generation of the prompt for agents with multiple actions.
+ *
+ * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
+ * the instructions, it can be replaced appropriately. The Extract action
+ * doesn't need that replacement, and needs to avoid a dependency on
+ * getAgentConfigurations here, so it passes null.
+ */
+export function constructPromptMultiActions(
+  auth: Authenticator,
+  {
+    userMessage,
+    agentConfiguration,
+    fallbackPrompt,
+    model,
+    hasAvailableActions,
+    errorContext,
+    agentsList,
+    conversation,
+    serverToolsAndInstructions,
+    enabledSkills,
+    equippedSkills,
+    featureFlags,
+  }: {
+    userMessage: UserMessageType;
+    agentConfiguration: AgentConfigurationType;
+    fallbackPrompt?: string;
+    model: ModelConfigurationType;
+    hasAvailableActions: boolean;
+    errorContext?: string;
+    agentsList: LightAgentConfigurationType[] | null;
+    conversation?: ConversationWithoutContentType;
+    serverToolsAndInstructions?: ServerToolsAndInstructions[];
+    enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
+    equippedSkills: SkillResource[];
+    featureFlags: WhitelistableFeature[];
+  }
+) {
+  const owner = auth.workspace();
+
+  const sections = [
+    constructContextSection({
+      userMessage,
+      agentConfiguration,
+      model,
+      conversation,
+      owner,
+      errorContext,
+    }),
+    constructProjectContextSection(conversation),
+    constructToolsSection({
+      hasAvailableActions,
+      model,
+      agentConfiguration,
+      serverToolsAndInstructions,
+      enabledSkills,
+      equippedSkills,
+      featureFlags,
+    }),
+    constructSkillsSection({
+      enabledSkills,
+      equippedSkills,
+      featureFlags,
+    }),
+    constructAttachmentsSection(),
+    constructPastedContentSection(),
+    constructGuidelinesSection({
+      agentConfiguration,
+      userMessage,
+    }),
+    constructInstructionsSection({
+      agentConfiguration,
+      fallbackPrompt,
+      userMessage,
+      agentsList,
+    }),
+  ];
+
+  return sections.filter((section) => section !== null).join("\n");
 }

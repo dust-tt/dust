@@ -9,8 +9,7 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { DataSourceViewType } from "@app/types";
-import type { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
+import type { DataSourceViewType, GLOBAL_AGENTS_SID } from "@app/types";
 
 export type PrefetchedDataSourcesType = {
   dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
@@ -57,7 +56,6 @@ export function _getDefaultWebActionsForGlobalAgent({
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -91,7 +89,6 @@ export function _getToolsetsToolsConfiguration({
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,
@@ -121,7 +118,38 @@ export function _getAgentRouterToolsConfiguration(
       dataSources: null,
       tables: null,
       childAgentId: null,
-      reasoningModel: null,
+      additionalConfiguration: {},
+      timeFrame: null,
+      dustAppConfiguration: null,
+      jsonSchema: null,
+      secretName: null,
+    },
+  ];
+}
+
+export function _getInteractiveContentToolConfiguration({
+  agentId,
+  interactiveContentMCPServerView,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  interactiveContentMCPServerView: MCPServerViewResource | null;
+}): ServerSideMCPServerConfigurationType[] {
+  if (!interactiveContentMCPServerView) {
+    return [];
+  }
+
+  return [
+    {
+      id: -1,
+      sId: agentId + "-interactive-content",
+      type: "mcp_server_configuration",
+      name: "interactive_content",
+      description: "Create & update Interactive Content files.",
+      mcpServerViewId: interactiveContentMCPServerView.sId,
+      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
+      dataSources: null,
+      tables: null,
+      childAgentId: null,
       additionalConfiguration: {},
       timeFrame: null,
       dustAppConfiguration: null,

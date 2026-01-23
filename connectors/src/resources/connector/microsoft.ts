@@ -11,9 +11,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { MicrosoftConfigurationResource } from "@connectors/resources/microsoft_resource";
 import type { ModelId } from "@connectors/types";
 
-export class MicrosoftConnectorStrategy
-  implements ConnectorProviderStrategy<"microsoft">
-{
+export class MicrosoftConnectorStrategy implements ConnectorProviderStrategy<"microsoft"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,

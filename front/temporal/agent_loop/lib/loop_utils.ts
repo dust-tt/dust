@@ -6,15 +6,12 @@ import type {
   ConversationType,
 } from "@app/types/assistant/conversation";
 
-// TODO(DURABLE-AGENTS 2025-07-25): Consider moving inside this function the "conversation has
-// already been prepared appropriately" part mentioned below, referring to
-// e.g. front/lib/api/assistant/conversation.ts#retryAgentMessageL1308
 /**
  * Cuts the conversation messages to properly handle post / edit / retry
  * actions, by removing future messages and messages sharing the same parent.
  * Cuts the agent message at the given step, exclusive, for the given agent
  * message.
- * Mutates the conversation in place, return the same conversation and the agent message.
+ * /!\ Mutates the conversation in place, return the same conversation and the agent message.
  */
 export function sliceConversationForAgentMessage(
   conversation: ConversationType,
@@ -57,6 +54,7 @@ export function sliceConversationForAgentMessage(
     (versions, index) =>
       index === agentMessageIndex ||
       // Only check the first version - all versions have the same parentMessageId
+      versions.length === 0 ||
       !isAgentMessageType(versions[0]) ||
       versions[0].parentMessageId !== slicedAgentMessage.parentMessageId
   );

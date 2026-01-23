@@ -1,3 +1,5 @@
+import url from "node:url";
+
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import type {
   OAuthClientInformationFull,
@@ -15,6 +17,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
   private token: OAuthTokens | undefined;
   private auth: Authenticator;
   private metadata: OAuthMetadata | undefined;
+  private resource: string | undefined;
 
   constructor(auth: Authenticator, tokens?: OAuthTokens) {
     this.auth = auth;
@@ -36,14 +39,20 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       tos_uri: config.getClientFacingUrl() + "/terms",
       policy_uri: config.getClientFacingUrl() + "/privacy",
       software_id: "dust",
+      token_endpoint_auth_method: "none",
+      grant_types: ["authorization_code", "refresh_token"],
     };
   }
 
-  saveAuthorizationServerMetadata(
-    metadata?: OAuthMetadata
+  saveAuthorizationServerMetadataAndResource(
+    metadata?: OAuthMetadata,
+    resource?: URL
   ): void | Promise<void> {
     // Save for a later step.
     this.metadata = metadata;
+    if (resource) {
+      this.resource = url.format(resource, { fragment: false });
+    }
   }
 
   clientInformation(): OAuthClientInformationFull | undefined {
@@ -86,6 +95,7 @@ export class MCPOAuthProvider implements OAuthClientProvider {
       client_secret: clientInformation.client_secret || "",
       token_endpoint: this.metadata.token_endpoint,
       authorization_endpoint: this.metadata.authorization_endpoint,
+      resource: this.resource,
     });
   }
 

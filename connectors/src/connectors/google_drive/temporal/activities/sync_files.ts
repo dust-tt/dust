@@ -1,4 +1,3 @@
-import PQueue from "p-queue";
 import { Op } from "sequelize";
 
 import { getGoogleDriveObject } from "@connectors/connectors/google_drive/lib/google_drive_api";
@@ -14,11 +13,16 @@ import {
 } from "@connectors/connectors/google_drive/temporal/utils";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
-  GoogleDriveConfig,
-  GoogleDriveFiles,
+  concurrentExecutor,
+  getAdaptiveConcurrency,
+} from "@connectors/lib/async_utils";
+import { MAX_FILE_SIZE_TO_DOWNLOAD } from "@connectors/lib/data_sources";
+import {
+  GoogleDriveConfigModel,
+  GoogleDriveFilesModel,
 } from "@connectors/lib/models/google_drive";
 import { heartbeat } from "@connectors/lib/temporal";
-import logger from "@connectors/logger/logger";
+import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 import { FILE_ATTRIBUTES_TO_FETCH } from "@connectors/types";
@@ -38,7 +42,7 @@ export async function syncFiles(
   if (!connector) {
     throw new Error(`Connector ${connectorId} not found`);
   }
-  const config = await GoogleDriveConfig.findOne({
+  const config = await GoogleDriveConfigModel.findOne({
     where: {
       connectorId: connectorId,
     },
@@ -46,7 +50,9 @@ export async function syncFiles(
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
 
-  logger.info(
+  const activityLogger = getActivityLogger(connector);
+
+  activityLogger.info(
     {
       connectorId,
       folderId: driveFolderId,
@@ -69,7 +75,7 @@ export async function syncFiles(
   await heartbeat();
   if (!driveFolder) {
     // We got a 404 on this folder, we skip it.
-    logger.info(
+    activityLogger.info(
       {
         connectorId,
         folderId: driveFolderId,
@@ -85,7 +91,7 @@ export async function syncFiles(
   }
   if (nextPageToken === undefined) {
     // On the first page of a folder id, we can check if we already visited it
-    const visitedFolder = await GoogleDriveFiles.findOne({
+    const visitedFolder = await GoogleDriveFilesModel.findOne({
       where: {
         connectorId: connectorId,
         driveFileId: driveFolder.id,
@@ -118,7 +124,7 @@ export async function syncFiles(
     includeLabels: labels.map((l) => l.id).join(","),
     fields: `nextPageToken, files(${FILE_ATTRIBUTES_TO_FETCH.join(",")})`,
     q: `'${driveFolder.id}' in parents and (${mimeTypesSearchString}) and trashed=false`,
-    pageToken: nextPageToken,
+    ...(nextPageToken ? { pageToken: nextPageToken } : {}),
   });
   if (res.status !== 200) {
     throw new Error(
@@ -143,7 +149,7 @@ export async function syncFiles(
     (file) => file.mimeType === "application/vnd.google-apps.folder"
   );
 
-  logger.info(
+  activityLogger.info(
     {
       connectorId,
       dataSourceId: dataSourceConfig.dataSourceId,
@@ -153,30 +159,43 @@ export async function syncFiles(
     `[SyncFiles] Call syncOneFile.`
   );
 
-  const queue = new PQueue({ concurrency: FILES_SYNC_CONCURRENCY });
-  const results = await Promise.all(
-    filesToSync.map((file) => {
-      return queue.add(async () => {
-        await heartbeat();
-        if (!file.trashed) {
-          return syncOneFile(
-            connectorId,
-            authCredentials,
-            dataSourceConfig,
-            file,
-            startSyncTs,
-            true // isBatchSync
-          );
-        } else {
-          await deleteOneFile(connectorId, file);
-        }
-      });
-    })
+  const filesToDelete = filesToSync.filter((file) => file.trashed);
+  const filesToActuallySync = filesToSync.filter((file) => !file.trashed);
+
+  await concurrentExecutor(
+    filesToDelete,
+    async (file) => {
+      await heartbeat();
+      await deleteOneFile(connectorId, file);
+    },
+    { concurrency: FILES_SYNC_CONCURRENCY }
+  );
+
+  const concurrency = getAdaptiveConcurrency(
+    filesToActuallySync,
+    MAX_FILE_SIZE_TO_DOWNLOAD,
+    FILES_SYNC_CONCURRENCY
+  );
+
+  const results = await concurrentExecutor(
+    filesToActuallySync,
+    async (file) => {
+      await heartbeat();
+      return syncOneFile(
+        connectorId,
+        authCredentials,
+        dataSourceConfig,
+        file,
+        startSyncTs,
+        true // isBatchSync
+      );
+    },
+    { concurrency }
   );
 
   const count = results.filter((r) => r).length;
 
-  logger.info(
+  activityLogger.info(
     {
       connectorId,
       dataSourceId: dataSourceConfig.dataSourceId,

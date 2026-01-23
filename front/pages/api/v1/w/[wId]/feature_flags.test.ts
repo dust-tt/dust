@@ -9,7 +9,7 @@ import {
 } from "@app/tests/utils/generic_public_api_tests";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
-// Mock the getSession function to return the user without going through the auth0 session
+// Mock the getSession function to return the user without going through the workos session
 // Not sure to understand why it's not working with the generic_public_api_tests.ts mock
 vi.mock(import("../../../../../lib/auth"), async (importOriginal) => {
   const mod = await importOriginal();
@@ -37,14 +37,14 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
 
     // Add features flag
     await FeatureFlagFactory.basic("deepseek_feature", workspace);
-    await FeatureFlagFactory.basic("labs_trackers", workspace);
+    await FeatureFlagFactory.basic("xai_feature", workspace);
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual(
       expect.objectContaining({
-        feature_flags: ["deepseek_feature", "labs_trackers"],
+        feature_flags: ["deepseek_feature", "xai_feature"],
       })
     );
   });
@@ -93,7 +93,7 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
 
     const workspace2 = await WorkspaceFactory.basic();
 
-    await FeatureFlagFactory.basic("labs_trackers", workspace1);
+    await FeatureFlagFactory.basic("xai_feature", workspace1);
     await FeatureFlagFactory.basic("labs_transcripts", workspace2);
 
     await handler(req, res);
@@ -101,7 +101,7 @@ describe("GET /api/v1/w/[wId]/feature_flags", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual(
       expect.objectContaining({
-        feature_flags: expect.arrayContaining(["labs_trackers"]),
+        feature_flags: expect.arrayContaining(["xai_feature"]),
       })
     );
     expect(res._getJSONData().feature_flags).not.toContain("labs_transcripts");

@@ -4,12 +4,13 @@ import type {
   ModelStatic,
   Transaction,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -19,9 +20,8 @@ import { Err, Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface RemoteMCPServerToolMetadataResource
-  extends ReadonlyAttributesType<RemoteMCPServerToolMetadataModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export interface RemoteMCPServerToolMetadataResource extends ReadonlyAttributesType<RemoteMCPServerToolMetadataModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPServerToolMetadataModel> {
   static model: ModelStatic<RemoteMCPServerToolMetadataModel> =
@@ -98,32 +98,6 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     });
   }
 
-  static async fetchByServerIdAndToolName(
-    auth: Authenticator,
-    {
-      serverId,
-      toolName,
-    }: {
-      serverId: number;
-      toolName: string;
-    },
-    options?: ResourceFindOptions<RemoteMCPServerToolMetadataModel>
-  ): Promise<RemoteMCPServerToolMetadataResource | null> {
-    const toolMetadata = await this.baseFetch(auth, {
-      ...options,
-      where: {
-        remoteMCPServerId: serverId,
-        toolName,
-      },
-    });
-
-    if (toolMetadata.length === 0) {
-      return null;
-    }
-
-    return toolMetadata[0];
-  }
-
   // Update
 
   static async updateOrCreateSettings(
@@ -162,6 +136,37 @@ export class RemoteMCPServerToolMetadataResource extends BaseResource<RemoteMCPS
     });
 
     return new this(this.model, toolMetadata.get());
+  }
+
+  // Deletes tool metadata for tools that are not in the list
+  static async deleteStaleTools(
+    auth: Authenticator,
+    {
+      serverId,
+      toolsToKeep: tools,
+    }: {
+      serverId: number;
+      toolsToKeep: string[];
+    }
+  ) {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      throw new DustError(
+        "unauthorized",
+        "The user is not authorized to delete a tool metadata"
+      );
+    }
+    await RemoteMCPServerToolMetadataModel.destroy({
+      where: {
+        remoteMCPServerId: serverId,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        toolName: {
+          [Op.notIn]: tools,
+        },
+      },
+    });
   }
 
   // Delete

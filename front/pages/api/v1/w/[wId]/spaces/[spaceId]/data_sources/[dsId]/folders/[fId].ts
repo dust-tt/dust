@@ -23,6 +23,7 @@ import { CoreAPI } from "@app/types";
 
 async function handler(
   req: NextApiRequest,
+
   res: NextApiResponse<
     WithAPIErrorResponse<
       | GetFolderResponseType
@@ -172,11 +173,13 @@ async function handler(
         projectId: dataSource.dustAPIProjectId,
         dataSourceId: dataSource.dustAPIDataSourceId,
         folderId: fId,
+
         timestamp: timestamp || null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parentId: parentId || null,
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         parents: parents || [fId],
+
         title: title.trim() || "Untitled Folder",
         mimeType: mime_type,
         sourceUrl: source_url ?? null,

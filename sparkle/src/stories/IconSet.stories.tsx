@@ -1,3 +1,4 @@
+import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
 import * as ActionIcons from "@sparkle/icons/actions";
@@ -11,9 +12,13 @@ type IconModule = {
   };
 };
 
-export default {
+const meta = {
   title: "Assets/Icons",
-};
+  tags: ["autodocs"],
+} satisfies Meta;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
 
 const gridStyle = {
   display: "grid",
@@ -29,56 +34,60 @@ const itemStyle = {
   width: "100%",
 };
 
-export const IconSet = () => (
-  <div style={gridStyle}>
-    {Object.entries(SolidIcons as IconModule).map(
-      ([iconName, IconComponent]) => {
-        const CurrentIcon = (
-          "default" in IconComponent ? IconComponent.default : IconComponent
-        ) as React.ComponentType<{ className?: string }>;
-        return (
-          <div key={iconName}>
-            <Icon
-              visual={CurrentIcon}
-              size="md"
-              className="s-text-foreground dark:s-text-foreground-night"
-            />
-            <div
-              style={itemStyle as React.CSSProperties}
-              className="s-text-sm s-text-foreground dark:s-text-foreground-night"
-            >
-              {iconName}
+export const IconSet: Story = {
+  render: () => (
+    <div style={gridStyle}>
+      {Object.entries(SolidIcons as IconModule).map(
+        ([iconName, IconComponent]) => {
+          const CurrentIcon = (
+            "default" in IconComponent ? IconComponent.default : IconComponent
+          ) as React.ComponentType<{ className?: string }>;
+          return (
+            <div key={iconName}>
+              <Icon
+                visual={CurrentIcon}
+                size="md"
+                className="s-text-foreground dark:s-text-foreground-night"
+              />
+              <div
+                style={itemStyle as React.CSSProperties}
+                className="s-text-sm s-text-foreground dark:s-text-foreground-night"
+              >
+                {iconName}
+              </div>
             </div>
-          </div>
-        );
-      }
-    )}
-  </div>
-);
+          );
+        }
+      )}
+    </div>
+  ),
+};
 
-export const ActionIconSet = () => (
-  <div style={gridStyle}>
-    {Object.entries(ActionIcons as IconModule).map(
-      ([iconName, IconComponent]) => {
-        const CurrentIcon = (
-          "default" in IconComponent ? IconComponent.default : IconComponent
-        ) as React.ComponentType<{ className?: string }>;
-        return (
-          <div key={iconName}>
-            <Icon
-              visual={CurrentIcon}
-              size="md"
-              className="s-text-foreground dark:s-text-foreground-night"
-            />
-            <div
-              style={itemStyle as React.CSSProperties}
-              className="s-text-sm s-text-foreground dark:s-text-foreground-night"
-            >
-              {iconName}
+export const ActionIconSet: Story = {
+  render: () => (
+    <div style={gridStyle}>
+      {Object.entries(ActionIcons as IconModule).map(
+        ([iconName, IconComponent]) => {
+          const CurrentIcon = (
+            "default" in IconComponent ? IconComponent.default : IconComponent
+          ) as React.ComponentType<{ className?: string }>;
+          return (
+            <div key={iconName}>
+              <Icon
+                visual={CurrentIcon}
+                size="md"
+                className="s-text-foreground dark:s-text-foreground-night"
+              />
+              <div
+                style={itemStyle as React.CSSProperties}
+                className="s-text-sm s-text-foreground dark:s-text-foreground-night"
+              >
+                {iconName}
+              </div>
             </div>
-          </div>
-        );
-      }
-    )}
-  </div>
-);
+          );
+        }
+      )}
+    </div>
+  ),
+};

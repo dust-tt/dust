@@ -9,7 +9,7 @@ import {
 import { getAgentRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { apiError } from "@app/logger/withlogging";
 import { createOrUpgradeAgentConfiguration } from "@app/pages/api/w/[wId]/assistant/agent_configurations";
 import type { AgentConfigurationType, WithAPIErrorResponse } from "@app/types";
@@ -83,7 +83,7 @@ async function handler(
         });
       }
 
-      const agentConfiguration = await AgentConfiguration.findOne({
+      const agentConfiguration = await AgentConfigurationModel.findOne({
         where: {
           sId: req.query.aId as string,
           workspaceId: auth.workspace()?.id,

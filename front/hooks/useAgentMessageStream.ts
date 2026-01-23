@@ -1,99 +1,136 @@
-import { useCallback, useMemo, useReducer, useRef } from "react";
+import type { VirtuosoMessageListMethods } from "@virtuoso.dev/message-list";
+import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
+import _ from "lodash";
+import { useCallback, useMemo, useRef } from "react";
 
-import { useEventSource } from "@app/hooks/useEventSource";
 import type {
-  AgentMessageStateEvent,
+  AgentMessageStateWithControlEvent,
   MessageTemporaryState,
-} from "@app/lib/assistant/state/messageReducer";
-import {
-  CLEAR_CONTENT_EVENT,
-  messageReducer,
-} from "@app/lib/assistant/state/messageReducer";
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import { useEventSource } from "@app/hooks/useEventSource";
+import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import type {
-  LightAgentMessageType,
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
 } from "@app/types";
-import { assertNever, isLightAgentMessageWithActionsType } from "@app/types";
+import { assertNever } from "@app/types";
+import type { AgentMCPActionWithOutputType } from "@app/types/actions";
 
-type AgentMessageStateWithControlEvent =
-  | AgentMessageStateEvent
-  | { type: "end-of-stream" };
+// Throttle the update of the message to avoid excessive re-renders.
+const updateMessageThrottled = _.throttle(
+  ({
+    chainOfThought,
+    content,
+    methods,
+    sId,
+  }: {
+    chainOfThought: string;
+    content: string;
+    methods: VirtuosoMessageListMethods<
+      VirtuosoMessage,
+      VirtuosoMessageListContext
+    >;
+    sId: string;
+  }) => {
+    methods.data.map((m) => {
+      if (isMessageTemporayState(m) && m.sId === sId) {
+        return {
+          ...m,
+          content,
+          chainOfThought,
+        };
+      }
+      return m;
+    });
+  },
+  100
+);
 
-function makeInitialMessageStreamState({
-  useFullChainOfThought,
-}: {
-  useFullChainOfThought: boolean;
-}) {
-  return (
-    message: LightAgentMessageType | LightAgentMessageWithActionsType
-  ): MessageTemporaryState => {
-    return {
-      actionProgress: new Map(),
-      agentState: message.status === "created" ? "thinking" : "done",
-      isRetrying: false,
-      lastUpdated: new Date(),
-      message: {
-        ...message,
-        actions: isLightAgentMessageWithActionsType(message)
-          ? message.actions
-          : [],
-      },
-      useFullChainOfThought,
-    };
+export function updateMessageWithAction(
+  m: LightAgentMessageWithActionsType,
+  action: AgentMCPActionWithOutputType
+): LightAgentMessageWithActionsType {
+  return {
+    ...m,
+    chainOfThought: "",
+    actions: [...m.actions.filter((a) => a.id !== action.id), action],
   };
 }
 
+export function updateProgress(
+  agentMessage: MessageTemporaryState,
+  event: ToolNotificationEvent
+): MessageTemporaryState {
+  const actionId = event.action.id;
+  const currentProgress = agentMessage.streaming.actionProgress.get(actionId);
+
+  return {
+    ...agentMessage,
+    streaming: {
+      ...agentMessage.streaming,
+      actionProgress: new Map(agentMessage.streaming.actionProgress).set(
+        actionId,
+        {
+          action: event.action,
+          progress: {
+            ...currentProgress?.progress,
+            ...event.notification,
+            data: {
+              ...currentProgress?.progress?.data,
+              ...event.notification.data,
+            },
+          },
+        }
+      ),
+    },
+  };
+}
 interface UseAgentMessageStreamParams {
-  message: LightAgentMessageType | LightAgentMessageWithActionsType;
+  agentMessage: MessageTemporaryState;
   conversationId: string | null;
   owner: LightWorkspaceType;
-  mutateMessage?: () => void;
-  onEventCallback?: (eventStr: string) => void;
+  onEventCallback?: (event: {
+    eventId: string;
+    data: AgentMessageStateWithControlEvent;
+  }) => void;
   streamId: string;
   useFullChainOfThought: boolean;
 }
 
 export function useAgentMessageStream({
-  message,
+  agentMessage,
   conversationId,
   owner,
-  mutateMessage,
   onEventCallback: customOnEventCallback,
   streamId,
-  useFullChainOfThought,
 }: UseAgentMessageStreamParams) {
-  const [messageStreamState, dispatch] = useReducer(
-    messageReducer,
-    message,
-    makeInitialMessageStreamState({ useFullChainOfThought })
+  const sId = agentMessage.sId;
+  const methods = useVirtuosoMethods<
+    VirtuosoMessage,
+    VirtuosoMessageListContext
+  >();
+
+  const shouldStream = useMemo(
+    () =>
+      agentMessage.status === "created" &&
+      agentMessage.streaming.agentState !== "placeholder",
+    [agentMessage.status, agentMessage.streaming.agentState]
   );
 
   const isFreshMountWithContent = useRef(
-    message.status === "created" &&
-      (!!message.content || !!message.chainOfThought)
+    shouldStream && (!!agentMessage.content || !!agentMessage.chainOfThought)
   );
 
-  const shouldStream = useMemo(() => {
-    if (message.status !== "created") {
-      return false;
-    }
-
-    switch (messageStreamState.message.status) {
-      case "succeeded":
-      case "failed":
-      case "cancelled":
-        return false;
-      case "created":
-        return true;
-      default:
-        assertNever(messageStreamState.message.status);
-    }
-  }, [message.status, messageStreamState.message.status]);
+  const chainOfThought = useRef(agentMessage.chainOfThought ?? "");
+  const content = useRef(agentMessage.content ?? "");
 
   const buildEventSourceURL = useCallback(
     (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${message.sId}/events`;
+      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/messages/${sId}/events`;
       let lastEventId = "";
       if (lastEvent) {
         const eventPayload: {
@@ -103,11 +140,10 @@ export function useAgentMessageStream({
         // We have a lastEventId, so this is not a fresh mount
         isFreshMountWithContent.current = false;
       }
-      const url = esURL + "?lastEventId=" + lastEventId;
 
-      return url;
+      return esURL + "?lastEventId=" + lastEventId;
     },
-    [conversationId, message.sId, owner.sId]
+    [conversationId, sId, owner.sId]
   );
 
   const onEventCallback = useCallback(
@@ -117,51 +153,156 @@ export function useAgentMessageStream({
         data: AgentMessageStateWithControlEvent;
       } = JSON.parse(eventStr);
       const eventType = eventPayload.data.type;
+      switch (eventType) {
+        case "end-of-stream":
+          // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
+          // end of the stream to the client. So we just return.
+          return;
 
-      // This event is emitted in front/lib/api/assistant/pubsub.ts. Its purpose is to signal the
-      // end of the stream to the client. The message reducer does not, and should not, handle this
-      // event, so we just return.
-      if (eventType === "end-of-stream") {
-        return;
+        case "tool_personal_auth_required":
+        case "tool_approve_execution":
+          break;
+
+        case "generation_tokens":
+          if (
+            isFreshMountWithContent.current &&
+            (eventPayload.data.classification === "tokens" ||
+              eventPayload.data.classification === "chain_of_thought")
+          ) {
+            // If this is a fresh mount with existing content and we're getting generation_tokens,
+            // we need to clear the content first to avoid duplication
+            content.current = "";
+            chainOfThought.current = "";
+            isFreshMountWithContent.current = false;
+          }
+
+          const generationTokens = eventPayload.data;
+          const classification = generationTokens.classification;
+
+          if (
+            classification === "tokens" ||
+            classification === "chain_of_thought"
+          ) {
+            if (classification === "tokens") {
+              content.current += generationTokens.text;
+            } else if (classification === "chain_of_thought") {
+              chainOfThought.current += generationTokens.text;
+            }
+            updateMessageThrottled({
+              chainOfThought: chainOfThought.current,
+              content: content.current,
+              methods,
+              sId,
+            });
+          }
+          break;
+
+        case "agent_action_success":
+          const action = eventPayload.data.action;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...updateMessageWithAction(m, action),
+                  streaming: {
+                    ...m.streaming,
+                    // Clean up progress for this specific action.
+                    actionProgress: new Map(
+                      Array.from(m.streaming.actionProgress.entries()).filter(
+                        ([id]) => id !== action.id
+                      )
+                    ),
+                  },
+                }
+              : m
+          );
+
+          break;
+
+        case "tool_params":
+          const toolParams = eventPayload.data;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...updateMessageWithAction(m, toolParams.action),
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "acting",
+                  },
+                }
+              : m
+          );
+          break;
+
+        case "tool_notification":
+          const toolNotification = eventPayload.data;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? updateProgress(m, toolNotification)
+              : m
+          );
+          break;
+
+        case "tool_error":
+        case "agent_error":
+          const error = eventPayload.data.error;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...m,
+                  status: "failed",
+                  error: error,
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "done",
+                  },
+                }
+              : m
+          );
+          break;
+
+        case "agent_generation_cancelled":
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...m,
+                  status: "cancelled",
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "done",
+                  },
+                }
+              : m
+          );
+          break;
+
+        case "agent_message_success":
+          const messageSuccess = eventPayload.data;
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...m,
+                  ...getLightAgentMessageFromAgentMessage(
+                    messageSuccess.message
+                  ),
+                  status: "succeeded",
+                  streaming: {
+                    ...m.streaming,
+                    agentState: "done",
+                  },
+                }
+              : m
+          );
+          break;
+
+        default:
+          assertNever(eventType);
       }
-
-      if (eventType === "tool_approve_execution") {
-        if (customOnEventCallback) {
-          customOnEventCallback(eventStr);
-        }
-        return;
-      }
-
-      // If this is a fresh mount with existing content and we're getting generation_tokens,
-      // we need to clear the content first to avoid duplication
-      if (
-        isFreshMountWithContent.current &&
-        eventType === "generation_tokens" &&
-        (eventPayload.data.classification === "tokens" ||
-          eventPayload.data.classification === "chain_of_thought")
-      ) {
-        dispatch(CLEAR_CONTENT_EVENT);
-        isFreshMountWithContent.current = false;
-      }
-
-      const shouldRefresh = [
-        "agent_action_success",
-        "agent_error",
-        "agent_message_success",
-        "agent_generation_cancelled",
-      ].includes(eventType);
-
-      if (shouldRefresh && mutateMessage) {
-        void mutateMessage();
-      }
-
-      dispatch(eventPayload.data);
 
       if (customOnEventCallback) {
-        customOnEventCallback(eventStr);
+        customOnEventCallback(eventPayload);
       }
     },
-    [mutateMessage, customOnEventCallback]
+    [customOnEventCallback, methods, sId]
   );
 
   useEventSource(buildEventSourceURL, onEventCallback, streamId, {
@@ -169,8 +310,6 @@ export function useAgentMessageStream({
   });
 
   return {
-    messageStreamState,
-    dispatch,
     shouldStream,
     isFreshMountWithContent,
   };

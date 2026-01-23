@@ -78,7 +78,7 @@ export const MainPage = ({
             }
             rightActions={
               conversationId ? (
-                <div className="flex flex-row items-right">
+                <div className="items-right flex flex-row">
                   <ConversationsListButton size="sm" />
                   <Button
                     icon={ExternalLinkIcon}
@@ -90,7 +90,7 @@ export const MainPage = ({
                   />
                 </div>
               ) : (
-                <div className="flex flex-row items-right space-x-1">
+                <div className="items-right flex flex-row space-x-1">
                   <ConversationsListButton size="sm" />
                   <UserDropdownMenu user={user} handleLogout={handleLogout} />
                 </div>
@@ -99,8 +99,8 @@ export const MainPage = ({
           />
           {!conversationId && (
             <div className="flex items-start justify-between">
-              <div className="fixed bottom-0 right-0 z-10 p-2 text-sm element">
-                <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+              <div className="element fixed bottom-0 right-0 z-10 p-2 text-sm">
+                <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
                   {shortcut}
                 </p>
               </div>

@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
+import { getSubscriberHash } from "@app/lib/notifications";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -13,6 +14,7 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 import { sendUserOperationMessage } from "@app/types";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import { isJobType } from "@app/types/job_type";
 
 export type PostUserMetadataResponseBody = {
@@ -23,10 +25,14 @@ const PatchUserBodySchema = t.type({
   firstName: t.string,
   lastName: t.string,
   jobType: t.union([t.string, t.undefined]),
+  imageUrl: t.union([t.string, t.null, t.undefined]),
+  favoritePlatforms: t.union([t.array(t.string), t.undefined]),
+  emailProvider: t.union([t.string, t.undefined]),
+  workspaceId: t.union([t.string, t.undefined]),
 });
 
 export type GetUserResponseBody = {
-  user: UserTypeWithWorkspaces;
+  user: UserTypeWithWorkspaces & { subscriberHash: string | null };
 };
 
 async function handler(
@@ -57,7 +63,9 @@ async function handler(
           "Failed to track user memberships"
         );
       });
-      return res.status(200).json({ user });
+
+      const subscriberHash = await getSubscriberHash(user);
+      return res.status(200).json({ user: { ...user, subscriberHash } });
 
     case "PATCH":
       const bodyValidation = PatchUserBodySchema.decode(req.body);
@@ -103,6 +111,10 @@ async function handler(
       const firstName = bodyValidation.right.firstName.trim();
       const lastName = bodyValidation.right.lastName.trim();
       const jobType = bodyValidation.right.jobType?.trim();
+      const imageUrl = bodyValidation.right.imageUrl;
+      const favoritePlatforms = bodyValidation.right.favoritePlatforms;
+      const emailProvider = bodyValidation.right.emailProvider;
+      const workspaceId = bodyValidation.right.workspaceId;
 
       // Update user's name
       if (firstName.length === 0 || lastName.length === 0) {
@@ -130,6 +142,10 @@ async function handler(
         await u.updateName(firstName, lastName);
       }
 
+      if (imageUrl && imageUrl !== user.image) {
+        await u.updateImage(imageUrl);
+      }
+
       // Update user's jobType
       if (jobType !== undefined && !isJobType(jobType)) {
         return apiError(req, res, {
@@ -141,16 +157,41 @@ async function handler(
         });
       }
 
-      // metadata + for loop allows for
-      // more metadata to be processed thru
-      // endpoint in future
-      const metadata = {
+      if (favoritePlatforms !== undefined) {
+        for (const platform of favoritePlatforms) {
+          if (!isFavoritePlatform(platform)) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: `Invalid favorite platform: ${platform}`,
+              },
+            });
+          }
+        }
+      }
+
+      const userMetadata: Record<string, string | undefined> = {
         job_type: jobType,
+        "onboarding:email_provider": emailProvider,
       };
 
-      for (const [key, value] of Object.entries(metadata)) {
+      for (const [key, value] of Object.entries(userMetadata)) {
         if (value !== undefined) {
           await u.setMetadata(key, String(value));
+        }
+      }
+
+      // Workspace-scoped metadata (requires workspaceId).
+      if (workspaceId && favoritePlatforms !== undefined) {
+        // Find the workspace by sId to get its id
+        const workspace = user.workspaces.find((w) => w.sId === workspaceId);
+        if (workspace) {
+          await u.setMetadata(
+            "favorite_platforms",
+            JSON.stringify(favoritePlatforms),
+            workspace.id
+          );
         }
       }
 

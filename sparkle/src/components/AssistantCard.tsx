@@ -119,7 +119,7 @@ export const LargeAssistantCard = React.forwardRef<
             "s-text-foreground dark:s-text-foreground-night"
           )}
         >
-          <h3 className="s-font-semibold">{title}</h3>
+          <h3 className="s-heading-base">{title}</h3>
           <p
             className={cn(
               "s-line-clamp-5 s-overflow-hidden s-text-ellipsis",

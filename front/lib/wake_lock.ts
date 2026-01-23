@@ -7,7 +7,6 @@ export interface WakeLockEntry {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var wakeLocks: Map<string, WakeLockEntry> | undefined;
 }
 
@@ -15,6 +14,7 @@ export async function wakeLock<T>(
   autoCallback: () => Promise<T>,
   context?: WakeLockEntry["context"]
 ): Promise<T> {
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!global.wakeLocks) {
     global.wakeLocks = new Map();
   }

@@ -1,6 +1,12 @@
-import { Spinner } from "@dust-tt/sparkle";
+import type {
+  ListScrollLocation,
+  VirtuosoMessageListMethods,
+} from "@virtuoso.dev/message-list";
+import {
+  VirtuosoMessageList,
+  VirtuosoMessageListLicense,
+} from "@virtuoso.dev/message-list";
 import debounce from "lodash/debounce";
-import groupBy from "lodash/groupBy";
 import React, {
   useCallback,
   useEffect,
@@ -8,17 +14,32 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useInView } from "react-intersection-observer";
 
-import { CONVERSATION_VIEW_SCROLL_LAYOUT } from "@app/components/assistant/conversation/constant";
+import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
-import MessageGroup from "@app/components/assistant/conversation/MessageGroup";
-import { useEventSource } from "@app/hooks/useEventSource";
-import { useLastMessageGroupObserver } from "@app/hooks/useLastMessageGroupObserver";
 import {
-  getUpdatedMessagesFromEvent,
-  getUpdatedParticipantsFromEvent,
-} from "@app/lib/client/conversation/event_handlers";
+  createPlaceholderAgentMessage,
+  createPlaceholderUserMessage,
+} from "@app/components/assistant/conversation/lib";
+import { MessageItem } from "@app/components/assistant/conversation/MessageItem";
+import type {
+  VirtuosoMessage,
+  VirtuosoMessageListContext,
+} from "@app/components/assistant/conversation/types";
+import {
+  isUserMessage,
+  makeInitialMessageStreamState,
+} from "@app/components/assistant/conversation/types";
+import { ConversationViewerEmptyState } from "@app/components/assistant/ConversationViewerEmptyState";
+import { useConversationEvents } from "@app/hooks/useConversationEvents";
+import { useEnableBrowserNotification } from "@app/hooks/useEnableBrowserNotification";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSubmitMessage } from "@app/hooks/useSubmitMessage";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
+import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
+import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
+import type { DustError } from "@app/lib/error";
+import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import {
   useConversation,
   useConversationFeedbacks,
@@ -30,78 +51,65 @@ import {
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
-  AgentMention,
   AgentMessageDoneEvent,
   AgentMessageNewEvent,
-  ContentFragmentType,
+  ContentFragmentsType,
   ConversationTitleEvent,
-  FetchConversationMessagesResponse,
-  MessageWithContentFragmentsType,
+  LightMessageType,
+  Result,
+  RichMention,
   UserMessageNewEvent,
   UserType,
   WorkspaceType,
 } from "@app/types";
 import {
-  isAgentMention,
-  isContentFragmentType,
-  isUserMessageType,
+  isRichAgentMention,
+  isUserMessageTypeWithContentFragments,
+  toMentionType,
 } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
-// Utility functions for date grouping
-const formatDateSeparator = (timestamp: number): string => {
-  const date = new Date(timestamp);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const messageDate = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate()
-  );
-
-  const diffTime = today.getTime() - messageDate.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) {
-    return "Today";
-  } else if (diffDays === 1) {
-    return "Yesterday";
-  } else {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-    });
-  }
-};
-
-type MessageGroupWithDate = {
-  date: string;
-  timestamp: number;
-  messages: MessageWithContentFragmentsType[][];
-};
+// A conversation must be unread and older than that to enable the suggestion of enabling notifications.
+const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 1 hour
 
 interface ConversationViewerProps {
   conversationId: string;
-  isInModal?: boolean;
-  onStickyMentionsChange?: (mentions: AgentMention[]) => void;
+  agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
+  setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
 }
 
+function easeOutQuint(x: number): number {
+  return 1 - Math.pow(1 - x, 5);
+}
+
+function customSmoothScroll() {
+  return {
+    animationFrameCount: 30,
+    easing: easeOutQuint,
+  };
+}
 /**
  *
- * @param isInModal is the conversation happening in a side modal, i.e. when testing an assistant?
+ * @param isInModal is the conversation happening in a side modal, i.e. when testing an agent?
  * @returns
  */
-const ConversationViewer = React.forwardRef<
-  HTMLDivElement,
-  ConversationViewerProps
->(function ConversationViewer(
-  { owner, user, conversationId, onStickyMentionsChange, isInModal = false },
-  ref
-) {
+export const ConversationViewer = ({
+  owner,
+  user,
+  conversationId,
+  agentBuilderContext,
+  setPlanLimitReached,
+}: ConversationViewerProps) => {
+  const ref =
+    useRef<
+      VirtuosoMessageListMethods<VirtuosoMessage, VirtuosoMessageListContext>
+    >(null);
+  const sendNotification = useSendNotification();
+
   const {
     conversation,
     conversationError,
@@ -117,6 +125,24 @@ const ConversationViewer = React.forwardRef<
     workspaceId: owner.sId,
   });
 
+  const { askForPermission } = useEnableBrowserNotification();
+
+  const shouldShowPushNotificationActivation = useMemo(() => {
+    if (!conversation?.sId || !conversation.unread) {
+      return false;
+    }
+
+    const delay = new Date().getTime() - conversation.updated;
+
+    return delay > DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION;
+  }, [conversation?.sId, conversation?.unread, conversation?.updated]);
+
+  useEffect(() => {
+    if (shouldShowPushNotificationActivation) {
+      void askForPermission();
+    }
+  }, [shouldShowPushNotificationActivation, askForPermission]);
+
   const { mutateConversations } = useConversations({
     workspaceId: owner.sId,
     options: {
@@ -127,11 +153,12 @@ const ConversationViewer = React.forwardRef<
   const {
     isLoadingInitialData,
     isMessagesLoading,
+    isMessagesError,
     isValidating,
     messages,
-    mutateMessages,
     setSize,
     size,
+    mutateMessages,
   } = useConversationMessages({
     conversationId,
     workspaceId: owner.sId,
@@ -144,151 +171,108 @@ const ConversationViewer = React.forwardRef<
     options: { disabled: true }, // We don't need the participants, only the mutator.
   });
 
-  const { hasMore, latestPage, oldestPage } = useMemo(() => {
-    return {
-      hasMore: messages.at(0)?.hasMore,
-      latestPage: messages.at(-1),
-      oldestPage: messages.at(0),
-    };
-  }, [messages]);
+  const submitMessage = useSubmitMessage({
+    owner,
+    user,
+    conversationId,
+  });
 
-  // Handle scroll to bottom on new message input.
-  const latestMessageIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    const lastestMessageId = latestPage?.messages.at(-1)?.sId;
+  const [initialListData, setInitialListData] = useState<
+    VirtuosoMessage[] | undefined
+  >(undefined);
 
-    // If latest message Id has changed, scroll to bottom of conversation.
-    if (lastestMessageId && latestMessageIdRef.current !== lastestMessageId) {
-      const mainTag = document.getElementById(CONVERSATION_VIEW_SCROLL_LAYOUT);
-
-      if (mainTag) {
-        mainTag.scrollTo(0, mainTag.scrollHeight);
-      }
-
-      latestMessageIdRef.current = lastestMessageId;
-    }
-  }, [latestPage]);
-
-  // Keep a reference to the previous oldest message to maintain user position
-  // after fetching more data. This is a best effort approach to keep the user
-  // roughly at the same place they were before the new data is loaded.
-  const [prevFirstMessageId, setPrevFirstMessageId] = useState<string | null>(
+  const [messageIdToScrollTo, setMessageIdToScrollTo] = useState<number | null>(
     null
   );
-  const prevFirstMessageRef = useRef<HTMLDivElement>(null);
 
-  // Instantly scroll user back to previous position after new data is loaded.
-  // Note: scrolling is from the bottom of the screen.
+  // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
-    if (
-      prevFirstMessageId &&
-      prevFirstMessageRef.current &&
-      !isMessagesLoading &&
-      !isValidating
-    ) {
-      prevFirstMessageRef.current.scrollIntoView({
-        behavior: "instant",
-        block: "start",
-      });
+    // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
+    // Consider this scenario:
+    // Load a conversation A, send a message, answer is streaming (streaming events have a short TTL).
+    // Switch to conversation B, wait till A is done streaming, then switch back to A.
+    // Without waiting for revalidation, we would use whatever data was in the swr cache and see the last message as "streaming" (old data, no more streaming events).
+    if (!initialListData && messages.length > 0 && !isValidating) {
+      const raw = messages.flatMap((m) => m.messages);
 
-      setPrevFirstMessageId(null);
+      const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
+
+      setInitialListData(messagesToRender);
+
+      // Fetch the message to scroll to from the URL hash.
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith("#")) {
+        return;
+      }
+
+      const messageId = hash.substring(1); // Remove the '#' prefix.
+      if (!messageId) {
+        return;
+      }
+
+      // Find the message index in the current data.
+      const messageIndex = messagesToRender.findIndex(
+        (m) => m.sId === messageId
+      );
+
+      if (messageIndex === -1) {
+        // nothing found to scroll to.
+        return;
+      }
+      setMessageIdToScrollTo(messageIndex);
     }
-  }, [
-    prevFirstMessageId,
-    prevFirstMessageRef,
-    isMessagesLoading,
-    isValidating,
-  ]);
+  }, [initialListData, messages, setInitialListData, isValidating]);
 
-  const lastUserMessage = useMemo(() => {
-    return latestPage?.messages.findLast(
-      (message) =>
-        isUserMessageType(message) &&
-        message.visibility !== "deleted" &&
-        message.user?.id === user.id
-    );
-  }, [latestPage, user.id]);
-
-  const agentMentions = useMemo(() => {
-    if (!lastUserMessage || !isUserMessageType(lastUserMessage)) {
-      return [];
-    }
-    return lastUserMessage.mentions.filter(isAgentMention);
-  }, [lastUserMessage]);
-
-  // Handle sticky mentions changes.
+  // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
-    if (!onStickyMentionsChange) {
+    // don't do anything until we have a first page of messages.
+    if (!ref.current || !ref.current.data.get().length) {
       return;
     }
 
-    if (agentMentions.length > 0) {
-      onStickyMentionsChange(agentMentions);
-    }
-  }, [agentMentions, onStickyMentionsChange]);
+    // We use the messages ranks to know what is older and what is newer.
+    const ranks = ref.current.data.get().map((m) => m.rank);
 
-  const { ref: viewRef, inView: isTopOfListVisible } = useInView();
+    const minRank = Math.min(...ranks);
+
+    const messagesFromBackend = messages.flatMap((m) => m.messages);
+
+    const olderMessagesFromBackend = messagesFromBackend.filter(
+      (m) => m.rank < minRank
+    );
+
+    if (olderMessagesFromBackend.length > 0) {
+      ref.current.data.prepend(
+        convertLightMessageTypeToVirtuosoMessages(olderMessagesFromBackend)
+      );
+    }
+
+    const maxRank = Math.max(...ranks);
+
+    const recentMessagesFromBackend = messagesFromBackend.filter(
+      (m) => m.rank > maxRank
+    );
+
+    if (recentMessagesFromBackend.length > 0) {
+      ref.current.data.append(
+        convertLightMessageTypeToVirtuosoMessages(recentMessagesFromBackend)
+      );
+    }
+  }, [messages]);
 
   const { feedbacks } = useConversationFeedbacks({
     conversationId: conversationId ?? "",
     workspaceId: owner.sId,
   });
 
-  // On page load or when new data is loaded, check if the top of the list
-  // is visible and there is more data to load. If so, set the current
-  // highest message ID and increment the page number to load more data.
-  useEffect(() => {
-    const isLoadingData =
-      isLoadingInitialData ||
-      isMessagesLoading ||
-      isValidating ||
-      prevFirstMessageId;
-
-    if (!isLoadingData && isTopOfListVisible && hasMore) {
-      // Set the current highest message Id.
-      setPrevFirstMessageId(
-        oldestPage ? oldestPage?.messages[0]?.sId ?? null : null
-      );
-
-      // Increment the page number to load more data.
-      void setSize(size + 1);
-    }
-  }, [
-    isLoadingInitialData,
-    isMessagesLoading,
-    isValidating,
-    prevFirstMessageId,
-    isTopOfListVisible,
-    hasMore,
-    oldestPage,
-    size,
-    setPrevFirstMessageId,
-    setSize,
-  ]);
-
-  // Hooks related to message streaming.
-
-  const buildEventSourceURL = useCallback(
-    (lastEvent: string | null) => {
-      const esURL = `/api/w/${owner.sId}/assistant/conversations/${conversationId}/events`;
-      let lastEventId = "";
-      if (lastEvent) {
-        const eventPayload: {
-          eventId: string;
-        } = JSON.parse(lastEvent);
-        lastEventId = eventPayload.eventId;
-      }
-      const url = esURL + "?lastEventId=" + lastEventId;
-
-      return url;
-    },
-    [conversationId, owner.sId]
-  );
+  // Hooks related to conversation events streaming.
 
   const debouncedMarkAsRead = useMemo(
     () => debounce(markAsRead, 2000),
     [markAsRead]
   );
+
+  const eventIds = useRef<string[]>([]);
 
   // Only conversation related events are handled here.
   const onEventCallback = useCallback(
@@ -308,15 +292,94 @@ const ConversationViewer = React.forwardRef<
         eventIds.current.push(eventPayload.eventId);
         switch (event.type) {
           case "user_message_new":
-          case "agent_message_new":
-            // Temporarily add agent message using event payload until revalidation.
-            void mutateMessages(async (currentMessagePages) => {
-              return getUpdatedMessagesFromEvent(currentMessagePages, event);
-            });
+            if (ref.current) {
+              const userMessage = event.message;
+              const predicate = (m: VirtuosoMessage) =>
+                m.rank === userMessage.rank;
 
-            void mutateConversationParticipants(async (participants) => {
-              return getUpdatedParticipantsFromEvent(participants, event);
-            });
+              const exists = ref.current.data.find(predicate);
+
+              if (!exists) {
+                // Do not scroll if the message is from the current user.
+                // Can happen with fake user messages (like handover messages).
+                const scroll = userMessage.user?.sId !== user.sId;
+
+                // Find the first message with a rank greater than the user message to insert the new message at the correct position.
+                const offset = ref.current.data.findIndex(
+                  (m) => m.rank > userMessage.rank
+                );
+                if (offset !== -1) {
+                  ref.current.data.insert([userMessage], offset, scroll);
+                } else {
+                  ref.current.data.append([userMessage], scroll);
+                }
+                // Using else if with the type guard just to please the type checker as we already know it's a user message from the predicate.
+              } else if (isUserMessage(exists)) {
+                // We only update if the version is greater or equals than the existing version.
+                if (exists.version <= event.message.version) {
+                  ref.current.data.map((m) =>
+                    m.rank === userMessage.rank ? userMessage : m
+                  );
+                }
+              }
+
+              // Update the participants and the conversation list if the message is not from the current user.
+              if (userMessage.user?.sId !== user.sId) {
+                void mutateConversationParticipants(
+                  async (participants) =>
+                    getUpdatedParticipantsFromEvent(participants, event),
+                  { revalidate: false }
+                );
+
+                void mutateConversations(
+                  (currentData) => {
+                    if (!currentData?.conversations) {
+                      return currentData;
+                    }
+                    return {
+                      conversations: currentData.conversations.map((c) =>
+                        c.sId === conversationId
+                          ? { ...c, hasError: false, unread: false }
+                          : c
+                      ),
+                    };
+                  },
+                  { revalidate: false }
+                );
+
+                void debouncedMarkAsRead(conversationId, false);
+              }
+            }
+            break;
+          case "agent_message_new":
+            if (ref.current) {
+              const agentMessage = makeInitialMessageStreamState(
+                getLightAgentMessageFromAgentMessage(event.message)
+              );
+
+              // Replace the message in the exist list data, or append.
+              const predicate = (m: VirtuosoMessage) =>
+                m.rank === agentMessage.rank;
+              const exists = ref.current.data.find(predicate);
+
+              if (exists) {
+                ref.current.data.map((m) => (predicate(m) ? agentMessage : m));
+              } else {
+                // Find the first message with a rank greater than the agent message to insert the new message at the correct position.
+                const offset = ref.current.data.findIndex(
+                  (m) => m.rank > agentMessage.rank
+                );
+                if (offset !== -1) {
+                  ref.current.data.insert([agentMessage], offset);
+                } else {
+                  ref.current.data.append([agentMessage]);
+                }
+              }
+
+              void mutateConversationParticipants(async (participants) =>
+                getUpdatedParticipantsFromEvent(participants, event)
+              );
+            }
             break;
 
           case "agent_generation_cancelled":
@@ -324,17 +387,62 @@ const ConversationViewer = React.forwardRef<
             break;
 
           case "conversation_title":
-            void mutateConversation();
-            void mutateConversations(); // to refresh the list of convos in the sidebar (title)
+            void mutateConversation(
+              (current) => {
+                if (current) {
+                  return {
+                    ...current,
+                    conversation: {
+                      ...current.conversation,
+                      title: event.title,
+                    },
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
+            // to refresh the list of convos in the sidebar (title)
+            void mutateConversations(
+              (currentData) => {
+                if (currentData?.conversations) {
+                  return {
+                    ...currentData,
+                    conversations: currentData.conversations.map((c) =>
+                      c.sId === conversationId
+                        ? { ...c, title: event.title }
+                        : c
+                    ),
+                  };
+                }
+              },
+              { revalidate: false }
+            );
+
             break;
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
             void debouncedMarkAsRead(event.conversationId, false);
 
-            // Mutate the messages to be sure that the swr cache is updated.
-            // Fixes an issue where the last message of a conversation is "thinking" and not "done" the first time you switch back and forth to a conversation.
-            void mutateMessages();
+            // Update the conversation hasError state in the local cache without making a network request.
+            void mutateConversations(
+              (currentData) => {
+                if (!currentData?.conversations) {
+                  return currentData;
+                }
+                return {
+                  conversations: currentData.conversations.map((c) =>
+                    c.sId === event.conversationId
+                      ? { ...c, hasError: event.status === "error" }
+                      : c
+                  ),
+                };
+              },
+              { revalidate: false }
+            );
+
+            window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
           default:
             ((t: never) => {
@@ -344,178 +452,299 @@ const ConversationViewer = React.forwardRef<
       }
     },
     [
+      conversationId,
+      debouncedMarkAsRead,
       mutateConversation,
+      mutateConversationParticipants,
       mutateConversations,
       mutateMessages,
-      mutateConversationParticipants,
-      debouncedMarkAsRead,
+      user.sId,
     ]
   );
 
-  useEventSource(
-    buildEventSourceURL,
-    onEventCallback,
-    `conversation-${conversationId}`,
-    {
-      // We only start consuming the stream when the conversation has been loaded and we have a first page of message.
-      isReadyToConsumeStream:
-        !isConversationLoading &&
-        !isLoadingInitialData &&
-        messages.length !== 0,
-    }
-  );
-  const eventIds = useRef<string[]>([]);
+  useConversationEvents({
+    owner,
+    conversationId,
+    onEvent: onEventCallback,
+    isReadyToConsumeStream:
+      !isConversationLoading && !isLoadingInitialData && messages.length !== 0,
+  });
 
-  const typedGroupedMessages = useMemo(
-    () => groupMessagesByType(messages),
-    [messages]
-  );
+  const handleSubmit = useCallback(
+    async (
+      input: string,
+      mentions: RichMention[],
+      contentFragments: ContentFragmentsType
+    ): Promise<Result<undefined, DustError>> => {
+      if (!ref?.current) {
+        return new Err({
+          code: "internal_error",
+          name: "NoRef",
+          message: "No ref",
+        });
+      }
+      const messageData = {
+        input,
+        mentions: mentions.map(toMentionType),
+        contentFragments,
+        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
+      };
 
-  const dateGroupedMessages = useMemo(
-    () => groupMessagesByDate(typedGroupedMessages),
-    [typedGroupedMessages]
-  );
+      const lastMessageRank = Math.max(
+        ...ref.current.data.get().map((m) => m.rank)
+      );
 
-  useLastMessageGroupObserver(typedGroupedMessages);
+      let rank =
+        lastMessageRank +
+        // Content fragments are prepended as "message" in the conversation, before the user message.
+        // We need to account for their ranks as well.
+        contentFragments.contentNodes.length +
+        contentFragments.uploaded.length +
+        // +1 for the user message
+        1;
 
-  return (
-    <div
-      className={classNames(
-        "dd-privacy-mask",
-        "s-@container/conversation",
-        "flex w-full flex-1 flex-col justify-start gap-8 py-4",
-        isInModal ? "pt-4" : "max-w-3xl px-4 md:px-8"
-      )}
-      ref={ref}
-    >
-      {conversationError && (
-        <ConversationErrorDisplay error={conversationError} />
-      )}
-      {/* Invisible span to detect when the user has scrolled to the top of the list. */}
-      {hasMore && !isMessagesLoading && !prevFirstMessageId && (
-        <span ref={viewRef} className="py-4" />
-      )}
-      {(isMessagesLoading || prevFirstMessageId) && (
-        <div className="mb-auto mt-auto flex justify-center">
-          <Spinner variant="color" size="xs" />
-        </div>
-      )}
-      {conversation &&
-        dateGroupedMessages.map((dateGroup, dateIndex) => (
-          <div key={`date-group-${dateIndex}`}>
-            <div className="flex w-full justify-center py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
-              {dateGroup.date}
-            </div>
-            {dateGroup.messages.map((typedGroup, index) => {
-              const isLastGroup =
-                dateIndex === dateGroupedMessages.length - 1 &&
-                index === dateGroup.messages.length - 1;
-              return (
-                <MessageGroup
-                  key={`typed-group-${dateIndex}-${index}`}
-                  messages={typedGroup}
-                  isLastMessageGroup={isLastGroup}
-                  conversationId={conversationId}
-                  feedbacks={feedbacks}
-                  isInModal={isInModal}
-                  owner={owner}
-                  prevFirstMessageId={prevFirstMessageId}
-                  prevFirstMessageRef={prevFirstMessageRef}
-                  user={user}
-                  latestPage={latestPage}
-                />
-              );
-            })}
-          </div>
-        ))}
-    </div>
-  );
-});
+      const placeholderUserMsg: VirtuosoMessage = createPlaceholderUserMessage({
+        input,
+        mentions,
+        user,
+        rank,
+        contentFragments,
+      });
 
-export default ConversationViewer;
-
-/**
- * This function processes an array of messages, collecting content_fragments
- * and attaching them to subsequent user_messages, then groups the agent messages
- * with the previous user_message, ensuring question/answers are grouped
- * together :
- *
- * - user message + potential content fragments posted with the user message
- * - one or multiple agent messages depending on the number of mentions in the user message.
- *
- * That means we want this:
- * Input [content_fragment, content_fragment, user_message, agent_message, agent_message, user_message, agent_message]
- * Output [[user_message with content_fragment[], agent_message, agent_message], [user_message, agent_message ]]
- * This structure enables layout customization for groups of question/answers
- * and displays content_fragments within user_messages.
- */
-const groupMessagesByType = (
-  messages: FetchConversationMessagesResponse[]
-): MessageWithContentFragmentsType[][] => {
-  const groupedMessages: MessageWithContentFragmentsType[][] = [];
-  let tempContentFragments: ContentFragmentType[] = [];
-
-  messages
-    .flatMap((page) => page.messages)
-    .forEach((message) => {
-      if (isContentFragmentType(message)) {
-        tempContentFragments.push(message); // Collect content fragments.
-      } else {
-        let messageWithContentFragments: MessageWithContentFragmentsType;
-        if (isUserMessageType(message)) {
-          // Attach collected content fragments to the user message.
-          messageWithContentFragments = {
-            ...message,
-            contentFragments: tempContentFragments,
-          };
-          tempContentFragments = []; // Reset the collected content fragments.
-
-          // Start a new group for user messages.
-          groupedMessages.push([messageWithContentFragments]);
-        } else {
-          messageWithContentFragments = message;
-
-          const lastGroup = groupedMessages[groupedMessages.length - 1];
-
-          if (!lastGroup) {
-            groupedMessages.push([messageWithContentFragments]);
-          } else {
-            lastGroup.push(messageWithContentFragments); // Add agent messages to the last group.
-          }
+      const placeholderAgentMessages: VirtuosoMessage[] = [];
+      for (const mention of mentions) {
+        if (isRichAgentMention(mention)) {
+          // +1 per agent message mentioned
+          rank += 1;
+          placeholderAgentMessages.push(
+            createPlaceholderAgentMessage({
+              userMessage: placeholderUserMsg,
+              mention,
+              rank,
+            })
+          );
         }
       }
-    });
-  return groupedMessages;
-};
 
-/**
- * Groups message groups by date, creating date separators for different days.
- * Takes the output from groupMessagesByType and further groups by date.
- */
-const groupMessagesByDate = (
-  messageGroups: MessageWithContentFragmentsType[][]
-): MessageGroupWithDate[] => {
-  // Filter out empty groups
-  const nonEmptyGroups = messageGroups.filter((group) => group.length > 0);
+      // An agent will answer immediately only if it is explicitely mentioned.
+      // In that case, we want to scroll to put the user message at the top.
+      const isMentioningAgent = mentions.some(isRichAgentMention);
 
-  // Group by day using lodash groupBy and isSameDay
-  const grouped = groupBy(nonEmptyGroups, (group) => {
-    const firstMessage = group[0];
-    const timestamp = firstMessage.created || Date.now();
-    // Use the timestamp as the grouping key (by day)
-    // We'll use the timestamp of the start of the day for grouping
-    const date = new Date(timestamp);
-    date.setHours(0, 0, 0, 0);
-    return date.getTime();
-  });
+      const nbMessages = ref.current.data.get().length;
+      ref.current.data.append(
+        [placeholderUserMsg, ...placeholderAgentMessages],
+        isMentioningAgent
+          ? () => {
+              return {
+                index: nbMessages, // Avoid jumping around when the agent message is generated.
+                align: "start",
+                behavior: customSmoothScroll,
+              };
+            }
+          : (params) => {
+              if (params.scrollLocation.bottomOffset >= 0) {
+                return {
+                  index: "LAST",
+                  align: "end",
+                  behavior: customSmoothScroll,
+                };
+              } else {
+                return false;
+              }
+            }
+      );
 
-  // Convert grouped object to array of MessageGroupWithDate
-  return Object.entries(grouped).map(([dayTimestamp, groups]) => {
-    const timestamp = Number(dayTimestamp);
+      const result = await submitMessage(messageData);
+
+      if (result.isErr()) {
+        if (result.error.type === "plan_limit_reached_error") {
+          setPlanLimitReached?.(true);
+        } else {
+          sendNotification({
+            title: result.error.title,
+            description: result.error.message,
+            type: "error",
+          });
+        }
+
+        // If the API errors, the original data will be rolled back by SWR automatically.
+        console.error("Failed to post message:", result.error);
+        return new Err({
+          code: "internal_error",
+          name: "FailedToPostMessage",
+          message: `Failed to post message ${result.error}`,
+        });
+      }
+
+      const {
+        message: messageFromBackend,
+        contentFragments: contentFragmentsFromBackend,
+      } = result.value;
+
+      // map() is how we update the state of virtuoso messages.
+      ref.current.data.map((m) =>
+        m.rank === placeholderUserMsg.rank
+          ? {
+              ...messageFromBackend,
+              contentFragments: contentFragmentsFromBackend,
+            }
+          : m
+      );
+
+      void mutateConversations(
+        (currentData) => {
+          if (!currentData?.conversations) {
+            return currentData;
+          }
+          return {
+            conversations: currentData.conversations.map((c) =>
+              c.sId === conversationId
+                ? { ...c, updated: new Date().getTime() }
+                : c
+            ),
+          };
+        },
+        { revalidate: false }
+      );
+
+      return new Ok(undefined);
+    },
+    [
+      agentBuilderContext?.clientSideMCPServerIds,
+      conversationId,
+      mutateConversations,
+      sendNotification,
+      setPlanLimitReached,
+      submitMessage,
+      user,
+    ]
+  );
+
+  const onScroll = useCallback(
+    (location: ListScrollLocation) => {
+      const isLoadingData =
+        isLoadingInitialData || isMessagesLoading || isValidating;
+
+      if (
+        location.listOffset >= -100 &&
+        messages.at(0)?.hasMore &&
+        !isLoadingData
+      ) {
+        // Increment the page number to load more data.
+        void setSize(size + 1);
+      }
+    },
+    [
+      isLoadingInitialData,
+      isMessagesLoading,
+      isValidating,
+      setSize,
+      size,
+      messages,
+    ]
+  );
+
+  const computeItemKey = useCallback(
+    ({
+      data,
+      context,
+    }: {
+      data: VirtuosoMessage;
+      context: VirtuosoMessageListContext;
+    }) => {
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
+    },
+    []
+  );
+
+  const itemIdentity = useCallback((item: VirtuosoMessage) => {
+    return `message-rank-${item.rank}`;
+  }, []);
+
+  const feedbacksByMessageId = useMemo(() => {
+    return feedbacks.reduce(
+      (acc, feedback) => {
+        acc[feedback.messageId] = feedback;
+        return acc;
+      },
+      {} as Record<string, AgentMessageFeedbackType>
+    );
+  }, [feedbacks]);
+
+  const context: VirtuosoMessageListContext = useMemo(() => {
     return {
-      date: formatDateSeparator(timestamp),
-      timestamp,
-      messages: groups,
+      user,
+      owner,
+      handleSubmit,
+      conversation,
+      draftKey: `conversation-${conversationId}`,
+      enableExtendedActions: !!conversation?.spaceId,
+      agentBuilderContext,
+      feedbacksByMessageId,
     };
-  });
+  }, [
+    user,
+    owner,
+    handleSubmit,
+    conversation,
+    conversationId,
+    agentBuilderContext,
+    feedbacksByMessageId,
+  ]);
+
+  return (
+    <>
+      {(conversationError || isMessagesError) && (
+        <ConversationErrorDisplay
+          error={conversationError || isMessagesError}
+        />
+      )}
+      <VirtuosoMessageListLicense
+        licenseKey={process.env.NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY ?? ""}
+      >
+        <VirtuosoMessageList<VirtuosoMessage, VirtuosoMessageListContext>
+          data={{
+            data: initialListData,
+            scrollModifier: {
+              type: "item-location",
+              location: {
+                index: messageIdToScrollTo ?? "LAST",
+                align: messageIdToScrollTo ? "start" : "end",
+                behavior: "instant",
+              },
+              purgeItemSizes: true,
+            },
+          }}
+          ref={ref}
+          ItemContent={MessageItem}
+          StickyFooter={AgentInputBar}
+          // Note: do NOT put any verticalpadding here as it will mess with the auto scroll to bottom.
+          className={classNames(
+            "dd-privacy-mask",
+            "s-@container/conversation",
+            "h-full w-full",
+            agentBuilderContext ? "px-4" : "px-4 md:px-8"
+          )}
+          shortSizeAlign="top"
+          computeItemKey={computeItemKey}
+          onScroll={onScroll}
+          context={context}
+          itemIdentity={itemIdentity}
+          EmptyPlaceholder={ConversationViewerEmptyState}
+          // Large buffer to avoid manipulating the dom too much when the user scrolls a bit.
+          increaseViewportBy={8192}
+          enforceStickyFooterAtBottom={true}
+        />
+      </VirtuosoMessageListLicense>
+    </>
+  );
 };
+
+const convertLightMessageTypeToVirtuosoMessages = (
+  messages: LightMessageType[]
+) =>
+  messages.map((message) =>
+    isUserMessageTypeWithContentFragments(message)
+      ? message
+      : makeInitialMessageStreamState(message)
+  );

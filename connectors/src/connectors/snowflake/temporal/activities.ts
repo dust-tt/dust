@@ -2,7 +2,9 @@ import {
   connectToSnowflake,
   fetchTree,
   isConnectionReadonly,
+  useWarehouse,
 } from "@connectors/connectors/snowflake/lib/snowflake_api";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import { sync } from "@connectors/lib/remote_databases/activities";
 import { getConnectorAndCredentials } from "@connectors/lib/remote_databases/utils";
 import {
@@ -37,6 +39,13 @@ export async function syncSnowflakeConnection(connectorId: ModelId) {
     throw connectionRes.error;
   }
   const connection = connectionRes.value;
+
+  // Align with core: ensure the configured warehouse is usable. If not, treat as
+  // an authorization problem so the connector gets paused and flagged.
+  const useWarehouseRes = await useWarehouse({ credentials, connection });
+  if (useWarehouseRes.isErr()) {
+    throw new ExternalOAuthTokenError(useWarehouseRes.error);
+  }
 
   const readonlyConnectionCheck = await isConnectionReadonly({
     credentials,

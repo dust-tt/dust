@@ -85,9 +85,9 @@ function DomainVerification({
   return (
     <WorkspaceSection icon={ActionGlobeAltIcon} title="Domain Verification">
       <Page.P variant="secondary">
-        Verify one or multiple company domains to enable Single Sign-On (SSO)
-        and allow team members to automatically join your workspace when they
-        sign up with their work email address.
+        Verify your company domains to enable Single Sign-On (SSO), automatic
+        workspace enrollment for team members, and secure connections to your
+        internal MCP servers.
       </Page.P>
       {isDomainsLoading ? (
         <LoadingBlock className="h-32 w-full rounded-xl" />
@@ -193,13 +193,13 @@ function DomainVerificationTable({
       {
         header: "",
         accessorKey: "actions",
-        meta: { className: "w-14" },
+        meta: { className: "w-12" },
         cell: ({ row }: CellContext<DomainRowData, string>) => {
           return (
             <IconButton
               icon={XMarkIcon}
               size="xs"
-              variant="tertiary"
+              variant="ghost"
               onClick={() => handleDeleteDomain(row.original.domain)}
               tooltip="Delete domain"
             />
@@ -229,7 +229,6 @@ function DomainVerificationTable({
             label="Add Domain"
             variant="primary"
             href={addDomainLink}
-            target="_blank"
             icon={PlusIcon}
           />
         </div>

@@ -7,7 +7,10 @@ import { DemoVideoSection } from "@app/components/home/content/Solutions/DemoVid
 import { Grid, H1, H2, H3, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
+import { useAppRouter } from "@app/lib/platform";
+import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 
 import type { IndustryPageConfig, SectionType } from "./configs/utils";
@@ -23,13 +26,16 @@ const GRID_SECTION_CLASSES = classNames(
 
 interface IndustryTemplateProps {
   config: IndustryPageConfig;
+  trackingPrefix?: string;
 }
 
 // Hero Section Component
 const HeroSection = ({
   config,
+  trackingPrefix,
 }: {
   config: NonNullable<IndustryPageConfig["hero"]>;
+  trackingPrefix?: string;
 }) => (
   <div className="container flex w-full flex-col px-6 pt-8 md:px-4 md:pt-24">
     <Grid className="gap-x-4 lg:gap-x-8">
@@ -58,6 +64,10 @@ const HeroSection = ({
               size="md"
               label={config.ctaButtons.primary.label}
               className="w-full sm:w-auto"
+              onClick={withTracking(
+                TRACKING_AREAS.INDUSTRY,
+                `${trackingPrefix ?? "default"}_hero_cta_primary`
+              )}
             />
           </Link>
           <Button
@@ -66,6 +76,10 @@ const HeroSection = ({
             label={config.ctaButtons.secondary.label}
             href={config.ctaButtons.secondary.href}
             className="w-full sm:w-auto"
+            onClick={withTracking(
+              TRACKING_AREAS.INDUSTRY,
+              `${trackingPrefix ?? "default"}_hero_cta_secondary`
+            )}
           />
         </div>
       </div>
@@ -420,8 +434,10 @@ const TestimonialSection = ({
 // Just Use Dust Section Component
 const JustUseDustSection = ({
   config,
+  trackingPrefix,
 }: {
   config: NonNullable<IndustryPageConfig["justUseDust"]>;
+  trackingPrefix?: string;
 }) => (
   <div
     className={classNames(
@@ -457,6 +473,10 @@ const JustUseDustSection = ({
               size="md"
               label={config.ctaButtons.primary.label}
               className="w-full sm:w-auto"
+              onClick={withTracking(
+                TRACKING_AREAS.INDUSTRY,
+                `${trackingPrefix ?? "default"}_footer_cta_primary`
+              )}
             />
           </Link>
           <Link href={config.ctaButtons.secondary.href} passHref legacyBehavior>
@@ -465,6 +485,10 @@ const JustUseDustSection = ({
               size="md"
               label={config.ctaButtons.secondary.label}
               className="w-full sm:w-auto"
+              onClick={withTracking(
+                TRACKING_AREAS.INDUSTRY,
+                `${trackingPrefix ?? "default"}_footer_cta_secondary`
+              )}
             />
           </Link>
         </div>
@@ -474,7 +498,12 @@ const JustUseDustSection = ({
 );
 
 // Main Industry Template Component
-export default function IndustryTemplate({ config }: IndustryTemplateProps) {
+export default function IndustryTemplate({
+  config,
+  trackingPrefix,
+}: IndustryTemplateProps) {
+  const router = useAppRouter();
+
   // Get the list of enabled sections in the specified order
   const enabledSections = getEnabledSections(config.layout);
 
@@ -483,7 +512,11 @@ export default function IndustryTemplate({ config }: IndustryTemplateProps) {
     switch (sectionType) {
       case "hero":
         return config.hero ? (
-          <HeroSection key="hero" config={config.hero} />
+          <HeroSection
+            key="hero"
+            config={config.hero}
+            trackingPrefix={trackingPrefix}
+          />
         ) : null;
 
       case "aiAgents":
@@ -495,7 +528,6 @@ export default function IndustryTemplate({ config }: IndustryTemplateProps) {
         return config.trustedBy ? (
           <TrustedBy
             key="trustedBy"
-            title={config.trustedBy.title}
             logoSet={config.trustedBy.logoSet as any}
           />
         ) : null;
@@ -539,7 +571,6 @@ export default function IndustryTemplate({ config }: IndustryTemplateProps) {
         return config.trustedBySecond ? (
           <TrustedBy
             key="trustedBySecond"
-            title={config.trustedBySecond.title}
             logoSet={config.trustedBySecond.logoSet as any}
           />
         ) : null;
@@ -563,7 +594,11 @@ export default function IndustryTemplate({ config }: IndustryTemplateProps) {
 
       case "justUseDust":
         return config.justUseDust ? (
-          <JustUseDustSection key="justUseDust" config={config.justUseDust} />
+          <JustUseDustSection
+            key="justUseDust"
+            config={config.justUseDust}
+            trackingPrefix={trackingPrefix}
+          />
         ) : null;
 
       default:
@@ -573,9 +608,16 @@ export default function IndustryTemplate({ config }: IndustryTemplateProps) {
   };
 
   return (
-    <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
-      {enabledSections.map(renderSection).filter(Boolean)}
-    </div>
+    <>
+      <PageMetadata
+        title={config.seo.title}
+        description={config.seo.description}
+        pathname={router.asPath}
+      />
+      <div className="container flex w-full flex-col gap-16 px-2 py-2 pb-12">
+        {enabledSections.map(renderSection).filter(Boolean)}
+      </div>
+    </>
   );
 }
 

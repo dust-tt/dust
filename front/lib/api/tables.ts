@@ -135,7 +135,12 @@ export async function upsertTableFromCsv({
       });
     }
 
-    const VALID_USE_CASES = ["upsert_table", "conversation", "tool_output"];
+    const VALID_USE_CASES = [
+      "upsert_table",
+      "conversation",
+      "tool_output",
+      "project_context",
+    ];
     if (!VALID_USE_CASES.includes(file.useCase)) {
       return new Err({
         type: "invalid_request_error",

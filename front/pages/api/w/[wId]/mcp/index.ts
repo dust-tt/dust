@@ -2,18 +2,18 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import {
-  DEFAULT_MCP_SERVER_ICON,
-  isCustomServerIconType,
-} from "@app/lib/actions/mcp_icons";
+import { isCustomResourceIconType } from "@app/components/resources/resources_icons";
+import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
+import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
+  getInternalMCPServerInfo,
   isInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
-import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
+import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import apiConfig from "@app/lib/api/config";
 import type { MCPServerType, MCPServerTypeWithViews } from "@app/lib/api/mcp";
@@ -28,7 +28,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import {
+  getOverridablePersonalAuthInputs,
+  headersArrayToRecord,
+} from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 
 export type GetMCPServersResponseBody = {
@@ -68,6 +71,11 @@ const PostQueryParamsSchema = t.union([
     ]),
     connectionId: t.union([t.string, t.undefined]),
     includeGlobal: t.union([t.boolean, t.undefined]),
+    sharedSecret: t.union([t.string, t.undefined]),
+    customHeaders: t.union([
+      t.array(t.type({ key: t.string, value: t.string })),
+      t.undefined,
+    ]),
   }),
 ]);
 
@@ -168,10 +176,7 @@ async function handler(
 
         // Merge custom headers (if any) with Authorization when probing the server.
         // Note: Authorization from OAuth/sharedSecret takes precedence over custom headers.
-        const sanitizedCustomHeaders = headersArrayToRecord(
-          body.customHeaders,
-          { stripAuthorization: false }
-        );
+        const sanitizedCustomHeaders = headersArrayToRecord(body.customHeaders);
 
         const headers = bearerToken
           ? {
@@ -210,16 +215,13 @@ async function handler(
           icon:
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             defaultConfig?.icon ||
-            (isCustomServerIconType(metadata.icon)
+            (isCustomResourceIconType(metadata.icon)
               ? metadata.icon
               : DEFAULT_MCP_SERVER_ICON),
           version: metadata.version,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          sharedSecret: sharedSecret || null,
-          // Persist only user-provided custom headers (exclude Authorization)
-          customHeaders: headersArrayToRecord(body.customHeaders, {
-            stripAuthorization: true,
-          }),
+          sharedSecret: sharedSecret ?? null,
+          // Persist only user-provided custom headers
+          customHeaders: headersArrayToRecord(body.customHeaders),
           authorization,
           oAuthUseCase: body.useCase ?? null,
         });
@@ -325,15 +327,52 @@ async function handler(
           });
 
         if (body.connectionId) {
-          // We create a connection to the internal MCP server to allow the user to use the MCP server in the future.
-          // The connexion is of type "workspace" because it is created by the admin.
-          // If the server can use personal connections, we rely on this "workspace" connection to get the related credentials.
+          // For personal tools, automatically create a personal connection for the admin
+          // so they don't need to re-authenticate when they first use the tool.
+          // Exception: If the provider has overridable credentials at personal auth time,
+          // each user should authenticate separately with their own settings.
+          const serverInfo = getInternalMCPServerInfo(name);
+          const provider = serverInfo.authorization?.provider;
+          const hasOverridableInputs = provider
+            ? !!getOverridablePersonalAuthInputs({ provider })
+            : false;
+          if (body.useCase === "personal_actions" && !hasOverridableInputs) {
+            await MCPServerConnectionResource.makeNew(auth, {
+              connectionId: body.connectionId,
+              connectionType: "personal",
+              serverType: "internal",
+              internalMCPServerId: newInternalMCPServer.id,
+            });
+          }
+
+          // We create a workspace connection to the internal MCP server.
+          // This connection is used to get the related credentials for personal connections.
           await MCPServerConnectionResource.makeNew(auth, {
             connectionId: body.connectionId,
             connectionType: "workspace",
             serverType: "internal",
             internalMCPServerId: newInternalMCPServer.id,
           });
+        }
+
+        if (
+          requiresBearerTokenConfiguration(newInternalMCPServer.toJSON()) &&
+          (body.sharedSecret !== undefined || body.customHeaders !== undefined)
+        ) {
+          const sanitizedRecord = headersArrayToRecord(body.customHeaders);
+          const customHeaders =
+            Object.keys(sanitizedRecord).length > 0 ? sanitizedRecord : null;
+
+          const upsertResult = await newInternalMCPServer.upsertCredentials(
+            auth,
+            {
+              sharedSecret: body.sharedSecret,
+              customHeaders,
+            }
+          );
+          if (upsertResult.isErr()) {
+            throw upsertResult.error;
+          }
         }
 
         if (body.includeGlobal) {

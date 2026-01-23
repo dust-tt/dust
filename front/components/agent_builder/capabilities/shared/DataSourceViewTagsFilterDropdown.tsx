@@ -10,9 +10,11 @@ import { useCallback, useMemo } from "react";
 import { useWatch } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import type { CapabilityFormData } from "@app/components/agent_builder/types";
-import { TagSearchSection } from "@app/components/assistant_builder/tags/TagSearchSection";
 import { useDataSourceBuilderContext } from "@app/components/data_source_view/context/DataSourceBuilderContext";
+import { TagSearchSection } from "@app/components/data_source_view/TagSearchSection";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type {
   DataSourceTag,
   DataSourceViewType,
@@ -25,6 +27,14 @@ export function DataSourceViewTagsFilterDropdown() {
   const { updateSourcesTags, toggleInConversationFiltering } =
     useDataSourceBuilderContext();
   const sources = useWatch<CapabilityFormData, "sources">({ name: "sources" });
+  const additionalConfiguration = useWatch<
+    MCPFormData,
+    "configuration.additionalConfiguration"
+  >({
+    name: "configuration.additionalConfiguration",
+  });
+  const isExploratorySearchEnabled =
+    additionalConfiguration[ADVANCED_SEARCH_SWITCH] === true;
 
   const dataSourceViews = sources.in.reduce((acc, source) => {
     if (source.type === "data_source") {
@@ -178,7 +188,17 @@ export function DataSourceViewTagsFilterDropdown() {
   return (
     <PopoverRoot>
       <PopoverTrigger asChild>
-        <Button label="Filters" variant="outline" isSelect />
+        <Button
+          label="Filters"
+          variant="outline"
+          isSelect
+          disabled={isExploratorySearchEnabled}
+          tooltip={
+            isExploratorySearchEnabled
+              ? "Exploratory search mode doesn't support filtering data sources yet"
+              : undefined
+          }
+        />
       </PopoverTrigger>
 
       <PopoverContent

@@ -225,7 +225,7 @@ export const GoogleDriveCommandSchema = t.type({
   majorCommand: t.literal("google_drive"),
   command: t.union([
     t.literal("garbage-collect-all"),
-    t.literal("get-file"),
+    t.literal("get-file-metadata"),
     t.literal("check-file"),
     t.literal("get-google-parents"),
     t.literal("clean-invalid-parents"),
@@ -238,6 +238,7 @@ export const GoogleDriveCommandSchema = t.type({
     t.literal("register-webhook"),
     t.literal("register-all-webhooks"),
     t.literal("list-labels"),
+    t.literal("export-folder-structure"),
   ]),
   args: t.record(
     t.string,
@@ -275,12 +276,15 @@ export const IntercomCommandSchema = t.type({
   majorCommand: t.literal("intercom"),
   command: t.union([
     t.literal("force-resync-articles"),
+    t.literal("force-resync-all-conversations"),
     t.literal("check-conversation"),
     t.literal("fetch-conversation"),
     t.literal("fetch-articles"),
     t.literal("check-missing-conversations"),
     t.literal("check-teams"),
     t.literal("set-conversations-sliding-window"),
+    t.literal("get-conversations-sliding-window"),
+    t.literal("search-conversations"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -289,8 +293,16 @@ export const IntercomCommandSchema = t.type({
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
+    teamId: t.union([t.number, t.undefined]),
+    closedAfter: t.union([t.number, t.undefined]),
+    state: t.union([
+      t.union([t.literal("open"), t.literal("closed")]),
+      t.undefined,
+    ]),
+    cursor: t.union([t.string, t.undefined]),
   }),
 });
+
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
 
 export const IntercomCheckConversationResponseSchema = t.type({
@@ -350,6 +362,38 @@ export const IntercomForceResyncArticlesResponseSchema = t.type({
 export type IntercomForceResyncArticlesResponseType = t.TypeOf<
   typeof IntercomForceResyncArticlesResponseSchema
 >;
+
+export const IntercomGetConversationsSlidingWindowResponseSchema = t.type({
+  conversationsSlidingWindow: t.number,
+});
+export type IntercomGetConversationsSlidingWindowResponseType = t.TypeOf<
+  typeof IntercomGetConversationsSlidingWindowResponseSchema
+>;
+
+export const IntercomSearchConversationsResponseSchema = t.type({
+  conversations: t.array(
+    t.type({
+      id: t.string,
+      open: t.boolean,
+      state: t.string,
+      created_at: t.number,
+      last_closed_at: t.union([t.number, t.null]),
+    })
+  ),
+  totalCount: t.number,
+});
+
+export type IntercomSearchConversationsResponseType = t.TypeOf<
+  typeof IntercomSearchConversationsResponseSchema
+>;
+
+export const IntercomForceResyncAllConversationsResponseSchema = t.type({
+  workflowId: t.string,
+});
+export type IntercomForceResyncAllConversationsResponseType = t.TypeOf<
+  typeof IntercomForceResyncAllConversationsResponseSchema
+>;
+
 /**
  * </ Intercom>
  */
@@ -400,6 +444,7 @@ export const NotionCommandSchema = t.type({
     t.literal("update-parents-fields"),
     t.literal("clear-parents-last-updated-at"),
     t.literal("update-orphaned-resources-parents"),
+    t.literal("api-request"),
   ]),
   args: t.record(
     t.string,
@@ -460,6 +505,14 @@ export const NotionMeResponseSchema = t.type({
   botOwner: t.UnknownRecord, // notion type, can't be iots'd
 });
 export type NotionMeResponseType = t.TypeOf<typeof NotionMeResponseSchema>;
+
+export const NotionApiRequestResponseSchema = t.type({
+  status: t.number,
+  data: t.unknown, // notion API response type, can't be iots'd
+});
+export type NotionApiRequestResponseType = t.TypeOf<
+  typeof NotionApiRequestResponseSchema
+>;
 /**
  * </Notion>
  */
@@ -560,6 +613,7 @@ export const SlackCommandSchema = t.type({
     t.literal("run-auto-join"),
     t.literal("whitelist-bot"),
     t.literal("whitelist-domains"),
+    t.literal("check-channel"),
   ]),
   args: t.record(
     t.string,
@@ -573,6 +627,17 @@ export const SlackJoinResponseSchema = t.type({
   processed: t.number,
 });
 export type SlackJoinResponseType = t.TypeOf<typeof SlackJoinResponseSchema>;
+
+export const SlackCheckChannelResponseSchema = t.type({
+  success: t.literal(true),
+  channel: t.type({
+    name: t.union([t.string, t.undefined]),
+    isPrivate: t.union([t.boolean, t.undefined]),
+  }),
+});
+export type SlackCheckChannelResponseType = t.TypeOf<
+  typeof SlackCheckChannelResponseSchema
+>;
 
 /**
  * </Slack>
@@ -818,11 +883,15 @@ export const AdminResponseSchema = t.union([
   IntercomFetchArticlesResponseSchema,
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
+  IntercomGetConversationsSlidingWindowResponseSchema,
+  IntercomSearchConversationsResponseSchema,
+  NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,
   NotionMeResponseSchema,
   NotionSearchPagesResponseSchema,
   NotionUpsertResponseSchema,
+  SlackCheckChannelResponseSchema,
   SlackJoinResponseSchema,
   SalesforceCheckConnectionResponseSchema,
   SalesforceRunSoqlResponseSchema,

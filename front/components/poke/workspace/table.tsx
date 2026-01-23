@@ -1,5 +1,4 @@
-import { Chip } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 
 import {
   PokeTable,
@@ -8,6 +7,7 @@ import {
   PokeTableCellWithCopy,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import type { DataRetentionConfig } from "@app/lib/data_retention";
 import { usePokeWorkOSDSyncStatus } from "@app/lib/swr/poke";
 import type { WorkOSConnectionSyncStatus } from "@app/lib/types/workos";
 import type {
@@ -22,14 +22,14 @@ export function WorkspaceInfoTable({
   workspaceVerifiedDomains,
   workspaceCreationDay,
   extensionConfig,
-  workspaceRetention,
+  dataRetention,
   workosEnvironmentId,
 }: {
   owner: WorkspaceType;
   workspaceVerifiedDomains: WorkspaceDomain[];
   workspaceCreationDay: string;
   extensionConfig: ExtensionConfigurationType | null;
-  workspaceRetention: number | null;
+  dataRetention: DataRetentionConfig | undefined;
   workosEnvironmentId: string;
 }) {
   const { dsyncStatus } = usePokeWorkOSDSyncStatus({ owner });
@@ -41,9 +41,9 @@ export function WorkspaceInfoTable({
       case "configuring":
         return "warning";
       case "not_configured":
-        return "primary";
+        return "info";
       default:
-        return "primary";
+        return "info";
     }
   };
 
@@ -60,9 +60,14 @@ export function WorkspaceInfoTable({
       case "draft":
         return "blue";
       default:
-        return "primary";
+        return "info";
     }
   };
+
+  const nbAgentsWithRetention = dataRetention
+    ? Object.entries(dataRetention.agents).length
+    : 0;
+
   return (
     <div className="flex justify-between gap-3">
       <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
@@ -82,38 +87,32 @@ export function WorkspaceInfoTable({
             <PokeTableRow>
               <PokeTableCell>Workspace Health</PokeTableCell>
               <PokeTableCell>
-                <Link
+                <LinkWrapper
                   href={`https://metabase.dust.tt/dashboard/34-snowflake-workspace-health?end_date=2030-12-31&start_date=2024-01-01&tab=30-executive-summary&workspace_size_difference_margin=0.2&workspacesid=${owner.sId}`}
                   target="_blank"
                   className="text-xs text-highlight-400"
                 >
                   Metabase
-                </Link>
+                </LinkWrapper>
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>WorkOS dashboard</PokeTableCell>
               <PokeTableCell>
                 {owner.workOSOrganizationId && (
-                  <Link
+                  <LinkWrapper
                     href={`https://dashboard.workos.com/${workosEnvironmentId}/organizations/${owner.workOSOrganizationId}`}
                     target="_blank"
                     className="text-xs text-highlight-400"
                   >
-                    Organization
-                  </Link>
+                    {owner.workOSOrganizationId}
+                  </LinkWrapper>
                 )}
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>Creation</PokeTableCell>
               <PokeTableCell>{workspaceCreationDay}</PokeTableCell>
-            </PokeTableRow>
-            <PokeTableRow>
-              <PokeTableCell>Conversations retention</PokeTableCell>
-              <PokeTableCell>
-                {workspaceRetention ? `${workspaceRetention} days` : "❌"}
-              </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
               <PokeTableCell>SSO Enforced</PokeTableCell>
@@ -149,14 +148,6 @@ export function WorkspaceInfoTable({
               </PokeTableCell>
             </PokeTableRow>
             <PokeTableRow>
-              <PokeTableCell className="max-w-48">
-                WorkOS organization
-              </PokeTableCell>
-              <PokeTableCell>
-                {owner.workOSOrganizationId ?? "None"}
-              </PokeTableCell>
-            </PokeTableRow>
-            <PokeTableRow>
               <PokeTableCell>Directory Sync</PokeTableCell>
               <PokeTableCell>
                 <Chip
@@ -183,6 +174,32 @@ export function WorkspaceInfoTable({
                   </Chip>
                 </PokeTableCell>
               </PokeTableRow>
+            )}
+            {dataRetention !== undefined && (
+              <>
+                <PokeTableRow>
+                  <PokeTableCell>✂️ Conversations retention</PokeTableCell>
+                  <PokeTableCell>
+                    {dataRetention.conversations !== null
+                      ? `${dataRetention.conversations} days inactive`
+                      : "No retention policy"}
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>✂️ Workspace retention</PokeTableCell>
+                  <PokeTableCell>
+                    {dataRetention.workspace} days post downgrade
+                  </PokeTableCell>
+                </PokeTableRow>
+                <PokeTableRow>
+                  <PokeTableCell>✂️ Agents retention</PokeTableCell>
+                  <PokeTableCell>
+                    {nbAgentsWithRetention === 0
+                      ? "No agents with policies"
+                      : `${nbAgentsWithRetention} with policies`}
+                  </PokeTableCell>
+                </PokeTableRow>
+              </>
             )}
           </PokeTableBody>
         </PokeTable>

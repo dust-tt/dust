@@ -1,10 +1,12 @@
 import {
   Button,
+  Chip,
   ConfluenceLogo,
   GithubLogo,
   GlobeAltIcon,
   GoogleLogo,
   IntercomLogo,
+  LinkWrapper,
   NotionLogo,
   Page,
   SalesforceLogo,
@@ -18,8 +20,6 @@ import {
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
-import Link from "next/link";
-import { useRouter } from "next/router";
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import {
@@ -33,10 +33,71 @@ import { makeColumnsForSubscriptions } from "@app/components/poke/subscriptions/
 import EnterpriseUpgradeDialog from "@app/components/poke/subscriptions/EnterpriseUpgradeDialog";
 import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUpgradeDialog";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { FREE_NO_PLAN_CODE, isProPlan } from "@app/lib/plans/plan_codes";
+import { clientFetch } from "@app/lib/egress/client";
+import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
-import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
+import type {
+  PlanType,
+  ProgrammaticUsageConfigurationType,
+  SubscriptionType,
+  WorkspaceType,
+} from "@app/types";
 import { isDevelopment } from "@app/types";
+
+type SubscriptionStatus = "paymentFailed" | "trialing" | "ended" | "active";
+
+function getSubscriptionDisplayStatus(
+  subscription: SubscriptionType
+): SubscriptionStatus {
+  if (subscription.paymentFailingSince !== null) {
+    return "paymentFailed";
+  }
+  if (subscription.trialing) {
+    return "trialing";
+  }
+  if (
+    subscription.plan.code === FREE_NO_PLAN_CODE ||
+    (subscription.endDate !== null && subscription.endDate <= Date.now())
+  ) {
+    return "ended";
+  }
+  return "active";
+}
+
+const STATUS_CONFIG: Record<
+  SubscriptionStatus,
+  {
+    chipColor: "info" | "blue" | "warning" | "success";
+    chipLabel: string;
+    cardClass: string;
+  }
+> = {
+  paymentFailed: {
+    chipColor: "info",
+    chipLabel: "Past Due",
+    cardClass:
+      "border-info-200 bg-info-50 dark:border-info-200-night dark:bg-info-50-night",
+  },
+  trialing: {
+    chipColor: "blue",
+    chipLabel: "Trialing",
+    cardClass:
+      "border-blue-200 bg-blue-50 dark:border-blue-200-night dark:bg-blue-50-night",
+  },
+  ended: {
+    chipColor: "warning",
+    chipLabel: "Ended",
+    cardClass:
+      "border-warning-200 bg-warning-50 dark:border-warning-200-night dark:bg-warning-50-night",
+  },
+  active: {
+    chipColor: "success",
+    chipLabel: "Active",
+    cardClass:
+      "border-success-200 bg-success-50 dark:border-success-200-night dark:bg-success-50-night",
+  },
+};
 
 interface SubscriptionsDataTableProps {
   owner: WorkspaceType;
@@ -63,6 +124,8 @@ function prepareSubscriptionsForDisplay(
             s.endDate
           ).toLocaleTimeString()}`
         : null,
+      startDateValue: s.startDate ? new Date(s.startDate).getTime() : null,
+      endDateValue: s.endDate ? new Date(s.endDate).getTime() : null,
     };
   });
 }
@@ -82,28 +145,42 @@ export function SubscriptionsDataTable({
   );
 }
 
+interface ActiveSubscriptionTableProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  subscriptions: SubscriptionType[];
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+}
+
 export function ActiveSubscriptionTable({
   owner,
   subscription,
   subscriptions,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  subscriptions: SubscriptionType[];
-}) {
+  programmaticUsageConfig,
+}: ActiveSubscriptionTableProps) {
+  const status = getSubscriptionDisplayStatus(subscription);
+  const { chipColor, chipLabel, cardClass } = STATUS_CONFIG[status];
+
   return (
     <div className="flex flex-col">
       <div className="flex justify-between gap-3">
-        <div className="border-material-200 flex flex-grow flex-col rounded-lg border p-4 pb-2">
+        <div
+          className={`flex flex-grow flex-col rounded-lg border p-4 pb-2 ${cardClass}`}
+        >
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-md flex-grow pb-4 font-bold">
-              Active Subscription
+            <h2 className="text-md flex flex-grow items-center gap-2 pb-4 font-bold">
+              Subscription
+              <Chip color={chipColor} label={chipLabel} size="xs" />
             </h2>
             <SubscriptionsHistoryModal
               owner={owner}
               subscriptions={subscriptions}
             />
-            <UpgradeDowngradeModal owner={owner} subscription={subscription} />
+            <UpgradeDowngradeModal
+              owner={owner}
+              subscription={subscription}
+              programmaticUsageConfig={programmaticUsageConfig}
+            />
           </div>
           <PokeTable>
             <PokeTableBody>
@@ -125,7 +202,7 @@ export function ActiveSubscriptionTable({
                 <PokeTableCell>Stripe Subscription Id</PokeTableCell>
                 <PokeTableCell>
                   {subscription.stripeSubscriptionId ? (
-                    <Link
+                    <LinkWrapper
                       href={
                         isDevelopment()
                           ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
@@ -135,7 +212,7 @@ export function ActiveSubscriptionTable({
                       className="text-xs text-highlight-400"
                     >
                       {subscription.stripeSubscriptionId}
-                    </Link>
+                    </LinkWrapper>
                   ) : (
                     "No subscription id"
                   )}
@@ -254,6 +331,13 @@ export function PlanLimitationsTable({
               </PokeTableRow>
 
               <PokeTableRow>
+                <PokeTableCell>Is Deep Dive allowed?</PokeTableCell>
+                <PokeTableCell>
+                  {activePlan.limits.assistant.isDeepDiveAllowed ? "✅" : "❌"}
+                </PokeTableCell>
+              </PokeTableRow>
+
+              <PokeTableRow>
                 <PokeTableCell>Max number of data sources</PokeTableCell>
                 <PokeTableCell>
                   {activePlan.limits.dataSources.count === -1
@@ -289,14 +373,18 @@ export function PlanLimitationsTable({
   );
 }
 
+interface UpgradeDowngradeModalProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
+}
+
 function UpgradeDowngradeModal({
   owner,
   subscription,
-}: {
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}) {
-  const router = useRouter();
+  programmaticUsageConfig,
+}: UpgradeDowngradeModalProps) {
+  const router = useAppRouter();
   const { plans } = usePokePlans();
 
   const { submit: onDowngrade } = useSubmitFunction(async () => {
@@ -308,12 +396,15 @@ function UpgradeDowngradeModal({
       return;
     }
     try {
-      const r = await fetch(`/api/poke/workspaces/${owner.sId}/downgrade`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const r = await clientFetch(
+        `/api/poke/workspaces/${owner.sId}/downgrade`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (!r.ok) {
         throw new Error("Failed to downgrade workspace.");
       }
@@ -334,15 +425,18 @@ function UpgradeDowngradeModal({
         return;
       }
       try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            planCode: plan.code,
-          }),
-        });
+        const r = await clientFetch(
+          `/api/poke/workspaces/${owner.sId}/upgrade`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              planCode: plan.code,
+            }),
+          }
+        );
         if (!r.ok) {
           throw new Error("Failed to upgrade workspace to plan.");
         }
@@ -372,11 +466,21 @@ function UpgradeDowngradeModal({
               description="This action will downgrade the workspace to having no plan. This means that all the features will be disabled and members of
           the workspaces will be redirected to the paywall page. After 15 days, the workspace data will be deleted."
             />
+            {programmaticUsageConfig?.paygCapMicroUsd && (
+              <div className="rounded-md border border-warning-200 bg-warning-100 p-3 text-warning-800">
+                Cannot downgrade while Pay-as-you-go is enabled. Please disable
+                PAYG in the "Manage Programmatic Usage Configuration" plugin
+                first.
+              </div>
+            )}
             <div>
               <Button
                 variant="warning"
                 onClick={onDowngrade}
-                disabled={subscription.plan.code === FREE_NO_PLAN_CODE}
+                disabled={
+                  subscription.plan.code === FREE_NO_PLAN_CODE ||
+                  !!programmaticUsageConfig?.paygCapMicroUsd
+                }
                 label="Downgrade to NO PLAN"
               />
             </div>
@@ -394,9 +498,13 @@ function UpgradeDowngradeModal({
               description="Go to the Enterprise billing form page to upgrade this workspace to a new Enterprise plan ."
             />
             <div>
-              <EnterpriseUpgradeDialog owner={owner} />
+              <EnterpriseUpgradeDialog
+                owner={owner}
+                subscription={subscription}
+                programmaticUsageConfig={programmaticUsageConfig}
+              />
             </div>
-            {isProPlan(subscription.plan.code) && (
+            {isProPlanPrefix(subscription.plan.code) && (
               <>
                 <Page.SectionHeader
                   title="Change the Pro Plan of this workspace"
@@ -404,7 +512,7 @@ function UpgradeDowngradeModal({
                 />
                 <div>
                   {plans
-                    .filter((p) => isProPlan(p.code))
+                    .filter((p) => isProPlanPrefix(p.code))
                     .map((p) => {
                       return (
                         <div key={p.code} className="pt-2">

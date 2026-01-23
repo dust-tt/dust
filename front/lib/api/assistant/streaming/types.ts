@@ -1,4 +1,5 @@
 import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
+import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   AgentActionSuccessEvent,
   AgentErrorEvent,
@@ -19,10 +20,19 @@ export type AgentMessageEvents =
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
   | GenerationTokensEvent
-  | ToolErrorEvent;
+  | ToolErrorEvent
+  | ToolPersonalAuthRequiredEvent;
 
 export type ConversationEvents =
   | ConversationTitleEvent
   | AgentMessageNewEvent
   | UserMessageNewEvent
   | AgentMessageDoneEvent;
+
+export const TERMINAL_AGENT_MESSAGE_EVENT_TYPES: AgentMessageEvents["type"][] =
+  [
+    "agent_message_success",
+    "agent_generation_cancelled",
+    "agent_error",
+    "tool_error",
+  ] as const;

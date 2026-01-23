@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
@@ -17,6 +17,7 @@ import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/works
 import type { SearchMembersPaginationParams } from "@app/lib/resources/user_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { launchDeleteWorkspaceWorkflow } from "@app/poke/temporal/client";
@@ -38,6 +39,7 @@ import {
   ACTIVE_ROLES,
   assertNever,
   Err,
+  isBuilder,
   md5,
   Ok,
   removeNulls,
@@ -195,6 +197,7 @@ export async function searchMembers(
     searchTerm?: string;
     searchEmails?: string[];
     groupKind?: Omit<GroupKind, "system">;
+    buildersOnly?: boolean;
   },
   paginationParams: SearchMembersPaginationParams
 ): Promise<{ members: UserTypeWithWorkspace[]; total: number }> {
@@ -218,19 +221,24 @@ export async function searchMembers(
     );
     total = users.length;
   } else {
-    const results = await UserResource.listUsersWithEmailPredicat(
-      owner,
-      {
-        email: options.searchTerm,
-      },
-      paginationParams
-    );
-    users = results.users;
-    total = results.total;
+    const results = await UserResource.searchUsers(auth, {
+      searchTerm: options.searchTerm ?? "",
+      offset: paginationParams.offset,
+      limit: paginationParams.limit,
+    });
+
+    if (results.isErr()) {
+      logger.error({ err: results.error }, "Error searching users");
+      return { members: [], total: 0 };
+    }
+
+    users = results.value.users;
+    total = results.value.total;
   }
 
-  const usersWithWorkspace = await Promise.all(
-    users.map(async (u) => {
+  const usersWithWorkspace = await concurrentExecutor(
+    users,
+    async (u) => {
       const [m] = u.memberships ?? [];
       let role: RoleType = "none";
       let groups: string[] | undefined;
@@ -266,10 +274,19 @@ export async function searchMembers(
         workspace: { ...owner, role, groups, flags: null },
         origin,
       };
-    })
+    },
+    { concurrency: 5 }
   );
 
-  return { members: usersWithWorkspace, total };
+  let filteredUsers = usersWithWorkspace;
+  if (options.buildersOnly) {
+    filteredUsers = usersWithWorkspace.filter((u) => isBuilder(u.workspace));
+  }
+
+  return {
+    members: filteredUsers,
+    total: options.buildersOnly ? filteredUsers.length : total,
+  };
 }
 
 export async function getMembersCount(
@@ -330,7 +347,7 @@ export async function unsafeGetWorkspacesByModelId(
 export async function areAllSubscriptionsCanceled(
   workspace: LightWorkspaceType
 ): Promise<boolean> {
-  const subscriptions = await Subscription.findAll({
+  const subscriptions = await SubscriptionModel.findAll({
     where: {
       workspaceId: workspace.id,
       stripeSubscriptionId: {
@@ -397,6 +414,9 @@ export interface WorkspaceMetadata {
   maintenance?: "relocation" | "relocation-done";
   publicApiLimits?: PublicAPILimitsType;
   allowContentCreationFileSharing?: boolean;
+  allowVoiceTranscription?: boolean;
+  autoCreateSpaceForProvisionedGroups?: boolean;
+  disableManualInvitations?: boolean;
 }
 
 export async function updateWorkspaceMetadata(
@@ -438,13 +458,6 @@ export function getWorkspacePublicAPILimits(
   return owner.metadata?.publicApiLimits || null;
 }
 
-export async function setWorkspacePublicAPILimits(
-  owner: LightWorkspaceType,
-  limits: PublicAPILimitsType
-): Promise<Result<void, Error>> {
-  return updateWorkspaceMetadata(owner, { publicApiLimits: limits });
-}
-
 export async function updateExtensionConfiguration(
   auth: Authenticator,
   blacklistedDomains: string[]
@@ -463,7 +476,7 @@ export async function updateExtensionConfiguration(
   return new Ok(undefined);
 }
 
-export async function upgradeWorkspaceToBusinessPlan(
+export async function whitelistWorkspaceToBusinessPlan(
   auth: Authenticator,
   workspace: LightWorkspaceType
 ): Promise<Result<void, Error>> {
@@ -471,17 +484,13 @@ export async function upgradeWorkspaceToBusinessPlan(
     throw new Error("Cannot upgrade workspace to plan: not allowed.");
   }
 
-  const subscription = await Subscription.findOne({
-    where: { workspaceId: workspace.id, status: "active" },
-    include: ["plan"],
-  });
-  if (subscription) {
-    return new Err(new Error("Workspace already has an active subscription."));
-  }
-
   // Check if already fully on business plan with both metadata and subscription correct.
   if (workspace.metadata?.isBusiness === true) {
-    return new Err(new Error("Workspace is already on business plan."));
+    return new Err(
+      new Error(
+        "Workspace was already whitelisted for Enterprise seat based plan."
+      )
+    );
   }
 
   return WorkspaceResource.updateMetadata(workspace.id, {
@@ -493,12 +502,12 @@ export async function upgradeWorkspaceToBusinessPlan(
 export async function checkSeatCountForWorkspace(
   workspace: LightWorkspaceType
 ): Promise<Result<string, Error>> {
-  const subscription = await Subscription.findOne({
+  const subscription = await SubscriptionModel.findOne({
     where: {
       workspaceId: workspace.id,
       status: "active",
     },
-    include: [Plan],
+    include: [PlanModel],
   });
   if (!subscription) {
     return new Err(new Error("Workspace has no active subscription."));

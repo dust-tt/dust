@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
-import { FeatureFlag } from "@app/lib/models/feature_flag";
+import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
+import type { WhitelistableFeature } from "@app/types";
 import { Ok } from "@app/types";
-import type { WhitelistableFeature } from "@app/types/shared/feature_flags";
 import {
   FEATURE_FLAG_STAGE_LABELS,
   isWhitelistableFeature,
@@ -30,11 +30,7 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   populateAsyncArgs: async (auth) => {
     const workspace = auth.getNonNullableWorkspace();
-    const enabledFlags = await FeatureFlag.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
+    const enabledFlags = await FeatureFlagResource.listForWorkspace(workspace);
 
     const enabledFlagNames = new Set(enabledFlags.map((flag) => flag.name));
 
@@ -60,13 +56,10 @@ export const toggleFeatureFlagPlugin = createPlugin({
   },
   execute: async (auth, _, args) => {
     const workspace = auth.getNonNullableWorkspace();
-    const existingFlags = await FeatureFlag.findAll({
-      where: {
-        workspaceId: workspace.id,
-      },
-    });
-    const featureFlags = args.features.filter((feature) =>
-      isWhitelistableFeature(feature)
+    const existingFlags = await FeatureFlagResource.listForWorkspace(workspace);
+    const featureFlags = args.features.filter(
+      (feature): feature is WhitelistableFeature =>
+        isWhitelistableFeature(feature)
     );
 
     const toAdd = featureFlags.filter(
@@ -76,18 +69,12 @@ export const toggleFeatureFlagPlugin = createPlugin({
       .filter((flag) => !featureFlags.includes(flag.name))
       .map((flag) => flag.name);
 
-    await FeatureFlag.bulkCreate(
-      toAdd.map((feature) => ({
-        workspaceId: workspace.id,
-        name: feature as WhitelistableFeature,
-      }))
-    );
-    await FeatureFlag.destroy({
-      where: {
-        workspaceId: workspace.id,
-        name: toRemove,
-      },
-    });
+    if (toAdd.length > 0) {
+      await FeatureFlagResource.enableMany(workspace, toAdd);
+    }
+    if (toRemove.length > 0) {
+      await FeatureFlagResource.disableMany(workspace, toRemove);
+    }
 
     const actions: string[] = [];
 
@@ -97,9 +84,12 @@ export const toggleFeatureFlagPlugin = createPlugin({
       );
     }
     for (const feature of toRemove) {
-      actions.push(
-        `❌ Feature "${feature}" has been DISABLED for workspace "${workspace.name}"`
-      );
+      // Do not show a message for features that might have be set in the past but no longer exist as it might freak out the poke user.
+      if (isWhitelistableFeature(feature)) {
+        actions.push(
+          `❌ Feature "${feature}" has been DISABLED for workspace "${workspace.name}"`
+        );
+      }
     }
 
     return new Ok({

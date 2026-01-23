@@ -19,8 +19,8 @@ import {
 } from "@connectors/connectors/webcrawler/lib/utils";
 import { getFirecrawl } from "@connectors/lib/firecrawl";
 import {
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import logger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -120,7 +120,11 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     return new Ok(undefined);
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const webConfig = await WebCrawlerConfigurationResource.fetchByConnectorId(
       this.connectorId
     );
@@ -136,7 +140,14 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         await getFirecrawl().cancelCrawl(webConfig.crawlId);
       } catch (error) {
         // If we don't find the job, we might just have an expired ID, so it's safe to continue.
-        if (!(error instanceof FirecrawlError) || error.statusCode !== 404) {
+        // Firecrawl error handling is busted, as when it's not found it returns the message:
+        // "Unexpected error occurred while trying to cancel crawl job. Status code: 404"
+        // but it sets the statusCode to 500 instead of 404. So we need to check both...
+        if (
+          !(error instanceof FirecrawlError) ||
+          (error.statusCode !== 404 &&
+            !error.message.includes("Status code: 404"))
+        ) {
           return new Err(
             new Error(
               `Error cancelling crawl on Firecrawl: ${normalizeError(error)}`
@@ -150,7 +161,10 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
         }
       }
     } else {
-      const res = await stopCrawlWebsiteWorkflow(this.connectorId);
+      const res = await stopCrawlWebsiteWorkflow({
+        connectorId: this.connectorId,
+        stopReason: reason,
+      });
       if (res.isErr()) {
         return res;
       }
@@ -202,7 +216,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     }
     let parentUrl: string | null = null;
     if (parentInternalId) {
-      const parent = await WebCrawlerFolder.findOne({
+      const parent = await WebCrawlerFolderModel.findOne({
         where: {
           connectorId: connector.id,
           webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -222,7 +236,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       parentUrl = parent.url;
     }
 
-    const pages = await WebCrawlerPage.findAll({
+    const pages = await WebCrawlerPageModel.findAll({
       where: {
         connectorId: connector.id,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -230,7 +244,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
       },
     });
 
-    const folders = await WebCrawlerFolder.findAll({
+    const folders = await WebCrawlerFolderModel.findAll({
       where: {
         connectorId: connector.id,
         webcrawlerConfigurationId: webCrawlerConfig.id,
@@ -365,7 +379,10 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
 
     await webcrawlerConfig.setCustomHeaders(headersForUpdate);
 
-    const stopRes = await stopCrawlWebsiteWorkflow(connector.id);
+    const stopRes = await stopCrawlWebsiteWorkflow({
+      connectorId: connector.id,
+      stopReason: "Stopped to update connector configuration",
+    });
     if (stopRes.isErr()) {
       return new Err(stopRes.error);
     }

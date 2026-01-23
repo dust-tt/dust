@@ -10,10 +10,10 @@ import type {
 import { literal, Op } from "sequelize";
 
 import {
-  WebCrawlerConfigurationHeader,
+  WebCrawlerConfigurationHeaderModel,
   WebCrawlerConfigurationModel,
-  WebCrawlerFolder,
-  WebCrawlerPage,
+  WebCrawlerFolderModel,
+  WebCrawlerPageModel,
 } from "@connectors/lib/models/webcrawler";
 import { BaseResource } from "@connectors/resources/base_resource";
 import type {} from "@connectors/resources/connector/strategy";
@@ -32,10 +32,9 @@ import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebCrawlerConfigurationResource
-  extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
+export interface WebCrawlerConfigurationResource extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConfigurationModel> {
   static model: ModelStatic<WebCrawlerConfigurationModel> =
@@ -52,7 +51,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
   async postFetchHook() {
     (
-      await WebCrawlerConfigurationHeader.findAll({
+      await WebCrawlerConfigurationHeaderModel.findAll({
         where: {
           webcrawlerConfigurationId: this.id,
         },
@@ -94,11 +93,12 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       {} as Record<ModelId, WebCrawlerConfigurationResource>
     );
 
-    const configurationHeaders = await WebCrawlerConfigurationHeader.findAll({
-      where: {
-        webcrawlerConfigurationId: blobs.map((b) => b.id),
-      },
-    });
+    const configurationHeaders =
+      await WebCrawlerConfigurationHeaderModel.findAll({
+        where: {
+          webcrawlerConfigurationId: blobs.map((b) => b.id),
+        },
+      });
 
     const configIdToConnectorId = blobs.reduce(
       (acc, blob) => {
@@ -134,7 +134,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       { transaction }
     );
 
-    await WebCrawlerConfigurationHeader.bulkCreate(
+    await WebCrawlerConfigurationHeaderModel.bulkCreate(
       Object.entries(blob.headers).map(([key, value]) => {
         return {
           connectorId: blob.connectorId,
@@ -216,14 +216,14 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
     await withTransaction(async (transaction) => {
       const headersList = Object.entries(headers);
       // delete all headers before inserting new ones
-      await WebCrawlerConfigurationHeader.destroy({
+      await WebCrawlerConfigurationHeaderModel.destroy({
         where: {
           webcrawlerConfigurationId: this.id,
         },
         transaction,
       });
       // now insert new headers
-      await WebCrawlerConfigurationHeader.bulkCreate(
+      await WebCrawlerConfigurationHeaderModel.bulkCreate(
         headersList.map(([key, value]) => {
           return {
             connectorId: this.connectorId,
@@ -278,19 +278,19 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
-    await WebCrawlerPage.destroy({
+    await WebCrawlerPageModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
       transaction,
     });
-    await WebCrawlerFolder.destroy({
+    await WebCrawlerFolderModel.destroy({
       where: {
         connectorId: this.connectorId,
       },
       transaction,
     });
-    await WebCrawlerConfigurationHeader.destroy({
+    await WebCrawlerConfigurationHeaderModel.destroy({
       where: {
         webcrawlerConfigurationId: this.id,
       },

@@ -1,6 +1,6 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 import assert from "assert";
 import keyBy from "lodash/keyBy";
 import type {
@@ -16,9 +16,10 @@ import { getDataSourceViewUsage } from "@app/lib/api/agent_data_sources";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
-import { AgentDataSourceConfiguration } from "@app/lib/models/assistant/actions/data_sources";
-import { AgentMCPServerConfiguration } from "@app/lib/models/assistant/actions/mcp";
-import { AgentTablesQueryConfigurationTable } from "@app/lib/models/assistant/actions/tables_query";
+import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import { AgentMCPServerConfigurationModel } from "@app/lib/models/agent/actions/mcp";
+import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
+import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { ResourceWithSpace } from "@app/lib/resources/resource_with_space";
@@ -37,14 +38,20 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
   Result,
   UserType,
 } from "@app/types";
-import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import {
+  assertNever,
+  CoreAPI,
+  Err,
+  formatUserFullName,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 import type { UserResource } from "./user_resource";
 
@@ -70,10 +77,17 @@ export type FetchDataSourceViewOptions = {
 };
 
 type AllowedSearchColumns = "vaultId" | "dataSourceId" | "kind" | "vaultKind";
+function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
+  return (
+    column === "vaultId" ||
+    column === "dataSourceId" ||
+    column === "kind" ||
+    column === "vaultKind"
+  );
+}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceViewResource
-  extends ReadonlyAttributesType<DataSourceViewModel> {}
+export interface DataSourceViewResource extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;
@@ -146,12 +160,22 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
   }
 
   static async createViewInSpaceFromDataSource(
+    auth: Authenticator,
     space: SpaceResource,
     dataSource: DataSourceResource,
-    parentsIn: string[],
-    editedByUser?: UserResource | null
-  ) {
-    return this.makeNew(
+    parentsIn: string[]
+  ): Promise<Result<DataSourceViewResource, Error>> {
+    if (!dataSource.canAdministrate(auth)) {
+      return new Err(
+        new Error(
+          "You do not have the rights to create a view for this data source."
+        )
+      );
+    }
+
+    const editedByUser = auth.user();
+
+    const resource = await this.makeNew(
       {
         dataSourceId: dataSource.id,
         parentsIn,
@@ -162,6 +186,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       dataSource,
       editedByUser?.toJSON()
     );
+
+    return new Ok(resource);
   }
 
   // This view has access to all documents, which is represented by null.
@@ -224,6 +250,9 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       ...this.getOptions(fetchDataSourceViewOptions),
       ...options,
       includeDeleted,
+      // WORKSPACE_ISOLATION_BYPASS: Data source views can be public, preventing to enforce a
+      // workspaceId clause in the SQL query. Permissions are enforced at a higher level.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     const dataSourceIds = removeNulls(
@@ -303,6 +332,21 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
         vaultId: spaces.map((s) => s.id),
       },
     });
+  }
+
+  static async listBySpaceIds(
+    auth: Authenticator,
+    spaceIds: string[],
+    { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
+  ) {
+    const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
+
+    if (includeGlobalSpace) {
+      const globalSpace = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
+      requestedSpaces.push(globalSpace);
+    }
+
+    return this.listBySpaces(auth, requestedSpaces);
   }
 
   static async listAssistantDefaultSelected(auth: Authenticator) {
@@ -440,32 +484,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews ?? [];
   }
 
-  static async fetchByConversation(
+  static async fetchByConversationModelIds(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
-  ): Promise<DataSourceViewResource | null> {
-    // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByConversation(
-      auth,
-      conversation
-    );
-    if (!dataSource) {
-      return null;
+    conversationModelIds: ModelId[]
+  ): Promise<DataSourceViewResource[]> {
+    if (conversationModelIds.length === 0) {
+      return [];
     }
 
-    const dataSourceViews = await this.baseFetch(
+    const dataSources = await DataSourceResource.fetchByConversationModelIds(
+      auth,
+      conversationModelIds
+    );
+    if (dataSources.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(
       auth,
       {},
       {
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           kind: "default",
-          dataSourceId: dataSource.id,
+          dataSourceId: { [Op.in]: dataSources.map((ds) => ds.id) },
         },
       }
     );
-
-    return dataSourceViews[0] ?? null;
   }
 
   static async search(
@@ -484,6 +529,8 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     };
 
     for (const [key, value] of Object.entries(searchParams)) {
+      // Security in depth as this parameter could override workspace segmentation if abused.
+      assert(isAllowedSearchColumn(key), "Unexpected search column");
       if (value) {
         switch (key) {
           case "dataSourceId":
@@ -496,14 +543,15 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
               return [];
             }
             break;
-
           case "vaultKind":
             whereClause["$space.kind$"] = searchParams.vaultKind;
             break;
+          case "kind":
+            whereClause["kind"] = searchParams.kind;
+            break;
 
           default:
-            whereClause[key] = value;
-            break;
+            assertNever(key);
         }
       }
     }
@@ -713,7 +761,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     const workspaceId = auth.getNonNullableWorkspace().id;
 
     const agentDataSourceConfigurations =
-      await AgentDataSourceConfiguration.findAll({
+      await AgentDataSourceConfigurationModel.findAll({
         where: {
           dataSourceViewId: this.id,
           workspaceId,
@@ -721,7 +769,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       });
 
     const agentTablesQueryConfigurations =
-      await AgentTablesQueryConfigurationTable.findAll({
+      await AgentTablesQueryConfigurationTableModel.findAll({
         where: {
           dataSourceViewId: this.id,
           workspaceId,
@@ -734,7 +782,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       )
     );
 
-    await AgentDataSourceConfiguration.destroy({
+    await AgentDataSourceConfigurationModel.destroy({
       where: {
         dataSourceViewId: this.id,
         workspaceId,
@@ -742,7 +790,15 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
       transaction,
     });
 
-    await AgentTablesQueryConfigurationTable.destroy({
+    await AgentTablesQueryConfigurationTableModel.destroy({
+      where: {
+        dataSourceViewId: this.id,
+        workspaceId,
+      },
+      transaction,
+    });
+
+    await SkillDataSourceConfigurationModel.destroy({
       where: {
         dataSourceViewId: this.id,
         workspaceId,
@@ -752,7 +808,7 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
     // Delete associated MCP server configurations.
     if (mcpServerConfigurationIds.length > 0) {
-      await AgentMCPServerConfiguration.destroy({
+      await AgentMCPServerConfigurationModel.destroy({
         where: {
           id: {
             [Op.in]: mcpServerConfigurationIds,
@@ -781,10 +837,6 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
 
   get dataSource(): DataSourceResource {
     return this.ds as DataSourceResource;
-  }
-
-  isDefault(): boolean {
-    return this.kind === "default";
   }
 
   // sId logic.

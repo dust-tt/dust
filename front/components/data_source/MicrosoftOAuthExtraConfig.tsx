@@ -1,21 +1,42 @@
-import { classNames, Input, SliderToggle } from "@dust-tt/sparkle";
+import { classNames, Input, SliderToggle, TextArea } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
-import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers";
+import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 
 export function MicrosoftOAuthExtraConfig({
   extraConfig,
   setExtraConfig,
   setIsExtraConfigValid,
 }: ConnectorOauthExtraConfigProps) {
-  const [useServicePrincipal, setUseServicePrincipal] = useState(false);
+  const initialServicePrincipal = !!extraConfig.client_id;
+
+  const [useServicePrincipal, setUseServicePrincipal] = useState(
+    initialServicePrincipal
+  );
+
+  const selectedSitesValue = extraConfig.selected_sites || "";
 
   useEffect(() => {
     setIsExtraConfigValid(
       !useServicePrincipal ||
-        (!!extraConfig.client_id && !!extraConfig.client_secret)
+        (!!extraConfig.client_id &&
+          !!extraConfig.client_secret &&
+          !!extraConfig.tenant_id)
     );
   }, [useServicePrincipal, extraConfig, setIsExtraConfigValid]);
+
+  useEffect(() => {
+    if (!useServicePrincipal) {
+      setExtraConfig((prev: Record<string, string>) => {
+        const updated = { ...prev };
+        delete updated.tenant_id;
+        delete updated.client_id;
+        delete updated.client_secret;
+        delete updated.selected_sites;
+        return updated;
+      });
+    }
+  }, [useServicePrincipal, setExtraConfig]);
 
   return (
     <>
@@ -68,6 +89,39 @@ export function MicrosoftOAuthExtraConfig({
             }));
           }}
         />
+        <div className="flex flex-col gap-1">
+          <div className="text-sm font-medium text-slate-700">
+            Selected SharePoint sites Dust will have access to (one per line).
+          </div>
+          <TextArea
+            placeholder={
+              "contoso.sharepoint.com,1234abcd-...\ncontoso.sharepoint.com,5678efgh-..."
+            }
+            disabled={!useServicePrincipal}
+            name="selected_sites"
+            value={selectedSitesValue}
+            onChange={(e) => {
+              if (e.target.value.trim().length === 0) {
+                setExtraConfig((prev: Record<string, string>) => {
+                  const updated = { ...prev };
+                  delete updated.selected_sites;
+                  return updated;
+                });
+              } else {
+                setExtraConfig((prev: Record<string, string>) => ({
+                  ...prev,
+                  selected_sites: e.target.value,
+                }));
+              }
+            }}
+            minRows={4}
+          />
+          <div className="text-xs text-slate-500">
+            Provide the SharePoint site identifiers assigned to the service
+            principal. Enter one identifier per line. This is not required if
+            your Service Principal has access to all sites.
+          </div>
+        </div>
       </div>
     </>
   );

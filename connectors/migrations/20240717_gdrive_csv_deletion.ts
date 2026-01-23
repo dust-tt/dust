@@ -1,10 +1,10 @@
 import { deleteFile } from "@connectors/connectors/google_drive/temporal/activities/common/utils";
-import { GoogleDriveFiles } from "@connectors/lib/models/google_drive";
+import { GoogleDriveFilesModel } from "@connectors/lib/models/google_drive";
 
 // Deleting all existing Google Drive CSV files
 export async function main(): Promise<void> {
   try {
-    const csvGoogleFiles = await GoogleDriveFiles.findAll({
+    const csvGoogleFiles = await GoogleDriveFilesModel.findAll({
       where: {
         mimeType: "text/csv",
       },

@@ -1,18 +1,13 @@
 import { BigQuery } from "@google-cloud/bigquery";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { APIErrorType, WithAPIErrorResponse } from "@app/types";
-import {
-  CheckBigQueryCredentialsSchema,
-  normalizeError,
-  removeNulls,
-} from "@app/types";
+import { CheckBigQueryCredentialsSchema, normalizeError } from "@app/types";
 
 const PostCheckBigQueryRegionsRequestBodySchema = t.type({
   credentials: CheckBigQueryCredentialsSchema,
@@ -56,12 +51,11 @@ async function handler(
   );
 
   if (isLeft(bodyValidation)) {
-    const pathError = reporter.formatValidationErrors(bodyValidation.left);
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error" as APIErrorType,
-        message: `Invalid request body: ${pathError}`,
+        message: `Invalid request body.`,
       },
     });
   }
@@ -71,14 +65,11 @@ async function handler(
   );
 
   if (isLeft(credentialsValidation)) {
-    const pathError = reporter.formatValidationErrors(
-      credentialsValidation.left
-    );
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error" as APIErrorType,
-        message: `Invalid credentials: ${pathError}`,
+        message: `Invalid credentials.`,
       },
     });
   }
@@ -94,26 +85,19 @@ async function handler(
     // Get all datasets
     const [datasets] = await bigquery.getDatasets();
 
-    const allDatasetsLocations = removeNulls(
-      datasets.map((dataset) => dataset.location?.toLocaleLowerCase())
-    );
-
-    // Initialize locations map
+    // Strict location listing: only expose actual dataset locations and only associate
+    // tables to their dataset's exact location (no regional/multi-region expansion).
     const locations: Record<string, Set<string>> = {};
 
-    // Process each dataset and its tables
     for (const dataset of datasets) {
+      const dsLocation = dataset.location?.toLowerCase();
+      if (!dsLocation) {
+        continue;
+      }
       const [tables] = await dataset.getTables();
       for (const table of tables) {
-        for (const location of allDatasetsLocations) {
-          if (
-            dataset.location &&
-            location.toLowerCase().startsWith(dataset.location.toLowerCase())
-          ) {
-            locations[location] ??= new Set();
-            locations[location].add(`${dataset.id}.${table.id}`);
-          }
-        }
+        locations[dsLocation] ??= new Set();
+        locations[dsLocation].add(`${dataset.id}.${table.id}`);
       }
     }
 
@@ -121,7 +105,7 @@ async function handler(
       locations: Object.fromEntries(
         Object.entries(locations).map(([location, tables]) => [
           location,
-          Array.from(tables),
+          Array.from(tables).sort(),
         ])
       ),
     });

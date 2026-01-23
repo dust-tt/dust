@@ -51,7 +51,6 @@ vi.mock("@app/lib/api/data_sources", () => ({
 vi.mock("@app/lib/resources/conversation_resource", () => ({
   ConversationResource: {
     fetchById: vi.fn().mockResolvedValue({ id: "test-conversation-id" }),
-    canAccessConversation: vi.fn().mockReturnValue(true),
   },
 }));
 

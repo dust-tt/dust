@@ -1,4 +1,4 @@
-import { Chip, InformationCircleIcon, Page } from "@dust-tt/sparkle";
+import { Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
@@ -11,11 +11,9 @@ import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SpaceResource } from "@app/lib/resources/space_resource";
-import { useSpaceInfo } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<
   SpaceLayoutPageProps & {
-    userId: string;
     canWriteInSpace: boolean;
     isBuilder: boolean;
   }
@@ -62,7 +60,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       plan,
       space: space.toJSON(),
       subscription,
-      userId: auth.getNonNullableUser().sId,
     },
   };
 });
@@ -72,38 +69,16 @@ export default function Space({
   isBuilder,
   canWriteInSpace,
   owner,
-  userId,
   space,
   plan,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [showSpaceEditionModal, setShowSpaceEditionModal] =
     React.useState(false);
 
-  const { spaceInfo } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: space.sId,
-  });
-
   const router = useRouter();
-
-  const isMember = React.useMemo(
-    () => spaceInfo?.members?.some((m) => m.sId === userId),
-    [userId, spaceInfo?.members]
-  );
 
   return (
     <Page.Vertical gap="xl" align="stretch">
-      {spaceInfo && !isMember && (
-        <div>
-          {/* TODO: Should we move this to the SpaceLayout? */}
-          <Chip
-            color="rose"
-            label="You are not a member of this space."
-            size="sm"
-            icon={InformationCircleIcon}
-          />
-        </div>
-      )}
       <SpaceCategoriesList
         owner={owner}
         canWriteInSpace={canWriteInSpace}

@@ -2,7 +2,7 @@ import { default as cls } from "cls-hooked";
 import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 
 beforeEach(async (c) => {
   vi.clearAllMocks();
@@ -14,7 +14,7 @@ beforeEach(async (c) => {
   Sequelize.useCLS(namespace);
   const context = namespace.createContext();
   namespace.enter(context);
-  const transaction = await sequelizeConnection.transaction({
+  const transaction = await connectorsSequelize.transaction({
     autocommit: false,
   });
   namespace.set("transaction", transaction);

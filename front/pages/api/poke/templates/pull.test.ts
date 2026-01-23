@@ -110,13 +110,13 @@ describe(
     it("handles failed templates list fetch", async () => {
       vi.mocked(config.getDustRegionSyncEnabled).mockReturnValue(true);
 
-      mockFetch.mockImplementationOnce(() =>
-        Promise.resolve({
+      mockFetch.mockImplementationOnce(function () {
+        return Promise.resolve({
           ok: false,
           status: 500,
           json: () => Promise.resolve({}),
-        })
-      );
+        });
+      });
 
       const { req, res } = await createPrivateApiMockRequest({
         method: "POST",
@@ -139,38 +139,40 @@ describe(
 
       // Mock the templates list response
       mockFetch
-        .mockImplementationOnce(() =>
-          Promise.resolve({
+        .mockImplementationOnce(function () {
+          return Promise.resolve({
             ok: true,
             json: () =>
               Promise.resolve({
                 templates: [{ sId: "template1" }, { sId: "template2" }],
               }),
-          })
-        )
+          });
+        })
         // Mock individual template responses
-        .mockImplementationOnce(() =>
-          Promise.resolve({
+        .mockImplementationOnce(function () {
+          return Promise.resolve({
             ok: true,
             json: () =>
               Promise.resolve({
                 ...SAMPLE_TEMPLATE,
+                id: 1,
                 sId: "template1",
                 handle: "template1",
               }),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
+          });
+        })
+        .mockImplementationOnce(function () {
+          return Promise.resolve({
             ok: true,
             json: () =>
               Promise.resolve({
                 ...SAMPLE_TEMPLATE,
+                id: 2,
                 sId: "template2",
                 handle: "template2",
               }),
-          })
-        );
+          });
+        });
 
       const { req, res } = await createPrivateApiMockRequest({
         method: "POST",
@@ -197,33 +199,34 @@ describe(
 
       // Mock the templates list response
       mockFetch
-        .mockImplementationOnce(() =>
-          Promise.resolve({
+        .mockImplementationOnce(function () {
+          return Promise.resolve({
             ok: true,
             json: () =>
               Promise.resolve({
                 templates: [{ sId: "template1" }, { sId: "template2" }],
               }),
-          })
-        )
+          });
+        })
         // Mock one successful and one failed template fetch
-        .mockImplementationOnce(() =>
-          Promise.resolve({
+        .mockImplementationOnce(function () {
+          return Promise.resolve({
             ok: true,
             json: () =>
               Promise.resolve({
                 ...SAMPLE_TEMPLATE,
+                id: 1,
                 sId: "template1",
                 handle: "template1",
               }),
-          })
-        )
-        .mockImplementationOnce(() =>
-          Promise.resolve({
+          });
+        })
+        .mockImplementationOnce(function () {
+          return Promise.resolve({
             ok: false,
             status: 500,
-          })
-        );
+          });
+        });
 
       const { req, res } = await createPrivateApiMockRequest({
         method: "POST",

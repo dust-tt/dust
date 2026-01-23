@@ -19,14 +19,13 @@ const sqids = new Sqids({
 export const LEGACY_REGION_BIT = 1; // Previously indicated US region.
 const LEGACY_SHARD_BIT = 1;
 
-const RESOURCES_PREFIX = {
+export const RESOURCES_PREFIX = {
   file: "fil",
   group: "grp",
   // TODO(2024-10-31 flav) Add new prefix for space.
   space: "vlt",
   data_source: "dts",
   data_source_view: "dsv",
-  tracker: "trk",
   template: "tpl",
   extension: "ext",
   mcp_server_connection: "msc",
@@ -36,6 +35,10 @@ const RESOURCES_PREFIX = {
   transcripts_configuration: "tsc",
   agent_step_content: "asc",
   agent_memory: "amm",
+  agent_message_feedback: "amf",
+  onboarding_task: "obt",
+  programmatic_usage_configuration: "puc",
+  credit: "crd",
 
   // Resource relative to triggers.
   trigger: "trg",
@@ -52,13 +55,29 @@ const RESOURCES_PREFIX = {
 
   // Virtual resources (no database models associated).
   internal_mcp_server: "ims",
-};
+
+  // Skills.
+  skill: "skl",
+
+  // Agent suggestions.
+  agent_suggestion: "asu",
+
+  // Workspace verification.
+  workspace_verification_attempt: "wva",
+
+  // Project metadata.
+  project_metadata: "pmd",
+} as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;
 
-const ALL_RESOURCES_PREFIXES = Object.values(RESOURCES_PREFIX);
+const ALL_RESOURCES_PREFIXES = Object.values<string>(RESOURCES_PREFIX);
 
 type ResourceNameType = keyof typeof RESOURCES_PREFIX;
+
+export type ResourceSId = {
+  [key in keyof typeof RESOURCES_PREFIX]: `${(typeof RESOURCES_PREFIX)[key]}_${string}`;
+}[keyof typeof RESOURCES_PREFIX];
 
 const sIdCache = new Map<string, string>();
 
@@ -145,6 +164,10 @@ export function getIdsFromSId(sId: string): Result<
   const [resourcePrefix, sIdWithoutPrefix] = sId.split("_");
 
   if (!ALL_RESOURCES_PREFIXES.includes(resourcePrefix)) {
+    logger.error(
+      { sId, resourcePrefix },
+      "Invalid resource prefix in string Id (log with prefix)"
+    );
     return new Err(new Error("Invalid resource prefix in string Id"));
   }
 

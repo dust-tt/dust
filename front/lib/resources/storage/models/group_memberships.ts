@@ -15,6 +15,7 @@ export class GroupMembershipModel extends WorkspaceAwareModel<GroupMembershipMod
 
   declare groupId: ForeignKey<GroupModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
+  declare status: "active" | "suspended";
 }
 GroupMembershipModel.init(
   {
@@ -36,6 +37,11 @@ GroupMembershipModel.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "active",
+    },
   },
   {
     modelName: "group_memberships",
@@ -43,6 +49,11 @@ GroupMembershipModel.init(
     indexes: [
       { fields: ["userId", "groupId"] },
       { fields: ["workspaceId"], concurrently: true },
+      // Optimized index for common query pattern: filtering by group, workspace, status, and date ranges
+      {
+        fields: ["workspaceId", "groupId", "status", "startAt"],
+        concurrently: true,
+      },
     ],
   }
 );

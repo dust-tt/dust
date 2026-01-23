@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { Plan } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/plan";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { apiError } from "@app/logger/withlogging";
 import { config as documentBodyParserConfig } from "@app/pages/api/v1/w/[wId]/spaces/[spaceId]/data_sources/[dsId]/documents/[documentId]";
@@ -20,6 +20,7 @@ export const PlanTypeSchema = t.type({
       isSlackBotAllowed: t.boolean,
       maxMessages: t.number,
       maxMessagesTimeframe: t.union([t.literal("day"), t.literal("lifetime")]),
+      isDeepDiveAllowed: t.boolean,
     }),
     capabilities: t.type({
       images: t.type({
@@ -85,7 +86,9 @@ async function handler(
 
   switch (req.method) {
     case "GET":
-      const planModels = await Plan.findAll({ order: [["createdAt", "ASC"]] });
+      const planModels = await PlanModel.findAll({
+        order: [["createdAt", "ASC"]],
+      });
       const plans: PlanType[] = planModels.map((plan) =>
         renderPlanFromModel({ plan })
       );
@@ -122,13 +125,14 @@ async function handler(
         });
       }
 
-      await Plan.upsert({
+      await PlanModel.upsert({
         code: body.code,
         name: body.name,
         isSlackbotAllowed: body.limits.assistant.isSlackBotAllowed,
         maxImagesPerWeek: body.limits.capabilities.images.maxImagesPerWeek,
         maxMessages: body.limits.assistant.maxMessages,
         maxMessagesTimeframe: body.limits.assistant.maxMessagesTimeframe,
+        isDeepDiveAllowed: body.limits.assistant.isDeepDiveAllowed,
         isManagedConfluenceAllowed: body.limits.connections.isConfluenceAllowed,
         isManagedSlackAllowed: body.limits.connections.isSlackAllowed,
         isManagedNotionAllowed: body.limits.connections.isNotionAllowed,

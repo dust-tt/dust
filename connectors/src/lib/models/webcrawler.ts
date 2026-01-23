@@ -2,7 +2,7 @@ import type { Action } from "@mendable/firecrawl-js";
 import type { CreationOptional, ForeignKey } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import { sequelizeConnection } from "@connectors/resources/storage";
+import { connectorsSequelize } from "@connectors/resources/storage";
 import { ConnectorBaseModel } from "@connectors/resources/storage/wrappers/model_with_connectors";
 import type { CrawlingFrequency, DepthOption } from "@connectors/types";
 
@@ -75,13 +75,13 @@ WebCrawlerConfigurationModel.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
-    indexes: [],
+    sequelize: connectorsSequelize,
+    indexes: [{ fields: ["connectorId"] }],
     modelName: "webcrawler_configurations",
   }
 );
 
-export class WebCrawlerConfigurationHeader extends ConnectorBaseModel<WebCrawlerConfigurationHeader> {
+export class WebCrawlerConfigurationHeaderModel extends ConnectorBaseModel<WebCrawlerConfigurationHeaderModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare key: string;
@@ -91,7 +91,7 @@ export class WebCrawlerConfigurationHeader extends ConnectorBaseModel<WebCrawler
   >;
 }
 
-WebCrawlerConfigurationHeader.init(
+WebCrawlerConfigurationHeaderModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -113,7 +113,7 @@ WebCrawlerConfigurationHeader.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     modelName: "webcrawler_configuration_headers",
     indexes: [
       {
@@ -125,13 +125,14 @@ WebCrawlerConfigurationHeader.init(
   }
 );
 
-WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeader);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerConfigurationHeaderModel);
 
-export class WebCrawlerFolder extends ConnectorBaseModel<WebCrawlerFolder> {
+export class WebCrawlerFolderModel extends ConnectorBaseModel<WebCrawlerFolderModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare parentUrl: string | null;
   declare url: string;
+  declare urlMd5: string;
   // Folders are not upserted to the data source but their ids are
   // used as parent to WebCrawlerPage.
   declare internalId: string;
@@ -141,7 +142,7 @@ export class WebCrawlerFolder extends ConnectorBaseModel<WebCrawlerFolder> {
   >;
 }
 
-WebCrawlerFolder.init(
+WebCrawlerFolderModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -155,6 +156,10 @@ WebCrawlerFolder.init(
     },
     url: {
       type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    urlMd5: {
+      type: DataTypes.STRING(32),
       allowNull: false,
     },
     parentUrl: {
@@ -172,11 +177,13 @@ WebCrawlerFolder.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
+      // Index uses md5(url) in the database (see migration_110.sql)
       {
         unique: true,
-        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
+        fields: ["urlMd5", "connectorId", "webcrawlerConfigurationId"],
+        name: "webcrawler_folders_url_md5_connector_id_webcrawler_configuratio",
       },
       {
         unique: true,
@@ -186,14 +193,15 @@ WebCrawlerFolder.init(
     modelName: "webcrawler_folders",
   }
 );
-WebCrawlerConfigurationModel.hasMany(WebCrawlerFolder);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerFolderModel);
 
-export class WebCrawlerPage extends ConnectorBaseModel<WebCrawlerPage> {
+export class WebCrawlerPageModel extends ConnectorBaseModel<WebCrawlerPageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
   declare title: string | null;
   declare parentUrl: string | null;
   declare url: string;
+  declare urlMd5: string;
   declare documentId: string;
   declare depth: number;
   declare lastSeenAt: Date;
@@ -202,7 +210,7 @@ export class WebCrawlerPage extends ConnectorBaseModel<WebCrawlerPage> {
   >;
 }
 
-WebCrawlerPage.init(
+WebCrawlerPageModel.init(
   {
     createdAt: {
       type: DataTypes.DATE,
@@ -216,6 +224,10 @@ WebCrawlerPage.init(
     },
     url: {
       type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    urlMd5: {
+      type: DataTypes.STRING(32),
       allowNull: false,
     },
     title: {
@@ -241,11 +253,13 @@ WebCrawlerPage.init(
     },
   },
   {
-    sequelize: sequelizeConnection,
+    sequelize: connectorsSequelize,
     indexes: [
+      // Index uses md5(url) in the database (see migration_110.sql)
       {
         unique: true,
-        fields: ["url", "connectorId", "webcrawlerConfigurationId"],
+        fields: ["urlMd5", "connectorId", "webcrawlerConfigurationId"],
+        name: "webcrawler_pages_url_md5_connector_id_webcrawler_configuration_",
       },
       {
         unique: true,
@@ -255,4 +269,4 @@ WebCrawlerPage.init(
     modelName: "webcrawler_pages",
   }
 );
-WebCrawlerConfigurationModel.hasMany(WebCrawlerPage);
+WebCrawlerConfigurationModel.hasMany(WebCrawlerPageModel);

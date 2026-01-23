@@ -1,4 +1,5 @@
 import { Button, RocketIcon } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
@@ -6,24 +7,33 @@ import { HeaderContentBlock } from "@app/components/home/ContentBlocks";
 import { Grid } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  getParticleShapeIndexByName,
-  shapeNames,
-} from "@app/components/home/Particles";
+import { PageMetadata } from "@app/components/home/PageMetadata";
 import { PricePlans } from "@app/components/plans/PlansTables";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 
 export async function getStaticProps() {
   return {
     props: {
-      shape: getParticleShapeIndexByName(shapeNames.bigSphere),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
   };
 }
 
 export default function Pricing() {
+  const router = useRouter();
+
   return (
     <>
+      <PageMetadata
+        title="Dust Pricing: Pro and Enterprise Plans for AI Agents"
+        description="Explore Dust pricing plans. Pro for small teams and startups, Enterprise for 100+ members with multiple workspaces and SSO. Start with a 14-day free trial."
+        pathname={router.asPath}
+      />
       <HeaderContentBlock
         title="Meet our pricing plans"
         hasCTA={false}
@@ -36,11 +46,16 @@ export default function Pricing() {
             <Button
               variant="highlight"
               size="md"
-              label="Start with Pro, 15 Days free"
+              label="Start with Pro, 14 days free"
               icon={RocketIcon}
-              onClick={() => {
-                window.location.href = "/api/workos/login?screenHint=sign-up";
-              }}
+              onClick={withTracking(
+                TRACKING_AREAS.PRICING,
+                "hero_start_trial",
+                () => {
+                  // eslint-disable-next-line react-hooks/immutability
+                  window.location.href = "/api/workos/login?screenHint=sign-up";
+                }
+              )}
             />
           </>
         }
@@ -50,6 +65,11 @@ export default function Pricing() {
           <PricePlans
             display="landing"
             onClickProPlan={() => {
+              trackEvent({
+                area: TRACKING_AREAS.PRICING,
+                object: "plan_card_start_trial",
+                action: TRACKING_ACTIONS.CLICK,
+              });
               window.location.href = "/api/workos/login?screenHint=sign-up";
             }}
           />

@@ -35,7 +35,7 @@ import { isSupportedAudioContentType } from "@app/types";
 import {
   assertNever,
   Err,
-  isContentCreationFileContentType,
+  isInteractiveContentFileContentType,
   isSupportedImageContentType,
   Ok,
   slugify,
@@ -50,8 +50,12 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   let documentId = file.sId;
+  let parent_id: string | null = null;
+  let parents: string[] = [documentId];
   if (isUpsertDocumentArgs(upsertArgs)) {
     documentId = upsertArgs.document_id;
+    parent_id = upsertArgs.parent_id ?? null;
+    parents = upsertArgs.parents ?? [documentId];
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const title = upsertTitle ?? file.fileName;
@@ -70,7 +74,8 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
-    parents: [documentId],
+    parent_id,
+    parents,
     tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
     light_document_output: true,
     dataSource,
@@ -110,6 +115,7 @@ const upsertSectionDocumentToDatasource: ProcessingFunction = async (
   let section: CoreAPIDataSourceDocumentSection | null = null;
   try {
     section = JSON.parse(content);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (e) {
     return new Err<DustError>({
       name: "dust_error",
@@ -421,8 +427,8 @@ const getProcessingFunction = ({
     return undefined;
   }
 
-  // Content Creation files should not be processed.
-  if (isContentCreationFileContentType(contentType)) {
+  // Interactive Content files should not be processed.
+  if (isInteractiveContentFileContentType(contentType)) {
     return undefined;
   }
 
@@ -434,7 +440,8 @@ const getProcessingFunction = ({
       if (
         useCase === "conversation" ||
         useCase === "tool_output" ||
-        useCase === "upsert_table"
+        useCase === "upsert_table" ||
+        useCase === "project_context"
       ) {
         return upsertTableToDatasource;
       } else if (
@@ -453,7 +460,11 @@ const getProcessingFunction = ({
       }
     case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
     case "application/vnd.ms-excel":
-      if (useCase === "conversation" || useCase === "upsert_table") {
+      if (
+        useCase === "conversation" ||
+        useCase === "upsert_table" ||
+        useCase === "project_context"
+      ) {
         return upsertExcelToDatasource;
       } else if (
         useCase === "upsert_document" ||
@@ -466,7 +477,11 @@ const getProcessingFunction = ({
   }
 
   if (isSupportedAudioContentType(contentType)) {
-    if (useCase === "conversation" || useCase === "upsert_document") {
+    if (
+      useCase === "conversation" ||
+      useCase === "upsert_document" ||
+      useCase === "project_context"
+    ) {
       return upsertDocumentToDatasource;
     }
     return undefined;
@@ -479,6 +494,7 @@ const getProcessingFunction = ({
       "tool_output",
       "upsert_document",
       "folders_document",
+      "project_context",
     ].includes(useCase)
   ) {
     return upsertDocumentToDatasource;

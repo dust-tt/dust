@@ -1,0 +1,143 @@
+{
+  "folders": [
+    {
+      "name": "core",
+      "path": "core",
+      "settings": {
+        "rust-analyzer.checkOnSave.enable": true,
+        "rust-analyzer.checkOnSave.command": "clippy",
+        "rust-analyzer.cargo.buildScripts.enable": true,
+        "rust-analyzer.cargo.allFeatures": true,
+        "rust-analyzer.procMacro.enable": true,
+        "rust-analyzer.inlayHints.typeHints.enable": true,
+        "rust-analyzer.inlayHints.parameterHints.enable": true,
+        "rust-analyzer.inlayHints.chainingHints.enable": true,
+        "rust-analyzer.completion.autoimport.enable": true,
+        "rust-analyzer.imports.granularity.group": "module",
+        "rust-analyzer.imports.prefix": "crate",
+        "files.watcherExclude": {
+          "**/target/**": true
+        }
+      }
+    },
+    {
+      "name": "sdks",
+      "path": "sdks/js",
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
+      "name": "front",
+      "path": "front",
+      "settings": {
+        "typescript.preferences.useLabelDetailsInCompletion": true,
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true,
+          "**/.next": true,
+          "**/workers-build": true
+        }
+      }
+    },
+    {
+      "name": "connectors",
+      "path": "connectors",
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
+      "name": "extension",
+      "path": "extension",
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
+      "name": "firebase-functions",
+      "path": "firebase-functions",
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
+      "name": "sparkle",
+      "path": "sparkle",
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
+      "name": "viz",
+      "path": "viz",
+      "settings": {
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/.next": true,
+          "**/dist": true
+        }
+      }
+    },
+    {
+      "path": "eslint-plugin-dust"
+    }
+  ],
+  "settings": {
+    // TypeScript Native (tsgo) settings
+    // Enable TypeScript Native - requires "TypeScript (Native Preview)" extension
+    "typescript.experimental.useTsgo": true,
+
+    // TypeScript preferences (work with both tsserver and tsgo)
+    "typescript.preferences.useAliasesForRenames": true,
+    "typescript.preferences.includePackageJsonAutoImports": "off",
+    "typescript.disableAutomaticTypeAcquisition": true,
+
+    // File exclusions for better performance
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/out": true,
+      "**/target": true
+    },
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true,
+      "**/out": true,
+      "**/target": true
+    },
+    "files.autoSave": "onFocusChange",
+    "editor.formatOnSave": true
+  }
+}

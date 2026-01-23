@@ -1,6 +1,6 @@
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
-import { AgentUserRelation } from "@app/lib/models/assistant/agent";
+import { AgentUserRelationModel } from "@app/lib/models/agent/agent";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -36,7 +36,7 @@ export async function setAgentUserFavorite({
     return new Err(new Error("Agent is not active"));
   }
 
-  await AgentUserRelation.upsert({
+  await AgentUserRelationModel.upsert({
     userId: user.id,
     workspaceId: workspace.id,
     agentConfiguration: agentConfiguration.sId,

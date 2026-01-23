@@ -27,12 +27,12 @@ import {
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
 import {
-  GithubCodeDirectory,
-  GithubCodeFile,
-  GithubCodeRepository,
-  GithubConnectorState,
-  GithubDiscussion,
-  GithubIssue,
+  GithubCodeDirectoryModel,
+  GithubCodeFileModel,
+  GithubCodeRepositoryModel,
+  GithubConnectorStateModel,
+  GithubDiscussionModel,
+  GithubIssueModel,
 } from "@connectors/lib/models/github";
 import { terminateAllWorkflowsForConnectorId } from "@connectors/lib/temporal";
 import mainLogger from "@connectors/logger/logger";
@@ -98,7 +98,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     }
 
     if (connectionId) {
-      const connectorState = await GithubConnectorState.findOne({
+      const connectorState = await GithubConnectorStateModel.findOne({
         where: {
           connectorId: c.id,
         },
@@ -147,7 +147,11 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
     return new Ok(c.id.toString());
   }
 
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     try {
       const connector = await ConnectorResource.fetchById(this.connectorId);
 
@@ -155,7 +159,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Err(new Error("Connector not found"));
       }
 
-      const connectorState = await GithubConnectorState.findOne({
+      const connectorState = await GithubConnectorStateModel.findOne({
         where: {
           connectorId: connector.id,
         },
@@ -169,7 +173,10 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         webhooksEnabledAt: null,
       });
 
-      await terminateAllWorkflowsForConnectorId(this.connectorId);
+      await terminateAllWorkflowsForConnectorId({
+        connectorId: this.connectorId,
+        stopReason: reason,
+      });
 
       return new Ok(undefined);
     } catch (err) {
@@ -204,7 +211,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Err(new Error("Connector not found"));
       }
 
-      const connectorState = await GithubConnectorState.findOne({
+      const connectorState = await GithubConnectorStateModel.findOne({
         where: {
           connectorId: connector.id,
         },
@@ -334,14 +341,14 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         case "REPO_FULL": {
           const [latestDiscussion, latestIssue, repoRes, codeRepo] =
             await Promise.all([
-              GithubDiscussion.findOne({
+              GithubDiscussionModel.findOne({
                 where: {
                   connectorId: c.id,
                   repoId: repoId.toString(),
                 },
                 order: [["updatedAt", "DESC"]],
               }),
-              GithubIssue.findOne({
+              GithubIssueModel.findOne({
                 where: {
                   connectorId: c.id,
                   repoId: repoId.toString(),
@@ -349,7 +356,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
                 order: [["updatedAt", "DESC"]],
               }),
               getRepo(c, repoId),
-              GithubCodeRepository.findOne({
+              GithubCodeRepositoryModel.findOne({
                 where: {
                   connectorId: c.id,
                   repoId: repoId.toString(),
@@ -417,13 +424,13 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         case "REPO_CODE":
         case "REPO_CODE_DIR": {
           const [files, directories] = await Promise.all([
-            GithubCodeFile.findAll({
+            GithubCodeFileModel.findAll({
               where: {
                 connectorId: c.id,
                 parentInternalId,
               },
             }),
-            GithubCodeDirectory.findAll({
+            GithubCodeDirectoryModel.findAll({
               where: {
                 connectorId: c.id,
                 parentInternalId,
@@ -513,7 +520,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     switch (configKey) {
       case "codeSyncEnabled": {
-        const connectorState = await GithubConnectorState.findOne({
+        const connectorState = await GithubConnectorStateModel.findOne({
           where: {
             connectorId: connector.id,
           },
@@ -565,7 +572,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
     switch (configKey) {
       case "codeSyncEnabled": {
-        const connectorState = await GithubConnectorState.findOne({
+        const connectorState = await GithubConnectorStateModel.findOne({
           where: {
             connectorId: connector.id,
           },

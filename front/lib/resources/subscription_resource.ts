@@ -7,26 +7,29 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { Plan, Subscription } from "@app/lib/models/plan";
+import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
 import {
   FREE_TEST_PLAN_CODE,
-  isEntreprisePlan,
+  isEntreprisePlanPrefix,
   isFreePlan,
-  isProPlan,
+  isProPlanPrefix,
   isUpgraded,
   PRO_PLAN_SEAT_29_CODE,
   PRO_PLAN_SEAT_39_CODE,
 } from "@app/lib/plans/plan_codes";
+import { isWhitelistedBusinessPlan } from "@app/lib/plans/plan_codes";
 import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   cancelSubscriptionImmediately,
   createProPlanCheckoutSession,
-  getProPlanStripeProductId,
+  getBusinessProPlanProductId,
+  getProPlanProductId,
   getStripeSubscription,
+  upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
-import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial";
+import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -35,7 +38,10 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
-import { getWorkspaceFirstAdmin } from "@app/lib/workspace";
+import {
+  getWorkspaceFirstAdmin,
+  renderLightWorkspaceType,
+} from "@app/lib/workspace";
 import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 import type {
@@ -50,45 +56,90 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { Ok, sendUserOperationMessage } from "@app/types";
+import { Err, Ok, sendUserOperationMessage } from "@app/types";
 
 const DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION: PlanAttributes = FREE_NO_PLAN_DATA;
 const FREE_NO_PLAN_SUBSCRIPTION_ID = -1;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SubscriptionResource
-  extends ReadonlyAttributesType<Subscription> {}
+export interface SubscriptionResource extends ReadonlyAttributesType<SubscriptionModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class SubscriptionResource extends BaseResource<Subscription> {
-  static model: ModelStaticWorkspaceAware<Subscription> = Subscription;
+export class SubscriptionResource extends BaseResource<SubscriptionModel> {
+  static model: ModelStaticWorkspaceAware<SubscriptionModel> =
+    SubscriptionModel;
   private readonly plan: PlanType;
 
   constructor(
-    model: ModelStaticWorkspaceAware<Subscription>,
-    blob: Attributes<Subscription>,
+    model: ModelStaticWorkspaceAware<SubscriptionModel>,
+    blob: Attributes<SubscriptionModel>,
     plan: PlanType
   ) {
-    super(Subscription, blob);
+    super(SubscriptionModel, blob);
     this.plan = plan;
   }
 
-  static async makeNew(blob: CreationAttributes<Subscription>, plan: PlanType) {
-    const subscription = await Subscription.create({ ...blob });
-    return new SubscriptionResource(Subscription, subscription.get(), plan);
+  static async makeNew(
+    blob: CreationAttributes<SubscriptionModel>,
+    plan: PlanType
+  ) {
+    const subscription = await SubscriptionModel.create({ ...blob });
+    return new SubscriptionResource(
+      SubscriptionModel,
+      subscription.get(),
+      plan
+    );
   }
 
   static async fetchActiveByWorkspace(
     workspace: LightWorkspaceType,
     transaction?: Transaction
-  ): Promise<SubscriptionResource> {
+  ): Promise<SubscriptionResource | null> {
     const res = await SubscriptionResource.fetchActiveByWorkspaces(
       [workspace],
       transaction
     );
-    return res[workspace.sId];
+    return res[workspace.sId] ?? null;
+  }
+
+  static async fetchLastByWorkspace(
+    workspace: LightWorkspaceType,
+    transaction?: Transaction
+  ): Promise<SubscriptionResource | null> {
+    const lastSubscription = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+      },
+      include: [
+        {
+          model: PlanModel,
+          as: "plan",
+          required: true,
+        },
+      ],
+      order: [
+        ["startDate", "DESC"],
+        ["createdAt", "DESC"],
+      ],
+      transaction,
+    });
+
+    if (!lastSubscription) {
+      return null;
+    }
+
+    const plan = this.determinePlanFromSubscription(
+      lastSubscription,
+      workspace.sId
+    );
+
+    return new SubscriptionResource(
+      SubscriptionModel,
+      lastSubscription.get(),
+      renderPlanFromModel({ plan })
+    );
   }
 
   static async fetchActiveByWorkspaces(
@@ -118,7 +169,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         dangerouslyBypassWorkspaceIsolationSecurity: true,
         include: [
           {
-            model: Plan,
+            model: PlanModel,
             as: "plan",
             required: true,
           },
@@ -137,26 +188,13 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       const activeSubscription =
         activeSubscriptionByWorkspaceId[workspace.id.toString()];
 
-      let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
+      const plan = this.determinePlanFromSubscription(
+        activeSubscription ?? null,
+        sId
+      );
 
-      if (activeSubscription) {
-        // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
-        if (isTrial(activeSubscription)) {
-          plan = getTrialVersionForPlan(activeSubscription.plan);
-        } else if (activeSubscription.plan) {
-          plan = activeSubscription.plan;
-        } else {
-          logger.error(
-            {
-              workspaceId: sId,
-              activeSubscription,
-            },
-            "Cannot find plan for active subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
-          );
-        }
-      }
       subscriptionResourceByWorkspaceSid[sId] = new SubscriptionResource(
-        Subscription,
+        SubscriptionModel,
         activeSubscription?.get() ||
           this.createFreeNoPlanSubscription(workspace),
         renderPlanFromModel({ plan })
@@ -171,15 +209,15 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource[]> {
     const owner = auth.getNonNullableWorkspace();
 
-    const subscriptions = await Subscription.findAll({
+    const subscriptions = await SubscriptionModel.findAll({
       where: { workspaceId: owner.id },
-      include: [Plan],
+      include: [PlanModel],
     });
 
     return subscriptions.map(
       (s) =>
         new SubscriptionResource(
-          Subscription,
+          SubscriptionModel,
           s.get(),
           renderPlanFromModel({ plan: s.plan })
         )
@@ -191,7 +229,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
   ): Promise<SubscriptionResource | null> {
     const res = await this.model.findOne({
       where: { stripeSubscriptionId },
-      include: [Plan],
+      include: [PlanModel],
 
       // WORKSPACE_ISOLATION_BYPASS: Used to check if a subscription is not attached to a workspace
       dangerouslyBypassWorkspaceIsolationSecurity: true,
@@ -202,10 +240,33 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return new SubscriptionResource(
-      Subscription,
+      SubscriptionModel,
       res.get(),
       renderPlanFromModel({ plan: res.plan })
     );
+  }
+
+  static async internalFetchWorkspacesWithFreeEndedSubscriptions(): Promise<{
+    workspaces: LightWorkspaceType[];
+  }> {
+    const freeEndedSubscriptions = await SubscriptionModel.findAll({
+      where: {
+        status: "active",
+        stripeSubscriptionId: null,
+        endDate: {
+          [Op.lt]: new Date(),
+        },
+      },
+      include: [WorkspaceModel],
+    });
+
+    const workspaces = freeEndedSubscriptions.map((s) =>
+      renderLightWorkspaceType({ workspace: s.workspace })
+    );
+
+    return {
+      workspaces,
+    };
   }
 
   /**
@@ -223,7 +284,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       dangerouslyBypassWorkspaceIsolationSecurity: true,
       include: [
         {
-          model: Plan,
+          model: PlanModel,
           as: "plan",
           where: {
             code: {
@@ -261,7 +322,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     await this.endActiveSubscription(workspace);
 
     return new SubscriptionResource(
-      Subscription,
+      SubscriptionModel,
       this.createFreeNoPlanSubscription(workspace),
       renderPlanFromModel({ plan: FREE_NO_PLAN_DATA })
     );
@@ -291,7 +352,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await Subscription.findOne({
+    const activeSubscription = await SubscriptionModel.findOne({
       where: { workspaceId: workspace.id, status: "active" },
     });
 
@@ -328,7 +389,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         );
       }
 
-      return Subscription.create(
+      return SubscriptionModel.create(
         {
           sId: generateRandomModelSId(),
           workspaceId: workspace.id,
@@ -357,7 +418,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     return new SubscriptionResource(
-      Subscription,
+      SubscriptionModel,
       newSubscription.get(),
       renderPlanFromModel({ plan: newPlan })
     );
@@ -408,7 +469,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     if (activeSubscription && activeSubscription.plan.code === newPlan.code) {
       // If you are already on this free plan and you want to change the end date, we let you do it.
       if (isFreePlan(newPlan.code) && activeSubscription.endDate !== endDate) {
-        await Subscription.update(
+        await SubscriptionModel.update(
           { endDate },
           {
             where: { sId: activeSubscription.sId },
@@ -422,7 +483,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
 
     // Ugrade to Enterprise is not allowed through this function.
-    if (isEntreprisePlan(newPlan.code)) {
+    if (isEntreprisePlanPrefix(newPlan.code)) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: Enterprise Plans requires a special process.`
       );
@@ -430,7 +491,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
     // Upgrade to Pro is allowed only if the workspace is already subscribed to a Pro plan.
     // This is a way to change the plan limitations but stay on Pro.
-    if (isProPlan(newPlan.code)) {
+    if (isProPlanPrefix(newPlan.code)) {
       if (
         !activeSubscription ||
         !activeSubscription.sId ||
@@ -442,7 +503,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       }
 
       const isAlreadyOnProPlan =
-        await activeSubscription.isSubscriptionOnProPlan(owner);
+        await activeSubscription.isSubscriptionOnProOrBusinessPlan(owner);
 
       if (!isAlreadyOnProPlan) {
         throw new Error(
@@ -450,7 +511,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
         );
       }
 
-      await Subscription.update(
+      await SubscriptionModel.update(
         { planId: newPlan.id },
         {
           where: {
@@ -472,13 +533,60 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     }
   }
 
+  /**
+   * Upgrades a Pro subscription to Business plan.
+   * This updates both Stripe (swaps product/price to Business monthly) and the database plan.
+   * Only allowed for workspaces that are whitelisted for Business (metadata.isBusiness = true).
+   */
+  async upgradeToBusinessPlan(
+    owner: WorkspaceType
+  ): Promise<Result<undefined, Error>> {
+    if (!isWhitelistedBusinessPlan(owner)) {
+      return new Err(
+        new Error("Workspace is not whitelisted for Business plan")
+      );
+    }
+    if (!this.stripeSubscriptionId) {
+      return new Err(new Error("No active Stripe subscription to upgrade"));
+    }
+
+    const isOnProPlan = await this.isSubscriptionOnProOrBusinessPlan(owner);
+    if (!isOnProPlan) {
+      return new Err(new Error("Workspace is not on a Pro plan"));
+    }
+
+    const businessPlan = await SubscriptionResource.findPlanOrThrow(
+      PRO_PLAN_SEAT_39_CODE
+    );
+
+    const stripeResult = await upgradeProSubscriptionToBusiness({
+      stripeSubscriptionId: this.stripeSubscriptionId,
+      owner,
+      planCode: PRO_PLAN_SEAT_39_CODE,
+    });
+    if (stripeResult.isErr()) {
+      return new Err(stripeResult.error);
+    }
+
+    await SubscriptionModel.update(
+      { planId: businessPlan.id },
+      {
+        where: {
+          sId: this.sId,
+        },
+      }
+    );
+
+    return new Ok(undefined);
+  }
+
   static async maybeCancelInactiveTrials(
     auth: Authenticator,
     eventStripeSubscription: Stripe.Subscription
   ) {
     const { id: stripeSubscriptionId } = eventStripeSubscription;
 
-    const subscription = await Subscription.findOne({
+    const subscription = await SubscriptionModel.findOne({
       where: { stripeSubscriptionId },
       include: [WorkspaceModel],
     });
@@ -546,7 +654,8 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     const proPlan = await SubscriptionResource.findPlanOrThrow(planCode);
 
     // We verify that the workspace is not already subscribed to the Pro plan product.
-    const isAlreadyOnProPlan = await this.isSubscriptionOnProPlan(owner);
+    const isAlreadyOnProPlan =
+      await this.isSubscriptionOnProOrBusinessPlan(owner);
     if (isAlreadyOnProPlan) {
       throw new Error(
         `Cannot subscribe to plan ${planCode}: already subscribed to a Pro plan.`
@@ -670,7 +779,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
 
   private static createFreeNoPlanSubscription(
     workspace: LightWorkspaceType
-  ): Attributes<Subscription> {
+  ): Attributes<SubscriptionModel> {
     const now = new Date();
     return {
       id: FREE_NO_PLAN_SUBSCRIPTION_ID,
@@ -689,15 +798,18 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     };
   }
 
-  private static async isStripeSubscriptionOnProPlan(
+  private static async isStripeSubscriptionOnProOrBusinessPlan(
     owner: LightWorkspaceType,
     stripeSubscription: Stripe.Subscription
   ): Promise<boolean> {
     const { data: subscriptionItems } = stripeSubscription.items;
-    const proPlanStripeProductId = getProPlanStripeProductId(owner);
+    const proPlanProductId = getProPlanProductId();
+    const businessProPlanStripeProductId = getBusinessProPlanProductId();
 
     return subscriptionItems.some(
-      (item) => item.plan.product === proPlanStripeProductId
+      (item) =>
+        item.plan.product === proPlanProductId ||
+        item.plan.product === businessProPlanStripeProductId
     );
   }
 
@@ -713,8 +825,34 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return workspace;
   }
 
-  private static async findPlanOrThrow(planCode: string): Promise<Plan> {
-    const newPlan = await Plan.findOne({
+  private static determinePlanFromSubscription(
+    subscription: SubscriptionModel | null,
+    workspaceSId: string
+  ): PlanAttributes {
+    let plan: PlanAttributes = DEFAULT_PLAN_WHEN_NO_SUBSCRIPTION;
+
+    if (subscription) {
+      // If the subscription is in trial, temporarily override the plan until the FREE_TEST_PLAN is phased out.
+      if (isTrial(subscription)) {
+        plan = getTrialVersionForPlan(subscription.plan);
+      } else if (subscription.plan) {
+        plan = subscription.plan;
+      } else {
+        logger.error(
+          {
+            workspaceId: workspaceSId,
+            subscription,
+          },
+          "Cannot find plan for subscription. Will use limits of FREE_TEST_PLAN instead. Please check and fix."
+        );
+      }
+    }
+
+    return plan;
+  }
+
+  private static async findPlanOrThrow(planCode: string): Promise<PlanModel> {
+    const newPlan = await PlanModel.findOne({
       where: { code: planCode },
     });
     if (!newPlan) {
@@ -729,13 +867,13 @@ export class SubscriptionResource extends BaseResource<Subscription> {
    * @param workspaceId The ID of the workspace
    * @returns The active subscription that was ended, or null if none existed
    */
-  private static async endActiveSubscription(
+  static async endActiveSubscription(
     workspace: LightWorkspaceType
-  ): Promise<Subscription | null> {
+  ): Promise<SubscriptionModel | null> {
     const now = new Date();
 
     // Find active subscription
-    const activeSubscription = await Subscription.findOne({
+    const activeSubscription = await SubscriptionModel.findOne({
       where: { workspaceId: workspace.id, status: "active" },
     });
 
@@ -766,7 +904,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
     return activeSubscription;
   }
 
-  private async isSubscriptionOnProPlan(
+  private async isSubscriptionOnProOrBusinessPlan(
     owner: WorkspaceType
   ): Promise<boolean> {
     if (!this.stripeSubscriptionId) {
@@ -779,7 +917,7 @@ export class SubscriptionResource extends BaseResource<Subscription> {
       return false;
     }
 
-    return SubscriptionResource.isStripeSubscriptionOnProPlan(
+    return SubscriptionResource.isStripeSubscriptionOnProOrBusinessPlan(
       owner,
       stripeSubscription
     );

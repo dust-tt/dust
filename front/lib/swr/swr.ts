@@ -1,6 +1,12 @@
 import type { PaginationState } from "@tanstack/react-table";
 import { useCallback } from "react";
-import type { Fetcher, Key, SWRConfiguration } from "swr";
+import type {
+  Fetcher,
+  Key,
+  MutatorCallback,
+  MutatorOptions,
+  SWRConfiguration,
+} from "swr";
 import useSWR, { useSWRConfig } from "swr";
 import type {
   SWRInfiniteConfiguration,
@@ -9,6 +15,7 @@ import type {
 import useSWRInfinite from "swr/infinite";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { clientFetch } from "@app/lib/egress/client";
 import { isAPIErrorResponse, safeParseJSON } from "@app/types";
 
 const EMPTY_ARRAY = Object.freeze([]);
@@ -72,9 +79,22 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
     [tryMakeUrlWithoutParams, cache, globalMutate]
   );
 
-  const myMutateWhenDisabled = useCallback(() => {
-    return globalMutate(key);
-  }, [key, globalMutate]);
+  const myMutateWhenDisabled = useCallback(
+    (
+      data?: TData | Promise<TData> | MutatorCallback<TData> | undefined,
+      options?: boolean | MutatorOptions<any, any> | undefined
+    ) => {
+      // When using globalMutate with undefined data or options, it does a weird visual glitch in the UI.
+      // I don't really understand why.
+      if (data !== undefined || options !== undefined) {
+        return globalMutate(key, data, options);
+      } else {
+        // Using a separate globalMutate call without data or options args does not have this issue.
+        return globalMutate(key);
+      }
+    },
+    [key, globalMutate]
+  );
 
   const myMutateWhenDisabledRegardlessOfQueryParams = useCallback(() => {
     mutateKeysWithSameUrl(key);
@@ -144,7 +164,7 @@ const resHandler = async (res: Response) => {
 
 export const fetcher = async (...args: Parameters<typeof fetch>) => {
   const [url, config] = args;
-  const res = await fetch(url, {
+  const res = await clientFetch(url, {
     ...config,
     headers: addCommitHashToHeaders(config?.headers),
   });
@@ -156,7 +176,7 @@ export const fetcherWithBody = async ([url, body, method]: [
   object,
   string,
 ]) => {
-  const res = await fetch(url, {
+  const res = await clientFetch(url, {
     method,
     headers: addCommitHashToHeaders({
       "Content-Type": "application/json",
@@ -196,6 +216,7 @@ export async function getErrorFromResponse(response: Response) {
   const errorData = await response.json();
 
   if (isAPIErrorResponse(errorData)) {
+    /* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */
     return errorData.error.connectors_error
       ? errorData.error.connectors_error
       : errorData.error;

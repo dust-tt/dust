@@ -11,7 +11,6 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
-import { useRouter } from "next/router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -20,7 +19,9 @@ import {
   InputField,
   SelectField,
 } from "@app/components/poke/shadcn/ui/form/fields";
-import { isFreePlan } from "@app/lib/plans/plan_codes";
+import { clientFetch } from "@app/lib/egress/client";
+import { isFreePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type { FreePlanUpgradeFormType, WorkspaceType } from "@app/types";
 import { FreePlanUpgradeFormSchema, removeNulls } from "@app/types";
@@ -30,12 +31,12 @@ export default function FreePlanUpgradeDialog({
 }: {
   owner: WorkspaceType;
 }) {
+  const router = useAppRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
   const { plans } = usePokePlans();
-  const router = useRouter();
 
   const form = useForm<FreePlanUpgradeFormType>({
     resolver: ioTsResolver(FreePlanUpgradeFormSchema),
@@ -65,13 +66,16 @@ export default function FreePlanUpgradeDialog({
       setIsSubmitting(true);
       setError(null);
       try {
-        const r = await fetch(`/api/poke/workspaces/${owner.sId}/upgrade`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(cleanedValues),
-        });
+        const r = await clientFetch(
+          `/api/poke/workspaces/${owner.sId}/upgrade`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(cleanedValues),
+          }
+        );
 
         if (!r.ok) {
           throw new Error(
@@ -126,7 +130,10 @@ export default function FreePlanUpgradeDialog({
                       name="planCode"
                       title="Free Plan"
                       options={plans
-                        .filter((plan) => isFreePlan(plan.code))
+                        .filter(
+                          (plan) =>
+                            isFreePlan(plan.code) && !isOldFreePlan(plan.code)
+                        )
                         .map((plan) => ({
                           value: plan.code,
                           display: `${plan.name} (${plan.code})`,

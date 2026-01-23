@@ -1,0 +1,37 @@
+import type { AgentConfigurationType } from "@app/types";
+import {
+  GLOBAL_AGENTS_SID,
+  MAX_STEPS_USE_PER_RUN_LIMIT,
+  NOOP_MODEL_CONFIG,
+} from "@app/types";
+import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+
+export function _getNoopAgent(): AgentConfigurationType | null {
+  return {
+    id: -1,
+    sId: GLOBAL_AGENTS_SID.NOOP,
+    version: 0,
+    versionCreatedAt: null,
+    versionAuthorId: null,
+    name: "noop",
+    description: NOOP_MODEL_CONFIG.description,
+    instructions: "",
+    pictureUrl: DUST_AVATAR_URL,
+    status: "active",
+    scope: "global",
+    userFavorite: false,
+    model: {
+      providerId: NOOP_MODEL_CONFIG.providerId,
+      modelId: NOOP_MODEL_CONFIG.modelId,
+      temperature: 0.7,
+    },
+    actions: [],
+    maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+    templateId: null,
+    requestedGroupIds: [],
+    requestedSpaceIds: [],
+    tags: [],
+    canRead: true,
+    canEdit: false,
+  };
+}

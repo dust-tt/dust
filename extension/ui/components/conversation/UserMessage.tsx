@@ -1,6 +1,9 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { formatTimestring } from "@app/shared/lib/utils";
 import { AgentSuggestion } from "@app/ui/components/conversation/AgentSuggestion";
+import {
+  AgentMentionBlock,
+  agentMentionDirective,
+} from "@app/ui/components/markdown/AgentMentionBlock";
 import {
   CiteBlock,
   getCiteDirective,
@@ -10,12 +13,12 @@ import {
   contentNodeMentionDirective,
 } from "@app/ui/components/markdown/ContentNodeMentionBlock";
 import {
-  MentionBlock,
-  mentionDirective,
-} from "@app/ui/components/markdown/MentionBlock";
+  getUserMentionPlugin,
+  userMentionDirective,
+} from "@app/ui/components/markdown/UserMentionBlock";
 import type { LightWorkspaceType, UserMessageType } from "@dust-tt/client";
 import { ConversationMessage, Markdown } from "@dust-tt/sparkle";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -37,20 +40,27 @@ export function UserMessage({
   const additionalMarkdownComponents: Components = useMemo(
     () => ({
       sup: CiteBlock,
-      mention: MentionBlock,
+      // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
+      mention: AgentMentionBlock,
+      mention_user: getUserMentionPlugin(),
       content_node_mention: ContentNodeMentionBlock,
     }),
     []
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
-    () => [getCiteDirective(), mentionDirective, contentNodeMentionDirective],
+    () => [
+      getCiteDirective(),
+      agentMentionDirective,
+      userMentionDirective,
+      contentNodeMentionDirective,
+    ],
     []
   );
 
   return (
     <div className="flex flex-grow flex-col">
-      <div className="self-end max-w-[85%] min-w-60">
+      <div className="min-w-60 max-w-[85%] self-end">
         <ConversationMessage
           pictureUrl={message.user?.image || message.context.profilePictureUrl}
           name={message.context.fullName ?? undefined}
@@ -67,6 +77,8 @@ export function UserMessage({
                 isLastMessage={isLastMessage}
                 additionalMarkdownComponents={additionalMarkdownComponents}
                 additionalMarkdownPlugins={additionalMarkdownPlugins}
+                compactSpacing
+                canCopyQuotes={false}
               />
             </div>
             {message.mentions.length === 0 && isLastMessage && (

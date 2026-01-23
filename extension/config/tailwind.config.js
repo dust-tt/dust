@@ -10,7 +10,33 @@ delete colors.trueGray;
 delete colors.coolGray;
 delete colors.blueGray;
 
-// Custom color definitions
+const safeColorsArray = [
+  "gray",
+  "green",
+  "rose",
+  "golden",
+  "blue",
+  "primary",
+  "highlight",
+  "success",
+  "warning",
+  "info",
+  "indigo", //To be cleaned after transition
+  "lime",
+  "orange",
+  "pink",
+  "red",
+  "sky",
+  "teal",
+  "amber",
+  "cyan",
+  "fuchsia",
+  "violet",
+  "yellow",
+  "action",
+  "slate",
+];
+
 const customColors = {
   gray: {
     950: "#111418",
@@ -174,6 +200,34 @@ Object.assign(colors, {
   amber: customColors.golden,
   sky: customColors.blue,
 });
+
+const safeColorlist = safeColorsArray.flatMap((color) => [
+  // Include 50 shade
+  `bg-${color}-50`,
+  // Whitelist all bg colors from shade 100 to 900
+  ...Array.from({ length: 9 }, (_, i) => `bg-${color}-${(i + 1) * 100}`),
+  `bg-${color}-950`,
+  `dark:bg-${color}-50-night`,
+  ...Array.from(
+    { length: 9 },
+    (_, i) => `dark:bg-${color}-${(i + 1) * 100}-night`
+  ),
+  `dark:bg-${color}-950-night`,
+  `border-${color}-100`,
+  `border-${color}-200`,
+  `border-${color}-300`,
+  `dark:border-${color}-100-night`,
+  `dark:border-${color}-200-night`,
+  `dark:border-${color}-300-night`,
+  `text-${color}-500`,
+  `text-${color}-800`,
+  `text-${color}-900`,
+  `text-${color}-950`,
+  `dark:text-${color}-500-night`,
+  `dark:text-${color}-800-night`,
+  `dark:text-${color}-900-night`,
+  `dark:text-${color}-950-night`,
+]);
 
 // Get all color names from Tailwind's default palette, excluding special colors
 const colorNames = Object.keys(colors).filter(
@@ -711,36 +765,6 @@ module.exports = {
             night: customColors.golden[950],
           },
         },
-        // Deprecated colors
-        action: {
-          950: { DEFAULT: colors.blue[950], night: colors.blue[50] },
-          900: { DEFAULT: colors.blue[900], night: colors.blue[100] },
-          800: { DEFAULT: colors.blue[800], night: colors.blue[200] },
-          700: { DEFAULT: colors.blue[700], night: colors.blue[300] },
-          600: { DEFAULT: colors.blue[600], night: colors.blue[400] },
-          500: { DEFAULT: colors.blue[500], night: colors.blue[500] },
-          400: { DEFAULT: colors.blue[400], night: colors.blue[600] },
-          300: { DEFAULT: colors.blue[300], night: colors.blue[700] },
-          200: { DEFAULT: colors.blue[200], night: colors.blue[800] },
-          100: { DEFAULT: colors.blue[100], night: colors.blue[900] },
-          50: { DEFAULT: colors.blue[50], night: colors.blue[950] },
-        },
-        structure: {
-          0: { DEFAULT: colors.white, night: colors.black },
-          50: { DEFAULT: colors.gray[50], night: colors.gray[900] },
-          100: { DEFAULT: colors.gray[100], night: colors.gray[800] },
-          150: { DEFAULT: colors.gray[150], night: colors.gray[800] },
-          200: { DEFAULT: colors.gray[200], night: colors.gray[700] },
-          300: { DEFAULT: colors.gray[300], night: colors.gray[600] },
-        },
-        element: {
-          950: { DEFAULT: colors.gray[950], night: colors.gray[50] },
-          900: { DEFAULT: colors.gray[900], night: colors.gray[100] },
-          800: { DEFAULT: colors.gray[700], night: colors.gray[200] },
-          700: { DEFAULT: colors.gray[500], night: colors.gray[300] },
-          600: { DEFAULT: colors.gray[400], night: colors.gray[400] },
-          500: { DEFAULT: colors.gray[300], night: colors.gray[500] },
-        },
       },
     },
   },
@@ -939,7 +963,43 @@ module.exports = {
       pattern: /^bg-/,
     },
     {
+      pattern: /^text-/,
+    },
+    {
       pattern: /^grid-rows-/,
     },
+    {
+      pattern: /^cursor-/,
+    },
+    // Add copy classes to safelist
+    "copy-xs",
+    "copy-sm",
+    "copy-base",
+    "copy-lg",
+    "copy-xl",
+    // Add heading classes to safelist
+    "heading-base",
+    "heading-lg",
+    "heading-xl",
+    "heading-2xl",
+    "heading-3xl",
+    "heading-4xl",
+    "heading-5xl",
+    "heading-6xl",
+    "heading-7xl",
+    "heading-8xl",
+    "heading-9xl",
+    // Add mono heading classes to safelist
+    "heading-mono-lg",
+    "heading-mono-xl",
+    "heading-mono-2xl",
+    "heading-mono-3xl",
+    "heading-mono-4xl",
+    "heading-mono-5xl",
+    "heading-mono-6xl",
+    "heading-mono-7xl",
+    "heading-mono-8xl",
+    "heading-mono-9xl",
+    ...safeColorlist,
   ],
 };

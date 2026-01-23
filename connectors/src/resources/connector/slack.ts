@@ -11,9 +11,7 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
 import type { ModelId } from "@connectors/types";
 
-export class SlackConnectorStrategy
-  implements ConnectorProviderStrategy<"slack">
-{
+export class SlackConnectorStrategy implements ConnectorProviderStrategy<"slack"> {
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<SlackConfigurationModel>,
@@ -26,7 +24,9 @@ export class SlackConnectorStrategy
         ? [...blob.whitelistedDomains] // Ensure it's a readonly string[]
         : undefined,
       restrictedSpaceAgentsEnabled: blob.restrictedSpaceAgentsEnabled,
+      privateIntegrationCredentialId: blob.privateIntegrationCredentialId,
       connectorId,
+      botEnabled: blob.botEnabled,
       transaction,
     });
   }

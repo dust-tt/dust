@@ -1,7 +1,13 @@
-import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType } from "@app/types";
 import { normalizeError } from "@app/types";
@@ -11,7 +17,7 @@ interface UseYAMLUploadOptions {
 }
 
 export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isUploading, setIsUploading] = useState(false);
 
@@ -34,7 +40,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
 
       setIsUploading(true);
       const yamlContent = await file.text();
-      const response = await fetch(
+      const response = await clientFetch(
         `/api/w/${owner.sId}/assistant/agent_configurations/new/yaml`,
         {
           method: "POST",
@@ -51,6 +57,7 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
           {
             workspaceId: owner.sId,
           },
+
           normalizeError(errorData).message ||
             "Failed to create agent from YAML file."
         );
@@ -65,6 +72,19 @@ export function useYAMLUpload({ owner }: UseYAMLUploadOptions) {
       }
 
       const result = await response.json();
+
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "create_agent",
+        action: TRACKING_ACTIONS.SUBMIT,
+        extra: {
+          agent_id: result.agentConfiguration.sId,
+          source: "yaml_upload",
+          scope: result.agentConfiguration.scope,
+          has_skipped_actions: result.skippedActions?.length > 0,
+        },
+      });
+
       if (result.skippedActions && result.skippedActions.length > 0) {
         sendNotification({
           title: "Agent created with warnings",

@@ -30,7 +30,7 @@ interface CardTitleProps {
 const Title = ({ className, children }: CardTitleProps) => (
   <div
     className={cn(
-      "s-text-sm s-font-semibold",
+      "s-heading-sm",
       "s-text-foreground dark:s-text-foreground-night",
       className
     )}

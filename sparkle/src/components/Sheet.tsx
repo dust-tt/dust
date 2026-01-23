@@ -82,8 +82,9 @@ const sheetVariants = cva(
   }
 );
 
-interface SheetContentProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
+interface SheetContentProps extends React.ComponentPropsWithoutRef<
+  typeof SheetPrimitive.Content
+> {
   size?: SheetSizeType;
   trapFocusScope?: boolean;
   side?: SheetSideType;
@@ -190,7 +191,7 @@ const SheetHeader = ({
     {...props}
   >
     {children}
-    <SheetClose asChild className="s-absolute s-right-3">
+    <SheetClose asChild className="s-absolute s-right-3 s-top-4">
       {!hideButton && <Button icon={XMarkIcon} variant="ghost" size="sm" />}
     </SheetClose>
   </div>
@@ -268,7 +269,7 @@ const SheetFooter = ({
       {...props}
     >
       {children}
-      <div className="s-flex s-flex-row s-gap-2 s-border-t s-border-border s-px-3 s-py-3 dark:s-border-border-night">
+      <div className="s-flex s-flex-row s-gap-2 s-border-t s-border-border s-p-3 dark:s-border-border-night">
         {leftButtonProps &&
           (leftButtonProps.disabled ? (
             <Button {...leftButtonProps} />
@@ -300,8 +301,9 @@ const SheetFooter = ({
 };
 SheetFooter.displayName = "SheetFooter";
 
-interface SheetTitleProps
-  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title> {
+interface SheetTitleProps extends React.ComponentPropsWithoutRef<
+  typeof SheetPrimitive.Title
+> {
   icon?: React.ComponentType;
 }
 

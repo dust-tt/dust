@@ -1,6 +1,7 @@
+import { createPrivateKey } from "node:crypto";
+
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import crypto from "crypto";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
@@ -26,6 +27,7 @@ import {
 import logger from "@connectors/logger/logger";
 import type { SnowflakeCredentials } from "@connectors/types";
 import { EXCLUDE_DATABASES, EXCLUDE_SCHEMAS } from "@connectors/types";
+import { normalizeError } from "@connectors/types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SnowflakeRow = Record<string, any>;
@@ -58,6 +60,7 @@ type SnowflakeFutureGrant = t.TypeOf<typeof snowflakeFutureGrantCodec>;
 
 type TestConnectionErrorCode =
   | "INVALID_CREDENTIALS"
+  | "INVALID_ACCOUNT"
   | "NOT_READONLY"
   | "NO_TABLES"
   | "UNKNOWN";
@@ -90,24 +93,58 @@ export const testConnection = async ({
   // Connect to snowflake, fetch tables and grants, and close the connection.
   const connectionRes = await connectToSnowflake(credentials);
   if (connectionRes.isErr()) {
+    const err = connectionRes.error;
+
+    const msg = err.message ?? "Unknown error";
+
     if (
-      connectionRes.error.name === "OperationFailedError" ||
-      connectionRes.error.name === "InvalidPrivateKeyError"
+      msg.includes("Hostname/IP does not match certificate's altnames") ||
+      msg.includes("ERR_TLS_CERT_ALTNAME_INVALID") ||
+      msg.includes("Connection attempt timed out while contacting Snowflake") ||
+      err.name === "NetworkError"
     ) {
       return new Err(
         new TestConnectionError(
-          "INVALID_CREDENTIALS",
-          connectionRes.error.message
+          "INVALID_ACCOUNT",
+          "Invalid account or region. Verify your Snowflake account and region settings."
         )
       );
     }
 
-    return new Err(
-      new TestConnectionError("UNKNOWN", connectionRes.error.message)
-    );
+    if (err.name === "InvalidPrivateKeyError") {
+      return new Err(
+        new TestConnectionError(
+          "INVALID_CREDENTIALS",
+          "Invalid private key or passphrase. Provide a valid PEM private key and, if encrypted, the correct passphrase."
+        )
+      );
+    }
+
+    if (
+      err.name === "OperationFailedError" ||
+      msg.includes("JWT token is invalid")
+    ) {
+      return new Err(
+        new TestConnectionError(
+          "INVALID_CREDENTIALS",
+          "Invalid credentials. Verify your Snowflake username and RSA public key configuration."
+        )
+      );
+    }
+
+    return new Err(new TestConnectionError("UNKNOWN", msg));
   }
 
   const connection = connectionRes.value;
+
+  // Ensure the configured warehouse exists and is usable (mirrors core behavior).
+  const useWhRes = await useWarehouse({ credentials, connection });
+  if (useWhRes.isErr()) {
+    // Treat as invalid configuration for the connector setup path.
+    return new Err(
+      new TestConnectionError("INVALID_CREDENTIALS", useWhRes.error.message)
+    );
+  }
   const tablesRes = await fetchTables({ credentials, connection });
   const grantsRes = await isConnectionReadonly({ credentials, connection });
 
@@ -158,6 +195,10 @@ export async function connectToSnowflake(
         : undefined,
       proxyUser: process.env.PROXY_USER_NAME,
       proxyPassword: process.env.PROXY_USER_PASSWORD,
+
+      retryTimeout: process.env.SNOWFLAKE_RETRY_TIMEOUT
+        ? parseInt(process.env.SNOWFLAKE_RETRY_TIMEOUT)
+        : 15,
     };
 
     if ("password" in credentials) {
@@ -178,7 +219,7 @@ export async function connectToSnowflake(
             ? credentials.private_key_passphrase
             : "";
 
-        const privateKeyObject = crypto.createPrivateKey({
+        const privateKeyObject = createPrivateKey({
           key: credentials.private_key.trim(),
           format: "pem",
           passphrase: passphraseToUse,
@@ -217,20 +258,55 @@ export async function connectToSnowflake(
     }
 
     const connection = await new Promise<Connection>((resolve, reject) => {
-      snowflake
-        .createConnection(connectionOptions)
-        .connect((err: SnowflakeError | undefined, conn: Connection) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(conn);
+      const connectTimeoutMs = process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS
+        ? parseInt(process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS)
+        : 15000;
+
+      const conn = snowflake.createConnection(connectionOptions);
+      let settled = false;
+
+      const timeout = setTimeout(
+        () => {
+          if (settled) {
+            return;
           }
-        });
+          settled = true;
+          try {
+            conn.destroy((err: SnowflakeError | undefined) => {
+              if (err) {
+                reject(err as unknown as Error);
+                return;
+              }
+              reject(
+                new Error(
+                  "Connection attempt timed out while contacting Snowflake. This often indicates an invalid account or region hostname."
+                )
+              );
+            });
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error(String(e)));
+          }
+        },
+        isNaN(connectTimeoutMs) ? 15000 : connectTimeoutMs
+      );
+
+      conn.connect((err: SnowflakeError | undefined, c: Connection) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeout);
+        if (err) {
+          reject(err);
+        } else {
+          resolve(c);
+        }
+      });
     });
 
     return new Ok(connection);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -389,6 +465,33 @@ export const fetchTree = async (
 };
 
 /**
+ * Try to select the configured warehouse. This mimics core's `USE WAREHOUSE`
+ * behavior so we can surface unreachable/missing warehouses early.
+ */
+export const useWarehouse = async ({
+  credentials,
+  connection,
+}: {
+  credentials: SnowflakeCredentials;
+  connection: Connection;
+}): Promise<Result<void, Error>> => {
+  const warehouse = credentials.warehouse;
+  const res = await _executeQuery(connection, `USE WAREHOUSE ${warehouse}`);
+  if (res.isErr()) {
+    const e = normalizeError(res.error);
+
+    return new Err(
+      new Error(
+        `Snowflake warehouse check failed: USE WAREHOUSE "${warehouse}". ` +
+          `The configured warehouse may not exist or is not accessible. ` +
+          `Original error: ${e.message}`
+      )
+    );
+  }
+  return new Ok(undefined);
+};
+
+/**
  * Fetch the grants available for the Snowflake role,
  * including future grants, then check if the connection is read-only.
  */
@@ -524,14 +627,15 @@ async function _checkRoleGrants(
         "TASK",
       ].includes(grantOn)
     ) {
-      if (g.privilege !== "MONITOR") {
-        return new Err(
-          new TestConnectionError(
-            "NOT_READONLY",
-            `Non-monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
-          )
-        );
+      if (["MONITOR"].includes(g.privilege)) {
+        continue;
       }
+      return new Err(
+        new TestConnectionError(
+          "NOT_READONLY",
+          `Non-monitor grant found on ${grantOn} "${g.name}": privilege=${g.privilege} (connection must be read-only).`
+        )
+      );
     } else if (["ROLE", "DATABASE_ROLE"].includes(grantOn)) {
       // For roles, allow USAGE (role inheritance) but recursively check the parent role
       if (g.privilege !== "USAGE") {
@@ -626,7 +730,7 @@ async function _closeConnection(
     await new Promise<void>((resolve, reject) => {
       conn.destroy((err: SnowflakeError | undefined) => {
         if (err) {
-          console.error("Error closing connection:", err);
+          logger.error({ error: err }, "Error closing Snowflake connection");
           reject(err);
         } else {
           resolve();
@@ -635,7 +739,7 @@ async function _closeConnection(
     });
     return new Ok(undefined);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }
 
@@ -667,6 +771,6 @@ async function _executeQuery(
     );
     return new Ok(r);
   } catch (error) {
-    return new Err(error instanceof Error ? error : new Error(String(error)));
+    return new Err(normalizeError(error));
   }
 }

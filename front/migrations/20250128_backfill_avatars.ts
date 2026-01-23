@@ -2,7 +2,7 @@ import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
-import { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -31,7 +31,7 @@ async function backfillAvatars(
   const baseUrl = `https://storage.googleapis.com/${bucket.name}/`;
 
   // Get all agent with legacy avatars
-  const agentConfigurations = await AgentConfiguration.findAll({
+  const agentConfigurations = await AgentConfigurationModel.findAll({
     where: {
       workspaceId: workspace.id,
       pictureUrl: {

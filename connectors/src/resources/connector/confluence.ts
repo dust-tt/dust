@@ -1,9 +1,10 @@
 import type { Transaction } from "sequelize";
 
 import {
-  ConfluenceConfiguration,
-  ConfluencePage,
-  ConfluenceSpace,
+  ConfluenceConfigurationModel,
+  ConfluenceFolderModel,
+  ConfluencePageModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
 import type {
   ConnectorProviderConfigurationType,
@@ -14,15 +15,13 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class ConfluenceConnectorStrategy
-  implements ConnectorProviderStrategy<"confluence">
-{
+export class ConfluenceConnectorStrategy implements ConnectorProviderStrategy<"confluence"> {
   async makeNew(
     connectorId: ModelId,
-    blob: WithCreationAttributes<ConfluenceConfiguration>,
+    blob: WithCreationAttributes<ConfluenceConfigurationModel>,
     transaction: Transaction
   ): Promise<ConnectorProviderModelResourceMapping["confluence"] | null> {
-    await ConfluenceConfiguration.create(
+    await ConfluenceConfigurationModel.create(
       {
         ...blob,
         connectorId,
@@ -37,26 +36,30 @@ export class ConfluenceConnectorStrategy
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
-    await Promise.all([
-      ConfluenceConfiguration.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-      ConfluenceSpace.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-      ConfluencePage.destroy({
-        where: {
-          connectorId: connector.id,
-        },
-        transaction,
-      }),
-    ]);
+    await ConfluenceConfigurationModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await ConfluenceSpaceModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await ConfluenceFolderModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    await ConfluencePageModel.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
   }
 
   async fetchConfigurationsbyConnectorIds(): Promise<

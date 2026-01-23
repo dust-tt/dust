@@ -1,10 +1,10 @@
 import { FileResource } from "@app/lib/resources/file_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import type {
+  AllSupportedFileContentType,
   FileStatus,
   FileUseCase,
   FileUseCaseMetadata,
-  SupportedFileContentType,
   WorkspaceType,
 } from "@app/types";
 
@@ -23,7 +23,7 @@ export class FileFactory {
       useCaseMetadata = null,
       snippet = null,
     }: {
-      contentType: SupportedFileContentType;
+      contentType: AllSupportedFileContentType;
       fileName: string;
       fileSize: number;
       status: FileStatus;
@@ -34,7 +34,7 @@ export class FileFactory {
   ) {
     const file = await FileResource.makeNew({
       workspaceId: workspace.id,
-      userId: user?.id || null,
+      userId: user?.id ?? null,
       contentType,
       fileName,
       fileSize,

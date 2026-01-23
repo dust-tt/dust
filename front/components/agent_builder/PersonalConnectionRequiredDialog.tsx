@@ -14,16 +14,21 @@ import {
   Icon,
   LockIcon,
 } from "@dust-tt/sparkle";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import {
+  areCredentialOverridesValid,
+  PersonalAuthCredentialOverrides,
+} from "@app/components/oauth/PersonalAuthCredentialOverrides";
+import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import { getIcon } from "@app/lib/actions/mcp_icons";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
   useCreatePersonalConnection,
   useMCPServerViewsWithPersonalConnections,
 } from "@app/lib/swr/mcp_servers";
 import type { LightWorkspaceType } from "@app/types";
+import { getOverridablePersonalAuthInputs } from "@app/types";
 
 interface DialogState {
   isOpen: boolean;
@@ -103,6 +108,29 @@ export function PersonalConnectionRequiredDialog({
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [overriddenCredentialsMap, setCredentialOverridesMap] = useState<
+    Record<string, Record<string, string>>
+  >({});
+
+  useEffect(() => {
+    if (!isOpen) {
+      setCredentialOverridesMap({});
+    }
+  }, [isOpen]);
+
+  const setOverrideValue = useCallback(
+    (serverId: string, key: string, value: string) => {
+      setCredentialOverridesMap((prev) => ({
+        ...prev,
+        [serverId]: {
+          ...prev[serverId],
+          [key]: value,
+        },
+      }));
+    },
+    []
+  );
+
   const disconnectedCount = useMemo(() => {
     return mcpServerViewsWithPersonalConnections.filter(
       ({ isAlreadyConnected }) => !isAlreadyConnected
@@ -147,51 +175,96 @@ export function PersonalConnectionRequiredDialog({
 
           <DialogDescription>
             {mcpServerViewsWithPersonalConnections.map(
-              ({ mcpServerView, isAlreadyConnected }) => (
-                <div key={mcpServerView.sId}>
-                  <div className="flex w-full items-center justify-between gap-2 py-2">
-                    <div className="flex items-center gap-2">
-                      <Icon
-                        visual={getIcon(mcpServerView.server.icon)}
-                        size="md"
-                      />
-                      <strong>
-                        {getMcpServerViewDisplayName(mcpServerView)}
-                      </strong>
-                    </div>
-                    <div>
-                      {isAlreadyConnected ? (
-                        <Chip color="green" label="Connected" />
-                      ) : (
-                        <Button
-                          icon={CloudArrowLeftRightIcon}
-                          size="xs"
-                          variant="outline"
-                          label="Connect"
-                          disabled={isConnecting}
-                          onClick={async () => {
-                            if (!mcpServerView.server.authorization) {
-                              return;
-                            }
-                            setIsConnecting(true);
-                            await createPersonalConnection({
-                              mcpServerId: mcpServerView.server.sId,
-                              mcpServerDisplayName:
-                                getMcpServerViewDisplayName(mcpServerView),
-                              provider:
-                                mcpServerView.server.authorization.provider,
-                              useCase: "personal_actions",
-                              scope: mcpServerView.server.authorization.scope,
-                            });
-                            setIsConnecting(false);
-                          }}
+              ({ mcpServerView, isAlreadyConnected }) => {
+                const provider = mcpServerView.server.authorization?.provider;
+                const serverOverridableInputs = provider
+                  ? getOverridablePersonalAuthInputs({ provider })
+                  : null;
+                const serverOverrides =
+                  overriddenCredentialsMap[mcpServerView.server.sId] ?? {};
+
+                return (
+                  <div key={mcpServerView.sId} className="py-2">
+                    <div className="flex w-full items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          visual={getIcon(mcpServerView.server.icon)}
+                          size="md"
                         />
-                      )}
+                        <strong>
+                          {getMcpServerViewDisplayName(mcpServerView)}
+                        </strong>
+                      </div>
+                      <div>
+                        {isAlreadyConnected ? (
+                          <Chip color="green" label="Connected" />
+                        ) : (
+                          <Button
+                            icon={CloudArrowLeftRightIcon}
+                            size="xs"
+                            variant="outline"
+                            label="Connect"
+                            disabled={
+                              isConnecting ||
+                              !areCredentialOverridesValid(
+                                serverOverridableInputs,
+                                serverOverrides
+                              )
+                            }
+                            onClick={async () => {
+                              if (!mcpServerView.server.authorization) {
+                                return;
+                              }
+                              setIsConnecting(true);
+                              try {
+                                await createPersonalConnection({
+                                  mcpServerId: mcpServerView.server.sId,
+                                  mcpServerDisplayName:
+                                    getMcpServerViewDisplayName(mcpServerView),
+                                  provider:
+                                    mcpServerView.server.authorization.provider,
+                                  useCase: "personal_actions",
+                                  scope:
+                                    mcpServerView.server.authorization.scope,
+                                  overriddenCredentials:
+                                    Object.keys(serverOverrides).length > 0
+                                      ? serverOverrides
+                                      : undefined,
+                                });
+                              } finally {
+                                setIsConnecting(false);
+                              }
+                            }}
+                          />
+                        )}
+                      </div>
                     </div>
+                    {!isAlreadyConnected && serverOverridableInputs && (
+                      <div className="mt-2 pl-8 pr-2">
+                        <PersonalAuthCredentialOverrides
+                          inputs={serverOverridableInputs}
+                          values={serverOverrides}
+                          idPrefix={mcpServerView.server.sId}
+                          onChange={(key, value) =>
+                            setOverrideValue(
+                              mcpServerView.server.sId,
+                              key,
+                              value
+                            )
+                          }
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-              )
+                );
+              }
             )}
+            <p className="mt-4">
+              {disconnectedCount}{" "}
+              {disconnectedCount > 1 ? "connections are" : "connection is"}{" "}
+              required. If you proceed without connecting, the agent will
+              request credentials when they use the tool.
+            </p>
           </DialogDescription>
         </DialogContainer>
 
@@ -203,9 +276,8 @@ export function PersonalConnectionRequiredDialog({
           }}
           rightButtonProps={{
             label: "Save",
-            variant: "primary",
-            disabled: disconnectedCount > 0,
-            onClick: onClose,
+            variant: disconnectedCount > 0 ? "warning" : "primary",
+            onClick: () => onClose(true),
           }}
         />
       </DialogContent>

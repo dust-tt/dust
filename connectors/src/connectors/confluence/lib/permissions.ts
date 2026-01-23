@@ -11,10 +11,10 @@ import {
   makePageInternalId,
   makeSpaceInternalId,
 } from "@connectors/connectors/confluence/lib/internal_ids";
-import type { ConfluenceConfiguration } from "@connectors/lib/models/confluence";
+import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import {
-  ConfluencePage,
-  ConfluenceSpace,
+  ConfluencePageModel,
+  ConfluenceSpaceModel,
 } from "@connectors/lib/models/confluence";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ConnectorPermission, ContentNode } from "@connectors/types";
@@ -23,7 +23,7 @@ import { INTERNAL_MIME_TYPES } from "@connectors/types";
 
 function isConfluenceSpaceModel(
   confluenceSpace: unknown
-): confluenceSpace is ConfluenceSpace {
+): confluenceSpace is ConfluenceSpaceModel {
   return (
     typeof confluenceSpace === "object" &&
     confluenceSpace !== null &&
@@ -33,7 +33,7 @@ function isConfluenceSpaceModel(
 }
 
 export function createContentNodeFromSpace(
-  space: ConfluenceSpace | ConfluenceSpaceType,
+  space: ConfluenceSpaceModel | ConfluenceSpaceType,
   baseUrl: string,
   permission: ConnectorPermission,
   { isExpandable }: { isExpandable: boolean }
@@ -59,7 +59,7 @@ export function createContentNodeFromSpace(
 export function createContentNodeFromPage(
   parent: { id: string; type: "page" | "space" },
   baseUrl: string,
-  page: ConfluencePage,
+  page: ConfluencePageModel,
   isExpandable = false
 ): ContentNode {
   return {
@@ -82,7 +82,7 @@ export async function checkPageHasChildren(
   connectorId: ModelId,
   pageId: string
 ) {
-  const childrenPage = await ConfluencePage.findOne({
+  const childrenPage = await ConfluencePageModel.findOne({
     attributes: ["id"],
     where: {
       connectorId,
@@ -95,12 +95,12 @@ export async function checkPageHasChildren(
 
 async function getSynchronizedSpaces(
   connectorId: ModelId,
-  confluenceConfig: ConfluenceConfiguration,
+  confluenceConfig: ConfluenceConfigurationModel,
   parentInternalId: string
 ): Promise<Result<ContentNode[], Error>> {
   const confluenceId = getConfluenceIdFromInternalId(parentInternalId);
 
-  const parentSpace = await ConfluenceSpace.findOne({
+  const parentSpace = await ConfluenceSpaceModel.findOne({
     attributes: ["id", "spaceId"],
     where: {
       connectorId,
@@ -112,7 +112,7 @@ async function getSynchronizedSpaces(
     return new Err(new Error(`Confluence space not found.`));
   }
 
-  const pagesWithinSpace = await ConfluencePage.findAll({
+  const pagesWithinSpace = await ConfluencePageModel.findAll({
     attributes: ["id", "pageId", "title", "externalUrl"],
     where: {
       connectorId,
@@ -142,12 +142,12 @@ async function getSynchronizedSpaces(
 
 async function getSynchronizedChildrenPages(
   connectorId: ModelId,
-  confluenceConfig: ConfluenceConfiguration,
+  confluenceConfig: ConfluenceConfigurationModel,
   parentInternalId: string
 ): Promise<Result<ContentNode[], Error>> {
   const confluenceId = getConfluenceIdFromInternalId(parentInternalId);
 
-  const parentPage = await ConfluencePage.findOne({
+  const parentPage = await ConfluencePageModel.findOne({
     attributes: ["id", "pageId"],
     where: {
       connectorId,
@@ -159,7 +159,7 @@ async function getSynchronizedChildrenPages(
     return new Err(new Error(`Confluence page not found.`));
   }
 
-  const pagesWithinSpace = await ConfluencePage.findAll({
+  const pagesWithinSpace = await ConfluencePageModel.findAll({
     attributes: ["id", "pageId", "title", "externalUrl"],
     where: {
       connectorId,
@@ -186,7 +186,7 @@ async function getSynchronizedChildrenPages(
 
 export async function retrieveHierarchyForParent(
   connector: ConnectorResource,
-  confluenceConfig: ConfluenceConfiguration,
+  confluenceConfig: ConfluenceConfigurationModel,
   parentInternalId: string | null
 ) {
   const { id: connectorId } = connector;
@@ -221,7 +221,7 @@ export async function retrieveHierarchyForParent(
     }
   }
 
-  const syncedSpaces = await ConfluenceSpace.findAll({
+  const syncedSpaces = await ConfluenceSpaceModel.findAll({
     where: {
       connectorId,
     },
@@ -240,11 +240,11 @@ export async function retrieveHierarchyForParent(
 
 export async function retrieveAvailableSpaces(
   connector: ConnectorResource,
-  confluenceConfig: ConfluenceConfiguration
+  confluenceConfig: ConfluenceConfigurationModel
 ): Promise<Result<ContentNode[], Error>> {
   const { id: connectorId } = connector;
 
-  const syncedSpaces = await ConfluenceSpace.findAll({
+  const syncedSpaces = await ConfluenceSpaceModel.findAll({
     where: {
       connectorId: connectorId,
     },

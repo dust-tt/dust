@@ -63,14 +63,33 @@ const _webhookSlackBotAPIHandler = async (
       slackTeamId: teamId,
     });
 
-    const slackConfigurations =
-      await SlackConfigurationResource.listForTeamId(teamId);
+    const slackConfigurations = await SlackConfigurationResource.listForTeamId(
+      teamId,
+      "slack_bot"
+    );
     if (slackConfigurations.length === 0) {
+      const error: {
+        type: "connector_configuration_not_found";
+        message: string;
+      } = {
+        type: "connector_configuration_not_found",
+        message: `Slack configuration not found for teamId ${teamId}`,
+      };
+
+      const requestFromRouter =
+        typeof req.headers["x-dust-clientid"] === "string" &&
+        ["slack-webhook-router", "webhook-router"].includes(
+          req.headers["x-dust-clientid"]
+        );
+
+      if (requestFromRouter) {
+        // If the request is coming from the router, we don't want to log the error as it's expected, and it floods Datadog with non-actionable errors
+        // Nonetheless, we return the 421 as the router will handle it
+        return res.status(421).json({ error });
+      }
+
       return apiError(req, res, {
-        api_error: {
-          type: "connector_configuration_not_found",
-          message: `Slack configuration not found for teamId ${teamId}`,
-        },
+        api_error: error,
         status_code: 421,
       });
     }
@@ -148,7 +167,10 @@ const _webhookSlackBotAPIHandler = async (
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
             })(handleChatBot)(req, res, logger);
-          } else if (event.channel_type === "channel") {
+          } else if (
+            event.channel_type === "channel" ||
+            event.channel_type === "group"
+          ) {
             if (
               !event.bot_id &&
               event.channel &&

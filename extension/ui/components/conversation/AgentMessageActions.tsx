@@ -1,5 +1,5 @@
 import { MCPActionDetails } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
-import type { ActionProgressState } from "@app/ui/components/assistants/state/messageReducer";
+import type { ActionProgressState } from "@app/ui/components/agents/state/messageReducer";
 import type { AgentStateClassification } from "@app/ui/components/conversation/AgentMessage";
 import type {
   AgentMessagePublicType,

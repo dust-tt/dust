@@ -32,8 +32,8 @@ import {
 import { getZendeskSubdomainAndAccessToken } from "@connectors/connectors/zendesk/lib/zendesk_access_token";
 import {
   fetchZendeskCurrentUser,
-  getZendeskTicketFieldById,
   isUserAdmin,
+  ZendeskClient,
 } from "@connectors/connectors/zendesk/lib/zendesk_api";
 import {
   launchZendeskFullSyncWorkflow,
@@ -65,6 +65,7 @@ export const ZENDESK_CONFIG_KEYS = {
   SYNC_UNRESOLVED_TICKETS: "zendeskSyncUnresolvedTicketsEnabled",
   HIDE_CUSTOMER_DETAILS: "zendeskHideCustomerDetails",
   RETENTION_PERIOD: "zendeskRetentionPeriodDays",
+  RATE_LIMIT_TPS: "zendeskRateLimitTransactionsPerSecond",
 } as const;
 
 const MAX_RETENTION_DAYS = 365;
@@ -110,6 +111,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         ticketTagsToInclude: null,
         ticketTagsToExclude: null,
         customFieldsConfig: [],
+        rateLimitTransactionsPerSecond: null,
       }
     );
     const loggerArgs = {
@@ -227,14 +229,20 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
   /**
    * Stops all workflows related to the connector (sync and garbage collection).
    */
-  async stop(): Promise<Result<undefined, Error>> {
+  async stop({
+    reason,
+  }: {
+    reason: string;
+  }): Promise<Result<undefined, Error>> {
     const { connectorId } = this;
     const connector = await ConnectorResource.fetchById(connectorId);
     if (!connector) {
       logger.error({ connectorId }, "[Zendesk] Connector not found.");
       throw new Error("[Zendesk] Connector not found.");
     }
-    return stopZendeskWorkflows(connector);
+    return stopZendeskWorkflows(connector, {
+      stopReason: reason,
+    });
   }
 
   /**
@@ -723,10 +731,15 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         const { accessToken, subdomain } =
           await getZendeskSubdomainAndAccessToken(connector.connectionId);
 
+        const zendeskClient = new ZendeskClient(
+          accessToken,
+          connectorId,
+          zendeskConfiguration.rateLimitTransactionsPerSecond
+        );
+
         const convertedFields: { id: number; name: string }[] = [];
         for (const fieldId of fieldIds) {
-          const field = await getZendeskTicketFieldById({
-            accessToken,
+          const field = await zendeskClient.getTicketFieldById({
             subdomain,
             fieldId,
           });
@@ -753,6 +766,36 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
 
         await zendeskConfiguration.update({
           customFieldsConfig: convertedFields,
+        });
+
+        return new Ok(undefined);
+      }
+      case ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS: {
+        if (configValue.trim() === "") {
+          // Empty value means disable rate limiting
+          logger.info(
+            { connectorId },
+            "[Zendesk] Disabling rate limit transactions per second"
+          );
+
+          await zendeskConfiguration.update({
+            rateLimitTransactionsPerSecond: null,
+          });
+
+          return new Ok(undefined);
+        }
+
+        const transactionsPerSecond = parseInt(configValue.trim(), 10);
+        if (isNaN(transactionsPerSecond) || transactionsPerSecond < 1) {
+          return new Err(
+            new Error(
+              "Rate limit transactions per second must be a positive integer or empty to disable."
+            )
+          );
+        }
+
+        await zendeskConfiguration.update({
+          rateLimitTransactionsPerSecond: transactionsPerSecond,
         });
 
         return new Ok(undefined);
@@ -825,6 +868,11 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
           zendeskConfiguration.customFieldsConfig
             ? JSON.stringify(zendeskConfiguration.customFieldsConfig)
             : ""
+        );
+      }
+      case ZENDESK_CONFIG_KEYS.RATE_LIMIT_TPS: {
+        return new Ok(
+          zendeskConfiguration.rateLimitTransactionsPerSecond?.toString() || ""
         );
       }
       default:

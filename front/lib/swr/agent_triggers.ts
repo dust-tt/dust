@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
+import { parseMatcherExpression } from "@app/lib/matcher";
 import {
   emptyArray,
   fetcher,
@@ -14,8 +16,15 @@ import type {
   PostTextAsCronRuleRequestBody,
   PostTextAsCronRuleResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/text_as_cron_rule";
+import type {
+  PostWebhookFilterGeneratorRequestBody,
+  PostWebhookFilterGeneratorResponseBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/webhook_filter_generator";
 import type { GetUserTriggersResponseBody } from "@app/pages/api/w/[wId]/me/triggers";
+import type { GetTriggerEstimationResponseBody } from "@app/pages/api/w/[wId]/webhook_sources/[webhookSourceId]/trigger-estimation";
 import type { LightWorkspaceType } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import type { WebhookProvider } from "@app/types/triggers/webhooks";
 
 export function useAgentTriggers({
   workspaceId,
@@ -69,30 +78,125 @@ export function useUserTriggers({
   };
 }
 
+export function useDeleteTrigger({
+  workspaceId,
+  agentConfigurationId,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+}) {
+  const { mutateTriggers } = useAgentTriggers({
+    workspaceId,
+    agentConfigurationId,
+    disabled: true,
+  });
+
+  const deleteTrigger = useCallback(
+    async (triggerId: string): Promise<boolean> => {
+      try {
+        const response = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers`,
+          {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ triggerIds: [triggerId] }),
+          }
+        );
+
+        if (response.ok) {
+          void mutateTriggers();
+          return true;
+        } else {
+          return false;
+        }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      } catch (error) {
+        return false;
+      }
+    },
+    [workspaceId, agentConfigurationId, mutateTriggers]
+  );
+
+  return deleteTrigger;
+}
+
 export function useTextAsCronRule({
   workspace,
 }: {
   workspace: LightWorkspaceType;
 }) {
   const textAsCronRule = useCallback(
-    async (naturalDescription: string) => {
-      const r: PostTextAsCronRuleResponseBody = await fetcher(
-        `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            naturalDescription,
-            defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          } as PostTextAsCronRuleRequestBody),
-        }
-      );
+    async (naturalDescription: string, signal?: AbortSignal) => {
+      let r: PostTextAsCronRuleResponseBody;
+      try {
+        r = await fetcher(
+          `/api/w/${workspace.sId}/assistant/agent_configurations/text_as_cron_rule`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              naturalDescription,
+              defaultTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            } as PostTextAsCronRuleRequestBody),
+            signal,
+          }
+        );
+      } catch (e: unknown) {
+        return new Err(normalizeError(e));
+      }
 
-      return { cron: r.cronRule, timezone: r.timezone };
+      return new Ok({ cron: r.cronRule, timezone: r.timezone });
     },
     [workspace]
   );
 
   return textAsCronRule;
+}
+
+export function useWebhookFilterGenerator({
+  workspace,
+}: {
+  workspace: LightWorkspaceType;
+}) {
+  const generateFilter = useCallback(
+    async ({
+      naturalDescription,
+      event,
+      provider,
+      signal,
+    }: {
+      naturalDescription: string;
+      event: string;
+      provider: WebhookProvider;
+      signal?: AbortSignal;
+    }): Promise<{ filter: string }> => {
+      const r: PostWebhookFilterGeneratorResponseBody = await fetcher(
+        `/api/w/${workspace.sId}/assistant/agent_configurations/webhook_filter_generator`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            naturalDescription,
+            event,
+            provider,
+          } satisfies PostWebhookFilterGeneratorRequestBody),
+          signal,
+        }
+      );
+
+      const parseResult = parseMatcherExpression(r.filter);
+      if (parseResult.isErr()) {
+        throw new Error(
+          `Error generating filter: ${parseResult.error.message}`
+        );
+      }
+
+      return { filter: r.filter };
+    },
+    [workspace]
+  );
+
+  return generateFilter;
 }
 
 export function useTriggerSubscribers({
@@ -143,7 +247,7 @@ export function useAddTriggerSubscriber({
   const addSubscriber = useCallback(
     async (triggerId: string): Promise<boolean> => {
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "POST",
@@ -168,6 +272,7 @@ export function useAddTriggerSubscriber({
           });
           return false;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -212,7 +317,7 @@ export function useRemoveTriggerSubscriber({
         triggerAgentConfigurationId || agentConfigurationId;
 
       try {
-        const response = await fetch(
+        const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/agent_configurations/${targetAgentConfigurationId}/triggers/${triggerId}/subscribers`,
           {
             method: "DELETE",
@@ -244,6 +349,7 @@ export function useRemoveTriggerSubscriber({
           });
           return false;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (error) {
         sendNotification({
           type: "error",
@@ -263,4 +369,54 @@ export function useRemoveTriggerSubscriber({
   );
 
   return removeSubscriber;
+}
+
+export function useTriggerEstimation({
+  workspaceId,
+  webhookSourceId,
+  filter,
+  selectedEvent,
+}: {
+  workspaceId: string;
+  webhookSourceId?: string | null;
+  filter?: string | null;
+  selectedEvent?: string | null;
+}) {
+  const key = webhookSourceId
+    ? `/api/w/${workspaceId}/webhook_sources/${webhookSourceId}/trigger-estimation`
+    : null;
+
+  const triggerEstimationFetcher: (
+    arg: string
+  ) => Promise<GetTriggerEstimationResponseBody> = (baseUrl) => {
+    const params = new URLSearchParams();
+    if (filter && filter.trim()) {
+      params.append("filter", filter);
+    }
+    if (selectedEvent) {
+      params.append("event", selectedEvent);
+    }
+    const queryString = params.toString();
+    const url = `${baseUrl}${queryString ? `?${queryString}` : ""}`;
+    return fetcher(url);
+  };
+
+  const { data, error, isValidating, mutate } = useSWRWithDefaults(
+    key,
+    triggerEstimationFetcher,
+    {
+      revalidateOnMount: false,
+      revalidateIfStale: false,
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+    }
+  );
+
+  return {
+    estimation: (data as GetTriggerEstimationResponseBody | undefined) ?? null,
+    isEstimationLoading: !!webhookSourceId && !error && !data,
+    isEstimationError: error,
+    isEstimationValidating: isValidating,
+    mutateEstimation: mutate,
+  };
 }

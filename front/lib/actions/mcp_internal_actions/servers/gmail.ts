@@ -1,13 +1,22 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
+import { escape } from "html-escaper";
 import { z } from "zod";
 
+import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
+  jsonToMarkdown,
   makeInternalMCPServer,
-  makeMCPToolJSONSuccess,
-  makeMCPToolTextError,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { Err, Ok } from "@app/types";
 
 interface GmailHeader {
   name: string;
@@ -17,6 +26,18 @@ interface GmailHeader {
 interface GmailMessageBody {
   data?: string;
   size?: number;
+  attachmentId?: string;
+}
+
+interface AttachmentMetadata {
+  attachmentId: string;
+  partId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  // True if attachmentId is a real Gmail attachment ID (can be fetched via API)
+  // False if attachmentId is actually a partId (inline content, data in message body)
+  hasRealAttachmentId: boolean;
 }
 
 interface GmailMessagePart {
@@ -55,7 +76,23 @@ interface MessageDetail {
   error?: string;
 }
 
-const createServer = (): McpServer => {
+const MESSAGES_MAX_RESULTS = 50;
+
+const MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS = 10;
+
+// Typeguard for GmailMessage
+function isGmailMessage(data: unknown): data is GmailMessage {
+  if (typeof data !== "object" || data === null) {
+    return false;
+  }
+  const obj = data as Record<string, unknown>;
+  return typeof obj.id === "string";
+}
+
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): McpServer {
   const server = makeInternalMCPServer("gmail");
 
   server.tool(
@@ -73,58 +110,72 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Token for fetching the next page of results."),
     },
-    async ({ q, pageToken }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async ({ q, pageToken }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const params = new URLSearchParams();
+        if (q) {
+          params.append("q", q);
+        }
+        if (pageToken) {
+          params.append("pageToken", pageToken);
+        }
+
+        const response = await fetchFromGmail(
+          `/gmail/v1/users/me/drafts?${params.toString()}`,
+          accessToken,
+          { method: "GET" }
+        );
+
+        if (!response.ok) {
+          return new Err(new MCPError("Failed to get drafts"));
+        }
+
+        const result = await response.json();
+
+        const drafts = await concurrentExecutor(
+          result.drafts ?? [],
+          async (draft: { id: string }) => {
+            const draftResponse = await fetchFromGmail(
+              `/gmail/v1/users/me/drafts/${draft.id}?format=metadata`,
+              accessToken,
+              { method: "GET" }
+            );
+
+            if (!draftResponse.ok) {
+              return null;
+            }
+
+            return draftResponse.json();
+          },
+          { concurrency: 10 }
+        );
+
+        return new Ok([
+          { type: "text" as const, text: "Drafts fetched successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                drafts,
+                nextPageToken: result.nextPageToken,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
-
-      const params = new URLSearchParams();
-      if (q) {
-        params.append("q", q);
-      }
-      if (pageToken) {
-        params.append("pageToken", pageToken);
-      }
-
-      const response = await fetchFromGmail(
-        `/gmail/v1/users/me/drafts?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        return makeMCPToolTextError("Failed to get drafts");
-      }
-
-      const result = await response.json();
-
-      const drafts = await concurrentExecutor(
-        result.drafts ?? [],
-        async (draft: { id: string }) => {
-          const draftResponse = await fetchFromGmail(
-            `/gmail/v1/users/me/drafts/${draft.id}?format=metadata`,
-            accessToken,
-            { method: "GET" }
-          );
-
-          if (!draftResponse.ok) {
-            return null;
-          }
-
-          return draftResponse.json();
-        },
-        { concurrency: 10 }
-      );
-
-      return makeMCPToolJSONSuccess({
-        message: "Drafts fetched successfully",
-        result: {
-          drafts,
-          nextPageToken: result.nextPageToken,
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -146,68 +197,82 @@ const createServer = (): McpServer => {
         .describe("The content type of the email (text/plain or text/html)."),
       body: z.string().describe("The body of the email"),
     },
-    async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
-
-      // Always encode subject line using RFC 2047 to handle any special characters
-      const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
-
-      // Create the email message with proper headers and content.
-      const message = [
-        `To: ${to.join(", ")}`,
-        cc?.length ? `Cc: ${cc.join(", ")}` : null,
-        bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
-        `Subject: ${encodedSubject}`,
-        "Content-Type: " + contentType,
-        "MIME-Version: 1.0",
-        "",
-        body,
-      ]
-        .filter((line) => line !== null)
-        .join("\n");
-
-      // Encode the message in base64 as required by the Gmail API.
-      const encodedMessage = Buffer.from(message)
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-
-      // Make the API call to create the draft in Gmail.
-      const response = await fetchFromGmail(
-        "/gmail/v1/users/me/drafts",
-        accessToken,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: {
-              raw: encodedMessage,
-            },
-          }),
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async ({ to, cc, bcc, subject, contentType, body }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
         }
-      );
 
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(`Failed to create draft: ${errorText}`);
+        // Always encode subject line using RFC 2047 to handle any special characters
+        const encodedSubject = `=?UTF-8?B?${Buffer.from(subject, "utf-8").toString("base64")}?=`;
+
+        // Create the email message with proper headers and content.
+        const message = [
+          `To: ${to.join(", ")}`,
+          cc?.length ? `Cc: ${cc.join(", ")}` : null,
+          bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
+          `Subject: ${encodedSubject}`,
+          "Content-Type: " + contentType,
+          "MIME-Version: 1.0",
+          "",
+          body,
+        ]
+          .filter((line) => line !== null)
+          .join("\n");
+
+        // Encode the message in base64 as required by the Gmail API.
+        const encodedMessage = Buffer.from(message)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
+
+        // Make the API call to create the draft in Gmail.
+        const response = await fetchFromGmail(
+          "/gmail/v1/users/me/drafts",
+          accessToken,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              message: {
+                raw: encodedMessage,
+              },
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(new MCPError(`Failed to create draft: ${errorText}`));
+        }
+
+        const result = await response.json();
+
+        return new Ok([
+          { type: "text" as const, text: "Draft created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                draftId: result.id,
+                messageId: result.message.id,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Draft created successfully",
-        result: {
-          draftId: result.id,
-          messageId: result.message.id,
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -218,33 +283,39 @@ const createServer = (): McpServer => {
       subject: z.string().describe("The subject of the draft to delete"),
       to: z.array(z.string()).describe("The email addresses of the recipients"),
     },
-    async ({ draftId, subject, to }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async ({ draftId, subject, to }, { authInfo }) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        assert(subject, "Subject is required - for user display");
+        assert(
+          to.length > 0,
+          "At least one recipient is required - for user display"
+        );
+
+        const response = await fetchFromGmail(
+          `/gmail/v1/users/me/drafts/${draftId}`,
+          accessToken,
+          { method: "DELETE" }
+        );
+
+        if (!response.ok) {
+          return new Err(new MCPError("Failed to delete draft"));
+        }
+
+        return new Ok([
+          { type: "text" as const, text: "Draft deleted successfully" },
+        ]);
       }
-
-      assert(subject, "Subject is required - for user display");
-      assert(
-        to.length > 0,
-        "At least one recipient is required - for user display"
-      );
-
-      const response = await fetchFromGmail(
-        `/gmail/v1/users/me/drafts/${draftId}`,
-        accessToken,
-        { method: "DELETE" }
-      );
-
-      if (!response.ok) {
-        return makeMCPToolTextError("Failed to delete draft");
-      }
-
-      return makeMCPToolJSONSuccess({
-        message: "Draft deleted successfully",
-        result: "",
-      });
-    }
+    )
   );
 
   server.tool(
@@ -261,106 +332,273 @@ const createServer = (): McpServer => {
         .number()
         .optional()
         .describe(
-          "Maximum number of messages to return (default: 10, max: 100)"
+          `Maximum number of messages to return (default: 10, max: ${MESSAGES_MAX_RESULTS} without attachments, ${MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS} with attachments)`
         ),
       pageToken: z
         .string()
         .optional()
         .describe("Token for fetching the next page of results."),
+      includeAttachments: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include message attachments in the response (default: false)"
+        ),
     },
-    async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async (
+        { q, maxResults = 10, pageToken, includeAttachments },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      const params = new URLSearchParams();
-      if (q) {
-        params.append("q", q);
-      }
-      params.append("maxResults", Math.min(maxResults, 100).toString());
-      if (pageToken) {
-        params.append("pageToken", pageToken);
-      }
-
-      const response = await fetchFromGmail(
-        `/gmail/v1/users/me/messages?${params.toString()}`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
+        const params = new URLSearchParams();
+        if (q) {
+          params.append("q", q);
+        }
+        params.append(
+          "maxResults",
+          Math.min(
+            maxResults,
+            includeAttachments
+              ? MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS
+              : MESSAGES_MAX_RESULTS
+          ).toString()
         );
+        if (pageToken) {
+          params.append("pageToken", pageToken);
+        }
+
+        const response = await fetchFromGmail(
+          `/gmail/v1/users/me/messages?${params.toString()}`,
+          accessToken,
+          { method: "GET" }
+        );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(
+            new MCPError(
+              `Failed to get messages: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        // Get detailed message information for each message
+        const messageDetails = await concurrentExecutor(
+          result.messages ?? [],
+          async (message: { id: string }) => {
+            const messageResponse = await fetchFromGmail(
+              `/gmail/v1/users/me/messages/${message.id}?format=full`,
+              accessToken,
+              { method: "GET" }
+            );
+
+            if (!messageResponse.ok) {
+              const errorText = await getErrorText(messageResponse);
+              return {
+                success: false,
+                messageId: message.id,
+                error: `${messageResponse.status} ${messageResponse.statusText} - ${errorText}`,
+              };
+            }
+
+            const messageData = await messageResponse.json();
+
+            if (!isGmailMessage(messageData)) {
+              return {
+                success: false,
+                messageId: message.id,
+                error: "Invalid message format received from Gmail API",
+              };
+            }
+
+            // Extract headers for easy access
+            const headers = messageData.payload?.headers ?? [];
+            const from = getHeaderValue(headers, "From");
+            const to = getHeaderValue(headers, "To");
+            const cc = getHeaderValue(headers, "Cc");
+            const subject = getHeaderValue(headers, "Subject");
+            const date = getHeaderValue(headers, "Date");
+
+            // Decode the full email body
+            const body = decodeMessageBody(messageData.payload);
+
+            // Extract attachment metadata
+            const attachments = includeAttachments
+              ? extractAttachments(messageData.payload)
+              : null;
+
+            return {
+              success: true,
+              data: {
+                id: messageData.id,
+                threadId: messageData.threadId,
+                labelIds: messageData.labelIds,
+                from,
+                to,
+                cc,
+                subject,
+                date,
+                body,
+                attachments,
+              },
+            };
+          },
+          { concurrency: 10 }
+        );
+
+        // Extract successful message details
+        const successfulMessages = messageDetails
+          .filter((detail: MessageDetail) => detail.success)
+          .map((detail: MessageDetail) => detail.data);
+
+        const markdownOutput = jsonToMarkdown(
+          successfulMessages,
+          "id",
+          "Mail id"
+        );
+
+        return new Ok([
+          { type: "text" as const, text: "Messages fetched successfully" },
+          {
+            type: "text" as const,
+            text: markdownOutput,
+          },
+        ]);
       }
+    )
+  );
 
-      const result = await response.json();
+  server.tool(
+    "get_attachment",
+    "Get the content of a specific attachment from a Gmail message. The attachment will be uploaded and made available in the conversation.",
+    {
+      messageId: z
+        .string()
+        .describe("The ID of the message containing the attachment"),
+      attachmentId: z
+        .string()
+        .describe(
+          "The attachment ID (from the attachments array in get_messages)"
+        ),
+      partId: z
+        .string()
+        .describe("The part ID (from the attachments array in get_messages)"),
+      filename: z
+        .string()
+        .describe(
+          "The filename of the attachment (from the attachments array in get_messages)"
+        ),
+      mimeType: z
+        .string()
+        .describe(
+          "The MIME type of the attachment (from the attachments array in get_messages)"
+        ),
+      hasRealAttachmentId: z
+        .boolean()
+        .describe(
+          "Whether the attachment has a real attachment ID that can be fetched via API (from the attachments array in get_messages)"
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async (
+        {
+          messageId,
+          attachmentId,
+          partId,
+          filename,
+          mimeType,
+          hasRealAttachmentId,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
 
-      // Get detailed message information for each message
-      const messageDetails = await concurrentExecutor(
-        result.messages ?? [],
-        async (message: { id: string }) => {
+        const encodedMessageId = encodeURIComponent(messageId);
+        let base64Data: string | null = null;
+
+        // Only try the attachments API if we have a real attachment ID
+        if (hasRealAttachmentId && attachmentId) {
+          const encodedAttachmentId = encodeURIComponent(attachmentId);
+          const response = await fetchFromGmail(
+            `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodedAttachmentId}`,
+            accessToken,
+            { method: "GET" }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            base64Data = result.data;
+          } else {
+            const attachmentErrorText = await getErrorText(response);
+            return new Err(
+              new MCPError(
+                `Failed to fetch attachment via API: ${attachmentErrorText}`
+              )
+            );
+          }
+        } else {
+          // For inline content (no real attachmentId), fetch from message body
           const messageResponse = await fetchFromGmail(
-            `/gmail/v1/users/me/messages/${message.id}?format=metadata&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Message-ID&metadataHeaders=In-Reply-To&metadataHeaders=References`,
+            `/gmail/v1/users/me/messages/${encodedMessageId}?format=full`,
             accessToken,
             { method: "GET" }
           );
 
           if (!messageResponse.ok) {
-            const errorText = await getErrorText(messageResponse);
-            return {
-              success: false,
-              messageId: message.id,
-              error: `${messageResponse.status} ${messageResponse.statusText} - ${errorText}`,
-            };
+            const messageErrorText = await getErrorText(messageResponse);
+            return new Err(
+              new MCPError(`Failed to fetch message: ${messageErrorText}`)
+            );
           }
 
-          const messageData = await messageResponse.json();
-          return {
-            success: true,
-            data: messageData,
-          };
-        },
-        { concurrency: 10 }
-      );
+          const messageData: GmailMessage = await messageResponse.json();
+          base64Data = findAttachmentData(messageData.payload, partId);
 
-      // Separate successful and failed message details
-      const successfulMessages = messageDetails
-        .filter((detail: MessageDetail) => detail.success)
-        .map((detail: MessageDetail) => detail.data);
+          if (!base64Data) {
+            return new Err(
+              new MCPError(
+                `Inline attachment data not found in message body. This attachment may not be retrievable.`
+              )
+            );
+          }
+        }
 
-      const failedMessages = messageDetails
-        .filter((detail: MessageDetail) => !detail.success)
-        .map((detail: MessageDetail) => ({
-          messageId: detail.messageId,
-          error: detail.error,
-        }));
+        if (!base64Data) {
+          return new Err(new MCPError("Failed to retrieve attachment data"));
+        }
 
-      const totalRequested = result.messages?.length || 0;
-      const totalSuccessful = successfulMessages.length;
-      const totalFailed = failedMessages.length;
+        // Gmail returns URL-safe base64, convert to standard base64
+        const standardBase64 = base64Data.replace(/-/g, "+").replace(/_/g, "/");
+        const buffer = Buffer.from(standardBase64, "base64");
 
-      let message = "Messages fetched successfully";
-      if (totalFailed > 0) {
-        message = `Messages fetched with ${totalFailed} failures out of ${totalRequested} total messages`;
+        return processAttachment({
+          mimeType,
+          filename,
+          extractText: async () => extractTextFromBuffer(buffer, mimeType),
+          downloadContent: async () => new Ok(buffer),
+        });
       }
-
-      return makeMCPToolJSONSuccess({
-        message,
-        result: {
-          messages: successfulMessages,
-          failedMessages,
-          summary: {
-            totalRequested,
-            totalSuccessful,
-            totalFailed,
-          },
-          nextPageToken: result.nextPageToken,
-        },
-      });
-    }
+    )
   );
 
   server.tool(
@@ -391,142 +629,166 @@ const createServer = (): McpServer => {
         .optional()
         .describe("Override the BCC recipients for the reply."),
     },
-    async (
-      { messageId, body, contentType = "text/plain", to, cc, bcc },
-      { authInfo }
-    ) => {
-      const accessToken = authInfo?.token;
-      if (!accessToken) {
-        return makeMCPToolTextError("Authentication required");
-      }
-
-      // Fetch the original message
-      const messageResponse = await fetchFromGmail(
-        `/gmail/v1/users/me/messages/${messageId}?format=full`,
-        accessToken,
-        { method: "GET" }
-      );
-
-      if (!messageResponse.ok) {
-        const errorText = await getErrorText(messageResponse);
-        if (messageResponse.status === 404) {
-          return makeMCPToolTextError(`Message not found: ${messageId}`);
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async (
+        { messageId, body, contentType = "text/plain" as const, to, cc, bcc },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
         }
-        return makeMCPToolTextError(
-          `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
+
+        // Fetch the original message
+        const messageResponse = await fetchFromGmail(
+          `/gmail/v1/users/me/messages/${messageId}?format=full`,
+          accessToken,
+          { method: "GET" }
         );
-      }
 
-      const originalMessage: GmailMessage = await messageResponse.json();
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const headers = originalMessage.payload?.headers || [];
+        if (!messageResponse.ok) {
+          const errorText = await getErrorText(messageResponse);
+          if (messageResponse.status === 404) {
+            return new Err(
+              new MCPError(`Message not found: ${messageId}`, {
+                tracked: false,
+              })
+            );
+          }
+          return new Err(
+            new MCPError(
+              `Failed to get original message: ${messageResponse.status} ${messageResponse.statusText} - ${errorText}`
+            )
+          );
+        }
 
-      // Extract header values
-      const originalFrom = getHeaderValue(headers, "From");
-      const originalTo = getHeaderValue(headers, "To");
-      const originalCc = getHeaderValue(headers, "Cc");
-      const originalBcc = getHeaderValue(headers, "Bcc");
-      const originalSubject = getHeaderValue(headers, "Subject");
-      const originalMessageId = getHeaderValue(headers, "Message-ID");
-      const originalReferences = getHeaderValue(headers, "References");
-      const originalDate = getHeaderValue(headers, "Date");
+        const originalMessage: GmailMessage = await messageResponse.json();
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const headers = originalMessage.payload?.headers || [];
 
-      // Determine recipients
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-      const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
-      const replyCc = cc?.length ? cc.join(", ") : originalCc;
-      const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
+        // Extract header values
+        const originalFrom = getHeaderValue(headers, "From");
+        const originalTo = getHeaderValue(headers, "To");
+        const originalCc = getHeaderValue(headers, "Cc");
+        const originalBcc = getHeaderValue(headers, "Bcc");
+        const originalSubject = getHeaderValue(headers, "Subject");
+        const originalMessageId = getHeaderValue(headers, "Message-ID");
+        const originalReferences = getHeaderValue(headers, "References");
+        const originalDate = getHeaderValue(headers, "Date");
 
-      if (!replyTo?.trim()) {
-        return makeMCPToolTextError(
-          "Cannot determine reply-to address from original message"
+        // Determine recipients
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+        const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
+        const replyCc = cc?.length ? cc.join(", ") : originalCc;
+        const replyBcc = bcc?.length ? bcc.join(", ") : originalBcc;
+
+        if (!replyTo?.trim()) {
+          return new Err(
+            new MCPError(
+              "Cannot determine reply-to address from original message"
+            )
+          );
+        }
+
+        // Create subject and headers
+        const replySubject = originalSubject?.startsWith("Re:")
+          ? originalSubject
+          : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+            `Re: ${originalSubject || "No Subject"}`;
+        const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
+        const threadingHeaders = createThreadingHeaders(
+          originalMessageId,
+          originalReferences
         );
-      }
 
-      // Create subject and headers
-      const replySubject = originalSubject?.startsWith("Re:")
-        ? originalSubject
-        : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          `Re: ${originalSubject || "No Subject"}`;
-      const encodedSubject = `=?UTF-8?B?${Buffer.from(replySubject, "utf-8").toString("base64")}?=`;
-      const threadingHeaders = createThreadingHeaders(
-        originalMessageId,
-        originalReferences
-      );
+        // Build reply body
+        const originalBody = decodeMessageBody(originalMessage.payload);
+        const fullBody = buildReplyBody(
+          body,
+          contentType,
+          originalBody,
+          originalDate,
+          originalFrom
+        );
 
-      // Build reply body
-      const originalBody = decodeMessageBody(originalMessage.payload);
-      const fullBody = buildReplyBody(
-        body,
-        contentType,
-        originalBody,
-        originalDate,
-        originalFrom
-      );
+        // Construct the reply message
+        const messageLines = [
+          `To: ${replyTo}`,
+          replyCc ? `Cc: ${replyCc}` : null,
+          replyBcc ? `Bcc: ${replyBcc}` : null,
+          `Subject: ${encodedSubject}`,
+          "Content-Type: text/html; charset=UTF-8",
+          "MIME-Version: 1.0",
+          ...threadingHeaders,
+          "",
+          fullBody,
+        ].filter((line): line is string => line !== null);
 
-      // Construct the reply message
-      const messageLines = [
-        `To: ${replyTo}`,
-        replyCc ? `Cc: ${replyCc}` : null,
-        replyBcc ? `Bcc: ${replyBcc}` : null,
-        `Subject: ${encodedSubject}`,
-        "Content-Type: text/html; charset=UTF-8",
-        "MIME-Version: 1.0",
-        ...threadingHeaders,
-        "",
-        fullBody,
-      ].filter((line): line is string => line !== null);
+        const message = messageLines.join("\r\n");
 
-      const message = messageLines.join("\r\n");
+        // Encode the message in base64 as required by the Gmail API
+        const encodedMessage = Buffer.from(message)
+          .toString("base64")
+          .replace(/\+/g, "-")
+          .replace(/\//g, "_")
+          .replace(/=+$/, "");
 
-      // Encode the message in base64 as required by the Gmail API
-      const encodedMessage = Buffer.from(message)
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-
-      const response = await fetchFromGmail(
-        "/gmail/v1/users/me/drafts",
-        accessToken,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            message: {
-              raw: encodedMessage,
-              threadId: originalMessage.threadId,
+        const response = await fetchFromGmail(
+          "/gmail/v1/users/me/drafts",
+          accessToken,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await getErrorText(response);
-        return makeMCPToolTextError(
-          `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+            body: JSON.stringify({
+              message: {
+                raw: encodedMessage,
+                threadId: originalMessage.threadId,
+              },
+            }),
+          }
         );
+
+        if (!response.ok) {
+          const errorText = await getErrorText(response);
+          return new Err(
+            new MCPError(
+              `Failed to create reply draft: ${response.status} ${response.statusText} - ${errorText}`
+            )
+          );
+        }
+
+        const result = await response.json();
+
+        return new Ok([
+          { type: "text" as const, text: "Reply draft created successfully" },
+          {
+            type: "text" as const,
+            text: JSON.stringify(
+              {
+                draftId: result.id,
+                messageId: result.message.id,
+                originalMessageId: messageId,
+                replyTo,
+                subject: replySubject,
+              },
+              null,
+              2
+            ),
+          },
+        ]);
       }
-
-      const result = await response.json();
-
-      return makeMCPToolJSONSuccess({
-        message: "Reply draft created successfully",
-        result: {
-          draftId: result.id,
-          messageId: result.message.id,
-          originalMessageId: messageId,
-          replyTo,
-          subject: replySubject,
-        },
-      });
-    }
+    )
   );
 
   return server;
-};
+}
 
 const decodeMessageBody = (
   payload: GmailMessagePayload | undefined
@@ -552,12 +814,65 @@ const decodeMessageBody = (
   return "";
 };
 
-const escapeHtml = (text: string): string =>
-  text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+const extractAttachments = (
+  payload: GmailMessagePayload | undefined
+): AttachmentMetadata[] => {
+  if (!payload) {
+    return [];
+  }
+
+  const attachments: AttachmentMetadata[] = [];
+
+  const traverse = (part: GmailMessagePart): void => {
+    if (part.filename && part.filename.length > 0) {
+      const hasRealAttachmentId = Boolean(part.body?.attachmentId);
+      attachments.push({
+        // Use the real attachmentId if available, otherwise use partId
+        attachmentId: part.body?.attachmentId ?? part.partId ?? "",
+        partId: part.partId ?? "",
+        filename: part.filename,
+        mimeType: part.mimeType ?? "application/octet-stream",
+        size: part.body?.size ?? 0,
+        hasRealAttachmentId,
+      });
+    }
+    if (part.parts) {
+      for (const nested of part.parts) {
+        traverse(nested);
+      }
+    }
+  };
+
+  traverse(payload);
+  return attachments;
+};
+
+const findAttachmentData = (
+  payload: GmailMessagePayload | undefined,
+  partId: string
+): string | null => {
+  if (!payload) {
+    return null;
+  }
+
+  const traverse = (part: GmailMessagePart): string | null => {
+    // Match by partId to find inline attachment data
+    if (part.partId === partId && part.body?.data) {
+      return part.body.data;
+    }
+    if (part.parts) {
+      for (const nested of part.parts) {
+        const found = traverse(nested);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
+  };
+
+  return traverse(payload);
+};
 
 const createQuoteSection = (
   originalBody: string,
@@ -570,11 +885,11 @@ const createQuoteSection = (
 
   const separator =
     originalDate && originalFrom
-      ? `On ${escapeHtml(originalDate)}, ${escapeHtml(originalFrom)} wrote:`
+      ? `On ${escape(originalDate)}, ${escape(originalFrom)} wrote:`
       : // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        `${escapeHtml(originalFrom || "Original sender")} wrote:`;
+        `${escape(originalFrom || "Original sender")} wrote:`;
 
-  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escapeHtml(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
+  const quotedOriginal = `<blockquote class="gmail_quote" style="margin:0 0 0 .8ex;border-left:1px #ccc solid;padding-left:1ex">${escape(originalBody).replace(/\n/g, "<br>")}</blockquote>`;
 
   return `<br><br><div class="gmail_quote">${separator}<br>${quotedOriginal}</div>`;
 };
@@ -597,7 +912,7 @@ const buildReplyBody = (
     return `<div dir="ltr">${userBody.trim()}${quoteSection}</div>`;
   } else {
     // Plain text content - convert to HTML with escaping
-    const escapedBody = escapeHtml(userBody.trim()).replace(/\n/g, "<br>");
+    const escapedBody = escape(userBody.trim()).replace(/\n/g, "<br>");
     return `<div dir="ltr"><div>${escapedBody}</div>${quoteSection}</div>`;
   }
 };
@@ -632,6 +947,7 @@ const fetchFromGmail = async (
   accessToken: string,
   options?: RequestInit
 ): Promise<Response> => {
+  // eslint-disable-next-line no-restricted-globals
   return fetch(`https://gmail.googleapis.com${endpoint}`, {
     ...options,
     headers: {

@@ -1,12 +1,15 @@
 import type { CreationOptional, ForeignKey, NonAttribute } from "sequelize";
 import { DataTypes } from "sequelize";
 
-import type { AgentConfiguration } from "@app/lib/models/assistant/agent";
+import type { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import type { LabsTranscriptsProviderType } from "@app/types";
+import type {
+  LabsTranscriptsConfigurationStatus,
+  LabsTranscriptsProviderType,
+} from "@app/types";
 
 export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsTranscriptsConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -14,8 +17,10 @@ export class LabsTranscriptsConfigurationModel extends WorkspaceAwareModel<LabsT
 
   declare connectionId: string | null;
   declare provider: LabsTranscriptsProviderType;
-  declare agentConfigurationId: ForeignKey<AgentConfiguration["sId"]> | null;
-  declare isActive: boolean;
+  declare agentConfigurationId: ForeignKey<
+    AgentConfigurationModel["sId"]
+  > | null;
+  declare status: LabsTranscriptsConfigurationStatus;
 
   declare isDefaultWorkspaceConfiguration: boolean; // For default provider
 
@@ -49,10 +54,10 @@ LabsTranscriptsConfigurationModel.init(
       type: DataTypes.STRING,
       allowNull: true,
     },
-    isActive: {
-      type: DataTypes.BOOLEAN,
+    status: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: false,
+      defaultValue: "disabled",
     },
     isDefaultWorkspaceConfiguration: {
       type: DataTypes.BOOLEAN,

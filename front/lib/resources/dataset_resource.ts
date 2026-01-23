@@ -8,33 +8,36 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import type { AppResource } from "@app/lib/resources/app_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { Dataset } from "@app/lib/resources/storage/models/apps";
+import { DatasetModel } from "@app/lib/resources/storage/models/apps";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { DatasetType, Result } from "@app/types";
 import { Ok } from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface, @typescript-eslint/no-unsafe-declaration-merging
-export interface DatasetResource extends ReadonlyAttributesType<Dataset> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export class DatasetResource extends BaseResource<Dataset> {
-  static model: ModelStatic<Dataset> = Dataset;
+export interface DatasetResource extends ReadonlyAttributesType<DatasetModel> {}
+// eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
+export class DatasetResource extends BaseResource<DatasetModel> {
+  static model: ModelStatic<DatasetModel> = DatasetModel;
 
-  constructor(model: ModelStatic<Dataset>, blob: Attributes<Dataset>) {
-    super(Dataset, blob);
+  constructor(
+    model: ModelStatic<DatasetModel>,
+    blob: Attributes<DatasetModel>
+  ) {
+    super(DatasetModel, blob);
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<Dataset>, "appId">,
+    blob: Omit<CreationAttributes<DatasetModel>, "appId">,
     app: AppResource
   ) {
-    const dataset = await Dataset.create({
+    const dataset = await DatasetModel.create({
       ...blob,
       appId: app.id,
     });
 
-    return new this(Dataset, dataset.get());
+    return new this(DatasetModel, dataset.get());
   }
 
   // Deletion.
@@ -43,7 +46,7 @@ export class DatasetResource extends BaseResource<Dataset> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await Dataset.destroy({
+    await DatasetModel.destroy({
       where: {
         id: this.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -58,7 +61,7 @@ export class DatasetResource extends BaseResource<Dataset> {
     app: AppResource,
     t?: Transaction
   ): Promise<Result<undefined, Error>> {
-    await Dataset.destroy({
+    await DatasetModel.destroy({
       where: {
         appId: app.id,
         workspaceId: auth.getNonNullableWorkspace().id,
@@ -69,14 +72,14 @@ export class DatasetResource extends BaseResource<Dataset> {
   }
 
   static async listForApp(auth: Authenticator, app: AppResource) {
-    const datasets = await Dataset.findAll({
+    const datasets = await DatasetModel.findAll({
       where: {
         appId: app.id,
         workspaceId: auth.getNonNullableWorkspace().id,
       },
     });
 
-    return datasets.map((dataset) => new this(Dataset, dataset.get()));
+    return datasets.map((dataset) => new this(DatasetModel, dataset.get()));
   }
 
   // Serialization.

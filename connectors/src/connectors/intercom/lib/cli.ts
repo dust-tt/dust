@@ -4,9 +4,12 @@ import { getIntercomAccessToken } from "@connectors/connectors/intercom/lib/inte
 import {
   fetchIntercomArticles,
   fetchIntercomConversation,
+  fetchIntercomConversations,
   fetchIntercomConversationsForDay,
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
+import type { IntercomConversationType } from "@connectors/connectors/intercom/lib/types";
+import { launchIntercomFullSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
 import {
   IntercomArticleModel,
   IntercomConversationModel,
@@ -23,7 +26,10 @@ import type {
   IntercomCommandType,
   IntercomFetchArticlesResponseType,
   IntercomFetchConversationResponseType,
+  IntercomForceResyncAllConversationsResponseType,
   IntercomForceResyncArticlesResponseType,
+  IntercomGetConversationsSlidingWindowResponseType,
+  IntercomSearchConversationsResponseType,
 } from "@connectors/types";
 
 type IntercomResponse =
@@ -32,7 +38,10 @@ type IntercomResponse =
   | IntercomCheckTeamsResponseType
   | IntercomCheckMissingConversationsResponseType
   | IntercomForceResyncArticlesResponseType
-  | IntercomFetchArticlesResponseType;
+  | IntercomForceResyncAllConversationsResponseType
+  | IntercomFetchArticlesResponseType
+  | IntercomGetConversationsSlidingWindowResponseType
+  | IntercomSearchConversationsResponseType;
 
 export const intercom = async ({
   command,
@@ -65,6 +74,38 @@ export const intercom = async ({
         affectedCount: updated[0],
       };
     }
+
+    case "force-resync-all-conversations": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const workspace = await IntercomWorkspaceModel.findOne({
+        where: { connectorId: connector.id },
+      });
+      if (!workspace) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+
+      const cursor = args.cursor ?? null;
+
+      logger.info({ cursor }, "[Admin] Forcing resync of all conversations");
+
+      await workspace.update({ syncAllConversations: "scheduled_activate" });
+
+      const result = await launchIntercomFullSyncWorkflow({
+        connectorId: connector.id,
+        hasUpdatedSelectAllConversations: true,
+        cursor,
+      });
+
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      return { workflowId: result.value };
+    }
+
     case "check-conversation": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -100,6 +141,7 @@ export const intercom = async ({
         conversationTeamIdOnDB: conversationOnDB?.teamId,
       };
     }
+
     case "fetch-conversation": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -121,6 +163,7 @@ export const intercom = async ({
         conversation: conversationOnIntercom,
       };
     }
+
     case "fetch-articles": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -209,6 +252,7 @@ export const intercom = async ({
         })),
       };
     }
+
     case "check-teams": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);
@@ -230,6 +274,81 @@ export const intercom = async ({
         })),
       };
     }
+
+    case "search-conversations": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const accessToken = await getIntercomAccessToken(connector.connectionId);
+
+      const workspace = await IntercomWorkspaceModel.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+
+      if (!workspace) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+
+      const MAX_CONVERSATIONS_COUNT = 100;
+      const conversations: IntercomConversationType[] = [];
+      let cursor: string | null = null;
+      let hasMore = true;
+      let totalCount = 0;
+
+      while (hasMore && totalCount < MAX_CONVERSATIONS_COUNT) {
+        const response = await fetchIntercomConversations({
+          accessToken,
+          teamId: args.teamId?.toString(),
+          slidingWindow: workspace.conversationsSlidingWindow,
+          cursor,
+          pageSize: 50,
+          closedAfter: args.closedAfter,
+          state: args.state,
+        });
+
+        conversations.push(...response.conversations);
+        totalCount += response.conversations.length;
+
+        if (response.pages.next) {
+          cursor = response.pages.next.starting_after;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      return {
+        conversations: conversations.map((conv) => ({
+          id: conv.id.toString(),
+          team_assignee_id: conv.team_assignee_id?.toString() ?? null,
+          open: conv.open,
+          state: conv.state,
+          created_at: conv.created_at,
+          last_closed_at: conv.statistics?.last_close_at ?? null,
+        })),
+        totalCount,
+      };
+    }
+
+    case "get-conversations-sliding-window": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+      const w = await IntercomWorkspaceModel.findOne({
+        where: {
+          connectorId: connector.id,
+        },
+      });
+      if (!w) {
+        throw new Error(`No workspace found for connector ${connector.id}`);
+      }
+      return {
+        conversationsSlidingWindow: w.conversationsSlidingWindow,
+      };
+    }
+
     case "set-conversations-sliding-window": {
       if (!connector) {
         throw new Error(`Connector ${connectorId} not found`);

@@ -3,7 +3,7 @@ import {
   getRepositoryInternalId,
   isGithubCodeDirId,
 } from "@connectors/connectors/github/lib/utils";
-import { GithubCodeDirectory } from "@connectors/lib/models/github";
+import { GithubCodeDirectoryModel } from "@connectors/lib/models/github";
 import type { ModelId } from "@connectors/types";
 
 export async function getGithubCodeDirectoryParentIds(
@@ -11,7 +11,7 @@ export async function getGithubCodeDirectoryParentIds(
   internalId: string,
   repoId: number
 ): Promise<string[]> {
-  const directory = await GithubCodeDirectory.findOne({
+  const directory = await GithubCodeDirectoryModel.findOne({
     where: {
       connectorId,
       internalId,

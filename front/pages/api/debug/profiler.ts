@@ -11,15 +11,15 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-const CPU_PROFILE_DURATION_MS = 30000;
-const HEAP_PROFILE_DURATION_MS = 30000;
+const CPU_PROFILE_DURATION_MS = 30_000;
+const HEAP_PROFILE_DURATION_MS = 30_000;
 
 export interface GetProfilerResponse {
   cpu: string;
   heap: string;
 }
 
-async function saveProfile({
+export async function saveProfile({
   extension,
   filename,
   profile,

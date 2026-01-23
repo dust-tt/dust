@@ -3,12 +3,9 @@ import {
   BracesIcon,
   Button,
   ExternalLinkIcon,
-  HistoryIcon,
-  Icon,
   IconButton,
   ListCheckIcon,
   SearchInput,
-  Tooltip,
   Tree,
 } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
@@ -16,7 +13,7 @@ import React, { useCallback, useContext, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getVisualForContentNode } from "@app/lib/content_nodes";
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { classNames } from "@app/lib/utils";
 import type { APIError, ContentNode } from "@app/types";
 
 const unselectedChildren = (
@@ -115,6 +112,7 @@ interface ContentNodeTreeChildrenProps {
   parentId: string | null;
   parentIds: string[];
   parentIsSelected?: boolean;
+  additionalActions?: (contentNode: ContentNode) => ReactNode;
 }
 
 function ContentNodeTreeChildren({
@@ -124,6 +122,7 @@ function ContentNodeTreeChildren({
   parentId,
   parentIds,
   parentIsSelected,
+  additionalActions = undefined,
 }: ContentNodeTreeChildrenProps) {
   const { onDocumentViewClick, selectedNodes, setSelectedNodes, showExpand } =
     useContentNodeTreeContext();
@@ -149,9 +148,9 @@ function ContentNodeTreeChildren({
     isLoadingMore,
   } = useResourcesHook(parentId);
 
-  const filteredNodes = resources.filter(
-    (n) => filter.trim().length === 0 || n.title.includes(filter)
-  );
+  const filteredNodes = resources
+    .filter((n) => filter.trim().length === 0 || n.title.includes(filter))
+    .sort((a, b) => a.title.localeCompare(b.title));
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -205,7 +204,7 @@ function ContentNodeTreeChildren({
         filteredNodes.length === 0 &&
         (emptyComponent ?? <Tree.Empty label="No documents" />)}
 
-      {filteredNodes.map((n, i) => {
+      {filteredNodes.map((n) => {
         const checkedState = getCheckedState(n);
         return (
           <Tree.Item
@@ -256,6 +255,7 @@ function ContentNodeTreeChildren({
             }
             actions={
               <div className="mr-8 flex grow flex-row justify-between gap-2">
+                {additionalActions && additionalActions(n)}
                 {n.sourceUrl && (
                   <Button
                     href={n.sourceUrl}
@@ -264,22 +264,6 @@ function ContentNodeTreeChildren({
                     variant="outline"
                   />
                 )}
-                {n.lastUpdatedAt ? (
-                  <Tooltip
-                    label={
-                      <span>{new Date(n.lastUpdatedAt).toLocaleString()}</span>
-                    }
-                    side={i === 0 ? "bottom" : "top"}
-                    trigger={
-                      <div className="flex flex-row gap-1 text-gray-600">
-                        <Icon visual={HistoryIcon} size="xs" />
-                        <span className="text-xs">
-                          {timeAgoFrom(n.lastUpdatedAt)} ago
-                        </span>
-                      </div>
-                    }
-                  />
-                ) : null}
                 {onDocumentViewClick && (
                   <IconButton
                     size="xs"
@@ -307,6 +291,7 @@ function ContentNodeTreeChildren({
                   parentId={n.internalId}
                   parentIds={[n.internalId, ...parentIds]}
                   parentIsSelected={getCheckedState(n) === true}
+                  additionalActions={additionalActions}
                 />
               );
             }}
@@ -367,7 +352,7 @@ function ContentNodeTreeChildren({
               {`Showing ${filteredNodes.length} of ${totalResourceCount ?? filteredNodes.length} items`}
             </div>
             <Button
-              variant="secondary"
+              variant="outline"
               size="sm"
               label={isLoadingMore ? "Loading..." : "Load More"}
               disabled={isResourcesLoading || isLoadingMore}
@@ -428,6 +413,10 @@ interface ContentNodeTreeProps {
    * The ids of the nodes to be expanded by default.
    */
   defaultExpandedIds?: string[];
+  /**
+   * Additional actions to display on for each node.
+   */
+  additionalActionsForContentNode?: (contentNode: ContentNode) => ReactNode;
 }
 
 export function ContentNodeTree({
@@ -441,6 +430,7 @@ export function ContentNodeTree({
   useResourcesHook,
   emptyComponent,
   defaultExpandedIds,
+  additionalActionsForContentNode,
 }: ContentNodeTreeProps) {
   return (
     <ContentNodeTreeContextProvider
@@ -461,6 +451,7 @@ export function ContentNodeTree({
         parentId={null}
         parentIds={[]}
         parentIsSelected={parentIsSelected ?? false}
+        additionalActions={additionalActionsForContentNode}
       />
     </ContentNodeTreeContextProvider>
   );

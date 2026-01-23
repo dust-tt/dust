@@ -6,17 +6,27 @@ import { UserIcon } from "@sparkle/icons/app";
 import { getEmojiAndBackgroundFromUrl } from "@sparkle/lib/avatar/utils";
 import { cn } from "@sparkle/lib/utils";
 
-const AVATAR_SIZES = ["xs", "sm", "md", "lg", "xl", "2xl", "auto"] as const;
-type AvatarSizeType = (typeof AVATAR_SIZES)[number];
+export const AVATAR_SIZES = [
+  "xxs",
+  "xs",
+  "sm",
+  "md",
+  "lg",
+  "xl",
+  "2xl",
+  "auto",
+] as const;
+export type AvatarSizeType = (typeof AVATAR_SIZES)[number];
 
-const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
-type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
+export const AVATAR_VARIANTS = ["default", "clickable", "disabled"] as const;
+export type AvatarVariantType = (typeof AVATAR_VARIANTS)[number];
 
 const avatarVariants = cva(
   "s-flex s-flex-shrink-0 s-items-center s-justify-center s-overflow-hidden",
   {
     variants: {
       size: {
+        xxs: "s-h-5 s-w-5",
         xs: "s-h-6 s-w-6",
         sm: "s-h-8 s-w-8",
         md: "s-h-10 s-w-10",
@@ -32,45 +42,50 @@ const avatarVariants = cva(
         disabled: "s-opacity-50",
       },
       rounded: {
-        true: "s-rounded-full",
+        true: "s-rounded-full s-ring-[1px] s-ring-border-dark/50 dark:s-ring-border-dark-night/50",
         false: "",
       },
     },
     compoundVariants: [
       {
         rounded: false,
+        size: "xxs",
+        className: "s-rounded",
+      },
+      {
+        rounded: false,
         size: "xs",
-        className: "s-rounded-lg",
+        className: "s-rounded-md",
       },
       {
         rounded: false,
         size: "sm",
-        className: "s-rounded-xl",
+        className: "s-rounded-lg",
       },
       {
         rounded: false,
         size: "md",
-        className: "s-rounded-2xl",
+        className: "s-rounded-xl",
       },
       {
         rounded: false,
         size: "lg",
-        className: "s-rounded-3xl",
+        className: "s-rounded-2xl",
       },
       {
         rounded: false,
         size: "xl",
-        className: "s-rounded-[28px]",
+        className: "s-rounded-[22px]",
       },
       {
         rounded: false,
         size: "2xl",
-        className: "s-rounded-[38px]",
+        className: "s-rounded-[32px]",
       },
       {
         rounded: false,
         size: "auto",
-        className: "s-rounded-[30%]",
+        className: "s-rounded-[24%]",
       },
     ],
     defaultVariants: {
@@ -84,6 +99,7 @@ const avatarVariants = cva(
 const textVariants = cva("s-select-none s-font-semibold", {
   variants: {
     size: {
+      xxs: "s-text-[10px]",
       xs: "s-text-xs",
       sm: "s-text-sm",
       md: "s-text-base",
@@ -173,13 +189,15 @@ export function Avatar({
   icon,
   iconColor = "s-text-foreground",
 }: AvatarProps) {
+  const normalizedVisual = visual === "" ? null : visual;
   const emojiInfos =
-    typeof visual === "string" && getEmojiAndBackgroundFromUrl(visual);
+    typeof normalizedVisual === "string" &&
+    getEmojiAndBackgroundFromUrl(normalizedVisual);
   const backgroundColorToUse = emojiInfos
     ? emojiInfos.backgroundColor
     : backgroundColor;
   const emojiToUse = emojiInfos ? emojiInfos.skinEmoji : emoji;
-  const visualToUse = emojiInfos ? null : visual;
+  const visualToUse = emojiInfos ? null : normalizedVisual;
 
   const variant: AvatarVariantType = disabled
     ? "disabled"
@@ -244,9 +262,10 @@ interface AvatarStackProps {
   avatars: AvatarProps[];
   nbVisibleItems?: number;
   size?: AvatarStackSizeType;
-  isRounded?: boolean;
   hasMagnifier?: boolean;
   tooltipTriggerAsChild?: boolean;
+  orientation?: "horizontal" | "vertical";
+  onTop?: "first" | "last";
 }
 
 const sizeClassesPx: Record<AvatarStackSizeType, number> = {
@@ -259,20 +278,29 @@ Avatar.Stack = function ({
   avatars,
   nbVisibleItems,
   size = "sm",
-  isRounded = false,
   hasMagnifier = true,
   tooltipTriggerAsChild = false,
+  orientation = "horizontal",
+  onTop = "last",
 }: AvatarStackProps) {
   const [isHovered, setIsHovered] = useState(false);
 
   // Get visible avatars and calculate remaining count
   const shouldShowAll = !nbVisibleItems || avatars.length <= nbVisibleItems;
-  const visibleAvatars = shouldShowAll
-    ? avatars
-    : avatars.slice(0, nbVisibleItems - 1);
-  const remainingCount = shouldShowAll
-    ? 0
-    : avatars.length - (nbVisibleItems - 1);
+  const isFirstOnTop = onTop === "first";
+
+  const maxVisible = shouldShowAll
+    ? avatars.length
+    : isFirstOnTop
+      ? nbVisibleItems
+      : nbVisibleItems - 1;
+
+  const visibleAvatars = isFirstOnTop
+    ? avatars.slice(0, maxVisible).reverse()
+    : avatars.slice(0, maxVisible);
+
+  const remainingCount =
+    shouldShowAll || isFirstOnTop ? 0 : avatars.length - maxVisible;
 
   // Get all names for tooltip
   const avatarNames = avatars
@@ -284,6 +312,8 @@ Avatar.Stack = function ({
     marginLeft: 0,
     widthHovered: sizeClassesPx[size] * 0.6,
     width: sizeClassesPx[size] * 0.25,
+    heightHovered: sizeClassesPx[size] * 0.6,
+    height: sizeClassesPx[size] * 0.25,
   };
 
   const collapsedWidth =
@@ -296,7 +326,20 @@ Avatar.Stack = function ({
       (visibleAvatars.length + Number(Boolean(remainingCount))) +
     (sizeClassesPx[size] - sizeSetting.widthHovered);
 
-  const transitionSettings = "width 200ms ease-out";
+  const collapsedHeight =
+    sizeSetting.height *
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
+    (sizeClassesPx[size] - sizeSetting.height);
+
+  const openedHeight =
+    sizeSetting.heightHovered *
+      (visibleAvatars.length + Number(Boolean(remainingCount))) +
+    (sizeClassesPx[size] - sizeSetting.heightHovered);
+
+  const transitionSettings =
+    orientation === "vertical"
+      ? "height 200ms ease-out"
+      : "width 200ms ease-out";
 
   return (
     <Tooltip
@@ -305,24 +348,45 @@ Avatar.Stack = function ({
       trigger={
         <>
           <div
-            className="s-flex s-flex-row"
+            className={cn(
+              "s-flex",
+              onTop === "first"
+                ? orientation === "vertical"
+                  ? "s-flex-col-reverse s-justify-end"
+                  : "s-flex-row-reverse s-justify-end"
+                : orientation === "vertical"
+                  ? "s-flex-col"
+                  : "s-flex-row"
+            )}
             onMouseEnter={() => visibleAvatars.length > 1 && setIsHovered(true)}
             onMouseLeave={() =>
               visibleAvatars.length > 1 && setIsHovered(false)
             }
             style={{
-              width: `${isHovered ? openedWidth : collapsedWidth}px`,
+              [orientation === "vertical" ? "height" : "width"]: `${
+                isHovered
+                  ? orientation === "vertical"
+                    ? openedHeight
+                    : openedWidth
+                  : orientation === "vertical"
+                    ? collapsedHeight
+                    : collapsedWidth
+              }px`,
               transition: transitionSettings,
             }}
           >
             {visibleAvatars.map((avatarProps, i) => (
               <div
                 key={i}
-                className="s-cursor-pointer s-drop-shadow-md"
+                className="s-cursor-pointer"
                 style={{
-                  width: isHovered
-                    ? sizeSetting.widthHovered
-                    : sizeSetting.width,
+                  [orientation === "vertical" ? "height" : "width"]: isHovered
+                    ? orientation === "vertical"
+                      ? sizeSetting.heightHovered
+                      : sizeSetting.widthHovered
+                    : orientation === "vertical"
+                      ? sizeSetting.height
+                      : sizeSetting.width,
                   transition: transitionSettings,
                 }}
               >
@@ -330,28 +394,30 @@ Avatar.Stack = function ({
                   <div
                     style={{
                       transform: `scale(${
-                        1 - (visibleAvatars.length - i) * 0.06
+                        onTop === "first"
+                          ? 1 - (visibleAvatars.length - 1 - i) * 0.06
+                          : 1 - (visibleAvatars.length - i) * 0.06
                       })`,
                     }}
                   >
-                    <Avatar
-                      {...avatarProps}
-                      size={size}
-                      isRounded={isRounded}
-                    />
+                    <Avatar {...avatarProps} size={size} />
                   </div>
                 ) : (
-                  <Avatar {...avatarProps} size={size} isRounded={isRounded} />
+                  <Avatar {...avatarProps} size={size} />
                 )}
               </div>
             ))}
             {remainingCount > 0 && (
               <div
-                className="s-cursor-pointer s-drop-shadow-md"
+                className="s-cursor-pointer"
                 style={{
-                  width: isHovered
-                    ? sizeSetting.widthHovered
-                    : sizeSetting.width,
+                  [orientation === "vertical" ? "height" : "width"]: isHovered
+                    ? orientation === "vertical"
+                      ? sizeSetting.heightHovered
+                      : sizeSetting.widthHovered
+                    : orientation === "vertical"
+                      ? sizeSetting.height
+                      : sizeSetting.width,
                   transition: transitionSettings,
                 }}
               >
@@ -361,7 +427,6 @@ Avatar.Stack = function ({
                     "+" +
                     String(Number(remainingCount) < 10 ? remainingCount : "")
                   }
-                  isRounded={isRounded}
                   clickable
                 />
               </div>

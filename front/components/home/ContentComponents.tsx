@@ -58,6 +58,7 @@ interface HContentProps {
   className?: string;
   mono?: boolean;
   style?: React.CSSProperties;
+  id?: string;
 }
 
 type TagName = "h1" | "h2" | "h3" | "h4" | "h5";
@@ -68,6 +69,7 @@ const createHeadingComponent = (Tag: TagName) => {
     className = "",
     mono = false,
     style,
+    id,
   }) => {
     const baseClasses = mono
       ? classNames(
@@ -76,7 +78,7 @@ const createHeadingComponent = (Tag: TagName) => {
         )
       : classNames(hClasses[Tag], "font-sans");
     return (
-      <Tag className={classNames(className, baseClasses)} style={style}>
+      <Tag id={id} className={classNames(className, baseClasses)} style={style}>
         {children}
       </Tag>
     );
@@ -90,10 +92,6 @@ export const H2 = createHeadingComponent("h2");
 export const H3 = createHeadingComponent("h3");
 export const H4 = createHeadingComponent("h4");
 export const H5 = createHeadingComponent("h5");
-
-export const Span = ({ children, className = "" }: ContentProps) => (
-  <span className={classNames(className, "font-sans")}>{children}</span>
-);
 
 const pClasses = {
   xxs: "copy-xs",

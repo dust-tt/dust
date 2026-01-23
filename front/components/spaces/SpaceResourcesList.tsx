@@ -12,7 +12,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import React, {
   useCallback,
@@ -22,7 +21,7 @@ import React, {
   useState,
 } from "react";
 
-import { AssistantDetails } from "@app/components/assistant/details/AssistantDetails";
+import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { ConnectorPermissionsModal } from "@app/components/data_source/ConnectorPermissionsModal";
 import ConnectorSyncingChip from "@app/components/data_source/DataSourceSyncChip";
 import { DeleteStaticDataSourceDialog } from "@app/components/data_source/DeleteStaticDataSourceDialog";
@@ -38,10 +37,12 @@ import { ViewFolderAPIModal } from "@app/components/ViewFolderAPIModal";
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import {
+  CONNECTOR_UI_CONFIGURATIONS,
   getConnectorProviderLogoWithFallback,
   isConnectorPermissionsEditable,
-} from "@app/lib/connector_providers";
+} from "@app/lib/connector_providers_ui";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
@@ -70,7 +71,7 @@ export interface RowData {
   workspaceId: string;
   isAdmin: boolean;
   isLoading?: boolean;
-  buttonOnClick?: (e: MouseEvent) => void;
+  buttonOnClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onClick?: () => void;
   menuItems?: MenuItem[]; // changed from moreMenuItems
 }
@@ -89,6 +90,11 @@ const hasManagedModalQuery = (
   query: ParsedUrlQuery
 ): query is ParsedUrlQuery & { modal: string } =>
   isString(query.modal) && query.modal === "managed";
+
+const hasConfigureSlackConnectionQuery = (
+  query: ParsedUrlQuery
+): query is ParsedUrlQuery & { configureConnection: "slack" } =>
+  query.configureConnection === "slack";
 
 function getTableColumns(
   setAssistantSId: (a: string | null) => void,
@@ -117,9 +123,10 @@ function getTableColumns(
     header: "Managed by",
     accessorFn: (row) =>
       isGlobalOrSystemSpace
-        ? row.dataSourceView.dataSource.editedByUser?.imageUrl ??
-          ANONYMOUS_USER_IMAGE_URL
-        : row.dataSourceView.editedByUser?.imageUrl ?? ANONYMOUS_USER_IMAGE_URL,
+        ? (row.dataSourceView.dataSource.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL)
+        : (row.dataSourceView.editedByUser?.imageUrl ??
+          ANONYMOUS_USER_IMAGE_URL),
     cell: (ctx) => {
       const { dataSourceView } = ctx.row.original;
       const editedByUser = isGlobalOrSystemSpace
@@ -169,10 +176,9 @@ function getTableColumns(
           )}
           {ds.connector && info.row.original.workspaceId && ds.name && (
             <ConnectorSyncingChip
-              initialState={ds.connector}
-              workspaceId={info.row.original.workspaceId}
-              dataSource={ds}
               activeSeats={activeSeats}
+              connector={ds.connector}
+              connectorError={ds.fetchConnectorErrorMessage}
             />
           )}
         </DataTable.CellContent>
@@ -238,6 +244,7 @@ function getTableColumns(
       actionColumn,
     ];
   }
+
   if (isManaged || isWebsite) {
     return [
       nameColumn,
@@ -291,12 +298,15 @@ export const SpaceResourcesList = ({
   const [sorting, setSorting] = useState<SortingState>([
     { id: "name", desc: false },
   ]);
+
   const [isLoadingByProvider, setIsLoadingByProvider] = useState<
     Partial<Record<ConnectorProvider, boolean>>
   >({});
   const [shouldOpenManagedModal, setShouldOpenManagedModal] = useState(false);
+  const [shouldOpenSlackEditionModal, setShouldOpenSlackEditionModal] =
+    useState(false);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";
@@ -362,10 +372,17 @@ export const SpaceResourcesList = ({
     }
 
     return spaceDataSourceViews
-      .filter(
-        (dataSourceView) =>
-          dataSourceView.dataSource.connectorProvider !== "slack_bot"
-      )
+      .filter((dataSourceView) => {
+        const connectorConfig = dataSourceView.dataSource.connectorProvider
+          ? CONNECTOR_UI_CONFIGURATIONS[
+              dataSourceView.dataSource.connectorProvider
+            ]
+          : null;
+
+        // Some connectors, such as Slack/Discord bots, are not meant to be displayed in the list.
+        // These are managed separately in the Admin workspace settings page.
+        return !connectorConfig?.isHiddenAsDataSource;
+      })
       .map((dataSourceView) => {
         const provider = dataSourceView.dataSource.connectorProvider;
 
@@ -433,6 +450,34 @@ export const SpaceResourcesList = ({
     isFolder,
     isDark,
   ]);
+
+  // Capture configureConnection=slack query param and store intent to open modal.
+  useEffect(() => {
+    if (!router.isReady || !isManagedCategory || !isSystemSpace) {
+      return;
+    }
+    const { query } = router;
+    if (!hasConfigureSlackConnectionQuery(query)) {
+      return;
+    }
+    setShouldOpenSlackEditionModal(true);
+    void removeParamFromRouter(router, "configureConnection");
+  }, [isManagedCategory, isSystemSpace, router]);
+
+  // Open Slack connector edition modal once data is loaded.
+  useEffect(() => {
+    if (!shouldOpenSlackEditionModal || !spaceDataSourceViews?.length) {
+      return;
+    }
+    const slackDataSourceView = spaceDataSourceViews.find(
+      (dsv) =>
+        dsv.dataSource.connectorProvider === "slack" && dsv.dataSource.connector
+    );
+    if (slackDataSourceView) {
+      setSelectedDataSourceView(slackDataSourceView);
+      setShowConnectorPermissionsModal(true);
+    }
+  }, [shouldOpenSlackEditionModal, spaceDataSourceViews]);
 
   // Disable the search if there are no rows.
   useEffect(() => {
@@ -564,10 +609,10 @@ export const SpaceResourcesList = ({
 
   return (
     <>
-      <AssistantDetails
+      <AgentDetails
         owner={owner}
         user={user}
-        assistantId={assistantSId}
+        agentId={assistantSId}
         onClose={() => setAssistantSId(null)}
       />
 
@@ -612,8 +657,14 @@ export const SpaceResourcesList = ({
           owner={owner}
           connector={selectedDataSourceView.dataSource.connector}
           dataSourceView={selectedDataSourceView}
+          initialModalState={
+            shouldOpenSlackEditionModal ? "edition" : "selection"
+          }
           isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
-          onClose={() => setShowConnectorPermissionsModal(false)}
+          onClose={() => {
+            setShowConnectorPermissionsModal(false);
+            setShouldOpenSlackEditionModal(false);
+          }}
           readOnly={false}
           isAdmin={isAdmin}
         />

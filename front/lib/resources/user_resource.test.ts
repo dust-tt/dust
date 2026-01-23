@@ -1,13 +1,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
+import { Authenticator } from "@app/lib/auth";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { WorkspaceType } from "@app/types";
 
 describe("UserResource", () => {
   let user: UserResource;
+  let workspace: WorkspaceType;
+  let auth: Authenticator;
 
   beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
     user = await UserFactory.basic();
+    auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   });
 
   describe("getMetadataAsArray", () => {
@@ -224,6 +232,210 @@ describe("UserResource", () => {
 
       expect(result1).toEqual(values1);
       expect(result2).toEqual(values2);
+    });
+  });
+
+  describe("basic metadata operations", () => {
+    describe("setMetadata and getMetadata", () => {
+      it("should create new metadata", async () => {
+        const key = "test-key";
+        const value = "test-value";
+
+        await user.setMetadata(key, value);
+
+        const metadata = await user.getMetadata(key);
+        expect(metadata).not.toBeNull();
+        expect(metadata!.key).toBe(key);
+        expect(metadata!.value).toBe(value);
+        expect(metadata!.userId).toBe(user.id);
+      });
+
+      it("should update existing metadata", async () => {
+        const key = "update-key";
+        const initialValue = "initial";
+        const updatedValue = "updated";
+
+        await user.setMetadata(key, initialValue);
+        await user.setMetadata(key, updatedValue);
+
+        const metadata = await user.getMetadata(key);
+        expect(metadata!.value).toBe(updatedValue);
+      });
+
+      it("should return null for non-existent key", async () => {
+        const metadata = await user.getMetadata("non-existent-key");
+        expect(metadata).toBeNull();
+      });
+    });
+
+    describe("deleteMetadata", () => {
+      it("should delete metadata by key", async () => {
+        const key = "delete-key";
+        await user.setMetadata(key, "value");
+
+        await user.deleteMetadata({ key });
+
+        const metadata = await user.getMetadata(key);
+        expect(metadata).toBeNull();
+      });
+
+      it("should not affect other keys when deleting", async () => {
+        const key1 = "key-to-delete";
+        const key2 = "key-to-keep";
+
+        await user.setMetadata(key1, "value1");
+        await user.setMetadata(key2, "value2");
+
+        await user.deleteMetadata({ key: key1 });
+
+        expect(await user.getMetadata(key1)).toBeNull();
+        expect(await user.getMetadata(key2)).not.toBeNull();
+      });
+    });
+
+    describe("deleteAllMetadata", () => {
+      it("should delete all metadata for user", async () => {
+        await user.setMetadata("key1", "value1");
+        await user.setMetadata("key2", "value2");
+        await user.setMetadata("key3", "value3");
+
+        await user.deleteAllMetadata(auth);
+
+        expect(await user.getMetadata("key1")).toBeNull();
+        expect(await user.getMetadata("key2")).toBeNull();
+        expect(await user.getMetadata("key3")).toBeNull();
+      });
+    });
+  });
+
+  describe("tool approvals", () => {
+    let workspace: WorkspaceType;
+    let auth: Authenticator;
+
+    beforeEach(async () => {
+      workspace = await WorkspaceFactory.basic();
+      await MembershipFactory.associate(workspace, user, { role: "user" });
+      auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+    });
+
+    describe("createToolApproval and hasApprovedTool", () => {
+      it("should create low-stake tool approval", async () => {
+        const mcpServerId = "server-123";
+        const toolName = "test-tool";
+
+        await user.createToolApproval(auth, { mcpServerId, toolName });
+
+        const hasApproval = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+        });
+        expect(hasApproval).toBe(true);
+      });
+
+      it("should return false for non-existent approval", async () => {
+        const hasApproval = await user.hasApprovedTool(auth, {
+          mcpServerId: "unknown-server",
+          toolName: "unknown-tool",
+        });
+        expect(hasApproval).toBe(false);
+      });
+
+      it("should create medium-stake tool approval with agentId", async () => {
+        const mcpServerId = "server-456";
+        const toolName = "agent-tool";
+        const agentId = "agent-123";
+
+        await user.createToolApproval(auth, {
+          mcpServerId,
+          toolName,
+          agentId,
+        });
+
+        const hasApproval = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+          agentId,
+        });
+        expect(hasApproval).toBe(true);
+      });
+
+      it("should differentiate approvals by agentId", async () => {
+        const mcpServerId = "server-789";
+        const toolName = "scoped-tool";
+
+        await user.createToolApproval(auth, {
+          mcpServerId,
+          toolName,
+          agentId: "agent-a",
+        });
+
+        const hasApprovalA = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+          agentId: "agent-a",
+        });
+        const hasApprovalB = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+          agentId: "agent-b",
+        });
+
+        expect(hasApprovalA).toBe(true);
+        expect(hasApprovalB).toBe(false);
+      });
+
+      it("should create approval with argsAndValues", async () => {
+        const mcpServerId = "server-args";
+        const toolName = "args-tool";
+        const argsAndValues = { param1: "value1", param2: "value2" };
+
+        await user.createToolApproval(auth, {
+          mcpServerId,
+          toolName,
+          argsAndValues,
+        });
+
+        const hasApproval = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+          argsAndValues,
+        });
+        expect(hasApproval).toBe(true);
+      });
+
+      it("should sort argsAndValues keys for consistent matching", async () => {
+        const mcpServerId = "server-sort";
+        const toolName = "sort-tool";
+
+        // Create with keys in one order
+        await user.createToolApproval(auth, {
+          mcpServerId,
+          toolName,
+          argsAndValues: { z: "1", a: "2" },
+        });
+
+        // Check with keys in different order
+        const hasApproval = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+          argsAndValues: { a: "2", z: "1" },
+        });
+        expect(hasApproval).toBe(true);
+      });
+
+      it("should not create duplicate approvals", async () => {
+        const mcpServerId = "server-dup";
+        const toolName = "dup-tool";
+
+        await user.createToolApproval(auth, { mcpServerId, toolName });
+        await user.createToolApproval(auth, { mcpServerId, toolName });
+
+        const hasApproval = await user.hasApprovedTool(auth, {
+          mcpServerId,
+          toolName,
+        });
+        expect(hasApproval).toBe(true);
+      });
     });
   });
 });

@@ -11,6 +11,7 @@ import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type {
   LightAgentConfigurationType,
   LightWorkspaceType,
+  UserType,
 } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
 
@@ -18,10 +19,12 @@ export function ViewTriggerTable({
   trigger,
   agent,
   owner,
+  editorUser,
 }: {
   trigger: TriggerType;
   agent: LightAgentConfigurationType;
   owner: LightWorkspaceType;
+  editorUser?: UserType | null;
 }) {
   return (
     <div className="flex flex-col space-y-8">
@@ -64,17 +67,16 @@ export function ViewTriggerTable({
                 </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
-                <PokeTableHead>Custom Prompt</PokeTableHead>
-                {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-                <PokeTableCell>{trigger.customPrompt || "None"}</PokeTableCell>
-              </PokeTableRow>
-              <PokeTableRow>
-                <PokeTableHead>Enabled</PokeTableHead>
-                <PokeTableCell>{trigger.enabled ? "Yes" : "No"}</PokeTableCell>
+                <PokeTableHead>Status</PokeTableHead>
+                <PokeTableCell>{trigger.status}</PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Editor</PokeTableHead>
-                <PokeTableCell>{trigger.editor}</PokeTableCell>
+                <PokeTableCell>
+                  {editorUser
+                    ? `${editorUser.fullName} (${editorUser.email})`
+                    : (trigger.editor?.toString() ?? "-")}
+                </PokeTableCell>
               </PokeTableRow>
               <PokeTableRow>
                 <PokeTableHead>Created At</PokeTableHead>

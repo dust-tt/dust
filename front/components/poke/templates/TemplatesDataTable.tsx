@@ -2,11 +2,11 @@ import {
   Button,
   Chip,
   DataTable,
+  LinkWrapper,
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
 import type { CellContext } from "@tanstack/react-table";
-import Link from "next/link";
 import React, { useState } from "react";
 
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
@@ -42,12 +42,12 @@ export function makeColumnsForTemplates() {
       cell: (info: Info) => {
         const id: string = info.row.getValue("id");
         return (
-          <Link
+          <LinkWrapper
             className="font-bold hover:underline"
             href={`/poke/templates/${id}`}
           >
             {id}
-          </Link>
+          </LinkWrapper>
         );
       },
     },
@@ -84,13 +84,12 @@ export function makeColumnsForTemplates() {
   ];
 }
 
-export function TemplatesDataTable({
-  dustRegionSyncEnabled,
-}: {
-  dustRegionSyncEnabled: boolean;
-}) {
-  const { assistantTemplates, isAssistantTemplatesLoading } =
-    usePokeAssistantTemplates();
+export function TemplatesDataTable() {
+  const {
+    assistantTemplates,
+    dustRegionSyncEnabled,
+    isAssistantTemplatesLoading,
+  } = usePokeAssistantTemplates();
   const { doPull, isPulling } = usePokePullTemplates();
   const [templateSearch, setTemplateSearch] = useState<string>("");
 
@@ -101,7 +100,7 @@ export function TemplatesDataTable({
     <div className="border-material-200 my-4 flex w-full flex-col gap-2 rounded-lg border p-4">
       <div className="flex w-full items-center justify-between gap-3">
         <h2 className="text-md flex-grow pb-4 font-bold">Templates:</h2>
-        {dustRegionSyncEnabled && (
+        {(dustRegionSyncEnabled || isDevelopment()) && (
           <Button
             variant="outline"
             size="sm"
@@ -113,16 +112,15 @@ export function TemplatesDataTable({
             label={isPulling ? "Pulling..." : "Pull templates"}
           />
         )}
-        {!dustRegionSyncEnabled ||
-          (isDevelopment() && (
-            <Button
-              aria-label="Create template"
-              variant="outline"
-              size="sm"
-              label="Create template"
-              href="/poke/templates/new"
-            />
-          ))}
+        {(!dustRegionSyncEnabled || isDevelopment()) && (
+          <Button
+            aria-label="Create template"
+            variant="outline"
+            size="sm"
+            label="Create template"
+            href="/poke/templates/new"
+          />
+        )}
       </div>
       <SearchInput
         name="search"

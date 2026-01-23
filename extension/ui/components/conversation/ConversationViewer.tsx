@@ -20,7 +20,7 @@ import type {
   UserMessageNewEvent,
   UserMessageType,
 } from "@dust-tt/client";
-import { isAgentMention } from "@dust-tt/client";
+import { isAgentMention, isAgentMessage } from "@dust-tt/client";
 import debounce from "lodash/debounce";
 import groupBy from "lodash/groupBy";
 import { useCallback, useEffect, useMemo, useRef } from "react";
@@ -90,6 +90,7 @@ export function ConversationViewer({
     return messages.findLast(
       (message) =>
         message.type === "user_message" &&
+        message.agenticMessageData?.type !== "agent_handover" &&
         message.visibility !== "deleted" &&
         message.user?.sId === user.sId
     );
@@ -204,6 +205,15 @@ export function ConversationViewer({
     [typedGroupedMessages]
   );
 
+  const userAndAgentMessages = useMemo(
+    () =>
+      messages.filter(
+        (message): message is UserMessageType | AgentMessagePublicType =>
+          message.type === "user_message" || isAgentMessage(message)
+      ),
+    [messages]
+  );
+
   return (
     <div
       className={classNames(
@@ -214,7 +224,7 @@ export function ConversationViewer({
       {conversation &&
         dateGroupedMessages.map((dateGroup, dateIndex) => (
           <div key={`date-group-${dateIndex}`}>
-            <div className="flex w-full justify-center py-4 text-xs font-medium text-muted-foreground dark:text-muted-foreground-night">
+            <div className="text-muted-foreground dark:text-muted-foreground-night flex w-full justify-center py-4 text-xs font-medium">
               {dateGroup.date}
             </div>
             {dateGroup.messages.map((typedGroup, index) => {
@@ -223,6 +233,7 @@ export function ConversationViewer({
                 <MessageGroup
                   key={`typed-group-${index}`}
                   messages={typedGroup}
+                  userAndAgentMessages={userAndAgentMessages}
                   feedbacks={feedbacks}
                   isLastMessageGroup={isLastGroup}
                   conversationId={conversationId}

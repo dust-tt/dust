@@ -1,6 +1,7 @@
 import {
   Page,
   SearchInput,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -23,58 +24,47 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
-import { checkWorkspaceSeatAvailabilityUsingAuth } from "@app/lib/api/workspace";
-import { getWorkspaceVerifiedDomains } from "@app/lib/api/workspace_domains";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import {
+  useFeatureFlags,
+  usePerSeatPricing,
+  useWorkspaceSeatAvailability,
+  useWorkspaceVerifiedDomains,
+} from "@app/lib/swr/workspaces";
 import type {
   PlanType,
-  SubscriptionPerSeatPricing,
   SubscriptionType,
   UserType,
   UserTypeWithWorkspace,
-  WorkspaceDomain,
   WorkspaceType,
 } from "@app/types";
+import { isAdmin } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   user: UserType;
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  perSeatPricing: SubscriptionPerSeatPricing | null;
   plan: PlanType;
-  workspaceHasAvailableSeats: boolean;
-  workspaceVerifiedDomains: WorkspaceDomain[];
-}>(async (context, auth) => {
+}>(async (_context, auth) => {
   const plan = auth.plan();
   const owner = auth.workspace();
   const user = auth.user()?.toJSON();
-  const subscriptionResource = auth.subscriptionResource();
+  const subscription = auth.subscription();
 
-  if (!owner || !user || !auth.isAdmin() || !plan || !subscriptionResource) {
+  if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
     return {
       notFound: true,
     };
   }
-
-  // TODO(workos 2025-06-09): Remove this once fully migrated to WorkOS.
-  const workspaceVerifiedDomains = await getWorkspaceVerifiedDomains(owner);
-  const workspaceHasAvailableSeats =
-    await checkWorkspaceSeatAvailabilityUsingAuth(auth);
-
-  const perSeatPricing = await subscriptionResource.getPerSeatPricing();
-  const subscription = subscriptionResource.toJSON();
 
   return {
     props: {
       user,
       owner,
       subscription,
-      perSeatPricing,
       plan,
-      workspaceHasAvailableSeats,
-      workspaceVerifiedDomains,
     },
   };
 });
@@ -83,39 +73,75 @@ export default function WorkspaceAdmin({
   user,
   owner,
   subscription,
-  perSeatPricing,
   plan,
-  workspaceHasAvailableSeats,
-  workspaceVerifiedDomains,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [searchTerm, setSearchTerm] = useState("");
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
-  const hasVerifiedDomains = workspaceVerifiedDomains.length > 0;
+
+  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { verifiedDomains, isVerifiedDomainsLoading } =
+    useWorkspaceVerifiedDomains({ workspaceId: owner.sId });
+  const { hasAvailableSeats, isSeatAvailabilityLoading } =
+    useWorkspaceSeatAvailability({ workspaceId: owner.sId });
+  const { perSeatPricing, isPerSeatPricingLoading } = usePerSeatPricing({
+    workspaceId: owner.sId,
+  });
+
+  const hasVerifiedDomains = verifiedDomains.length > 0;
   const isProvisioningEnabled =
     plan.limits.users.isSCIMAllowed && hasVerifiedDomains;
+  const isManualInvitationsEnabled =
+    owner.metadata?.disableManualInvitations !== true;
+
+  const isLoading =
+    isVerifiedDomainsLoading ||
+    isSeatAvailabilityLoading ||
+    isPerSeatPricingLoading;
 
   const onInviteClick = useCallback(
-    (event: MouseEvent) => {
+    (event: React.MouseEvent<HTMLButtonElement>) => {
       if (!isUpgraded(plan)) {
         setInviteBlockedPopupReason("cant_invite_free_plan");
         event.preventDefault();
       } else if (subscription.paymentFailingSince) {
         setInviteBlockedPopupReason("cant_invite_payment_failure");
         event.preventDefault();
-      } else if (!workspaceHasAvailableSeats) {
+      } else if (!hasAvailableSeats) {
         setInviteBlockedPopupReason("cant_invite_no_seats_available");
         event.preventDefault();
       }
     },
-    [plan, subscription.paymentFailingSince, workspaceHasAvailableSeats]
+    [plan, subscription.paymentFailingSince, hasAvailableSeats]
   );
+
+  if (isLoading) {
+    return (
+      <AppCenteredLayout
+        subscription={subscription}
+        owner={owner}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "members",
+          featureFlags,
+        })}
+      >
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AppCenteredLayout>
+    );
+  }
 
   return (
     <AppCenteredLayout
       subscription={subscription}
       owner={owner}
-      subNavigation={subNavigationAdmin({ owner, current: "members" })}
+      subNavigation={subNavigationAdmin({
+        owner,
+        current: "members",
+        featureFlags,
+      })}
     >
       <div className="mb-4">
         <Page.Vertical gap="lg" align="stretch">
@@ -125,7 +151,7 @@ export default function WorkspaceAdmin({
             description="Verify your domain, manage team members and their permissions."
           />
           <WorkspaceAccessPanel
-            workspaceVerifiedDomains={workspaceVerifiedDomains}
+            workspaceVerifiedDomains={verifiedDomains}
             owner={owner}
             plan={plan}
           />
@@ -138,23 +164,28 @@ export default function WorkspaceAdmin({
                 value={searchTerm}
                 name="search"
                 onChange={setSearchTerm}
+                className="w-full"
               />
-              <InviteEmailButtonWithModal
-                owner={owner}
-                prefillText=""
-                perSeatPricing={perSeatPricing}
-                onInviteClick={onInviteClick}
-              />
+              {isManualInvitationsEnabled && (
+                <InviteEmailButtonWithModal
+                  owner={owner}
+                  prefillText=""
+                  perSeatPricing={perSeatPricing}
+                  onInviteClick={onInviteClick}
+                />
+              )}
             </div>
             <WorkspaceMembersGroupsList
               currentUser={user}
               owner={owner}
               searchTerm={searchTerm}
               isProvisioningEnabled={isProvisioningEnabled}
+              isManualInvitationsEnabled={isManualInvitationsEnabled}
             />
           </WorkspaceSection>
           {inviteBlockedPopupReason && (
             <ReachedLimitPopup
+              isAdmin={isAdmin(owner)}
               isOpened={!!inviteBlockedPopupReason}
               onClose={() => setInviteBlockedPopupReason(null)}
               subscription={subscription}
@@ -173,6 +204,7 @@ const DEFAULT_PAGE_SIZE = 25;
 interface WorkspaceMembersGroupsListProps {
   currentUser: UserType | null;
   isProvisioningEnabled: boolean;
+  isManualInvitationsEnabled: boolean;
   owner: WorkspaceType;
   searchTerm: string;
 }
@@ -180,6 +212,7 @@ interface WorkspaceMembersGroupsListProps {
 function WorkspaceMembersGroupsList({
   currentUser,
   isProvisioningEnabled,
+  isManualInvitationsEnabled,
   owner,
   searchTerm,
 }: WorkspaceMembersGroupsListProps) {
@@ -188,7 +221,9 @@ function WorkspaceMembersGroupsList({
       <Tabs defaultValue="members">
         <TabsList className="mb-4">
           <TabsTrigger value="members" label="Members" />
-          <TabsTrigger value="invitations" label="Invitations" />
+          {isManualInvitationsEnabled && (
+            <TabsTrigger value="invitations" label="Invitations" />
+          )}
         </TabsList>
         <TabsContent value="members">
           <WorkspaceMembersList
@@ -198,9 +233,11 @@ function WorkspaceMembersGroupsList({
             isProvisioningEnabled={isProvisioningEnabled}
           />
         </TabsContent>
-        <TabsContent value="invitations">
-          <InvitationsList owner={owner} searchText={searchTerm} />
-        </TabsContent>
+        {isManualInvitationsEnabled && (
+          <TabsContent value="invitations">
+            <InvitationsList owner={owner} searchText={searchTerm} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

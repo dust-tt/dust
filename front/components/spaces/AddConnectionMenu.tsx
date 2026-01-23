@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
@@ -23,12 +22,23 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
   CONNECTOR_CONFIGURATIONS,
-  getConnectorProviderLogoWithFallback,
   isConnectionIdRequiredForProvider,
   isConnectorProviderAllowedForPlan,
 } from "@app/lib/connector_providers";
+import {
+  CONNECTOR_UI_CONFIGURATIONS,
+  getConnectorProviderLogoWithFallback,
+} from "@app/lib/connector_providers_ui";
+import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  withTracking,
+} from "@app/lib/tracking";
 import type { PostDataSourceRequestBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type {
   ConnectorProvider,
@@ -72,27 +82,32 @@ export async function setupConnection({
   provider: ConnectorProvider;
   useCase?: OAuthUseCase;
   extraConfig: Record<string, string>;
-}): Promise<Result<string, Error>> {
-  let connectionId: string;
-
-  if (isOAuthProvider(provider)) {
-    // OAuth flow
-    const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
-      owner,
-      provider,
-      useCase,
-      extraConfig,
-    });
-    if (!cRes.isOk()) {
-      return cRes;
-    }
-    connectionId = cRes.value.connection_id;
-  } else {
+}): Promise<
+  Result<{ connectionId: string; relatedCredentialId?: string }, Error>
+> {
+  if (!isOAuthProvider(provider)) {
     return new Err(new Error(`Unknown provider ${provider}`));
   }
 
-  return new Ok(connectionId);
+  // OAuth flow
+  const cRes = await setupOAuthConnection({
+    dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
+    owner,
+    provider,
+    useCase,
+    extraConfig,
+  });
+  if (!cRes.isOk()) {
+    return cRes;
+  }
+
+  return new Ok({
+    connectionId: cRes.value.connection_id,
+    relatedCredentialId:
+      cRes.value.related_credential_id === null
+        ? undefined
+        : cRes.value.related_credential_id,
+  });
 }
 
 export const AddConnectionMenu = ({
@@ -117,7 +132,7 @@ export const AddConnectionMenu = ({
     integration: null,
   });
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });
@@ -136,10 +151,12 @@ export const AddConnectionMenu = ({
       connectionId,
       provider,
       suffix,
+      extraConfig,
     }: {
       connectionId: string;
       provider: ConnectorProvider;
       suffix: string | null;
+      extraConfig: Record<string, string>;
     }) => {
       if (!systemSpace) {
         throw new Error("System space is required");
@@ -151,6 +168,7 @@ export const AddConnectionMenu = ({
         provider,
         connectionId,
         suffix,
+        extraConfig,
       });
     },
     [owner, systemSpace]
@@ -158,7 +176,7 @@ export const AddConnectionMenu = ({
 
   // Filter available integrations.
   const availableIntegrations = integrations.filter((i) => {
-    const hide = CONNECTOR_CONFIGURATIONS[i.connectorProvider].hide;
+    const hide = CONNECTOR_UI_CONFIGURATIONS[i.connectorProvider].hide;
     const rolloutFlag =
       CONNECTOR_CONFIGURATIONS[i.connectorProvider].rollingOutFlag;
     const hasFlag = rolloutFlag && featureFlags.includes(rolloutFlag);
@@ -180,15 +198,19 @@ export const AddConnectionMenu = ({
     systemSpace,
     provider,
     connectionId,
+    relatedCredentialId,
     suffix,
+    extraConfig,
   }: {
     owner: WorkspaceType;
     systemSpace: SpaceType;
     provider: ConnectorProvider;
     connectionId: string;
+    relatedCredentialId?: string;
     suffix: string | null;
+    extraConfig: Record<string, string>;
   }): Promise<Response> => {
-    const res = await fetch(
+    const res = await clientFetch(
       suffix
         ? `/api/w/${
             owner.sId
@@ -202,8 +224,10 @@ export const AddConnectionMenu = ({
         body: JSON.stringify({
           provider,
           connectionId,
+          relatedCredentialId,
           name: undefined,
           configuration: null,
+          extraConfig,
         } satisfies PostDataSourceRequestBody),
       }
     );
@@ -216,13 +240,13 @@ export const AddConnectionMenu = ({
     extraConfig: Record<string, string>
   ) => {
     try {
-      const connectionIdRes = await setupConnection({
+      const connectionRes = await setupConnection({
         owner,
         provider,
         extraConfig,
       });
-      if (connectionIdRes.isErr()) {
-        throw connectionIdRes.error;
+      if (connectionRes.isErr()) {
+        throw connectionRes.error;
       }
 
       if (!systemSpace) {
@@ -239,8 +263,10 @@ export const AddConnectionMenu = ({
         owner,
         systemSpace,
         provider,
-        connectionId: connectionIdRes.value,
+        connectionId: connectionRes.value.connectionId,
+        relatedCredentialId: connectionRes.value.relatedCredentialId,
         suffix,
+        extraConfig,
       });
 
       if (res.ok) {
@@ -248,15 +274,40 @@ export const AddConnectionMenu = ({
           dataSource: DataSourceType;
           connector: ConnectorType;
         } = await res.json();
+        trackEvent({
+          area: TRACKING_AREAS.DATA_SOURCES,
+          object: "connection",
+          action: TRACKING_ACTIONS.CREATE,
+          extra: {
+            provider,
+            data_source_id: createdManagedDataSource.dataSource.sId,
+          },
+        });
         onCreated(createdManagedDataSource.dataSource);
+        // Track data source creation with ID
+        trackEvent({
+          area: TRACKING_AREAS.DATA_SOURCES,
+          object: "create",
+          action: "success",
+          extra: {
+            data_source_id: createdManagedDataSource.dataSource.sId,
+            provider: provider,
+          },
+        });
       } else {
-        const responseText = await res.text();
+        const error = await res.json();
+        const errorMessage =
+          error?.error?.connectors_error?.message ??
+          error?.error?.message ??
+          undefined;
+
         sendNotification({
           type: "error",
           title: `Failed to enable connection (${provider})`,
-          description: `Got: ${responseText}`,
+          description: errorMessage,
         });
       }
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (e) {
       setShowConfirmConnection((prev) => ({
         isOpen: false,
@@ -363,12 +414,13 @@ export const AddConnectionMenu = ({
                       Parameters<
                         typeof handleCredentialProviderManagedDataSource
                       >[0],
-                      "suffix"
+                      "suffix" | "extraConfig"
                     >
                   ) =>
                     handleCredentialProviderManagedDataSource({
                       ...args,
                       suffix: integration?.setupWithSuffix ?? null,
+                      extraConfig: {}, // No extra config needed for BigQuery
                     })
                   }
                   onSuccess={onCreated}
@@ -387,12 +439,13 @@ export const AddConnectionMenu = ({
                       Parameters<
                         typeof handleCredentialProviderManagedDataSource
                       >[0],
-                      "suffix"
+                      "suffix" | "extraConfig"
                     >
                   ) =>
                     handleCredentialProviderManagedDataSource({
                       ...args,
                       suffix: integration?.setupWithSuffix ?? null,
+                      extraConfig: {}, // No extra config needed for Snowflake
                     })
                   }
                   onSuccess={onCreated}
@@ -426,7 +479,10 @@ export const AddConnectionMenu = ({
                   }}
                 />
               );
+            case "microsoft_bot":
             case "slack_bot":
+            case "discord_bot":
+            case "dust_project":
             case undefined:
               return null;
             default:
@@ -483,6 +539,10 @@ export const AddConnectionMenu = ({
               variant="primary"
               icon={CloudArrowLeftRightIcon}
               size="sm"
+              onClick={withTracking(
+                TRACKING_AREAS.DATA_SOURCES,
+                "add_connection_menu"
+              )}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -494,9 +554,12 @@ export const AddConnectionMenu = ({
                   provider: i.connectorProvider,
                   isDark,
                 })}
-                onClick={() => {
-                  handleConnectionClick(i);
-                }}
+                onClick={withTracking(
+                  TRACKING_AREAS.DATA_SOURCES,
+                  "provider_select",
+                  () => handleConnectionClick(i),
+                  { provider: i.connectorProvider }
+                )}
               />
             ))}
           </DropdownMenuContent>

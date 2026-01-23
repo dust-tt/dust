@@ -8,7 +8,11 @@ import type {
   ServerSideMCPServerConfigurationType,
   ServerSideMCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  AGENT_MEMORY_SERVER_NAME,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  isInternalMCPServerOfName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import type {
   AgentConfigurationType,
@@ -54,12 +58,12 @@ export function isMCPConfigurationWithDataSource(
   );
 }
 
-export function isMCPConfigurationForInternalContentCreation(
+export function isMCPConfigurationForInternalInteractiveContent(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "content_creation")
+    isInternalMCPServerOfName(arg.internalMCPServerId, "interactive_content")
   );
 }
 
@@ -68,14 +72,9 @@ export function isMCPConfigurationForInternalWebsearch(
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    (isInternalMCPServerOfName(
-      arg.internalMCPServerId,
-      "web_search_&_browse"
-    ) ||
-      isInternalMCPServerOfName(
-        arg.internalMCPServerId,
-        "web_search_&_browse_with_summary"
-      ))
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(arg.internalMCPServerId, n)
+    )
   );
 }
 
@@ -111,7 +110,7 @@ export function isMCPConfigurationForAgentMemory(
 ): arg is ServerSideMCPServerConfigurationType {
   return (
     isServerSideMCPServerConfiguration(arg) &&
-    isInternalMCPServerOfName(arg.internalMCPServerId, "agent_memory")
+    isInternalMCPServerOfName(arg.internalMCPServerId, AGENT_MEMORY_SERVER_NAME)
   );
 }
 
@@ -167,19 +166,23 @@ export function isMCPInternalDataSourceFileSystem(
   );
 }
 
+export function isMCPInternalCatTool(
+  arg: MCPToolConfigurationType
+): arg is ServerSideMCPToolConfigurationType {
+  if (!isMCPInternalDataSourceFileSystem(arg)) {
+    return false;
+  }
+  return arg.originalName === "cat";
+}
+
 export function isMCPInternalWebsearch(
   arg: MCPToolConfigurationType
 ): arg is ServerSideMCPToolConfigurationType {
   return (
     isServerSideMCPToolConfiguration(arg) &&
-    (isInternalMCPServerOfName(
-      arg.internalMCPServerId,
-      "web_search_&_browse"
-    ) ||
-      isInternalMCPServerOfName(
-        arg.internalMCPServerId,
-        "web_search_&_browse_with_summary"
-      ))
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isInternalMCPServerOfName(arg.internalMCPServerId, n)
+    )
   );
 }
 

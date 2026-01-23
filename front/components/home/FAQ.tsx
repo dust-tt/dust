@@ -1,12 +1,13 @@
 import { DashIcon, PlusIcon, Separator } from "@dust-tt/sparkle";
-import React, { useState } from "react";
+import type { ReactNode } from "react";
+import { useState } from "react";
 
 import { H2 } from "@app/components/home/ContentComponents";
-import { classNames } from "@app/lib/utils";
+import { cn } from "@app/components/poke/shadcn/lib/utils";
 
 export interface FAQItem {
   question: string;
-  answer: React.ReactNode; // Now accepts React components, JSX, or strings
+  answer: ReactNode;
 }
 
 interface FAQProps {
@@ -15,10 +16,15 @@ interface FAQProps {
   className?: string;
 }
 
-const FAQItemComponent: React.FC<{
+interface FAQItemComponentProps {
   item: FAQItem;
   defaultOpen?: boolean;
-}> = ({ item, defaultOpen = false }) => {
+}
+
+function FAQItemComponent({
+  item,
+  defaultOpen = false,
+}: FAQItemComponentProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
@@ -59,16 +65,11 @@ const FAQItemComponent: React.FC<{
       <Separator className="my-0" />
     </div>
   );
-};
+}
 
-export const FAQ: React.FC<FAQProps> = ({
-  title = "FAQ",
-  items,
-  className,
-}) => {
+export function FAQ({ title = "FAQ", items, className }: FAQProps) {
   return (
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    <div className={classNames("w-full", className || "")}>
+    <div className={cn("w-full", className)}>
       <div className="w-full">
         <H2 className="mb-12 text-left text-foreground dark:text-foreground-night">
           {title}
@@ -85,4 +86,4 @@ export const FAQ: React.FC<FAQProps> = ({
       </div>
     </div>
   );
-};
+}

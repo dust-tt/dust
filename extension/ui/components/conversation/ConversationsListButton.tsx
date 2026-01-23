@@ -41,7 +41,7 @@ function ConversationListMenuItem({
   navigate,
 }: ConversationListMenuItemProps) {
   const UnreadIcon = () => (
-    <Icon visual={DotIcon} className="-ml-1 -mr-2 text-highlight" />
+    <Icon visual={DotIcon} className="text-highlight -ml-1 -mr-2" />
   );
 
   const conversationLabel = conversation.title || "Untitled Conversation";
@@ -52,7 +52,7 @@ function ConversationListMenuItem({
       icon={conversation.unread ? UnreadIcon : undefined}
       truncateText={true}
       className={classNames(
-        "text-sm text-muted-foreground dark:text-muted-foreground-night font-normal",
+        "text-muted-foreground dark:text-muted-foreground-night text-sm font-normal",
         selectedConversationId === conversation.sId
           ? "bg-primary-50 dark:bg-primary-50-night"
           : ""
@@ -140,7 +140,7 @@ const Content = () => {
       />
 
       {isConversationsLoading ? (
-        <div className="flex items-center justify-center m-4">
+        <div className="m-4 flex items-center justify-center">
           <Spinner size="xs" />
         </div>
       ) : (

@@ -78,7 +78,11 @@ async function handler(
         q
       );
       return res.status(200).json({
-        agentConfigurations,
+        agentConfigurations: agentConfigurations.map((agentConfiguration) => ({
+          ...agentConfiguration,
+          requestedGroupIds: [],
+          requestedSpaceIds: [],
+        })),
       });
     }
     default:

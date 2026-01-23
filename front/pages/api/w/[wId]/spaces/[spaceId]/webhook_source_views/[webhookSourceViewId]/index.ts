@@ -82,8 +82,23 @@ async function handler(
         });
       }
 
-      await webhookSourceView.delete(auth, { hardDelete: true });
-
+      try {
+        await webhookSourceView.delete(auth, { hardDelete: true });
+      } catch (error: any) {
+        // Check if it's a Sequelize foreign key constraint error
+        if (error?.name === "SequelizeForeignKeyConstraintError") {
+          return apiError(req, res, {
+            status_code: 409,
+            api_error: {
+              type: "webhook_source_view_triggering_agent",
+              message:
+                "Cannot remove webhook source view while it is being used by active agents.",
+            },
+          });
+        }
+        // Re-throw other errors
+        throw error;
+      }
       return res.status(200).json({
         deleted: true,
       });

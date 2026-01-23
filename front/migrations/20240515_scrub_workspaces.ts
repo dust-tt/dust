@@ -2,18 +2,18 @@ import _ from "lodash";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
-import { Subscription } from "@app/lib/models/plan";
+import { SubscriptionModel } from "@app/lib/models/plan";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { launchImmediateWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 
 const scrubWorkspaces = async (execute: boolean) => {
-  const endedSubs = await Subscription.findAll({
+  const endedSubs = await SubscriptionModel.findAll({
     where: {
-      // end date at least 14 days ago
+      // end date at least 30 days ago
       endDate: {
-        [Op.lt]: new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000),
+        [Op.lt]: new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000),
       },
     },
   });
@@ -25,7 +25,7 @@ const scrubWorkspaces = async (execute: boolean) => {
   });
 
   const allSubsByWorkspaceId = _.groupBy(
-    await Subscription.findAll({
+    await SubscriptionModel.findAll({
       where: {
         workspaceId: workspaces.map((w) => w.id),
       },
@@ -46,7 +46,7 @@ const scrubWorkspaces = async (execute: boolean) => {
             (s) =>
               !s.endDate ||
               s.endDate >
-                new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000)
+                new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000)
           )
         ) {
           return;
@@ -70,5 +70,8 @@ const scrubWorkspaces = async (execute: boolean) => {
 };
 
 makeScript({}, async ({ execute }) => {
-  await scrubWorkspaces(execute);
+  console.error(
+    "Not scrubbing workspaces: script needs to be adapted to use workspace data retention (in workspace metadata)."
+  );
+  // await scrubWorkspaces(execute);
 });

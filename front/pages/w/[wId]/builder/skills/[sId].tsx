@@ -1,0 +1,97 @@
+import type { InferGetServerSidePropsType } from "next";
+import Head from "next/head";
+import React from "react";
+
+import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
+import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
+import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { getFeatureFlags } from "@app/lib/auth";
+import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
+import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
+
+export const getServerSideProps = withDefaultUserAuthRequirements<{
+  skill: SkillType;
+  extendedSkill: SkillType | null;
+  owner: WorkspaceType;
+  user: UserType;
+  subscription: SubscriptionType;
+}>(async (context, auth) => {
+  const owner = auth.workspace();
+  const subscription = auth.subscription();
+
+  if (!owner || !auth.isUser() || !subscription || !context.params?.sId) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const featureFlags = await getFeatureFlags(owner);
+  if (!featureFlags.includes("skills")) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (!isString(context.params?.sId)) {
+    return {
+      notFound: true,
+    };
+  }
+
+  const skillResource = await SkillResource.fetchById(auth, context.params.sId);
+  if (!skillResource) {
+    return {
+      notFound: true,
+    };
+  }
+
+  if (!skillResource.canWrite(auth) || skillResource.status === "archived") {
+    return {
+      notFound: true,
+    };
+  }
+
+  const extendedSkillResource = skillResource.extendedSkillId
+    ? await SkillResource.fetchById(auth, skillResource.extendedSkillId)
+    : null;
+
+  return {
+    props: {
+      skill: skillResource.toJSON(auth),
+      extendedSkill: extendedSkillResource
+        ? extendedSkillResource.toJSON(auth)
+        : null,
+      owner,
+      subscription,
+      user: auth.getNonNullableUser().toJSON(),
+    },
+  };
+});
+
+export default function EditSkill({
+  skill,
+  extendedSkill,
+  owner,
+  user,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  return (
+    <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
+      <>
+        <Head>
+          <title>{`Dust - ${skill.name}`}</title>
+        </Head>
+        <SkillBuilder
+          skill={skill}
+          extendedSkill={extendedSkill ?? undefined}
+        />
+      </>
+    </SkillBuilderProvider>
+  );
+}
+
+EditSkill.getLayout = (page: React.ReactElement) => {
+  return <AppRootLayout>{page}</AppRootLayout>;
+};

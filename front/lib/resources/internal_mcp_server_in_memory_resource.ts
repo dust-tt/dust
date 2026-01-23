@@ -2,86 +2,40 @@ import { Op } from "sequelize";
 
 import {
   autoInternalMCPServerNameToSId,
+  doesInternalMCPServerRequireBearerToken,
   internalMCPServerNameToSId,
 } from "@app/lib/actions/mcp_helper";
-import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import type {
+  InternalMCPServerNameType,
+  MCPServerAvailability,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   allowsMultipleInstancesOfInternalMCPServerById,
   allowsMultipleInstancesOfInternalMCPServerByName,
   AVAILABLE_INTERNAL_MCP_SERVER_NAMES,
   getAvailabilityOfInternalMCPServerById,
-  getAvailabilityOfInternalMCPServerByName,
+  getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
   isAutoInternalMCPServerName,
-  isInternalMCPServerName,
   isInternalMCPServerOfName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  connectToMCPServer,
-  extractMetadataFromServerVersion,
-  extractMetadataFromTools,
-} from "@app/lib/actions/mcp_metadata";
+import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
+import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
-import { MCPServerConnection } from "@app/lib/models/assistant/actions/mcp_server_connection";
-import { MCPServerViewModel } from "@app/lib/models/assistant/actions/mcp_server_view";
-import { destroyMCPServerViewDependencies } from "@app/lib/models/assistant/actions/mcp_server_view_helper";
-import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/assistant/actions/remote_mcp_server_tool_metadata";
+import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
+import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
+import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { destroyMCPServerViewDependencies } from "@app/lib/models/agent/actions/mcp_server_view_helper";
+import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { cacheWithRedis } from "@app/lib/utils/cache";
 import type { MCPOAuthUseCase, Result } from "@app/types";
-import { Err, Ok, removeNulls } from "@app/types";
-import { isDevelopment } from "@app/types";
-
-const METADATA_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-// Getting the metadata is a relatively long operation, so we cache it for 5 minutes
-// as internal servers are not expected to change often.
-// In any case, when actually running the action, the metadata will be fetched from the MCP server.
-const getCachedMetadata = cacheWithRedis(
-  async (auth: Authenticator, id: string) => {
-    const s = await connectToMCPServer(auth, {
-      params: {
-        type: "mcpServerId",
-        mcpServerId: id,
-        oAuthUseCase: null,
-      },
-    });
-
-    if (s.isErr()) {
-      return null;
-    }
-
-    const mcpClient = s.value;
-    const md = extractMetadataFromServerVersion(mcpClient.getServerVersion());
-
-    const metadata = {
-      ...md,
-      tools: extractMetadataFromTools(
-        (await mcpClient.listTools()).tools
-      ) as any,
-      availability: isInternalMCPServerName(md.name)
-        ? getAvailabilityOfInternalMCPServerByName(md.name)
-        : "manual",
-    };
-
-    await mcpClient.close();
-
-    return metadata;
-  },
-  (_auth: Authenticator, id: string) => `internal-mcp-server-metadata-${id}`,
-  {
-    ttlMs: isDevelopment() ? 1000 : METADATA_CACHE_TTL_MS,
-  }
-);
+import { Err, Ok, redactString, removeNulls } from "@app/types";
 
 export class InternalMCPServerInMemoryResource {
-  // SID of the internal MCP server, scoped to a workspace.
-  readonly id: string;
-
   private metadata: Omit<
     MCPServerType,
     "sId" | "allowMultipleInstances" | "availability"
@@ -89,10 +43,13 @@ export class InternalMCPServerInMemoryResource {
     ...extractMetadataFromServerVersion(undefined),
     tools: [],
   };
+  private internalServerCredential: InternalMCPServerCredentialModel | null =
+    null;
 
-  constructor(id: string) {
-    this.id = id;
-  }
+  constructor(
+    readonly id: string,
+    readonly availability: MCPServerAvailability
+  ) {}
 
   private static async init(auth: Authenticator, id: string) {
     const r = getInternalMCPServerNameAndWorkspaceId(id);
@@ -100,19 +57,48 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    const isEnabled = await isEnabledForWorkspace(auth, r.value.name);
+    let availability = getAvailabilityOfInternalMCPServerById(id);
+
+    const name = r.value.name;
+    // TODO(skills-GA): Remove this check once skills are GA.
+    // When skills feature flag is enabled, treat interactive_content and deep_dive
+    // as auto_hidden_builder since they are exposed through skills instead.
+    if (name === "interactive_content" || name === "deep_dive") {
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+      if (featureFlags.includes("skills")) {
+        availability = "auto_hidden_builder";
+      }
+    }
+
+    const isEnabled = await isEnabledForWorkspace(auth, name);
     if (!isEnabled) {
       return null;
     }
 
-    const server = new InternalMCPServerInMemoryResource(id);
+    const server = new this(id, availability);
 
-    const cachedMetadata = await getCachedMetadata(auth, id);
-    if (!cachedMetadata) {
-      return null;
+    const serverMetadata = getInternalMCPServerMetadata(name);
+    if (serverMetadata) {
+      server.metadata = {
+        ...serverMetadata.serverInfo,
+        tools: serverMetadata.tools,
+      };
+    } else {
+      // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
+      // Bigger refactoring to extract this logic from the resource will come later.
+      const { getCachedMetadata } =
+        await import("@app/lib/actions/mcp_cached_metadata");
+      const cachedMetadata = await getCachedMetadata(auth, id);
+      if (!cachedMetadata) {
+        return null;
+      }
+
+      server.metadata = cachedMetadata;
     }
-
-    server.metadata = cachedMetadata;
+    server.internalServerCredential =
+      await server.fetchInternalServerCredential(auth);
 
     return server;
   }
@@ -127,16 +113,14 @@ export class InternalMCPServerInMemoryResource {
       useCase: MCPOAuthUseCase | null;
     }
   ) {
-    const canAdministrate =
-      await SpaceResource.canAdministrateSystemSpace(auth);
+    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
-    if (!canAdministrate) {
+    if (!systemSpace.canAdministrate(auth)) {
       throw new DustError(
         "unauthorized",
         "The user is not authorized to create an internal MCP server"
       );
     }
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     let sid: string | null = null;
 
@@ -251,7 +235,7 @@ export class InternalMCPServerInMemoryResource {
       hardDelete: true,
     });
 
-    await MCPServerConnection.destroy({
+    await MCPServerConnectionModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         internalMCPServerId: this.id,
@@ -265,15 +249,24 @@ export class InternalMCPServerInMemoryResource {
       },
     });
 
+    await InternalMCPServerCredentialModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
+
     return new Ok(1);
   }
 
-  static async fetchById(auth: Authenticator, id: string) {
-    // Fast path : Do not check for default internal MCP servers as they are always available.
+  static async fetchById(
+    auth: Authenticator,
+    id: string,
+    systemSpace: SpaceResource
+  ) {
+    // Fast path: Do not check for default internal MCP servers as they are always available.
     const availability = getAvailabilityOfInternalMCPServerById(id);
     if (availability === "manual") {
-      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
       const server = await MCPServerViewModel.findOne({
         attributes: ["internalMCPServerId"],
         where: {
@@ -284,7 +277,7 @@ export class InternalMCPServerInMemoryResource {
         },
       });
 
-      if (!server || !server.internalMCPServerId) {
+      if (!server?.internalMCPServerId) {
         return null;
       }
     }
@@ -352,12 +345,126 @@ export class InternalMCPServerInMemoryResource {
     return removeNulls(resources);
   }
 
+  async upsertCredentials(
+    auth: Authenticator,
+    {
+      sharedSecret,
+      customHeaders,
+    }: {
+      sharedSecret?: string;
+      customHeaders?: Record<string, string> | null;
+    }
+  ): Promise<Result<void, DustError<"unauthorized">>> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
+
+    if (!canAdministrate) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "The user is not authorized to update this MCP server."
+        )
+      );
+    }
+
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const existing = await InternalMCPServerCredentialModel.findOne({
+      where: {
+        workspaceId: workspaceId,
+        internalMCPServerId: this.id,
+      },
+    });
+
+    let record: InternalMCPServerCredentialModel;
+
+    if (existing) {
+      const updatePayload: Partial<{
+        sharedSecret: string | null;
+        customHeaders: Record<string, string> | null;
+      }> = {};
+
+      if (sharedSecret !== undefined) {
+        updatePayload.sharedSecret = sharedSecret || null;
+      }
+      if (customHeaders !== undefined) {
+        updatePayload.customHeaders = customHeaders ?? null;
+      }
+
+      if (Object.keys(updatePayload).length > 0) {
+        await existing.update(updatePayload);
+      }
+
+      record = existing;
+    } else {
+      record = await InternalMCPServerCredentialModel.create({
+        workspaceId: workspaceId,
+        internalMCPServerId: this.id,
+        sharedSecret: sharedSecret ?? null,
+        customHeaders: customHeaders ?? null,
+      });
+    }
+
+    this.internalServerCredential = record;
+
+    return new Ok(undefined);
+  }
+
+  private getRedactedCredentials(): {
+    sharedSecret: string | null;
+    customHeaders: Record<string, string> | null;
+  } {
+    if (!doesInternalMCPServerRequireBearerToken(this.id)) {
+      return { sharedSecret: null, customHeaders: null };
+    }
+
+    if (!this.internalServerCredential) {
+      return { sharedSecret: null, customHeaders: null };
+    }
+
+    const redactedSecret = this.internalServerCredential.sharedSecret
+      ? redactString(this.internalServerCredential.sharedSecret, 4)
+      : null;
+
+    const redactedHeaders = this.internalServerCredential.customHeaders
+      ? Object.fromEntries(
+          Object.entries(this.internalServerCredential.customHeaders).map(
+            ([key, value]) => [
+              key,
+              value !== null && value !== undefined
+                ? redactString(value, 4)
+                : value,
+            ]
+          )
+        )
+      : null;
+
+    return {
+      sharedSecret: redactedSecret,
+      customHeaders: redactedHeaders,
+    };
+  }
+
+  private async fetchInternalServerCredential(auth: Authenticator) {
+    if (!doesInternalMCPServerRequireBearerToken(this.id)) {
+      return null;
+    }
+
+    return InternalMCPServerCredentialModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        internalMCPServerId: this.id,
+      },
+    });
+  }
+
   // Serialization.
   toJSON(): MCPServerType {
     return {
       sId: this.id,
       ...this.metadata,
-      availability: getAvailabilityOfInternalMCPServerById(this.id),
+      ...this.getRedactedCredentials(),
+      availability: this.availability,
       allowMultipleInstances: allowsMultipleInstancesOfInternalMCPServerById(
         this.id
       ),

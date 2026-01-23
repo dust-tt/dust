@@ -1,5 +1,5 @@
 import { compareAgentsForSort } from "@app/shared/lib/utils";
-import { usePublicAgentConfigurations } from "@app/ui/components/assistants/usePublicAgentConfigurations";
+import { usePublicAgentConfigurations } from "@app/ui/components/agents/usePublicAgentConfigurations";
 import type { LightAgentConfigurationType } from "@dust-tt/client";
 import { useMemo } from "react";
 
@@ -14,6 +14,7 @@ function makeEditorSuggestions(
       label: agent.name,
       pictureUrl: agent.pictureUrl,
       userFavorite: agent.userFavorite,
+      description: agent.description,
     }));
 }
 

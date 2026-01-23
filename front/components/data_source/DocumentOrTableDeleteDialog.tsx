@@ -13,12 +13,16 @@ import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { clientFetch } from "@app/lib/egress/client";
 import type {
   DataSourceViewType,
   LightContentNode,
   LightWorkspaceType,
 } from "@app/types";
-import { DocumentDeletionKey } from "@app/types";
+import {
+  DocumentDeletionKey,
+  isSpreadsheetFolderContentNode,
+} from "@app/types";
 
 interface DocumentOrTableDeleteDialogProps {
   dataSourceView: DataSourceViewType | null;
@@ -60,7 +64,10 @@ export const DocumentOrTableDeleteDialog = ({
     if (
       !contentNode ||
       !dataSourceView ||
-      !["table", "document"].includes(contentNode.type)
+      !(
+        isSpreadsheetFolderContentNode(contentNode) ||
+        ["table", "document"].includes(contentNode.type)
+      )
     ) {
       return;
     }
@@ -68,7 +75,7 @@ export const DocumentOrTableDeleteDialog = ({
       setIsLoading(true);
       const endpoint = `/api/w/${owner.sId}/spaces/${dataSourceView.spaceId}/data_sources/${dataSourceView.dataSource.sId}/${contentNode.type}s/${encodeURIComponent(contentNode.internalId)}`;
 
-      const res = await fetch(endpoint, { method: "DELETE" });
+      const res = await clientFetch(endpoint, { method: "DELETE" });
       if (!res.ok) {
         throw new Error(`Failed to delete ${contentNode.type}`);
       }
@@ -86,6 +93,7 @@ export const DocumentOrTableDeleteDialog = ({
       }
 
       closeDialog();
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       sendNotification({
         type: "error",

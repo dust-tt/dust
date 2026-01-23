@@ -29,7 +29,9 @@ const _deleteConnectorAPIHandler = async (
     connectorId: connector.id,
   });
 
-  const stopRes = await connectorManager.stop();
+  const stopRes = await connectorManager.stop({
+    reason: "Connector deleted via API",
+  });
 
   if (stopRes.isErr() && !force) {
     return apiError(req, res, {
@@ -51,7 +53,10 @@ const _deleteConnectorAPIHandler = async (
       },
     });
   }
-  await terminateAllWorkflowsForConnectorId(connector.id);
+  await terminateAllWorkflowsForConnectorId({
+    connectorId: connector.id,
+    stopReason: "Connector deleted via API",
+  });
   return res.json({
     success: true,
   });

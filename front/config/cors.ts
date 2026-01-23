@@ -6,6 +6,9 @@ const STATIC_ALLOWED_ORIGINS = [
   "chrome-extension://fnkfcndbgingjcbdhaofkcnhcjpljhdn",
   // Documentation website.
   "https://docs.dust.tt",
+  // Microsoft Power Automate.
+  "https://make.powerautomate.com",
+  "https://office-addins.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [

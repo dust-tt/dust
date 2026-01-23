@@ -7,8 +7,7 @@ const RESIZE_DIRECTIONS = ["none", "vertical", "horizontal", "both"] as const;
 
 type ResizeDirectionType = (typeof RESIZE_DIRECTIONS)[number];
 
-export interface TextareaProps
-  extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+export interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
   resize?: ResizeDirectionType;
   error?: string | null;
   showErrorLabel?: boolean;

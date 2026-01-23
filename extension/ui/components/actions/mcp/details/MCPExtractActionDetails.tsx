@@ -3,7 +3,13 @@ import { ActionDetailsWrapper } from "@app/ui/components/actions/ActionDetailsWr
 import type { MCPActionDetailsProps } from "@app/ui/components/actions/mcp/details/MCPActionDetails";
 import type { AgentActionPublicType } from "@dust-tt/client";
 import { isExtractQueryResourceType } from "@dust-tt/client";
-import { CodeBlock, CollapsibleComponent, ScanIcon } from "@dust-tt/sparkle";
+import {
+  CodeBlock,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  ScanIcon,
+} from "@dust-tt/sparkle";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 
 interface MCPExtractActionQueryProps {
@@ -35,7 +41,7 @@ export function MCPExtractActionDetails({
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+          <span className="heading-sm text-foreground dark:text-foreground-night">
             Query
           </span>
           <MCPExtractActionQuery
@@ -45,26 +51,23 @@ export function MCPExtractActionDetails({
         </div>
 
         {jsonSchema && (
-          <div>
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: false }}
-              triggerChildren={
-                <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
-                  Schema
-                </span>
-              }
-              contentChildren={
-                <div className="py-2">
-                  <CodeBlock
-                    className="language-json max-h-60 overflow-y-auto"
-                    wrapLongLines={true}
-                  >
-                    {JSON.stringify(jsonSchema, null, 2)}
-                  </CodeBlock>
-                </div>
-              }
-            />
-          </div>
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
+              <span className="heading-sm text-foreground dark:text-foreground-night">
+                Schema
+              </span>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="py-2">
+                <CodeBlock
+                  className="language-json max-h-60 overflow-y-auto"
+                  wrapLongLines
+                >
+                  {JSON.stringify(jsonSchema, null, 2)}
+                </CodeBlock>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </div>
     </ActionDetailsWrapper>
@@ -79,7 +82,7 @@ function MCPExtractActionQuery({
 
   if (queryResource) {
     return (
-      <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+      <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
         {queryResource.text}
       </p>
     );
@@ -95,7 +98,7 @@ function MCPExtractActionQuery({
       : "all time";
 
   return (
-    <p className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+    <p className="text-muted-foreground dark:text-muted-foreground-night text-sm font-normal">
       Extracted from documents over {timeFrameAsString}.
     </p>
   );

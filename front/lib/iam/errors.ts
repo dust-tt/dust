@@ -10,6 +10,7 @@ export class SSOEnforcedError extends Error {
 
 type AuthFlowErrorCodeType =
   | "invalid_invitation_token"
+  | "expired_invitation"
   | "invitation_token_email_mismatch"
   | "invalid_domain"
   | "membership_update_error"

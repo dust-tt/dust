@@ -60,6 +60,7 @@ const EXTENSION_WHITELIST = [
   ".env",
   ".conf",
   ".config",
+  ".properties", // Java properties files
   ".avsc", // Apache Avro schema definition
   ".avdl", // Apache Avro IDL definition
 

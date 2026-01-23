@@ -7,6 +7,9 @@ import type {
 } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import { ConfluenceOAuthProvider } from "@app/lib/api/oauth/providers/confluence";
 import { ConfluenceToolsOAuthProvider } from "@app/lib/api/oauth/providers/confluence_tools";
+import { DatabricksOAuthProvider } from "@app/lib/api/oauth/providers/databricks";
+import { DiscordOAuthProvider } from "@app/lib/api/oauth/providers/discord";
+import { FathomOAuthProvider } from "@app/lib/api/oauth/providers/fathom";
 import { FreshserviceOAuthProvider } from "@app/lib/api/oauth/providers/freshservice";
 import { GithubOAuthProvider } from "@app/lib/api/oauth/providers/github";
 import { GmailOAuthProvider } from "@app/lib/api/oauth/providers/gmail";
@@ -15,14 +18,20 @@ import { GoogleDriveOAuthProvider } from "@app/lib/api/oauth/providers/google_dr
 import { HubspotOAuthProvider } from "@app/lib/api/oauth/providers/hubspot";
 import { IntercomOAuthProvider } from "@app/lib/api/oauth/providers/intercom";
 import { JiraOAuthProvider } from "@app/lib/api/oauth/providers/jira";
+import { LinearOAuthProvider } from "@app/lib/api/oauth/providers/linear";
 import { MCPOAuthProvider } from "@app/lib/api/oauth/providers/mcp";
 import { MCPOAuthStaticOAuthProvider } from "@app/lib/api/oauth/providers/mcp_static";
 import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
+import { ProductboardOAuthProvider } from "@app/lib/api/oauth/providers/productboard";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
+import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
+import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
+import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
+import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -50,6 +59,9 @@ export type OAuthError = {
 const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   confluence: new ConfluenceOAuthProvider(),
   confluence_tools: new ConfluenceToolsOAuthProvider(),
+  databricks: new DatabricksOAuthProvider(),
+  discord: new DiscordOAuthProvider(),
+  fathom: new FathomOAuthProvider(),
   freshservice: new FreshserviceOAuthProvider(),
   github: new GithubOAuthProvider(),
   gmail: new GmailOAuthProvider(),
@@ -58,15 +70,21 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   hubspot: new HubspotOAuthProvider(),
   intercom: new IntercomOAuthProvider(),
   jira: new JiraOAuthProvider(),
+  linear: new LinearOAuthProvider(),
   mcp: new MCPOAuthProvider(),
   mcp_static: new MCPOAuthStaticOAuthProvider(),
   microsoft: new MicrosoftOAuthProvider(),
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),
+  productboard: new ProductboardOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
+  slack_tools: new SlackToolsOAuthProvider(),
+  snowflake: new SnowflakeOAuthProvider(),
+  ukg_ready: new UkgReadyOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
+  vanta: new VantaOAuthProvider(),
 };
 
 function getProviderStrategy(
@@ -278,7 +296,9 @@ export async function checkConnectionOwnership(
   });
   if (
     connectionRes.isErr() ||
-    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId
+    connectionRes.value.connection.metadata.user_id !== auth.user()?.sId ||
+    connectionRes.value.connection.metadata.workspace_id !==
+      auth.workspace()?.sId
   ) {
     return new Err(new Error("Invalid connection"));
   }

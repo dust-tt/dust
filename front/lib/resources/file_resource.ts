@@ -1,20 +1,27 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
+import type { File } from "@google-cloud/storage";
 import assert from "assert";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import {
   getPrivateUploadBucket,
   getPublicUploadBucket,
   getUpsertQueueBucket,
 } from "@app/lib/file_storage";
-import { isUsingConversationFiles } from "@app/lib/files";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import {
   FileModel,
   ShareableFileModel,
@@ -23,11 +30,13 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   FileShareScope,
   FileType,
   FileTypeWithMetadata,
   FileTypeWithUploadUrl,
+  FileUseCase,
   FileUseCaseMetadata,
   LightWorkspaceType,
   ModelId,
@@ -37,7 +46,8 @@ import type {
 import {
   ALL_FILE_FORMATS,
   Err,
-  isContentCreationFileContentType,
+  frameContentType,
+  isInteractiveContentFileContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -52,6 +62,8 @@ export interface FileResource extends ReadonlyAttributesType<FileModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class FileResource extends BaseResource<FileModel> {
   static model: ModelStaticWorkspaceAware<FileModel> = FileModel;
+  static shareableFileModel: ModelStaticWorkspaceAware<ShareableFileModel> =
+    ShareableFileModel;
 
   constructor(
     model: ModelStaticWorkspaceAware<FileModel>,
@@ -61,11 +73,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
+      version: 0,
     });
 
     return new this(FileResource.model, key.get());
@@ -99,9 +112,8 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static override async fetchByModelId(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _id: ModelId,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
     _transaction?: Transaction
   ): Promise<null> {
     // Workspace isolation is handled in `fetchByModelIdWithAuth`.
@@ -110,20 +122,32 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  static async fetchByModelIdWithAuth(
+  static async fetchByModelIdsWithAuth(
     auth: Authenticator,
-    id: ModelId,
+    ids: ModelId[],
     transaction?: Transaction
-  ): Promise<FileResource | null> {
-    const file = await this.model.findOne({
+  ): Promise<FileResource[]> {
+    const files = await this.model.findAll({
       where: {
-        id,
+        id: {
+          [Op.in]: ids,
+        },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
 
-    return file ? new this(this.model, file.get()) : null;
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<FileResource | null> {
+    const [file] = await this.fetchByModelIdsWithAuth(auth, [id], transaction);
+
+    return file ?? null;
   }
 
   static async fetchByShareTokenWithContent(token: string): Promise<{
@@ -135,10 +159,12 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
-    const shareableFile = await ShareableFileModel.findOne({
+    const shareableFile = await this.shareableFileModel.findOne({
       where: { token },
+      // WORKSPACE_ISOLATION_BYPASS: Used when a frame is accessed through a public token, at this
+      // point we don't know the workspaceId.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
-
     if (!shareableFile) {
       return null;
     }
@@ -146,7 +172,6 @@ export class FileResource extends BaseResource<FileModel> {
     const [workspace] = await WorkspaceResource.fetchByModelIds([
       shareableFile.workspaceId,
     ]);
-
     if (!workspace) {
       return null;
     }
@@ -163,23 +188,37 @@ export class FileResource extends BaseResource<FileModel> {
       return null;
     }
 
+    // Check if associated conversation still exist (not soft-deleted).
+    if (
+      fileRes.useCase === "conversation" &&
+      fileRes.useCaseMetadata?.conversationId
+    ) {
+      const conversationId = fileRes.useCaseMetadata.conversationId;
+
+      const auth = await Authenticator.internalBuilderForWorkspace(
+        workspace.sId
+      );
+
+      // Share token access bypasses normal space restrictions. We only need to verify the
+      // conversation exists, but internalBuilderForWorkspace only has global group
+      // access and can't see agents from other groups that this conversation might reference.
+      // Skip permission filtering since share token provides its own authorization.
+      const conversation = await ConversationResource.fetchById(
+        auth,
+        conversationId,
+        { dangerouslySkipPermissionFiltering: true }
+      );
+      if (!conversation) {
+        return null;
+      }
+    }
+
     const content = await fileRes.getFileContent(
       renderLightWorkspaceType({ workspace }),
       "original"
     );
 
     if (!content) {
-      return null;
-    }
-
-    if (
-      isUsingConversationFiles(content) &&
-      shareableFile.shareScope === "public"
-    ) {
-      // We don't make it accessible to public if it's using a conversation file.
-      // We have several other check points:
-      // - You cannot set it to public if isUsingConversationFiles is true
-      // - When you fetch a file in files/[token] page, we check authentication if it's for workspace sharing.
       return null;
     }
 
@@ -190,9 +229,53 @@ export class FileResource extends BaseResource<FileModel> {
     };
   }
 
+  static async unsafeFetchByIdInWorkspace(
+    workspace: LightWorkspaceType,
+    id: string
+  ): Promise<FileResource | null> {
+    const fileModelId = getResourceIdFromSId(id);
+    if (!fileModelId) {
+      return null;
+    }
+
+    const file = await this.model.findOne({
+      where: {
+        workspaceId: workspace.id,
+        id: fileModelId,
+      },
+    });
+
+    return file ? new this(this.model, file.get()) : null;
+  }
+
+  static async listByProject(
+    auth: Authenticator,
+    {
+      projectId,
+    }: {
+      projectId: string;
+    }
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions = {
+      workspaceId: owner.id,
+      useCase: "project_context",
+      status: "ready",
+      useCaseMetadata: { spaceId: projectId },
+    };
+
+    const files = await this.model.findAll({
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
-    await ShareableFileModel.destroy({
+    await this.shareableFileModel.destroy({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
       },
@@ -212,7 +295,7 @@ export class FileResource extends BaseResource<FileModel> {
   ) {
     // We don't actually delete, instead we set the userId field to null.
 
-    await ShareableFileModel.update(
+    await this.shareableFileModel.update(
       {
         sharedBy: null,
       },
@@ -254,7 +337,7 @@ export class FileResource extends BaseResource<FileModel> {
           .delete({ ignoreNotFound: true });
 
         // Delete the shareable file record.
-        await ShareableFileModel.destroy({
+        await FileResource.shareableFileModel.destroy({
           where: {
             fileId: this.id,
             workspaceId: this.workspaceId,
@@ -265,6 +348,7 @@ export class FileResource extends BaseResource<FileModel> {
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: this.workspaceId,
         },
       });
 
@@ -308,12 +392,12 @@ export class FileResource extends BaseResource<FileModel> {
 
     const updateResult = await this.update({ status: "ready" });
 
-    // For Content Creation conversation files, automatically create a ShareableFileModel with
-    // default conversation_participants scope.
-    if (this.isContentCreation) {
-      await ShareableFileModel.upsert({
+    // For Interactive Content conversation files, automatically create a ShareableFileModel with
+    // default workspace scope.
+    if (this.isInteractiveContent) {
+      await FileResource.shareableFileModel.upsert({
         fileId: this.id,
-        shareScope: "conversation_participants",
+        shareScope: "workspace",
         sharedBy: this.userId ?? null,
         workspaceId: this.workspaceId,
         sharedAt: new Date(),
@@ -328,10 +412,6 @@ export class FileResource extends BaseResource<FileModel> {
     return this.status === "ready";
   }
 
-  get isCreated(): boolean {
-    return this.status === "created";
-  }
-
   get isFailed(): boolean {
     return this.status === "failed";
   }
@@ -340,10 +420,10 @@ export class FileResource extends BaseResource<FileModel> {
     return this.updatedAt.getTime();
   }
 
-  get isContentCreation(): boolean {
+  get isInteractiveContent(): boolean {
     return (
       this.useCase === "conversation" &&
-      isContentCreationFileContentType(this.contentType)
+      isInteractiveContentFileContentType(this.contentType)
     );
   }
 
@@ -418,6 +498,31 @@ export class FileResource extends BaseResource<FileModel> {
     return ["upsert_document", "upsert_table"].includes(this.useCase);
   }
 
+  /**
+   * Check if this file belongs to a specific conversation by comparing the
+   * conversationId stored in useCaseMetadata.
+   *
+   * @param requestedConversationId The conversation ID to check against
+   * @returns Ok(true) if file belongs to the conversation, Ok(false) if it belongs
+   *          to a different conversation, Err if file is not associated with any conversation
+   */
+  belongsToConversation(
+    requestedConversationId: string
+  ): Result<boolean, Error> {
+    const { useCaseMetadata } = this;
+
+    if (!useCaseMetadata?.conversationId) {
+      return new Err(new Error("File is not associated with a conversation"));
+    }
+
+    // Direct access, file belongs to the requested conversation.
+    if (useCaseMetadata.conversationId === requestedConversationId) {
+      return new Ok(true);
+    }
+
+    return new Ok(false);
+  }
+
   getBucketForVersion(version: FileVersion) {
     if (version === "public") {
       return getPublicUploadBucket();
@@ -425,6 +530,87 @@ export class FileResource extends BaseResource<FileModel> {
     return this.isUpsertUseCase()
       ? getUpsertQueueBucket()
       : getPrivateUploadBucket();
+  }
+
+  /**
+   * Get sorted file versions from GCS (newest first).
+   * Used for reverting Interactive Content files to previous versions.
+   * Returns an empty array if versions cannot be retrieved.
+   */
+  private async getSortedFileVersions(
+    auth: Authenticator,
+    maxResults?: number
+  ): Promise<File[]> {
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const fileStorage = getPrivateUploadBucket();
+
+    return fileStorage.getSortedFileVersions({
+      filePath,
+      maxResults,
+    });
+  }
+
+  /**
+   * Revert the file to its previous version.
+   * Uses GCS copy function to restore the previous version as the current version.
+   * Deletes old versions to prevent accumulation.
+   */
+  async revert(
+    auth: Authenticator,
+    {
+      revertedByAgentConfigurationId,
+    }: {
+      revertedByAgentConfigurationId: string;
+    }
+  ): Promise<Result<undefined, string>> {
+    // Get all versions of the file (sorted newest to oldest)
+    const versions = await this.getSortedFileVersions(auth);
+
+    // Check if there's a previous version available before attempting revert
+    if (versions.length < 2) {
+      return new Err("No previous version available to revert to");
+    }
+
+    const currentVersion = versions[0];
+    const previousVersion = versions[1];
+
+    // Update metadata before copy
+    await this.setUseCaseMetadata({
+      ...this.useCaseMetadata,
+      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    });
+
+    // Use GCS copy function to make a copy of the previous version the current version
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const bucket = this.getBucketForVersion("original");
+    const destinationFile = bucket.file(filePath);
+
+    try {
+      await previousVersion.copy(destinationFile);
+    } catch (error) {
+      return new Err(
+        `Revert unsuccessful. Failed to copy previous version: ${normalizeError(error)}`
+      );
+    }
+
+    // Delete old versions to prevent accumulation and infinite loops
+    try {
+      // Decrement version after deletion to ensure version counter only changes on success
+      await currentVersion.delete();
+      await previousVersion.delete();
+      await this.decrementVersion();
+    } catch (error) {
+      logger.error(
+        {
+          fileId: this.sId,
+          workspaceId: this.workspaceId,
+          error: normalizeError(error),
+        },
+        "Failed to delete old file versions after successful revert, future reverts may loop"
+      );
+    }
+
+    return new Ok(undefined);
   }
 
   // Stream logic.
@@ -462,10 +648,10 @@ export class FileResource extends BaseResource<FileModel> {
   /**
    * Get read stream for shared access without authentication.
    */
-  private async getSharedReadStream(
+  getSharedReadStream(
     owner: LightWorkspaceType,
     version: FileVersion
-  ): Promise<Readable> {
+  ): Readable {
     const cloudPath = FileResource.getCloudStoragePathForId({
       fileId: this.sId,
       workspaceId: owner.sId,
@@ -483,7 +669,7 @@ export class FileResource extends BaseResource<FileModel> {
     version: FileVersion = "original"
   ): Promise<string | null> {
     try {
-      const readStream = await this.getSharedReadStream(owner, version);
+      const readStream = this.getSharedReadStream(owner, version);
 
       // Convert stream to string.
       const chunks: Buffer[] = [];
@@ -493,6 +679,7 @@ export class FileResource extends BaseResource<FileModel> {
 
       const content = Buffer.concat(chunks).toString("utf-8");
       return content || null;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return null;
     }
@@ -512,7 +699,8 @@ export class FileResource extends BaseResource<FileModel> {
       filePath: this.getCloudStoragePath(auth, "original"),
     });
 
-    // Mark the file as ready.
+    // Increment version after successful upload and mark as ready
+    await this.incrementVersion();
     await this.markAsReady();
   }
 
@@ -524,21 +712,50 @@ export class FileResource extends BaseResource<FileModel> {
     return this.update({ snippet });
   }
 
+  private incrementVersion() {
+    return this.update({ version: this.version + 1 });
+  }
+
+  private decrementVersion() {
+    return this.update({ version: Math.max(0, this.version - 1) });
+  }
+
+  rename(newFileName: string) {
+    return this.update({ fileName: newFileName });
+  }
+
   // Sharing logic.
+
+  private getShareUrlForShareableFile({
+    shareableFileToken,
+  }: {
+    shareableFileToken: string;
+  }): string {
+    assert(
+      this.isInteractiveContent,
+      "getShareUrlForShareableFile called on non-interactive content file"
+    );
+
+    if (this.contentType === frameContentType) {
+      return `${config.getClientFacingUrl()}/share/frame/${shareableFileToken}`;
+    }
+
+    return `${config.getClientFacingUrl()}/share/file/${shareableFileToken}`;
+  }
 
   async setShareScope(
     auth: Authenticator,
     scope: FileShareScope
   ): Promise<void> {
-    // Only Content Creation files can be shared.
-    if (!this.isContentCreation) {
-      throw new Error("Only Content Creation files can be shared");
+    // Only Interactive Content files can be shared.
+    if (!this.isInteractiveContent) {
+      throw new Error("Only Interactive Content files can be shared");
     }
 
     const user = auth.getNonNullableUser();
 
     // Always update the existing ShareableFileModel record (never delete).
-    const existingShare = await ShareableFileModel.findOne({
+    const existingShare = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
     });
 
@@ -559,11 +776,11 @@ export class FileResource extends BaseResource<FileModel> {
     sharedAt: Date;
     shareUrl: string;
   } | null> {
-    if (!this.isContentCreation) {
+    if (!this.isInteractiveContent) {
       return null;
     }
 
-    const shareableFile = await ShareableFileModel.findOne({
+    const shareableFile = await FileResource.shareableFileModel.findOne({
       where: { fileId: this.id, workspaceId: this.workspaceId },
     });
 
@@ -571,11 +788,28 @@ export class FileResource extends BaseResource<FileModel> {
       return {
         scope: shareableFile.shareScope,
         sharedAt: shareableFile.sharedAt,
-        shareUrl: `${config.getClientFacingUrl()}/share/file/${shareableFile.token}`,
+        shareUrl: this.getShareUrlForShareableFile({
+          shareableFileToken: shareableFile.token,
+        }),
       };
     }
 
     return null;
+  }
+
+  static async revokePublicSharingInWorkspace(auth: Authenticator) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    return FileResource.shareableFileModel.update(
+      {
+        shareScope: "workspace",
+      },
+      {
+        where: {
+          workspaceId,
+          shareScope: "public",
+        },
+      }
+    );
   }
 
   // Serialization logic.
@@ -588,6 +822,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      version: this.version,
       status: this.status,
       useCase: this.useCase,
     };
@@ -629,6 +864,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      version: this.version,
       status: this.status,
       useCase: this.useCase,
     };
@@ -656,5 +892,85 @@ export class FileResource extends BaseResource<FileModel> {
 
   isSafeToDisplay(): boolean {
     return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
+  }
+
+  /**
+   * Copy a file to a new file with the specified use case and metadata.
+   * This method copies both the file metadata and the content stored in GCS.
+   *
+   * @param auth - Authenticator for workspace isolation
+   * @param params - Parameters for copying the file
+   * @param params.sourceId - The sId of the source file to copy
+   * @param params.useCase - The use case for the new file
+   * @param params.useCaseMetadata - Metadata for the new file's use case
+   * @returns Result containing the new FileResource or an error
+   */
+  static async copy(
+    auth: Authenticator,
+    {
+      sourceId,
+      useCase,
+      useCaseMetadata,
+    }: {
+      sourceId: string;
+      useCase: FileUseCase;
+      useCaseMetadata?: FileUseCaseMetadata;
+    }
+  ): Promise<
+    Result<
+      FileResource,
+      Error | { name: "dust_error"; code: string; message: string }
+    >
+  > {
+    // Fetch the source file.
+    const sourceFile = await FileResource.fetchById(auth, sourceId);
+    if (!sourceFile) {
+      return new Err(new Error(`Source file not found: ${sourceId}`));
+    }
+
+    if (!sourceFile.isReady) {
+      return new Err(
+        new Error(
+          `Source file is not ready for copying: ${sourceId} (status: ${sourceFile.status})`
+        )
+      );
+    }
+
+    try {
+      // Create a new file with the same properties.
+      const newFile = await FileResource.makeNew({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.user()?.id ?? null,
+        contentType: sourceFile.contentType,
+        fileName: sourceFile.fileName,
+        fileSize: sourceFile.fileSize,
+        useCase,
+        useCaseMetadata,
+      });
+
+      // Get a read stream from the source file's original version.
+      const readStream = sourceFile.getReadStream({
+        auth,
+        version: "original",
+      });
+
+      // Use processAndStoreFile to handle the content processing and storage.
+      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const result = await processAndStoreFile(auth, {
+        file: newFile,
+        content: {
+          type: "readable",
+          value: readStream,
+        },
+      });
+
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+
+      return new Ok(result.value);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 }

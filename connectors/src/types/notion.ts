@@ -13,13 +13,22 @@ export type PropertyTypes = PageObjectProperties[PropertyKeys]["type"];
 
 export function getNotionWorkflowId(
   connectorId: ModelId,
-  workflowType: "sync" | "garbage-collector" | "process-database-upsert-queue"
+  workflowType:
+    | "sync"
+    | "garbage-collector"
+    | "process-database-upsert-queue"
+    | "deletion-crawl"
+    | "process-webhooks"
 ) {
   let wfName = `workflow-notion-${connectorId}`;
   if (workflowType === "garbage-collector") {
     wfName += "-garbage-collector";
   } else if (workflowType === "process-database-upsert-queue") {
     wfName += "-process-database-upsert-queue";
+  } else if (workflowType === "deletion-crawl") {
+    wfName += "-deletion-crawl";
+  } else if (workflowType === "process-webhooks") {
+    wfName += "-process-webhooks";
   }
   return wfName;
 }

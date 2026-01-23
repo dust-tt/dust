@@ -1,4 +1,3 @@
-import type { CoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -43,12 +42,12 @@ export function shouldAutoGenerateTags(
  * If a tag is both included and excluded, we will not get any result.
  */
 export function checkConflictingTags(
-  coreSearchArgs: CoreSearchArgs[],
+  tagsFilters: ({ in: string[] | null; not: string[] | null } | null)[],
   { tagsIn, tagsNot }: { tagsIn?: string[]; tagsNot?: string[] }
 ): string | null {
-  for (const args of coreSearchArgs) {
-    const configTagsIn = args.filter.tags?.in ?? [];
-    const configTagsNot = args.filter.tags?.not ?? [];
+  for (const tagFilter of tagsFilters) {
+    const configTagsIn = tagFilter?.in ?? [];
+    const configTagsNot = tagFilter?.not ?? [];
 
     const finalTagsIn = [...configTagsIn, ...(tagsIn ?? [])];
     const finalTagsNot = [...configTagsNot, ...(tagsNot ?? [])];
