@@ -27,17 +27,16 @@ import { useMemo, useState } from "react";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
-import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { clientFetch } from "@app/lib/egress/client";
-import { getErrorFromResponse } from "@app/lib/swr/swr";
-import type { PostSkillSuggestionBodyType } from "@app/pages/api/poke/workspaces/[wId]/skills/suggestions";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
-import { usePokeSkills } from "@app/poke/swr/skills";
+import {
+  useCreatePokeSkillSuggestion,
+  usePokeSkills,
+} from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types";
 
 const AUTO_INTERNAL_MCP_SERVER_NAMES = new Set(
@@ -54,7 +53,6 @@ interface SkillsDataTableProps {
 export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
   const [showCreateSuggestionSheet, setShowCreateSuggestionSheet] =
     useState(false);
-  const { mutate } = usePokeSkills({ owner, disabled: true });
 
   const skillButtons = (
     <div className="flex flex-row gap-2">
@@ -74,7 +72,6 @@ export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
         show={showCreateSuggestionSheet}
         onClose={() => setShowCreateSuggestionSheet(false)}
         owner={owner}
-        onSuccess={() => mutate()}
       />
       <PokeDataTableConditionalFetch
         header="Skills"
@@ -95,16 +92,14 @@ interface CreateSkillSuggestionSheetProps {
   show: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
-  onSuccess: () => void;
 }
 
 function CreateSkillSuggestionSheet({
   show,
   onClose,
   owner,
-  onSuccess,
 }: CreateSkillSuggestionSheetProps) {
-  const sendNotification = useSendNotification();
+  const { createSkillSuggestion } = useCreatePokeSkillSuggestion({ owner });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
 
@@ -154,58 +149,22 @@ function CreateSkillSuggestionSheet({
   };
 
   const handleSubmit = async () => {
-    if (
-      !name.trim() ||
-      !userFacingDescription.trim() ||
-      !agentFacingDescription.trim() ||
-      !instructions.trim()
-    ) {
-      sendNotification({
-        type: "error",
-        title: "Validation error",
-        description: "All fields are required.",
-      });
-      return;
-    }
-
     setIsSubmitting(true);
-    const response = await clientFetch(
-      `/api/poke/workspaces/${owner.sId}/skills/suggestions`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: name.trim(),
-          userFacingDescription: userFacingDescription.trim(),
-          agentFacingDescription: agentFacingDescription.trim(),
-          instructions: instructions.trim(),
-          icon: icon ?? null,
-          mcpServerNames: selectedMcpServerViews.map(
-            (view) => view.server.name as AutoInternalMCPServerNameType
-          ),
-        } satisfies PostSkillSuggestionBodyType),
-      }
-    );
+    const success = await createSkillSuggestion({
+      name: name.trim(),
+      userFacingDescription: userFacingDescription.trim(),
+      agentFacingDescription: agentFacingDescription.trim(),
+      instructions: instructions.trim(),
+      icon: icon ?? null,
+      mcpServerNames: selectedMcpServerViews.map(
+        (view) => view.server.name as AutoInternalMCPServerNameType
+      ),
+    });
     setIsSubmitting(false);
 
-    if (!response.ok) {
-      const errorData = await getErrorFromResponse(response);
-      sendNotification({
-        type: "error",
-        title: "Failed to create skill suggestion",
-        description: errorData.message,
-      });
-    } else {
-      sendNotification({
-        type: "success",
-        title: "Skill suggestion created",
-        description: `"${name.trim()}" has been created.`,
-      });
+    if (success) {
       resetForm();
       onClose();
-      onSuccess();
     }
   };
 
