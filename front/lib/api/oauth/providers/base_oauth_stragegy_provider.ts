@@ -1,5 +1,6 @@
 import type { ParsedUrlQuery } from "querystring";
 
+import type { OAuthError } from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { Result } from "@app/types";
@@ -42,6 +43,10 @@ export interface BaseOAuthStrategyProvider {
   ) => boolean;
 
   // If the provider has a method for getting the related credential and/or if we need to update the config.
+  // Returns:
+  // - Ok(credential) if credentials were successfully retrieved
+  // - Err(error) if credentials retrieval failed (e.g., token revoked)
+  // - undefined if no related credential is needed for this provider/useCase
   getRelatedCredential?: (
     auth: Authenticator,
     {
@@ -55,7 +60,7 @@ export interface BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ) => Promise<RelatedCredential | undefined>;
+  ) => Promise<Result<RelatedCredential, OAuthError> | undefined>;
 
   getUpdatedExtraConfig?: (
     auth: Authenticator,
