@@ -90,7 +90,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView,
   memories,
   availableToolsets,
-  copilotMCPServers,
+  copilotMCPServerViews,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -109,7 +109,7 @@ function getGlobalAgent({
   agentMemoryMCPServerView: MCPServerViewResource | null;
   memories: AgentMemoryResource[];
   availableToolsets: MCPServerViewResource[];
-  copilotMCPServers: {
+  copilotMCPServerViews: {
     context: MCPServerViewResource;
     agentState: MCPServerViewResource;
   } | null;
@@ -431,7 +431,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, copilotMCPServers);
+      agentConfiguration = _getCopilotGlobalAgent(auth, copilotMCPServerViews);
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -669,7 +669,7 @@ export async function getGlobalAgents(
     );
   }
 
-  let copilotMCPServers: {
+  let copilotMCPServerViews: {
     context: MCPServerViewResource;
     agentState: MCPServerViewResource;
   } | null = null;
@@ -688,7 +688,7 @@ export async function getGlobalAgents(
       ),
     ]);
     if (context && agentState) {
-      copilotMCPServers = { context, agentState };
+      copilotMCPServerViews = { context, agentState };
     }
   }
 
@@ -713,7 +713,7 @@ export async function getGlobalAgents(
       agentMemoryMCPServerView,
       memories,
       availableToolsets,
-      copilotMCPServers,
+      copilotMCPServerViews,
     })
   );
 

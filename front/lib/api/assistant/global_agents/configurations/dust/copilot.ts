@@ -10,24 +10,24 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 
-interface CopilotMCPServers {
+interface CopilotMCPServerViews {
   context: MCPServerViewResource;
   agentState: MCPServerViewResource;
 }
 
 export function _getCopilotGlobalAgent(
   auth: Authenticator,
-  copilotMCPServers: CopilotMCPServers | null
+  copilotMCPServerViews: CopilotMCPServerViews | null
 ): AgentConfigurationType {
   const owner = auth.getNonNullableWorkspace();
 
-  const actions = copilotMCPServers
+  const actions = copilotMCPServerViews
     ? [
         buildServerSideMCPServerConfiguration({
-          mcpServerView: copilotMCPServers.context,
+          mcpServerView: copilotMCPServerViews.context,
         }),
         buildServerSideMCPServerConfiguration({
-          mcpServerView: copilotMCPServers.agentState,
+          mcpServerView: copilotMCPServerViews.agentState,
         }),
       ]
     : [];
