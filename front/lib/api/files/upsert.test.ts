@@ -3,7 +3,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDataSourceFolder, upsertTable } from "@app/lib/api/data_sources";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";

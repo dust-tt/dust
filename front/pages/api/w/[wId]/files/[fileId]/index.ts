@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
