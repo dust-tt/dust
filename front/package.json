@@ -5,7 +5,7 @@
     "dev:all": "concurrently --kill-others \"cd ../types/ && npm run start\" \"sleep 20 && cd ../sdks/js/ && npm run start\" \"sleep 22 && next dev\" \"sleep 22 && tsx ./start_worker.ts\"",
     "dev": "next dev",
     "dev-datadog": "NODE_OPTIONS='-r dd-trace/init' DD_TAGS=service:front-edge DD_TAGS=env:dev-ben DD_GIT_COMMIT_SHA=`git rev-parse HEAD` DD_GIT_REPOSITORY_URL=https://github.com/dust-tt/dust/ npm run dev",
-    "build": "next build",
+    "build": "./admin/build-spa.sh && next build",
     "build:temporal-bundles": "tsx scripts/temporal-build/build-temporal-bundles.ts",
     "build:workers": "tsx esbuild.worker.ts",
     "start": "next start --keepAliveTimeout 5000",
@@ -31,6 +31,10 @@
     "analyze": "NODE_OPTIONS=--max-old-space-size=16384 ANALYZE=true npm run build",
     "knip": "knip",
     "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
+    "generate:contact-form": "tsx scripts/generate-contact-form-schema.ts",
+    "spa:dev": "VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite --config vite.spa.config.ts",
+    "spa:build": "vite build --config vite.spa.config.ts",
+    "spa:preview": "vite preview --config vite.spa.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
@@ -133,6 +137,7 @@
     "dompurify": "^3.2.7",
     "embla-carousel-react": "^8.0.1",
     "emoji-mart": "^5.6.0",
+    "event-source-polyfill": "^1.0.31",
     "eventsource-parser": "^1.0.0",
     "fast-xml-parser": "^4.4.1",
     "fathom-typescript": "^0.0.36",
@@ -188,6 +193,7 @@
     "react-multi-select-component": "^4.3.4",
     "react-phone-number-input": "^3.4.14",
     "react-resizable-panels": "^2.1.7",
+    "react-router-dom": "^7.0.0",
     "react-textarea-autosize": "^8.4.0",
     "recharts": "3.2.1",
     "redis": "^4.6.8",
@@ -273,6 +279,7 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0",
+    "vite": "^5.4.0",
     "vitest": "^4.0.16",
     "vitest-canvas-mock": "^1.1.3",
     "webpack-stats-plugin": "^1.1.3",
