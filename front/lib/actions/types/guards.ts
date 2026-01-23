@@ -52,7 +52,7 @@ export function isServerSideMCPServerConfiguration(
 
 export function isClientSideMCPServerConfiguration(
   config: MCPServerConfigurationType
-): config is ServerSideMCPServerConfigurationType {
+): config is ClientSideMCPServerConfigurationType {
   return isMCPServerConfiguration(config) && "clientSideMcpServerId" in config;
 }
 
