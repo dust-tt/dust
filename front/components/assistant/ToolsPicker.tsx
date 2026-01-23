@@ -15,6 +15,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
+import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
+import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -121,8 +123,6 @@ interface ToolsPickerProps {
   buttonSize?: "xs" | "sm" | "md";
 }
 
-type FilterType = "all" | "skills" | "tools";
-
 export function ToolsPicker({
   owner,
   selectedMCPServerViews,
@@ -136,7 +136,7 @@ export function ToolsPicker({
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [filter, setFilter] = useState<CapabilityFilterType>("all");
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
@@ -377,24 +377,11 @@ export function ToolsPicker({
                 }}
               />
               {hasSkillsFeature && (
-                <div className="flex gap-2 px-3 py-2">
-                  <Button
-                    label="All"
-                    variant={filter === "all" ? "primary" : "outline"}
+                <div className="px-3 py-2">
+                  <CapabilityFilterButtons
+                    filter={filter}
+                    setFilter={setFilter}
                     size="xs"
-                    onClick={() => setFilter("all")}
-                  />
-                  <Button
-                    label="Skills"
-                    variant={filter === "skills" ? "primary" : "outline"}
-                    size="xs"
-                    onClick={() => setFilter("skills")}
-                  />
-                  <Button
-                    label="Tools"
-                    variant={filter === "tools" ? "primary" : "outline"}
-                    size="xs"
-                    onClick={() => setFilter("tools")}
                   />
                 </div>
               )}

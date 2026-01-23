@@ -1,9 +1,10 @@
-import { Button, SearchInput, Spinner } from "@dust-tt/sparkle";
+import { SearchInput, Spinner } from "@dust-tt/sparkle";
 import React, { useMemo, useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { SkillCard } from "@app/components/agent_builder/capabilities/capabilities_sheet/SkillCard";
-import type { CapabilityFilterType } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
+import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
+import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import { MCPServerCard } from "@app/components/agent_builder/capabilities/mcp/MCPServerSelectionPage";
 import type { SheetState } from "@app/components/agent_builder/skills/types";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -81,26 +82,7 @@ export function CapabilitiesSelectionPageContent({
         name="capability-search"
       />
 
-      <div className="flex gap-2">
-        <Button
-          label="All"
-          variant={filter === "all" ? "primary" : "outline"}
-          size="sm"
-          onClick={() => setFilter("all")}
-        />
-        <Button
-          label="Skills"
-          variant={filter === "skills" ? "primary" : "outline"}
-          size="sm"
-          onClick={() => setFilter("skills")}
-        />
-        <Button
-          label="Tools"
-          variant={filter === "tools" ? "primary" : "outline"}
-          size="sm"
-          onClick={() => setFilter("tools")}
-        />
-      </div>
+      <CapabilityFilterButtons filter={filter} setFilter={setFilter} />
 
       {isCapabilitiesLoading ? (
         <div className="flex h-40 items-center justify-center">
