@@ -56,6 +56,28 @@ export function isClientSideMCPServerConfiguration(
   return isMCPServerConfiguration(config) && "clientSideMcpServerId" in config;
 }
 
+// For a light MCP tool configuration: server-side or client-side.
+
+export function isLightServerSideMCPToolConfiguration(
+  config: LightMCPToolConfigurationType
+): config is LightServerSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(config) &&
+    "mcpServerViewId" in config &&
+    !("inputSchema" in config)
+  );
+}
+
+export function isLightClientSideMCPToolConfiguration(
+  config: LightMCPToolConfigurationType
+): config is LightClientSideMCPToolConfigurationType {
+  return (
+    isMCPToolConfiguration(config) &&
+    "clientSideMcpServerId" in config &&
+    !("inputSchema" in config)
+  );
+}
+
 // For an MCP tool configuration: server-side or client-side.
 
 export function isServerSideMCPToolConfiguration(
@@ -81,6 +103,7 @@ export function isServerSideMCPServerConfigurationWithName(
     matchesInternalMCPServerName(config.internalMCPServerId, name)
   );
 }
+
 export function isServerSideMCPToolConfigurationWithName(
   config: MCPToolConfigurationType,
   name: InternalMCPServerNameType
@@ -91,27 +114,6 @@ export function isServerSideMCPToolConfigurationWithName(
   );
 }
 
-// For a light tool configuration: server-side or client-side.
-
-export function isLightServerSideMCPToolConfiguration(
-  config: LightMCPToolConfigurationType
-): config is LightServerSideMCPToolConfigurationType {
-  return (
-    isMCPToolConfiguration(config) &&
-    "mcpServerViewId" in config &&
-    !("inputSchema" in config)
-  );
-}
-
-export function isLightClientSideMCPToolConfiguration(
-  config: LightMCPToolConfigurationType
-): config is LightClientSideMCPToolConfigurationType {
-  return (
-    isMCPToolConfiguration(config) &&
-    "clientSideMcpServerId" in config &&
-    !("inputSchema" in config)
-  );
-}
 export function areDataSourcesConfigured(
   arg: MCPServerConfigurationType
 ): arg is ServerSideMCPServerConfigurationType {
