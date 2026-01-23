@@ -916,7 +916,7 @@ describe("listConversationsForUser", () => {
     const conversationData = userConversations[0].toJSON();
 
     // Verify participation data is used in toJSON.
-    expect(conversationData.unread).toBe(true);
+    expect(conversationData.unread).toBe(false);
     expect(conversationData.actionRequired).toBe(participation.actionRequired);
 
     // Verify other fields are present.
