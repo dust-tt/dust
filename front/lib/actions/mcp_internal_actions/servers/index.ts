@@ -54,7 +54,6 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
-import { default as statuspageServer } from "@app/lib/actions/mcp_internal_actions/servers/statuspage";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
@@ -73,6 +72,7 @@ import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
+import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
