@@ -143,6 +143,20 @@ function CreateSkillSuggestionSheet({
     setMcpSearchText("");
   };
 
+  const { createSkillSuggestion } = useCreatePokeSkillSuggestion({
+    owner,
+    onSuccess: () => {
+      resetForm();
+      onClose();
+    },
+  });
+
+  const filteredMcpServers = useMemo(() => {
+    return AUTO_INTERNAL_MCP_SERVER_NAMES.filter((name) =>
+      name.toLowerCase().includes(mcpSearchText.toLowerCase())
+    );
+  }, [mcpSearchText]);
+
   const handleClose = () => {
     resetForm();
     onClose();
@@ -150,22 +164,15 @@ function CreateSkillSuggestionSheet({
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    const success = await createSkillSuggestion({
+    await createSkillSuggestion({
       name: name.trim(),
       userFacingDescription: userFacingDescription.trim(),
       agentFacingDescription: agentFacingDescription.trim(),
       instructions: instructions.trim(),
       icon: icon ?? null,
-      mcpServerNames: selectedMcpServerViews.map(
-        (view) => view.server.name as AutoInternalMCPServerNameType
-      ),
+      mcpServerNames: selectedMcpServers,
     });
     setIsSubmitting(false);
-
-    if (success) {
-      resetForm();
-      onClose();
-    }
   };
 
   const toActionIconKey = (v?: string | null) =>
