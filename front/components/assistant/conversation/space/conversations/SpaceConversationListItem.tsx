@@ -2,9 +2,9 @@ import type { Avatar } from "@dust-tt/sparkle";
 import { ConversationListItem, ReplySection } from "@dust-tt/sparkle";
 import uniqBy from "lodash/uniqBy";
 import moment from "moment";
-import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type { ConversationType, WorkspaceType } from "@app/types";
@@ -13,6 +13,7 @@ import {
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
+import { stripMarkdown } from "@app/types";
 
 interface SpaceConversationListItemProps {
   conversation: ConversationType;
@@ -23,7 +24,7 @@ export function SpaceConversationListItem({
   conversation,
   owner,
 }: SpaceConversationListItemProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const firstUserMessage = conversation.content
     .map((m) => m[m.length - 1])
     .find(isUserMessageType);
@@ -77,7 +78,7 @@ export function SpaceConversationListItem({
         conversation={{
           id: conversation.sId,
           title: conversationLabel,
-          description: "", // todo(projects) add a description on conversations
+          description: stripMarkdown(firstUserMessage.content),
           updatedAt: new Date(conversation.updated),
         }}
         creator={
