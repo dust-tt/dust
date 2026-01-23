@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -58,18 +59,63 @@ async function handler(
         });
       }
 
+      if (!isString(userFacingDescription) || !userFacingDescription.trim()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Description is required.",
+          },
+        });
+      }
+
+      if (!isString(agentFacingDescription) || !agentFacingDescription.trim()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "What will this skill be used for is required.",
+          },
+        });
+      }
+
+      if (!isString(instructions) || !instructions.trim()) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Instructions are required.",
+          },
+        });
+      }
+
+      const trimmedName = name.trim();
+      const trimmedAgentFacingDescription = agentFacingDescription.trim();
+      const trimmedInstructions = instructions.trim();
+
+      let skillIcon: string | null = isString(icon) && icon.trim() ? icon.trim() : null;
+
+      if (!skillIcon) {
+        const iconSuggestionResult = await getSkillIconSuggestion(auth, {
+          name: trimmedName,
+          agentFacingDescription: trimmedAgentFacingDescription,
+          instructions: trimmedInstructions,
+        });
+        if (iconSuggestionResult.isOk()) {
+          skillIcon = iconSuggestionResult.value;
+        }
+      }
+
       const result = await SkillResource.makeSuggestion(
         auth,
         {
-          name: name.trim(),
+          name: trimmedName,
           userFacingDescription: isString(userFacingDescription)
             ? userFacingDescription.trim()
             : "",
-          agentFacingDescription: isString(agentFacingDescription)
-            ? agentFacingDescription.trim()
-            : "",
-          instructions: isString(instructions) ? instructions.trim() : "",
-          icon: isString(icon) && icon.trim() ? icon.trim() : null,
+          agentFacingDescription: trimmedAgentFacingDescription,
+          instructions: trimmedInstructions,
+          icon: skillIcon,
           extendedSkillId: null,
         },
         {
