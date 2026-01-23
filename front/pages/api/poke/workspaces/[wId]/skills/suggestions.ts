@@ -2,11 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  INTERNAL_MCP_SERVERS,
-  isAutoInternalMCPServerName,
-  isInternalMCPServerName,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { Authenticator } from "@app/lib/auth";
@@ -17,11 +13,9 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-// Compute the list of auto internal MCP server names at module load time.
-const AUTO_INTERNAL_MCP_SERVER_NAMES = Object.keys(INTERNAL_MCP_SERVERS).filter(
-  (name): name is AutoInternalMCPServerNameType =>
-    isInternalMCPServerName(name) && isAutoInternalMCPServerName(name)
-);
+const AUTO_INTERNAL_MCP_SERVER_NAMES = Object.entries(INTERNAL_MCP_SERVERS)
+  .filter(([, server]) => server.availability === "auto")
+  .map(([name]) => name);
 
 const PostSkillSuggestionBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
@@ -33,13 +27,15 @@ const PostSkillSuggestionBodySchema = z.object({
   icon: z.string().nullable().optional(),
   mcpServerNames: z
     .array(
-      z.string().refine(
-        (name): name is AutoInternalMCPServerNameType =>
-          AUTO_INTERNAL_MCP_SERVER_NAMES.includes(
-            name as AutoInternalMCPServerNameType
-          ),
-        { message: "Invalid MCP server name." }
-      )
+      z
+        .string()
+        .refine(
+          (name): name is AutoInternalMCPServerNameType =>
+            AUTO_INTERNAL_MCP_SERVER_NAMES.includes(
+              name as AutoInternalMCPServerNameType
+            ),
+          { message: "Invalid MCP server name." }
+        )
     )
     .optional()
     .default([]),
