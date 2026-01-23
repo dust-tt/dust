@@ -32,7 +32,6 @@ import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
-import type { ConversationMetadata } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
   ConversationModel,
@@ -68,6 +67,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentType,
+  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -165,6 +165,7 @@ export async function createConversation(
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
+    metadata: conversation.metadata,
   };
 }
 

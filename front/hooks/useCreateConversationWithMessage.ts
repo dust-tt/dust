@@ -2,10 +2,10 @@ import type * as t from "io-ts";
 import { useCallback } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
-import type { ConversationMetadata } from "@app/lib/models/agent/conversation";
 import type { PostConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   ContentFragmentsType,
+  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   InternalPostConversationsRequestBodySchema,

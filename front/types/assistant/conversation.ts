@@ -278,6 +278,15 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
+export interface AgentCopilotMetadata {
+  targetAgentConfigurationId: string;
+  targetAgentConfigurationVersion: number;
+}
+
+export interface ConversationMetadata {
+  agentCopilot?: AgentCopilotMetadata;
+}
+
 /**
  * A lighter version of Conversation without the content (for menu display).
  */
@@ -293,6 +302,7 @@ export type ConversationWithoutContentType = {
   spaceId: string | null;
   triggerId: string | null;
   depth: number;
+  metadata: ConversationMetadata;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];

@@ -124,6 +124,7 @@ function createMockConversation(
     } as any,
     content,
     triggerId: null,
+    metadata: {},
   };
 }
 

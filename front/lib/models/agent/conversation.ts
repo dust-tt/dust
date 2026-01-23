@@ -11,20 +11,12 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
+  ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
   UserMessageOrigin,
 } from "@app/types";
-
-export interface AgentCopilotMetadata {
-  targetAgentConfigurationId: string;
-  targetAgentConfigurationVersion: number;
-}
-
-export interface ConversationMetadata {
-  agentCopilot?: AgentCopilotMetadata;
-}
 
 export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare createdAt: CreationOptional<Date>;
