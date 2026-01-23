@@ -9,6 +9,9 @@ DROP INDEX IF EXISTS "agent_suggestions_workspace_agent_config";
 ALTER TABLE "agent_suggestions" DROP COLUMN "agentConfigurationSId";
 ALTER TABLE "agent_suggestions" DROP COLUMN "agentConfigurationVersion";
 
--- Step 3: Create new composite index
-CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config"
-ON "agent_suggestions" ("workspaceId", "agentConfigurationId");
+-- Step 3: Create new composite indexes to support listByAgentConfigurationId queries
+CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config_state_kind"
+ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "state", "kind");
+
+CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config_kind"
+ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "kind");
