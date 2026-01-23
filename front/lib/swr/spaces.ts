@@ -423,6 +423,7 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const url = `/api/w/${owner.sId}/spaces`;
     let res;
+    let body: PostSpaceRequestBodyType;
 
     if (managementMode === "manual") {
       const { memberIds } = params;
@@ -432,18 +433,20 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         return null;
       }
 
+      body = {
+        name,
+        memberIds,
+        managementMode,
+        isRestricted,
+        spaceKind,
+      };
+
       res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name,
-          memberIds,
-          managementMode,
-          isRestricted,
-          spaceKind,
-        } as PostSpaceRequestBodyType),
+        body: JSON.stringify(body),
       });
     } else if (managementMode === "group") {
       const { groupIds } = params;
@@ -453,17 +456,20 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         return null;
       }
 
+      body = {
+        name,
+        groupIds,
+        managementMode,
+        isRestricted,
+        spaceKind,
+      };
+
       res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name,
-          isRestricted,
-          groupIds,
-          managementMode,
-        }),
+        body: JSON.stringify(body),
       });
     } else {
       return null;
