@@ -154,7 +154,11 @@ async function handler(
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
 
   const result = await renderer.exportToPdf(
-    { url: targetUrl, waitForExpression: "window.vizReady === true" },
+    {
+      url: targetUrl,
+      waitForExpression:
+        "document.querySelector('[data-viz-ready=\"true\"]') !== null",
+    },
     { orientation }
   );
 

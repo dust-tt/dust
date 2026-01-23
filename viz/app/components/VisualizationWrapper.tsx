@@ -81,14 +81,14 @@ function validateTailwindCode(code: string): void {
     throw new Error(
       `Forbidden Tailwind arbitrary values detected: ${examples}. ` +
         `Arbitrary values like h-[600px], w-[800px], bg-[#ff0000] are not allowed. ` +
-        `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`
+        `Use predefined classes like h-96, w-full, bg-red-500 instead, or use the style prop for specific values.`,
     );
   }
 }
 
 export function useVisualizationAPI(
   sendCrossDocumentMessage: ReturnType<typeof makeSendCrossDocumentMessage>,
-  { allowedOrigins }: { allowedOrigins: string[] }
+  { allowedOrigins }: { allowedOrigins: string[] },
 ): VisualizationUIAPI {
   const sendHeightToParent = useCallback(
     async ({ height }: { height: number | null }) => {
@@ -100,14 +100,14 @@ export function useVisualizationAPI(
         height,
       });
     },
-    [sendCrossDocumentMessage]
+    [sendCrossDocumentMessage],
   );
 
   const downloadFile = useCallback(
     async (blob: Blob, filename?: string) => {
       await sendCrossDocumentMessage("downloadFileRequest", { blob, filename });
     },
-    [sendCrossDocumentMessage]
+    [sendCrossDocumentMessage],
   );
 
   const displayCode = useCallback(async () => {
@@ -117,14 +117,14 @@ export function useVisualizationAPI(
   const addEventListener = useCallback(
     (
       eventType: SupportedEventType,
-      handler: (data: SupportedMessage) => void
+      handler: (data: SupportedMessage) => void,
     ): (() => void) => {
       const messageHandler = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
             `Ignored message from unauthorized origin: ${
               event.origin
-            }, expected one of: ${allowedOrigins.join(", ")}`
+            }, expected one of: ${allowedOrigins.join(", ")}`,
           );
           return;
         }
@@ -150,7 +150,7 @@ export function useVisualizationAPI(
       // Return cleanup function
       return () => window.removeEventListener("message", messageHandler);
     },
-    [allowedOrigins]
+    [allowedOrigins],
   );
 
   return {
@@ -183,7 +183,7 @@ function useFile(fileId: string, dataAPI: VisualizationDataAPI) {
 }
 
 function useDownloadFileCallback(
-  downloadFile: (blob: Blob, filename?: string) => Promise<void>
+  downloadFile: (blob: Blob, filename?: string) => Promise<void>,
 ) {
   return useCallback(
     async ({
@@ -196,7 +196,7 @@ function useDownloadFileCallback(
       const blob = typeof content === "string" ? new Blob([content]) : content;
       await downloadFile(blob, filename);
     },
-    [downloadFile]
+    [downloadFile],
   );
 }
 
@@ -217,7 +217,7 @@ export function VisualizationWrapperWithErrorBoundary({
         identifier,
         allowedOrigins,
       }),
-    [identifier, allowedOrigins]
+    [identifier, allowedOrigins],
   );
 
   const uiAPI = useVisualizationAPI(sendCrossDocumentMessage, {
@@ -226,7 +226,7 @@ export function VisualizationWrapperWithErrorBoundary({
 
   const api: VisualizationAPI = useMemo(
     () => ({ data: dataAPI, ui: uiAPI }),
-    [dataAPI, uiAPI]
+    [dataAPI, uiAPI],
   );
 
   return (
@@ -255,6 +255,7 @@ export function VisualizationWrapper({
 }) {
   const { identifier, isFullHeight = false, isPdfMode = false } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
+  const [vizReady, setVizReady] = useState(false);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
 
@@ -290,12 +291,12 @@ export function VisualizationWrapper({
               errorMessage:
                 "Failed to export as PNG. This can happen when the content references external images.",
             },
-            "*"
+            "*",
           );
         }
       }
     },
-    [ref, downloadFile, identifier]
+    [ref, downloadFile, identifier],
   );
 
   useEffect(() => {
@@ -304,7 +305,7 @@ export function VisualizationWrapper({
         const codeToUse = await api.data.fetchCode();
         if (!codeToUse) {
           setErrorMessage(
-            new Error("No code provided to visualization component")
+            new Error("No code provided to visualization component"),
           );
           return;
         }
@@ -348,7 +349,7 @@ export function VisualizationWrapper({
         setErrorMessage(
           error instanceof Error
             ? error
-            : new Error("Failed to fetch visualization code")
+            : new Error("Failed to fetch visualization code"),
         );
       }
     };
@@ -375,7 +376,7 @@ export function VisualizationWrapper({
             errorMessage:
               "Failed to export as SVG. This can happen when the content references external images.",
           },
-          "*"
+          "*",
         );
       }
     }
@@ -392,13 +393,13 @@ export function VisualizationWrapper({
     cleanups.push(
       addEventListener("EXPORT_PNG", async () => {
         await handleScreenshotDownload();
-      })
+      }),
     );
 
     cleanups.push(
       addEventListener("EXPORT_SVG", async () => {
         await handleSVGDownload();
-      })
+      }),
     );
 
     return () => cleanups.forEach((cleanup) => cleanup());
@@ -416,12 +417,14 @@ export function VisualizationWrapper({
   // In PDF mode: no height constraint, content flows naturally for full capture.
   const heightClass = isPdfMode ? "" : isFullHeight ? "h-screen" : "";
 
+  const shouldShowControls = !isFullHeight && !isPdfMode;
+
   return (
     <div
       className={`relative font-sans group/viz ${heightClass}`}
-      data-viz-ready={runnerParams ? "true" : "false"}
+      data-viz-ready={vizReady}
     >
-      {!isFullHeight && !isPdfMode && (
+      {shouldShowControls && (
         <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
             onClick={() => handleScreenshotDownload()}
@@ -454,15 +457,10 @@ export function VisualizationWrapper({
             if (error) {
               setErrorMessage(error);
             } else {
-              // Signal to Gotenberg/Puppeteer that rendering is complete.
-              // In PDF mode, we delay the signal to let Recharts finish its JS-based
-              // animations. Recharts uses react-smooth which has no global disable option,
-              // so we wait for the default animation duration (1500ms) plus buffer.
-              // TODO: Consider wrapping Recharts components to inject isAnimationActive={false}.
+              // Set data-viz-ready attribute once fully rendered to enable screen capture.
+              // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
               const delayMs = isPdfMode ? 2000 : 0;
-              setTimeout(() => {
-                (window as unknown as { vizReady: boolean }).vizReady = true;
-              }, delayMs);
+              setTimeout(() => setVizReady(true), delayMs);
             }
           }}
         />
@@ -480,7 +478,7 @@ export function makeSendCrossDocumentMessage({
 }) {
   return <T extends VisualizationRPCCommand>(
     command: T,
-    params: VisualizationRPCRequestMap[T]
+    params: VisualizationRPCRequestMap[T],
   ) => {
     return new Promise<CommandResultMap[T]>((resolve, reject) => {
       const messageUniqueId = Math.random().toString();
@@ -488,7 +486,7 @@ export function makeSendCrossDocumentMessage({
       const listener = (event: MessageEvent) => {
         if (!allowedOrigins.includes(event.origin)) {
           console.log(
-            `Ignored message from unauthorized origin: ${event.origin}`
+            `Ignored message from unauthorized origin: ${event.origin}`,
           );
           // Simply ignore messages from unauthorized origins.
           return;
@@ -511,7 +509,7 @@ export function makeSendCrossDocumentMessage({
           identifier,
           params,
         },
-        "*"
+        "*",
       );
     });
   };

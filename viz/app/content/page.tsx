@@ -44,7 +44,6 @@ export default function RenderVisualization({
         identifier={identifier}
         allowedOrigins={allowedOrigins}
         isFullHeight={isFullHeight}
-        isPdfMode={isPdfMode}
       />
     );
   }

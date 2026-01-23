@@ -12,7 +12,6 @@ interface ClientVisualizationWrapperProps {
   allowedOrigins: string[];
   identifier: string;
   isFullHeight?: boolean;
-  isPdfMode?: boolean;
 }
 
 /**
@@ -23,7 +22,6 @@ export function ClientVisualizationWrapper({
   allowedOrigins,
   identifier,
   isFullHeight = false,
-  isPdfMode = false,
 }: ClientVisualizationWrapperProps) {
   const sendCrossDocumentMessage = useMemo(
     () =>
@@ -31,19 +29,19 @@ export function ClientVisualizationWrapper({
         allowedOrigins,
         identifier,
       }),
-    [allowedOrigins, identifier]
+    [allowedOrigins, identifier],
   );
 
   const dataAPI = useMemo(
     () => new RPCDataAPI(sendCrossDocumentMessage),
-    [sendCrossDocumentMessage]
+    [sendCrossDocumentMessage],
   );
 
   const config: VisualizationConfig = {
     allowedOrigins,
     identifier,
     isFullHeight,
-    isPdfMode,
+    isPdfMode: false,
     dataAPI,
   };
 
