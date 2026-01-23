@@ -7,11 +7,12 @@ import { frameContentType } from "@app/types";
 
 import handler from "./pdf";
 
-// Mock DocumentRenderer to avoid actual Gotenberg calls.
+// Mock DocumentRenderer to avoid actual rendering service calls.
 vi.mock("@app/types", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@app/types")>();
+  const mod = (await importOriginal()) as any;
+
   return {
-    ...original,
+    ...mod,
     DocumentRenderer: class MockDocumentRenderer {
       exportToPdf = vi.fn().mockResolvedValue({
         isOk: () => true,
