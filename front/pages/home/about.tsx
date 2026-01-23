@@ -291,7 +291,7 @@ const PEOPLE: Record<
   nicole: {
     name: "Nicole Kreider",
     title: "Account Executive",
-    image: "https://ca.slack-edge.com/T050RH73H9P-U096T3FG7HU-4967c6b16ae2-512",
+    image: "https://avatars.githubusercontent.com/u/222190268?v=4",
     github: "https://github.com/nkreider-dot",
     linkedIn: "https://www.linkedin.com/in/nkreider",
   },
