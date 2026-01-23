@@ -406,15 +406,10 @@ export class SnowflakeClient {
     warehouse?: string,
     maxRows: number = 1000
   ): Promise<Result<SnowflakeQueryResult, Error>> {
-    // Check for semicolons which could indicate multi-statement injection.
-    // EXPLAIN might only analyze the first statement, so we block this upfront.
-    if (sql.includes(";")) {
-      return new Err(
-        new Error(
-          "Multiple statements are not allowed. Please submit a single query."
-        )
-      );
-    }
+    // Strip trailing semicolons before wrapping. Multi-statement injection is
+    // already prevented by the SDK (MULTI_STATEMENT_COUNT defaults to 1) and by
+    // the EXPLAIN/LIMIT wrappers which would produce invalid SQL with embedded semicolons.
+    sql = sql.replace(/;\s*$/, "");
 
     const connRes = await this.connect();
     if (connRes.isErr()) {
