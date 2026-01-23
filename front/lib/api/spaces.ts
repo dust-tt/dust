@@ -50,14 +50,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
     space.isRegular() || space.isProject(),
     "Cannot delete spaces that are not regular or project."
   );
-  if (space.isProject()) {
-    assert(
-      space.canAdministrate(auth),
-      "Only project editors or workspace admins can delete project spaces."
-    );
-  } else {
-    assert(auth.isAdmin(), "Only workspace admins can delete regular spaces.");
-  }
+  assert(
+    space.canAdministrate(auth),
+    "Only project editors or workspace admins can delete project spaces."
+  );
 
   const usages: AgentsUsageType[] = [];
 
@@ -410,14 +406,19 @@ export async function createSpaceAndGroup(
       { transaction: t }
     );
 
-    const globalGroupRes = isRestricted
-      ? null
-      : await GroupResource.fetchWorkspaceGlobalGroup(auth);
+    let globalGroup: GroupResource | null = null;
+    if (!isRestricted) {
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      assert(globalGroupRes.isOk(), "Failed to fetch the global group.");
+      globalGroup = globalGroupRes.value;
+      assert(
+        globalGroup !== null,
+        "Global group must exist for non-restricted spaces."
+      );
+    }
 
-    const memberGroups = removeNulls([
-      membersGroup,
-      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-    ]);
+    const memberGroups = removeNulls([membersGroup, globalGroup]);
 
     // Create the editor group for projects and add the creator
     const editorGroups: GroupResource[] = [];
@@ -445,15 +446,16 @@ export async function createSpaceAndGroup(
       t
     );
 
-    if (space.isProject() && globalGroupRes?.isOk()) {
+    if (space.isProject() && !isRestricted) {
       // Set the global group as viewer for non-restricted project spaces
+      assert(globalGroup, "Global group mus exist");
       await GroupSpaceModel.update(
         {
           kind: "project_viewer",
         },
         {
           where: {
-            groupId: globalGroupRes.value.id,
+            groupId: globalGroup.id,
             vaultId: space.id,
           },
           transaction: t,
