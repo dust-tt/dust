@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/copilot/tools/getAgentConfig";
+import { registerSetAgentInstructionsTool } from "@app/components/agent_builder/copilot/tools/setAgentInstructions";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 
 // Server name used for MCP registration. This is a client-side MCP server
@@ -30,7 +31,7 @@ export function useCopilotMCPServer({
   enabled,
 }: UseCopilotMCPServerOptions): UseCopilotMCPServerResult {
   const { owner } = useAgentBuilderContext();
-  const { getValues } = useFormContext<AgentBuilderFormData>();
+  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
@@ -47,6 +48,14 @@ export function useCopilotMCPServer({
   const getFormValues = useCallback(() => {
     return getValues();
   }, [getValues]);
+
+  // Create a stable callback for setting the instructions.
+  const setInstructions = useCallback(
+    (instructions: string) => {
+      setValue("instructions", instructions);
+    },
+    [setValue]
+  );
 
   useEffect(() => {
     // Don't initialize if the feature is disabled.
@@ -74,6 +83,7 @@ export function useCopilotMCPServer({
 
         // Register tools.
         registerGetAgentConfigTool(mcpServer, getFormValues);
+        registerSetAgentInstructionsTool(mcpServer, setInstructions);
 
         // Create the browser transport.
         const transport = new BrowserMCPTransport(
@@ -138,7 +148,7 @@ export function useCopilotMCPServer({
       setServerId(undefined);
       setIsConnected(false);
     };
-  }, [enabled, owner.sId, getFormValues]);
+  }, [enabled, owner.sId, getFormValues, setInstructions]);
 
   return {
     serverId,
