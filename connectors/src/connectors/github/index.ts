@@ -26,6 +26,7 @@ import {
   BaseConnectorManager,
   ConnectorManagerError,
 } from "@connectors/connectors/interface";
+import { ExternalOAuthTokenError } from "@connectors/lib/error";
 import {
   GithubCodeDirectoryModel,
   GithubCodeFileModel,
@@ -279,7 +280,8 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
       );
     }
 
-    if (!parentInternalId) {
+    try {
+      if (!parentInternalId) {
       // No parentInternalId: we return the repositories.
 
       let nodes: ContentNode[] = [];
@@ -492,6 +494,18 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         default:
           assertNever(type);
       }
+    }
+    } catch (e) {
+      if (e instanceof ExternalOAuthTokenError) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            "GitHub authorization error, please re-authorize."
+          )
+        );
+      }
+      // Unhandled error, throwing to get a 500.
+      throw e;
     }
   }
 
