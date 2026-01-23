@@ -9,7 +9,7 @@ export const DUST_HAS_SESSION = "dust-has-session";
  * @returns boolean indicating if a session indicator is present
  */
 export function hasSessionIndicator(
-  cookieValue: string | boolean | undefined
+  cookieValue: string | number | boolean | undefined
 ): boolean {
   return cookieValue === "1" || cookieValue === 1 || cookieValue === true;
 }
