@@ -5,9 +5,10 @@ import {
   LinkWrapper,
   ListGroup,
   ListItemSection,
-  SearchInput,
+  SearchInputWithPopover,
   Spinner,
 } from "@dust-tt/sparkle";
+import moment from "moment";
 import React, { useMemo, useState } from "react";
 
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
@@ -16,6 +17,9 @@ import { SpaceConversationsActions } from "@app/components/assistant/conversatio
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
+import { useSearchConversations } from "@app/hooks/useSearchConversations";
+import { useAppRouter } from "@app/lib/platform";
+import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
   ConversationType,
@@ -33,6 +37,10 @@ type GroupLabel =
   | "Last Month"
   | "Last 12 Months"
   | "Older";
+
+function formatRelativeDate(timestamp: number): string {
+  return moment(timestamp).fromNow();
+}
 
 interface SpaceConversationsTabProps {
   owner: WorkspaceType;
@@ -56,37 +64,41 @@ export function SpaceConversationsTab({
   spaceInfo,
   onSubmit,
 }: SpaceConversationsTabProps) {
-  const [searchText, setSearchText] = useState("");
+  const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
   const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
     owner,
   });
 
-  // Filter conversations by search text
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) {
-      return conversations;
-    }
-    const searchLower = searchText.toLowerCase();
-    return conversations.filter((conv) =>
-      conv.title?.toLowerCase().includes(searchLower)
-    );
-  }, [conversations, searchText]);
+  const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
+
+  const {
+    conversations: searchResults,
+    isSearching,
+    isSearchError,
+    inputValue: searchText,
+    setValue: setSearchText,
+  } = useSearchConversations({
+    workspaceId: owner.sId,
+    spaceId: spaceInfo.sId,
+    limit: 10,
+    initialSearchText: "",
+  });
 
   const conversationsByDate: Record<GroupLabel, ConversationType[]> =
     useMemo(() => {
-      return filteredConversations.length
+      return conversations.length
         ? (getGroupConversationsByDate({
-            conversations: filteredConversations,
+            conversations: conversations,
             titleFilter: "",
           }) as Record<GroupLabel, ConversationType[]>)
-        : ({} as Record<GroupLabel, typeof filteredConversations>);
-    }, [filteredConversations]);
+        : ({} as Record<GroupLabel, typeof conversations>);
+    }, [conversations]);
 
   const unreadConversations = useMemo(() => {
-    return filteredConversations.filter((c) => c.unread);
-  }, [filteredConversations]);
+    return conversations.filter((c) => c.unread);
+  }, [conversations]);
 
   if (isConversationsLoading) {
     return (
@@ -151,12 +163,60 @@ export function SpaceConversationsTab({
           {/* Space conversations section */}
           <div className="w-full">
             <div className="flex flex-col gap-3">
-              <SearchInput
+              <SearchInputWithPopover
                 name="conversation-search"
                 value={searchText}
                 onChange={setSearchText}
                 placeholder={`Search in ${spaceInfo.name}`}
-                className="w-full"
+                open={isSearchPopoverOpen && searchText.trim().length > 0}
+                onOpenChange={setIsSearchPopoverOpen}
+                items={searchResults}
+                isLoading={isSearching}
+                noResults={
+                  searchText.trim().length > 0 && !isSearching
+                    ? isSearchError
+                      ? "Failed to search conversations. Please try again."
+                      : "No conversations found."
+                    : ""
+                }
+                displayItemCount={true}
+                renderItem={(conversation, selected) => {
+                  const conversationLabel =
+                    conversation.title ??
+                    (moment(conversation.created).isSame(moment(), "day")
+                      ? "New Conversation"
+                      : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
+                  const time = formatRelativeDate(conversation.updated);
+
+                  return (
+                    <div
+                      className={cn(
+                        "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
+                        selected && "bg-gray-100 dark:bg-gray-700"
+                      )}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1 truncate">
+                          <div className="text-sm font-medium text-foreground dark:text-foreground-night">
+                            {conversationLabel}
+                          </div>
+                        </div>
+                        <div className="shrink-0 text-xs text-muted-foreground dark:text-muted-foreground-night">
+                          {time}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }}
+                onItemSelect={(conversation) => {
+                  console.log("onItemSelect", conversation);
+                  setSearchText("");
+                  void router.push(
+                    getConversationRoute(owner.sId, conversation.sId),
+                    undefined,
+                    { shallow: true }
+                  );
+                }}
               />
               <div className="flex flex-col">
                 <div className="flex items-center justify-end">
