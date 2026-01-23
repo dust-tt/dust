@@ -16,7 +16,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type {
   AgentSuggestionKind,
@@ -105,28 +105,21 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return result;
   }
 
-  static async makeNew(
+  static async createSuggestionForAgent(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<AgentSuggestionModel>, "workspaceId">
+    agentConfiguration: LightAgentConfigurationType,
+    blob: Omit<
+      CreationAttributes<AgentSuggestionModel>,
+      "workspaceId" | "agentConfigurationId"
+    >
   ): Promise<AgentSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
-    // Look up the agent configuration to get its sId for permission checking.
-    const agentConfig = await AgentConfigurationModel.findOne({
-      where: {
-        id: blob.agentConfigurationId,
-        workspaceId: owner.id,
-      },
-    });
-    if (!agentConfig) {
-      throw new Error("Agent configuration not found");
-    }
-
     // Look up the agent's editors group.
     const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
-      agentConfig.sId,
+      agentConfiguration.sId,
     ]);
-    const editorsGroupId = editorsGroupIdMap.get(agentConfig.sId);
+    const editorsGroupId = editorsGroupIdMap.get(agentConfiguration.sId);
 
     // Check permission.
     const canWrite =
@@ -139,6 +132,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     const suggestion = await AgentSuggestionModel.create({
       ...blob,
+      agentConfigurationId: agentConfiguration.id,
       workspaceId: owner.id,
     });
 
