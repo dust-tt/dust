@@ -158,7 +158,9 @@ export const CopilotPanelProvider = ({
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_copilot",
       },
-      visibility: "unlisted",
+      // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
+      // We should rename it.
+      visibility: "test",
       metadata: {
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
