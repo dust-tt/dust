@@ -115,12 +115,12 @@ export function isServerSideMCPToolConfigurationWithName(
 }
 
 export function areDataSourcesConfigured(
-  arg: MCPServerConfigurationType
-): arg is ServerSideMCPServerConfigurationType {
+  config: MCPServerConfigurationType
+): config is ServerSideMCPServerConfigurationType {
   return (
-    isServerSideMCPServerConfiguration(arg) &&
-    !!arg.dataSources &&
-    arg.dataSources.length > 0
+    isServerSideMCPServerConfiguration(config) &&
+    !!config.dataSources &&
+    config.dataSources.length > 0
   );
 }
 
