@@ -49,6 +49,8 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
             "mpim:history",
             "channels:read",
             "files:write",
+            "im:write",
+            "mpim:write",
             "groups:read",
             "im:read",
             "mpim:read",
