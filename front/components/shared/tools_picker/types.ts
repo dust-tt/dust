@@ -7,6 +7,8 @@ import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { MODEL_PROVIDER_IDS } from "@app/types/assistant/models/providers";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
 
+export type CapabilityFilterType = "all" | "skills" | "tools";
+
 const modelIdSchema = z.enum(MODEL_IDS);
 const providerIdSchema = z.enum(MODEL_PROVIDER_IDS);
 const reasoningEffortSchema = z.enum(REASONING_EFFORTS);
