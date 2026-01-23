@@ -24,12 +24,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare state: AgentSuggestionState;
   declare source: AgentSuggestionSource;
 
-  // The property name uses underscore to match Sequelize's default naming from modelName "agent_configuration"
-  declare agent_configuration: NonAttribute<AgentConfigurationModel>;
-
-  getAgentConfiguration(): AgentConfigurationModel | null {
-    return this.agent_configuration ?? null;
-  }
+  declare agentConfiguration: NonAttribute<AgentConfigurationModel>;
 }
 
 AgentSuggestionModel.init(
@@ -94,6 +89,7 @@ AgentSuggestionModel.init(
 AgentSuggestionModel.belongsTo(AgentConfigurationModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },
   onDelete: "RESTRICT",
+  as: "agentConfiguration",
 });
 AgentConfigurationModel.hasMany(AgentSuggestionModel, {
   foreignKey: { name: "agentConfigurationId", allowNull: false },

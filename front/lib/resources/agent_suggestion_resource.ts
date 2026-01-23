@@ -163,6 +163,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       include: [
         {
           model: AgentConfigurationModel,
+          as: "agentConfiguration",
           required: true,
         },
       ],
@@ -175,7 +176,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     // Get unique agent sIds from the included AgentConfigurationModel.
     const agentSIds = [
-      ...new Set(suggestions.map((s) => s.getAgentConfiguration()?.sId ?? "")),
+      ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
     ].filter((sId) => sId !== "");
 
     const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
@@ -189,7 +190,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         if (auth.isAdmin()) {
           return true;
         }
-        const agentConfig = s.getAgentConfiguration();
+        const agentConfig = s.agentConfiguration;
         if (!agentConfig) {
           return false;
         }
@@ -201,7 +202,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         );
       })
       .map((suggestion) => {
-        const agentConfig = suggestion.getAgentConfiguration();
+        const agentConfig = suggestion.agentConfiguration;
         const editorsGroupId = agentConfig
           ? (editorsGroupIdBySId.get(agentConfig.sId) ?? null)
           : null;
