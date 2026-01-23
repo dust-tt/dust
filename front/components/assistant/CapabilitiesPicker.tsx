@@ -341,7 +341,7 @@ export function CapabilitiesPicker({
             <>
               <DropdownMenuSearchbar
                 autoFocus
-                name="search-tools"
+                name="search-capabilities"
                 placeholder="Search capabilities"
                 value={searchText}
                 onChange={setSearchText}
