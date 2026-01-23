@@ -81,8 +81,7 @@ export default function Subscription({
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
-  const [billingPeriod, setBillingPeriod] =
-    useState<BillingPeriod>("monthly");
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
@@ -508,18 +507,10 @@ export default function Subscription({
                 <ButtonsSwitchList
                   defaultValue={billingPeriod}
                   size="xs"
-                  onValueChange={(v) =>
-                    setBillingPeriod(v as BillingPeriod)
-                  }
+                  onValueChange={(v) => setBillingPeriod(v as BillingPeriod)}
                 >
-                  <ButtonsSwitch
-                    value="monthly"
-                    label="Monthly billing"
-                  />
-                  <ButtonsSwitch
-                    value="yearly"
-                    label="Yearly billing"
-                  />
+                  <ButtonsSwitch value="monthly" label="Monthly billing" />
+                  <ButtonsSwitch value="yearly" label="Yearly billing" />
                 </ButtonsSwitchList>
               </div>
               <div className="pt-4">
