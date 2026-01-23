@@ -60,9 +60,8 @@ export async function runToolActivity(
         {
           actionId,
           runIds,
-          errorType: runAgentDataRes.error.type,
         },
-        "getAgentLoopData returned soft-delete error while running tool, stopping execution"
+        "Message or conversation was deleted, exiting"
       );
       return { deferredEvents };
     }

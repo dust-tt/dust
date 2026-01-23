@@ -311,9 +311,8 @@ export async function finalizeCancellation(
         {
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
-          errorType: runAgentDataRes.error.type,
         },
-        "getAgentLoopData returned soft-delete error in finalizeCancellation, skipping"
+        "Message or conversation was deleted, exiting"
       );
       return;
     }

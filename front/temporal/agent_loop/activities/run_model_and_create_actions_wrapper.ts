@@ -56,9 +56,8 @@ export async function runModelAndCreateActionsActivity({
         {
           conversationId: runAgentArgs.conversationId,
           agentMessageId: runAgentArgs.agentMessageId,
-          errorType: runAgentDataRes.error.type,
         },
-        "getAgentLoopData returned soft-delete error, stopping execution"
+        "Message or conversation was deleted, exiting"
       );
       return null;
     }

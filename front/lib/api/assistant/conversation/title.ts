@@ -39,9 +39,8 @@ export async function ensureConversationTitleFromAgentLoop(
         {
           conversationId: agentLoopArgs.conversationId,
           agentMessageId: agentLoopArgs.agentMessageId,
-          errorType: runAgentDataRes.error.type,
         },
-        "getAgentLoopData returned soft-delete error in ensureConversationTitle, skipping"
+        "Message or conversation was deleted, exiting"
       );
       return null;
     }
