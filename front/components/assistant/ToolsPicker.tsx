@@ -299,7 +299,9 @@ export function ToolsPicker({
   const showToolsSection = filter === "all" || filter === "tools";
 
   const hasVisibleSkills =
-    showSkillsSection && hasSkillsFeature && filteredSkillsUnselected.length > 0;
+    showSkillsSection &&
+    hasSkillsFeature &&
+    filteredSkillsUnselected.length > 0;
   const hasVisibleTools =
     showToolsSection &&
     (filteredServerViewsUnselected.length > 0 ||
@@ -497,30 +499,24 @@ export function ToolsPicker({
               label={
                 searchText.length > 0
                   ? "No result"
-                  : filter === "skills"
-                    ? "No more skills to select"
-                    : filter === "tools"
-                      ? "No more tools to select"
-                      : hasSkillsFeature
-                        ? "No more skills or tools to select"
-                        : "No more tools to select"
+                  : filter !== "all"
+                    ? `No more ${filter} to select`
+                    : hasSkillsFeature
+                      ? "No more skills or tools to select"
+                      : "No more tools to select"
               }
               description={
                 searchText.length > 0
-                  ? filter === "skills"
-                    ? "No skills found matching your search."
-                    : filter === "tools"
-                      ? "No tools found matching your search."
-                      : hasSkillsFeature
-                        ? "No skills or tools found matching your search."
-                        : "No tools found matching your search."
-                  : filter === "skills"
-                    ? "All available skills are already selected."
-                    : filter === "tools"
-                      ? "All available tools are already selected."
-                      : hasSkillsFeature
-                        ? "All available skills and tools are already selected."
-                        : "All available tools are already selected."
+                  ? filter !== "all"
+                    ? `No ${filter} found matching your search.`
+                    : hasSkillsFeature
+                      ? "No skills or tools found matching your search."
+                      : "No tools found matching your search."
+                  : filter !== "all"
+                    ? `All available ${filter} are already selected.`
+                    : hasSkillsFeature
+                      ? "All available skills and tools are already selected."
+                      : "All available tools are already selected."
               }
               keyPrefix="tools-picker"
               disabled
