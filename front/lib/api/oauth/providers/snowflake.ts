@@ -8,6 +8,7 @@ import type {
 import snowflake from "snowflake-sdk";
 
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -45,7 +46,7 @@ import { isString } from "@app/types/shared/utils/general";
 async function getWorkspaceConnectionForMCPServer(
   auth: Authenticator,
   mcpServerId: string
-): Promise<OAuthConnectionType> {
+): Promise<Result<OAuthConnectionType, OAuthError>> {
   const mcpServerConnectionRes =
     await MCPServerConnectionResource.findByMCPServer(auth, {
       mcpServerId,
@@ -53,10 +54,12 @@ async function getWorkspaceConnectionForMCPServer(
     });
 
   if (mcpServerConnectionRes.isErr()) {
-    throw new Error(
-      "Failed to find MCP server connection: " +
-        mcpServerConnectionRes.error.message
-    );
+    return new Err({
+      code: "credential_retrieval_failed",
+      message:
+        "Failed to find MCP server connection: " +
+        mcpServerConnectionRes.error.message,
+    });
   }
 
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -65,12 +68,15 @@ async function getWorkspaceConnectionForMCPServer(
   });
 
   if (connectionRes.isErr()) {
-    throw new Error(
-      "Failed to get connection metadata: " + connectionRes.error.message
-    );
+    return new Err({
+      code: "credential_retrieval_failed",
+      message:
+        "Failed to get connection metadata: " + connectionRes.error.message,
+      oAuthAPIError: connectionRes.error,
+    });
   }
 
-  return connectionRes.value.connection;
+  return new Ok(connectionRes.value.connection);
 }
 
 export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
@@ -153,7 +159,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ): Promise<RelatedCredential> {
+  ): Promise<Result<RelatedCredential, OAuthError>> {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
       // For personal/platform actions we reuse the existing connection credential id from the
       // existing workspace connection (setup by admin) if we have it, otherwise we fallback to
@@ -161,17 +167,21 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       const { mcp_server_id } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
-        const connection = await getWorkspaceConnectionForMCPServer(
+        const connectionResult = await getWorkspaceConnectionForMCPServer(
           auth,
           mcp_server_id
         );
 
-        return {
+        if (connectionResult.isErr()) {
+          return connectionResult;
+        }
+
+        return new Ok({
           content: {
-            from_connection_id: connection.connection_id,
+            from_connection_id: connectionResult.value.connection_id,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
-        };
+        });
       }
     }
 
@@ -191,12 +201,14 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       !isString(snowflake_role) ||
       !isString(snowflake_warehouse)
     ) {
-      throw new Error(
-        "Missing or invalid client_id, client_secret, snowflake_account, snowflake_role, or snowflake_warehouse in extraConfig"
-      );
+      return new Err({
+        code: "credential_retrieval_failed",
+        message:
+          "Missing or invalid client_id, client_secret, snowflake_account, snowflake_role, or snowflake_warehouse in extraConfig",
+      });
     }
 
-    return {
+    return new Ok({
       content: {
         client_secret,
         client_id,
@@ -205,7 +217,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         snowflake_warehouse,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
-    };
+    });
   }
 
   async getUpdatedExtraConfig(
@@ -225,17 +237,21 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       const { mcp_server_id, snowflake_role: userRole } = extraConfig;
 
       if (mcp_server_id && isString(mcp_server_id)) {
-        const connection = await getWorkspaceConnectionForMCPServer(
+        const connectionResult = await getWorkspaceConnectionForMCPServer(
           auth,
           mcp_server_id
         );
+
+        if (connectionResult.isErr()) {
+          throw new Error(connectionResult.error.message);
+        }
 
         const {
           client_id: wsClientId,
           snowflake_account: wsAccount,
           snowflake_role: wsRole,
           snowflake_warehouse: wsWarehouse,
-        } = connection.metadata;
+        } = connectionResult.value.metadata;
 
         if (
           !isString(wsClientId) ||
