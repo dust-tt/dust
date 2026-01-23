@@ -410,8 +410,8 @@ export function getProviderRequiredOAuthCredentialInputs({
             value: undefined,
             helpMessage:
               useCase === "platform_actions"
-                ? "The Snowflake role for all users (e.g., ANALYST). The authenticating user must have access to this role."
-                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication. Each user must have access to the role they authenticate with.",
+                ? "The Snowflake role for all users (e.g., ANALYST)."
+                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",

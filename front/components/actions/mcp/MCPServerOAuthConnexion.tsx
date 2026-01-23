@@ -3,6 +3,7 @@ import {
   cn,
   Hoverable,
   Icon,
+  InformationCircleIcon,
   Input,
   Label,
   PlanetIcon,
@@ -241,6 +242,21 @@ export function MCPServerOAuthConnexion({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {authorization.provider === "snowflake" && inputs && (
+        <div className="flex w-full items-start gap-2 rounded-lg border border-border-dark/50 bg-muted-background p-3 dark:border-border-dark-night/50 dark:bg-muted-background-night">
+          <Icon
+            visual={InformationCircleIcon}
+            size="sm"
+            className="mt-0.5 shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+          />
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Clicking "Setup connection" will start a Snowflake OAuth flow using
+            the role above. Your Snowflake user must have access to this role to
+            complete authentication.
+          </span>
         </div>
       )}
 
