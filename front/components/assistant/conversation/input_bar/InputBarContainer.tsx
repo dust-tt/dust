@@ -27,7 +27,7 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
-import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
+import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -728,7 +728,7 @@ const InputBarContainer = ({
                     </>
                   )}
                   {actions.includes("capabilities") && (
-                    <ToolsPicker
+                    <CapabilitiesPicker
                       owner={owner}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}

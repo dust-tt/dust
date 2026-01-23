@@ -110,7 +110,7 @@ function CapabilityItem({
   );
 }
 
-interface ToolsPickerProps {
+interface CapabilitiesPickerProps {
   owner: WorkspaceType;
   selectedMCPServerViews: MCPServerViewType[];
   onSelect: (serverView: MCPServerViewType) => void;
@@ -123,7 +123,7 @@ interface ToolsPickerProps {
   buttonSize?: "xs" | "sm" | "md";
 }
 
-export function ToolsPicker({
+export function CapabilitiesPicker({
   owner,
   selectedMCPServerViews,
   onSelect,
@@ -133,7 +133,7 @@ export function ToolsPicker({
   isLoading = false,
   disabled = false,
   buttonSize = "xs",
-}: ToolsPickerProps) {
+}: CapabilitiesPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
