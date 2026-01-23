@@ -1,0 +1,127 @@
+import { Button, CheckIcon, Icon } from "@dust-tt/sparkle";
+
+import {
+  getPriceWithCurrency,
+  PRO_PLAN_COST_MONTHLY,
+  PRO_PLAN_COST_YEARLY,
+} from "@app/lib/client/subscription";
+import type { BillingPeriod } from "@app/types";
+
+const PRO_FEATURES = [
+  "From 1 user",
+  "Advanced AI models: GPT-5, Claude 4.5, Gemini, Mistral...",
+  "Data connections: Slack, Notion, Google Drive, GitHub...",
+  "Native integrations (Zendesk, Slack, Chrome Extension)",
+  "Email support: Get help when you need it",
+  "Free credits for programmatic usage (API, GSheet, Zapier)",
+];
+
+const ENTERPRISE_FEATURES = [
+  "Everything in Pro, plus:",
+  "Advanced security and controls",
+  "Larger storage and file size limits",
+  "Access to programmatic usage",
+  "Single Sign-On (SSO) (Okta, Entra ID, Jumpcloud)",
+  "User provisioning (SCIM)",
+  "Flexible billing options (SEPA, Credit Card)",
+  "Advanced connections (Salesforce, etc)",
+  "Priority access to new features",
+  "US / EU data hosting",
+  "Priority support",
+  "Dedicated Customer Success",
+];
+
+interface SubscriptionPlanCardsProps {
+  billingPeriod: BillingPeriod;
+  onSubscribe: () => void;
+  isProcessing: boolean;
+}
+
+export function SubscriptionPlanCards({
+  billingPeriod,
+  onSubscribe,
+  isProcessing,
+}: SubscriptionPlanCardsProps) {
+  const price =
+    billingPeriod === "monthly"
+      ? getPriceWithCurrency(PRO_PLAN_COST_MONTHLY)
+      : getPriceWithCurrency(PRO_PLAN_COST_YEARLY);
+
+  return (
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* Pro card */}
+      <div className="flex flex-col rounded-xl border border-border p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-foreground">Pro</h3>
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className="text-3xl font-bold tabular-nums text-foreground">
+              {price}
+            </span>
+            <span className="text-sm text-muted-foreground">per user</span>
+          </div>
+        </div>
+        <div className="mb-4 border-t border-border" />
+        <ul className="flex flex-1 flex-col gap-3">
+          {PRO_FEATURES.map((feature, index) => (
+            <li key={index} className="flex items-start gap-2">
+              <Icon
+                visual={CheckIcon}
+                size="sm"
+                className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
+              />
+              <span className="text-sm text-foreground">{feature}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6">
+          <Button
+            variant="highlight"
+            size="md"
+            label="Subscribe to Pro"
+            onClick={onSubscribe}
+            disabled={isProcessing}
+            className="w-full"
+          />
+        </div>
+      </div>
+
+      {/* Enterprise card */}
+      <div className="flex flex-col rounded-xl border border-border p-6">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-foreground">Enterprise</h3>
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className="text-3xl font-bold tabular-nums text-foreground">
+              Custom
+            </span>
+            <span className="text-sm text-muted-foreground">
+              pay-per-use, 100+ users
+            </span>
+          </div>
+        </div>
+        <div className="mb-4 border-t border-border" />
+        <ul className="flex flex-1 flex-col gap-3">
+          {ENTERPRISE_FEATURES.map((feature, index) => (
+            <li key={index} className="flex items-start gap-2">
+              <Icon
+                visual={CheckIcon}
+                size="sm"
+                className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
+              />
+              <span className="text-sm text-foreground">{feature}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-6">
+          <Button
+            variant="outline"
+            size="md"
+            label="Contact sales"
+            href="/home/contact"
+            disabled={isProcessing}
+            className="w-full"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,5 +1,7 @@
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   CardIcon,
   Chip,
   ContentMessage,
@@ -21,7 +23,7 @@ import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
-import { PricePlans } from "@app/components/plans/PlansTables";
+import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -43,6 +45,7 @@ import {
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { PatchSubscriptionRequestBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type {
+  BillingPeriod,
   SubscriptionPerSeatPricing,
   SubscriptionType,
   WorkspaceType,
@@ -78,6 +81,8 @@ export default function Subscription({
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
+  const [billingPeriod, setBillingPeriod] =
+    useState<BillingPeriod>("monthly");
   const [showSkipFreeTrialDialog, setShowSkipFreeTrialDialog] = useState(false);
   const [showCancelFreeTrialDialog, setShowCancelFreeTrialDialog] =
     useState(false);
@@ -130,7 +135,7 @@ export default function Subscription({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          billingPeriod: "monthly",
+          billingPeriod,
         }),
       });
 
@@ -269,8 +274,6 @@ export default function Subscription({
     isSubscribingPlan || isGoingToStripePortal || isUpgradingToBusiness;
 
   const chipColor = !isUpgraded(plan) ? "green" : "blue";
-
-  const onClickProPlan = async () => handleSubscribePlan();
 
   const planLabel =
     trialDaysRemaining === null
@@ -496,23 +499,37 @@ export default function Subscription({
             </Page.Vertical>
           )}
           {displayPricingTable && (
-            <>
-              <div className="pt-2">
-                <Page.H variant="h5">Manage my plan</Page.H>
-                <div className="h-full w-full pt-2">
-                  <PricePlans
-                    owner={owner}
-                    plan={plan}
-                    onClickProPlan={onClickProPlan}
-                    isProcessing={isProcessing}
-                    display="subscribe"
-                  />
+            <div className="pt-2">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <Page.H variant="h5">Choose a plan</Page.H>
+                  <Page.P>Pick a plan that best suits your team.</Page.P>
                 </div>
+                <ButtonsSwitchList
+                  defaultValue={billingPeriod}
+                  size="xs"
+                  onValueChange={(v) =>
+                    setBillingPeriod(v as BillingPeriod)
+                  }
+                >
+                  <ButtonsSwitch
+                    value="monthly"
+                    label="Monthly billing"
+                  />
+                  <ButtonsSwitch
+                    value="yearly"
+                    label="Yearly billing"
+                  />
+                </ButtonsSwitchList>
               </div>
-              <Link href="/terms" target="_blank" className="text-sm">
-                Terms of use apply to all plans.
-              </Link>
-            </>
+              <div className="pt-4">
+                <SubscriptionPlanCards
+                  billingPeriod={billingPeriod}
+                  onSubscribe={handleSubscribePlan}
+                  isProcessing={isProcessing}
+                />
+              </div>
+            </div>
           )}
         </Page.Vertical>
       </Page.Vertical>
