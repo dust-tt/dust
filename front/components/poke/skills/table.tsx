@@ -24,6 +24,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
@@ -33,7 +34,6 @@ import {
   isAutoInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeSkills } from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types";
@@ -54,6 +54,7 @@ interface SkillsDataTableProps {
 export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
   const [showCreateSuggestionSheet, setShowCreateSuggestionSheet] =
     useState(false);
+  const { mutate } = usePokeSkills({ owner, disabled: false });
 
   const skillButtons = (
     <div className="flex flex-row gap-2">
@@ -73,6 +74,7 @@ export function SkillsDataTable({ owner, loadOnInit }: SkillsDataTableProps) {
         show={showCreateSuggestionSheet}
         onClose={() => setShowCreateSuggestionSheet(false)}
         owner={owner}
+        onSuccess={() => mutate()}
       />
       <PokeDataTableConditionalFetch
         header="Skills"
@@ -93,14 +95,16 @@ interface CreateSkillSuggestionSheetProps {
   show: boolean;
   onClose: () => void;
   owner: LightWorkspaceType;
+  onSuccess: () => void;
 }
 
 function CreateSkillSuggestionSheet({
   show,
   onClose,
   owner,
+  onSuccess,
 }: CreateSkillSuggestionSheetProps) {
-  const router = useAppRouter();
+  const sendNotification = useSendNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
 
@@ -130,6 +134,11 @@ function CreateSkillSuggestionSheet({
     setMcpSearchText("");
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const handleSubmit = async () => {
     if (
       !name.trim() ||
@@ -137,7 +146,11 @@ function CreateSkillSuggestionSheet({
       !agentFacingDescription.trim() ||
       !instructions.trim()
     ) {
-      window.alert("All fields are required");
+      sendNotification({
+        type: "error",
+        title: "Validation error",
+        description: "All fields are required.",
+      });
       return;
     }
 
@@ -163,11 +176,20 @@ function CreateSkillSuggestionSheet({
 
     if (!response.ok) {
       const errorData = await getErrorFromResponse(response);
-      window.alert(`Failed to create skill suggestion. ${errorData.message}`);
+      sendNotification({
+        type: "error",
+        title: "Failed to create skill suggestion",
+        description: errorData.message,
+      });
     } else {
+      sendNotification({
+        type: "success",
+        title: "Skill suggestion created",
+        description: `"${name.trim()}" has been created.`,
+      });
       resetForm();
       onClose();
-      router.reload();
+      onSuccess();
     }
   };
 
@@ -185,7 +207,7 @@ function CreateSkillSuggestionSheet({
       open={show}
       onOpenChange={(open) => {
         if (!open) {
-          onClose();
+          handleClose();
         }
       }}
     >
@@ -271,7 +293,14 @@ function CreateSkillSuggestionSheet({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label>MCP Servers</Label>
-                <DropdownMenu modal={false}>
+                <DropdownMenu
+                  modal={false}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setMcpSearchText("");
+                    }
+                  }}
+                >
                   <DropdownMenuTrigger asChild>
                     <Button
                       icon={PlusIcon}
@@ -334,7 +363,7 @@ function CreateSkillSuggestionSheet({
               <Button
                 variant="ghost"
                 label="Cancel"
-                onClick={onClose}
+                onClick={handleClose}
                 disabled={isSubmitting}
               />
               <Button
