@@ -492,6 +492,7 @@ export const INTERNAL_MCP_SERVERS = {
       get_messages: "never_ask",
       create_reply_draft: "medium",
       get_attachment: "never_ask",
+      send_mail: "high",
     },
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
