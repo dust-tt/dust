@@ -166,9 +166,10 @@ function ExportContentDropdown({
           Download as PNG
         </DropdownMenuItem>
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger disabled={isExportingPdf}>
-            Download as PDF
-          </DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger
+            disabled={isExportingPdf}
+            label="Download as PDF"
+          />
           <DropdownMenuSubContent>
             <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
               Portrait
