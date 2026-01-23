@@ -262,10 +262,10 @@ export async function resolveChannelId({
       if (openResp.ok && openResp.channel?.id) {
         return openResp.channel.id;
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (error) {
-      // Fall through to other methods.
+    } catch {
+      // conversations.open failed, user ID cannot be resolved.
     }
+    return null;
   }
 
   // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
