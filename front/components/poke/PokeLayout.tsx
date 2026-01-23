@@ -25,26 +25,20 @@ export default function PokeLayout({
 }: {
   children: React.ReactNode;
   title: string;
-  authContext?: AuthContextValue;
+  authContext: AuthContextValue;
 }) {
-  const content = (
-    <ThemeProvider>
-      <PokePageTitleContext.Provider value={title}>
-        <Head>
-          <title>{"Poke - " + title}</title>
-        </Head>
-        <PokeLayoutContent>{children}</PokeLayoutContent>
-      </PokePageTitleContext.Provider>
-    </ThemeProvider>
+  return (
+    <AuthContext.Provider value={authContext}>
+      <ThemeProvider>
+        <PokePageTitleContext.Provider value={title}>
+          <Head>
+            <title>{"Poke - " + title}</title>
+          </Head>
+          <PokeLayoutContent>{children}</PokeLayoutContent>
+        </PokePageTitleContext.Provider>
+      </ThemeProvider>
+    </AuthContext.Provider>
   );
-
-  if (authContext) {
-    return (
-      <AuthContext.Provider value={authContext}>{content}</AuthContext.Provider>
-    );
-  }
-
-  return content;
 }
 
 interface PokeLayoutContentProps {
