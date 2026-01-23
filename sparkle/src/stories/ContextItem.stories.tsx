@@ -23,7 +23,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/ContextItem",
+  title: "List/ContextItem",
   component: ContextItem,
 } satisfies Meta<typeof ContextItem>;
 

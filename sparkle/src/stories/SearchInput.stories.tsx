@@ -92,6 +92,16 @@ export function SearchInputWithPopoverScrollableExample() {
       open={open}
       onOpenChange={setOpen}
       items={filteredItems}
+      stickyTopContent={
+        <div className="s-text-xs s-text-muted-foreground">
+          Tip: use Ctrl+K to focus search.
+        </div>
+      }
+      stickyBottomContent={
+        <div className="s-text-xs s-text-muted-foreground">
+          Press Enter to select the highlighted result.
+        </div>
+      }
       onItemSelect={(item) => console.log(item)}
       onSelectAll={() => console.log("select all")}
       contentMessage={{
@@ -122,5 +132,62 @@ export function SearchInputWithPopoverScrollableExample() {
       )}
       noResults="No results found"
     />
+  );
+}
+
+export function SearchInputWithPopoverSelectAllExample() {
+  const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const items = Array.from({ length: 30 }).map(
+    (_, i) => `Team ${String(i + 1).padStart(2, "0")}`
+  );
+  const filteredItems = items.filter((item) =>
+    item.toLowerCase().includes(value.toLowerCase())
+  );
+
+  return (
+    <div className="s-flex s-max-w-md s-flex-col s-gap-2">
+      <SearchInputWithPopover
+        name="search"
+        placeholder="Search teams..."
+        value={value}
+        onChange={setValue}
+        open={open}
+        onOpenChange={setOpen}
+        items={filteredItems}
+        stickyTopContent={<>hello</>}
+        stickyBottomContent={<>world</>}
+        onItemSelect={(item) => {
+          setValue(item);
+          setOpen(false);
+        }}
+        onSelectAll={() => {
+          setValue("All teams");
+          setOpen(false);
+        }}
+        displayItemCount
+        totalItems={42}
+        renderItem={(item, selected) => (
+          <div
+            key={item}
+            role="option"
+            className={cn(
+              "s-cursor-pointer s-truncate s-px-2 s-py-2 hover:s-bg-primary-100 dark:hover:s-bg-primary-100-night",
+              selected && "s-bg-primary-100"
+            )}
+            onClick={() => {
+              setValue(item);
+              setOpen(false);
+            }}
+          >
+            {item}
+          </div>
+        )}
+        noResults="No teams found"
+      />
+      <div className="s-text-xs s-text-muted-foreground">
+        Use Select all to capture the full list.
+      </div>
+    </div>
   );
 }

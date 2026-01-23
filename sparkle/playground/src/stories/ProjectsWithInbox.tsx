@@ -24,6 +24,7 @@ import {
   LightbulbIcon,
   ListSelectIcon,
   LogoutIcon,
+  Icon,
   MagnifyingGlassIcon,
   MoreIcon,
   NavigationList,
@@ -35,7 +36,11 @@ import {
   PlusIcon,
   ScrollArea,
   ScrollBar,
-  SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SidebarLayout,
   type SidebarLayoutRef,
   SidebarLeftCloseIcon,
@@ -49,7 +54,14 @@ import {
   TabsTrigger,
   TrashIcon,
   UserIcon,
+  Spinner,
+  AtomIcon,
 } from "@dust-tt/sparkle";
+import {
+  SearchInput,
+  SearchInputWithPopover,
+} from "@dust-tt/sparkle/components/SearchInput";
+import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
@@ -77,6 +89,8 @@ import {
   type Space,
   type User,
 } from "../data";
+import { getDataSourcesBySpaceId } from "../data/dataSources";
+import type { DataSource } from "../data/types";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -85,6 +99,75 @@ type Collaborator =
 type Participant =
   | { type: "user"; data: User }
   | { type: "agent"; data: Agent };
+
+type UniversalSearchItem =
+  | {
+      type: "document";
+      dataSource: DataSource;
+      space: Space;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "conversation";
+      conversation: Conversation;
+      creator?: User;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "project";
+      space: Space;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "person";
+      user: User;
+      title: string;
+      description: string;
+      score: number;
+    };
+
+const fakeDocumentFirstLines = [
+  "Introduction: This document outlines the initial scope and goals.",
+  "Summary: Key findings are consolidated in the sections below.",
+  "Overview: A first pass at the requirements and assumptions.",
+  "Draft note: Please review the proposed changes and provide feedback.",
+  "Excerpt: The following section captures the primary constraints.",
+  "Context: This file compiles the core decisions made so far.",
+  "Opening: A quick recap of the current state and next steps.",
+  "First line: The document begins with a brief background statement.",
+];
+
+function getFakeDocumentFirstLine(dataSource: DataSource): string {
+  const seed = `${dataSource.id}-${dataSource.fileName}`;
+  const index = seed
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return (
+    fakeDocumentFirstLines[index % fakeDocumentFirstLines.length] ||
+    "Overview: This document contains a summary of the content."
+  );
+}
+
+function getBaseConversationId(
+  conversation: Conversation,
+  allConversations: Conversation[]
+): string {
+  const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
+  if (expandedIdMatch) {
+    const potentialBase = expandedIdMatch[1];
+    const baseExists = allConversations.some((c) => c.id === potentialBase);
+    if (baseExists) {
+      return potentialBase;
+    }
+  }
+  return conversation.id;
+}
 
 function getRandomParticipants(conversation: Conversation): Participant[] {
   const allParticipants: Participant[] = [];
@@ -114,6 +197,17 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
   return shuffled.slice(0, count);
 }
 
+function getRandomCreator(conversation: Conversation): User | null {
+  if (conversation.userParticipants.length === 0) {
+    return null;
+  }
+  const creatorId =
+    conversation.userParticipants[
+      Math.floor(Math.random() * conversation.userParticipants.length)
+    ];
+  return getUserById(creatorId) || null;
+}
+
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
@@ -122,7 +216,7 @@ function DustMain() {
   const [projectSearchText, setProjectSearchText] = useState("");
   const [agentSearchText, setAgentSearchText] = useState("");
   const [peopleSearchText, setPeopleSearchText] = useState("");
-  const [documentSearchText, setDocumentSearchText] = useState("");
+  const [universalSearchText, setUniversalSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -135,6 +229,10 @@ function DustMain() {
     "inbox" | "space" | "conversation" | null
   >("inbox");
   const [cameFromInbox, setCameFromInbox] = useState<boolean>(false);
+  const [isUniversalSearchOpen, setIsUniversalSearchOpen] = useState(false);
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSource | null>(null);
+  const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -239,6 +337,227 @@ function DustMain() {
   const allConversations = useMemo(() => {
     return [...conversationsWithMessages, ...mockConversations];
   }, [conversationsWithMessages]);
+
+  const universalSearchResults = useMemo((): UniversalSearchItem[] => {
+    const trimmed = universalSearchText.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    const searchLower = trimmed.toLowerCase();
+
+    const documentResults = mockSpaces.reduce<UniversalSearchItem[]>(
+      (acc, space) => {
+        const dataSources = getDataSourcesBySpaceId(space.id);
+        dataSources.forEach((dataSource) => {
+          const title = dataSource.fileName;
+          const description = getFakeDocumentFirstLine(dataSource);
+          const titleMatch = title.toLowerCase().includes(searchLower);
+          const descriptionMatch = description
+            .toLowerCase()
+            .includes(searchLower);
+          if (titleMatch || descriptionMatch) {
+            acc.push({
+              type: "document",
+              dataSource,
+              space,
+              title,
+              description,
+              score: titleMatch ? 2 : 1,
+            });
+          }
+        });
+        return acc;
+      },
+      []
+    );
+
+    const projectResults = mockSpaces.reduce<UniversalSearchItem[]>(
+      (acc, space) => {
+        const title = space.name;
+        const description = space.description;
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "project",
+            space,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
+    );
+
+    const peopleResults = mockUsers.reduce<UniversalSearchItem[]>(
+      (acc, user) => {
+        const title = user.fullName;
+        const description = user.email;
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "person",
+            user,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
+    );
+
+    const conversationResults = allConversations.reduce<UniversalSearchItem[]>(
+      (acc, conversation) => {
+        const creator = getRandomCreator(conversation);
+        const title = conversation.title;
+        const description = conversation.description ?? "";
+        const searchableTitle = creator
+          ? `${creator.fullName} ${title}`
+          : title;
+        const titleMatch = searchableTitle.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "conversation",
+            conversation,
+            creator: creator || undefined,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
+    );
+
+    return [
+      ...documentResults,
+      ...projectResults,
+      ...peopleResults,
+      ...conversationResults,
+    ].sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [allConversations, mockSpaces, mockUsers, universalSearchText]);
+
+  const handleUniversalSearchSelect = (item: UniversalSearchItem) => {
+    if (item.type === "document") {
+      setSelectedDataSource(item.dataSource);
+      setIsDocumentSheetOpen(true);
+      setIsUniversalSearchOpen(false);
+      return;
+    }
+
+    if (item.type === "project") {
+      setSelectedSpaceId(item.space.id);
+      setSelectedView("space");
+      setSelectedConversationId(null);
+      setPreviousSpaceId(null);
+      setCameFromInbox(false);
+      setIsUniversalSearchOpen(false);
+      return;
+    }
+
+    if (item.type === "person") {
+      console.log("Select person:", item.user.id);
+      setIsUniversalSearchOpen(false);
+      return;
+    }
+
+    const baseConversationId = getBaseConversationId(
+      item.conversation,
+      allConversations
+    );
+    setSelectedConversationId(baseConversationId);
+    setSelectedView("conversation");
+    setSelectedSpaceId(item.conversation.spaceId ?? null);
+    setPreviousSpaceId(null);
+    setCameFromInbox(false);
+    setIsUniversalSearchOpen(false);
+  };
+
+  const UniversalSearchResultItem = ({
+    item,
+    selected,
+  }: {
+    item: UniversalSearchItem;
+    selected: boolean;
+  }) => {
+    const getVisual = () => {
+      if (item.type === "document") {
+        return item.dataSource.icon ? (
+          <Icon visual={item.dataSource.icon} size="md" />
+        ) : null;
+      }
+
+      if (item.type === "project") {
+        return <Icon visual={SpaceOpenIcon} size="md" />;
+      }
+
+      if (item.type === "person") {
+        return (
+          <Avatar
+            name={item.user.fullName}
+            visual={item.user.portrait}
+            size="xs"
+            isRounded={true}
+          />
+        );
+      }
+
+      return item.creator ? (
+        <Avatar
+          name={item.creator.fullName}
+          visual={item.creator.portrait}
+          size="xs"
+          isRounded={true}
+        />
+      ) : (
+        <Icon visual={ChatBubbleLeftRightIcon} size="md" />
+      );
+    };
+
+    const getTitle = () => {
+      if (item.type === "conversation" && item.creator) {
+        return (
+          <>
+            <span className="s-shrink-0">{item.creator.fullName}</span>
+            <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {item.title}
+            </span>
+          </>
+        );
+      }
+      return <span className="s-min-w-0 s-truncate">{item.title}</span>;
+    };
+
+    return (
+      <UniversalSearchItem
+        onClick={() => handleUniversalSearchSelect(item)}
+        selected={selected}
+        hasSeparator={false}
+        visual={getVisual()}
+        title={getTitle()}
+        description={item.description}
+      />
+    );
+  };
 
   // Calculate unread count for Inbox (same logic as InboxView)
   const unreadCount = useMemo(() => {
@@ -556,6 +875,7 @@ function DustMain() {
                 size="sm"
                 icon={ChatBubbleBottomCenterTextIcon}
                 label="New"
+                onClick={handleNewConversation}
               />
             </div>
             {/* Collapsible Sections */}
@@ -711,6 +1031,7 @@ function DustMain() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          handleNewConversation();
                         }}
                       />
                       <DropdownMenu>
@@ -1025,6 +1346,14 @@ function DustMain() {
     }
   };
 
+  function handleNewConversation() {
+    setSelectedConversationId("new-conversation");
+    setSelectedView(null);
+    setSelectedSpaceId(null);
+    setPreviousSpaceId(null);
+    setCameFromInbox(false);
+  }
+
   // Handle room creation flow
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
     // Create the new space directly
@@ -1175,12 +1504,58 @@ function DustMain() {
             <div className="s-heading-lg s-text-foreground">
               Universal search
             </div>
-            <SearchInput
+            <SearchInputWithPopover
               name="document-search"
-              value={documentSearchText}
-              onChange={setDocumentSearchText}
+              value={universalSearchText}
+              stickyTopContent={
+                <>
+                  <Button size="xs" label="All" variant={"primary"} />
+                  <Button size="xs" label="Projects" variant={"ghost"} />
+                  <Button size="xs" label="Conversations" variant={"ghost"} />
+                  <Button size="xs" label="People" variant={"ghost"} />
+                  <Button size="xs" label="Documents" variant={"ghost"} />
+                  <div className="s-w-full s-flex-1" />
+                  <Button
+                    size="xs"
+                    icon={MagnifyingGlassIcon}
+                    label="Ask @dust"
+                    variant={"outline"}
+                  />
+                  <Button
+                    size="xs"
+                    icon={AtomIcon}
+                    label="Start a DeepDive"
+                    variant={"highlight"}
+                  />
+                </>
+              }
+              stickyBottomContent={
+                <div className="s-heading-sm s-flex s-items-center s-gap-3 s-px-1.5 s-py-1 s-text-muted-foreground">
+                  <Spinner size="sm" />
+                  Searching some more...
+                </div>
+              }
+              onChange={(value) => {
+                setUniversalSearchText(value);
+                if (!value.trim()) {
+                  setIsUniversalSearchOpen(false);
+                }
+              }}
+              open={isUniversalSearchOpen}
+              onOpenChange={setIsUniversalSearchOpen}
               placeholder="Find company documents, Agents, People…"
               className="s-w-full"
+              items={universalSearchResults}
+              availableHeight
+              noResults={
+                universalSearchText.trim()
+                  ? "No results found"
+                  : "Start typing to search"
+              }
+              onItemSelect={handleUniversalSearchSelect}
+              renderItem={(item, selected) => (
+                <UniversalSearchResultItem item={item} selected={selected} />
+              )}
             />
           </div>
           <div className="s-heading-lg s-text-foreground">Chat with…</div>
@@ -1216,6 +1591,30 @@ function DustMain() {
         }}
         onInvite={handleInviteUsersComplete}
       />
+      <Sheet
+        open={isDocumentSheetOpen}
+        onOpenChange={(open: boolean) => {
+          setIsDocumentSheetOpen(open);
+          if (!open) {
+            setSelectedDataSource(null);
+          }
+        }}
+      >
+        <SheetContent size="lg" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedDataSource?.fileName || "Document View"}
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                Document View
+              </p>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
