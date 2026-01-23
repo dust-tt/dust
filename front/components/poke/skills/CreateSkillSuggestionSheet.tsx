@@ -30,7 +30,6 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
-import { usePokeSpaces } from "@app/poke/swr/spaces";
 import type { LightWorkspaceType } from "@app/types";
 
 const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
@@ -64,26 +63,13 @@ export function CreateSkillSuggestionSheet({
   const [mcpSearchText, setMCPSearchText] = useState("");
 
   const { data: allMCPServerViews, isLoading: isMCPServerViewsLoading } =
-    usePokeMCPServerViews({ owner, disabled: !show });
+    usePokeMCPServerViews({ owner, disabled: !show, globalSpaceOnly: true });
 
-  const { data: spaces, isLoading: isSpacesLoading } = usePokeSpaces({
-    owner,
-    disabled: !show,
-  });
-
-  const globalSpace = useMemo(
-    () => spaces.find((s) => s.kind === "global"),
-    [spaces]
-  );
-
+  // Filter to match the skill builder behavior:
+  // - Only "manual" and "auto" availability
+  // - Only views that don't require configuration
   const noConfigMCPServerViews = useMemo(() => {
-    if (!globalSpace) {
-      return [];
-    }
     return allMCPServerViews.filter((view) => {
-      if (view.spaceId !== globalSpace.sId) {
-        return false;
-      }
       const { availability } = view.server;
       if (availability !== "manual" && availability !== "auto") {
         return false;
@@ -91,7 +77,7 @@ export function CreateSkillSuggestionSheet({
       const { noRequirement } = getMCPServerRequirements(view);
       return noRequirement;
     });
-  }, [allMCPServerViews, globalSpace]);
+  }, [allMCPServerViews]);
 
   const resetForm = () => {
     setName("");
@@ -229,7 +215,7 @@ export function CreateSkillSuggestionSheet({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label>MCP Servers</Label>
-                {isMCPServerViewsLoading || isSpacesLoading ? (
+                {isMCPServerViewsLoading ? (
                   <Spinner size="xs" />
                 ) : (
                   <DropdownMenu modal={false}>
