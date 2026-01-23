@@ -303,6 +303,7 @@ async function processSingleImageFile(
     );
   }
 
+  // TODO(@jd) JIT resize over 20MB once imagemagick is available.
   if (fileResource.fileSize > maxImageSize) {
     logger.warn(
       {
