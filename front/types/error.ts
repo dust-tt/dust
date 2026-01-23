@@ -147,6 +147,8 @@ const API_ERROR_TYPES = [
   "skill_not_found",
   // Projects
   "project_metadata_not_found",
+  // Suggestions
+  "agent_suggestion_not_found",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];
