@@ -10,16 +10,13 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
-const ALLOWED_PATCH_STATES = ["approved", "declined", "outdated"] as const;
-
 const PatchSuggestionRequestBodySchema = t.type({
   suggestionId: t.string,
-  state: t.keyof(
-    Object.fromEntries(ALLOWED_PATCH_STATES.map((s) => [s, null])) as Record<
-      (typeof ALLOWED_PATCH_STATES)[number],
-      null
-    >
-  ),
+  state: t.union([
+    t.literal("approved"),
+    t.literal("declined"),
+    t.literal("outdated"),
+  ]),
 });
 
 export type PatchSuggestionRequestBody = t.TypeOf<
@@ -78,22 +75,7 @@ async function handler(
 
       await suggestion.updateState(auth, state);
 
-      // Fetch the updated suggestion to return the latest state.
-      const updatedSuggestion = await AgentSuggestionResource.fetchById(
-        auth,
-        suggestionId
-      );
-      if (!updatedSuggestion) {
-        return apiError(req, res, {
-          status_code: 500,
-          api_error: {
-            type: "internal_server_error",
-            message: "Failed to fetch updated suggestion.",
-          },
-        });
-      }
-
-      return res.status(200).json({ suggestion: updatedSuggestion.toJSON() });
+      return res.status(200).json({ suggestion: suggestion.toJSON() });
     }
 
     default:
