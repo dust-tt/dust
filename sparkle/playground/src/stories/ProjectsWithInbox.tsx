@@ -1112,6 +1112,7 @@ function DustMain() {
         conversationsWithMessages={conversationsWithMessages}
         showBackButton={!!previousSpaceId || cameFromInbox}
         onBack={handleConversationBack}
+        projectTitle={previousSpaceId ? selectedProject?.name : undefined}
       />
     ) : // Priority 2: Show inbox view if inbox is selected
     selectedView === "inbox" ? (

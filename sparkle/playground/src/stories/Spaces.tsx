@@ -1411,6 +1411,7 @@ function DustMain() {
           !!previousSpaceId || cameFromInbox || cameFromPersonAgent
         }
         onBack={handleConversationBack}
+        projectTitle={previousSpaceId ? selectedSpace?.name : undefined}
       />
     ) : // Priority 2: Show inbox view if inbox is selected
     selectedView === "inbox" ? (
