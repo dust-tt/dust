@@ -41,6 +41,12 @@ const AUTO_INTERNAL_MCP_SERVER_NAMES: AutoInternalMCPServerNameType[] =
     .map(([name]) => name as AutoInternalMCPServerNameType)
     .sort();
 
+const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
+
+function isValidIcon(icon: string | null): icon is keyof typeof ActionIcons {
+  return icon ? icon in ActionIcons : false;
+}
+
 interface SkillsDataTableProps {
   owner: LightWorkspaceType;
   loadOnInit?: boolean;
@@ -118,12 +124,14 @@ function CreateSkillSuggestionSheet({
     setMcpSearchText("");
   };
 
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   const { createSkillSuggestion } = useCreatePokeSkillSuggestion({
     owner,
-    onSuccess: () => {
-      resetForm();
-      onClose();
-    },
+    onSuccess: handleClose,
   });
 
   const filteredMcpServers = useMemo(() => {
@@ -131,11 +139,6 @@ function CreateSkillSuggestionSheet({
       name.toLowerCase().includes(mcpSearchText.toLowerCase())
     );
   }, [mcpSearchText]);
-
-  const handleClose = () => {
-    resetForm();
-    onClose();
-  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -150,14 +153,9 @@ function CreateSkillSuggestionSheet({
     setIsSubmitting(false);
   };
 
-  const toActionIconKey = (v?: string | null) =>
-    v && v in ActionIcons ? (v as keyof typeof ActionIcons) : undefined;
+  const selectedIconName = isValidIcon(icon) ? icon : DEFAULT_ICON;
 
-  const selectedIconName =
-    toActionIconKey(icon) ??
-    ("ActionListCheckIcon" as keyof typeof ActionIcons);
-  const IconComponent =
-    ActionIcons[selectedIconName] || ActionIcons["ActionListCheckIcon"];
+  const IconComponent = ActionIcons[selectedIconName];
 
   return (
     <Sheet
