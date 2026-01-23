@@ -955,7 +955,8 @@ export class FileResource extends BaseResource<FileModel> {
       });
 
       // Use processAndStoreFile to handle the content processing and storage.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } =
+        await import("@app/lib/api/files/processing");
       const result = await processAndStoreFile(auth, {
         file: newFile,
         content: {
