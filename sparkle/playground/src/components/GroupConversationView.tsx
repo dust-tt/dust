@@ -21,7 +21,6 @@ import {
   InformationCircleIcon,
   Input,
   ListGroup,
-  ListItem,
   ListItemSection,
   MoreIcon,
   LogoutIcon,
@@ -43,8 +42,8 @@ import {
   ArrowUpOnSquareIcon,
   UserGroupIcon,
   TrashIcon,
-  cn,
 } from "@dust-tt/sparkle";
+import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 
@@ -436,6 +435,25 @@ export function GroupConversationView({
     });
   }, [dataSources, expandedConversations, searchText, users]);
 
+  const handleSearchItemSelect = (item: UniversalSearchItem) => {
+    if (item.type === "document") {
+      setSelectedDataSource(item.dataSource);
+      setIsDocumentSheetOpen(true);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    const baseConversationId = getBaseConversationId(
+      item.conversation,
+      conversations
+    );
+    onConversationClick?.({
+      ...item.conversation,
+      id: baseConversationId,
+    });
+    setIsSearchOpen(false);
+  };
+
   const SearchResultItem = ({
     item,
     selected,
@@ -445,23 +463,7 @@ export function GroupConversationView({
   }) => {
     const isDocument = item.type === "document";
     const key = isDocument ? item.dataSource.id : item.conversation.id;
-    const onClick = isDocument
-      ? () => {
-          setSelectedDataSource(item.dataSource);
-          setIsDocumentSheetOpen(true);
-          setIsSearchOpen(false);
-        }
-      : () => {
-          const baseConversationId = getBaseConversationId(
-            item.conversation,
-            conversations
-          );
-          onConversationClick?.({
-            ...item.conversation,
-            id: baseConversationId,
-          });
-          setIsSearchOpen(false);
-        };
+    const onClick = () => handleSearchItemSelect(item);
     const description = isDocument
       ? item.description
       : item.description || "No description available.";
@@ -480,37 +482,27 @@ export function GroupConversationView({
     const titlePrefix =
       !isDocument && item.creator ? item.creator.fullName : "";
 
+    const title = titlePrefix ? (
+      <>
+        <span className="s-shrink-0">{titlePrefix}</span>
+        <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+          {item.title}
+        </span>
+      </>
+    ) : (
+      <span className="s-min-w-0 s-truncate">{item.title}</span>
+    );
+
     return (
-      <ListItem
+      <UniversalSearchItem
         key={key}
         onClick={onClick}
-        className={cn(
-          selected && "s-bg-highlight-50 dark:s-bg-highlight-50-night"
-        )}
+        selected={selected}
         hasSeparator={false}
-      >
-        <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-2">
-          {visual}
-          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-text-foreground">
-            <div className="s-heading-sm s-flex s-min-w-0 s-gap-1 s-truncate s-text-foreground dark:s-text-foreground-night">
-              {titlePrefix ? (
-                <>
-                  <span className="s-shrink-0">{titlePrefix}</span>
-                  <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-foreground-night">
-                    {" "}
-                    {item.title}
-                  </span>
-                </>
-              ) : (
-                <span className="s-min-w-0 s-truncate">{item.title}</span>
-              )}
-            </div>
-            <div className="s-line-clamp-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-              {description}
-            </div>
-          </div>
-        </div>
-      </ListItem>
+        visual={visual}
+        title={title}
+        description={description}
+      />
     );
   };
 
@@ -1021,11 +1013,13 @@ export function GroupConversationView({
                         placeholder={`Search in ${space.name}`}
                         className="s-w-full"
                         items={searchResults}
+                        availableHeight
                         noResults={
                           searchText.trim()
                             ? "No results found"
                             : "Start typing to search"
                         }
+                        onItemSelect={handleSearchItemSelect}
                         renderItem={(item, selected) => (
                           <SearchResultItem item={item} selected={selected} />
                         )}
