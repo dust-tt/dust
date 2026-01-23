@@ -20,8 +20,10 @@ import type {
   AgentMessageStatus,
   LightWorkspaceType,
   PublicAPILimitsType,
+  Result,
   UserMessageOrigin,
 } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -141,29 +143,39 @@ export async function hasReachedProgrammaticUsageLimits(
   return (await CreditResource.listActive(auth)).length === 0;
 }
 
-export type UsageLimitType = "none" | "workspace_credits" | "key_cap";
-
 /**
  * Check if programmatic usage limits have been reached.
  * Checks both workspace credits and per-key caps.
- * Returns the type of limit that was reached, if any.
+ * Returns Ok if no limit reached, Err with message if a limit was reached.
  */
 export async function checkProgrammaticUsageLimits(
   auth: Authenticator
-): Promise<{ hasReachedLimit: boolean; limitType: UsageLimitType }> {
+): Promise<Result<void, Error>> {
+  const isAdmin = auth.isAdmin();
+
   // First check workspace credits.
   const hasNoCredits = await hasReachedProgrammaticUsageLimits(auth);
   if (hasNoCredits) {
-    return { hasReachedLimit: true, limitType: "workspace_credits" };
+    const message = isAdmin
+      ? "Your workspace has run out of programmatic usage credits. " +
+        "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
+      : "Your workspace has run out of programmatic usage credits. " +
+        "Please ask a Dust workspace admin to purchase more credits.";
+    return new Err(new Error(message));
   }
 
   // Then check per-key cap.
   const keyCapReached = await hasKeyReachedUsageCap(auth);
   if (keyCapReached) {
-    return { hasReachedLimit: true, limitType: "key_cap" };
+    const message = isAdmin
+      ? "This API key has reached its monthly usage cap. " +
+        "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
+      : "This API key has reached its monthly usage cap. " +
+        "Please ask a Dust workspace admin to increase the cap.";
+    return new Err(new Error(message));
   }
 
-  return { hasReachedLimit: false, limitType: "none" };
+  return new Ok(undefined);
 }
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.

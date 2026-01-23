@@ -274,22 +274,9 @@ async function checkWorkspaceRateLimit({
       errorMessage = message;
     }
   } else {
-    const { hasReachedLimit, limitType } =
-      await checkProgrammaticUsageLimits(auth);
-    if (hasReachedLimit) {
-      if (limitType === "key_cap") {
-        errorMessage = auth.isAdmin()
-          ? "This API key has reached its monthly usage cap. " +
-            "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
-          : "This API key has reached its monthly usage cap. " +
-            "Please ask a Dust workspace admin to increase the cap.";
-      } else {
-        errorMessage = auth.isAdmin()
-          ? "Your workspace has run out of programmatic usage credits. " +
-            "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
-          : "Your workspace has run out of programmatic usage credits. " +
-            "Please ask a Dust workspace admin to purchase more credits.";
-      }
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      errorMessage = limitsResult.error.message;
     }
   }
 
