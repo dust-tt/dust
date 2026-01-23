@@ -45,11 +45,11 @@ import type { WorkspaceType } from "@app/types";
 import { asDisplayName } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-function ToolsPickerLoading({ count = 5 }: { count?: number }) {
+function CapabilitiesPickerLoading({ count = 5 }: { count?: number }) {
   return (
     <div className="py-1">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={`tools-picker-loading-${i}`} className="px-1 py-1">
+        <div key={`capabilities-picker-loading-${i}`} className="px-1 py-1">
           <div className="flex items-center gap-3 rounded-md p-2">
             <LoadingBlock className="h-5 w-5 rounded-full dark:bg-muted-foreground-night" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
@@ -391,7 +391,7 @@ export function CapabilitiesPicker({
             </>
           }
         >
-          {!isDataReady && <ToolsPickerLoading />}
+          {!isDataReady && <CapabilitiesPickerLoading />}
 
           {isDataReady && hasVisibleSkills && (
             <>
@@ -433,12 +433,12 @@ export function CapabilitiesPicker({
                 </div>
                 {filteredServerViewsUnselected.map((v) => (
                   <CapabilityItem
-                    key={`tools-picker-${v.sId}`}
+                    key={`capabilities-picker-${v.sId}`}
                     id={v.sId}
                     icon={() => getAvatar(v.server)}
                     label={getMcpServerViewDisplayName(v)}
                     description={getMcpServerViewDescription(v)}
-                    keyPrefix="tools-picker"
+                    keyPrefix="capabilities-picker"
                     onClick={() => {
                       trackEvent({
                         area: TRACKING_AREAS.TOOLS,
@@ -518,7 +518,7 @@ export function CapabilitiesPicker({
                       ? "All available skills and tools are already selected."
                       : "All available tools are already selected."
               }
-              keyPrefix="tools-picker"
+              keyPrefix="capabilities-picker"
               disabled
               className="italic"
             />
