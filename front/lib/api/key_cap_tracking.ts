@@ -3,10 +3,7 @@ import type { estypes } from "@elastic/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
-import {
-  cacheWithRedis,
-  invalidateCacheWithRedis,
-} from "@app/lib/utils/cache";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { ModelId } from "@app/types";

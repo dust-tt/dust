@@ -5,6 +5,7 @@ import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import { hasKeyReachedUsageCap } from "@app/lib/api/key_cap_tracking";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -150,9 +151,6 @@ export type UsageLimitType = "none" | "workspace_credits" | "key_cap";
 export async function checkProgrammaticUsageLimits(
   auth: Authenticator
 ): Promise<{ hasReachedLimit: boolean; limitType: UsageLimitType }> {
-  // Lazy import to avoid circular dependency.
-  const { hasKeyReachedUsageCap } = await import("@app/lib/api/key_cap_tracking");
-
   // First check workspace credits.
   const hasNoCredits = await hasReachedProgrammaticUsageLimits(auth);
   if (hasNoCredits) {
