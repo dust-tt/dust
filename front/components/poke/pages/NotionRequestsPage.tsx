@@ -9,18 +9,16 @@ import { JsonViewer } from "@textea/json-viewer";
 import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type { LightWorkspaceType } from "@app/types";
 
 type HttpMethod = "GET" | "POST";
 
-interface NotionRequestsPageProps {
-  owner: LightWorkspaceType;
-  dsId: string;
-}
-
-export function NotionRequestsPage({ owner, dsId }: NotionRequestsPageProps) {
+export function NotionRequestsPage() {
+  const owner = useWorkspace();
+  const dsId = useRequiredPathParam("dsId");
   const { isDark } = useTheme();
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState<HttpMethod>("GET");

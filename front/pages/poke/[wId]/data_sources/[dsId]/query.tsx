@@ -1,43 +1,24 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { DataSourceQueryPage } from "@app/components/poke/pages/DataSourceQueryPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { LightWorkspaceType } from "@app/types";
-import { isString } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSideProps } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: LightWorkspaceType;
-  dsId: string;
-}>(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
+export const getServerSideProps = pokeGetServerSideProps;
 
-  const { wId, dsId } = context.params ?? {};
-  if (!isString(wId) || !isString(dsId)) {
-    return {
-      notFound: true,
-    };
-  }
+const Page = DataSourceQueryPage as PageWithLayout;
 
-  return {
-    props: {
-      owner,
-      dsId,
-    },
-  };
-});
-
-export default function DataSourceQueryPageNextJS({
-  owner,
-  dsId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <DataSourceQueryPage owner={owner} dsId={dsId} />;
-}
-
-DataSourceQueryPageNextJS.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: LightWorkspaceType }
-) => {
-  return <PokeLayout title={`${owner.name} - Query`}>{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <PokeLayout
+      title={`${pageProps.workspace?.name ?? "Workspace"} - Query`}
+      authContext={pageProps}
+    >
+      {page}
+    </PokeLayout>
+  );
 };
+
+export default Page;

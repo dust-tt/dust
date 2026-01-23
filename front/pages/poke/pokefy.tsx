@@ -2,16 +2,20 @@ import type { ReactElement } from "react";
 
 import { PokefyPage } from "@app/components/poke/pages/PokefyPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements(async () => {
-  return { props: {} };
-});
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-export default function PokefyPageNextJS() {
-  return <PokefyPage />;
-}
+const Page = PokefyPage as PageWithLayout;
 
-PokefyPageNextJS.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Pokefy">{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <PokeLayout title="Pokefy" authContext={pageProps}>
+      {page}
+    </PokeLayout>
+  );
 };
+
+export default Page;

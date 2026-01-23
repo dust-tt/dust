@@ -4,6 +4,8 @@ import React, { createContext, useContext } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { AuthContext } from "@app/lib/auth/AuthContext";
 import { usePokeRegion } from "@app/lib/swr/poke";
 
 export interface PokeLayoutProps {
@@ -19,11 +21,13 @@ export function usePokePageTitle() {
 export default function PokeLayout({
   children,
   title,
+  authContext,
 }: {
   children: React.ReactNode;
   title: string;
+  authContext?: AuthContextValue;
 }) {
-  return (
+  const content = (
     <ThemeProvider>
       <PokePageTitleContext.Provider value={title}>
         <Head>
@@ -33,6 +37,14 @@ export default function PokeLayout({
       </PokePageTitleContext.Provider>
     </ThemeProvider>
   );
+
+  if (authContext) {
+    return (
+      <AuthContext.Provider value={authContext}>{content}</AuthContext.Provider>
+    );
+  }
+
+  return content;
 }
 
 interface PokeLayoutContentProps {

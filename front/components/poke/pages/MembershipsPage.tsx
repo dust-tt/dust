@@ -2,14 +2,11 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePokeMemberships } from "@app/poke/swr/memberships";
-import type { WorkspaceType } from "@app/types";
 
-interface MembershipsPageProps {
-  owner: WorkspaceType;
-}
-
-export function MembershipsPage({ owner }: MembershipsPageProps) {
+export function MembershipsPage() {
+  const owner = useWorkspace();
   const {
     data: membershipsData,
     isLoading,

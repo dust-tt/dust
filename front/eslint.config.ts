@@ -260,14 +260,5 @@ export default defineConfig(
         },
       ],
     },
-  },
-
-  // Poke pages - enforce patterns for SPA compatibility
-  {
-    files: ["pages/poke/**/*.tsx"],
-    rules: {
-      "dust/nextjs-no-data-fetching-in-getssp": "error",
-      "dust/nextjs-page-component-naming": "error",
-    },
   }
 ) satisfies Linter.Config[];
