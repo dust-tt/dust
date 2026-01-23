@@ -850,6 +850,7 @@ interface UploadBase64DataToFileStorageArgs {
   fileName: string;
   useCase: FileUseCase;
   useCaseMetadata?: FileUseCaseMetadata;
+  retry?: boolean;
 }
 
 export async function uploadBase64ImageToFileStorage(
@@ -867,16 +868,67 @@ export async function uploadBase64ImageToFileStorage(
   // Remove data URL prefix for any supported image type.
   const base64Data = base64.replace(/^data:image\/[a-z]+;base64,/, "");
 
+  return uploadBase64DataToFileStorage(auth, {
+    base64: base64Data,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+    retry: true,
+  });
+}
+
+export async function uploadBase64DataToFileStorage(
+  auth: Authenticator,
+  {
+    base64,
+    contentType,
+    fileName,
+    useCase,
+    useCaseMetadata,
+    retry,
+  }: UploadBase64DataToFileStorageArgs
+): Promise<Result<FileResource, ProcessAndStoreFileError>> {
+  const doUpload = async (): Promise<
+    Result<FileResource, ProcessAndStoreFileError>
+  > => {
+    const buffer = Buffer.from(base64, "base64");
+    const fileSizeInBytes = buffer.length;
+
+    const file = await FileResource.makeNew({
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: auth.user()?.id ?? null,
+      contentType,
+      fileName,
+      fileSize: fileSizeInBytes,
+      useCase,
+      useCaseMetadata,
+    });
+
+    const res = await processAndStoreFile(auth, {
+      file,
+      content: {
+        type: "readable",
+        value: Readable.from(buffer),
+      },
+    });
+
+    if (res.isErr()) {
+      await file.markAsFailed();
+      return res;
+    }
+
+    return new Ok(file);
+  };
+
+  if (!retry) {
+    return doUpload();
+  }
+
   const uploadWithRetry = withRetries(
     logger,
     async () => {
-      const result = await uploadBase64DataToFileStorage(auth, {
-        base64: base64Data,
-        contentType,
-        fileName,
-        useCase,
-        useCaseMetadata,
-      });
+      const result = await doUpload();
       if (result.isErr()) {
         throw new Error(result.error.message);
       }
@@ -891,46 +943,7 @@ export async function uploadBase64ImageToFileStorage(
     return new Err({
       name: "dust_error",
       code: "internal_server_error",
-      message: `Failed to upload image: ${normalizeError(error).message}`,
+      message: `Failed to upload file: ${normalizeError(error).message}`,
     });
   }
-}
-
-export async function uploadBase64DataToFileStorage(
-  auth: Authenticator,
-  {
-    base64,
-    contentType,
-    fileName,
-    useCase,
-    useCaseMetadata,
-  }: UploadBase64DataToFileStorageArgs
-): Promise<Result<FileResource, ProcessAndStoreFileError>> {
-  const buffer = Buffer.from(base64, "base64");
-  const fileSizeInBytes = buffer.length;
-
-  const file = await FileResource.makeNew({
-    workspaceId: auth.getNonNullableWorkspace().id,
-    userId: auth.user()?.id ?? null,
-    contentType,
-    fileName,
-    fileSize: fileSizeInBytes,
-    useCase,
-    useCaseMetadata,
-  });
-
-  const res = await processAndStoreFile(auth, {
-    file,
-    content: {
-      type: "readable",
-      value: Readable.from(buffer),
-    },
-  });
-
-  if (res.isErr()) {
-    await file.markAsFailed();
-    return res;
-  }
-
-  return new Ok(file);
 }

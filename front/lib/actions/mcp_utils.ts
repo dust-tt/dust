@@ -23,13 +23,33 @@ import type { Authenticator } from "@app/lib/auth";
 import type { AgentMCPActionOutputItemModel } from "@app/lib/models/agent/actions/mcp";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
-import type { FileUseCase, FileUseCaseMetadata, Result } from "@app/types";
+import type {
+  FileUseCase,
+  FileUseCaseMetadata,
+  Result,
+  SupportedFileContentType,
+  SupportedImageContentType,
+} from "@app/types";
 import {
   Err,
   hasNullUnicodeCharacter,
   isSupportedFileContentType,
   Ok,
 } from "@app/types";
+
+type ResourceInfo =
+  | { type: "image"; contentType: SupportedImageContentType }
+  | { type: "file"; contentType: SupportedFileContentType };
+
+function getResourceInfo(mimeType: string): ResourceInfo | null {
+  if (isSupportedImageContentType(mimeType)) {
+    return { type: "image", contentType: mimeType };
+  }
+  if (isSupportedFileContentType(mimeType)) {
+    return { type: "file", contentType: mimeType };
+  }
+  return null;
+}
 
 export function hideFileFromActionOutput({
   file,
@@ -144,13 +164,9 @@ export async function handleBase64Upload(
   content: CallToolResult["content"][number];
   file: FileResource | null;
 }> {
-  const resourceType = isSupportedFileContentType(mimeType)
-    ? "file"
-    : isSupportedImageContentType(mimeType)
-      ? "image"
-      : null;
+  const resourceInfo = getResourceInfo(mimeType);
 
-  if (!resourceType) {
+  if (!resourceInfo) {
     return {
       content: {
         type: "text",
@@ -164,7 +180,7 @@ export async function handleBase64Upload(
     return {
       content: {
         type: "text",
-        text: `The generated ${resourceType} was too large to be stored.`,
+        text: `The generated ${resourceInfo.type} was too large to be stored.`,
       },
       file: null,
     };
@@ -172,47 +188,39 @@ export async function handleBase64Upload(
 
   let uploadResult: Result<FileResource, ProcessAndStoreFileError>;
 
-  if (isSupportedImageContentType(mimeType)) {
+  if (resourceInfo.type === "image") {
     uploadResult = await uploadBase64ImageToFileStorage(auth, {
       base64: base64Data,
-      contentType: mimeType,
-      fileName,
-      useCase: fileUseCase,
-      useCaseMetadata: fileUseCaseMetadata,
-    });
-  } else if (isSupportedFileContentType(mimeType)) {
-    uploadResult = await uploadBase64DataToFileStorage(auth, {
-      base64: base64Data,
-      contentType: mimeType,
+      contentType: resourceInfo.contentType,
       fileName,
       useCase: fileUseCase,
       useCaseMetadata: fileUseCaseMetadata,
     });
   } else {
-    return {
-      content: {
-        type: "text",
-        text: `Unsupported mime type: ${mimeType}`,
-      },
-      file: null,
-    };
+    uploadResult = await uploadBase64DataToFileStorage(auth, {
+      base64: base64Data,
+      contentType: resourceInfo.contentType,
+      fileName,
+      useCase: fileUseCase,
+      useCaseMetadata: fileUseCaseMetadata,
+    });
   }
 
   if (uploadResult.isErr()) {
     logger.error(
       {
         action: "mcp_tool",
-        tool: `generate_${resourceType}`,
+        tool: `generate_${resourceInfo.type}`,
         workspaceId: auth.getNonNullableWorkspace().sId,
         error: uploadResult.error,
       },
-      `Failed to save the generated ${resourceType}.`
+      `Failed to save the generated ${resourceInfo.type}.`
     );
 
     return {
       content: {
         type: "text",
-        text: `Failed to save the generated ${resourceType}.`,
+        text: `Failed to save the generated ${resourceInfo.type}.`,
       },
       file: null,
     };
