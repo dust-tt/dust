@@ -239,12 +239,6 @@ export function PersonalConnectionRequiredDialog({
                         )}
                       </div>
                     </div>
-                    {!isAlreadyConnected && provider === "snowflake" && (
-                      <div className="mt-1 pl-8 pr-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                        You must have access to the selected Snowflake role to
-                        complete authentication.
-                      </div>
-                    )}
                     {!isAlreadyConnected && serverOverridableInputs && (
                       <div className="mt-2 pl-8 pr-2">
                         <PersonalAuthCredentialOverrides

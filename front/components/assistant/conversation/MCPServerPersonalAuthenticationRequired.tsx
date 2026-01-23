@@ -120,12 +120,6 @@ export function MCPServerPersonalAuthenticationRequired({
           </div>
           {!isConnected && mcpServer && (
             <>
-              {provider === "snowflake" && (
-                <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
-                  You must have access to the selected Snowflake role to
-                  complete authentication.
-                </div>
-              )}
               {overridableInputs && (
                 <div className="mt-2">
                   <PersonalAuthCredentialOverrides

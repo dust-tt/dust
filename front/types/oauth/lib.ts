@@ -416,7 +416,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",
             personalAuthHelpMessage:
-              "Enter a role to override the default, or leave empty to use the workspace default. You must have access to this role in Snowflake.",
+              "Enter a role to override the default, or leave empty to use the workspace default.",
           },
           snowflake_warehouse: {
             label: "Snowflake Warehouse",
