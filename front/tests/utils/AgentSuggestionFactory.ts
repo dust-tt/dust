@@ -22,7 +22,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationId,
+      agentConfigurationIdTmp: agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "instructions",
       suggestion: overrides.suggestion ?? {
@@ -49,7 +49,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationId,
+      agentConfigurationIdTmp: agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "tools",
       suggestion: overrides.suggestion ?? {
@@ -77,7 +77,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationId,
+      agentConfigurationIdTmp: agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "skills",
       suggestion: overrides.suggestion ?? {
@@ -101,7 +101,7 @@ export class AgentSuggestionFactory {
     }> = {}
   ): Promise<AgentSuggestionResource> {
     return AgentSuggestionResource.makeNew(auth, {
-      agentConfigurationId,
+      agentConfigurationIdTmp: agentConfigurationId,
       agentConfigurationVersion: overrides.agentConfigurationVersion ?? 1,
       kind: "model",
       suggestion: overrides.suggestion ?? {
