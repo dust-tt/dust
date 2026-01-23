@@ -59,7 +59,7 @@ vi.mock(import("../files/utils"), async (importOriginal) => {
 });
 
 // Mock the files/upload module to avoid uploading files
-vi.mock(import("../files/upload"), async (importOriginal) => {
+vi.mock(import("../files/processing"), async (importOriginal) => {
   const mod = await importOriginal();
   return {
     ...mod,
