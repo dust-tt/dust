@@ -46,8 +46,13 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const { name, userFacingDescription, agentFacingDescription, instructions, icon } =
-        req.body;
+      const {
+        name,
+        userFacingDescription,
+        agentFacingDescription,
+        instructions,
+        icon,
+      } = req.body;
 
       if (!isString(name) || !name.trim()) {
         return apiError(req, res, {
@@ -90,10 +95,12 @@ async function handler(
       }
 
       const trimmedName = name.trim();
+      const trimmedUserFacingDescription = userFacingDescription.trim();
       const trimmedAgentFacingDescription = agentFacingDescription.trim();
       const trimmedInstructions = instructions.trim();
 
-      let skillIcon: string | null = isString(icon) && icon.trim() ? icon.trim() : null;
+      let skillIcon: string | null =
+        isString(icon) && icon.trim() ? icon.trim() : null;
 
       if (!skillIcon) {
         const iconSuggestionResult = await getSkillIconSuggestion(auth, {
@@ -110,9 +117,7 @@ async function handler(
         auth,
         {
           name: trimmedName,
-          userFacingDescription: isString(userFacingDescription)
-            ? userFacingDescription.trim()
-            : "",
+          userFacingDescription: trimmedUserFacingDescription,
           agentFacingDescription: trimmedAgentFacingDescription,
           instructions: trimmedInstructions,
           icon: skillIcon,
