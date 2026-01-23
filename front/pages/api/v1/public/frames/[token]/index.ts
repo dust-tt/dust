@@ -146,6 +146,8 @@ async function handler(
     workspaceId: workspace.sId,
   });
 
+  console.log(">> accessToken generated:", accessToken);
+
   res.status(200).json({
     accessToken,
     file: file.toJSON(),

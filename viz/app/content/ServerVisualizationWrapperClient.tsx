@@ -17,6 +17,7 @@ interface ServerVisualizationWrapperClientProps {
   allowedOrigins: string[];
   identifier: string;
   isFullHeight?: boolean;
+  isPdfMode?: boolean;
   prefetchedCode?: string;
   prefetchedFiles?: PreFetchedFile[];
 }
@@ -37,6 +38,7 @@ export function ServerVisualizationWrapperClient({
   identifier,
   allowedOrigins,
   isFullHeight = false,
+  isPdfMode = false,
   prefetchedCode,
   prefetchedFiles = [],
 }: ServerVisualizationWrapperClientProps) {
@@ -50,6 +52,7 @@ export function ServerVisualizationWrapperClient({
     dataAPI,
     identifier,
     isFullHeight,
+    isPdfMode,
   };
 
   return (

@@ -253,7 +253,7 @@ export function VisualizationWrapper({
   config: VisualizationConfig;
   api: VisualizationAPI;
 }) {
-  const { identifier, isFullHeight = false } = config;
+  const { identifier, isFullHeight = false, isPdfMode = false } = config;
   const [runnerParams, setRunnerParams] = useState<RunnerParams | null>(null);
 
   const [errored, setErrorMessage] = useState<Error | null>(null);
@@ -413,13 +413,15 @@ export function VisualizationWrapper({
     return <Spinner />;
   }
 
+  // In PDF mode: no height constraint, content flows naturally for full capture.
+  const heightClass = isPdfMode ? "" : isFullHeight ? "h-screen" : "";
+
   return (
     <div
-      className={`relative font-sans group/viz ${
-        isFullHeight ? "h-screen" : ""
-      }`}
+      className={`relative font-sans group/viz ${heightClass}`}
+      data-viz-ready={runnerParams ? "true" : "false"}
     >
-      {!isFullHeight && (
+      {!isFullHeight && !isPdfMode && (
         <div className='flex flex-row gap-2 absolute top-2 right-2 rounded transition opacity-0 group-hover/viz:opacity-100 z-50'>
           <button
             onClick={() => handleScreenshotDownload()}

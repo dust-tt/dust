@@ -41,8 +41,8 @@ export function generateVizAccessToken({
 
   const secret = config.getVizJwtSecret();
 
-  // Sign JWT with HS256 algorithm, valid for 1 minute.
-  return jwt.sign(payload, secret, { algorithm: "HS256", expiresIn: "1m" });
+  // Sign JWT with HS256 algorithm, valid for 1 day.
+  return jwt.sign(payload, secret, { algorithm: "HS256", expiresIn: "1d" });
 }
 
 function getRawPayloadFromToken(token: string): unknown {
