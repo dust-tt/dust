@@ -8,7 +8,7 @@ import {
 } from "../index_with_tw_base";
 
 const meta = {
-  title: "Components/ConversationListItem",
+  title: "List/ConversationListItem",
   component: ConversationListItem,
   tags: ["autodocs"],
 } satisfies Meta<typeof ConversationListItem>;
