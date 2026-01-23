@@ -28,6 +28,7 @@ async function cleanupMultiplexerSession(envName: string): Promise<void> {
 
 interface DestroyOptions {
   force: boolean;
+  keepBranch: boolean;
 }
 
 async function cleanupDocker(envName: string): Promise<void> {
@@ -120,10 +121,14 @@ async function destroySingleEnvironment(
   await removeWorktree(env.metadata.repoRoot, worktreePath);
   logger.success("Git worktree removed");
 
-  // Delete the workspace branch
-  logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
-  await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch, settings);
-  logger.success("Branch deleted");
+  // Delete the workspace branch (unless --keep-branch is specified)
+  if (!options.keepBranch) {
+    logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
+    await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch, settings);
+    logger.success("Branch deleted");
+  } else {
+    logger.info(`Keeping branch '${env.metadata.workspaceBranch}'`);
+  }
 
   // Remove environment directory
   logger.step("Removing environment config...");
@@ -141,7 +146,7 @@ export async function destroyCommand(
   name: string | undefined,
   options?: Partial<DestroyOptions>
 ): Promise<Result<void>> {
-  const resolvedOptions: DestroyOptions = { force: false, ...options };
+  const resolvedOptions: DestroyOptions = { force: false, keepBranch: false, ...options };
 
   // Load settings for git-spice support
   const settings = await loadSettings();
