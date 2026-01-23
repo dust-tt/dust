@@ -117,6 +117,7 @@ export function SubscriptionPlanCards({
             size="md"
             label="Contact sales"
             href="/home/contact"
+            target="_blank"
             disabled={isProcessing}
             className="w-full"
           />
