@@ -22,6 +22,7 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import {
   createOrUpdateAgentSchedule,
   deleteTriggerSchedule,
@@ -294,7 +295,27 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       );
     }
 
+    const previousStatus = trigger.status;
+
     await trigger.update(blob, transaction);
+
+    // Log status changes when update includes a status change
+    if (blob.status !== undefined && blob.status !== previousStatus) {
+      logger.info(
+        {
+          triggerId: trigger.sId,
+          triggerName: trigger.name,
+          triggerKind: trigger.kind,
+          previousStatus,
+          newStatus: blob.status,
+          workspaceId: auth.getNonNullableWorkspace().sId,
+          agentConfigurationId: trigger.agentConfigurationId,
+          editorId: trigger.editor,
+          userId: auth.getNonNullableUser().sId,
+        },
+        `Trigger status changed: ${blob.status}`
+      );
+    }
 
     let r = null;
     if (trigger.status === "enabled") {
@@ -603,11 +624,27 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
+    const previousStatus = this.status;
+
     try {
       await this.update({ status: "enabled" });
     } catch (error) {
       return new Err(normalizeError(error));
     }
+
+    logger.info(
+      {
+        triggerId: this.sId,
+        triggerName: this.name,
+        triggerKind: this.kind,
+        previousStatus,
+        newStatus: "enabled",
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId: this.agentConfigurationId,
+        editorId: this.editor,
+      },
+      "Trigger status changed: enabled"
+    );
 
     const editor = await UserResource.fetchByModelId(this.editor);
     if (!editor) {
@@ -635,11 +672,27 @@ export class TriggerResource extends BaseResource<TriggerModel> {
       return new Ok(undefined);
     }
 
+    const previousStatus = this.status;
+
     try {
       await this.update({ status: targetStatus });
     } catch (error) {
       return new Err(normalizeError(error));
     }
+
+    logger.info(
+      {
+        triggerId: this.sId,
+        triggerName: this.name,
+        triggerKind: this.kind,
+        previousStatus,
+        newStatus: targetStatus,
+        workspaceId: auth.getNonNullableWorkspace().sId,
+        agentConfigurationId: this.agentConfigurationId,
+        editorId: this.editor,
+      },
+      `Trigger status changed: ${targetStatus}`
+    );
 
     // Remove the temporal workflow
     const r = await this.removeTemporalWorkflow(auth);
