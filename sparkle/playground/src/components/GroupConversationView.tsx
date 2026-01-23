@@ -11,6 +11,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
   Icon,
@@ -18,6 +22,8 @@ import {
   Input,
   ListGroup,
   ListItemSection,
+  MoreIcon,
+  LogoutIcon,
   ReplySection,
   SearchInput,
   Sheet,
@@ -35,6 +41,7 @@ import {
   ArrowUpOnSquareIcon,
   UserGroupIcon,
   TrashIcon,
+  Bar,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
@@ -64,6 +71,9 @@ interface GroupConversationViewProps {
   onUpdateSpaceName?: (spaceId: string, newName: string) => void;
   onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
   spacePublicSettings?: Map<string, boolean>;
+  isProjectJoined?: boolean;
+  onJoinProject?: () => void;
+  onLeaveProject?: () => void;
 }
 
 interface Member {
@@ -252,6 +262,9 @@ export function GroupConversationView({
   onUpdateSpaceName,
   onUpdateSpacePublic,
   spacePublicSettings,
+  isProjectJoined = false,
+  onJoinProject = () => {},
+  onLeaveProject = () => {},
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
 
@@ -688,34 +701,38 @@ export function GroupConversationView({
       {/* Tabs */}
       <Tabs
         defaultValue="conversations"
-        className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
+        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-px-6">
-          <TabsTrigger
-            value="conversations"
-            label="Conversations"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger
-            value="knowledge"
-            label="Knowledge"
-            icon={BookOpenIcon}
-          />
-          {showToolsAndAboutTabs && (
-            <>
-              <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-px-6">
+          <div className="s-flex s-h-full s-flex-1 s-items-end">
+            <TabsList border={false}>
               <TabsTrigger
-                value="about"
-                label="About"
-                icon={InformationCircleIcon}
+                value="conversations"
+                label="Conversations"
+                icon={ChatBubbleLeftRightIcon}
               />
-            </>
-          )}
-          <TabsTrigger
-            value="settings"
-            icon={Cog6ToothIcon}
-            tooltip={"Room settings"}
-          />
+              <TabsTrigger
+                value="knowledge"
+                label="Knowledge"
+                icon={BookOpenIcon}
+              />
+              {showToolsAndAboutTabs && (
+                <>
+                  <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+                  <TabsTrigger
+                    value="about"
+                    label="About"
+                    icon={InformationCircleIcon}
+                  />
+                </>
+              )}
+              <TabsTrigger
+                value="settings"
+                icon={Cog6ToothIcon}
+                tooltip={"Room settings"}
+              />
+            </TabsList>
+          </div>
           <div className="s-flex-1" />
           {spaceAvatars.length > 0 && (
             <div className="s-flex s-h-8 s-items-center">
@@ -724,11 +741,38 @@ export function GroupConversationView({
                 nbVisibleItems={spaceAvatars.length}
                 orientation="horizontal"
                 hasMagnifier={false}
-                size="xs"
+                size="sm"
               />
             </div>
           )}
-        </TabsList>
+          {isProjectJoined ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={MoreIcon}
+                  tooltip="Project options"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label="Leave the project"
+                  icon={LogoutIcon}
+                  onClick={onLeaveProject}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              size="sm"
+              variant="primary"
+              label="Join the project"
+              tooltip="Join the project to be notified of new conversations"
+              onClick={onJoinProject}
+            />
+          )}
+        </div>
 
         {/* Conversations Tab */}
         <TabsContent value="conversations">
