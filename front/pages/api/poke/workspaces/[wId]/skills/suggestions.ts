@@ -58,8 +58,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 400,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found.",
+        type: "invalid_request_error",
+        message: "Missing or invalid workspace id.",
       },
     });
   }
