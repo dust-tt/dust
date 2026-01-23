@@ -11,10 +11,7 @@ export { Avatar } from "./Avatar";
 export { Bar, BarFooter, BarHeader } from "./Bar";
 export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
-export type {
-  ButtonProps,
-  RegularButtonProps,
-} from "./Button";
+export type { ButtonProps, RegularButtonProps } from "./Button";
 export { Button } from "./Button";
 export type { ButtonGroupItem, ButtonGroupProps } from "./ButtonGroup";
 export { ButtonGroup } from "./ButtonGroup";

@@ -225,11 +225,10 @@ const CardActions = React.forwardRef<
 
 CardActions.displayName = "CardActions";
 
-
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
   IconOnlyButtonProps
->(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
+>(({ className, variant = "outline", icon = XMarkIcon, size = "icon", ...props }, ref) => {
   return (
     <Button
       ref={ref}
