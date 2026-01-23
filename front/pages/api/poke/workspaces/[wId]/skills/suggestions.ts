@@ -52,17 +52,8 @@ async function handler(
         agentFacingDescription,
         instructions,
         icon,
-      } = req.body;
-
-      if (!isString(name) || !name.trim()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Name is required.",
-          },
-        });
-      }
+        mcpServerNames,
+      } = bodyResult.data;
 
       if (!isString(userFacingDescription) || !userFacingDescription.trim()) {
         return apiError(req, res, {
@@ -104,9 +95,9 @@ async function handler(
 
       if (!skillIcon) {
         const iconSuggestionResult = await getSkillIconSuggestion(auth, {
-          name: trimmedName,
-          agentFacingDescription: trimmedAgentFacingDescription,
-          instructions: trimmedInstructions,
+          name,
+          agentFacingDescription,
+          instructions,
         });
         if (iconSuggestionResult.isOk()) {
           skillIcon = iconSuggestionResult.value;
@@ -116,16 +107,15 @@ async function handler(
       const result = await SkillResource.makeSuggestion(
         auth,
         {
-          name: trimmedName,
-          userFacingDescription: trimmedUserFacingDescription,
-          agentFacingDescription: trimmedAgentFacingDescription,
-          instructions: trimmedInstructions,
+          name,
+          userFacingDescription,
+          agentFacingDescription,
+          instructions,
           icon: skillIcon,
           extendedSkillId: null,
         },
         {
-          // No MCP servers for suggested skills created through poke.
-          mcpServerNames: [],
+          mcpServerNames,
         }
       );
 

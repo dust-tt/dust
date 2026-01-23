@@ -1,9 +1,17 @@
 import {
   ActionIcons,
   Button,
+  Chip,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSearchbar,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
   IconPicker,
   Input,
   Label,
+  PlusIcon,
   PopoverContent,
   PopoverRoot,
   PopoverTrigger,
@@ -15,16 +23,29 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import { makeColumnsForSkills } from "@app/components/poke/skills/columns";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  INTERNAL_MCP_SERVERS,
+  isAutoInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { usePokeSkills } from "@app/poke/swr/skills";
 import type { LightWorkspaceType } from "@app/types";
+
+const AUTO_MCP_SERVER_NAMES: AutoInternalMCPServerNameType[] = Object.keys(
+  INTERNAL_MCP_SERVERS
+)
+  .filter((name) =>
+    isAutoInternalMCPServerName(name as keyof typeof INTERNAL_MCP_SERVERS)
+  )
+  .sort() as AutoInternalMCPServerNameType[];
 
 interface SkillsDataTableProps {
   owner: LightWorkspaceType;
@@ -89,6 +110,16 @@ function CreateSkillSuggestionSheet({
   const [agentFacingDescription, setAgentFacingDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [icon, setIcon] = useState<string | null>(null);
+  const [mcpServers, setMcpServers] = useState<AutoInternalMCPServerNameType[]>(
+    []
+  );
+  const [mcpSearchText, setMcpSearchText] = useState("");
+
+  const filteredMcpServers = useMemo(() => {
+    return AUTO_MCP_SERVER_NAMES.filter((name) =>
+      name.toLowerCase().includes(mcpSearchText.toLowerCase())
+    );
+  }, [mcpSearchText]);
 
   const resetForm = () => {
     setName("");
@@ -118,6 +149,7 @@ function CreateSkillSuggestionSheet({
           agentFacingDescription: agentFacingDescription.trim(),
           instructions: instructions.trim(),
           icon: icon ?? null,
+          mcpServerNames: mcpServers,
         }),
       }
     );
@@ -230,6 +262,68 @@ function CreateSkillSuggestionSheet({
               />
             </div>
 
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <Label>MCP Servers</Label>
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={PlusIcon}
+                      variant="outline"
+                      label="Add"
+                      isSelect
+                      size="xs"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-80">
+                    <DropdownMenuSearchbar
+                      autoFocus
+                      placeholder="Search MCP servers..."
+                      name="mcp-search"
+                      value={mcpSearchText}
+                      onChange={setMcpSearchText}
+                    />
+                    <DropdownMenuSeparator />
+                    <div className="max-h-60 overflow-auto">
+                      {filteredMcpServers.map((serverName) => (
+                        <DropdownMenuCheckboxItem
+                          key={serverName}
+                          label={serverName}
+                          checked={mcpServers.includes(serverName)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setMcpServers((prev) => [...prev, serverName]);
+                            } else {
+                              setMcpServers((prev) =>
+                                prev.filter((s) => s !== serverName)
+                              );
+                            }
+                          }}
+                          onSelect={(e) => e.preventDefault()}
+                        />
+                      ))}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              {mcpServers.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {mcpServers.map((serverName) => (
+                    <Chip
+                      key={serverName}
+                      label={serverName}
+                      size="xs"
+                      onRemove={() =>
+                        setMcpServers((prev) =>
+                          prev.filter((s) => s !== serverName)
+                        )
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="flex justify-end gap-2">
               <Button
                 variant="ghost"
@@ -241,7 +335,13 @@ function CreateSkillSuggestionSheet({
                 variant="primary"
                 label={isSubmitting ? "Creating..." : "Create suggestion"}
                 onClick={handleSubmit}
-                disabled={isSubmitting || !name.trim()}
+                disabled={
+                  isSubmitting ||
+                  !name.trim() ||
+                  !userFacingDescription.trim() ||
+                  !agentFacingDescription.trim() ||
+                  !instructions.trim()
+                }
               />
             </div>
           </div>
