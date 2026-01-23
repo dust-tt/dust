@@ -486,7 +486,7 @@ export class FileResource extends BaseResource<FileModel> {
       this.getCloudStoragePath(auth, version),
       {
         // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 10 * 1000,
+        expirationDelay: 30 * 1000,
         promptSaveAs: this.fileName ?? `dust_${this.sId}`,
       }
     );

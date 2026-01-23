@@ -1,15 +1,35 @@
-import { GoogleGenAI } from "@google/genai";
+import type { Part } from "@google/genai";
+import { createPartFromUri, GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
+import { FileResource } from "@app/lib/resources/file_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import { getStatsDClient } from "@app/lib/utils/statsd";
 import logger from "@app/logger/logger";
 import { dustManagedCredentials, Err, Ok } from "@app/types";
-import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { GEMINI_3_PRO_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
+import { fileSizeToHumanReadable, MAX_FILE_SIZES } from "@app/types/files";
+
+const GEMINI_SUPPORTED_IMAGE_TYPES = [
+  "image/bmp",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+] as const;
+
+type GeminiSupportedImageType = (typeof GEMINI_SUPPORTED_IMAGE_TYPES)[number];
+
+function isGeminiSupportedImageType(
+  contentType: string
+): contentType is GeminiSupportedImageType {
+  return GEMINI_SUPPORTED_IMAGE_TYPES.some((type) => type === contentType);
+}
 
 export const IMAGE_GENERATION_RATE_LIMITER_KEY = "image_generation";
 export const IMAGE_GENERATION_RATE_LIMITER_TIMEFRAME_SECONDS = 60 * 60 * 24 * 7; // 1 week.
@@ -20,11 +40,10 @@ export const DEFAULT_IMAGE_MIME_TYPE = "image/png";
 // Token pricing is expressed as cost per million tokens (micro-USD per token)
 const MICRO_USD_PER_USD = 1_000_000;
 
-// Map tool size parameters to Gemini aspect ratios.
-export const SIZE_TO_ASPECT_RATIO: Record<string, string> = {
-  "1024x1024": "1:1",
-  "1536x1024": "3:2",
-  "1024x1536": "2:3",
+export const QUALITY_TO_IMAGE_SIZE: Record<string, string> = {
+  low: "1K",
+  medium: "2K",
+  high: "4K",
 };
 
 const GeminiInlineDataPartSchema = z.object({
@@ -36,17 +55,12 @@ const GeminiInlineDataPartSchema = z.object({
 
 export type GeminiInlineDataPart = z.infer<typeof GeminiInlineDataPartSchema>;
 
-// Type guard to validate Gemini inline data parts.
 export function isValidGeminiInlineDataPart(
   part: unknown
 ): part is GeminiInlineDataPart {
   return GeminiInlineDataPartSchema.safeParse(part).success;
 }
 
-/**
- * Computes cost details for Gemini image generation from usage metadata.
- * Returns structured cost information for Langfuse observation updates.
- */
 export function computeImageGenerationCostDetails(usageMetadata: {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
@@ -66,17 +80,15 @@ export function computeImageGenerationCostDetails(usageMetadata: {
   const totalTokens = inputTokens + outputTokens;
 
   const totalCostMicroUsd = computeTokensCostForUsageInMicroUsd({
-    modelId: GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
+    modelId: GEMINI_3_PRO_IMAGE_MODEL_ID,
     promptTokens: inputTokens,
     completionTokens: outputTokens,
     cachedTokens: null,
     cacheCreationTokens: null,
   });
 
-  // Convert micro-USD to USD for Langfuse
   const costUsd = totalCostMicroUsd / MICRO_USD_PER_USD;
 
-  // Proportional cost breakdown for input/output
   const inputCostUsd =
     totalTokens > 0 ? (costUsd * inputTokens) / totalTokens : 0;
   const outputCostUsd =
@@ -174,7 +186,6 @@ export function validateGeminiImageResponse(
   operationType: "generation" | "editing",
   promptText: string
 ): Ok<GeminiInlineDataPart[]> | Err<MCPError> {
-  // Check for empty candidates.
   if (!response.candidates || response.candidates.length === 0) {
     if (response.promptFeedback?.blockReason) {
       logger.error(
@@ -194,13 +205,11 @@ export function validateGeminiImageResponse(
     return new Err(new MCPError("No image generated."));
   }
 
-  // Validate content structure.
   const content = response.candidates[0].content;
   if (!content || !content.parts) {
     return new Err(new MCPError("No image data in response"));
   }
 
-  // Extract valid image parts.
   const imageParts = content.parts.filter(isValidGeminiInlineDataPart);
   if (imageParts.length === 0) {
     return new Err(new MCPError("No image data in response."));
@@ -241,7 +250,9 @@ export function formatImageResponse(
     name: string;
   }>
 > {
-  const outputFileName = `${fileName}.${DEFAULT_IMAGE_OUTPUT_FORMAT}`;
+  const outputFileName = fileName.toLowerCase().endsWith(".png")
+    ? fileName
+    : `${fileName}.png`;
 
   return new Ok(
     imageParts.map((part) => ({
@@ -258,4 +269,127 @@ export function createGeminiClient(): GoogleGenAI {
   return new GoogleGenAI({
     apiKey: credentials.GOOGLE_AI_STUDIO_API_KEY,
   });
+}
+
+async function processSingleImageFile(
+  auth: Authenticator,
+  {
+    imageFileId,
+    conversationId,
+    maxImageSize,
+  }: {
+    imageFileId: string;
+    conversationId: string;
+    maxImageSize: number;
+  }
+): Promise<Ok<Part> | Err<MCPError>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const statsDClient = getStatsDClient();
+  const fileResource = await FileResource.fetchById(auth, imageFileId);
+  if (!fileResource) {
+    return new Err(
+      new MCPError(`File not found: ${imageFileId}`, {
+        tracked: false,
+      })
+    );
+  }
+
+  const belongsResult = fileResource.belongsToConversation(conversationId);
+  if (belongsResult.isErr() || !belongsResult.value) {
+    return new Err(
+      new MCPError(`File ${imageFileId} does not belong to this conversation`, {
+        tracked: false,
+      })
+    );
+  }
+
+  // TODO(@jd) JIT resize over 20MB once imagemagick is available.
+  if (fileResource.fileSize > maxImageSize) {
+    logger.warn(
+      {
+        fileId: fileResource.sId,
+        fileSize: fileResource.fileSize,
+        maxFileSize: maxImageSize,
+        workspaceId: workspace.sId,
+      },
+      "generate_image: File size exceeds maximum allowed size"
+    );
+
+    statsDClient.increment(
+      "tools.image_generation.file_size_limit_exceeded",
+      1,
+      ["provider:gemini"]
+    );
+
+    return new Err(
+      new MCPError(
+        `Image file ${imageFileId} too large. Maximum allowed size is ${fileSizeToHumanReadable(maxImageSize, 0)}, but file is ${fileSizeToHumanReadable(fileResource.fileSize, 0)}.`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  if (!isGeminiSupportedImageType(fileResource.contentType)) {
+    return new Err(
+      new MCPError(
+        `File ${imageFileId} is not a supported image type for editing. Got: ${fileResource.contentType}. Supported types: ${GEMINI_SUPPORTED_IMAGE_TYPES.map((t) => t.replace("image/", "").toUpperCase()).join(", ")}.`,
+        {
+          tracked: false,
+        }
+      )
+    );
+  }
+
+  const signedUrl = await fileResource.getSignedUrlForDownload(
+    auth,
+    "original"
+  );
+
+  return new Ok(createPartFromUri(signedUrl, fileResource.contentType));
+}
+
+export async function processImageFileIds(
+  auth: Authenticator,
+  {
+    imageFileIds,
+    agentLoopContext,
+  }: {
+    imageFileIds: string[];
+    agentLoopContext: AgentLoopContextType | undefined;
+  }
+): Promise<Ok<Part[]> | Err<MCPError>> {
+  if (!agentLoopContext?.runContext) {
+    return new Err(
+      new MCPError("No conversation context available for file access", {
+        tracked: false,
+      })
+    );
+  }
+
+  const conversationId = agentLoopContext.runContext.conversation.sId;
+  const maxImageSize = MAX_FILE_SIZES.image;
+
+  const results = await concurrentExecutor(
+    imageFileIds,
+    (imageFileId) =>
+      processSingleImageFile(auth, {
+        imageFileId,
+        conversationId,
+        maxImageSize,
+      }),
+    { concurrency: 8 }
+  );
+
+  const firstError = results.find((r) => r.isErr());
+  if (firstError?.isErr()) {
+    return firstError;
+  }
+
+  const parts = results
+    .filter((r): r is Ok<Part> => r.isOk())
+    .map((r) => r.value);
+
+  return new Ok(parts);
 }
