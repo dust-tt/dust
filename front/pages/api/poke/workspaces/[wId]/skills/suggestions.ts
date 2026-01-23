@@ -1,8 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
-import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { Authenticator } from "@app/lib/auth";
@@ -13,10 +11,6 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-const AUTO_INTERNAL_MCP_SERVER_NAMES = Object.entries(INTERNAL_MCP_SERVERS)
-  .filter(([, server]) => server.availability === "auto")
-  .map(([name]) => name);
-
 const PostSkillSuggestionBodySchema = z.object({
   name: z.string().min(1, "Name is required."),
   userFacingDescription: z.string().min(1, "Description is required."),
@@ -25,17 +19,7 @@ const PostSkillSuggestionBodySchema = z.object({
     .min(1, "What will this skill be used for is required."),
   instructions: z.string().min(1, "Instructions are required."),
   icon: z.string().nullable(),
-  mcpServerNames: z.array(
-    z
-      .string()
-      .refine(
-        (name): name is AutoInternalMCPServerNameType =>
-          AUTO_INTERNAL_MCP_SERVER_NAMES.includes(
-            name as AutoInternalMCPServerNameType
-          ),
-        { message: "Invalid MCP server name." }
-      )
-  ),
+  mcpServerViewIds: z.array(z.string()),
 });
 
 export type PostSkillSuggestionBodyType = z.infer<
@@ -95,7 +79,7 @@ async function handler(
         agentFacingDescription,
         instructions,
         icon,
-        mcpServerNames,
+        mcpServerViewIds,
       } = bodyResult.data;
 
       let skillIcon = icon;
@@ -122,7 +106,7 @@ async function handler(
           extendedSkillId: null,
         },
         {
-          mcpServerNames,
+          mcpServerViewIds,
         }
       );
 
