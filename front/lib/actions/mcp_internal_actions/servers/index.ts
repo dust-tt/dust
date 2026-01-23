@@ -32,7 +32,6 @@ import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_a
 import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
 import { default as missingActionCatcherServer } from "@app/lib/actions/mcp_internal_actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
-import { default as notionServer } from "@app/lib/actions/mcp_internal_actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
@@ -71,6 +70,7 @@ import { default as fileGenerationServer } from "@app/lib/api/actions/servers/fi
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
+import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import type { Authenticator } from "@app/lib/auth";
