@@ -290,7 +290,7 @@ export function CreateSkillSuggestionSheet({
 
             <div className="flex justify-end gap-2">
               <Button
-                variant="ghost"
+                variant="outline"
                 label="Cancel"
                 onClick={handleClose}
                 disabled={isSubmitting}
