@@ -215,33 +215,35 @@ export function CreateSkillSuggestionSheet({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label>MCP Servers</Label>
-                {isMCPServerViewsLoading ? (
-                  <Spinner size="xs" />
-                ) : (
-                  <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        icon={PlusIcon}
-                        variant="outline"
-                        label="Add"
-                        isSelect
-                        size="xs"
-                      />
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-80"
-                      onAnimationEnd={() => setMCPSearchText("")}
-                    >
-                      <DropdownMenuSearchbar
-                        autoFocus
-                        placeholder="Search MCP servers..."
-                        name="mcp-search"
-                        value={mcpSearchText}
-                        onChange={setMCPSearchText}
-                      />
-                      <DropdownMenuSeparator />
-                      <div className="max-h-60 overflow-auto">
-                        {filteredMcpServerViews.map((view) => (
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={PlusIcon}
+                      variant="outline"
+                      label="Add"
+                      isSelect
+                      size="xs"
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-80"
+                    onAnimationEnd={() => setMCPSearchText("")}
+                  >
+                    <DropdownMenuSearchbar
+                      autoFocus
+                      placeholder="Search MCP servers..."
+                      name="mcp-search"
+                      value={mcpSearchText}
+                      onChange={setMCPSearchText}
+                    />
+                    <DropdownMenuSeparator />
+                    <div className="max-h-60 overflow-auto">
+                      {isMCPServerViewsLoading ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Spinner size="sm" />
+                        </div>
+                      ) : (
+                        filteredMcpServerViews.map((view) => (
                           <DropdownMenuCheckboxItem
                             key={view.sId}
                             label={getMcpServerViewDisplayName(view)}
@@ -262,11 +264,11 @@ export function CreateSkillSuggestionSheet({
                             }}
                             onSelect={(e) => e.preventDefault()}
                           />
-                        ))}
-                      </div>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
+                        ))
+                      )}
+                    </div>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               {selectedMCPServerViews.length > 0 && (
                 <div className="flex flex-wrap gap-2">
