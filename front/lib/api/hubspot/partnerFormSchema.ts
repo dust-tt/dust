@@ -28,7 +28,6 @@ export const PARTNER_IS_DUST_USER_OPTIONS = [
   { value: "Y05ie0S7hdKFTCXCgcz39", label: "No" },
 ] as const;
 
-
 // Step 1 fields: "Become a Partner"
 export const STEP_1_FIELDS = [
   "firstname",
@@ -142,16 +141,29 @@ export const PARTNER_FIELD_DEFINITIONS = [
 export const PartnerFormSchema = z.object({
   firstname: z.string().min(1, "First Name is required"),
   lastname: z.string().min(1, "Last Name is required"),
-  email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Please enter a valid email address"),
   company: z.string().min(1, "Company Name is required"),
   company_size: z.string().min(1, "Company size is required"),
-  headquarters_region: z.string().min(1, "What's your regional focus? is required"),
+  headquarters_region: z
+    .string()
+    .min(1, "What's your regional focus? is required"),
   partner_type: z.string().min(1, "Partner type is required"),
-  partner_services: z.string().min(1, "How would you envision a partnership with Dust? is required"),
-  partner_is_dust_user: z.string().min(1, "Are you an existing Dust user? is required"),
+  partner_services: z
+    .string()
+    .min(1, "How would you envision a partnership with Dust? is required"),
+  partner_is_dust_user: z
+    .string()
+    .min(1, "Are you an existing Dust user? is required"),
   partner_additionnal_details: z.string().optional(),
-  partner_customer_sizes: z.string().min(1, "What's the typical size of your client companies?  is required"),
-  enterprise_tool_stack: z.string().min(1, "What is their typical Enterprise Tool Stack? is required"),
+  partner_customer_sizes: z
+    .string()
+    .min(1, "What's the typical size of your client companies?  is required"),
+  enterprise_tool_stack: z
+    .string()
+    .min(1, "What is their typical Enterprise Tool Stack? is required"),
   any_existing_lead_to_share_: z.string().optional(),
 });
 

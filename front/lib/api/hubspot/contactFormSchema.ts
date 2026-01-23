@@ -15,8 +15,14 @@ import { z } from "zod";
 
 // Field options from HubSpot dropdown/checkbox/radio fields
 export const LANGUAGE_OPTIONS = [
-  { value: "I would like my meeting to be in English 🇬🇧🇺🇸", label: "I would like my meeting to be in English" },
-  { value: "I would like my meeting to be in French 🇫🇷", label: "I would like my meeting to be in French 🇫🇷" },
+  {
+    value: "I would like my meeting to be in English 🇬🇧🇺🇸",
+    label: "I would like my meeting to be in English",
+  },
+  {
+    value: "I would like my meeting to be in French 🇫🇷",
+    label: "I would like my meeting to be in French 🇫🇷",
+  },
 ] as const;
 
 export const HEADQUARTERS_REGION_OPTIONS = [
@@ -34,7 +40,6 @@ export const COMPANY_HEADCOUNT_FORM_OPTIONS = [
   { value: "501-1000", label: "501-10000" },
   { value: "10000+", label: "10000+" },
 ] as const;
-
 
 // Field definitions for dynamic form rendering
 export const FIELD_DEFINITIONS = [
@@ -95,7 +100,10 @@ export const FIELD_DEFINITIONS = [
 export const ContactFormSchema = z.object({
   firstname: z.string().optional(),
   lastname: z.string().optional(),
-  email: z.string().min(1, "Work Email is required").email("Please enter a valid email address"),
+  email: z
+    .string()
+    .min(1, "Work Email is required")
+    .email("Please enter a valid email address"),
   mobilephone: z.string().optional(),
   language: z.string().min(1, "Language is required"),
   headquarters_region: z.string().optional(),
