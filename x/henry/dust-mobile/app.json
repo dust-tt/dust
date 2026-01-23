@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Dust",
+    "slug": "dust-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "dust",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.dust.mobile",
+      "supportsTablet": false
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-asset",
+      "expo-font"
+    ]
+  }
+}
