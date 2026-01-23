@@ -29,18 +29,19 @@ export function ClientVisualizationWrapper({
         allowedOrigins,
         identifier,
       }),
-    [allowedOrigins, identifier]
+    [allowedOrigins, identifier],
   );
 
   const dataAPI = useMemo(
     () => new RPCDataAPI(sendCrossDocumentMessage),
-    [sendCrossDocumentMessage]
+    [sendCrossDocumentMessage],
   );
 
   const config: VisualizationConfig = {
     allowedOrigins,
     identifier,
     isFullHeight,
+    isPdfMode: false,
     dataAPI,
   };
 

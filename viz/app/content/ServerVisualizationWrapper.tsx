@@ -8,6 +8,7 @@ interface ServerSideVisualizationWrapperProps {
   allowedOrigins: string[];
   identifier: string;
   isFullHeight?: boolean;
+  isPdfMode?: boolean;
 }
 
 /**
@@ -26,6 +27,7 @@ export async function ServerSideVisualizationWrapper({
   allowedOrigins,
   identifier,
   isFullHeight = false,
+  isPdfMode = false,
 }: ServerSideVisualizationWrapperProps) {
   let prefetchedCode: string | undefined;
   let preFetchedFiles: PreFetchedFile[] = [];
@@ -112,6 +114,7 @@ export async function ServerSideVisualizationWrapper({
       allowedOrigins={allowedOrigins}
       identifier={identifier}
       isFullHeight={isFullHeight}
+      isPdfMode={isPdfMode}
       prefetchedCode={prefetchedCode}
       prefetchedFiles={preFetchedFiles}
     />

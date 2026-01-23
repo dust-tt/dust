@@ -73,6 +73,7 @@ export * from "./provider";
 export * from "./resource_permissions";
 export * from "./run";
 export * from "./shared/deployment";
+export * from "./shared/document_renderer";
 export * from "./shared/env";
 export * from "./shared/feature_flags";
 export * from "./shared/logger";
