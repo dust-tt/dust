@@ -22,6 +22,7 @@ import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
+import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -1556,27 +1557,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("statuspage_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_pages: "never_ask",
-      list_components: "never_ask",
-      list_incidents: "never_ask",
-      get_incident: "never_ask",
-      create_incident: "high",
-      update_incident: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "statuspage",
-      version: "1.0.0",
-      description: "Monitor and manage Atlassian Statuspage incidents.",
-      authorization: null,
-      icon: "StatuspageLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: STATUSPAGE_SERVER,
   },
   primitive_types_debugger: {
     id: 1004,
