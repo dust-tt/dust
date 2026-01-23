@@ -33,7 +33,7 @@ import {
   withSlackErrorHandling,
 } from "./slack_client";
 
-const MIGRATE_CHANNELS_CONCURRENCY = 8;
+const MIGRATE_CHANNELS_CONCURRENCY = 4;
 
 export type SlackChannelType = {
   id: number;
