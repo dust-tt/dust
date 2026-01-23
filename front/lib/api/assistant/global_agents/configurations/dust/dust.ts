@@ -6,7 +6,7 @@ import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
+import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   getCompanyDataAction,
