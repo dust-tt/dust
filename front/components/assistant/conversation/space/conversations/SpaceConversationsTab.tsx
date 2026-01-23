@@ -38,10 +38,6 @@ type GroupLabel =
   | "Last 12 Months"
   | "Older";
 
-function formatRelativeDate(timestamp: number): string {
-  return moment(timestamp).fromNow();
-}
-
 interface SpaceConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
@@ -90,7 +86,7 @@ export function SpaceConversationsTab({
     useMemo(() => {
       return conversations.length
         ? (getGroupConversationsByDate({
-            conversations: conversations,
+            conversations,
             titleFilter: "",
           }) as Record<GroupLabel, ConversationType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
@@ -186,7 +182,7 @@ export function SpaceConversationsTab({
                     (moment(conversation.created).isSame(moment(), "day")
                       ? "New Conversation"
                       : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
-                  const time = formatRelativeDate(conversation.updated);
+                  const time = moment(conversation.updated).fromNow();
 
                   return (
                     <div
