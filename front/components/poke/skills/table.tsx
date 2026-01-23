@@ -248,14 +248,7 @@ function CreateSkillSuggestionSheet({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label>MCP Servers</Label>
-                <DropdownMenu
-                  modal={false}
-                  onOpenChange={(open) => {
-                    if (open) {
-                      setMcpSearchText("");
-                    }
-                  }}
-                >
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       icon={PlusIcon}
@@ -265,7 +258,10 @@ function CreateSkillSuggestionSheet({
                       size="xs"
                     />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-80">
+                  <DropdownMenuContent
+                    className="w-80"
+                    onAnimationEnd={() => setMcpSearchText("")}
+                  >
                     <DropdownMenuSearchbar
                       autoFocus
                       placeholder="Search MCP servers..."
