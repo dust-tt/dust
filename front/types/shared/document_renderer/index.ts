@@ -97,6 +97,7 @@ export class DocumentRenderer {
     const formData = new FormData();
     formData.append("url", target.url);
     formData.append("waitForExpression", target.waitForExpression);
+    formData.append("emulatedMediaType", "print"); // Apply @media print CSS rules.
     formData.append("scale", scale.toString());
     formData.append("printBackground", "true");
     formData.append("marginTop", marginTop);
