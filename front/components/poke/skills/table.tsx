@@ -20,7 +20,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
@@ -127,11 +126,18 @@ function CreateSkillSuggestionSheet({
     setAgentFacingDescription("");
     setInstructions("");
     setIcon(null);
+    setMcpServers([]);
+    setMcpSearchText("");
   };
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      window.alert("Name is required");
+    if (
+      !name.trim() ||
+      !userFacingDescription.trim() ||
+      !agentFacingDescription.trim() ||
+      !instructions.trim()
+    ) {
+      window.alert("All fields are required");
       return;
     }
 

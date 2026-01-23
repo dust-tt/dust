@@ -1,5 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  INTERNAL_MCP_SERVERS,
+  isAutoInternalMCPServerName,
+  isInternalMCPServerName,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
 import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import { Authenticator } from "@app/lib/auth";
@@ -9,6 +16,34 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+
+// Compute the list of auto internal MCP server names at module load time.
+const AUTO_INTERNAL_MCP_SERVER_NAMES = Object.keys(INTERNAL_MCP_SERVERS).filter(
+  (name): name is AutoInternalMCPServerNameType =>
+    isInternalMCPServerName(name) && isAutoInternalMCPServerName(name)
+);
+
+const PostSkillSuggestionBodySchema = z.object({
+  name: z.string().min(1, "Name is required."),
+  userFacingDescription: z.string().min(1, "Description is required."),
+  agentFacingDescription: z
+    .string()
+    .min(1, "What will this skill be used for is required."),
+  instructions: z.string().min(1, "Instructions are required."),
+  icon: z.string().nullable().optional(),
+  mcpServerNames: z
+    .array(
+      z.string().refine(
+        (name): name is AutoInternalMCPServerNameType =>
+          AUTO_INTERNAL_MCP_SERVER_NAMES.includes(
+            name as AutoInternalMCPServerNameType
+          ),
+        { message: "Invalid MCP server name." }
+      )
+    )
+    .optional()
+    .default([]),
+});
 
 export type PostPokeSkillSuggestionResponseBody = {
   skill: SkillType;
@@ -46,6 +81,17 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
+      const bodyResult = PostSkillSuggestionBodySchema.safeParse(req.body);
+      if (!bodyResult.success) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: bodyResult.error.errors[0]?.message ?? "Invalid request.",
+          },
+        });
+      }
+
       const {
         name,
         userFacingDescription,
@@ -55,43 +101,7 @@ async function handler(
         mcpServerNames,
       } = bodyResult.data;
 
-      if (!isString(userFacingDescription) || !userFacingDescription.trim()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Description is required.",
-          },
-        });
-      }
-
-      if (!isString(agentFacingDescription) || !agentFacingDescription.trim()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "What will this skill be used for is required.",
-          },
-        });
-      }
-
-      if (!isString(instructions) || !instructions.trim()) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Instructions are required.",
-          },
-        });
-      }
-
-      const trimmedName = name.trim();
-      const trimmedUserFacingDescription = userFacingDescription.trim();
-      const trimmedAgentFacingDescription = agentFacingDescription.trim();
-      const trimmedInstructions = instructions.trim();
-
-      let skillIcon: string | null =
-        isString(icon) && icon.trim() ? icon.trim() : null;
+      let skillIcon: string | null = icon?.trim() || null;
 
       if (!skillIcon) {
         const iconSuggestionResult = await getSkillIconSuggestion(auth, {
