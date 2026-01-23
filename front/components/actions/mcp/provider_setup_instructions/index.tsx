@@ -1,6 +1,11 @@
-import type { OAuthProvider } from "@app/types";
+import type { MCPOAuthUseCase, OAuthProvider } from "@app/types";
 
 import { SnowflakeSetupInstructions } from "./SnowflakeSetupInstructions";
+
+interface ProviderSetupInstructionsProps {
+  provider: OAuthProvider;
+  useCase: MCPOAuthUseCase | null;
+}
 
 /**
  * Renders provider-specific setup instructions in the connection dialog.
@@ -11,12 +16,11 @@ import { SnowflakeSetupInstructions } from "./SnowflakeSetupInstructions";
  */
 export function ProviderSetupInstructions({
   provider,
-}: {
-  provider: OAuthProvider;
-}) {
+  useCase,
+}: ProviderSetupInstructionsProps) {
   switch (provider) {
     case "snowflake":
-      return <SnowflakeSetupInstructions />;
+      return <SnowflakeSetupInstructions useCase={useCase} />;
     default:
       return null;
   }

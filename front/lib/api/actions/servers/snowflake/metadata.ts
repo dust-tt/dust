@@ -86,7 +86,7 @@ export const SNOWFLAKE_SERVER = {
       "Execute read-only SQL queries and browse schema in Snowflake.",
     authorization: {
       provider: "snowflake",
-      supported_use_cases: ["personal_actions"],
+      supported_use_cases: ["personal_actions", "platform_actions"],
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",

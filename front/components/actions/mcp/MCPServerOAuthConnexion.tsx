@@ -208,7 +208,10 @@ export function MCPServerOAuthConnexion({
         </div>
       </div>
 
-      <ProviderSetupInstructions provider={authorization.provider} />
+      <ProviderSetupInstructions
+        provider={authorization.provider}
+        useCase={useCase}
+      />
 
       {inputs && (
         <div className="w-full space-y-4 pt-4">
