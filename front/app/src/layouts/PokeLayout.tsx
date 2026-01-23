@@ -1,12 +1,14 @@
 import { SparkleContext, Spinner } from "@dust-tt/sparkle";
 import type { ReactNode } from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Outlet, useParams } from "react-router-dom";
 
 import { ReactRouterLinkWrapper } from "@app/app/src/components/ReactRouterLinkWrapper";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { AuthContext } from "@app/lib/auth/AuthContext";
 import { Head } from "@app/lib/platform";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type {
@@ -31,45 +33,6 @@ type GetRegionResponseType = {
   region: RegionType;
   regionUrls: Record<RegionType, string>;
 };
-
-interface PokeAuthContextValue {
-  user: UserType;
-  isSuperUser: true;
-}
-
-interface PokeWorkspaceContextValue {
-  owner: LightWorkspaceType;
-  subscription: SubscriptionType;
-}
-
-const PokeAuthContext = createContext<PokeAuthContextValue | null>(null);
-const PokeWorkspaceContext = createContext<PokeWorkspaceContextValue | null>(
-  null
-);
-
-export function usePokeAuth(): PokeAuthContextValue {
-  const ctx = useContext(PokeAuthContext);
-  if (!ctx) {
-    throw new Error("usePokeAuth must be used within PokeLayout");
-  }
-  return ctx;
-}
-
-export function usePokeWorkspace(): PokeWorkspaceContextValue {
-  const ctx = useContext(PokeWorkspaceContext);
-  if (!ctx) {
-    throw new Error(
-      "usePokeWorkspace must be used within PokeLayout with a workspace route"
-    );
-  }
-  return ctx;
-}
-
-const PokePageTitleContext = createContext<string>("");
-
-export function usePokePageTitle() {
-  return useContext(PokePageTitleContext);
-}
 
 interface PokeLayoutProps {
   children?: ReactNode;
@@ -130,53 +93,36 @@ export function PokeLayout({ children, title = "Poke" }: PokeLayoutProps) {
     );
   }
 
-  const pokeAuthValue: PokeAuthContextValue = {
+  const authContextValue: AuthContextValue = {
     user: authData.user,
     isSuperUser: authData.isSuperUser,
+    isAdmin: true, // Superusers have admin privileges
+    isBuilder: true, // Superusers have builder privileges
+    workspace: workspaceAuthData?.workspace,
+    subscription: workspaceAuthData?.subscription,
   };
 
-  const workspaceContextValue: PokeWorkspaceContextValue | null =
-    workspaceAuthData
-      ? {
-          owner: workspaceAuthData.workspace,
-          subscription: workspaceAuthData.subscription,
-        }
-      : null;
-
-  const content = (
+  return (
     <SparkleContext.Provider
       value={{ components: { link: ReactRouterLinkWrapper } }}
     >
       <ThemeProvider>
-        <PokePageTitleContext.Provider value={title}>
-          <Head>
-            <title>{"Poke - " + title}</title>
-          </Head>
-          <PokeAuthContext.Provider value={pokeAuthValue}>
-            <div className="min-h-dvh bg-muted-background dark:bg-muted-background-night dark:text-white">
-              <PokeNavbar
-                currentRegion={regionData?.region}
-                regionUrls={regionData?.regionUrls}
-                title={title}
-              />
-              <div className="flex flex-col p-6">{children ?? <Outlet />}</div>
-            </div>
-          </PokeAuthContext.Provider>
-        </PokePageTitleContext.Provider>
+        <Head>
+          <title>{"Poke - " + title}</title>
+        </Head>
+        <AuthContext.Provider value={authContextValue}>
+          <div className="min-h-dvh bg-muted-background dark:bg-muted-background-night dark:text-white">
+            <PokeNavbar
+              currentRegion={regionData?.region}
+              regionUrls={regionData?.regionUrls}
+              title={title}
+            />
+            <div className="flex flex-col p-6">{children ?? <Outlet />}</div>
+          </div>
+        </AuthContext.Provider>
       </ThemeProvider>
     </SparkleContext.Provider>
   );
-
-  // Wrap with workspace context if available
-  if (workspaceContextValue) {
-    return (
-      <PokeWorkspaceContext.Provider value={workspaceContextValue}>
-        {content}
-      </PokeWorkspaceContext.Provider>
-    );
-  }
-
-  return content;
 }
 
 // Wrapper component that extracts title from route data
