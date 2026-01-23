@@ -400,28 +400,28 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
       mcpServerId,
     }));
 
-    const internalServers = await this.baseFetch(auth, {
+    return this.baseFetch(auth, {
       where: {
-        serverType: "internal" as const,
-        internalMCPServerId: {
-          [Op.in]: serverTypesAndIds
-            .filter(({ serverType }) => serverType === "internal")
-            .map(({ mcpServerId }) => mcpServerId),
-        },
+        [Op.or]: [
+          {
+            serverType: "internal" as const,
+            internalMCPServerId: {
+              [Op.in]: serverTypesAndIds
+                .filter(({ serverType }) => serverType === "internal")
+                .map(({ mcpServerId }) => mcpServerId),
+            },
+          },
+          {
+            serverType: "remote",
+            remoteMCPServerId: {
+              [Op.in]: serverTypesAndIds
+                .filter(({ serverType }) => serverType === "remote")
+                .map(({ id }) => id),
+            },
+          },
+        ],
       },
     });
-    const remoteServers = await this.baseFetch(auth, {
-      where: {
-        serverType: "remote",
-        remoteMCPServerId: {
-          [Op.in]: serverTypesAndIds
-            .filter(({ serverType }) => serverType === "remote")
-            .map(({ id }) => id),
-        },
-      },
-    });
-
-    return [...internalServers, ...remoteServers];
   }
 
   static async listByMCPServer(
