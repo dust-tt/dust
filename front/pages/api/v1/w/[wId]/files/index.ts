@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import { isUploadSupported } from "@app/lib/api/files/upload";
+import { isUploadSupported } from "@app/lib/api/files/processing";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
