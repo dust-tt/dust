@@ -1,4 +1,4 @@
-import { Markdown } from "@dust-tt/sparkle";
+import { StreamingAnimationMarkdown } from "@dust-tt/sparkle";
 import React from "react";
 import type { Components } from "react-markdown";
 
@@ -81,7 +81,7 @@ export const AgentMessageMarkdown = ({
   }, [isInstructions]);
 
   return (
-    <Markdown
+    <StreamingAnimationMarkdown
       content={processedContentIfIsInstructions}
       additionalMarkdownComponents={markdownComponents}
       additionalMarkdownPlugins={additionalMarkdownPlugins}
