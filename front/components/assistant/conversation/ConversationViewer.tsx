@@ -386,6 +386,7 @@ export const ConversationViewer = ({
             break;
 
           case "conversation_title":
+            void debouncedMarkAsRead(conversationId, false);
             void mutateConversation(
               (current) => {
                 if (current) {

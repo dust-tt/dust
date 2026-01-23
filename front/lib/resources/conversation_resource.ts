@@ -857,55 +857,22 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
-  /**
-   * Marks conversation as unread for other participants (excluding the sender).
-   */
-  static async markAsUnreadForOtherParticipants(
+  static async markAsRead(
     auth: Authenticator,
     {
       conversation,
-      excludedUser,
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
-      excludedUser?: UserType;
       transaction?: Transaction;
     }
-  ) {
-    const workspaceId = auth.getNonNullableWorkspace().id;
-
-    const whereClause: WhereOptions<
-      InferAttributes<ConversationParticipantModel>
-    > = {
-      conversationId: conversation.id,
-      workspaceId,
-      unread: false,
-    };
-
-    if (excludedUser) {
-      whereClause.userId = { [Op.ne]: excludedUser.id };
-    }
-
-    const updated = await ConversationParticipantModel.update(
-      { unread: true },
-      {
-        where: whereClause,
-        transaction,
-      }
-    );
-    return new Ok(updated);
-  }
-
-  static async markAsRead(
-    auth: Authenticator,
-    { conversation }: { conversation: ConversationWithoutContentType }
   ) {
     if (!auth.user()) {
       return new Err(new Error("user_not_authenticated"));
     }
 
     const updated = await ConversationParticipantModel.update(
-      { unread: false, lastReadAt: new Date() },
+      { lastReadAt: new Date() },
       {
         where: {
           conversationId: conversation.id,
@@ -914,6 +881,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
         // Do not update `updatedAt.
         silent: true,
+        transaction,
       }
     );
     return new Ok(updated);
@@ -984,7 +952,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       action,
       user,
       transaction,
-      lastReadAt = null,
+      lastReadAt = new Date(),
     }: {
       conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
@@ -1631,7 +1599,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const conversationIds = conversations.map((c) => c.id);
 
     await ConversationParticipantModel.update(
-      { unread: false, lastReadAt: new Date(), actionRequired: false },
+      { lastReadAt: new Date(), actionRequired: false },
       {
         where: {
           conversationId: { [Op.in]: conversationIds },

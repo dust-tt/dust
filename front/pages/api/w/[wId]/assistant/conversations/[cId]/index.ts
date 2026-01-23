@@ -133,6 +133,9 @@ async function handler(
             conversationId: conversation.sId,
             title: bodyValidation.right.title,
           });
+          await ConversationResource.markAsRead(auth, {
+            conversation,
+          });
 
           if (result.isErr()) {
             return apiErrorForConversation(req, res, result.error);

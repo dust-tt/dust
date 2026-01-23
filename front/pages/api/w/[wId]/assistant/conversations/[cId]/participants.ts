@@ -113,7 +113,7 @@ async function handler(
         workspaceId: owner.id,
         userId: user.id,
         action: "subscribed",
-        unread: false,
+        lastReadAt: new Date(),
         actionRequired: false,
       });
 
