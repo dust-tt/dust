@@ -409,7 +409,7 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
+              "The Snowflake role to use (e.g., ANALYST). In personal mode, users can override this during their authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",

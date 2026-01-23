@@ -6,7 +6,15 @@ import {
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
 import { useState } from "react";
 
-export function SnowflakeSetupInstructions() {
+import type { MCPOAuthUseCase } from "@app/types";
+
+interface SnowflakeSetupInstructionsProps {
+  useCase: MCPOAuthUseCase | null;
+}
+
+export function SnowflakeSetupInstructions({
+  useCase,
+}: SnowflakeSetupInstructionsProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const redirectUri = `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}/oauth/snowflake/finalize`;
@@ -81,8 +89,10 @@ export function SnowflakeSetupInstructions() {
 
             <p className="text-muted-foreground dark:text-muted-foreground-night">
               <strong>Note:</strong> The warehouse you specify below will be
-              used for all users. The default role can be overridden by
-              individual users during their personal authentication.
+              used for all users.
+              {useCase === "platform_actions"
+                ? " The role will also be shared across all users."
+                : " The default role can be overridden by individual users during their personal authentication."}
             </p>
           </div>
         </CollapsibleContent>
