@@ -253,7 +253,7 @@ function showUnsupportedDirective() {
   };
 }
 
-export function Markdown({
+export function StreamingAnimationMarkdown({
   content,
   isStreaming = false,
   textColor = "s-text-foreground dark:s-text-foreground-night",
