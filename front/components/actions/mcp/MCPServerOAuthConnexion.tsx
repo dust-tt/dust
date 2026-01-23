@@ -3,7 +3,6 @@ import {
   cn,
   Hoverable,
   Icon,
-  InformationCircleIcon,
   Input,
   Label,
   PlanetIcon,
@@ -14,7 +13,10 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
-import { ProviderSetupInstructions } from "@app/components/actions/mcp/provider_setup_instructions";
+import {
+  ProviderAuthNote,
+  ProviderSetupInstructions,
+} from "@app/components/actions/mcp/provider_setup_instructions";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
@@ -245,20 +247,7 @@ export function MCPServerOAuthConnexion({
         </div>
       )}
 
-      {authorization.provider === "snowflake" && inputs && (
-        <div className="flex w-full items-start gap-2 rounded-lg border border-border-dark/50 bg-muted-background p-3 dark:border-border-dark-night/50 dark:bg-muted-background-night">
-          <Icon
-            visual={InformationCircleIcon}
-            size="sm"
-            className="mt-0.5 shrink-0 text-muted-foreground dark:text-muted-foreground-night"
-          />
-          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-            Clicking "Setup connection" will start a Snowflake OAuth flow using
-            the role above. Your Snowflake user must have access to this role to
-            complete authentication.
-          </span>
-        </div>
-      )}
+      <ProviderAuthNote provider={authorization.provider} />
 
       {documentationUrl && (
         <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
