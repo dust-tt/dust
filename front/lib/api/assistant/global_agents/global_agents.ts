@@ -1,6 +1,5 @@
 import { AGENT_COPILOT_AGENT_STATE_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
   _getClaude3_7GlobalAgent,
@@ -59,7 +58,7 @@ import type {
 } from "@app/lib/api/assistant/global_agents/tools";
 import {
   getDataSourcesAndWorkspaceIdForGlobalAgents,
-  MCP_SERVERS_FOR_GLOBAL_AGENTS,
+  getMCPServerViewsForGlobalAgents,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -470,7 +469,7 @@ export async function getGlobalAgents(
     throw new Error("Unexpected `auth` without `plan`.");
   }
 
-  const [preFetchedDataSources, globalAgentSettings, allMCPServerViews] =
+  const [preFetchedDataSources, globalAgentSettings, mcpServerViews] =
     await Promise.all([
       variant === "full"
         ? getDataSourcesAndWorkspaceIdForGlobalAgents(auth)
@@ -478,27 +477,8 @@ export async function getGlobalAgents(
       GlobalAgentSettingsModel.findAll({
         where: { workspaceId: owner.id },
       }),
-      variant === "full"
-        ? MCPServerViewResource.getMCPServerViewsForAutoInternalTools(auth, [
-            ...MCP_SERVERS_FOR_GLOBAL_AGENTS,
-          ])
-        : [],
+      getMCPServerViewsForGlobalAgents(auth, variant),
     ]);
-
-  const mcpServerViewsByServerId = new Map(
-    allMCPServerViews.map((v) => [v.internalMCPServerId, v])
-  );
-  const mcpServerViews = Object.fromEntries(
-    MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [
-      name,
-      mcpServerViewsByServerId.get(
-        autoInternalMCPServerNameToSId({
-          name,
-          workspaceId: owner.id,
-        })
-      ) ?? null,
-    ])
-  ) as MCPServerViewsForGlobalAgentsMap;
 
   // If agentIds have been passed we fetch those. Otherwise we fetch them all, removing the retired
   // one (which will remove these models from the list of default agents in the product + list of
