@@ -141,11 +141,11 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xmini: "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
+        xmini: "s-h-6 s-w-6 s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-w-7 s-gap-1.5 s-shrink-0",
+        xs: "s-h-7 s-px-2.5 s-gap-1.5 s-shrink-0",
+        sm: "s-h-9 s-px-3 s-gap-2 s-shrink-0",
+        md: "s-h-12 s-px-4 s-py-2 s-gap-2.5 s-shrink-0",
       },
       rounded: {
         xmini: "s-rounded-lg",
@@ -167,15 +167,44 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      xmini: "s-label-xs s-hidden",
-      mini: "s-label-xs s-hidden",
-      xs: "s-label-xs",
-      sm: "s-label-sm",
-      md: "s-label-base",
+      xmini: "",
+      mini: "",
+      xs: "",
+      sm: "",
+      md: "",
+    },
+    hasLighterFont: {
+      true: "",
+      false: "",
     },
   },
+  compoundVariants: [
+    { size: "xmini", hasLighterFont: false, className: "s-label-xs s-hidden" },
+    { size: "mini", hasLighterFont: false, className: "s-label-xs s-hidden" },
+    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
+    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
+    { size: "md", hasLighterFont: false, className: "s-label-base" },
+    {
+      size: "xmini",
+      hasLighterFont: true,
+      className: "s-text-xs s-font-normal s-hidden",
+    },
+    {
+      size: "mini",
+      hasLighterFont: true,
+      className: "s-text-xs s-font-normal s-hidden",
+    },
+    { size: "xs", hasLighterFont: true, className: "s-text-xs s-font-normal" },
+    { size: "sm", hasLighterFont: true, className: "s-text-sm s-font-normal" },
+    {
+      size: "md",
+      hasLighterFont: true,
+      className: "s-text-base s-font-normal",
+    },
+  ],
   defaultVariants: {
     size: "sm",
+    hasLighterFont: false,
   },
 });
 
@@ -271,6 +300,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isCounter?: boolean;
     counterValue?: string;
     isRounded?: boolean;
+    hasLighterFont?: boolean;
   };
 
 export type MiniButtonProps = CommonButtonProps & {
@@ -303,6 +333,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       counterValue,
       size = "sm",
       isRounded = false,
+      hasLighterFont = false,
       href,
       target,
       rel,
@@ -369,7 +400,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "s-flex s-items-center s-gap-2",
-              labelVariants({ size })
+              labelVariants({ size, hasLighterFont })
             )}
           >
             {label}
