@@ -149,7 +149,7 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
     }
 
     // PKCE OAuth flow only needs client_id (no client_secret)
-    return {
+    return new Ok({
       content: {
         client_id: extraConfig.client_id,
       },
