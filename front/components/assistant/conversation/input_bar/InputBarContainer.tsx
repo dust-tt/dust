@@ -62,7 +62,7 @@ import {
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const INPUT_BAR_ACTIONS = [
-  "tools",
+  "capabilities",
   "attachment",
   "agents-list",
   "agents-list-with-actions",
@@ -727,7 +727,7 @@ const InputBarContainer = ({
                       />
                     </>
                   )}
-                  {actions.includes("tools") && (
+                  {actions.includes("capabilities") && (
                     <ToolsPicker
                       owner={owner}
                       selectedMCPServerViews={selectedMCPServerViews}
