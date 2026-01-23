@@ -3,13 +3,13 @@ import { IncomingForm } from "formidable";
 import type { IncomingMessage } from "http";
 import type { Writable } from "stream";
 
+import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import type {
   FileResource,
   FileVersion,
 } from "@app/lib/resources/file_resource";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
