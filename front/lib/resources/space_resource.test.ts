@@ -932,12 +932,8 @@ describe("SpaceResource", () => {
           expect(result.isOk()).toBe(true);
 
           // Verify the new provisioned group is associated
-          const groupSpaces = await GroupSpaceModel.findAll({
-            where: {
-              vaultId: projectSpace.id,
-              workspaceId: workspace.id,
-              kind: "member",
-            },
+          const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+            space: projectSpace,
           });
           const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
           expect(associatedGroupIds).toContain(newProvisionedMemberGroup.id);

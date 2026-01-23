@@ -9,6 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -617,15 +618,11 @@ describe("createSpaceAndGroup", () => {
         expect(space.isOpen()).toBe(true);
 
         // Verify global group was added with kind "member"
-        const groupSpace = await GroupSpaceModel.findOne({
-          where: {
-            vaultId: space.id,
-            workspaceId: workspace.id,
-            groupId: globalGroup.id,
-          },
+        const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+          space,
         });
-        expect(groupSpace).toBeDefined();
-        expect(groupSpace?.kind).toBe("member");
+        expect(groupSpaces.length).toBeGreaterThan(0);
+        expect(groupSpaces.some((gs) => gs.group.kind === "global")).toBe(true);
       }
     });
 
