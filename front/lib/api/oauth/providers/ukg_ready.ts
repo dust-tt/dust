@@ -12,6 +12,7 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
+import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { Result } from "@app/types";
@@ -23,6 +24,7 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
     const instanceUrl = connection.metadata.instance_url;
     const companyId = connection.metadata.ukg_ready_company_id;
     const clientId = connection.metadata.client_id;
+    const codeChallenge = connection.metadata.code_challenge;
 
     if (!instanceUrl) {
       throw new Error("Missing instance_url in connection metadata");
@@ -32,6 +34,9 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
     }
     if (!clientId) {
       throw new Error("Missing client_id in connection metadata");
+    }
+    if (!codeChallenge) {
+      throw new Error("Missing PKCE code_challenge in connection metadata");
     }
 
     // Build UKG Ready authorization URL
@@ -47,6 +52,8 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
       finalizeUriForProvider("ukg_ready")
     );
     authUrl.searchParams.set("state", connection.connection_id);
+    authUrl.searchParams.set("code_challenge", codeChallenge);
+    authUrl.searchParams.set("code_challenge_method", "S256");
 
     return authUrl.toString();
   }
@@ -62,16 +69,15 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions") {
       // If we have an mcp_server_id it means the admin already setup the connection and we have
-      // everything we need, otherwise we'll need client_id, client_secret, instance_url, and company_id.
+      // everything we need, otherwise we'll need client_id, instance_url, and company_id.
       if (extraConfig.mcp_server_id) {
         return true;
       }
     }
 
-    // Standard OAuth flow needs: client_id, client_secret, instance_url, and ukg_ready_company_id
+    // PKCE OAuth flow needs: client_id, instance_url, and ukg_ready_company_id
     if (
       !extraConfig.client_id ||
-      !extraConfig.client_secret ||
       !extraConfig.instance_url ||
       !extraConfig.ukg_ready_company_id
     ) {
@@ -142,11 +148,10 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
       }
     }
 
-    // Standard OAuth flow needs client_id and client_secret
-    return new Ok({
+    // PKCE OAuth flow only needs client_id (no client_secret)
+    return {
       content: {
         client_id: extraConfig.client_id,
-        client_secret: extraConfig.client_secret,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
     });
@@ -162,6 +167,9 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
+    // Generate PKCE parameters for the OAuth flow
+    const { code_verifier, code_challenge } = await getPKCEConfig();
+
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection metadata from the existing
       // workspace connection (setup by admin) if we have it.
@@ -192,19 +200,23 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
         }
         const connection = connectionRes.value.connection;
 
-        // Return config with workspace connection metadata (client_secret is stored in credential)
+        // Return config with workspace connection metadata and PKCE parameters
         return {
           ...restConfig,
           client_id: connection.metadata.client_id,
           instance_url: connection.metadata.instance_url,
           ukg_ready_company_id: connection.metadata.ukg_ready_company_id,
+          code_verifier,
+          code_challenge,
         };
       }
     }
 
-    // Remove client_secret from extraConfig as it's stored in the credential
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { client_secret, ...configWithoutSecret } = extraConfig;
-    return configWithoutSecret;
+    // Return config with PKCE parameters
+    return {
+      ...extraConfig,
+      code_verifier,
+      code_challenge,
+    };
   }
 }
