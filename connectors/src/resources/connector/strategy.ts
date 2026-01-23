@@ -5,6 +5,7 @@ import type { CreationAttributes, Model, Transaction } from "sequelize";
 import type { BigQueryConfigurationModel } from "@connectors/lib/models/bigquery";
 import type { ConfluenceConfigurationModel } from "@connectors/lib/models/confluence";
 import type { DiscordConfigurationModel } from "@connectors/lib/models/discord";
+import type { DustProjectConfigurationModel } from "@connectors/lib/models/dust_project";
 import type { GithubConnectorStateModel } from "@connectors/lib/models/github";
 import type { GongConfigurationModel } from "@connectors/lib/models/gong";
 import type { GoogleDriveConfigModel } from "@connectors/lib/models/google_drive";
@@ -20,6 +21,7 @@ import type { ZendeskConfigurationModel } from "@connectors/lib/models/zendesk";
 import { BigQueryConnectorStrategy } from "@connectors/resources/connector/bigquery";
 import { ConfluenceConnectorStrategy } from "@connectors/resources/connector/confluence";
 import { DiscordConnectorStrategy } from "@connectors/resources/connector/discord";
+import { DustProjectConnectorStrategy } from "@connectors/resources/connector/dust_project";
 import { GithubConnectorStrategy } from "@connectors/resources/connector/github";
 import { GongConnectorStrategy } from "@connectors/resources/connector/gong";
 import { GoogleDriveConnectorStrategy } from "@connectors/resources/connector/google_drive";
@@ -63,6 +65,7 @@ export interface ConnectorProviderModelM {
   bigquery: BigQueryConfigurationModel;
   salesforce: SalesforceConfigurationModel;
   gong: GongConfigurationModel;
+  dust_project: DustProjectConfigurationModel;
 }
 
 export type ConnectorProviderModelMapping = {
@@ -103,6 +106,7 @@ export interface ConnectorProviderConfigurationTypeM {
   bigquery: null;
   salesforce: null;
   gong: null;
+  dust_project: null;
 }
 
 export type ConnectorProviderConfigurationTypeMapping = {
@@ -184,6 +188,9 @@ export function getConnectorProviderStrategy(
 
     case "gong":
       return new GongConnectorStrategy();
+
+    case "dust_project":
+      return new DustProjectConnectorStrategy();
 
     default:
       assertNever(type);

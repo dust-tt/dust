@@ -85,7 +85,7 @@ export class SkillConfigurationModel extends WorkspaceAwareModel<SkillConfigurat
   declare instructions: string;
   declare icon: string | null;
 
-  declare authorId: ForeignKey<UserModel["id"]> | null;
+  declare editedBy: ForeignKey<UserModel["id"]> | null;
   // Not a foreign key, only global skills can be extended.
   declare extendedSkillId: string | null;
 
@@ -98,6 +98,10 @@ SkillConfigurationModel.init(SKILL_MODEL_ATTRIBUTES, {
   indexes: [
     {
       fields: ["workspaceId", "status"],
+      concurrently: true,
+    },
+    {
+      fields: ["workspaceId", "editedBy"],
       concurrently: true,
     },
     {
@@ -139,6 +143,10 @@ SkillVersionModel.init(
         concurrently: true,
       },
       {
+        fields: ["workspaceId", "editedBy"],
+        concurrently: true,
+      },
+      {
         unique: true,
         fields: ["workspaceId", "skillConfigurationId", "version"],
         concurrently: true,
@@ -147,24 +155,24 @@ SkillVersionModel.init(
   }
 );
 
-// Skill config <> Author
+// Skill config <> Edited by
 UserModel.hasMany(SkillConfigurationModel, {
-  foreignKey: { name: "authorId", allowNull: true },
+  foreignKey: { name: "editedBy", allowNull: true },
   onDelete: "RESTRICT",
 });
 SkillConfigurationModel.belongsTo(UserModel, {
-  foreignKey: { name: "authorId", allowNull: true },
-  as: "author",
+  foreignKey: { name: "editedBy", allowNull: true },
+  as: "editedByUser",
 });
 
-// Skill version <> Author
+// Skill version <> Edited by
 UserModel.hasMany(SkillVersionModel, {
-  foreignKey: { name: "authorId", allowNull: false },
+  foreignKey: { name: "editedBy", allowNull: true },
   onDelete: "RESTRICT",
 });
 SkillVersionModel.belongsTo(UserModel, {
-  foreignKey: { name: "authorId", allowNull: false },
-  as: "author",
+  foreignKey: { name: "editedBy", allowNull: true },
+  as: "editedByUser",
 });
 
 // Skill MCP Server Configuration (tools associated with a skill)

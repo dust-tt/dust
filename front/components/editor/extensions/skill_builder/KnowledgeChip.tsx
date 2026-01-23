@@ -10,17 +10,26 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isWebsite } from "@app/lib/data_sources";
 import type { DataSourceViewContentNode } from "@app/lib/swr/search";
 
-type KnowledgeNode = Omit<DataSourceViewContentNode, "dataSourceViews"> & {
-  dataSourceView: DataSourceViewContentNode["dataSourceViews"][0];
+type KnowledgeNode = Omit<
+  DataSourceViewContentNode,
+  "dataSourceViews" | "dataSource"
+> & {
+  dataSourceView: DataSourceViewContentNode["dataSourceViews"][number];
 };
 
 interface KnowledgeChipProps {
+  color?: React.ComponentProps<typeof AttachmentChip>["color"];
   node: KnowledgeNode;
   onRemove?: () => void;
   title: string;
 }
 
-export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
+export function KnowledgeChip({
+  color = "white",
+  node,
+  title,
+  onRemove,
+}: KnowledgeChipProps) {
   const icon =
     isWebsite(node.dataSourceView.dataSource) ||
     isFolder(node.dataSourceView.dataSource)
@@ -36,16 +45,13 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
         );
 
   return (
-    // TODO(2026-01-02 SKILL): Add support truncate + elipsis if title is too long.
     <AttachmentChip
       label={title}
       icon={{ visual: icon }}
       target="_blank"
-      color="white"
-      // TODO(2026-01-02 SKILL): Stop propagating event so it does not open the link.
+      href={node.sourceUrl ?? undefined}
+      color={color}
       onRemove={onRemove}
-      // TODO(2026-01-02 SKILL): Make href optional in AttachmentChip.
-      href={""}
       size="xs"
     />
   );
@@ -53,7 +59,7 @@ export function KnowledgeChip({ node, title, onRemove }: KnowledgeChipProps) {
 
 interface KnowledgeErrorChipProps {
   errorMessage?: string;
-  onRemove: () => void;
+  onRemove?: () => void;
   title: string;
 }
 
@@ -69,7 +75,6 @@ export function KnowledgeErrorChip({
       color="white"
       onRemove={onRemove}
       size="xs"
-      href=""
     />
   );
 }

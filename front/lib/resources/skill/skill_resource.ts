@@ -12,8 +12,15 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getAgentConfiguration,
+  updateAgentRequirements,
+} from "@app/lib/api/assistant/configuration/agent";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { hasSharedMembership } from "@app/lib/api/user";
 import type { Authenticator } from "@app/lib/auth";
+import { hasAll } from "@app/lib/matcher/operators/array";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import {
@@ -51,7 +58,6 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
   AgentConfigurationType,
   AgentsUsageType,
-  ContentNodeType,
   ConversationType,
   ConversationWithoutContentType,
   LightAgentConfigurationType,
@@ -59,7 +65,13 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok, removeNulls } from "@app/types";
+import {
+  Err,
+  normalizeError,
+  Ok,
+  removeNulls,
+  SKILL_GROUP_PREFIX,
+} from "@app/types";
 import type {
   SkillStatus,
   SkillType,
@@ -111,7 +123,6 @@ function isSkillResourceWithVersion(
 export interface SkillAttachedKnowledge {
   dataSourceView: DataSourceViewResource;
   nodeId: string;
-  nodeType: Extract<ContentNodeType, "folder" | "document">;
 }
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
@@ -135,7 +146,7 @@ export interface SkillResource extends ReadonlyAttributesType<SkillConfiguration
  * - Type-safe constraints: Sequelize operators only available with `onlyCustom: true`
  *
  * ### What We Pay
- * - Global skills use synthetic database fields (id: -1, authorId: -1)
+ * - Global skills use synthetic database fields (id: -1, editedBy: -1)
  * - Mutations (update/delete) require runtime checks to reject global skills
  * - Mixed queries limited to simple equality filters (name, sId, status)
  * - Some internal complexity to distinguish types via `globalSId` presence
@@ -213,14 +224,29 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this._mcpServerViews = value;
   }
 
+  get isAutoEnabled(): boolean {
+    if (!this.globalSId) {
+      return false;
+    }
+
+    return GlobalSkillsRegistry.isSkillAutoEnabled(this.sId);
+  }
+
+  get isExtendable(): boolean {
+    // Auto-enabled skills are baseline discovery capabilities: they are not meant to be extended.
+    return this.globalSId !== null && !this.isAutoEnabled;
+  }
+
   static async makeNew(
     auth: Authenticator,
     blob: Omit<CreationAttributes<SkillConfigurationModel>, "workspaceId">,
     {
       mcpServerViews,
+      addCurrentUserAsEditor = true,
       attachedKnowledge = [],
     }: {
       mcpServerViews: MCPServerViewResource[];
+      addCurrentUserAsEditor?: boolean;
       attachedKnowledge?: SkillAttachedKnowledge[];
     }
   ): Promise<SkillResource> {
@@ -238,16 +264,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         }
       );
 
-      const editorGroup = await GroupResource.makeNewSkillEditorsGroup(
-        auth,
-        skill,
-        {
-          transaction,
-        }
-      );
+      const editorGroup = await this.makeNewSkillEditorsGroup(auth, skill, {
+        addCurrentUserAsEditor,
+        transaction,
+      });
 
       // MCP server configurations for the skill.
-
       await SkillMCPServerConfigurationModel.bulkCreate(
         mcpServerViews.map((mcpServerView) => ({
           workspaceId: owner.id,
@@ -275,6 +297,92 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         mcpServerViews,
       });
     });
+  }
+
+  static async makeSuggestion(
+    auth: Authenticator,
+    blob: Omit<
+      CreationAttributes<SkillConfigurationModel>,
+      "workspaceId" | "status" | "editedBy" | "requestedSpaceIds"
+    >,
+    {
+      mcpServerNames,
+    }: {
+      mcpServerNames: AutoInternalMCPServerNameType[];
+    }
+  ): Promise<Result<SkillResource, Error>> {
+    const mcpServerViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
+        auth,
+        mcpServerNames
+      );
+
+    if (mcpServerViews.length !== mcpServerNames.length) {
+      return new Err(new Error("Some MCP server views are missing."));
+    }
+
+    const createdSuggestedSkill = await this.makeNew(
+      auth,
+      {
+        ...blob,
+        status: "suggested",
+        editedBy: null,
+        requestedSpaceIds: [],
+      },
+      {
+        mcpServerViews,
+        addCurrentUserAsEditor: false,
+      }
+    );
+
+    return new Ok(createdSuggestedSkill);
+  }
+
+  /**
+   * Creates a new skill editors group for the given skill and adds the creating
+   * user to it.
+   */
+  private static async makeNewSkillEditorsGroup(
+    auth: Authenticator,
+    skill: SkillConfigurationModel,
+    {
+      addCurrentUserAsEditor = true,
+      transaction,
+    }: {
+      addCurrentUserAsEditor?: boolean;
+      transaction?: Transaction;
+    } = {}
+  ): Promise<GroupResource> {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    assert(
+      skill.workspaceId === workspace.id,
+      "Unexpected: skill and workspace mismatch"
+    );
+
+    const defaultGroup = await GroupResource.makeNew(
+      {
+        workspaceId: workspace.id,
+        name: `${SKILL_GROUP_PREFIX} ${skill.name} (skill:${skill.id})`,
+        kind: "skill_editors",
+      },
+      {
+        memberIds: addCurrentUserAsEditor ? [user.id] : [],
+        transaction,
+      }
+    );
+
+    await GroupSkillModel.create(
+      {
+        groupId: defaultGroup.id,
+        skillConfigurationId: skill.id,
+        workspaceId: workspace.id,
+      },
+      { transaction }
+    );
+
+    return defaultGroup;
   }
 
   private static async baseFetch(
@@ -307,16 +415,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
 
     const validCustomSkills = customSkills.filter((skill) =>
-      // Parse as Number since Sequelize array of BigInts are returned as strings.
-      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+      skill.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
     );
 
     const allowedCustomSkills = validCustomSkills.filter((skill) =>
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
-          // Parse as Number since Sequelize array of BigInts are returned as strings.
-          skill.requestedSpaceIds.map((id) => Number(id))
+          skill.requestedSpaceIds
         )
       )
     );
@@ -421,7 +527,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return allowedCustomSkillsRes;
     }
 
-    const globalSkillDefinitions = GlobalSkillsRegistry.findAll(where);
+    const globalSkillDefinitions = await GlobalSkillsRegistry.findAll(
+      auth,
+      where
+    );
 
     // Fetch global skills with their MCP server configurations.
     const globalSkills = await concurrentExecutor(
@@ -600,21 +709,24 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
   }
 
-  static async listSkills(
+  static async listByWorkspace(
     auth: Authenticator,
     {
       status = "active",
       limit,
       globalSpaceOnly,
+      onlyCustom,
     }: {
-      status?: SkillStatus;
+      status?: SkillStatus | SkillStatus[];
       limit?: number;
       globalSpaceOnly?: boolean;
+      onlyCustom?: boolean;
     } = {}
   ): Promise<SkillResource[]> {
     const skills = await this.baseFetch(auth, {
       where: { status },
       ...(limit ? { limit } : {}),
+      onlyCustom,
     });
 
     if (globalSpaceOnly) {
@@ -695,9 +807,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     );
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
-    const autoEnabledSkills = allAgentSkills.filter((s) =>
-      GlobalSkillsRegistry.isSkillAutoEnabled(s.sId)
-    );
+    const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
 
     const enabledSkills = [...conversationEnabledSkills, ...autoEnabledSkills];
     // Skills that are already enabled are not equipped.
@@ -706,7 +816,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (s) => !enabledSkillIds.has(s.sId)
     );
 
-    // TODO(skills 2025-12-23): refactor to retrieve extended skills from baseFetch
     const augmentedEnabledSkills = await this.augmentSkillsWithExtendedSkills(
       auth,
       enabledSkills
@@ -847,7 +956,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return new SkillResource(
       this.model,
       {
-        authorId: -1,
+        editedBy: -1,
         createdAt: new Date(),
         agentFacingDescription: def.agentFacingDescription,
         userFacingDescription: def.userFacingDescription,
@@ -879,11 +988,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this.editorGroup.canWrite(auth);
   }
 
-  isExtendable(): boolean {
-    return this.globalSId !== null;
-  }
-
-  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+  private async listActiveAgents(
+    auth: Authenticator
+  ): Promise<AgentConfigurationModel[]> {
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -894,19 +1001,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     });
 
     if (agentSkills.length === 0) {
-      return { count: 0, agents: [] };
+      return [];
     }
 
     const agentConfigIds = agentSkills.map((as) => as.agentConfigurationId);
 
-    // Fetch related active agent configurations
-    const agents = await AgentConfigurationModel.findAll({
+    return AgentConfigurationModel.findAll({
       where: {
         id: { [Op.in]: agentConfigIds },
         workspaceId: workspace.id,
         status: "active",
       },
     });
+  }
+
+  async fetchUsage(auth: Authenticator): Promise<AgentsUsageType> {
+    const agents = await this.listActiveAgents(auth);
 
     const sortedAgents = agents
       .map((agent) => ({ sId: agent.sId, name: agent.name }))
@@ -916,6 +1026,91 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       count: sortedAgents.length,
       agents: sortedAgents,
     };
+  }
+
+  private async updateActiveAgentsRequirements(
+    auth: Authenticator,
+    { previousRequestedSpaceIds }: { previousRequestedSpaceIds: ModelId[] },
+    { transaction }: { transaction?: Transaction }
+  ): Promise<void> {
+    if (
+      previousRequestedSpaceIds.length === this.requestedSpaceIds.length &&
+      hasAll(previousRequestedSpaceIds, this.requestedSpaceIds)
+    ) {
+      // Requested spaces didn't change, skip.
+      return;
+    }
+
+    const agents = await this.listActiveAgents(auth);
+
+    if (agents.length === 0) {
+      // No agents are using this skill, skip.
+      return;
+    }
+
+    const spaceIdsRemovedFromThisSkill = previousRequestedSpaceIds.filter(
+      (spaceId) => !this.requestedSpaceIds.includes(spaceId)
+    );
+
+    await concurrentExecutor(
+      agents,
+      async (agent) => {
+        const spaceIdsToRemoveFromAgent = new Set<ModelId>();
+
+        // Some spaces were removed from the skill: we must check if they need to be
+        // removed from the agent. In order to achieve this, we check if the agent has
+        // any other capabilities that require the removed spaces.
+        if (spaceIdsRemovedFromThisSkill.length > 0) {
+          const agentConfig = await getAgentConfiguration(auth, {
+            agentId: agent.sId,
+            variant: "full",
+          });
+          assert(agentConfig, "Agent configuration not found");
+
+          const agentSkills = await SkillResource.listByAgentConfiguration(
+            auth,
+            agentConfig
+          );
+          const otherAgentSkills = agentSkills.filter(
+            (skill) => skill.sId !== this.sId
+          );
+
+          const agentOtherCapabilitiesRequirements =
+            await getAgentConfigurationRequirementsFromCapabilities(auth, {
+              actions: agentConfig.actions,
+              skills: otherAgentSkills,
+            });
+
+          const otherCapabilitiesRequestedSpaceIds = new Set(
+            agentOtherCapabilitiesRequirements.requestedSpaceIds
+          );
+
+          for (const spaceId of spaceIdsRemovedFromThisSkill) {
+            if (!otherCapabilitiesRequestedSpaceIds.has(spaceId)) {
+              // This space is not required by any other capabilities of the agent, so
+              // we must remove it from the config.
+              spaceIdsToRemoveFromAgent.add(spaceId);
+            }
+          }
+        }
+
+        const newSpaceIds = uniq(
+          agent.requestedSpaceIds
+            .filter((id) => !spaceIdsToRemoveFromAgent.has(id))
+            .concat(this.requestedSpaceIds)
+        );
+
+        await updateAgentRequirements(
+          auth,
+          {
+            agentModelId: agent.id,
+            newSpaceIds,
+          },
+          { transaction }
+        );
+      },
+      { concurrency: 5 }
+    );
   }
 
   async listVersions(
@@ -938,69 +1133,75 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       (a, b) => b.version - a.version
     );
 
-    // Convert version models to SkillResource instances.
-    return concurrentExecutor(
-      sortedVersionModels,
-      async (versionModel) => {
-        // TODO(skills 2025-12-23): add caching on the MCP server views across versions.
-        const mcpServerViews = await MCPServerViewResource.fetchByModelIds(
-          auth,
-          versionModel.mcpServerViewIds
-        );
-
-        const skill = new SkillResource(
-          this.model,
-          {
-            id: this.id,
-            workspaceId: workspace.id,
-            authorId: versionModel.authorId,
-            createdAt: versionModel.createdAt,
-            updatedAt: versionModel.updatedAt,
-            status: versionModel.status,
-            name: versionModel.name,
-            agentFacingDescription: versionModel.agentFacingDescription,
-            userFacingDescription: versionModel.userFacingDescription,
-            instructions: versionModel.instructions,
-            icon: versionModel.icon,
-            requestedSpaceIds: versionModel.requestedSpaceIds,
-            extendedSkillId: versionModel.extendedSkillId,
-          },
-          {
-            // We ignore data source configurations for historical versions.
-            // As when user saves we re-compute those from the nodes.
-            dataSourceConfigurations: [],
-            editorGroup: this.editorGroup ?? undefined,
-            mcpServerViews,
-            version: versionModel.version,
-          }
-        );
-        assert(isSkillResourceWithVersion(skill));
-        return skill;
-      },
-      { concurrency: 5 }
+    // Build map to cache MCPServerViewResource instances.
+    const allMcpServerViewIds = uniq(
+      sortedVersionModels.flatMap((model) => model.mcpServerViewIds)
     );
+    const allMcpServerViews = await MCPServerViewResource.fetchByModelIds(
+      auth,
+      allMcpServerViewIds
+    );
+    const mcpServerViewMap = new Map(
+      allMcpServerViews.map((view) => [view.id, view])
+    );
+
+    // Convert version models to SkillResource instances.
+    return sortedVersionModels.map((versionModel) => {
+      const mcpServerViews = removeNulls(
+        versionModel.mcpServerViewIds.map((id) => mcpServerViewMap.get(id))
+      );
+
+      const skill = new SkillResource(
+        this.model,
+        {
+          id: this.id,
+          workspaceId: workspace.id,
+          editedBy: versionModel.editedBy,
+          createdAt: versionModel.createdAt,
+          updatedAt: versionModel.updatedAt,
+          status: versionModel.status,
+          name: versionModel.name,
+          agentFacingDescription: versionModel.agentFacingDescription,
+          userFacingDescription: versionModel.userFacingDescription,
+          instructions: versionModel.instructions,
+          icon: versionModel.icon,
+          requestedSpaceIds: versionModel.requestedSpaceIds,
+          extendedSkillId: versionModel.extendedSkillId,
+        },
+        {
+          // We ignore data source configurations for historical versions.
+          // As when user saves we re-compute those from the nodes.
+          dataSourceConfigurations: [],
+          editorGroup: this.editorGroup ?? undefined,
+          mcpServerViews,
+          version: versionModel.version,
+        }
+      );
+      assert(isSkillResourceWithVersion(skill));
+      return skill;
+    });
   }
 
   async listEditors(auth: Authenticator): Promise<UserResource[] | null> {
     return this.editorGroup?.getActiveMembers(auth) ?? null;
   }
 
-  async fetchAuthor(auth: Authenticator): Promise<UserResource | null> {
-    if (this.authorId === null) {
+  async fetchEditedByUser(auth: Authenticator): Promise<UserResource | null> {
+    if (this.editedBy === null) {
       return null;
     }
 
-    const author = await UserResource.fetchByModelId(this.authorId);
+    const editedByUser = await UserResource.fetchByModelId(this.editedBy);
 
-    if (!author) {
+    if (!editedByUser) {
       return null;
     }
 
-    const shouldReturnAuthor = await hasSharedMembership(auth, {
-      user: author,
+    const shouldReturnEditedByUser = await hasSharedMembership(auth, {
+      user: editedByUser,
     });
 
-    return shouldReturnAuthor ? author : null;
+    return shouldReturnEditedByUser ? editedByUser : null;
   }
 
   async listInheritedDataSourceViews(
@@ -1065,6 +1266,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews,
       name,
       requestedSpaceIds,
+      status,
       userFacingDescription,
     }: {
       agentFacingDescription: string;
@@ -1074,6 +1276,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       mcpServerViews: MCPServerViewResource[];
       name: string;
       requestedSpaceIds: ModelId[];
+      status?: SkillStatus;
       userFacingDescription: string;
     }
   ): Promise<void> {
@@ -1083,7 +1286,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
-      const authorId = auth.user()?.id;
+      // Snapshot the previous requested space IDs before updating.
+      const previousRequestedSpaceIds = [...this.requestedSpaceIds];
+
+      const editedBy = auth.user()?.id;
 
       await this.update(
         {
@@ -1093,7 +1299,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           instructions,
           icon,
           requestedSpaceIds,
-          authorId,
+          editedBy,
+          ...(status ? { status } : {}),
         },
         transaction
       );
@@ -1105,6 +1312,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         {
           attachedKnowledge,
         },
+        { transaction }
+      );
+
+      await this.updateActiveAgentsRequirements(
+        auth,
+        { previousRequestedSpaceIds },
         { transaction }
       );
     });
@@ -1142,6 +1355,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       await SkillMCPServerConfigurationModel.destroy({
         where: {
           id: { [Op.in]: idsToDelete },
+          workspaceId: workspace.id,
         },
         transaction,
       });
@@ -1179,7 +1393,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
   ): {
     toDelete: SkillDataSourceConfigurationModel[];
-    toUpsert: Array<CreationAttributes<SkillDataSourceConfigurationModel>>;
+    toUpsert: CreationAttributes<SkillDataSourceConfigurationModel>[];
   } {
     // Group attached knowledge by data source view ID with all node IDs in parentsIn.
     const desiredConfigsByDataSourceViewId = attachedKnowledge.reduce<
@@ -1209,9 +1423,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }, {});
 
     const toDelete: SkillDataSourceConfigurationModel[] = [];
-    const toUpsert: Array<
-      CreationAttributes<SkillDataSourceConfigurationModel>
-    > = [];
+    const toUpsert: CreationAttributes<SkillDataSourceConfigurationModel>[] =
+      [];
 
     // Track which dataSourceViewIds need to be recreated.
     const toRecreate = new Set<ModelId>();
@@ -1475,7 +1688,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   toJSON(auth: Authenticator): SkillType {
     const requestedSpaceIds = this.requestedSpaceIds.map((spaceId) =>
       SpaceResource.modelIdToSId({
-        id: Number(spaceId), // Note: Sequelize returns BIGINT arrays as strings
+        id: spaceId,
         workspaceId: this.workspaceId,
       })
     );
@@ -1485,7 +1698,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       sId: this.sId,
       createdAt: this.globalSId ? null : this.createdAt.getTime(),
       updatedAt: this.globalSId ? null : this.updatedAt.getTime(),
-      authorId: this.globalSId ? null : this.authorId,
+      editedBy: this.globalSId ? null : this.editedBy,
       status: this.status,
       name: this.name,
       agentFacingDescription: this.agentFacingDescription,
@@ -1512,7 +1725,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         };
       }),
       canWrite: this.canWrite(auth),
-      isExtendable: this.isExtendable(),
+      isExtendable: this.isExtendable,
       extendedSkillId: this.extendedSkillId,
     };
   }
@@ -1561,7 +1774,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       userFacingDescription: this.userFacingDescription,
       instructions: this.instructions,
       requestedSpaceIds: this.requestedSpaceIds,
-      authorId: this.authorId,
+      editedBy: this.editedBy,
       mcpServerViewIds,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,

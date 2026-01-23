@@ -13,9 +13,10 @@ use crate::oauth::{
         mcp_static::MCPStaticConnectionProvider, microsoft::MicrosoftConnectionProvider,
         microsoft_tools::MicrosoftToolsConnectionProvider, mock::MockConnectionProvider,
         monday::MondayConnectionProvider, notion::NotionConnectionProvider,
-        salesforce::SalesforceConnectionProvider, slack::SlackConnectionProvider,
-        slack_tools::SlackToolsConnectionProvider, vanta::VantaConnectionProvider,
-        zendesk::ZendeskConnectionProvider,
+        productboard::ProductboardConnectionProvider, salesforce::SalesforceConnectionProvider,
+        slack::SlackConnectionProvider, slack_tools::SlackToolsConnectionProvider,
+        snowflake::SnowflakeConnectionProvider, ukg_ready::UkgReadyConnectionProvider,
+        vanta::VantaConnectionProvider, zendesk::ZendeskConnectionProvider,
     },
     store::OAuthStore,
 };
@@ -115,12 +116,15 @@ pub enum ConnectionProvider {
     MicrosoftTools,
     Monday,
     Notion,
+    Productboard,
     Slack,
     SlackTools,
+    Snowflake,
     Mock,
     Zendesk,
     Salesforce,
     Hubspot,
+    UkgReady,
     Vanta,
     Mcp,
     McpStatic,
@@ -265,14 +269,17 @@ pub fn provider(t: ConnectionProvider) -> Box<dyn Provider + Sync + Send> {
         ConnectionProvider::Notion => Box::new(NotionConnectionProvider::new()),
         ConnectionProvider::Slack => Box::new(SlackConnectionProvider::new()),
         ConnectionProvider::SlackTools => Box::new(SlackToolsConnectionProvider::new()),
+        ConnectionProvider::Snowflake => Box::new(SnowflakeConnectionProvider::new()),
         ConnectionProvider::Mock => Box::new(MockConnectionProvider::new()),
         ConnectionProvider::Zendesk => Box::new(ZendeskConnectionProvider::new()),
         ConnectionProvider::Salesforce => Box::new(SalesforceConnectionProvider::new()),
         ConnectionProvider::Hubspot => Box::new(HubspotConnectionProvider::new()),
+        ConnectionProvider::UkgReady => Box::new(UkgReadyConnectionProvider::new()),
         ConnectionProvider::Vanta => Box::new(VantaConnectionProvider::new()),
         ConnectionProvider::Mcp => Box::new(MCPConnectionProvider::new()),
         // MCP Static is the same as MCP but does not require the discovery process on the front end.
         ConnectionProvider::McpStatic => Box::new(MCPStaticConnectionProvider::new()),
+        ConnectionProvider::Productboard => Box::new(ProductboardConnectionProvider::new()),
     }
 }
 
@@ -832,10 +839,11 @@ impl Connection {
 
         self.access_token_expiry = refresh.access_token_expiry;
         self.encrypted_access_token = Some(seal_str(&refresh.access_token)?);
-        self.encrypted_refresh_token = match &refresh.refresh_token {
-            Some(t) => Some(seal_str(t)?),
-            None => None,
-        };
+        // Only update refresh_token if the provider returned a new one.
+        // Some providers (like Snowflake) don't return a new refresh_token on every refresh.
+        if let Some(t) = &refresh.refresh_token {
+            self.encrypted_refresh_token = Some(seal_str(t)?);
+        }
         self.encrypted_raw_json = Some(seal_str(&serde_json::to_string(&refresh.raw_json)?)?);
         store.update_connection_secrets(self).await?;
 

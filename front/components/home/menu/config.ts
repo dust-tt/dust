@@ -275,8 +275,7 @@ const ConnectMenuConfig: MenuConfig = {
     },
     {
       title: "Become a Partner",
-      href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
-      isExternal: true,
+      href: "/home/partner",
     },
   ],
 };
@@ -404,15 +403,11 @@ export const menuConfig: DocsConfig = {
           title: "Security",
           href: "/home/security",
         },
-        {
-          title: DevelopersMenuConfig.title,
-        },
-        ...DevelopersMenuConfig.items,
       ],
     },
     {
-      title: SolutionsMenuConfig.title,
-      items: SolutionsMenuConfig.items,
+      title: DevelopersMenuConfig.title,
+      items: DevelopersMenuConfig.items,
     },
     {
       title: "Company",
@@ -436,8 +431,7 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Become a Partner",
-          href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
-          isExternal: true,
+          href: "/home/partner",
         },
       ],
     },

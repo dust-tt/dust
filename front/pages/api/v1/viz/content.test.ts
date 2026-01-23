@@ -15,7 +15,7 @@ describe("/api/v1/viz/content endpoint tests", () => {
   let workspace: LightWorkspaceType;
 
   beforeEach(async () => {
-    vi.resetAllMocks();
+    vi.clearAllMocks();
 
     const { workspace: w } = await createResourceTest({
       role: "user",

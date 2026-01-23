@@ -1,16 +1,39 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createSpaceAndGroup } from "@app/lib/api/spaces";
+import { getProjectConversationsDatasourceName } from "@app/lib/api/projects";
+import {
+  createSpaceAndGroup,
+  softDeleteSpaceAndLaunchScrubWorkflow,
+} from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { KeyFactory } from "@app/tests/utils/KeyFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import { Err, Ok, SPACE_KINDS } from "@app/types";
+
+// Mock config to avoid requiring environment variables
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getCoreAPIConfig: () => ({
+      url: "http://fake-core-api-url",
+      apiKey: "test-api-key",
+    }),
+    getConnectorsAPIConfig: () => ({
+      url: "http://fake-connectors-api-url",
+      secret: "test-secret",
+      webhookSecret: "test-webhook-secret",
+    }),
+  },
+}));
 
 describe("createSpaceAndGroup", () => {
   let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
@@ -125,9 +148,17 @@ describe("createSpaceAndGroup", () => {
       }
     });
 
-    it("should create a project space", async () => {
+    it("should create dust_project connector when creating a project space", async () => {
+      // Mock createDataSourceAndConnectorForProject
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Ok(undefined));
+
       const result = await createSpaceAndGroup(adminAuth, {
-        name: "Test Project Space",
+        name: "Test Project With Connector",
         isRestricted: false,
         spaceKind: "project",
         managementMode: "manual",
@@ -137,9 +168,85 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        expect(space.name).toBe("Test Project Space");
         expect(space.kind).toBe("project");
+
+        // Verify createDataSourceAndConnectorForProject was called with correct parameters
+        expect(createConnectorSpy).toHaveBeenCalledTimes(1);
+        const createConnectorCall = createConnectorSpy.mock.calls[0];
+        expect(createConnectorCall[0]).toBe(adminAuth);
+        expect(createConnectorCall[1]).toBe(space);
       }
+
+      // Cleanup spy
+      createConnectorSpy.mockRestore();
+    });
+
+    it("should not create connector when creating a regular space", async () => {
+      const createConnectorSpy = vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      );
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular Space No Connector",
+        isRestricted: false,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.kind).toBe("regular");
+
+        // Verify connector was NOT created for regular spaces
+        expect(createConnectorSpy).not.toHaveBeenCalled();
+
+        // Verify no dust_project data source exists
+        const dataSource = await DataSourceResource.fetchByNameOrId(
+          adminAuth,
+          getProjectConversationsDatasourceName(space)
+        );
+        expect(dataSource).toBeNull();
+      }
+
+      createConnectorSpy.mockRestore();
+    });
+
+    it("should handle connector creation failure gracefully", async () => {
+      // Mock createDataSourceAndConnectorForProject to fail
+      const createConnectorError = new Error("Failed to create connector");
+      const createConnectorSpy = vi
+        .spyOn(
+          await import("@app/lib/api/projects"),
+          "createDataSourceAndConnectorForProject"
+        )
+        .mockResolvedValue(new Err(createConnectorError));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project Connector Failure",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      // Space creation should still succeed even if connector creation fails
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        expect(space.kind).toBe("project");
+
+        // Verify connector creation was attempted
+        expect(createConnectorSpy).toHaveBeenCalledTimes(1);
+        const createConnectorCall = createConnectorSpy.mock.calls[0];
+        expect(createConnectorCall[0]).toBe(adminAuth);
+        expect(createConnectorCall[1]).toBe(space);
+      }
+
+      // Cleanup
+      createConnectorSpy.mockRestore();
     });
 
     it("should create a non-restricted space with global group", async () => {
@@ -492,6 +599,354 @@ describe("createSpaceAndGroup", () => {
         const space = result.value;
         // When isRestricted is false, managementMode should be forced to "manual"
         expect(space.managementMode).toBe("manual");
+      }
+    });
+  });
+
+  describe("project metadata lifecycle", () => {
+    it("creates metadata for project spaces, not for regular spaces", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
+      const projectResult = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+      expect(projectResult.isOk()).toBe(true);
+      if (projectResult.isOk()) {
+        const projectMetadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          projectResult.value
+        );
+        expect(projectMetadata).not.toBeNull();
+      }
+
+      const regularResult = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+      expect(regularResult.isOk()).toBe(true);
+      if (regularResult.isOk()) {
+        const regularMetadata = await ProjectMetadataResource.fetchBySpace(
+          adminAuth,
+          regularResult.value
+        );
+        expect(regularMetadata).toBeNull();
+      }
+    });
+  });
+});
+
+describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
+  let workspace: Awaited<ReturnType<typeof WorkspaceFactory.basic>>;
+  let adminAuth: Authenticator;
+  let globalGroup: GroupResource;
+  let systemGroup: GroupResource;
+
+  beforeEach(async () => {
+    workspace = await WorkspaceFactory.basic();
+    const adminUser = await UserFactory.basic();
+
+    // Set up default groups and spaces FIRST (before creating authenticators)
+    const { globalGroup: gGroup, systemGroup: sGroup } =
+      await GroupFactory.defaults(workspace);
+    globalGroup = gGroup;
+    systemGroup = sGroup;
+
+    await MembershipFactory.associate(workspace, adminUser, {
+      role: "admin",
+    });
+
+    // Create internal admin auth to set up default spaces
+    const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+      workspace.sId
+    );
+    await SpaceResource.makeDefaultsForWorkspace(internalAdminAuth, {
+      globalGroup,
+      systemGroup,
+    });
+
+    // Now create admin authenticator (they will find the global group)
+    adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      adminUser.sId,
+      workspace.sId
+    );
+
+    // Mock launchScrubSpaceWorkflow to prevent actual workflow execution
+    vi.mock("@app/poke/temporal/client", () => ({
+      launchScrubSpaceWorkflow: vi.fn().mockResolvedValue(undefined),
+    }));
+  });
+
+  describe("space type validation", () => {
+    // This test ensures that if a new space kind is added to SPACE_KINDS,
+    // it will fail by default unless explicitly added to the allowed list
+    it("should only allow deleting 'regular' and 'project' space kinds", () => {
+      const allowedKinds = ["regular", "project"];
+      const allKinds = [...SPACE_KINDS];
+
+      // This assertion will fail if new space kinds are added to SPACE_KINDS
+      // without being explicitly handled in this test or in the deletion logic
+      const unhandledKinds = allKinds.filter(
+        (kind) => !allowedKinds.includes(kind)
+      );
+
+      // Document which kinds are NOT allowed to be deleted
+      const knownDisallowedKinds = [
+        "global",
+        "system",
+        "conversations",
+        "public",
+      ];
+
+      expect(unhandledKinds.sort()).toEqual(knownDisallowedKinds.sort());
+    });
+
+    it("should fail to delete a global space", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
+      const globalSpace = spaces.find((s) => s.isGlobal());
+      expect(globalSpace).toBeDefined();
+
+      await expect(async () => {
+        await softDeleteSpaceAndLaunchScrubWorkflow(
+          adminAuth,
+          globalSpace!,
+          false
+        );
+      }).rejects.toThrow(
+        "Cannot delete spaces that are not regular or project"
+      );
+    });
+
+    it("should fail to delete a system space", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth);
+      const systemSpace = spaces.find((s) => s.isSystem());
+      expect(systemSpace).toBeDefined();
+
+      await expect(async () => {
+        await softDeleteSpaceAndLaunchScrubWorkflow(
+          adminAuth,
+          systemSpace!,
+          false
+        );
+      }).rejects.toThrow(
+        "Cannot delete spaces that are not regular or project"
+      );
+    });
+
+    it("should fail to delete a conversations space", async () => {
+      const spaces = await SpaceResource.listWorkspaceSpaces(adminAuth, {
+        includeConversationsSpace: true,
+      });
+      const conversationsSpace = spaces.find((s) => s.isConversations());
+      expect(conversationsSpace).toBeDefined();
+
+      await expect(async () => {
+        await softDeleteSpaceAndLaunchScrubWorkflow(
+          adminAuth,
+          conversationsSpace!,
+          false
+        );
+      }).rejects.toThrow(
+        "Cannot delete spaces that are not regular or project"
+      );
+    });
+
+    it("should fail to delete a public space", async () => {
+      // Create a public space
+      const publicSpace = await SpaceResource.makeNew(
+        {
+          name: "Test Public Space",
+          kind: "public",
+          workspaceId: workspace.id,
+        },
+        { members: [globalGroup] }
+      );
+
+      await expect(async () => {
+        await softDeleteSpaceAndLaunchScrubWorkflow(
+          adminAuth,
+          publicSpace,
+          false
+        );
+      }).rejects.toThrow(
+        "Cannot delete spaces that are not regular or project"
+      );
+    });
+  });
+
+  describe("API key validation", () => {
+    it("should fail to delete a regular space with active API keys in non-global groups", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular Space With Keys",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        // Get the space's non-global group
+        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        expect(spaceGroup).toBeDefined();
+
+        // Create an active API key for the space group
+        if (spaceGroup) {
+          await KeyFactory.regular(spaceGroup);
+
+          const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+            adminAuth,
+            space,
+            false
+          );
+          expect(deleteResult.isErr()).toBe(true);
+          if (deleteResult.isErr()) {
+            expect(deleteResult.error.message).toContain(
+              "Cannot delete group with active API Keys"
+            );
+          }
+        }
+      }
+    });
+
+    it("should fail to delete a project space with active API keys in non-global groups", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project Space With Keys",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        // Get the space's non-global group
+        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        expect(spaceGroup).toBeDefined();
+
+        // Create an active API key for the space group
+        if (spaceGroup) {
+          await KeyFactory.regular(spaceGroup);
+
+          const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+            adminAuth,
+            space,
+            false
+          );
+          expect(deleteResult.isErr()).toBe(true);
+          if (deleteResult.isErr()) {
+            expect(deleteResult.error.message).toContain(
+              "Cannot delete group with active API Keys"
+            );
+          }
+        }
+      }
+    });
+
+    it("should allow deleting a regular space with disabled API keys", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular Space With Disabled Keys",
+        isRestricted: true,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        // Get the space's non-global group
+        const spaceGroup = space.groups.find((g) => !g.isGlobal());
+        expect(spaceGroup).toBeDefined();
+
+        // Create a disabled API key for the space group
+        if (spaceGroup) {
+          await KeyFactory.disabled(spaceGroup);
+
+          const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+            adminAuth,
+            space,
+            false
+          );
+          expect(deleteResult.isOk()).toBe(true);
+        }
+      }
+    });
+
+    it("should allow deleting a regular space with active API keys in global group", async () => {
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Regular Space With Global Keys",
+        isRestricted: false,
+        spaceKind: "regular",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        // Verify the space has the global group
+        expect(space.groups.some((g) => g.isGlobal())).toBe(true);
+
+        // Create an active API key for the global group
+        await KeyFactory.regular(globalGroup);
+
+        // Should succeed because keys in global group are allowed for spaces
+        const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+          adminAuth,
+          space,
+          false
+        );
+        expect(deleteResult.isOk()).toBe(true);
+      }
+    });
+
+    it("should allow deleting a project space with active API keys in global group", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Project Space With Global Keys",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        // Verify the space has the global group
+        expect(space.groups.some((g) => g.isGlobal())).toBe(true);
+
+        // Create an active API key for the global group
+        await KeyFactory.regular(globalGroup);
+
+        // Should succeed because keys in global group are allowed for unrestricted spaces
+        const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+          adminAuth,
+          space,
+          false
+        );
+        expect(deleteResult.isOk()).toBe(true);
       }
     });
   });

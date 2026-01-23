@@ -15,8 +15,10 @@ import {
   launchGoogleFixParentsConsistencyWorkflow,
 } from "@connectors/connectors/google_drive/temporal/client";
 import { syncOneFile } from "@connectors/connectors/google_drive/temporal/file";
-import { MIME_TYPES_TO_EXPORT } from "@connectors/connectors/google_drive/temporal/mime_types";
-import { getMimeTypesToSync } from "@connectors/connectors/google_drive/temporal/mime_types";
+import {
+  getMimeTypesToSync,
+  MIME_TYPES_TO_EXPORT,
+} from "@connectors/connectors/google_drive/temporal/mime_types";
 import {
   _getLabels,
   getAuthObject,
@@ -45,31 +47,29 @@ import {
   googleDriveIncrementalSyncWorkflowId,
 } from "@connectors/types";
 
-const getConnector = async (args: GoogleDriveCommandType["args"]) => {
-  if (!args.wId) {
-    throw new Error("Missing --wId argument");
-  }
-  if (!args.dsId && !args.connectorId) {
-    throw new Error("Missing --dsId or --connectorId argument");
+async function getConnector(args: GoogleDriveCommandType["args"]) {
+  if (!args.connectorId && !(args.wId && args.dsId)) {
+    throw new Error("Missing --connectorId or --wId and --dsId argument");
   }
 
   // We retrieve by data source name as we can have multiple data source with the same provider for
   // a given workspace.
-  const connector = await ConnectorModel.findOne({
-    where: {
-      workspaceId: `${args.wId}`,
-      type: "google_drive",
-      ...(args.dsId ? { dataSourceId: args.dsId } : {}),
-      ...(args.connectorId ? { id: args.connectorId } : {}),
-    },
-  });
+  let connector;
+  if (args.connectorId) {
+    connector = await ConnectorResource.fetchById(args.connectorId);
+  } else if (args.dsId && args.wId) {
+    connector = await ConnectorResource.findByDataSource({
+      workspaceId: args.wId,
+      dataSourceId: args.dsId,
+    });
+  }
 
   if (!connector) {
     throw new Error("Could not find connector");
   }
 
   return connector;
-};
+}
 
 export const google_drive = async ({
   command,

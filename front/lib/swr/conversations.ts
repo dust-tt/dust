@@ -46,11 +46,11 @@ export function useConversation({
   workspaceId,
   options,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   isConversationLoading: boolean;
   conversationError: ConversationError;
   mutateConversation: ReturnType<
@@ -68,7 +68,7 @@ export function useConversation({
   );
 
   return {
-    conversation: data ? data.conversation : null,
+    conversation: data ? data.conversation : undefined,
     isConversationLoading: !error && !data,
     conversationError: error,
     mutateConversation: mutate,
@@ -184,7 +184,7 @@ export function useConversationMessages({
   workspaceId,
   limit,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
   limit: number;
   startAtRank?: number;
@@ -237,7 +237,7 @@ export function useConversationParticipants({
   workspaceId,
   options,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
@@ -268,7 +268,7 @@ export function useConversationTools({
   workspaceId,
   options,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
@@ -302,7 +302,7 @@ export function useConversationSkills({
   workspaceId,
   options,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
   options?: { disabled: boolean };
 }) {
@@ -332,7 +332,7 @@ export function useCancelMessage({
   conversationId,
 }: {
   owner: LightWorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
 
@@ -363,7 +363,7 @@ export function useAddDeleteConversationTool({
   conversationId,
   workspaceId,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
 }) {
   const { mutateConversationTools } = useConversationTools({
@@ -463,7 +463,7 @@ export function useAddDeleteConversationSkill({
   conversationId,
   workspaceId,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   workspaceId: string;
 }) {
   const sendNotification = useSendNotification();
@@ -572,7 +572,7 @@ export function useVisualizationRevert({
   conversationId,
 }: {
   workspaceId: string | null;
-  conversationId: string | null;
+  conversationId?: string | null;
 }) {
   const handleVisualizationRevert = useCallback(
     async ({
@@ -630,7 +630,7 @@ export function useVisualizationRetry({
   isPublic,
 }: {
   workspaceId: string | null;
-  conversationId: string | null;
+  conversationId?: string | null;
   agentConfigurationId: string | null;
   isPublic: boolean;
 }) {
@@ -752,7 +752,7 @@ export function useConversationFiles({
   options,
   owner,
 }: {
-  conversationId: string | null;
+  conversationId?: string | null;
   options?: { disabled?: boolean };
   owner: LightWorkspaceType;
 }) {
@@ -783,7 +783,7 @@ export function useConversationMarkAsRead({
   conversation,
   workspaceId,
 }: {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   workspaceId: string;
 }) {
   const { mutateConversations } = useConversations({
@@ -872,7 +872,7 @@ export const useConversationParticipationOptions = ({
   disabled,
 }: {
   ownerId: string;
-  conversationId: string | null;
+  conversationId?: string | null;
   userId: string | null;
   disabled: boolean;
 }) => {
@@ -922,7 +922,7 @@ export const useJoinConversation = ({
   conversationId,
 }: {
   ownerId: string;
-  conversationId: string | null;
+  conversationId?: string | null;
 }): (() => Promise<boolean>) => {
   const sendNotification = useSendNotification();
 
@@ -999,7 +999,7 @@ export function usePostOnboardingFollowUp({
   conversationId,
 }: {
   workspaceId: string;
-  conversationId: string | null;
+  conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
 

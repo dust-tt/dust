@@ -203,6 +203,7 @@ export const supportedImageFileFormats = {
   "image/png": [".png"],
   "image/gif": [".gif"],
   "image/webp": [".webp"],
+  "image/svg+xml": [".svg"],
 } as const;
 
 export const supportedAudioFileFormats = {
@@ -321,6 +322,7 @@ const UserMessageOriginSchema = z
     "zapier",
     "zendesk",
     "onboarding_conversation",
+    "agent_copilot",
   ])
   .catch("api")
   .or(z.null())
@@ -366,6 +368,7 @@ const Timezone = z.string().refine((s) => TIMEZONE_NAMES.includes(s), {
 const ConnectorProvidersSchema = FlexibleEnumSchema<
   | "confluence"
   | "discord_bot"
+  | "dust_project"
   | "github"
   | "google_drive"
   | "intercom"
@@ -639,6 +642,7 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
+  | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "agent_tool_outputs_analytics"
@@ -655,6 +659,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "dust_academy"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
@@ -665,7 +670,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "http_client_tool"
   | "index_private_slack_channel"
   | "labs_mcp_actions_dashboard"
-  | "labs_trackers"
   | "labs_transcripts"
   | "legacy_dust_apps"
   | "monday_tool"
@@ -690,11 +694,11 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
+  | "snowflake_tool"
+  | "statuspage_tool"
+  | "ukg_ready_mcp"
   | "usage_data_api"
-  | "vanta_tool"
-  | "web_summarization"
   | "xai_feature"
-  | "reactions"
 >();
 
 export type WhitelistableFeature = z.infer<typeof WhitelistableFeaturesSchema>;
@@ -791,7 +795,9 @@ const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "disabled_free_workspace"
 >();
 
-const AgentStatusSchema = FlexibleEnumSchema<"active" | "archived" | "draft">();
+const AgentStatusSchema = FlexibleEnumSchema<
+  "active" | "archived" | "draft" | "pending"
+>();
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
@@ -1108,6 +1114,7 @@ export const ConversationSchema = ConversationWithoutContentSchema.extend({
       z.array(ContentFragmentSchema),
     ])
   ),
+  url: z.string(),
 });
 
 export type ConversationWithoutContentPublicType = z.infer<
@@ -1137,7 +1144,9 @@ export type ConversationMessageReactionsType = z.infer<
   typeof ConversationMessageReactionsSchema
 >;
 
-const MCPStakeLevelSchema = z.enum(["low", "high", "never_ask"]).optional();
+const MCPStakeLevelSchema = z
+  .enum(["low", "medium", "high", "never_ask"])
+  .optional();
 
 const MCPValidationMetadataSchema = z.object({
   agentName: z.string(),
@@ -2393,6 +2402,38 @@ export type CheckUpsertQueueResponseType = z.infer<
   typeof CheckUpsertQueueResponseSchema
 >;
 
+export const GetSpaceConversationsForDataSourceResponseSchema = z.object({
+  conversations: z.array(ConversationSchema),
+});
+export type GetSpaceConversationsForDataSourceResponseType = z.infer<
+  typeof GetSpaceConversationsForDataSourceResponseSchema
+>;
+
+export const GetSpaceConversationIdsResponseSchema = z.object({
+  conversationIds: z.array(z.string()),
+});
+export type GetSpaceConversationIdsResponseType = z.infer<
+  typeof GetSpaceConversationIdsResponseSchema
+>;
+
+export const ProjectMetadataSchema = z.object({
+  sId: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  description: z.string().nullable(),
+  urls: z.array(z.object({ name: z.string(), url: z.string() })),
+  members: z.array(z.string()),
+});
+export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
+
+export const GetSpaceMetadataResponseSchema = z.object({
+  metadata: ProjectMetadataSchema.nullable(),
+});
+export type GetSpaceMetadataResponseType = z.infer<
+  typeof GetSpaceMetadataResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),
@@ -2918,10 +2959,15 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "MondayLogo"
   | "NotionLogo"
   | "OpenaiLogo"
+  | "ProductboardLogo"
+  | "PuzzleIcon"
   | "SalesforceLogo"
   | "SlackLogo"
+  | "SnowflakeLogo"
+  | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
   | "ZendeskLogo"
@@ -3317,6 +3363,7 @@ export type RemoteMCPToolStakeLevelPublicType =
   (typeof REMOTE_MCP_TOOL_STAKE_LEVELS)[number];
 const MCP_TOOL_STAKE_LEVELS = [
   ...REMOTE_MCP_TOOL_STAKE_LEVELS,
+  "medium",
   "never_ask",
 ] as const;
 export type MCPToolStakeLevelPublicType =

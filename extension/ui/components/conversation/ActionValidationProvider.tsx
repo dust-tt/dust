@@ -11,7 +11,9 @@ import {
   Button,
   Checkbox,
   CodeBlock,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Label,
   MultiPageDialog,
   MultiPageDialogContent,
@@ -128,9 +130,11 @@ export function ActionValidationProvider({
               ?
             </div>
             {hasDetails && (
-              <CollapsibleComponent
-                triggerChildren={<span className="font-medium">Details</span>}
-                contentChildren={
+              <Collapsible>
+                <CollapsibleTrigger>
+                  <span className="font-medium">Details</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <div>
                     <div className="bg-muted dark:bg-muted-night max-h-80 overflow-auto rounded-lg">
                       <CodeBlock
@@ -141,8 +145,8 @@ export function ActionValidationProvider({
                       </CodeBlock>
                     </div>
                   </div>
-                }
-              />
+                </CollapsibleContent>
+              </Collapsible>
             )}
             {errorMessage && (
               <div className="text-warning-800 dark:text-warning-800-night mt-2 text-sm font-medium">

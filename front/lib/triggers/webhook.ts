@@ -4,9 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
-import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -402,11 +400,15 @@ export async function filterTriggers({
   const workspaceId = auth.getNonNullableWorkspace().sId;
   const webhookRequestId = webhookRequest.id;
   const { provider } = webhookSource;
-  // Fetch all triggers based on the webhook source id.
-  const views = await WebhookSourcesViewResource.listByWebhookSource(
-    auth,
-    webhookSource.id
-  );
+  // Fetch all webhook source views for this webhook source.
+  // We use the internal method that skips space permission filtering because:
+  // 1. The webhook request was already authorized via the URL secret.
+  // 2. Webhook source views in private spaces should still trigger their associated agents.
+  const views =
+    await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
+      auth,
+      webhookSource.id
+    );
 
   // Fetch all triggers based on the webhook source id and flatten the result.
   const triggers = (
@@ -423,7 +425,7 @@ export async function filterTriggers({
     // Filter here to avoid a lot of type checking later.
     .filter(isWebhookTrigger)
     // Filter out disabled triggers
-    .filter((t) => t.enabled);
+    .filter((t) => t.status === "enabled");
 
   const filteredTriggers: WebhookTriggerType[] = [];
 
@@ -831,22 +833,13 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   }[]
 > {
   const workspace = auth.getNonNullableWorkspace();
-  const webhookRequestTriggers = await WebhookRequestTriggerModel.findAll({
-    where: {
-      workspaceId: workspace.id,
+  const webhookRequestTriggers = await WebhookRequestResource.listForTriggerId(
+    auth,
+    {
       triggerId: trigger.id,
-    },
-    include: [
-      {
-        model: WebhookRequestModel,
-        as: "webhookRequest",
-        required: true,
-        attributes: ["id", "createdAt", "webhookSourceId"],
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-    limit,
-  });
+      limit,
+    }
+  );
 
   // Fetch payloads from GCS for each request
   const bucket = getWebhookRequestsBucket();

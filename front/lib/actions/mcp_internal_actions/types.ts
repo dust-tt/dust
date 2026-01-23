@@ -30,8 +30,8 @@ export const SearchWithNodesInputSchema = SearchInputSchema.extend({
     .array(z.string())
     .describe(
       "Array of exact content node IDs to search within. These are the 'nodeId' values from " +
-        "previous search results, which can be folders or files. All children of the designated " +
-        "nodes will be searched. If not provided, all available files and folders will be searched."
+        "previous search results. All children of the designated nodes will be searched. " +
+        "If not provided, all available nodes will be searched."
     )
     .optional(),
 });
@@ -125,16 +125,6 @@ export const WebbrowseInputSchema = z.object({
     .boolean()
     .optional()
     .describe("If true, also retrieve outgoing links from the page."),
-  useSummary: ConfigurableToolInputSchemas[
-    INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN
-  ]
-    .describe(
-      "Summarize web pages using an AI agent before returning content. When enabled, provides concise summaries instead of full page content."
-    )
-    .default({
-      value: false,
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.BOOLEAN,
-    }),
 });
 
 export type WebbrowseInputType = z.infer<typeof WebbrowseInputSchema>;

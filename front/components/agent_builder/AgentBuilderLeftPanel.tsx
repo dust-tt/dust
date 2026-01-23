@@ -26,7 +26,6 @@ interface AgentBuilderLeftPanelProps {
   isTriggersLoading?: boolean;
 }
 
-// TODO(skills 2025-12-11): refactor multipages to use mode only
 export function AgentBuilderLeftPanel({
   title,
   onCancel,
@@ -58,7 +57,7 @@ export function AgentBuilderLeftPanel({
         }
       />
       <ScrollArea className="flex-1">
-        <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
+        <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
           <AgentBuilderInstructionsBlock
             agentConfigurationId={agentConfigurationId}
           />

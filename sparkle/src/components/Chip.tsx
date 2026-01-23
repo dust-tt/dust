@@ -191,7 +191,7 @@ type ChipBaseProps = {
 type ChipButtonProps = ChipBaseProps & {
   onClick?: () => void;
 } & {
-  [K in keyof Omit<LinkWrapperProps, "children">]?: never;
+  [K in keyof Omit<LinkWrapperProps, "children" | "className">]?: never;
 };
 
 type ChipLinkProps = ChipBaseProps &
@@ -270,6 +270,7 @@ const Chip = React.forwardRef<HTMLDivElement, ChipProps>(
             className={cn("-s-mr-1", closeIconVariants[color || "primary"])}
             aria-label="Remove"
             onClick={(e) => {
+              e.preventDefault();
               e.stopPropagation();
               onRemove();
             }}

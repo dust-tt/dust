@@ -1,15 +1,17 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useWatch } from "react-hook-form";
 
 import type {
+  AgentBuilderFormData,
   AgentBuilderSkillsType,
   MCPFormData,
 } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { SelectedTool } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
-import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/capabilities_sheet/types";
 import {
   generateUniqueActionName,
   nameToStorageFormat,
 } from "@app/components/agent_builder/capabilities/mcp/utils/actionNameUtils";
+import type { SelectedTool } from "@app/components/agent_builder/capabilities/shared/types";
+import { TOP_MCP_SERVER_VIEWS } from "@app/components/agent_builder/capabilities/shared/types";
 import type {
   ConfigurationState,
   SheetState,
@@ -19,47 +21,59 @@ import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
-import { useBuilderContext } from "@app/components/shared/useBuilderContext";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { doesSkillTriggerSelectSpaces } from "@app/lib/skill";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 function isGlobalSkillWithSpaceSelection(skill: SkillType): boolean {
   return doesSkillTriggerSelectSpaces(skill.sId);
 }
 
+export const useSkillSpaceSelection = () => {
+  const agentBuilderFormAdditionalSpaces = useWatch<
+    AgentBuilderFormData,
+    "additionalSpaces"
+  >({
+    name: "additionalSpaces",
+  });
+
+  const [localSelectedSpaces, setLocalSelectedSpaces] = useState<string[]>([]);
+
+  const resetLocalState = useCallback(() => {
+    setLocalSelectedSpaces(agentBuilderFormAdditionalSpaces);
+  }, [agentBuilderFormAdditionalSpaces]);
+
+  useEffect(() => {
+    // When agent builder form spaces change, make sure local state is updated
+    resetLocalState();
+  }, [agentBuilderFormAdditionalSpaces, resetLocalState]);
+
+  return {
+    localSelectedSpaces,
+    setLocalSelectedSpaces,
+    resetLocalState,
+  };
+};
+
 type UseSkillSelectionProps = {
   onStateChange: (state: SheetState) => void;
   alreadyAddedSkillIds: Set<string>;
-  initialAdditionalSpaces: string[];
   searchQuery: string;
 };
 
 export const useSkillSelection = ({
   onStateChange,
   alreadyAddedSkillIds,
-  initialAdditionalSpaces,
   searchQuery,
 }: UseSkillSelectionProps) => {
   const [localSelectedSkills, setLocalSelectedSkills] = useState<
     AgentBuilderSkillsType[]
   >([]);
-  const [localAdditionalSpaces, setLocalAdditionalSpaces] = useState<string[]>(
-    initialAdditionalSpaces
-  );
-
-  // Draft state for space selection (only committed on save)
-  const [draftSelectedSpaces, setDraftSelectedSpaces] = useState<string[]>(
-    initialAdditionalSpaces
-  );
 
   const resetLocalState = useCallback(() => {
     setLocalSelectedSkills([]);
-    setLocalAdditionalSpaces(initialAdditionalSpaces);
-    setDraftSelectedSpaces(initialAdditionalSpaces);
-  }, [initialAdditionalSpaces]);
+  }, []);
 
   const { skills, isSkillsLoading } = useSkillsContext();
 
@@ -122,8 +136,6 @@ export const useSkillSelection = ({
 
   const handleSpaceSelectionSave = useCallback(
     (skill: SkillType) => {
-      // Commit draft spaces to actual state
-      setLocalAdditionalSpaces(draftSelectedSpaces);
       // Add the skill
       setLocalSelectedSkills((prev) => [
         ...prev,
@@ -136,25 +148,17 @@ export const useSkillSelection = ({
       ]);
       onStateChange({ state: "selection" });
     },
-    [
-      onStateChange,
-      setLocalSelectedSkills,
-      setLocalAdditionalSpaces,
-      draftSelectedSpaces,
-    ]
+    [onStateChange, setLocalSelectedSkills]
   );
 
   return {
     localSelectedSkills,
-    localAdditionalSpaces,
     unselectSkill,
     handleSkillToggle,
     filteredSkills,
     isSkillsLoading,
     selectedSkillIds,
     handleSpaceSelectionSave,
-    draftSelectedSpaces,
-    setDraftSelectedSpaces,
     resetLocalState,
   };
 };
@@ -168,9 +172,6 @@ export const useToolSelection = ({
   onStateChange: (state: SheetState) => void;
   searchQuery: string;
 }) => {
-  const { owner } = useBuilderContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
-
   const [localSelectedTools, setLocalSelectedTools] = useState<SelectedTool[]>(
     []
   );
@@ -227,11 +228,11 @@ export const useToolSelection = ({
           );
         });
 
-    const topViews = mcpServerViewsWithoutKnowledge.filter(
-      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
-    );
-    const nonTopViews = mcpServerViewsWithoutKnowledge.filter((view) =>
+    const topViews = mcpServerViewsWithoutKnowledge.filter((view) =>
       TOP_MCP_SERVER_VIEWS.includes(view.server.name)
+    );
+    const nonTopViews = mcpServerViewsWithoutKnowledge.filter(
+      (view) => !TOP_MCP_SERVER_VIEWS.includes(view.server.name)
     );
 
     return {
@@ -254,10 +255,7 @@ export const useToolSelection = ({
   const handleToolToggle = useCallback(
     (mcpServerView: MCPServerViewTypeWithLabel) => {
       const tool = { view: mcpServerView } satisfies SelectedTool;
-      const requirements = getMCPServerRequirements(
-        mcpServerView,
-        featureFlags
-      );
+      const requirements = getMCPServerRequirements(mcpServerView);
 
       if (!requirements.noRequirement) {
         const action = getDefaultMCPAction(mcpServerView);
@@ -286,7 +284,7 @@ export const useToolSelection = ({
         return [...prev, tool];
       });
     },
-    [featureFlags, onStateChange]
+    [onStateChange]
   );
 
   const handleToolInfoClick = useCallback(

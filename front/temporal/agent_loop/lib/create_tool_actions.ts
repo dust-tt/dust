@@ -5,8 +5,10 @@ import { getAugmentedInputs } from "@app/lib/actions/mcp_execution";
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import { validateToolInputs } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
+import type { ToolInputContext } from "@app/lib/actions/tool_status";
 import { getExecutionStatusFromConfig } from "@app/lib/actions/tool_status";
 import type { StepContext } from "@app/lib/actions/types";
+import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
 import { getRetryPolicyFromToolConfiguration } from "@app/lib/api/mcp";
 import { createMCPAction } from "@app/lib/api/mcp/create_mcp";
@@ -137,12 +139,7 @@ async function createActionForTool(
     "isLastBlockingEventForStep"
   >;
 } | void> {
-  const { status } = await getExecutionStatusFromConfig(
-    auth,
-    actionConfiguration,
-    agentMessage
-  );
-
+  // First, get the step content and parse inputs - we need this for medium stake checks
   const stepContent = await AgentStepContentResource.fetchByModelIdWithAuth(
     auth,
     stepContentId
@@ -158,6 +155,19 @@ async function createActionForTool(
   );
 
   const rawInputs = JSON.parse(stepContent.value.value.arguments);
+
+  // Build context for medium stake per-argument approval checks
+  const mediumStakeContext: ToolInputContext = {
+    agentId: agentConfiguration.sId,
+    toolInputs: rawInputs,
+  };
+
+  const { status } = await getExecutionStatusFromConfig(
+    auth,
+    actionConfiguration,
+    agentMessage,
+    mediumStakeContext
+  );
 
   const validateToolInputsResult = validateToolInputs(rawInputs);
   if (validateToolInputsResult.isErr()) {
@@ -241,6 +251,11 @@ async function createActionForTool(
               agentName: agentConfiguration.name,
               icon: actionConfiguration.icon,
             },
+            argumentsRequiringApproval: isServerSideMCPToolConfiguration(
+              actionConfiguration
+            )
+              ? actionConfiguration.argumentsRequiringApproval
+              : undefined,
           }
         : undefined,
   };

@@ -756,7 +756,7 @@ impl ElasticsearchSearchStore {
         {
             let nodes_query = Query::bool()
                 .filter(Query::term("_index", DATA_SOURCE_NODE_INDEX_NAME))
-                .filter(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
+                .must(self.build_nodes_content_query(&query, &filter, options, &mut counter)?);
 
             should_queries.push(nodes_query);
             indices_to_query.push(DATA_SOURCE_NODE_INDEX_NAME);
@@ -890,11 +890,11 @@ impl ElasticsearchSearchStore {
             // - Stricter matching than regular match query
             // - Perfect for catching exact title matches.
             Query::from(Query::r#match_phrase(field, query).boost(EXACT_MATCH_BOOST)),
-            // Exact keyword match for perfect exact matches (case insensitive)
-            // - Uses term query on keyword field with lowercase
+            // Exact keyword match for perfect exact matches (case-sensitive)
+            // - Uses a term query on keyword field
             // - Highest boost for exact title matches
             Query::from(
-                Query::term(keyword_field, query.to_lowercase())
+                Query::term(keyword_field, query)
                     .boost(EXACT_MATCH_BOOST * EXACT_KEYWORD_MATCH_MULTIPLIER),
             ),
         ];

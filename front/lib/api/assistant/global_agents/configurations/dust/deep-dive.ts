@@ -1,6 +1,7 @@
 import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
@@ -32,6 +33,7 @@ import {
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   getLargeWhitelistedModel,
   GLOBAL_AGENTS_SID,
+  GPT_5_2_MODEL_CONFIG,
   GPT_5_MODEL_CONFIG,
   isProviderWhitelisted,
   MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -324,14 +326,14 @@ function getModelConfig(
       ? {
           model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
           reasoningEffort: reasoning
-            ? "medium"
+            ? "light"
             : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         }
       : prefer === "openai"
         ? {
             model: GPT_5_MODEL_CONFIG,
             reasoningEffort: reasoning
-              ? "medium"
+              ? "light"
               : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
           }
         : assertNever(prefer);
@@ -344,13 +346,13 @@ function getModelConfig(
       ? {
           model: GPT_5_MODEL_CONFIG,
           reasoningEffort: reasoning
-            ? "medium"
+            ? "light"
             : GPT_5_MODEL_CONFIG.minimumReasoningEffort,
         }
       : {
           model: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
           reasoningEffort: reasoning
-            ? "medium"
+            ? "light"
             : CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.minimumReasoningEffort,
         };
 
@@ -404,7 +406,7 @@ function getMaxReasoningModelConfig(owner: WorkspaceType): {
 } | null {
   if (isProviderWhitelisted(owner, "openai")) {
     return {
-      modelConfiguration: GPT_5_MODEL_CONFIG,
+      modelConfiguration: GPT_5_2_MODEL_CONFIG,
       reasoningEffort: "high",
     };
   }
@@ -706,7 +708,7 @@ export function _getDustTaskGlobalAgent(
       tables: null,
       childAgentId: null,
       additionalConfiguration: {
-        useSummary: true,
+        [USE_SUMMARY_SWITCH]: true,
       },
       timeFrame: null,
       dustAppConfiguration: null,

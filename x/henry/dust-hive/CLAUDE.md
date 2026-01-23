@@ -33,7 +33,7 @@ bun run test         # bun test
 - **Language**: TypeScript (strict mode)
 - **Linting/Formatting**: Biome (strict rules)
 - **Testing**: Bun test
-- **Terminal UI**: Zellij (viewer only)
+- **Terminal UI**: Zellij or tmux (viewer only, configurable via settings)
 - **Process Management**: CLI-managed daemons with PID files
 - **Infrastructure**: Docker Compose
 
@@ -56,7 +56,7 @@ src/
 ├── forward-daemon.ts  # TCP forwarder daemon (ports 3000,3001,3002,3006 → env)
 ├── commands/          # Command implementations (all MVP commands complete)
 │   ├── cache.ts       # Cache management (show cache status)
-│   ├── cool.ts        # Stop services, keep SDK
+│   ├── cool.ts        # Pause services + docker, keep SDK
 │   ├── destroy.ts     # Remove environment
 │   ├── doctor.ts      # Prerequisite checking
 │   ├── forward.ts     # OAuth port forwarding management
@@ -72,8 +72,8 @@ src/
 │   ├── stop.ts        # Stop all services in environment
 │   ├── sync.ts        # Pull main, rebuild binaries, refresh deps
 │   ├── temporal.ts    # Temporal server subcommands
-│   ├── up.ts          # Start managed services (temporal + main session)
-│   ├── down.ts        # Stop all envs, temporal, and zellij sessions
+│   ├── up.ts          # Start managed services (temporal + test postgres + test redis + main session)
+│   ├── down.ts        # Stop all envs, temporal, test postgres, test redis, and sessions
 │   ├── url.ts         # Print front URL
 │   └── warm.ts        # Start docker + all services
 └── lib/               # Shared utilities
@@ -131,20 +131,23 @@ tests/
 ## Key Architecture Decisions
 
 1. **No mprocs** - All services run as background daemons managed by the CLI
-2. **Zellij is passive** - Only shows logs via `tail -F`, closing it doesn't stop services
+2. **Multiplexer is passive** - Only shows logs via `tail -F`, closing it doesn't stop services
 3. **Port isolation** - Base port 10000, +1000 per environment
-4. **Git worktrees** - Each env gets a new branch: `NAME-workspace`
+4. **Git worktrees** - Each env gets a branch named `${branchPrefix}${envName}` (configurable via `--branch-name`)
 5. **Managed Temporal** - `dust-hive up` runs Temporal as a daemon, namespaces created per env
+6. **Multiplexer support** - Both zellij (default) and tmux are supported via `~/.dust-hive/settings.json`
 
 ## Commands Reference
+
+> **Tip**: Run `dust-hive <command> --help` for all available options (e.g., `--force`, `--compact`, `--unified-logs`).
 
 ### Managed Services (global)
 
 | Command | Description |
 |---------|-------------|
-| `up [-a]` | Start temporal + sync + create main session (from main repo, requires clean main branch) |
-| `down [-f]` | Stop all envs, temporal, and zellij sessions (requires confirmation or --force) |
-| `temporal start/stop/restart/status` | Direct temporal server control |
+| `up [-a] [-f]` | Start temporal + test postgres + test redis + sync + create main session (from main repo, requires clean main branch) |
+| `down [-f]` | Stop all envs, temporal, test postgres, test redis, and sessions (requires confirmation or --force) |
+| `temporal start\|stop\|restart\|status\|logs` | Direct temporal server control |
 
 ### Environment Commands
 
@@ -152,9 +155,9 @@ tests/
 |---------|-------------|
 | `spawn` | Create environment (worktree + symlinks + SDK watch); supports --warm, --no-attach, --wait |
 | `warm` | Start docker + all services (auto-forwards port 3000, supports --no-forward/--force-ports) |
-| `cool` | Stop services, keep SDK watch |
+| `cool` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME]` | Resume stopped env (start SDK watch) |
-| `stop [NAME]` | Full stop of env (stop all services + docker) |
+| `stop [NAME]` | Full stop + remove docker containers |
 | `destroy` | Remove environment |
 | `open` | Attach to zellij session |
 | `reload` | Kill and reopen zellij session |
@@ -163,7 +166,8 @@ tests/
 | `status` | Show service health |
 | `logs` | View service logs |
 | `url` | Print front URL |
-| `doctor` | Check prerequisites |
+| `setup` | Check prerequisites and guide initial setup |
+| `doctor` | Check prerequisites (non-interactive) |
 | `cache` | Show binary cache status |
 | `forward` | Manage OAuth port forwarding (ports 3000,3001,3002,3006 → env) |
 | `sync` | Pull latest main, rebuild binaries, refresh deps |
@@ -187,13 +191,20 @@ First warm runs everything in parallel:
 ### Cache System
 
 dust-hive uses the main Dust repo as a cache source for:
-1. **Node modules**: Symlinked from main repo (instant, but shared - see warning below)
+1. **Node modules**: Shallow copy with symlinks from main repo (see warning below)
 2. **Cargo target**: Symlinked from main repo (shared compilation + linking cache)
 3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
 
-**WARNING**: node_modules are symlinked, not copied. Running `npm install` in a worktree
-will modify the main repo's node_modules. If you need isolation, manually run:
-`rm -rf node_modules && npm ci`
+For `front` and `connectors`, dust-hive creates a **shallow copy** of node_modules:
+- A real directory with symlinks to all packages from the main repo
+- `@dust-tt/client` is overridden to point to the worktree's SDK
+
+This ensures correct SDK type resolution when your branch has newer types than main.
+
+**Note**: To run `npm install` in a dust-hive worktree, you must first delete `node_modules`:
+```bash
+rm -rf node_modules && npm install
+```
 
 **sccache** (optional): When worktree code differs from main, cargo recompiles. sccache
 caches compilations by content hash, making rebuilds after branch switches faster.

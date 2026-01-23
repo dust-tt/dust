@@ -93,6 +93,8 @@ export async function launchAgentMessageFeedbackWorkflow(
       args: [authType, { message }],
       taskQueue: QUEUE_NAME,
       workflowId,
+      // Delay to allow Langfuse to ingest traces before we query for them
+      startDelay: "2 minutes",
       memo: {
         agentMessageId,
         workspaceId,

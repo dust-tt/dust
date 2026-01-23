@@ -1,3 +1,4 @@
+import { isDustMimeType } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
@@ -32,8 +33,8 @@ export function registerListTool(
   { name, extraDescription }: { name: string; extraDescription?: string }
 ) {
   const baseDescription =
-    "List the direct contents of a node. Can be used to see what is inside a specific folder from " +
-    "the filesystem, like 'ls' in Unix. A good fit is to explore the filesystem structure step " +
+    "List the direct contents of a node, like 'ls' in Unix. Should only be used on nodes with children " +
+    "(hasChildren: true). A good fit is to explore the filesystem structure step " +
     "by step. This tool can be called repeatedly by passing the 'nodeId' output from a step to " +
     "the next step's nodeId. If a node output by this tool or the find tool has children " +
     "(hasChildren: true), it means that this tool can be used again on it.";
@@ -60,6 +61,15 @@ export function registerListTool(
         sortBy,
         nextPageCursor,
       }) => {
+        const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
+        if (invalidMimeTypes && invalidMimeTypes.length > 0) {
+          return new Err(
+            new MCPError(`Invalid mime types: ${invalidMimeTypes.join(", ")}`, {
+              tracked: false,
+            })
+          );
+        }
+
         const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
         const fetchResult = await getAgentDataSourceConfigurations(
           auth,
@@ -169,7 +179,7 @@ export function registerListTool(
         if (searchResult.isErr()) {
           return new Err(
             new MCPError(
-              `Failed to list folder contents: ${searchResult.error.message}`
+              `Failed to list node contents: ${searchResult.error.message}`
             )
           );
         }

@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
+  ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
@@ -27,6 +28,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
+  declare metadata: CreationOptional<ConversationMetadata>;
 
   declare requestedSpaceIds: number[];
 
@@ -75,6 +77,11 @@ ConversationModel.init(
       allowNull: false,
       defaultValue: false,
     },
+    metadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
+    },
   },
   {
     modelName: "conversation",
@@ -88,6 +95,10 @@ ConversationModel.init(
       },
       {
         fields: ["workspaceId", "spaceId"],
+      },
+      {
+        fields: ["workspaceId", "createdAt"],
+        name: "conversations_workspace_id_created_at_idx",
       },
     ],
     sequelize: frontSequelize,
@@ -774,7 +785,12 @@ MessageReactionModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: true }, // null = mention is not a user using a Slackbot
 });
 
-export type MentionStatusType = "pending" | "approved" | "rejected";
+export type MentionStatusType =
+  | "pending" // Waiting for user input
+  | "approved" // Auto or manually approved
+  | "rejected" // Auto or manually rejected
+  | "user_restricted_by_conversation_access" // The conversation access is restricted to the user (the conversation uses at least one space that the user doesn't have access to)
+  | "agent_restricted_by_space_usage"; // The agent uses at least one space that the conversation doesn't have access to (eg: projects conversations cannot use private spaces).
 
 export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare createdAt: CreationOptional<Date>;
@@ -790,6 +806,7 @@ export class MentionModel extends WorkspaceAwareModel<MentionModel> {
   declare message: NonAttribute<MessageModel>;
 
   declare status: MentionStatusType;
+  declare dismissed: boolean | null;
 }
 
 MentionModel.init(
@@ -820,6 +837,11 @@ MentionModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "approved",
+    },
+    dismissed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
   },
   {

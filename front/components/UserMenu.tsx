@@ -24,7 +24,6 @@ import {
   TestTubeIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useMemo } from "react";
 
 import { useConversationDrafts } from "@app/components/assistant/conversation/input_bar/useConversationDrafts";
@@ -36,6 +35,7 @@ import {
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
   SubscriptionType,
@@ -44,16 +44,14 @@ import type {
 } from "@app/types";
 import { isOnlyAdmin, isOnlyBuilder, isOnlyUser } from "@app/types";
 
-export function UserMenu({
-  user,
-  owner,
-  subscription,
-}: {
+interface UserMenuProps {
   user: UserTypeWithWorkspaces;
   owner: WorkspaceType;
   subscription: SubscriptionType | null;
-}) {
-  const router = useRouter();
+}
+
+export function UserMenu({ user, owner, subscription }: UserMenuProps) {
+  const router = useAppRouter();
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -63,7 +61,7 @@ export function UserMenu({
   const { clearAllDraftsFromUser } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user.sId,
-    conversationId: null,
+    draftKey: "user-menu",
   });
 
   const forceRoleUpdate = useMemo(
@@ -215,7 +213,7 @@ export function UserMenu({
               <DropdownMenuSubTrigger label="Dev Tools" icon={ShapesIcon} />
               <DropdownMenuPortal>
                 <DropdownMenuSubContent>
-                  {router.route === "/w/[wId]/conversation/[cId]" && (
+                  {router.pathname === "/w/[wId]/conversation/[cId]" && (
                     <DropdownMenuItem
                       label="Debug conversation"
                       onClick={() => {

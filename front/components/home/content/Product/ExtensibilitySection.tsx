@@ -49,7 +49,7 @@ export function ExtensibilitySection({ page = "default" }) {
           >
             <Div3D depth={-40}>
               <img
-                src="/static/landing/apps/ticketgeneration.png"
+                src="/static/landing/webhooks/ticketgeneration.png"
                 alt="Custom agentic tools"
                 className="h-auto max-h-full w-auto max-w-full object-contain"
               />

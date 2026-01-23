@@ -238,6 +238,7 @@ async function handler(
           triggerData.sId,
           {
             ...validatedTrigger,
+            status: validatedTrigger.status ?? "enabled",
             webhookSourceViewId,
           }
         );
@@ -327,7 +328,7 @@ async function handler(
           agentConfigurationId,
           name: validatedTrigger.name,
           kind: validatedTrigger.kind,
-          enabled: validatedTrigger.enabled,
+          status: validatedTrigger.status ?? "enabled",
           configuration: validatedTrigger.configuration,
           naturalLanguageDescription:
             validatedTrigger.naturalLanguageDescription,

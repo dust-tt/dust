@@ -1,0 +1,6 @@
+{
+  "name": "Poem Writer",
+  "agentFacingDescription": "Guidelines and techniques for writing various types of poems including haikus, sonnets, free verse, and more.",
+  "userFacingDescription": "Learn how to write beautiful poems with this skill that covers different poetry styles and techniques.",
+  "instructions": "# Poem Writing Guide\n\nWhen helping users write poems, follow these guidelines:\n\n## Haiku (5-7-5)\n- First line: 5 syllables\n- Second line: 7 syllables\n- Third line: 5 syllables\n- Focus on nature or a single moment\n- Include a seasonal reference (kigo)\n\n## Sonnet (14 lines)\n- Shakespearean: ABAB CDCD EFEF GG rhyme scheme\n- Petrarchan: ABBAABBA CDECDE rhyme scheme\n- Use iambic pentameter (10 syllables per line)\n\n## Free Verse\n- No required rhyme scheme or meter\n- Focus on imagery and emotion\n- Use line breaks intentionally\n\n## General Tips\n1. Show, don't tell - use sensory details\n2. Choose words carefully for sound and meaning\n3. Read the poem aloud to check rhythm\n4. Revise and refine multiple times"
+}

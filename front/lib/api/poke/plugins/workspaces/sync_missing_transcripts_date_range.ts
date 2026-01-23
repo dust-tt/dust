@@ -66,7 +66,7 @@ export const syncMissingTranscriptsDateRangePlugin = createPlugin({
         const statusParts = [];
         statusParts.push(`ID: ${config.id.toString()}`);
         statusParts.push(`User: ${user?.email ?? "Unknown"}`);
-        statusParts.push(config.isActive ? "Active" : "Inactive");
+        statusParts.push(config.status === "active" ? "Active" : "Inactive");
         if (hasHistory) {
           statusParts.push(
             `Last sync: ${mostRecentDate ? mostRecentDate.toISOString().split("T")[0] : "Unknown"}`

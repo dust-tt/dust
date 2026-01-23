@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
-import { CreateAgentButton } from "@app/components/assistant/CreateAgentButton";
+import { CreateDropdown } from "@app/components/assistant/CreateDropdown";
 import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { AssistantsTable } from "@app/components/assistant/manager/AssistantsTable";
 import { TagsFilterMenu } from "@app/components/assistant/TagsFilterMenu";
@@ -343,7 +343,7 @@ export default function WorkspaceAssistants({
                   owner={owner}
                 />
                 {!isRestrictedFromAgentCreation && (
-                  <CreateAgentButton
+                  <CreateDropdown
                     owner={owner}
                     dataGtmLocation="assistantsWorkspace"
                   />

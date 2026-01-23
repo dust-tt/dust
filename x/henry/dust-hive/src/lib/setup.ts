@@ -1,7 +1,11 @@
 // Environment setup operations
-// NOTE: node_modules are symlinked from main repo for speed.
-// Running `npm install` in a worktree will modify the main repo's node_modules.
+// NOTE: node_modules uses shallow copy from main repo for speed (with SDK override).
+// To run `npm install` in a worktree, first delete node_modules manually.
 // NOTE: cargo target is symlinked to share Rust compilation cache (including linked artifacts).
+
+import { mkdirSync, readdirSync, symlinkSync } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { join } from "node:path";
 
 import { ALL_BINARIES, buildBinaries } from "./cache";
 import { directoryExists } from "./fs";
@@ -38,6 +42,40 @@ async function symlinkNodeModules(srcDir: string, destDir: string): Promise<bool
   return proc.exitCode === 0;
 }
 
+// Setup shallow node_modules with SDK override
+// Creates a real node_modules directory with symlinks to main repo packages,
+// but overrides @dust-tt/client to point to the worktree's SDK.
+// This ensures TypeScript and runtime resolve the SDK from the worktree,
+// not the main repo (which may have stale types).
+function setupShallowNodeModules(
+  mainNodeModules: string,
+  worktreeSdk: string,
+  targetDir: string
+): void {
+  const target = join(targetDir, "node_modules");
+
+  // Create target/node_modules/@dust-tt directory
+  mkdirSync(join(target, "@dust-tt"), { recursive: true });
+
+  // Symlink all top-level packages except @dust-tt
+  for (const item of readdirSync(mainNodeModules)) {
+    if (item !== "@dust-tt") {
+      symlinkSync(join(mainNodeModules, item), join(target, item));
+    }
+  }
+
+  // Symlink @dust-tt contents except client
+  const dustTtDir = join(mainNodeModules, "@dust-tt");
+  for (const item of readdirSync(dustTtDir)) {
+    if (item !== "client") {
+      symlinkSync(join(dustTtDir, item), join(target, "@dust-tt", item));
+    }
+  }
+
+  // Link @dust-tt/client to worktree's SDK
+  symlinkSync(worktreeSdk, join(target, "@dust-tt/client"));
+}
+
 // Symlink cargo target directory to share compilation cache
 async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void> {
   const srcTarget = `${srcDir}/core/target`;
@@ -50,12 +88,13 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
   }
 }
 
-// Find all AGENTS.local.md files in the repo (excluding node_modules and other large dirs)
+// Find all files matching filename in the repo (excluding node_modules and other large dirs)
 // Uses -prune to skip entire directory trees rather than filtering after traversal
-async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
+async function findAgentsFiles(srcDir: string, filename: string): Promise<string[]> {
   const proc = Bun.spawn(
     [
       "find",
+      "-L", // Follow symlinks so -type f matches symlinked files
       srcDir,
       // Prune large directories (skips traversal entirely, much faster than -not -path)
       "-type",
@@ -78,9 +117,8 @@ async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
       ")",
       "-prune",
       "-o",
-      // Find AGENTS.local.md files
       "-name",
-      "AGENTS.local.md",
+      filename,
       "-type",
       "f",
       "-print",
@@ -103,25 +141,31 @@ async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
     .filter((line) => line.length > 0);
 }
 
-// Copy user config files (AGENTS.local.md files, .claude/) from main repo to worktree
+// Copy user config files (AGENTS.local.md, AGENTS.override.md files, .claude/) from main repo to worktree
 async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
-  // Find and copy all AGENTS.local.md files, preserving directory structure
-  const agentsFiles = await findAgentsLocalFiles(srcDir);
-  for (const srcPath of agentsFiles) {
-    // Get relative path from srcDir
-    const relativePath = srcPath.slice(srcDir.length + 1);
-    const destPath = `${destDir}/${relativePath}`;
-    await Bun.spawn(["cp", srcPath, destPath]).exited;
-    logger.success(`Copied ${relativePath}`);
+  // Find and copy all AGENTS.local.md and AGENTS.override.md files, preserving directory structure
+  const filenames = ["AGENTS.local.md", "AGENTS.override.md"];
+  for (const filename of filenames) {
+    const agentsFiles = await findAgentsFiles(srcDir, filename);
+    for (const srcPath of agentsFiles) {
+      // Get relative path from srcDir
+      const relativePath = srcPath.slice(srcDir.length + 1);
+      const destPath = `${destDir}/${relativePath}`;
+      await Bun.spawn(["cp", srcPath, destPath]).exited;
+      logger.success(`Copied ${relativePath}`);
+    }
   }
 
-  // Copy directories recursively
+  // Copy directories recursively, merging with existing content
+  // Note: We use "cp -r srcPath/. destPath/" to copy CONTENTS rather than the directory itself.
+  // This is critical when destPath already exists (e.g., when git creates .claude/ with tracked skills).
+  // Without the "/." pattern, cp -r creates a nested srcPath inside destPath.
   for (const dir of USER_CONFIG_DIRS) {
     const srcPath = `${srcDir}/${dir}`;
     const destPath = `${destDir}/${dir}`;
     if (await directoryExists(srcPath)) {
-      // Use cp -r to copy directory recursively
-      await Bun.spawn(["cp", "-r", srcPath, destPath]).exited;
+      await mkdir(destPath, { recursive: true });
+      await Bun.spawn(["cp", "-r", `${srcPath}/.`, destPath]).exited;
       logger.success(`Copied ${dir}/`);
     }
   }
@@ -177,37 +221,55 @@ export async function installAllDependencies(
     }
   }
 
-  // Handle node_modules for each project
-  const projects = [
-    {
-      key: "sdks" as const,
-      name: "sdks/js",
-      src: `${repoRoot}/sdks/js`,
-      dest: `${worktreePath}/sdks/js`,
-    },
+  // Handle node_modules for sdks/js (simple symlink, it IS the SDK)
+  if (config.sdks === "symlink") {
+    logger.step("sdks/js: Linking from cache...");
+    const success = await symlinkNodeModules(`${repoRoot}/sdks/js`, `${worktreePath}/sdks/js`);
+    if (!success) {
+      failed.push("sdks/js");
+    } else {
+      logger.success("sdks/js: Linked");
+    }
+  } else {
+    logger.step("sdks/js: Installing dependencies...");
+    const success = await runNpmInstall(`${worktreePath}/sdks/js`);
+    if (!success) {
+      failed.push("sdks/js");
+    } else {
+      logger.success("sdks/js: Installed");
+    }
+  }
+
+  // Handle node_modules for front and connectors
+  // These use shallow copy with SDK override to ensure @dust-tt/client
+  // resolves to the worktree's SDK (not main repo's potentially stale SDK)
+  const worktreeSdk = `${worktreePath}/sdks/js`;
+  const projectsWithSdkDep = [
     {
       key: "front" as const,
       name: "front",
-      src: `${repoRoot}/front`,
+      mainNodeModules: `${repoRoot}/front/node_modules`,
       dest: `${worktreePath}/front`,
     },
     {
       key: "connectors" as const,
       name: "connectors",
-      src: `${repoRoot}/connectors`,
+      mainNodeModules: `${repoRoot}/connectors/node_modules`,
       dest: `${worktreePath}/connectors`,
     },
   ];
 
-  for (const { key, name, src, dest } of projects) {
+  for (const { key, name, mainNodeModules, dest } of projectsWithSdkDep) {
     const mode = config[key];
     if (mode === "symlink") {
-      logger.step(`${name}: Linking from cache...`);
-      const success = await symlinkNodeModules(src, dest);
-      if (!success) {
-        failed.push(name);
-      } else {
+      logger.step(`${name}: Linking from cache (with SDK override)...`);
+      try {
+        setupShallowNodeModules(mainNodeModules, worktreeSdk, dest);
         logger.success(`${name}: Linked`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        logger.error(`${name}: Failed to link - ${message}`);
+        failed.push(name);
       }
     } else {
       logger.step(`${name}: Installing dependencies...`);
@@ -224,7 +286,7 @@ export async function installAllDependencies(
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
   }
 
-  // Copy user config files (AGENTS.local.md, CLAUDE.md, .claude/) if they exist
+  // Copy user config files (AGENTS.local.md, AGENTS.override.md, .claude/) if they exist
   logger.step("Copying user config files...");
   await copyUserConfigFiles(repoRoot, worktreePath);
 }

@@ -65,6 +65,7 @@ import type {
   UserType,
 } from "@app/types";
 import {
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CoreAPI,
   Err,
   isAdmin,
@@ -76,6 +77,49 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+// Placeholder constants for pending agents
+const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
+const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
+const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+/**
+ * Creates a pending agent configuration.
+ * Pending agents are placeholders created when the agent builder is opened for a new agent,
+ * before it is saved for the first time. This allows capturing the sId early.
+ */
+export async function createPendingAgentConfiguration(
+  auth: Authenticator
+): Promise<{ sId: string }> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
+
+  const sId = generateRandomModelSId();
+
+  await AgentConfigurationModel.create({
+    sId,
+    version: 0,
+    status: "pending",
+    scope: "hidden",
+    name: PENDING_AGENT_PLACEHOLDER_NAME,
+    description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+    instructions: null,
+    providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+    modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+    temperature: 0.7,
+    reasoningEffort:
+      CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+    maxStepsPerRun: 8,
+    pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+    workspaceId: owner.id,
+    authorId: user.id,
+    templateId: null,
+    requestedSpaceIds: [],
+  });
+
+  return { sId };
+}
 
 export async function getAgentConfigurationsWithVersion<
   V extends AgentFetchVariant,
@@ -424,7 +468,15 @@ export async function createAgentConfiguration(
               sId: agentConfigurationId,
               workspaceId: owner.id,
             },
-            attributes: ["scope", "version", "id", "sId"],
+            attributes: [
+              "scope",
+              "version",
+              "id",
+              "sId",
+              "status",
+              "authorId",
+              "workspaceId",
+            ],
             order: [["version", "DESC"]],
             transaction: t,
             limit: 1,
@@ -442,20 +494,41 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
-          // Bump the version of the agent.
-          version = existingAgent.version + 1;
+          // Handle pending agent: delete it (don't bump version)
+          // Otherwise: archive old versions and bump version
+          if (existingAgent.status === "pending") {
+            if (existingAgent.authorId === user.id) {
+              // Delete the pending agent - we'll create a fresh one with version 0
+              await AgentConfigurationModel.destroy({
+                where: {
+                  id: existingAgent.id,
+                  workspaceId: owner.id,
+                },
+                transaction: t,
+              });
+              // Treat as new agent for the rest of the flow (no editor group to reuse)
+              existingAgent = null;
+            } else {
+              throw new Error(
+                "Cannot update a pending agent owned by another user."
+              );
+            }
+          } else {
+            // Regular update: bump version and archive old versions
+            version = existingAgent.version + 1;
+            await AgentConfigurationModel.update(
+              { status: "archived" },
+              {
+                where: {
+                  sId: agentConfigurationId,
+                  workspaceId: owner.id,
+                },
+                transaction: t,
+              }
+            );
+          }
         }
 
-        await AgentConfigurationModel.update(
-          { status: "archived" },
-          {
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          }
-        );
         userFavorite = userRelation?.favorite ?? false;
       }
 
@@ -537,7 +610,7 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, editors, { transaction: t });
+          await group.setMembers(auth, { users: editors, transaction: t });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -563,7 +636,8 @@ export async function createAgentConfiguration(
             );
             throw result.error;
           }
-          const setMembersRes = await group.setMembers(auth, editors, {
+          const setMembersRes = await group.setMembers(auth, {
+            users: editors,
             transaction: t,
           });
           if (setMembersRes.isErr()) {
@@ -1031,11 +1105,9 @@ export async function archiveAgentConfiguration(
 export async function restoreAgentConfiguration(
   auth: Authenticator,
   agentConfigurationId: string
-): Promise<boolean> {
-  const owner = auth.workspace();
-  if (!owner) {
-    throw new Error("Unexpected `auth` without `workspace`.");
-  }
+): Promise<Result<{ restored: boolean }, Error>> {
+  const owner = auth.getNonNullableWorkspace();
+
   const latestConfig = await AgentConfigurationModel.findOne({
     where: {
       sId: agentConfigurationId,
@@ -1045,13 +1117,16 @@ export async function restoreAgentConfiguration(
     limit: 1,
   });
   if (!latestConfig) {
-    throw new Error("Could not find agent configuration");
+    return new Err(new Error("Could not find agent configuration"));
   }
   if (latestConfig.status !== "archived") {
-    throw new Error("Agent configuration is not archived");
+    return new Err(new Error("Agent configuration is not archived"));
   }
+
   const updated = await AgentConfigurationModel.update(
-    { status: "active" },
+    {
+      status: "active",
+    },
     {
       where: {
         id: latestConfig.id,
@@ -1098,8 +1173,7 @@ export async function restoreAgentConfiguration(
     }
   }
 
-  const affectedCount = updated[0];
-  return affectedCount > 0;
+  return new Ok({ restored: updated[0] > 0 });
 }
 
 // Should only be called when we need to clean up the agent configuration
@@ -1216,6 +1290,7 @@ export async function updateAgentPermissions(
       | "user_not_found"
       | "user_not_member"
       | "user_already_member"
+      | "group_requirements_not_met"
     >
   >
 > {
@@ -1232,7 +1307,8 @@ export async function updateAgentPermissions(
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, usersToAdd, {
+        const addRes = await editorGroupRes.value.addMembers(auth, {
+          users: usersToAdd,
           transaction: t,
         });
         if (addRes.isErr()) {
@@ -1241,13 +1317,10 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.removeMembers(
-          auth,
-          usersToRemove,
-          {
-            transaction: t,
-          }
-        );
+        const removeRes = await editorGroupRes.value.removeMembers(auth, {
+          users: usersToRemove,
+          transaction: t,
+        });
         if (removeRes.isErr()) {
           return removeRes;
         }
@@ -1387,11 +1460,12 @@ export async function updateAgentConfigurationScope(
 
 export async function updateAgentRequirements(
   auth: Authenticator,
-  params: { agentId: string; newSpaceIds: number[] },
-  options?: { transaction?: Transaction }
+  {
+    agentModelId,
+    newSpaceIds,
+  }: { agentModelId: ModelId; newSpaceIds: ModelId[] },
+  { transaction }: { transaction?: Transaction }
 ): Promise<Result<boolean, Error>> {
-  const { agentId, newSpaceIds } = params;
-
   const owner = auth.getNonNullableWorkspace();
 
   const updated = await AgentConfigurationModel.update(
@@ -1401,9 +1475,9 @@ export async function updateAgentRequirements(
     {
       where: {
         workspaceId: owner.id,
-        sId: agentId,
+        id: agentModelId,
       },
-      transaction: options?.transaction,
+      transaction,
     }
   );
 
@@ -1425,15 +1499,14 @@ export async function filterAgentsByRequestedSpaces(
   // When a space is deleted, mcp actions are removed, and requestedSpaceIds are updated.
   const foundSpaceIds = new Set(spaces.map((s) => s.id));
   const validAgents = agents.filter((c) =>
-    c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
+    c.requestedSpaceIds.every((id) => foundSpaceIds.has(id))
   );
 
   const allowedBySpaceIds = validAgents.filter((agent) =>
     auth.canRead(
       createResourcePermissionsFromSpacesWithMap(
         spaceIdToGroupsMap,
-        // Parse as Number since Sequelize array of BigInts are returned as strings.
-        agent.requestedSpaceIds.map((id) => Number(id))
+        agent.requestedSpaceIds
       )
     )
   );

@@ -120,7 +120,11 @@ runs:
 
         # 2. Build Changelog Section
         CHANGELOG_TEXT=""
-        if [ -n "${{ inputs.commit_diff }}" ]; then
+        COMMIT_DIFF=$(cat <<'EOF'
+        ${{ inputs.commit_diff }}
+        EOF
+        )
+        if [ -n "$COMMIT_DIFF" ]; then
           while IFS= read -r line; do
             if [ -n "$line" ]; then
               COMMIT_HASH=$(echo "$line" | cut -d' ' -f1)
@@ -130,7 +134,7 @@ runs:
               CHANGELOG_TEXT="${CHANGELOG_TEXT}• ${LINK} - ${COMMIT_MESSAGE_WITH_AUTHORS}
         "
             fi
-          done <<< "${{ inputs.commit_diff }}"
+          done <<< "$COMMIT_DIFF"
         fi
 
         # 3. Construct JSON Payload

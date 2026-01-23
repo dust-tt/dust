@@ -12,13 +12,13 @@ import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 interface SkillOverviewTableProps {
   skill: SkillType;
-  author: UserType | null;
+  editedByUser: UserType | null;
   spaces: SpaceType[];
 }
 
 export function SkillOverviewTable({
   skill,
-  author,
+  editedByUser,
   spaces,
 }: SkillOverviewTableProps) {
   return (
@@ -81,9 +81,11 @@ export function SkillOverviewTable({
             </PokeTableCell>
           </PokeTableRow>
           <PokeTableRow>
-            <PokeTableCell>Created by</PokeTableCell>
+            <PokeTableCell>Edited by</PokeTableCell>
             <PokeTableCell>
-              {author ? `${author.fullName} (${author.email})` : "N/A"}
+              {editedByUser
+                ? `${editedByUser.fullName} (${editedByUser.email})`
+                : "N/A"}
             </PokeTableCell>
           </PokeTableRow>
         </PokeTableBody>

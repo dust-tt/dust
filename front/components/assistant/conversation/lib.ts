@@ -33,6 +33,7 @@ export function createPlaceholderUserMessage({
     mentions: mentions.map((mention) => toMentionType(mention)),
     richMentions: mentions.map((mention) => ({
       ...mention,
+      dismissed: false,
       status: "approved",
     })),
     user,

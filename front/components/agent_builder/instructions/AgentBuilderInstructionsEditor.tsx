@@ -1,14 +1,13 @@
 import { cn, markdownStyles } from "@dust-tt/sparkle";
 import type { Editor as CoreEditor, Extensions } from "@tiptap/core";
-import { CharacterCount } from "@tiptap/extensions";
-import { Placeholder } from "@tiptap/extensions";
+import { CharacterCount, Placeholder } from "@tiptap/extensions";
 import { Markdown } from "@tiptap/markdown";
 import type { Editor as ReactEditor } from "@tiptap/react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -26,6 +25,8 @@ import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/in
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
+import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
+import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
 import type { LightAgentConfigurationType } from "@app/types";
 
@@ -78,6 +79,7 @@ export function AgentBuilderInstructionsEditor({
   const editorRef = useRef<ReactEditor | null>(null);
   const blockDropdown = useBlockInsertDropdown(editorRef);
   const suggestionHandler = blockDropdown.suggestionOptions;
+  const initialContentSetRef = useRef(false);
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [
@@ -88,6 +90,7 @@ export function AgentBuilderInstructionsEditor({
         hardBreak: false, // we use custom EmptyLineParagraphExtension instead
         orderedList: false, // we use custom OrderedListExtension instead
         listItem: false, // we use custom ListItemExtension instead
+        link: false, // we use custom LinkExtension instead
         bulletList: {
           HTMLAttributes: {
             class: markdownStyles.unorderedList(),
@@ -148,7 +151,7 @@ export function AgentBuilderInstructionsEditor({
             }
           }
 
-          return "What does this agent do? How should it behave? What should it avoid doing?";
+          return "What is the purpose of the agent? How should it behave?";
         },
         emptyNodeClass:
           "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
@@ -163,6 +166,13 @@ export function AgentBuilderInstructionsEditor({
         },
       }),
       EmojiExtension,
+      LinkExtension.configure({
+        HTMLAttributes: {
+          class: "text-blue-600 hover:underline hover:text-blue-800",
+        },
+        autolink: false,
+        openOnClick: false,
+      }),
     ];
 
     extensions.push(
@@ -201,7 +211,8 @@ export function AgentBuilderInstructionsEditor({
   const editor = useEditor(
     {
       extensions,
-      content: field.value,
+      // Don't set content here - it can cause race conditions in Safari
+      // Content will be set in a separate useEffect after the editor is ready
       contentType: "markdown",
       onUpdate: ({ editor, transaction }) => {
         if (transaction.docChanged) {
@@ -212,17 +223,55 @@ export function AgentBuilderInstructionsEditor({
         window.dispatchEvent(new CustomEvent(BLUR_EVENT_NAME));
         return false;
       },
+      editorProps: {
+        // Cleans up incoming HTML to remove Chrome-specific wrapper tags (e.g., <b style="font-weight:normal">)
+        // that interfere with instruction block parsing
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
+      },
       immediatelyRender: false,
     },
     [extensions]
   );
 
+  // Set initial content after editor is created, then focus
+  // This is separated from useEditor() to avoid Safari race conditions
+  // Only runs once when editor is first created
   useEffect(() => {
-    editorRef.current = editor;
-    if (editor) {
-      editor.commands.focus("end");
+    if (!editor || editor.isDestroyed || initialContentSetRef.current) {
+      return;
     }
-  }, [editor]);
+
+    editorRef.current = editor;
+    // Mark as set immediately to prevent race conditions
+    initialContentSetRef.current = true;
+
+    // Use requestAnimationFrame to ensure DOM is fully ready
+    // This fixes "Applying a mismatched transaction" error in Safari/iOS
+    requestAnimationFrame(() => {
+      if (!editor || editor.isDestroyed) {
+        return;
+      }
+
+      // Set content first if we have initial value
+      if (field.value) {
+        editor.commands.setContent(field.value, {
+          emitUpdate: false,
+          contentType: "markdown",
+        });
+      }
+
+      // Then focus after content is set
+      // Use a second RAF to ensure content setting is complete
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.focus("end");
+        }
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor]); // Only run when editor is created, not when field.value changes
 
   useEffect(() => {
     return () => {
@@ -245,12 +294,21 @@ export function AgentBuilderInstructionsEditor({
         attributes: {
           class: editorVariants({ error: displayError }),
         },
+        // Preserve the transformPastedHTML handler when updating editorProps
+        transformPastedHTML(html: string) {
+          return cleanupPastedHTML(html);
+        },
       },
     });
   }, [editor, displayError]);
 
   useEffect(() => {
-    if (!editor || field.value === undefined) {
+    if (
+      !editor ||
+      field.value === undefined ||
+      editor.isDestroyed ||
+      !initialContentSetRef.current
+    ) {
       return;
     }
 
@@ -259,18 +317,20 @@ export function AgentBuilderInstructionsEditor({
     }
     const currentContent = editor.getMarkdown();
     if (currentContent !== field.value) {
-      // Use setTimeout to ensure this runs after any diff mode changes
-      setTimeout(() => {
-        editor.commands.setContent(field.value, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
-      }, 0);
+      // Use requestAnimationFrame to ensure DOM is ready (Safari fix)
+      requestAnimationFrame(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(field.value, {
+            emitUpdate: false,
+            contentType: "markdown",
+          });
+        }
+      });
     }
   }, [editor, field.value]);
 
   useEffect(() => {
-    if (!editor) {
+    if (!editor || editor.isDestroyed) {
       return;
     }
 

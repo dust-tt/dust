@@ -50,30 +50,50 @@ export class JiraClient {
   async getProjects(
     cloudId: string
   ): Promise<Result<JiraProjectType[], Error>> {
-    // eslint-disable-next-line no-restricted-globals
-    const response = await fetch(
-      `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`,
-      {
+    const allProjects: JiraProjectType[] = [];
+    let startAt = 0;
+    let isLast = false;
+    const maxResults = 100; // Batch size per request
+    const maxTotalProjects = 1000; // Static max limit
+
+    do {
+      const url = new URL(
+        `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project/search`
+      );
+      url.searchParams.append("startAt", String(startAt));
+      url.searchParams.append("maxResults", String(maxResults));
+      url.searchParams.append("orderBy", "lastIssueUpdatedTime");
+
+      // eslint-disable-next-line no-restricted-globals
+      const response = await fetch(url.toString(), {
         method: "GET",
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
           Accept: "application/json",
         },
-      }
-    );
+      });
 
-    const validationResult = await validateJiraApiResponse(
-      response,
-      JiraProjectsResponseSchema
-    );
-
-    if (validationResult.isErr()) {
-      return new Err(
-        new Error(`Failed to fetch projects: ${validationResult.error.message}`)
+      const validationResult = await validateJiraApiResponse(
+        response,
+        JiraProjectsResponseSchema
       );
-    }
 
-    return new Ok(validationResult.value.values || []);
+      if (validationResult.isErr()) {
+        return new Err(
+          new Error(
+            `Failed to fetch projects: ${validationResult.error.message}`
+          )
+        );
+      }
+
+      const data = validationResult.value;
+      const projects = data.values || [];
+      allProjects.push(...projects);
+      startAt = startAt + projects.length;
+      isLast = data.isLast || allProjects.length >= maxTotalProjects;
+    } while (!isLast);
+
+    return new Ok(allProjects);
   }
 
   async createWebhook({

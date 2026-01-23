@@ -70,7 +70,10 @@ const _getConnector = async (
     }
   }
 
-  return res.status(200).json(connector.toJSON());
+  return res.status(200).json({
+    ...connector.toJSON(),
+    firstSyncProgress,
+  });
 };
 
 export const getConnectorAPIHandler = withLogging(_getConnector);

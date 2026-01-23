@@ -11,6 +11,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  LinkIcon,
   MoreIcon,
   PencilSquareIcon,
   Tooltip,
@@ -41,7 +42,9 @@ import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
@@ -110,6 +113,7 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
+  enableExtendedActions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -120,6 +124,7 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
+  enableExtendedActions,
   currentUserId,
   isLastMessage,
   message,
@@ -127,7 +132,6 @@ export function UserMessage({
   onReactionToggle,
 }: UserMessageProps) {
   const [shouldShowEditor, setShouldShowEditor] = useState(false);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
     useHover();
   const isAdmin = owner.role === "admin";
@@ -140,9 +144,6 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
-
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const reactionsEnabled = featureFlags.hasFeature("reactions");
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
@@ -238,28 +239,6 @@ export function UserMessage({
   };
 
   const showActions = !isDeleted && !shouldShowEditor;
-  const actions = showActions
-    ? [
-        ...(canEdit
-          ? [
-              {
-                icon: PencilSquareIcon,
-                label: "Edit message",
-                onClick: handleEditMessage,
-              },
-            ]
-          : []),
-        ...(canDelete
-          ? [
-              {
-                icon: TrashIcon,
-                label: "Delete message",
-                onClick: handleDeleteMessage,
-              },
-            ]
-          : []),
-      ]
-    : [];
 
   const displayChip =
     message.version > 0 || isTriggeredOrigin(message.context.origin);
@@ -284,7 +263,12 @@ export function UserMessage({
         <ConversationMessageContainer
           messageType={isCurrentUser ? "me" : "user"}
           type="user"
-          className={isCurrentUser ? "ml-auto" : undefined}
+          className={cn(
+            isCurrentUser ? "ml-auto" : undefined,
+            "relative",
+            "s-pb-6",
+            "s-pb-4"
+          )}
           ref={userMessageHoveredRef}
         >
           <ConversationMessageAvatar
@@ -316,35 +300,6 @@ export function UserMessage({
                 }
                 renderName={renderName}
               />
-              {actions && actions.length > 0 && (
-                <DropdownMenu
-                  open={isMenuOpen}
-                  onOpenChange={(open) => setIsMenuOpen(open)}
-                >
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      icon={MoreIcon}
-                      size="xs"
-                      variant="ghost-secondary"
-                      aria-label="Message actions"
-                      className={cn(
-                        "opacity-100 transition-opacity duration-200",
-                        !isUserMessageHovered && !isMenuOpen && "sm:opacity-0" // always show on small screens
-                      )}
-                    />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {actions.map((action, index) => (
-                      <DropdownMenuItem
-                        key={index}
-                        icon={action.icon}
-                        label={action.label}
-                        onClick={action.onClick}
-                      />
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
             </div>
             <ConversationMessageContent
               citations={citations}
@@ -360,20 +315,22 @@ export function UserMessage({
                   isLastMessage={isLastMessage}
                 />
               )}
-              {!isDeleted && reactionsEnabled && (
-                <>
-                  <MessageEmojiPicker
-                    key="emoji-picker"
-                    onEmojiSelect={onReactionToggle}
-                  />
-                  <MessageReactions
-                    reactions={message.reactions ?? []}
-                    onReactionClick={onReactionToggle}
-                  />
-                </>
-              )}
             </ConversationMessageContent>
           </div>
+          <ActionMenu
+            isDeleted={isDeleted}
+            showActions={showActions}
+            isUserMessageHovered={isUserMessageHovered}
+            message={message}
+            onReactionToggle={onReactionToggle}
+            enableExtendedActions={enableExtendedActions}
+            handleEditMessage={handleEditMessage}
+            handleDeleteMessage={handleDeleteMessage}
+            canDelete={canDelete}
+            canEdit={canEdit}
+            conversationId={conversationId}
+            owner={owner}
+          />
         </ConversationMessageContainer>
       )}
 
@@ -429,5 +386,132 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
       label={<Label message={message} />}
       trigger={<Icon size="xs" visual={BoltIcon} />}
     />
+  );
+}
+
+function ActionMenu({
+  isDeleted,
+  enableExtendedActions,
+  showActions,
+  canEdit,
+  canDelete,
+  handleEditMessage,
+  handleDeleteMessage,
+  message,
+  onReactionToggle,
+  isUserMessageHovered,
+  conversationId,
+  owner,
+}: {
+  isDeleted: boolean;
+  enableExtendedActions: boolean;
+  showActions: boolean;
+  canEdit: boolean;
+  canDelete: boolean;
+  handleEditMessage: () => void;
+  handleDeleteMessage: () => void;
+  message: UserMessageTypeWithContentFragments;
+  onReactionToggle: (emoji: string) => void;
+  isUserMessageHovered: boolean;
+  conversationId: string;
+  owner: WorkspaceType;
+}) {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const handleCopyMessageLink = () => {
+    const messageUrl = `${getConversationRoute(
+      owner.sId,
+      conversationId,
+      undefined,
+      config.getClientFacingUrl()
+    )}#${message.sId}`;
+    void navigator.clipboard.writeText(messageUrl);
+    sendNotification({
+      type: "success",
+      title: "Message link copied to clipboard",
+    });
+  };
+
+  const actions = showActions
+    ? [
+        ...(enableExtendedActions
+          ? [
+              {
+                icon: LinkIcon,
+                label: "Copy message link",
+                onClick: handleCopyMessageLink,
+              },
+            ]
+          : []),
+        ...(canEdit
+          ? [
+              {
+                icon: PencilSquareIcon,
+                label: "Edit message",
+                onClick: handleEditMessage,
+              },
+            ]
+          : []),
+        ...(canDelete
+          ? [
+              {
+                icon: TrashIcon,
+                label: "Delete message",
+                onClick: handleDeleteMessage,
+              },
+            ]
+          : []),
+      ]
+    : [];
+
+  return (
+    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+      {!isDeleted && enableExtendedActions && (
+        <>
+          <MessageReactions
+            reactions={message.reactions ?? []}
+            onReactionClick={onReactionToggle}
+          />
+          <MessageEmojiPicker
+            key="emoji-picker"
+            onEmojiSelect={onReactionToggle}
+            className={cn(
+              "opacity-100 transition-opacity duration-200",
+              !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+            )}
+          />
+        </>
+      )}
+      {!isDeleted && actions && actions.length > 0 && (
+        <DropdownMenu
+          open={isMenuOpen}
+          onOpenChange={(open) => setIsMenuOpen(open)}
+        >
+          <DropdownMenuTrigger asChild>
+            <Button
+              icon={MoreIcon}
+              size="xs"
+              variant="outline"
+              aria-label="Message actions"
+              className={cn(
+                "opacity-100 transition-opacity duration-200",
+                !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+              )}
+            />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {actions.map((action, index) => (
+              <DropdownMenuItem
+                key={index}
+                icon={action.icon}
+                label={action.label}
+                onClick={action.onClick}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 }

@@ -161,6 +161,14 @@ export const CONTENT_NODE_MIME_TYPES = {
     provider: "gong",
     resourceTypes: ["TRANSCRIPT", "TRANSCRIPT_FOLDER"],
   }),
+  DUST_PROJECT: generateConnectorRelativeMimeTypes({
+    provider: "dust_project",
+    resourceTypes: [
+      "CONVERSATION_FOLDER",
+      "CONVERSATION_MESSAGES",
+      "CONTEXT_FOLDER",
+    ],
+  }),
 };
 
 export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
@@ -190,6 +198,10 @@ export const INCLUDABLE_INTERNAL_CONTENT_NODE_MIME_TYPES = {
   BIGQUERY: [],
   SALESFORCE: [],
   GONG: [],
+  DUST_PROJECT: [
+    CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONVERSATION_MESSAGES,
+    CONTENT_NODE_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
+  ],
 };
 
 function generateToolMimeTypes<
@@ -334,6 +346,9 @@ export type SalesforceMimeType =
 export type GongMimeType =
   (typeof INTERNAL_MIME_TYPES.GONG)[keyof typeof INTERNAL_MIME_TYPES.GONG];
 
+export type DustProjectMimeType =
+  (typeof INTERNAL_MIME_TYPES.DUST_PROJECT)[keyof typeof INTERNAL_MIME_TYPES.DUST_PROJECT];
+
 export type InternalToolInputMimeType =
   (typeof INTERNAL_MIME_TYPES.TOOL_INPUT)[keyof typeof INTERNAL_MIME_TYPES.TOOL_INPUT];
 
@@ -354,6 +369,7 @@ export type DustMimeType =
   | ZendeskMimeType
   | SalesforceMimeType
   | GongMimeType
+  | DustProjectMimeType
   | DataSourceMimeType
   | DataWarehouseMimeType
   | DataSourceFolderSpreadsheetMimeType;

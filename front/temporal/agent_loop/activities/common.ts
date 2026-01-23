@@ -14,13 +14,16 @@ import type { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import logger from "@app/logger/logger";
+import { globalCoalescer } from "@app/temporal/agent_loop/lib/event_coalescer";
 import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
 } from "@app/types";
-import { ConversationError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessageModel,
@@ -187,7 +190,7 @@ export async function updateResourceAndPublishEvent(
     modelInteractionDurationMs?: number;
   }
 ): Promise<void> {
-  // Processing of events before publishing to Redis.
+  // Process DB updates and unread state for all events.
   await Promise.all([
     processEventForDatabase(auth, {
       event,
@@ -199,9 +202,12 @@ export async function updateResourceAndPublishEvent(
     processEventForUnreadState(auth, { event, conversation }),
   ]);
 
-  await publishConversationRelatedEvent({
+  // All events go through the coalescer, which handles batching logic internally.
+  const key = `${conversation.sId}-${event.messageId}-${step}`;
+  await globalCoalescer.handleEvent({
     conversationId: conversation.sId,
     event,
+    key,
     step,
   });
 }
@@ -211,7 +217,26 @@ export async function notifyWorkflowError(
   { conversationId, agentMessageId, agentMessageVersion }: AgentLoopArgs,
   error: Error
 ): Promise<void> {
-  const authResult = await AuthenticatorClass.fromJSON(authType);
+  let authResult = await AuthenticatorClass.fromJSON(authType);
+
+  // If subscription changed while the message was running, get a fresh auth with the current
+  // subscription and continue gracefully.
+  if (authResult.isErr() && authResult.error.code === "subscription_mismatch") {
+    logger.info(
+      {
+        workspaceId: authType.workspaceId,
+        originalSubscriptionId: authType.subscriptionId,
+      },
+      "Subscription changed while message was running, using fresh auth in notifyWorkflowError"
+    );
+
+    // Retry without the subscriptionId constraint to get the current subscription.
+    authResult = await AuthenticatorClass.fromJSON({
+      ...authType,
+      subscriptionId: null,
+    });
+  }
+
   if (authResult.isErr()) {
     throw new Error(
       `Failed to deserialize authenticator: ${authResult.error.code}`
@@ -281,14 +306,16 @@ export async function finalizeCancellation(
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
-    // We ignore conversation_not_found errors; the conversation might have been deleted since.
-    if (
-      runAgentDataRes.error instanceof ConversationError &&
-      runAgentDataRes.error.type === "conversation_not_found"
-    ) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
       return;
     }
-
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );

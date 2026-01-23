@@ -20,6 +20,7 @@ import {
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
+import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import {
   AgentMessageFeedbackModel,
   AgentMessageModel,
@@ -38,11 +39,6 @@ import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_requ
 import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { WebhookSourceModel } from "@app/lib/models/agent/triggers/webhook_source";
 import { WebhookSourcesViewModel } from "@app/lib/models/agent/triggers/webhook_sources_view";
-import {
-  TrackerConfigurationModel,
-  TrackerDataSourceConfigurationModel,
-  TrackerGenerationModel,
-} from "@app/lib/models/doc_tracker";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { FeatureFlagModel } from "@app/lib/models/feature_flag";
@@ -89,6 +85,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
+import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   RunModel,
   RunUsageModel,
@@ -98,9 +95,11 @@ import { TemplateModel } from "@app/lib/resources/storage/models/templates";
 import {
   UserMetadataModel,
   UserModel,
+  UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceVerificationAttemptModel } from "@app/lib/resources/storage/models/workspace_verification_attempt";
 import logger from "@app/logger/logger";
 import { sendInitDbMessage } from "@app/types";
 
@@ -120,6 +119,7 @@ async function main() {
   await TagModel.sync({ alter: true });
 
   await SpaceModel.sync({ alter: true });
+  await ProjectMetadataModel.sync({ alter: true });
   await AppModel.sync({ alter: true });
   await DatasetModel.sync({ alter: true });
   await ProviderModel.sync({ alter: true });
@@ -145,10 +145,6 @@ async function main() {
 
   await RunModel.sync({ alter: true });
   await RunUsageModel.sync({ alter: true });
-
-  await TrackerConfigurationModel.sync({ alter: true });
-  await TrackerDataSourceConfigurationModel.sync({ alter: true });
-  await TrackerGenerationModel.sync({ alter: true });
 
   await ExtensionConfigurationModel.sync({ alter: true });
 
@@ -202,6 +198,8 @@ async function main() {
   await AgentMemoryModel.sync({ alter: true });
   await OnboardingTaskModel.sync({ alter: true });
 
+  await UserToolApprovalModel.sync({ alter: true });
+
   await SkillConfigurationModel.sync({ alter: true });
   await SkillDataSourceConfigurationModel.sync({ alter: true });
   await SkillVersionModel.sync({ alter: true });
@@ -210,6 +208,9 @@ async function main() {
   await ConversationSkillModel.sync({ alter: true });
   await AgentMessageSkillModel.sync({ alter: true });
   await SkillMCPServerConfigurationModel.sync({ alter: true });
+  await WorkspaceVerificationAttemptModel.sync({ alter: true });
+
+  await AgentSuggestionModel.sync({ alter: true });
 
   process.exit(0);
 }

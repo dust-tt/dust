@@ -162,7 +162,6 @@ const _authMiddlewareWebhooksGithub = (
   const signatureHeader = req.headers["x-hub-signature-256"];
   const computedSignature = `sha256=${crypto
     .createHmac("sha256", GITHUB_WEBHOOK_SECRET)
-    // @ts-expect-error -- migration to tsgo
     .update(body)
     .digest("hex")}`;
 
@@ -182,7 +181,6 @@ const _authMiddlewareWebhooksGithub = (
 
   if (
     !crypto.timingSafeEqual(
-      // @ts-expect-error -- migration to tsgo
       Buffer.from(signatureHeader),
       Buffer.from(computedSignature)
     )
@@ -257,7 +255,6 @@ const _authMiddlewareWebhooksIntercom = (
     const signatureHeader = req.headers["x-hub-signature"];
     const computedSignature = `sha1=${crypto
       .createHmac("sha1", INTERCOM_CLIENT_SECRET)
-      // @ts-expect-error -- migration to tsgo
       .update(body)
       .digest("hex")}`;
 
@@ -277,7 +274,6 @@ const _authMiddlewareWebhooksIntercom = (
 
     if (
       !crypto.timingSafeEqual(
-        // @ts-expect-error -- migration to tsgo
         Buffer.from(signatureHeader),
         Buffer.from(computedSignature)
       )

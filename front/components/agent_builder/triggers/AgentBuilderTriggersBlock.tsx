@@ -181,7 +181,7 @@ export function AgentBuilderTriggersBlock({
       title="Triggers"
       description={
         <>
-          Triggers agent runs based on events. Need help? Check our{" "}
+          Run agents based on events. Need help? Check our{" "}
           <Hoverable
             variant="primary"
             href="https://docs.dust.tt/docs/scheduling-your-agent-beta#/"

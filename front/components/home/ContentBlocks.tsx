@@ -1,7 +1,7 @@
 import { RocketIcon } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import {
   Carousel,
@@ -271,7 +271,7 @@ export const MetricSection = ({
           >
             {metric.logo && (
               <Image
-                alt="alan"
+                alt={metric.value}
                 src={metric.logo}
                 width={100}
                 height={50}
@@ -311,13 +311,6 @@ export const AllQuotes: QuoteProps[] = [
     name: "Caren Duane",
     title: "Head of Business Operations at Clay",
     logo: "/static/landing/logos/color/clay.png",
-  },
-  {
-    quote:
-      "Thanks to what we’ve implemented at Alan, in less than three question iterations, I can craft the perfect SQL query I need and get the context behind it.",
-    name: "Vincent Delagabbe",
-    title: "Software Engineer at Alan",
-    logo: "/static/landing/logos/color/alan.png",
   },
   {
     quote:
@@ -390,12 +383,19 @@ const QuoteCard = ({ quote, logo, name, title }: QuoteProps) => (
 );
 
 export const QuoteSection = ({ quote, logo, name, title }: QuoteProps) => {
-  // Create array of quotes with the provided quote first
   const currentQuote = { quote, logo, name, title };
-  const otherQuotes = AllQuotes.filter(
-    (q) => q.quote !== quote || q.name !== name || q.title !== title
-  );
-  const quotes = [currentQuote, ...otherQuotes];
+  const [quotes, setQuotes] = useState([
+    currentQuote,
+    ...AllQuotes.filter((q) => q.logo !== logo),
+  ]);
+
+  // Shuffle other quotes on mount (client-side only to avoid hydration mismatch)
+  useEffect(() => {
+    const otherQuotes = AllQuotes.filter((q) => q.logo !== logo).sort(
+      () => Math.random() - 0.5
+    );
+    setQuotes([currentQuote, ...otherQuotes]);
+  }, []);
 
   return (
     <div className="w-full">

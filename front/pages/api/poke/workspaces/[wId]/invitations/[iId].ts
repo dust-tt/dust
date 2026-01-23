@@ -1,4 +1,3 @@
-import isString from "lodash/isString";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
@@ -9,6 +8,7 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 async function handler(
   req: NextApiRequest,

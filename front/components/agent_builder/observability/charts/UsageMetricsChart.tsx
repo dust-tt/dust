@@ -96,13 +96,17 @@ function UsageMetricsTooltip(
   );
 }
 
+interface UsageMetricsChartProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
 export function UsageMetricsChart({
   workspaceId,
   agentConfigurationId,
-}: {
-  workspaceId: string;
-  agentConfigurationId: string;
-}) {
+  isCustomAgent,
+}: UsageMetricsChartProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const { usageMetrics, isUsageMetricsLoading, isUsageMetricsError } =
     useAgentUsageMetrics({
@@ -116,20 +120,21 @@ export function UsageMetricsChart({
     workspaceId,
     agentConfigurationId,
     days: period,
-    disabled: !workspaceId || !agentConfigurationId,
+    disabled: !workspaceId || !agentConfigurationId || !isCustomAgent,
   });
 
   const legendItems = legendFromConstant(
     USAGE_METRICS_LEGEND,
     USAGE_METRICS_PALETTE,
     {
-      includeVersionMarker: mode === "timeRange" && versionMarkers.length > 0,
+      includeVersionMarker:
+        isCustomAgent && mode === "timeRange" && versionMarkers.length > 0,
     }
   );
 
   const filteredData = filterTimeSeriesByVersionWindow(
     usageMetrics,
-    mode,
+    isCustomAgent ? mode : "timeRange",
     selectedVersion,
     versionMarkers
   );
@@ -236,6 +241,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="count"
           name="Messages"
           className={USAGE_METRICS_PALETTE.messages}
@@ -248,6 +254,7 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="conversations"
           name="Conversations"
           className={USAGE_METRICS_PALETTE.conversations}
@@ -260,13 +267,16 @@ export function UsageMetricsChart({
               ? "linear"
               : "monotone"
           }
+          strokeWidth={2}
           dataKey="activeUsers"
           name="Active users"
           className={USAGE_METRICS_PALETTE.activeUsers}
           stroke="currentColor"
           dot={false}
         />
-        <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        {isCustomAgent && (
+          <VersionMarkersDots mode={mode} versionMarkers={versionMarkers} />
+        )}
       </LineChart>
     </ChartContainer>
   );

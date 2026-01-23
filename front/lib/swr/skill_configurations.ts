@@ -87,7 +87,13 @@ export function useSkillsWithRelations({
 
 export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
   const getSimilarSkills = useCallback(
-    async (naturalDescription: string, signal?: AbortSignal) => {
+    async (
+      naturalDescription: string,
+      options: {
+        excludeSkillId: string | null;
+        signal?: AbortSignal;
+      }
+    ) => {
       const response: GetSimilarSkillsResponseBody = await fetcher(
         `/api/w/${owner.sId}/skills/similar`,
         {
@@ -95,8 +101,11 @@ export function useSimilarSkills({ owner }: { owner: LightWorkspaceType }) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ naturalDescription }),
-          signal,
+          body: JSON.stringify({
+            naturalDescription,
+            excludeSkillId: options?.excludeSkillId ?? undefined,
+          }),
+          signal: options?.signal,
         }
       );
       return new Ok(response.similar_skills);
@@ -127,6 +136,12 @@ export function useArchiveSkill({
       status: "active",
       disabled: true,
     });
+  const { mutateSkillsWithRelations: mutateSuggestedSkills } =
+    useSkillsWithRelations({
+      owner,
+      status: "suggested",
+      disabled: true,
+    });
 
   const doArchive = async () => {
     if (!skill.sId) {
@@ -139,6 +154,7 @@ export function useArchiveSkill({
     if (res.ok) {
       void mutateArchivedSkills();
       void mutateActiveSkills();
+      void mutateSuggestedSkills();
 
       sendNotification({
         type: "success",

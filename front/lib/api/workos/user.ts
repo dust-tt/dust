@@ -24,7 +24,8 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { Err, Ok, sha256 } from "@app/types";
+import { Err, isString, Ok, sha256 } from "@app/types";
+import { isDevelopment } from "@app/types/shared/env";
 
 export type SessionCookie = {
   sessionData: string;
@@ -46,26 +47,29 @@ export async function getWorkOSSession(
   if (workOSSessionCookie) {
     const result = await getWorkOSSessionFromCookie(workOSSessionCookie);
     const domain = config.getWorkOSSessionCookieDomain();
+    // In development (localhost), omit Secure flag as it requires HTTPS
+    // Safari strictly enforces this and will not set cookies with Secure flag on HTTP
+    const secureFlag = isDevelopment() ? "" : "; Secure";
     if (result.cookie === "") {
       if (domain) {
         res.setHeader("Set-Cookie", [
-          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
-          `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax`,
+          `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+          `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
         ]);
       } else {
         res.setHeader("Set-Cookie", [
-          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
+          `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
         ]);
       }
     } else if (result.cookie) {
       if (domain) {
         res.setHeader("Set-Cookie", [
-          "workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; Secure; SameSite=Lax",
-          `workos_session=${result.cookie}; Domain=${domain}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+          `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+          `workos_session=${result.cookie}; Domain=${domain}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
         ]);
       } else {
         res.setHeader("Set-Cookie", [
-          `workos_session=${result.cookie}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+          `workos_session=${result.cookie}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
         ]);
       }
     }
@@ -270,18 +274,31 @@ export async function fetchOrCreateWorkOSUserWithEmail({
     workspaceId: workspace.sId,
   });
 
-  if (workOSUser.email == null) {
-    return new Err(new Error("Missing email"));
+  let email = workOSUser.email;
+  if (!email) {
+    email =
+      workOSUser.rawAttributes.emails.find(
+        (e: unknown): e is { address: string; primary: true } =>
+          typeof e === "object" &&
+          e !== null &&
+          "primary" in e &&
+          e.primary === true &&
+          "address" in e &&
+          isString(e.address)
+      )?.address ?? null;
+    if (!email) {
+      return new Err(new Error("Missing email"));
+    }
   }
 
   const workOSUserResponse = await getWorkOS().userManagement.listUsers({
-    email: workOSUser.email,
+    email,
   });
 
   const [existingUser] = workOSUserResponse.data;
   if (!existingUser) {
     const createdUser = await getWorkOS().userManagement.createUser({
-      email: workOSUser.email,
+      email,
       firstName: workOSUser.firstName ?? undefined,
       lastName: workOSUser.lastName ?? undefined,
       metadata: {

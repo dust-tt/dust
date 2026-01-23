@@ -1,6 +1,5 @@
 import type { MCPApproveExecutionEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
-import type { MentionStatusType } from "@app/lib/models/agent/conversation";
 import type {
   AllSupportedWithDustSpecificFileContentType,
   ContentFragmentType,
@@ -94,9 +93,10 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
-  // but should be removed and most likely handled as message metadata (to be created).
-  | "onboarding_conversation";
+  // TODO onboarding_conversation and agent_copilot aren't message origins. They have been used
+  // as a hack but should be removed and most likely handled as message metadata (to be created).
+  | "onboarding_conversation"
+  | "agent_copilot";
 
 export type UserMessageContext = {
   username: string;
@@ -116,9 +116,18 @@ export type AgenticMessageData = {
   originMessageId: string;
 };
 
-export type RichMentionWithStatus = RichMention & {
-  status: MentionStatusType;
-};
+export type RichMentionWithStatus =
+  | (RichMention & { dismissed: boolean; status: "pending" })
+  | (RichMention & { dismissed: boolean; status: "approved" })
+  | (RichMention & { dismissed: boolean; status: "rejected" })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "user_restricted_by_conversation_access";
+    })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "agent_restricted_by_space_usage";
+    });
 
 export type UserMessageType = {
   id: ModelId;
@@ -269,6 +278,8 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
+export type ConversationMetadata = Record<string, unknown>;
+
 /**
  * A lighter version of Conversation without the content (for menu display).
  */
@@ -282,7 +293,9 @@ export type ConversationWithoutContentType = {
   sId: string;
   title: string | null;
   spaceId: string | null;
+  triggerId: string | null;
   depth: number;
+  metadata: ConversationMetadata;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -293,7 +306,6 @@ export type ConversationWithoutContentType = {
  * messages).
  */
 export type ConversationType = ConversationWithoutContentType & {
-  triggerId: string | null;
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];

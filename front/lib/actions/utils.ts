@@ -2,17 +2,9 @@ import { ToolsIcon } from "@dust-tt/sparkle";
 
 import type { ActionSpecification } from "@app/components/agent_builder/types";
 import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
+import { INTERNAL_SERVERS_WITH_WEBSEARCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
-import {
-  isMCPInternalCatTool,
-  isMCPInternalDataSourceFileSystem,
-  isMCPInternalInclude,
-  isMCPInternalNotion,
-  isMCPInternalRunAgent,
-  isMCPInternalSearch,
-  isMCPInternalSlack,
-  isMCPInternalWebsearch,
-} from "@app/lib/actions/types/guards";
+import { isServerSideMCPToolConfigurationWithName } from "@app/lib/actions/types/guards";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { AgentConfigurationType } from "@app/types";
 
@@ -46,9 +38,15 @@ export function getRetrievalTopK({
 }): number {
   const model = getSupportedModelConfig(agentConfiguration.model);
 
-  const searchActions = stepActions.filter(isMCPInternalSearch);
-  const includeActions = stepActions.filter(isMCPInternalInclude);
-  const dsFsActions = stepActions.filter(isMCPInternalDataSourceFileSystem);
+  const searchActions = stepActions.filter((tool) =>
+    isServerSideMCPToolConfigurationWithName(tool, "search")
+  );
+  const includeActions = stepActions.filter((tool) =>
+    isServerSideMCPToolConfigurationWithName(tool, "include_data")
+  );
+  const dsFsActions = stepActions.filter((tool) =>
+    isServerSideMCPToolConfigurationWithName(tool, "data_sources_file_system")
+  );
 
   const actionsCount =
     searchActions.length + includeActions.length + dsFsActions.length;
@@ -79,7 +77,11 @@ export function getWebsearchNumResults({
 }: {
   stepActions: MCPToolConfigurationType[];
 }): number {
-  const websearchActions = stepActions.filter(isMCPInternalWebsearch);
+  const websearchActions = stepActions.filter((tool) =>
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isServerSideMCPToolConfigurationWithName(tool, n)
+    )
+  );
   const totalActions = websearchActions.length;
 
   if (totalActions === 0) {
@@ -109,25 +111,35 @@ export function getCitationsCount({
 }): number {
   const action = stepActions[stepActionIndex];
 
-  if (isMCPInternalWebsearch(action)) {
+  if (
+    INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+      isServerSideMCPToolConfigurationWithName(action, n)
+    )
+  ) {
     return getWebsearchNumResults({
       stepActions,
     });
   }
 
-  if (isMCPInternalSlack(action)) {
+  if (isServerSideMCPToolConfigurationWithName(action, "slack")) {
     return SLACK_SEARCH_ACTION_NUM_RESULTS;
   }
 
-  if (isMCPInternalNotion(action)) {
+  if (isServerSideMCPToolConfigurationWithName(action, "notion")) {
     return NOTION_SEARCH_ACTION_NUM_RESULTS;
   }
 
-  if (isMCPInternalRunAgent(action)) {
+  if (isServerSideMCPToolConfigurationWithName(action, "run_agent")) {
     return RUN_AGENT_ACTION_NUM_RESULTS;
   }
 
-  if (isMCPInternalCatTool(action)) {
+  if (
+    isServerSideMCPToolConfigurationWithName(
+      action,
+      "data_sources_file_system"
+    ) &&
+    action.originalName === "cat"
+  ) {
     return 1;
   }
 

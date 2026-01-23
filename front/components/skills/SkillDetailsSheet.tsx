@@ -17,12 +17,12 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { useState } from "react";
 
-import { ResourceAvatar } from "@app/components/resources/resources_icons";
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { RestoreSkillDialog } from "@app/components/skills/RestoreSkillDialog";
 import { SkillDetailsButtonBar } from "@app/components/skills/SkillDetailsButtonBar";
 import { SkillEditorsTab } from "@app/components/skills/SkillEditorsTab";
 import { SkillInfoTab } from "@app/components/skills/SkillInfoTab";
-import { getSkillIcon, hasRelations } from "@app/lib/skill";
+import { getSkillAvatarIcon, hasRelations } from "@app/lib/skill";
 import type { UserType, WorkspaceType } from "@app/types";
 import type {
   SkillRelations,
@@ -51,7 +51,7 @@ export function SkillDetailsSheet({
         </VisuallyHidden>
         {skill && (
           <>
-            <SheetHeader className="flex flex-col gap-5 text-sm text-foreground dark:text-foreground-night">
+            <SheetHeader>
               <DescriptionSection
                 skill={skill}
                 owner={owner}
@@ -85,7 +85,7 @@ export function SkillDetailsSheetContent({
 }: SkillDetailsSheetContentProps) {
   const [selectedTab, setSelectedTab] = useState<"info" | "editors">("info");
 
-  const showEditorsTabs = skill.canWrite;
+  const showEditorsTabs = skill.status !== "suggested" && skill.canWrite;
 
   if (showEditorsTabs) {
     return (
@@ -133,7 +133,7 @@ const DescriptionSection = ({
   onClose,
 }: DescriptionSectionProps) => {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const author = skill.relations.author;
+  const { editedByUser } = skill.relations;
   const editedDate =
     skill.updatedAt &&
     new Date(skill.updatedAt).toLocaleDateString("en-US", {
@@ -142,14 +142,13 @@ const DescriptionSection = ({
       day: "2-digit",
     });
 
+  const SkillAvatar = getSkillAvatarIcon(skill.icon);
+
   return (
     <div className="flex flex-col items-center gap-4 pt-4">
       <div className="relative flex items-center justify-center">
-        <ResourceAvatar
-          icon={getSkillIcon(skill.icon)}
-          name="Skill avatar"
-          size="xl"
-        />
+        {/* eslint-disable-next-line react-hooks/static-components */}
+        <SkillAvatar name="Skill avatar" size="xl" />
       </div>
 
       {/* Title and edit info */}
@@ -158,15 +157,13 @@ const DescriptionSection = ({
           {skill.name}
         </h2>
         {skill.relations.extendedSkill && (
-          <p className="text-base text-muted-foreground dark:text-muted-foreground-night">
-            Extends {skill.relations.extendedSkill.name}
-          </p>
+          <ExtendedSkillBadge extendedSkill={skill.relations.extendedSkill} />
         )}
 
         {editedDate && (
           <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
             Last edited: {editedDate}
-            {author && ` by ${author.fullName}`}
+            {editedByUser && ` by ${editedByUser.fullName}`}
           </p>
         )}
       </div>

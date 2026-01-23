@@ -41,7 +41,6 @@ export type GetOutputRequestParams = {
   }>;
   conversation: ConversationType;
   userMessage: UserMessageType;
-  runConfig: any;
   specifications: AgentActionSpecification[];
   flushParserTokens: () => Promise<void>;
   contentParser: AgentMessageContentParser;

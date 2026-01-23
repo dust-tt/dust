@@ -5,6 +5,7 @@ import {
   CitationIcons,
   CitationImage,
   CitationTitle,
+  cn,
   Icon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -22,7 +23,7 @@ import { getFileFormat, isSupportedImageContentType } from "@app/types";
 interface AttachmentCitationProps {
   owner: LightWorkspaceType;
   attachmentCitation: AttachmentCitation;
-  conversationId: string | null;
+  conversationId?: string | null;
 }
 
 export function AttachmentCitation({
@@ -48,11 +49,9 @@ export function AttachmentCitation({
       </div>
     );
 
-  const previewImageUrl =
+  const isImage =
     attachmentCitation.type === "file" &&
-    isSupportedImageContentType(attachmentCitation.contentType)
-      ? `${attachmentCitation.sourceUrl}?action=view`
-      : undefined;
+    isSupportedImageContentType(attachmentCitation.contentType);
 
   const isLoading =
     attachmentCitation.type === "file" && attachmentCitation.isUploading;
@@ -70,9 +69,11 @@ export function AttachmentCitation({
           setViewerOpen(true);
         },
       }
-    : {
-        href: attachmentCitation.sourceUrl ?? undefined,
-      };
+    : isImage
+      ? {} // ImagePreview handles click with its own zoom dialog
+      : {
+          href: attachmentCitation.sourceUrl ?? undefined,
+        };
 
   return (
     <>
@@ -81,7 +82,9 @@ export function AttachmentCitation({
           <Citation
             {...dialogOrDownloadProps}
             isLoading={isLoading}
+            containerClassName={cn("s-h-full", isImage && "s-aspect-square")}
             action={
+              !isImage &&
               attachmentCitation.onRemove && (
                 <CitationClose
                   onClick={(e) => {
@@ -92,23 +95,33 @@ export function AttachmentCitation({
               )
             }
           >
-            {previewImageUrl && <CitationImage imgSrc={previewImageUrl} />}
-            <CitationIcons>{attachmentCitation.visual}</CitationIcons>
-            <CitationTitle className="truncate text-ellipsis">
-              {attachmentCitation.title}
-            </CitationTitle>
-            {attachmentCitation.type === "file" &&
-              attachmentCitation.description && (
-                <CitationDescription className="truncate text-ellipsis">
-                  {attachmentCitation.description}
-                </CitationDescription>
-              )}
-            {attachmentCitation.type === "node" && (
-              <CitationDescription className="truncate text-ellipsis">
-                <span>
-                  {attachmentCitation.path ?? attachmentCitation.spaceName}
-                </span>
-              </CitationDescription>
+            {isImage ? (
+              <CitationImage
+                imgSrc={`${attachmentCitation.sourceUrl}?action=view`}
+                title={attachmentCitation.title}
+                downloadUrl={attachmentCitation.sourceUrl ?? undefined}
+                onClose={attachmentCitation.onRemove}
+              />
+            ) : (
+              <>
+                <CitationIcons>{attachmentCitation.visual}</CitationIcons>
+                <CitationTitle className="truncate text-ellipsis">
+                  {attachmentCitation.title}
+                </CitationTitle>
+                {attachmentCitation.type === "file" &&
+                  attachmentCitation.description && (
+                    <CitationDescription className="truncate text-ellipsis">
+                      {attachmentCitation.description}
+                    </CitationDescription>
+                  )}
+                {attachmentCitation.type === "node" && (
+                  <CitationDescription className="truncate text-ellipsis">
+                    <span>
+                      {attachmentCitation.path ?? attachmentCitation.spaceName}
+                    </span>
+                  </CitationDescription>
+                )}
+              </>
             )}
           </Citation>
         }

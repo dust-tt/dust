@@ -167,7 +167,10 @@ const _webhookSlackBotAPIHandler = async (
               "slack.team_id": teamId,
               "slack.app": "slack_bot",
             })(handleChatBot)(req, res, logger);
-          } else if (event.channel_type === "channel") {
+          } else if (
+            event.channel_type === "channel" ||
+            event.channel_type === "group"
+          ) {
             if (
               !event.bot_id &&
               event.channel &&

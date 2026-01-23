@@ -32,6 +32,15 @@ import {
   SPREADSHEET_INTERNAL_MIME_TYPES,
 } from "./content_nodes_constants";
 
+const CONTENT_NODE_MENTION_REGEX =
+  /:content_node_mention\[([^\]]+)](\{url=([^}]+)})?/;
+
+export function replaceContentNodeMarkdownWithQuotedTitle(markdown: string) {
+  return markdown.replace(CONTENT_NODE_MENTION_REGEX, (_match, title) => {
+    return `"${title}"`;
+  });
+}
+
 export function getDocumentIcon(provider: string | null | undefined) {
   if (provider && isConnectorProvider(provider)) {
     const IconComponent = getConnectorProviderLogoWithFallback({

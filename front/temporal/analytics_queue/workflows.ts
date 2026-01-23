@@ -13,6 +13,8 @@ const { storeAgentAnalyticsActivity, storeAgentMessageFeedbackActivity } =
     retry: {
       // Analytics is best effort, only retry twice.
       maximumAttempts: 2,
+      initialInterval: "30 seconds",
+      backoffCoefficient: 2,
     },
   });
 

@@ -11,6 +11,7 @@ import { Op } from "sequelize";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
+import { invalidateActiveSeatsCache } from "@app/lib/plans/usage/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -29,7 +30,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+import { assertNever, Err, Ok } from "@app/types";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -70,6 +71,18 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     super(MembershipModel, blob);
 
     this.user = user;
+  }
+
+  get isBuilder(): boolean {
+    switch (this.role) {
+      case "admin":
+      case "builder":
+        return true;
+      case "user":
+        return false;
+      default:
+        assertNever(this.role);
+    }
   }
 
   static async getMembershipsForWorkspace({
@@ -561,6 +574,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       throw workflowResult.error;
     }
 
+    // Invalidate the active seats cache for this workspace.
+    await invalidateActiveSeatsCache(workspace.sId);
+
     return new MembershipResource(MembershipModel, newMembership.get());
   }
 
@@ -653,6 +669,9 @@ export class MembershipResource extends BaseResource<MembershipModel> {
       // Throw if it fails to launch (unexpected).
       throw workflowResult.error;
     }
+
+    // Invalidate the active seats cache for this workspace.
+    await invalidateActiveSeatsCache(workspace.sId);
 
     return new Ok({
       role: membership.role,
@@ -873,49 +892,46 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction }
   ): Promise<Result<undefined, Error>> {
-    try {
-      const w = auth.workspace();
-      const u = this.user;
-      if (w && w.workOSOrganizationId && u && u.workOSUserId) {
-        try {
-          const workos = getWorkOS();
+    const w = auth.workspace();
+    const u = this.user;
+    if (w && w.workOSOrganizationId && u && u.workOSUserId) {
+      try {
+        const workos = getWorkOS();
 
-          const workOSMemberships =
-            await workos.userManagement.listOrganizationMemberships({
-              organizationId: w.workOSOrganizationId,
-              userId: u.workOSUserId,
-            });
+        const workOSMemberships =
+          await workos.userManagement.listOrganizationMemberships({
+            organizationId: w.workOSOrganizationId,
+            userId: u.workOSUserId,
+          });
 
-          if (workOSMemberships.data.length > 0) {
-            await workos.userManagement.deleteOrganizationMembership(
-              workOSMemberships.data[0].id
-            );
-          }
-
-          await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
-        } catch (error) {
-          logger.error(
-            {
-              workspaceId: w.id,
-              userId: u.id,
-              error,
-            },
-            "Failed to delete WorkOS membership"
+        if (workOSMemberships.data.length > 0) {
+          await workos.userManagement.deleteOrganizationMembership(
+            workOSMemberships.data[0].id
           );
         }
+
+        await invalidateWorkOSOrganizationsCacheForUserId(u.workOSUserId);
+      } catch (error) {
+        logger.error(
+          {
+            workspaceId: w.id,
+            userId: u.id,
+            error,
+          },
+          "Failed to delete WorkOS membership"
+        );
       }
-
-      await this.model.destroy({
-        where: {
-          id: this.id,
-        },
-        transaction,
-      });
-
-      return new Ok(undefined);
-    } catch (err) {
-      return new Err(normalizeError(err));
     }
+
+    await this.model.destroy({
+      where: {
+        id: this.id,
+        workspaceId: this.workspaceId,
+      },
+      transaction,
+    });
+
+    return new Ok(undefined);
   }
 
   isRevoked(referenceDate: Date = new Date()): boolean {

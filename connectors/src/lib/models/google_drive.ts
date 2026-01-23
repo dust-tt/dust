@@ -13,6 +13,7 @@ export class GoogleDriveConfigModel extends ConnectorBaseModel<GoogleDriveConfig
   declare pdfEnabled: boolean;
   declare csvEnabled: boolean;
   declare largeFilesEnabled: boolean;
+  declare useParallelSync: boolean;
 }
 GoogleDriveConfigModel.init(
   {
@@ -37,6 +38,11 @@ GoogleDriveConfigModel.init(
       defaultValue: false,
     },
     largeFilesEnabled: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    useParallelSync: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,

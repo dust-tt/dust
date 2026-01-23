@@ -4,7 +4,8 @@ import React, { useMemo } from "react";
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { contentFragmentToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
-import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import { MentionInvalid } from "@app/components/assistant/conversation/MentionInvalid";
 import { MentionValidationRequired } from "@app/components/assistant/conversation/MentionValidationRequired";
 import { MessageDateIndicator } from "@app/components/assistant/conversation/MessageDateIndicator";
 import type {
@@ -46,7 +47,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const submitFeedback = useMessageFeedback({
       owner: context.owner,
-      conversationId: context.conversationId,
+      conversationId: context.conversation?.sId,
     });
 
     const { submit: onSubmitThumb, isSubmitting: isSubmittingThumb } =
@@ -74,13 +75,13 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
     const { onReactionToggle } = useReaction({
       owner: context.owner,
-      conversationId: context.conversationId,
+      conversationId: context.conversation?.sId,
       message: data,
     });
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
-    const messageFeedbackWithSubmit: FeedbackSelectorProps = {
+    const messageFeedbackWithSubmit: FeedbackSelectorBaseProps = {
       feedback: messageFeedback
         ? {
             thumb: messageFeedback.thumbDirection,
@@ -90,7 +91,6 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         : null,
       onSubmitThumb,
       isSubmittingThumb,
-      owner: context.owner,
     };
 
     const citations =
@@ -104,7 +104,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
                 owner={context.owner}
                 key={index}
                 attachmentCitation={attachmentCitation}
-                conversationId={context.conversationId}
+                conversationId={context.conversation?.sId}
               />
             );
           })
@@ -134,6 +134,11 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       return null;
     }
 
+    // No message without a conversation
+    if (!context.conversation) {
+      return null;
+    }
+
     return (
       <>
         {!areSameDate && <MessageDateIndicator message={data} />}
@@ -145,7 +150,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
           {isUserMessage(data) && (
             <UserMessage
               citations={citations}
-              conversationId={context.conversationId}
+              conversationId={context.conversation.sId}
+              enableExtendedActions={context.enableExtendedActions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
@@ -157,27 +163,51 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <AgentMessage
               user={context.user}
               triggeringUser={triggeringUser}
-              conversationId={context.conversationId}
+              conversationId={context.conversation.sId}
               isLastMessage={!nextData}
               agentMessage={data}
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              enableExtendedActions={context.enableExtendedActions}
             />
           )}
           {data.visibility !== "deleted" &&
-            data.richMentions
-              .filter((mention) => mention.status === "pending")
-              .map((mention) => (
-                <MentionValidationRequired
-                  key={mention.id}
-                  pendingMention={mention}
-                  message={data}
-                  owner={context.owner}
-                  triggeringUser={triggeringUser}
-                  conversationId={context.conversationId}
-                />
-              ))}
+            data.richMentions.map((mention, index) => {
+              // To please the type checker
+              if (!context.conversation) {
+                return null;
+              }
+
+              // :warning: make sure to use the index in the key, as the mention.id is the userId
+
+              if (mention.status === "pending") {
+                return (
+                  <MentionValidationRequired
+                    key={index}
+                    mention={mention}
+                    message={data}
+                    owner={context.owner}
+                    triggeringUser={triggeringUser}
+                    conversation={context.conversation}
+                  />
+                );
+              } else if (
+                mention.status === "user_restricted_by_conversation_access" ||
+                mention.status === "agent_restricted_by_space_usage"
+              ) {
+                return (
+                  <MentionInvalid
+                    key={index}
+                    mention={mention}
+                    message={data}
+                    owner={context.owner}
+                    triggeringUser={triggeringUser}
+                    conversationId={context.conversation.sId}
+                  />
+                );
+              }
+            })}
         </div>
       </>
     );

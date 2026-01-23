@@ -54,7 +54,7 @@ const WAIT_BETWEEN_RETRIES = 100;
 export const executeWithLock = async <T>(
   lockName: string,
   callback: () => Promise<T>,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30_000
 ): Promise<T> => {
   const client = await getRedisClient({ origin: "lock" });
 

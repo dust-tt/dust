@@ -112,7 +112,7 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
   return (
     <div
       className={classNames(
-        "sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto",
+        "sticky top-5 max-h-[calc(100vh-8rem)] overflow-y-auto",
         className ?? null
       )}
     >

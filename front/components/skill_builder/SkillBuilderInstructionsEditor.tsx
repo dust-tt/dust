@@ -1,32 +1,26 @@
-import { AttachmentIcon, Button, markdownStyles } from "@dust-tt/sparkle";
-import { CharacterCount, Placeholder } from "@tiptap/extensions";
-import { Markdown } from "@tiptap/markdown";
+import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
-import { EditorContent, useEditor } from "@tiptap/react";
-import { StarterKit } from "@tiptap/starter-kit";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import React, { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
-import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import {
-  KNOWLEDGE_NODE_TYPE,
-  KnowledgeNode,
-} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
+  SkillInstructionsEditorContent,
+  useSkillInstructionsEditor,
+} from "@app/components/editor/SkillInstructionsEditor";
 import { SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT } from "@app/components/skill_builder/events";
 import type { SkillBuilderFormData } from "@app/components/skill_builder/SkillBuilderFormContext";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
-export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
+const INSTRUCTIONS_FIELD_NAME = "instructions";
+const ATTACHED_KNOWLEDGE_FIELD_NAME = "attachedKnowledge";
 
 const editorVariants = cva(
   [
-    "overflow-auto border rounded-xl px-3 py-2 resize-y min-h-60 max-h-[1024px]",
+    "overflow-auto border rounded-xl px-3 pt-2 pb-8 resize-y min-h-60 max-h-[1024px]",
     "transition-all duration-200",
     "bg-muted-background dark:bg-muted-background-night",
   ],
@@ -57,33 +51,37 @@ const editorVariants = cva(
 interface SkillBuilderInstructionsEditorProps {
   compareVersion?: SkillType | null;
   isInstructionDiffMode?: boolean;
+  onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { field: instructionsField, fieldState: instructionsFieldState } =
-    useController<SkillBuilderFormData, "instructions">({
-      name: "instructions",
+    useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
+      name: INSTRUCTIONS_FIELD_NAME,
     });
   const {
     field: attachedKnowledgeField,
     fieldState: attachedKnowledgeFieldState,
-  } = useController<SkillBuilderFormData, "attachedKnowledge">({
-    name: "attachedKnowledge",
-  });
+  } = useController<SkillBuilderFormData, typeof ATTACHED_KNOWLEDGE_FIELD_NAME>(
+    {
+      name: ATTACHED_KNOWLEDGE_FIELD_NAME,
+    }
+  );
 
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
 
   // Helper function to extract attached knowledge and update form.
-  const extractAttachedKnowledge = useCallback((editor: Editor) => {
+  const extractAttachedKnowledge = useCallback((editorInstance: Editor) => {
     const knowledgeItems: KnowledgeItem[] = [];
 
     // Use TipTap's document traversal API to recursively find all knowledge nodes.
     // Note: $nodes() only searches top-level nodes, not nested inline nodes.
-    const { state } = editor;
+    const { state } = editorInstance;
     const { doc } = state;
 
     doc.descendants((node) => {
@@ -96,116 +94,61 @@ export function SkillBuilderInstructionsEditor({
     return knowledgeItems;
   }, []);
 
-  // Update form whenever attached knowledge changes.
   const updateAttachedKnowledge = useCallback(
     (editor: Editor) => {
       const attachedKnowledge = extractAttachedKnowledge(editor);
-
       // Transform for form storage.
       const transformedAttachments = attachedKnowledge.map((item) => ({
         dataSourceViewId: item.dataSourceViewId,
         nodeId: item.nodeId, // This is the node ID from the data source view content node.
-        nodeType: item.nodeType,
         spaceId: item.spaceId,
         title: item.label,
       }));
-
       attachedKnowledgeField.onChange(transformedAttachments);
     },
     [extractAttachedKnowledge, attachedKnowledgeField]
   );
 
-  const extensions = useMemo(() => {
-    return [
-      Markdown,
-      StarterKit.configure({
-        orderedList: false, // we use custom OrderedListExtension instead
-        listItem: false, // we use custom ListItemExtension instead
-        bulletList: {
-          HTMLAttributes: {
-            class: markdownStyles.unorderedList(),
-          },
-        },
-        blockquote: false,
-        horizontalRule: false,
-        strike: false,
-        code: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-        codeBlock: {
-          HTMLAttributes: {
-            class: markdownStyles.codeBlock(),
-          },
-        },
-        paragraph: {
-          HTMLAttributes: {
-            class: markdownStyles.paragraph(),
-          },
-        },
-      }),
-      SlashCommandExtension,
-      KnowledgeNode,
-      // Custom ordered list and list item extensions to preserve start attribute
-      OrderedListExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.orderedList(),
-        },
-      }),
-      ListItemExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.list(),
-        },
-      }),
-      AgentInstructionDiffExtension,
-      Placeholder.configure({
-        placeholder: "What does this skill do? How should it behave?",
-        emptyNodeClass:
-          "first:before:text-gray-400 first:before:italic first:before:content-[attr(data-placeholder)] first:before:pointer-events-none first:before:absolute",
-      }),
-      CharacterCount.configure({
-        limit: INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT,
-      }),
-    ];
-  }, []);
-
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          instructionsField.onChange(editor.getMarkdown());
-
-          // Also update attached knowledge in the form.
+          instructionsField.onChange(editor.getMarkdown().trim());
           updateAttachedKnowledge(editor);
         }
       }, 250),
     [instructionsField, isInstructionDiffMode, updateAttachedKnowledge]
   );
 
-  const editor = useEditor(
-    {
-      extensions,
-      content: instructionsField.value || undefined, // display placeholder if instructions are empty
-      contentType: "markdown",
-      onUpdate: ({ editor, transaction }) => {
-        if (transaction.docChanged) {
-          debouncedUpdate(editor);
-        }
-      },
-      onBlur: () => {
-        window.dispatchEvent(
-          new CustomEvent(SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT)
-        );
-      },
-      onDelete: ({ editor }) => {
-        // Ensure attached knowledge is updated on node deletion.
-        updateAttachedKnowledge(editor);
-      },
-      immediatelyRender: false,
+  const handleUpdate = useCallback(
+    ({ editor, transaction }: { editor: Editor; transaction: Transaction }) => {
+      if (transaction.docChanged) {
+        debouncedUpdate(editor);
+      }
     },
-    [extensions]
+    [debouncedUpdate]
   );
+
+  const handleBlur = useCallback(() => {
+    window.dispatchEvent(
+      new CustomEvent(SKILL_BUILDER_INSTRUCTIONS_BLUR_EVENT)
+    );
+  }, []);
+
+  const handleDelete = useCallback(
+    (editorInstance: Editor) => {
+      updateAttachedKnowledge(editorInstance);
+    },
+    [updateAttachedKnowledge]
+  );
+
+  const { editor } = useSkillInstructionsEditor({
+    content: instructionsField.value ?? "",
+    isReadOnly: false,
+    onUpdate: handleUpdate,
+    onBlur: handleBlur,
+    onDelete: handleDelete,
+  });
 
   const handleAddKnowledge = useCallback(() => {
     if (editor) {
@@ -214,11 +157,18 @@ export function SkillBuilderInstructionsEditor({
   }, [editor]);
 
   useEffect(() => {
+    if (editor && onAddKnowledge) {
+      onAddKnowledge(handleAddKnowledge);
+    }
+  }, [editor, handleAddKnowledge, onAddKnowledge]);
+
+  useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
     };
   }, [debouncedUpdate]);
 
+  // Set editor class based on error state (applies to ProseMirror element)
   useEffect(() => {
     if (!editor) {
       return;
@@ -267,7 +217,7 @@ export function SkillBuilderInstructionsEditor({
 
       editor.commands.applyDiff(compareText, currentText);
       editor.setEditable(false);
-    } else if (!isInstructionDiffMode && editor) {
+    } else if (!isInstructionDiffMode) {
       if (editor.storage.agentInstructionDiff?.isDiffMode) {
         editor.commands.exitDiff();
         editor.setEditable(true);
@@ -276,19 +226,8 @@ export function SkillBuilderInstructionsEditor({
   }, [isInstructionDiffMode, compareVersion, editor]);
 
   return (
-    <div className="relative space-y-1 p-px">
-      <EditorContent editor={editor} className="leading-7" />
-
-      {/* Floating Add Knowledge Button */}
-      <Button
-        size="xs"
-        variant="ghost"
-        icon={AttachmentIcon}
-        onClick={handleAddKnowledge}
-        className="absolute bottom-2 left-2"
-        tooltip="Add knowledge"
-        disabled={!editor}
-      />
+    <div className="space-y-1 p-px">
+      <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
 
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">

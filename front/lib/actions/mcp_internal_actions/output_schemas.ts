@@ -627,6 +627,8 @@ const RenderedNodeSchema = z.object({
   connectorProvider: z.enum(CONNECTOR_PROVIDERS).nullable(),
 });
 
+export type RenderedNodeType = z.infer<typeof RenderedNodeSchema>;
+
 export const DataSourceNodeListSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_NODE_LIST),
   uri: z.literal(""),

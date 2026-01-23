@@ -125,6 +125,20 @@ const scrollBarSizes = {
       "hover:s-bg-muted-foreground/80 dark:hover:s-bg-muted-foreground-night/80"
     ),
   },
+  minimal: {
+    bar: {
+      vertical: "s-w-3",
+      horizontal: "s-h-3",
+    },
+    padding: {
+      vertical: "s-pr-px s-pl-1.5 s-py-px",
+      horizontal: "s-pb-px s-pt-1.5 s-px-px",
+    },
+    thumb: cn(
+      "s-bg-muted-foreground/20 dark:s-bg-muted-foreground-night/20",
+      "hover:s-bg-muted-foreground/50 dark:hover:s-bg-muted-foreground-night/50"
+    ),
+  },
 } as const;
 
 type ScrollBarSize = keyof typeof scrollBarSizes;

@@ -105,9 +105,10 @@ export function ProfileTriggersTab({ owner }: ProfileTriggersTabProps) {
               <div className="truncate text-sm font-semibold text-foreground dark:text-foreground-night">
                 {row.original.agentName}
               </div>
-              {!row.original.enabled && (
+              {row.original.status !== "enabled" && (
                 <Chip size="xs" color="primary">
-                  Disabled
+                  {row.original.status.charAt(0).toUpperCase() +
+                    row.original.status.slice(1)}
                 </Chip>
               )}
             </div>

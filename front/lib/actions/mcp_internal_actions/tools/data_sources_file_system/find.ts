@@ -1,3 +1,4 @@
+import { isDustMimeType } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
@@ -93,6 +94,15 @@ async function findCallback(
     tagsNot,
   }: DataSourceFilesystemFindInputType & TagsInputType
 ): Promise<Result<CallToolResult["content"], MCPError>> {
+  const invalidMimeTypes = mimeTypes?.filter((m) => !isDustMimeType(m));
+  if (invalidMimeTypes && invalidMimeTypes.length > 0) {
+    return new Err(
+      new MCPError(`Invalid mime types: ${invalidMimeTypes.join(", ")}`, {
+        tracked: false,
+      })
+    );
+  }
+
   const coreAPI = new CoreAPI(config.getCoreAPIConfig(), logger);
 
   const fetchResult = await getAgentDataSourceConfigurations(auth, dataSources);

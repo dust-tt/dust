@@ -1,54 +1,77 @@
 import { logger } from "../lib/logger";
 import { TEMPORAL_PORT, findRepoRoot } from "../lib/paths";
+import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { isTemporalServerRunning, startTemporalServer } from "../lib/temporal-server";
-import {
-  getCurrentBranch,
-  getMainRepoPath,
-  hasUncommittedChanges,
-  isWorktree,
-} from "../lib/worktree";
+import { isTestPostgresRunning, startTestPostgres } from "../lib/test-postgres";
+import { isTestRedisRunning, startTestRedis } from "../lib/test-redis";
 import { openMainSession } from "./open";
 import { syncCommand } from "./sync";
 
 interface UpOptions {
   attach?: boolean;
   force?: boolean;
+  compact?: boolean;
 }
 
-// Check preconditions for managed services mode
-async function checkPreconditions(repoRoot: string): Promise<Result<void>> {
-  // Must not be in a worktree
-  const inWorktree = await isWorktree(repoRoot);
-  if (inWorktree) {
-    const mainRepo = await getMainRepoPath(repoRoot);
+// Start temporal server if not already running
+async function startTemporalIfNeeded(): Promise<Result<void>> {
+  logger.step("Starting Temporal server...");
+  const temporalStatus = await isTemporalServerRunning();
+
+  if (temporalStatus.running) {
+    if (temporalStatus.managed) {
+      logger.info(`Temporal already running (PID: ${temporalStatus.pid})`);
+      return Ok(undefined);
+    }
     return Err(
       new CommandError(
-        `Cannot run 'dust-hive up' from a worktree. Run from the main repo: cd ${mainRepo}`
+        `Temporal is already running externally on port ${TEMPORAL_PORT}. Stop it first to use dust-hive managed temporal.`
       )
     );
   }
 
-  // Must be on main branch
-  const currentBranch = await getCurrentBranch(repoRoot);
-  if (currentBranch !== "main") {
-    return Err(
-      new CommandError(
-        `Cannot run 'dust-hive up' from branch '${currentBranch}'. Checkout main first: git checkout main`
-      )
-    );
+  const startResult = await startTemporalServer();
+  if (!startResult.success) {
+    return Err(new CommandError(startResult.error ?? "Failed to start Temporal server"));
+  }
+  logger.success(`Temporal server started (PID: ${startResult.pid})`);
+  return Ok(undefined);
+}
+
+// Start shared test postgres if not already running
+async function startTestPostgresIfNeeded(): Promise<Result<void>> {
+  logger.step("Starting shared test Postgres...");
+  const testPgRunning = await isTestPostgresRunning();
+
+  if (testPgRunning) {
+    logger.info("Test Postgres already running");
+    return Ok(undefined);
   }
 
-  // Must have clean working directory (ignoring untracked files, since git pull --rebase handles them)
-  const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
-  if (hasChanges) {
-    return Err(
-      new CommandError(
-        "Repository has uncommitted changes. Commit or stash them before running 'dust-hive up'."
-      )
-    );
+  const result = await startTestPostgres();
+  if (!result.success) {
+    return Err(new CommandError(result.error ?? "Failed to start test Postgres"));
+  }
+  logger.success("Test Postgres started (port 5433)");
+  return Ok(undefined);
+}
+
+// Start shared test Redis if not already running
+async function startTestRedisIfNeeded(): Promise<Result<void>> {
+  logger.step("Starting shared test Redis...");
+  const testRedisRunning = await isTestRedisRunning();
+
+  if (testRedisRunning) {
+    logger.info("Test Redis already running");
+    return Ok(undefined);
   }
 
+  const result = await startTestRedis();
+  if (!result.success) {
+    return Err(new CommandError(result.error ?? "Failed to start test Redis"));
+  }
+  logger.success("Test Redis started (port 6479)");
   return Ok(undefined);
 }
 
@@ -62,7 +85,7 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   console.log();
 
   // Check preconditions
-  const preconditions = await checkPreconditions(repoRoot);
+  const preconditions = await checkMainRepoPreconditions(repoRoot, { commandName: "dust-hive up" });
   if (!preconditions.ok) {
     return preconditions;
   }
@@ -77,34 +100,30 @@ export async function upCommand(options: UpOptions = {}): Promise<Result<void>> 
   console.log();
 
   // Start temporal server
-  logger.step("Starting Temporal server...");
-  const temporalStatus = await isTemporalServerRunning();
+  const temporalResult = await startTemporalIfNeeded();
+  if (!temporalResult.ok) {
+    return temporalResult;
+  }
 
-  if (temporalStatus.running) {
-    if (temporalStatus.managed) {
-      logger.info(`Temporal already running (PID: ${temporalStatus.pid})`);
-    } else {
-      return Err(
-        new CommandError(
-          `Temporal is already running externally on port ${TEMPORAL_PORT}. Stop it first to use dust-hive managed temporal.`
-        )
-      );
-    }
-  } else {
-    const startResult = await startTemporalServer();
-    if (!startResult.success) {
-      return Err(new CommandError(startResult.error ?? "Failed to start Temporal server"));
-    }
-    logger.success(`Temporal server started (PID: ${startResult.pid})`);
+  // Start shared test Postgres
+  const testPgResult = await startTestPostgresIfNeeded();
+  if (!testPgResult.ok) {
+    return testPgResult;
+  }
+
+  // Start shared test Redis
+  const testRedisResult = await startTestRedisIfNeeded();
+  if (!testRedisResult.ok) {
+    return testRedisResult;
   }
 
   // Create/attach main session
   if (options.attach) {
     console.log();
-    await openMainSession(repoRoot, { attach: true });
+    await openMainSession(repoRoot, { attach: true, compact: options.compact });
   } else {
     // Create session in background if it doesn't exist
-    await openMainSession(repoRoot, { attach: false });
+    await openMainSession(repoRoot, { attach: false, compact: options.compact });
     console.log();
     logger.success("Managed services started!");
     console.log();

@@ -1,6 +1,7 @@
 import { cn } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useRouter } from "next/router";
+
+import { useAppRouter } from "@app/lib/platform";
 
 interface AgentHandleProps {
   agent: {
@@ -16,7 +17,7 @@ export function AgentHandle({
   canMention = true,
   isDisabled = false,
 }: AgentHandleProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const href = {
     pathname: router.pathname,

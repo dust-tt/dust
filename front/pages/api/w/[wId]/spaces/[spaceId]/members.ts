@@ -43,12 +43,12 @@ export async function handler(
   auth: Authenticator,
   { space }: { space: SpaceResource }
 ): Promise<void> {
-  if (!space.isRegular()) {
+  if (!space.isRegular() && !space.isProject()) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: "Only regular spaces can have members.",
+        message: "Only projects and regular spaces can have members.",
       },
     });
   }
@@ -135,6 +135,15 @@ export async function handler(
               api_error: {
                 type: "invalid_request_error",
                 message: "Some of the passed ids are invalid.",
+              },
+            });
+          case "group_requirements_not_met":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Some users have insufficient role privilege to be added to the space.",
               },
             });
           case "system_or_global_group":

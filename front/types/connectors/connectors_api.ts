@@ -127,6 +127,7 @@ export type ProviderVisibility = "public" | "private";
  * https://www.notion.so/dust-tt/Design-Doc-Microsoft-ids-parents-c27726652aae45abafaac587b971a41d?pvs=4
  */
 export interface ContentNode {
+  childrenCount: number;
   expandable: boolean;
   internalId: string;
   lastUpdatedAt: number | null;
@@ -249,20 +250,6 @@ export class ConnectorsAPI {
     return this._resultFromResponse(res);
   }
 
-  async stopConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/stop/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
   async pauseConnector(
     connectorId: string
   ): Promise<ConnectorsAPIResponse<undefined>> {
@@ -282,20 +269,6 @@ export class ConnectorsAPI {
   ): Promise<ConnectorsAPIResponse<undefined>> {
     const res = await this._fetchWithError(
       `${this._url}/connectors/unpause/${encodeURIComponent(connectorId)}`,
-      {
-        method: "POST",
-        headers: this.getDefaultHeaders(),
-      }
-    );
-
-    return this._resultFromResponse(res);
-  }
-
-  async resumeConnector(
-    connectorId: string
-  ): Promise<ConnectorsAPIResponse<undefined>> {
-    const res = await this._fetchWithError(
-      `${this._url}/connectors/resume/${encodeURIComponent(connectorId)}`,
       {
         method: "POST",
         headers: this.getDefaultHeaders(),

@@ -24,6 +24,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   ContentNode,
   DataSourceViewType,
+  FileUseCase,
   LightWorkspaceType,
   PlanType,
 } from "@app/types";
@@ -47,6 +48,7 @@ type MultipleFilesUploadProps = {
   owner: LightWorkspaceType;
   totalNodesCount: number;
   plan: PlanType;
+  useCaseForDocument?: FileUseCase;
 };
 
 export const MultipleFilesUpload = ({
@@ -57,6 +59,7 @@ export const MultipleFilesUpload = ({
   owner,
   totalNodesCount,
   plan,
+  useCaseForDocument = "folders_document",
 }: MultipleFilesUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLimitPopupOpen, setIsLimitPopupOpen] = useState(false);
@@ -78,7 +81,7 @@ export const MultipleFilesUpload = ({
   // Used for creating document files, with text extraction post-processing
   const documentUploaderService = useFileUploaderService({
     owner,
-    useCase: "folders_document",
+    useCase: useCaseForDocument,
     useCaseMetadata: {
       spaceId: dataSourceView.spaceId,
     },

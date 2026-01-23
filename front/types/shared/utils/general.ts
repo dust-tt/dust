@@ -9,6 +9,10 @@ export function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
+export function isNumberOrBoolean(value: unknown): value is number | boolean {
+  return typeof value === "number" || typeof value === "boolean";
+}
+
 export function isStringArray(value: unknown): value is string[] {
   return (
     Array.isArray(value) && value.every((item) => typeof item === "string")

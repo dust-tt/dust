@@ -23,6 +23,7 @@ import {
   DropdownMenuTagItem,
   DropdownMenuTagList,
   DropdownMenuTrigger,
+  DropdownTooltipTrigger,
 } from "@sparkle/components/Dropdown";
 import {
   AnthropicLogo,
@@ -924,6 +925,117 @@ export const WithFilters: Story = {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+    );
+  },
+};
+
+export const WithTooltips: Story = {
+  render: () => {
+    return (
+      <div className="s-flex s-flex-col s-gap-8 s-p-8">
+        <h3 className="s-text-lg s-font-semibold">
+          Dropdown with Rich Tooltips
+        </h3>
+
+        <div className="s-flex s-gap-4">
+          {/* Knowledge Attachment Example */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button label="Skill Builder Actions" variant="outline" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="s-w-64">
+              <DropdownMenuItem label="Configure Settings" />
+              <DropdownTooltipTrigger
+                description="Use company knowledge for context."
+                media={
+                  <img
+                    src="/static/landing/product/Knowledge_Tooltips.jpg"
+                    alt="Knowledge Search Interface"
+                    className="s-aspect-[4/3] s-w-full s-rounded s-object-cover"
+                  />
+                }
+                side="right"
+                sideOffset={8}
+              >
+                <DropdownMenuItem icon={AttachmentIcon} label="Add Knowledge" />
+              </DropdownTooltipTrigger>
+              <DropdownMenuItem label="Save Draft" />
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Data Export Example */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button label="Data Actions" variant="outline" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="s-w-64">
+              <DropdownMenuItem label="View Report" />
+              <DropdownTooltipTrigger
+                description="Export your data in various formats. Choose from CSV, JSON, or PDF depending on your needs."
+                media={
+                  <div className="s-flex s-items-center s-gap-3">
+                    <div className="s-flex s-h-10 s-w-10 s-items-center s-justify-center s-rounded-full s-bg-green-100">
+                      <CloudArrowDownIcon className="s-h-5 s-w-5 s-text-green-600" />
+                    </div>
+                    <div>
+                      <h4 className="s-text-sm s-font-medium s-text-green-800">
+                        Export Status
+                      </h4>
+                      <p className="s-text-xs s-text-green-600">
+                        Ready to export
+                      </p>
+                    </div>
+                  </div>
+                }
+                side="right"
+                sideOffset={8}
+              >
+                <DropdownMenuItem
+                  icon={CloudArrowDownIcon}
+                  label="Export Data"
+                />
+              </DropdownTooltipTrigger>
+              <DropdownMenuItem label="Share Report" />
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Left-side tooltip example */}
+          <div className="s-ml-auto">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button label="Right Side Menu" variant="outline" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="s-w-56">
+                <DropdownMenuItem label="Regular Item" />
+                <DropdownTooltipTrigger
+                  description="This tooltip appears on the left side when the dropdown is positioned on the right side of the screen."
+                  media={
+                    <div className="s-text-center">
+                      <div className="s-mb-2 s-text-2xl">⬅️</div>
+                      <p className="s-text-sm s-font-medium s-text-orange-800">
+                        Positioned Left
+                      </p>
+                      <p className="s-mt-1 s-text-xs s-text-orange-600">
+                        Perfect for right-side menus
+                      </p>
+                    </div>
+                  }
+                  side="left"
+                  sideOffset={8}
+                >
+                  <DropdownMenuItem icon={MagicIcon} label="Help Item" />
+                </DropdownTooltipTrigger>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        <p className="s-max-w-lg s-text-sm s-text-gray-600">
+          Hover over menu items with icons to see rich tooltips that provide
+          contextual information and step-by-step instructions. The tooltip
+          positioning automatically adapts based on available space.
+        </p>
+      </div>
     );
   },
 };

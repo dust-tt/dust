@@ -1,5 +1,6 @@
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useAppRouter } from "@app/lib/platform";
 
 type ParamValue = {
   value: string | undefined;
@@ -15,7 +16,7 @@ type UseQueryParamsResult<T extends string[]> = {
 export function useQueryParams<T extends string[]>(
   paramNames: T
 ): UseQueryParamsResult<T> {
-  const router = useRouter();
+  const router = useAppRouter();
   const [values, setValues] = useState<Record<string, string | undefined>>({});
 
   useEffect(() => {
@@ -69,11 +70,22 @@ export function useQueryParams<T extends string[]>(
       );
 
       if (hasChanges) {
-        void router.push(
-          { pathname: router.pathname, query: updatedQuery },
-          undefined,
-          { shallow: true }
-        );
+        // Preserve the hash when updating query params
+        const hash = window.location.hash;
+        void router
+          .push({ pathname: router.pathname, query: updatedQuery }, undefined, {
+            shallow: true,
+          })
+          .then(() => {
+            // Restore hash after router.push (Next.js doesn't preserve it)
+            if (hash && window.location.hash !== hash) {
+              window.history.replaceState(
+                null,
+                "",
+                `${window.location.pathname}${window.location.search}${hash}`
+              );
+            }
+          });
       }
     },
     [router, paramNames]

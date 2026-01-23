@@ -20,9 +20,18 @@ const SLASH_COMMANDS: SlashCommand[] = [
   {
     id: "add-knowledge",
     action: INSERT_KNOWLEDGE_NODE_ACTION,
-    description: "Use company knowledge for context",
     icon: AttachmentIcon,
     label: "Add knowledge",
+    tooltip: {
+      description: "Use company knowledge for context.",
+      media: (
+        <img
+          alt="Knowledge Search Interface"
+          className="aspect-[4/3] w-full rounded object-cover"
+          src="/static/landing/product/Knowledge_Tooltips.jpg"
+        />
+      ),
+    },
   },
 ];
 
@@ -49,7 +58,9 @@ export const SlashCommandExtension =
             return SLASH_COMMANDS.filter(
               (command) =>
                 command.label.toLowerCase().includes(query.toLowerCase()) ||
-                command.description.toLowerCase().includes(query.toLowerCase())
+                command.tooltip?.description
+                  .toLowerCase()
+                  .includes(query.toLowerCase())
             );
           },
         },

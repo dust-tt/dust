@@ -1,6 +1,8 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
-import _ from "lodash";
+import keyBy from "lodash/keyBy";
+import omit from "lodash/omit";
+import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { DEFAULT_MCP_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
@@ -17,7 +19,7 @@ import {
 } from "@app/lib/api/assistant/configuration/agent";
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
 import { getAgentsEditors } from "@app/lib/api/assistant/editors";
-import { getAgentConfigurationRequirementsFromActions } from "@app/lib/api/assistant/permissions";
+import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
 import { getAgentsRecentAuthors } from "@app/lib/api/assistant/recent_authors";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { runOnRedis } from "@app/lib/api/redis";
@@ -135,12 +137,12 @@ async function handler(
             });
           }
         );
-        const usageMap = _.keyBy(mentionCounts, "agentId");
+        const usageMap = keyBy(mentionCounts, "agentId");
         agentConfigurations = agentConfigurations.map((agentConfiguration) =>
           usageMap[agentConfiguration.sId]
             ? {
                 ...agentConfiguration,
-                usage: _.omit(usageMap[agentConfiguration.sId], ["agentId"]),
+                usage: omit(usageMap[agentConfiguration.sId], ["agentId"]),
               }
             : agentConfiguration
         );
@@ -314,38 +316,28 @@ export async function createOrUpgradeAgentConfiguration({
     await UserResource.fetchByIds(assistant.editors.map((e) => e.sId))
   ).map((e) => e.toJSON());
 
-  const requirements = await getAgentConfigurationRequirementsFromActions(
+  let skills: SkillResource[] = [];
+  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+  if (
+    featureFlags.includes("skills") &&
+    assistant.skills &&
+    assistant.skills.length > 0
+  ) {
+    skills = await SkillResource.fetchByIds(
+      auth,
+      assistant.skills.map((s) => s.sId)
+    );
+  }
+
+  const requirements = await getAgentConfigurationRequirementsFromCapabilities(
     auth,
     {
       actions,
+      skills,
     }
   );
 
   let allRequestedSpaceIds = requirements.requestedSpaceIds;
-
-  // Collect requestedSpaceIds from skills (only when feature flag is enabled)
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("skills")) {
-    const skillResources = await SkillResource.fetchByIds(
-      auth,
-      (assistant.skills ?? []).map((s) => s.sId)
-    );
-
-    const skillRequestedSpaceIds = new Set<number>();
-    for (const skillResource of skillResources) {
-      for (const spaceId of skillResource.requestedSpaceIds) {
-        skillRequestedSpaceIds.add(spaceId);
-      }
-    }
-
-    // Merge action and skill requestedSpaceIds
-    allRequestedSpaceIds = [
-      ...new Set([
-        ...requirements.requestedSpaceIds,
-        ...skillRequestedSpaceIds,
-      ]),
-    ];
-  }
 
   // Collect additional requestedSpaceIds
   if (
@@ -376,9 +368,9 @@ export async function createOrUpgradeAgentConfiguration({
       additionalSpaces.map((s) => getResourceIdFromSId(s.sId))
     );
 
-    allRequestedSpaceIds = [
-      ...new Set([...allRequestedSpaceIds, ...additionalSpaceModelIds]),
-    ];
+    allRequestedSpaceIds = uniq(
+      allRequestedSpaceIds.concat(additionalSpaceModelIds)
+    );
   }
 
   const agentConfigurationRes = await createAgentConfiguration(auth, {
@@ -445,28 +437,26 @@ export async function createOrUpgradeAgentConfiguration({
       // the previous version back to `active` status so the agent remains
       // available.
       if (agentConfigurationId) {
-        try {
-          const restored = await restoreAgentConfiguration(
-            auth,
-            agentConfigurationRes.value.sId
-          );
-          if (!restored) {
-            logger.error(
-              {
-                workspaceId: auth.getNonNullableWorkspace().sId,
-                agentConfigurationId: agentConfigurationRes.value.sId,
-              },
-              "Failed to restore previous agent version after action creation error"
-            );
-          }
-        } catch (e) {
+        const restoredResult = await restoreAgentConfiguration(
+          auth,
+          agentConfigurationRes.value.sId
+        );
+        if (restoredResult.isErr()) {
           logger.error(
             {
-              error: e,
+              error: restoredResult.error,
               workspaceId: auth.getNonNullableWorkspace().sId,
               agentConfigurationId: agentConfigurationRes.value.sId,
             },
             "Error while restoring previous agent version after rollback"
+          );
+        } else if (!restoredResult.value.restored) {
+          logger.error(
+            {
+              workspaceId: auth.getNonNullableWorkspace().sId,
+              agentConfigurationId: agentConfigurationRes.value.sId,
+            },
+            "Failed to restore previous agent version after action creation error"
           );
         }
       }

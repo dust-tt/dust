@@ -2,10 +2,12 @@ import type { Options } from "@contentful/rich-text-react-renderer";
 import { documentToReactComponents } from "@contentful/rich-text-react-renderer";
 import type { Block, Document, Inline } from "@contentful/rich-text-types";
 import { BLOCKS, INLINES, MARKS } from "@contentful/rich-text-types";
+import { cn } from "@dust-tt/sparkle";
 import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
+import { LessonLink } from "@app/components/academy/LessonLink";
 import { A, H2, H3, H4, H5 } from "@app/components/home/ContentComponents";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import {
@@ -250,6 +252,9 @@ const renderOptions: Options = {
       </blockquote>
     ),
     [BLOCKS.EMBEDDED_ASSET]: (node) => {
+      if (!node.data?.target?.fields) {
+        return null;
+      }
       const { file, title, description } = node.data.target.fields;
       if (!file) {
         return null;
@@ -268,6 +273,85 @@ const renderOptions: Options = {
           height={height}
         />
       );
+    },
+    [BLOCKS.TABLE]: (_node, children) => (
+      <div
+        className={cn(
+          "rich-text-table",
+          "mb-10 mt-8 overflow-x-auto",
+          "rounded-lg border border-border"
+        )}
+      >
+        <table className={cn("w-full border-collapse")}>
+          <tbody>{children}</tbody>
+        </table>
+      </div>
+    ),
+    [BLOCKS.TABLE_ROW]: (_node, children) => <tr>{children}</tr>,
+    [BLOCKS.TABLE_HEADER_CELL]: (_node, children) => (
+      <th
+        className={cn(
+          "border-b border-r border-border/50",
+          "bg-gray-50 px-4 py-3",
+          "text-left align-middle text-sm font-semibold text-foreground"
+        )}
+      >
+        {children}
+      </th>
+    ),
+    [BLOCKS.TABLE_CELL]: (_node, children) => (
+      <td
+        className={cn(
+          "border-b border-r border-border/50",
+          "px-4 py-3",
+          "align-middle text-sm text-foreground"
+        )}
+      >
+        {children}
+      </td>
+    ),
+    [BLOCKS.EMBEDDED_ENTRY]: (node) => {
+      if (!node.data?.target) {
+        return null;
+      }
+      const entry = node.data.target;
+      const contentType = entry?.sys?.contentType?.sys?.id;
+
+      // Handle lesson entries
+      if (contentType === "lesson") {
+        const fields = entry.fields;
+        const title = isString(fields.title) ? fields.title : "";
+        const slug = isString(fields.slug) ? fields.slug : "";
+        const description = isString(fields.description)
+          ? fields.description
+          : null;
+        const lessonId = isString(fields.lessonId) ? fields.lessonId : null;
+        const estimatedDurationMinutes =
+          typeof fields.estimatedDurationMinutes === "number"
+            ? fields.estimatedDurationMinutes
+            : null;
+        const complexity = isString(fields.complexity)
+          ? fields.complexity
+          : null;
+
+        if (!title || !slug) {
+          return null;
+        }
+
+        return (
+          <LessonLink
+            title={title}
+            slug={slug}
+            description={description}
+            lessonId={lessonId}
+            estimatedDurationMinutes={estimatedDurationMinutes}
+            complexity={complexity}
+          />
+        );
+      }
+
+      // Fallback for other embedded entry types
+      return null;
     },
     [INLINES.HYPERLINK]: (node, children) => {
       const url = node.data.uri;

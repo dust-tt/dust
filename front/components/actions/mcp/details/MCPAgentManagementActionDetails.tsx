@@ -2,7 +2,9 @@ import {
   ActionRobotIcon,
   Avatar,
   Button,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   ExternalLinkIcon,
   Markdown,
@@ -13,6 +15,7 @@ import { useSWRConfig } from "swr";
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { isAgentCreationResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import { GLOBAL_SPACE_NAME } from "@app/types";
 
 export function MCPAgentManagementActionDetails({
   toolOutput,
@@ -105,26 +108,26 @@ export function MCPAgentManagementActionDetails({
             <ul className="list-inside list-disc text-sm text-muted-foreground dark:text-muted-foreground-night">
               <li>Web search and browse tools</li>
               <li>Search across workspace data sources</li>
-              <li>Query tools for data warehouses in Company Data</li>
+              <li>Query tools for data warehouses in {GLOBAL_SPACE_NAME}</li>
               {subAgent && <li>Run @{subAgent.name} sub-agent</li>}
             </ul>
           </div>
 
           {typeof toolParams.instructions === "string" ? (
-            <CollapsibleComponent
-              triggerChildren={
+            <Collapsible>
+              <CollapsibleTrigger>
                 <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                   Instructions
                 </span>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="mt-2">
                   <ContentMessage variant="primary" size="sm">
                     <Markdown content={toolParams.instructions} />
                   </ContentMessage>
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           ) : null}
 
           <Button
@@ -167,20 +170,20 @@ export function MCPAgentManagementActionDetails({
               </div>
 
               {typeof toolParams.sub_agent_instructions === "string" ? (
-                <CollapsibleComponent
-                  triggerChildren={
+                <Collapsible>
+                  <CollapsibleTrigger>
                     <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                       Instructions
                     </span>
-                  }
-                  contentChildren={
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
                     <div className="mt-2">
                       <ContentMessage variant="primary" size="sm">
                         <Markdown content={toolParams.sub_agent_instructions} />
                       </ContentMessage>
                     </div>
-                  }
-                />
+                  </CollapsibleContent>
+                </Collapsible>
               ) : null}
 
               <Button

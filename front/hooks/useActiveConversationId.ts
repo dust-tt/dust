@@ -1,8 +1,9 @@
-import { useRouter } from "next/router";
 import { useMemo } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
+
 export function useActiveConversationId() {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const activeConversationId = useMemo(() => {
     const conversationId = router.query.cId ?? "";

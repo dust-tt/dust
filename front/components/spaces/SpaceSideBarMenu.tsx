@@ -13,7 +13,6 @@ import {
 import type { ReturnTypeOf } from "@octokit/core/types";
 import sortBy from "lodash/sortBy";
 import uniqBy from "lodash/uniqBy";
-import { useRouter } from "next/router";
 import type { ComponentType, ReactElement } from "react";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -31,6 +30,7 @@ import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
   CATEGORY_DETAILS,
@@ -85,6 +85,7 @@ export default function SpaceSideBarMenu({
 
   const { spaces: spacesAsUser, isSpacesLoading: isSpacesAsUserLoading } =
     useSpaces({
+      kinds: ["global", "regular"],
       workspaceId: owner.sId,
     });
 
@@ -317,7 +318,7 @@ const SystemSpaceItem = ({
   visual: IconType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const itemPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
 
@@ -373,7 +374,7 @@ const SpaceMenuItem = ({
   isMember: boolean;
   hasFeature: ReturnTypeOf<typeof useFeatureFlags>["hasFeature"];
 }) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const { setNavigationSelection } = usePersistedNavigationSelection();
   const spacePath = `/w/${owner.sId}/spaces/${space.sId}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
@@ -466,7 +467,7 @@ const SpaceDataSourceViewItem = ({
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const { isNodesLoading, nodes, totalNodesCountIsAccurate, totalNodesCount } =
@@ -581,7 +582,7 @@ const SpaceDataSourceViewSubMenu = ({
   category: DataSourceViewCategoryWithoutApps;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
@@ -647,7 +648,7 @@ const SpaceAppItem = ({
   owner: LightWorkspaceType;
 }): ReactElement => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
 
   const appPath = `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`;
 
@@ -700,7 +701,7 @@ const SpaceAppSubMenu = ({
   category: "apps";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceCategoryPath,
@@ -752,7 +753,7 @@ const SpaceActionsSubMenu = ({
   category: "actions";
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceCategoryPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceCategoryPath,
@@ -824,7 +825,7 @@ const SpaceTriggersSubMenu = ({
   space: SpaceType;
 }) => {
   const { setNavigationSelection } = usePersistedNavigationSelection();
-  const router = useRouter();
+  const router = useAppRouter();
   const spaceTriggersPath = `/w/${owner.sId}/spaces/${space.sId}/categories/${TRIGGERS_CATEGORY}`;
   const { isExpanded, toggleExpanded, isSelected } = useSpaceSidebarItemFocus({
     path: spaceTriggersPath,

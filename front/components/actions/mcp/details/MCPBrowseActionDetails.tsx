@@ -1,5 +1,4 @@
-import { FaviconIcon, GlobeAltIcon } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { FaviconIcon, GlobeAltIcon, LinkWrapper } from "@dust-tt/sparkle";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
 import { ToolGeneratedFileDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
@@ -59,13 +58,13 @@ export function MCPBrowseActionDetails({
                         {(() => {
                           const urlValidation = validateUrl(r.uri);
                           return urlValidation.valid ? (
-                            <Link
+                            <LinkWrapper
                               href={urlValidation.standardized}
                               target="_blank"
                               rel="noopener noreferrer"
                             >
                               {r.title ?? r.requestedUrl}
-                            </Link>
+                            </LinkWrapper>
                           ) : (
                             <span className="text-sm text-foreground dark:text-foreground-night">
                               {r.title ?? r.requestedUrl} (invalid URL)

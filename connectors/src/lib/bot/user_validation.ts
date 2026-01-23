@@ -1,24 +1,8 @@
-import { DustAPI } from "@dust-tt/client";
-
-import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
+import { getDustAPI } from "@connectors/lib/api/dust_api";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { DataSourceConfig } from "@connectors/types";
 import { cacheWithRedis } from "@connectors/types";
-
-function getDustAPI(dataSourceConfig: DataSourceConfig) {
-  return new DustAPI(
-    {
-      url: apiConfig.getDustFrontAPIUrl(),
-    },
-    {
-      apiKey: dataSourceConfig.workspaceAPIKey,
-      workspaceId: dataSourceConfig.workspaceId,
-    },
-    logger
-  );
-}
 
 async function getActiveMemberEmails(
   connector: ConnectorResource
@@ -26,7 +10,7 @@ async function getActiveMemberEmails(
   const ds = dataSourceConfigFromConnector(connector);
 
   // List the emails of all active members in the workspace.
-  const dustAPI = getDustAPI(ds);
+  const dustAPI = getDustAPI(ds, { useInternalAPI: false });
 
   const activeMemberEmailsRes =
     await dustAPI.getActiveMemberEmailsInWorkspace();

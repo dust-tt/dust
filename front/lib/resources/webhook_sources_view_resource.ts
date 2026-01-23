@@ -274,6 +274,26 @@ export class WebhookSourcesViewResource extends ResourceWithSpace<WebhookSources
     );
   }
 
+  /**
+   * List all webhook source views for a webhook source without space permission filtering.
+   * This is used internally for webhook trigger processing where authorization
+   * is already established via the webhook URL secret.
+   *
+   * SECURITY: Only use this for internal webhook processing. The webhook secret
+   * in the URL serves as the authorization mechanism for these requests.
+   */
+  static async listByWebhookSourceForInternalProcessing(
+    auth: Authenticator,
+    webhookSourceModelId: ModelId
+  ): Promise<WebhookSourcesViewResource[]> {
+    // baseFetch already ensures we only return views from the same workspace.
+    // We skip the additional canReadOrAdministrate check since the webhook
+    // request was already authorized via the URL secret.
+    return this.baseFetch(auth, {
+      where: { webhookSourceId: webhookSourceModelId },
+    });
+  }
+
   static async getWebhookSourceViewForSystemSpace(
     auth: Authenticator,
     webhookSourceSId: string

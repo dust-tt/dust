@@ -1,23 +1,12 @@
 import type {
   AshbyCandidate,
+  AshbyCandidateNote,
   AshbyFeedbackSubmission,
   AshbyReportSynchronousResponse,
 } from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
 
 function renderCandidate(candidate: AshbyCandidate): string {
   const lines = [`ID: ${candidate.id}`, `Name: ${candidate.name}`];
-
-  if (candidate.primaryEmailAddress) {
-    lines.push(
-      `Email: ${candidate.primaryEmailAddress.value} (${candidate.primaryEmailAddress.type})`
-    );
-  }
-
-  if (candidate.primaryPhoneNumber) {
-    lines.push(
-      `Phone: ${candidate.primaryPhoneNumber.value} (${candidate.primaryPhoneNumber.type})`
-    );
-  }
 
   if (candidate.createdAt) {
     lines.push(`Created: ${new Date(candidate.createdAt).toISOString()}`);
@@ -114,10 +103,6 @@ export function renderInterviewFeedbackRecap(
     `**Candidate:** ${candidate.name}`,
   ];
 
-  if (candidate.primaryEmailAddress) {
-    header.push(`**Email:** ${candidate.primaryEmailAddress.value}`);
-  }
-
   header.push(
     "",
     `**Total Feedback:** ${allFeedback.length}`,
@@ -131,4 +116,41 @@ export function renderInterviewFeedbackRecap(
   );
 
   return header.join("\n") + feedbackTexts.join(`\n\n${delimiterLine}\n\n`);
+}
+
+function renderSingleNote(note: AshbyCandidateNote): string {
+  const lines: string[] = [];
+
+  if (note.author) {
+    lines.push(
+      `**Author:** ${note.author.firstName} ${note.author.lastName} (${note.author.email})`
+    );
+  }
+
+  lines.push(`**Created at:** ${new Date(note.createdAt).toISOString()}`);
+  lines.push("");
+  lines.push(note.content);
+
+  return lines.join("\n");
+}
+
+export function renderCandidateNotes(
+  candidate: AshbyCandidate,
+  notes: AshbyCandidateNote[]
+): string {
+  const delimiterLine = "=".repeat(80);
+
+  const header = [
+    "# Candidate Notes",
+    "",
+    `**Candidate:** ${candidate.name}`,
+    "",
+    `**Total Notes:** ${notes.length}`,
+    "",
+    delimiterLine,
+    "",
+  ];
+  const noteTexts = notes.map((note) => renderSingleNote(note));
+
+  return header.join("\n") + noteTexts.join(`\n\n${delimiterLine}\n\n`);
 }

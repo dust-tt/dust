@@ -1,11 +1,10 @@
 import { heartbeat } from "@temporalio/activity";
 import assert from "assert";
+import tracer from "dd-trace";
 
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { buildToolSpecification } from "@app/lib/actions/mcp";
-import {
-  TOOL_NAME_SEPARATOR,
-  tryListMCPTools,
-} from "@app/lib/actions/mcp_actions";
+import { tryListMCPTools } from "@app/lib/actions/mcp_actions";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { StepContext } from "@app/lib/actions/types";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
@@ -26,20 +25,22 @@ import {
   fetchMessageInConversation,
   getCompletionDuration,
 } from "@app/lib/api/assistant/messages";
-import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
-import config from "@app/lib/api/config";
+import {
+  createSkillKnowledgeFileSystemServer,
+  getSkillDataSourceConfigurations,
+  getSkillServers,
+} from "@app/lib/api/assistant/skill_actions";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
 import {
+  getUserFacingLLMErrorMessage,
   LLM_ERROR_TYPE_TO_CATEGORY,
-  USER_FACING_LLM_ERROR_MESSAGES,
 } from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
-import { cloneBaseConfig, getDustProdAction } from "@app/lib/registry";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -50,7 +51,7 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
-import { assertNever, removeNulls } from "@app/types";
+import { assertNever, isTextContent, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
 
 const MAX_AUTO_RETRY = 3;
@@ -198,6 +199,21 @@ export async function runModelActivity(
     skills: enabledSkills,
   });
 
+  // Add file system server if skills have attached knowledge.
+  const dataSourceConfigurations = await getSkillDataSourceConfigurations(
+    auth,
+    {
+      skills: enabledSkills,
+    }
+  );
+
+  const fileSystemServer = await createSkillKnowledgeFileSystemServer(auth, {
+    dataSourceConfigurations,
+  });
+  if (fileSystemServer) {
+    skillServers.push(fileSystemServer);
+  }
+
   const {
     serverToolsAndInstructions: mcpActions,
     error: mcpToolsListingError,
@@ -257,7 +273,7 @@ export async function runModelActivity(
     hasAvailableActions: availableActions.length > 0,
     errorContext: mcpToolsListingError,
     agentsList,
-    conversationId: conversation.sId,
+    conversation,
     serverToolsAndInstructions: mcpActions,
     enabledSkills,
     equippedSkills,
@@ -280,13 +296,17 @@ export async function runModelActivity(
   );
 
   // Turn the conversation into a digest that can be presented to the model.
-  const modelConversationRes = await renderConversationForModel(auth, {
-    conversation,
-    model,
-    prompt,
-    tools,
-    allowedTokenCount: model.contextSize - model.generationTokensCount,
-  });
+  const modelConversationRes = await tracer.trace(
+    "renderConversationForModel",
+    async () =>
+      renderConversationForModel(auth, {
+        conversation,
+        model,
+        prompt,
+        tools,
+        allowedTokenCount: model.contextSize - model.generationTokensCount,
+      })
+  );
 
   if (modelConversationRes.isErr()) {
     const categorizedError = categorizeConversationRenderErrorMessage(
@@ -348,52 +368,69 @@ export async function runModelActivity(
     seen.add(spec.name);
   }
 
-  const runConfig = cloneBaseConfig(
-    getDustProdAction("assistant-v2-multi-actions-agent").config
+  const contentParser = new AgentMessageContentParser(
+    agentConfiguration,
+    agentMessage.sId,
+    getDelimitersConfiguration({ agentConfiguration })
   );
-  if (isLegacyAgent) {
-    runConfig.MODEL.function_call =
-      specifications.length === 1 ? specifications[0].name : null;
-  } else {
-    runConfig.MODEL.function_call = specifications.length === 0 ? null : "auto";
-  }
-  runConfig.MODEL.provider_id = model.providerId;
-  runConfig.MODEL.model_id = model.modelId;
-  runConfig.MODEL.temperature = agentConfiguration.model.temperature;
 
-  const reasoningEffort =
-    agentConfiguration.model.reasoningEffort ?? model.defaultReasoningEffort;
+  const traceContext: LLMTraceContext = {
+    operationType: "agent_conversation",
+    agentConfigurationId: agentConfiguration.sId,
+    conversationId: conversation.sId,
+    userId: auth.user()?.sId,
+    workspaceId: conversation.owner.sId,
+  };
 
-  if (
-    reasoningEffort !== "none" &&
-    (reasoningEffort !== "light" || model.useNativeLightReasoning)
-  ) {
-    runConfig.MODEL.reasoning_effort = reasoningEffort;
-  }
+  const llm = await getLLM(auth, {
+    modelId: model.modelId,
+    temperature: agentConfiguration.model.temperature,
+    reasoningEffort: agentConfiguration.model.reasoningEffort,
+    responseFormat: agentConfiguration.model.responseFormat,
+    context: traceContext,
+    // Custom trace input: show only the last user message instead of full conversation.
+    getTraceInput: (conv) => {
+      const lastUserMessage = conv.messages.findLast(
+        (msg) => msg.role === "user"
+      );
+      return lastUserMessage?.content
+        .filter(isTextContent)
+        .map((item) => item.text)
+        .join("\n");
+    },
+    // Custom trace output: only set on final call (no tool calls, has content).
+    getTraceOutput: (output) =>
+      !output.toolCalls?.length && output.content ? output.content : undefined,
+  });
 
-  if (agentConfiguration.model.responseFormat) {
-    runConfig.MODEL.response_format = JSON.parse(
-      agentConfiguration.model.responseFormat
+  // Should not happen
+  if (llm === null) {
+    localLogger.error(
+      {
+        conversationId: conversation.sId,
+        workspaceId: conversation.owner.sId,
+      },
+      "LLM is null in runModelActivity, cannot proceed."
     );
+
+    return null;
   }
-  const anthropicBetaFlags = config.getMultiActionsAgentAnthropicBetaFlags();
-  if (anthropicBetaFlags) {
-    runConfig.MODEL.anthropic_beta_flags = anthropicBetaFlags;
-  }
+
+  const metadata = llm.getMetadata();
 
   // Errors occurring during the multi-actions-agent dust app may be retryable.
   // Their implicit code should be "multi_actions_error".
-  async function handlePossiblyRetryableError(
+  const handlePossiblyRetryableError = async (
     errorInfo: LLMErrorInfo,
     dustRunId?: string
-  ) {
+  ) => {
     const { isRetryable, message, type } = errorInfo;
 
     if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
       await publishAgentError(
         {
           code: "multi_actions_error",
-          message: USER_FACING_LLM_ERROR_MESSAGES[type],
+          message: getUserFacingLLMErrorMessage(type, metadata),
           metadata: {
             category: LLM_ERROR_TYPE_TO_CATEGORY[type],
             retriesAttempted: autoRetryCount,
@@ -425,41 +462,7 @@ export async function runModelActivity(
       functionCallStepContentIds,
       autoRetryCount: autoRetryCount + 1,
     });
-  }
-
-  const contentParser = new AgentMessageContentParser(
-    agentConfiguration,
-    agentMessage.sId,
-    getDelimitersConfiguration({ agentConfiguration })
-  );
-
-  const traceContext: LLMTraceContext = {
-    operationType: "agent_conversation",
-    conversationId: conversation.sId,
-    userId: auth.user()?.sId,
-    workspaceId: conversation.owner.sId,
   };
-
-  const llm = await getLLM(auth, {
-    modelId: model.modelId,
-    temperature: agentConfiguration.model.temperature,
-    reasoningEffort: agentConfiguration.model.reasoningEffort,
-    responseFormat: agentConfiguration.model.responseFormat,
-    context: traceContext,
-  });
-
-  // Should not happen
-  if (llm === null) {
-    localLogger.error(
-      {
-        conversationId: conversation.sId,
-        workspaceId: conversation.owner.sId,
-      },
-      "LLM is null in runModelActivity, cannot proceed."
-    );
-
-    return null;
-  }
 
   const modelInteractionStartDate = performance.now();
 
@@ -472,7 +475,6 @@ export async function runModelActivity(
     modelConversationRes,
     conversation,
     userMessage,
-    runConfig,
     specifications,
     flushParserTokens,
     contentParser,

@@ -26,7 +26,6 @@ export const RESOURCES_PREFIX = {
   space: "vlt",
   data_source: "dts",
   data_source_view: "dsv",
-  tracker: "trk",
   template: "tpl",
   extension: "ext",
   mcp_server_connection: "msc",
@@ -59,6 +58,15 @@ export const RESOURCES_PREFIX = {
 
   // Skills.
   skill: "skl",
+
+  // Agent suggestions.
+  agent_suggestion: "asu",
+
+  // Workspace verification.
+  workspace_verification_attempt: "wva",
+
+  // Project metadata.
+  project_metadata: "pmd",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

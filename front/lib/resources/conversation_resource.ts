@@ -52,6 +52,7 @@ export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
   dangerouslySkipPermissionFiltering?: boolean;
+  updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
 
 interface UserParticipation {
@@ -142,16 +143,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   private static getOptions(
     options?: FetchConversationOptions
   ): ResourceFindOptions<ConversationModel> {
-    if (options?.includeDeleted) {
-      return {
-        where: {},
-      };
+    const where: WhereOptions<ConversationModel> = {};
+
+    if (!options?.includeDeleted) {
+      where.visibility = { [Op.ne]: "deleted" };
+    }
+
+    if (options?.updatedSince !== undefined) {
+      where.updatedAt = { [Op.gte]: new Date(options.updatedSince) };
     }
 
     return {
-      where: {
-        visibility: { [Op.ne]: "deleted" },
-      },
+      where,
     };
   }
 
@@ -184,7 +187,9 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const spaces =
       uniqueSpaceIds.length === 0
         ? []
-        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds);
+        : await SpaceResource.fetchByModelIds(auth, uniqueSpaceIds, {
+            includeDeleted: fetchConversationOptions?.includeDeleted,
+          });
 
     const spaceIdToSpaceMap = new Map(spaces.map((s) => [s.id, s]));
 
@@ -208,9 +213,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // We should probably only filter out conversations where the spaceId is deleted but keep the one that referenced a deleted space.
     const foundSpaceIds = new Set(spaces.map((s) => s.id));
     const validConversations = conversations
-      .filter((c) =>
-        c.requestedSpaceIds.every((id) => foundSpaceIds.has(Number(id)))
-      )
+      .filter((c) => c.requestedSpaceIds.every((id) => foundSpaceIds.has(id)))
       .map(
         (c) =>
           new this(
@@ -227,8 +230,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       auth.canRead(
         createResourcePermissionsFromSpacesWithMap(
           spaceIdToGroupsMap,
-          // Parse as Number since Sequelize array of BigInts are returned as strings.
-          c.requestedSpaceIds.map((id) => Number(id))
+          c.requestedSpaceIds
         )
       )
     );
@@ -339,7 +341,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         !auth.canRead(
           createResourcePermissionsFromSpacesWithMap(
             spaceIdToGroupsMap,
-            conversation.requestedSpaceIds.map((id) => Number(id))
+            conversation.requestedSpaceIds
           )
         )
       ) {
@@ -439,48 +441,65 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
   static async listAllBeforeDate(
     auth: Authenticator,
+    cutoffDate: Date,
     options?: FetchConversationOptions & {
       batchSize?: number;
-      cutoffDate: Date;
     }
   ): Promise<ConversationResource[]> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const { batchSize = 1000, cutoffDate } = options ?? {};
+    const { batchSize = 1000 } = options ?? {};
 
-    const inactiveConversations = await MessageModel.findAll({
-      attributes: [
-        "conversationId",
-        [fn("MAX", col("createdAt")), "lastMessageDate"],
-      ],
-      where: {
-        workspaceId,
-      },
-      group: ["conversationId"],
-      having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
-      order: [[fn("MAX", col("createdAt")), "DESC"]],
-    });
+    // Step 1: Retrieve conversation IDs started before the cutoff date.
+    // This pre-filters conversations so we don't scan all messages in the workspace.
+    const conversationsStartedBeforeCutoff =
+      await this.baseFetchWithAuthorization(auth, options, {
+        where: {
+          workspaceId,
+          createdAt: { [Op.lt]: cutoffDate },
+        },
+      });
 
-    // We batch to avoid a big where in clause.
-    const results: ConversationResource[] = [];
-    for (let i = 0; i < inactiveConversations.length; i += batchSize) {
-      const batch = inactiveConversations.slice(i, i + batchSize);
-      const conversations = await this.baseFetchWithAuthorization(
-        auth,
-        options,
-        {
-          where: {
-            id: {
-              [Op.in]: batch.map((m) => m.conversationId),
-            },
-          },
-        }
-      );
-
-      results.push(...conversations);
+    if (conversationsStartedBeforeCutoff.length === 0) {
+      return [];
     }
 
-    return results;
+    const candidateConversationIds = conversationsStartedBeforeCutoff.map(
+      (c) => c.id
+    );
+
+    // Step 2: Query messages in batches to find inactive conversations
+    // (those with no messages after the cutoff date).
+    const inactiveConversationIds: Set<number> = new Set();
+
+    for (let i = 0; i < candidateConversationIds.length; i += batchSize) {
+      const batchIds = candidateConversationIds.slice(i, i + batchSize);
+
+      const inactiveInBatch = await MessageModel.findAll({
+        attributes: [
+          "conversationId",
+          [fn("MAX", col("createdAt")), "lastMessageDate"],
+        ],
+        where: {
+          workspaceId,
+          conversationId: { [Op.in]: batchIds },
+        },
+        group: ["conversationId"],
+        having: where(fn("MAX", col("createdAt")), "<", cutoffDate),
+      });
+
+      inactiveInBatch.forEach((m) =>
+        inactiveConversationIds.add(m.conversationId)
+      );
+    }
+
+    if (inactiveConversationIds.size === 0) {
+      return [];
+    }
+
+    return conversationsStartedBeforeCutoff.filter((c) =>
+      inactiveConversationIds.has(c.id)
+    );
   }
 
   static async listConversationWithAgentCreatedBeforeDate(
@@ -583,6 +602,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
       spaceId: conversation.space?.sId ?? null,
       depth: conversation.depth,
+      metadata: conversation.metadata,
     });
   }
 
@@ -692,7 +712,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     // Fetch participation map for the user for these conversations
     const conversationIds = conversations.map((c) => c.id);
     const participationMap =
-      conversationIds.length > 0
+      conversationIds.length > 0 && auth.user()
         ? await this.fetchParticipationMapForUser(auth, conversationIds)
         : new Map<number, UserParticipation>();
 
@@ -746,6 +766,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
           spaceId: c.space?.sId ?? null,
           depth: c.depth,
+          metadata: c.metadata,
         };
       })
     );
@@ -826,25 +847,40 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
+  /**
+   * Marks conversation as unread for other participants (excluding the sender).
+   */
   static async markAsUnreadForOtherParticipants(
     auth: Authenticator,
     {
       conversation,
       excludedUser,
+      transaction,
     }: {
       conversation: ConversationWithoutContentType;
       excludedUser?: UserType;
+      transaction?: Transaction;
     }
   ) {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
+    const whereClause: WhereOptions<
+      InferAttributes<ConversationParticipantModel>
+    > = {
+      conversationId: conversation.id,
+      workspaceId,
+      unread: false,
+    };
+
+    if (excludedUser) {
+      whereClause.userId = { [Op.ne]: excludedUser.id };
+    }
+
     const updated = await ConversationParticipantModel.update(
       { unread: true },
       {
-        where: {
-          conversationId: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          ...(excludedUser ? { userId: { [Op.ne]: excludedUser.id } } : {}),
-          unread: false,
-        },
+        where: whereClause,
+        transaction,
       }
     );
     return new Ok(updated);
@@ -928,11 +964,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       action,
       user,
       transaction,
+      unread = false,
     }: {
       conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
       user: UserType | null;
       transaction?: Transaction;
+      unread?: boolean;
     }
   ): Promise<"added" | "updated" | "none"> {
     if (!user) {
@@ -974,7 +1012,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             action,
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-            unread: false,
+            unread,
             actionRequired: false,
           },
           { transaction: t }
@@ -1496,11 +1534,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     try {
       await ConversationMCPServerViewModel.destroy({
-        where: { workspaceId: owner.id, conversationId: this.id },
+        where: {
+          workspaceId: owner.id,
+          conversationId: this.id,
+        },
         transaction,
       });
       await ConversationParticipantModel.destroy({
-        where: { workspaceId: owner.id, conversationId: this.id },
+        where: {
+          workspaceId: owner.id,
+          conversationId: this.id,
+        },
         transaction,
       });
       await ConversationResource.model.destroy({
@@ -1569,6 +1613,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       created: this.createdAt.getTime(),
       updated: this.updatedAt.getTime(),
       spaceId: this.space?.sId ?? null,
+      triggerId: this.triggerSId,
       hasError: this.hasError,
       id: this.id,
       // TODO(REQUESTED_SPACE_IDS 2025-10-24): Stop exposing this once all logic is centralized
@@ -1578,6 +1623,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: this.title,
       unread: participation.unread,
       depth: this.depth,
+      metadata: this.metadata,
     };
   }
 }

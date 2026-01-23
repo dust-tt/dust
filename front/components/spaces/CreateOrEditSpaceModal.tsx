@@ -8,15 +8,15 @@ import {
   SheetFooter,
   SheetHeader,
   SheetTitle,
-  SliderToggle,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import * as React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { ConfirmDeleteSpaceDialog } from "@app/components/spaces/ConfirmDeleteSpaceDialog";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
+import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
+import { useAppRouter } from "@app/lib/platform";
 import { useGroups } from "@app/lib/swr/groups";
 import {
   useCreateSpace,
@@ -35,12 +35,6 @@ import type {
 } from "@app/types";
 
 type MembersManagementType = "manual" | "group";
-
-function isMembersManagementType(
-  value: string
-): value is MembersManagementType {
-  return value === "manual" || value === "group";
-}
 
 interface CreateOrEditSpaceModalProps {
   defaultRestricted?: boolean;
@@ -71,8 +65,6 @@ export function CreateOrEditSpaceModal({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestricted, setIsRestricted] = useState(false);
-  const [searchSelectedMembers, setSearchSelectedMembers] =
-    useState<string>("");
   const [managementType, setManagementType] =
     useState<MembersManagementType>("manual");
   const [isDirty, setIsDirty] = useState(false);
@@ -90,7 +82,7 @@ export function CreateOrEditSpaceModal({
   const doUpdate = useUpdateSpace({ owner });
   const doDelete = useDeleteSpace({ owner, force: true });
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { spaceInfo, mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
@@ -284,63 +276,11 @@ export function CreateOrEditSpaceModal({
   }, [doDelete, handleClose, owner.sId, router, space]);
 
   const handleManagementTypeChange = useCallback(
-    async (value: string) => {
-      if (!isMembersManagementType(value) || !planAllowsSCIM) {
-        return;
-      }
-
-      // If switching from manual to group mode with manually added members.
-      if (
-        managementType === "manual" &&
-        value === "group" &&
-        selectedMembers.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to groups",
-          message:
-            "This switches from manual member to group-based access. " +
-            "Your current member list will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("group");
-          setIsDirty(true);
-        }
-      }
-      // If switching from group to manual mode with selected groups.
-      else if (
-        managementType === "group" &&
-        value === "manual" &&
-        selectedGroups.length > 0
-      ) {
-        const confirmed = await confirm({
-          title: "Switch to members",
-          message:
-            "This switches from group-based access to manual member management. " +
-            "Your current group settings will be saved but no longer active.",
-          validateLabel: "Confirm",
-          validateVariant: "primary",
-        });
-
-        if (confirmed) {
-          setManagementType("manual");
-          setIsDirty(true);
-        }
-      } else {
-        // For direct switches without selections, clear everything and let the user start fresh.
-        setManagementType(value);
-        setIsDirty(true);
-      }
+    (managementType: MembersManagementType) => {
+      setManagementType(managementType);
+      setIsDirty(true);
     },
-    [
-      confirm,
-      managementType,
-      selectedMembers.length,
-      selectedGroups.length,
-      planAllowsSCIM,
-    ]
+    []
   );
 
   const disabled = useMemo(() => {
@@ -409,6 +349,9 @@ export function CreateOrEditSpaceModal({
                   setSelectedMembers([user, ...selectedMembers]);
                 }
               }}
+              restrictedDescription="Restricted access is active."
+              unrestrictedDescription="Restricted access is disabled. The space is accessible to everyone in
+          the workspace."
             />
 
             {isRestricted && (
@@ -419,11 +362,7 @@ export function CreateOrEditSpaceModal({
                 owner={owner}
                 selectedMembers={selectedMembers}
                 selectedGroups={selectedGroups}
-                searchSelectedMembers={searchSelectedMembers}
-                onSearchChange={setSearchSelectedMembers}
-                onManagementTypeChange={(value) => {
-                  void handleManagementTypeChange(value);
-                }}
+                onManagementTypeChange={handleManagementTypeChange}
                 onMembersUpdated={(members) => {
                   setSelectedMembers(members);
                   setIsDirty(true);
@@ -504,33 +443,6 @@ function SpaceDeleteSection({
         isDeleting={isDeleting}
       />
       <Separator />
-    </>
-  );
-}
-
-interface RestrictedAccessHeaderProps {
-  isRestricted: boolean;
-  onToggle: () => void;
-}
-
-function RestrictedAccessHeader({
-  isRestricted,
-  onToggle,
-}: RestrictedAccessHeaderProps) {
-  return (
-    <>
-      <div className="flex w-full items-center justify-between overflow-visible">
-        <Page.SectionHeader title="Restricted Access" />
-        <SliderToggle selected={isRestricted} onClick={onToggle} />
-      </div>
-      {isRestricted ? (
-        <span>Restricted access is active.</span>
-      ) : (
-        <span>
-          Restricted access is disabled. The space is accessible to everyone in
-          the workspace.
-        </span>
-      )}
     </>
   );
 }

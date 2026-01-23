@@ -22,7 +22,7 @@ const wrapperVariants = cva("s-flex s-flex-col s-@container @sm:s-flex-row", {
 const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
   variants: {
     type: {
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-px-3 s-py-3 s-gap-2 s-w-fit",
+      user: "s-bg-muted-background dark:s-bg-muted-background-night s-p-3 s-gap-2 s-w-fit",
       agent: "s-w-full s-gap-3 s-p-4 @sm:s-flex-row s-flex-col",
     },
   },

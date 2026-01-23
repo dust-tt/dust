@@ -84,8 +84,14 @@ async function handler(
         });
       }
 
-      const { title, visibility, spaceId, message, contentFragments } =
-        bodyValidation.right;
+      const {
+        title,
+        visibility,
+        spaceId,
+        message,
+        contentFragments,
+        metadata,
+      } = bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -129,6 +135,7 @@ async function handler(
         title,
         visibility,
         spaceId: spaceModelId,
+        metadata,
       });
 
       const newContentFragments: ContentFragmentType[] = [];
@@ -250,7 +257,7 @@ async function handler(
             fullName: user.fullName(),
             email: user.email,
             profilePictureUrl: message.context.profilePictureUrl,
-            origin: "web",
+            origin: message.context.origin ?? "web",
             clientSideMCPServerIds:
               message.context.clientSideMCPServerIds ?? [],
           },

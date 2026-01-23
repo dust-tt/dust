@@ -3,7 +3,9 @@ import {
   CitationIcons,
   CitationTitle,
   CodeBlock,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   Icon,
   ScanIcon,
 } from "@dust-tt/sparkle";
@@ -75,14 +77,13 @@ export function MCPExtractActionDetails({
 
         {jsonSchema && (
           <div>
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: false }}
-              triggerChildren={
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
                 <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                   Schema
                 </span>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="py-2">
                   <CodeBlock
                     className="language-json max-h-60 overflow-y-auto"
@@ -91,24 +92,23 @@ export function MCPExtractActionDetails({
                     {JSON.stringify(jsonSchema, null, 2)}
                   </CodeBlock>
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
 
         {viewType === "sidebar" && (
           <div>
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: false }}
-              triggerChildren={
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
                 <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
                   Results
                 </span>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <MCPExtractActionResults resultResource={resultResource} />
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         )}
       </div>
@@ -188,14 +188,13 @@ function MCPExtractActionResults({
       </div>
 
       {resultResource.snippet && (
-        <CollapsibleComponent
-          rootProps={{ defaultOpen: false }}
-          triggerChildren={
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger>
             <span className="text-sm font-semibold text-muted-foreground dark:text-muted-foreground-night">
               Preview
             </span>
-          }
-          contentChildren={
+          </CollapsibleTrigger>
+          <CollapsibleContent>
             <div className="py-2">
               <CodeBlock
                 className="language-json max-h-60 overflow-y-auto"
@@ -204,8 +203,8 @@ function MCPExtractActionResults({
                 {resultResource.snippet}
               </CodeBlock>
             </div>
-          }
-        />
+          </CollapsibleContent>
+        </Collapsible>
       )}
     </div>
   );

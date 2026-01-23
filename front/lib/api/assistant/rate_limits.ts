@@ -1,4 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
+import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
+import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
@@ -54,6 +56,13 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
+  const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+  const effectiveLimit = computeEffectiveMessageLimit({
+    planCode: plan.code,
+    maxMessages,
+    activeSeats,
+  });
+
   const result = await getRateLimiterCount({
     key: makeAgentMentionsRateLimitKeyForWorkspace(
       workspace,
@@ -64,8 +73,12 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
 
   if (result.isErr()) {
     // Return 0 on error to avoid blocking the UI
-    return { count: 0, limit: maxMessages };
+    return { count: 0, limit: effectiveLimit };
   }
 
-  return { count: result.value, limit: maxMessages };
+  // Cap count at limit to avoid displaying "120/100" if limit decreased.
+  return {
+    count: Math.min(result.value, effectiveLimit),
+    limit: effectiveLimit,
+  };
 }

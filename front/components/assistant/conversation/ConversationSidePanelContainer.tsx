@@ -12,7 +12,7 @@ import type {
 } from "@app/types";
 
 interface ConversationSidePanelContainerProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: LightWorkspaceType;
 }
 

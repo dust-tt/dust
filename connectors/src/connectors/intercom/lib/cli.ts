@@ -87,13 +87,16 @@ export const intercom = async ({
         throw new Error(`No workspace found for connector ${connector.id}`);
       }
 
-      logger.info("[Admin] Forcing resync of all conversations");
+      const cursor = args.cursor ?? null;
+
+      logger.info({ cursor }, "[Admin] Forcing resync of all conversations");
 
       await workspace.update({ syncAllConversations: "scheduled_activate" });
 
       const result = await launchIntercomFullSyncWorkflow({
         connectorId: connector.id,
         hasUpdatedSelectAllConversations: true,
+        cursor,
       });
 
       if (result.isErr()) {
@@ -298,7 +301,7 @@ export const intercom = async ({
       while (hasMore && totalCount < MAX_CONVERSATIONS_COUNT) {
         const response = await fetchIntercomConversations({
           accessToken,
-          teamId: args.teamId,
+          teamId: args.teamId?.toString(),
           slidingWindow: workspace.conversationsSlidingWindow,
           cursor,
           pageSize: 50,

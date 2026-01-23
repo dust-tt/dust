@@ -18,6 +18,7 @@ import React, {
   useState,
 } from "react";
 
+import { useSpacesContext } from "@app/components/agent_builder/SpacesContext";
 import {
   KnowledgeChip,
   KnowledgeErrorChip,
@@ -27,8 +28,10 @@ import type {
   KnowledgeItem,
   KnowledgeNodeAttributes,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
+import {
+  computeHasChildren,
+  isFullKnowledgeItem,
+} from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
 import {
   getLocationForDataSourceViewContentNodeWithSpace,
@@ -38,27 +41,30 @@ import { isFolder, isWebsite } from "@app/lib/data_sources";
 import { useDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import { useUnifiedSearch } from "@app/lib/swr/search";
 import { useSpaceDataSourceView, useSpaces } from "@app/lib/swr/spaces";
+import type { LightWorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;
-  onRemove: () => void;
+  owner: LightWorkspaceType;
+  isSpacesLoading?: boolean;
+  onRemove?: () => void;
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
 
-function KnowledgeDisplayComponent({
+export function KnowledgeDisplayComponent({
   item,
+  owner,
+  isSpacesLoading = false,
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
-  const { owner } = useSkillBuilderContext();
-
   // Check if we need to fetch full node data.
   const needsFetch = !isFullKnowledgeItem(item);
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
     dataSourceViewId: item.dataSourceViewId,
-    disabled: !needsFetch,
+    disabled: !needsFetch || isSpacesLoading,
     owner,
     spaceId: item.spaceId,
   });
@@ -130,14 +136,7 @@ function KnowledgeDisplayComponent({
 
   // At this point we must have a full item with node data.
   return (
-    <KnowledgeChip
-      node={{
-        ...item.node,
-        dataSource: item.node.dataSourceView.dataSource,
-      }}
-      onRemove={onRemove}
-      title={item.label}
-    />
+    <KnowledgeChip node={item.node} onRemove={onRemove} title={item.label} />
   );
 }
 
@@ -152,7 +151,7 @@ function KnowledgeSearchComponent({
   onCancel,
   clientRect,
 }: KnowledgeSearchProps) {
-  const { owner } = useSkillBuilderContext();
+  const { owner } = useSpacesContext();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -161,6 +160,7 @@ function KnowledgeSearchComponent({
   // Get spaces for location display.
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: false,
   });
 
@@ -171,14 +171,11 @@ function KnowledgeSearchComponent({
 
   const spaceIds = useMemo(() => spaces.map((s) => s.sId), [spaces]);
 
-  const isDisabled = !searchQuery || searchQuery.length < 2;
-
   const { knowledgeResults: searchResults, isSearchLoading } = useUnifiedSearch(
     {
       owner,
       query: searchQuery,
       pageSize: 10,
-      disabled: isDisabled,
       spaceIds,
       // Tables can't be attached to a skill.
       viewType: "document",
@@ -241,11 +238,11 @@ function KnowledgeSearchComponent({
             node,
             spacesMap
           ),
-          nodeId: node.internalId,
+          hasChildren: computeHasChildren(node),
           label: node.title,
           node, // Store the original node for chip display.
+          nodeId: node.internalId,
           spaceId: node.dataSourceView.spaceId,
-          nodeType: node.type,
         };
       });
     }, [dataSourceNodes, spacesMap]);
@@ -277,7 +274,9 @@ function KnowledgeSearchComponent({
   const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
     const text = e.currentTarget.textContent ?? "";
     setSearchQuery(text);
-    setIsOpen(text.trim().length > 0);
+    if (text.trim().length > 0) {
+      setIsOpen(true);
+    }
   }, []);
 
   // Auto-focus when component mounts.
@@ -304,6 +303,9 @@ function KnowledgeSearchComponent({
   // Reset selected index when items change.
   useEffect(() => {
     setSelectedIndex(0);
+    if (knowledgeItems.length > 0) {
+      setIsOpen(true);
+    }
   }, [knowledgeItems.length]);
 
   // Delete empty node helper.
@@ -321,15 +323,25 @@ function KnowledgeSearchComponent({
   // Handle keyboard navigation.
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // Escape always cancels and deletes the node (search mode exits entirely).
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onCancel();
+        return;
+      }
+
       if (!isOpen) {
         return;
       }
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex((selectedIndex + 1) % knowledgeItems.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
+        e.stopPropagation();
         setSelectedIndex(
           (selectedIndex + knowledgeItems.length - 1) % knowledgeItems.length
         );
@@ -338,18 +350,12 @@ function KnowledgeSearchComponent({
         knowledgeItems.length > 0
       ) {
         e.preventDefault();
+        e.stopPropagation();
         handleItemSelect(selectedIndex);
-      } else if (e.key === "Escape") {
-        e.preventDefault();
-        onCancel();
       }
     },
     [isOpen, selectedIndex, knowledgeItems.length, handleItemSelect, onCancel]
   );
-
-  const handleBlur = useCallback(() => {
-    deleteIfEmpty(50);
-  }, [deleteIfEmpty]);
 
   const handleInteractOutside = useCallback(() => {
     setIsOpen(false);
@@ -360,8 +366,9 @@ function KnowledgeSearchComponent({
     <div className="relative inline-block">
       <span
         className={cn(
-          "inline-block h-7 cursor-text rounded-md bg-gray-100 px-3 py-1 text-sm italic",
-          "text-gray-600 empty:before:text-gray-400",
+          "inline-block h-7 cursor-text px-3 py-1 text-sm font-normal",
+          "rounded bg-gray-100 dark:bg-gray-800",
+          "text-center text-gray-500 dark:text-gray-500-night",
           "empty:before:content-[attr(data-placeholder)] focus:outline-none",
           "min-w-36 text-left"
         )}
@@ -370,7 +377,6 @@ function KnowledgeSearchComponent({
         ref={contentRef}
         onKeyDown={handleKeyDown}
         onInput={handleInput}
-        onBlur={handleBlur}
         data-placeholder="Search for knowledge..."
       />
 
@@ -390,12 +396,12 @@ function KnowledgeSearchComponent({
             {isSearchLoading ? (
               <div className="flex h-14 items-center justify-center">
                 <Spinner size="sm" />
-                <span className="ml-2 text-sm text-gray-500">
+                <span className="ml-2 text-sm text-gray-500 dark:text-gray-500-night">
                   Searching knowledge...
                 </span>
               </div>
             ) : knowledgeItems.length === 0 ? (
-              <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500">
+              <div className="flex h-14 items-center justify-center text-center text-sm text-gray-500 dark:text-gray-500-night">
                 {searchQuery.length < 2
                   ? "Type at least 2 characters to search"
                   : "No knowledge found"}
@@ -463,6 +469,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
+  const { owner, isSpacesLoading } = useSpacesContext();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -473,6 +480,17 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     [deleteNode]
   );
 
+  const handleCancel = useCallback(() => {
+    deleteNode();
+    // Return focus to the editor after the node is removed from the DOM.
+    // We need to wait for the next event loop tick for TipTap to process the deletion.
+    queueMicrotask(() => {
+      if (editor && !editor.isDestroyed) {
+        editor.chain().focus().run();
+      }
+    });
+  }, [deleteNode, editor]);
+
   const handleSelect = useCallback(
     (item: KnowledgeItem) => {
       updateAttributes({
@@ -480,11 +498,12 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       });
 
       // Return focus to the editor after selection and add a space.
-      setTimeout(() => {
-        if (editor) {
+      // Wait for the next event loop tick for TipTap to process the attribute update.
+      queueMicrotask(() => {
+        if (editor && !editor.isDestroyed) {
           editor.chain().focus().insertContent(" ").run();
         }
-      }, 10);
+      });
     },
     [updateAttributes, editor]
   );
@@ -495,7 +514,9 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
       <NodeViewWrapper className="inline">
         <KnowledgeDisplayComponent
           item={selectedItems[0]}
-          onRemove={handleRemove}
+          owner={owner}
+          isSpacesLoading={isSpacesLoading}
+          onRemove={editor.isEditable ? handleRemove : undefined}
           updateAttributes={updateAttributes}
         />
       </NodeViewWrapper>
@@ -507,7 +528,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
     <NodeViewWrapper className="inline">
       <KnowledgeSearchComponent
         onSelect={handleSelect}
-        onCancel={deleteNode}
+        onCancel={handleCancel}
         clientRect={clientRect}
       />
     </NodeViewWrapper>

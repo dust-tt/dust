@@ -38,6 +38,7 @@ export async function launchIntercomFullSyncWorkflow({
   teamIds = [],
   hasUpdatedSelectAllConversations = false,
   forceResync = false,
+  cursor = null,
 }: {
   connectorId: ModelId;
   fromTs?: number | null;
@@ -45,6 +46,7 @@ export async function launchIntercomFullSyncWorkflow({
   teamIds?: string[];
   hasUpdatedSelectAllConversations?: boolean;
   forceResync?: boolean;
+  cursor?: string | null;
 }): Promise<Result<string, Error>> {
   if (fromTs) {
     throw new Error("[Intercom] Workflow does not support fromTs.");
@@ -78,6 +80,7 @@ export async function launchIntercomFullSyncWorkflow({
             type: "all_conversations",
             intercomId: "all_conversations",
             forceResync: false,
+            cursor,
           },
         ]
       : [];

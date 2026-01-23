@@ -2,9 +2,9 @@ import {
   Button,
   ExclamationCircleIcon,
   Icon,
+  LinkWrapper,
   LoginIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import type { ComponentType } from "react";
 
 import type { ConversationError } from "@app/types";
@@ -93,9 +93,9 @@ export function ErrorDisplay({ icon, message, title }: ErrorDisplayProps) {
           <p>{message}</p>
         )}
       </p>
-      <Link href="/">
+      <LinkWrapper href="/">
         <Button variant="outline" label="Back to homepage" icon={LoginIcon} />
-      </Link>
+      </LinkWrapper>
     </div>
   );
 }

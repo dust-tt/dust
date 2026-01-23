@@ -14,9 +14,12 @@ const config = {
     if (override) {
       return override;
     }
-    return EnvironmentConfig.getEnvVariable(
-      "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
-    );
+
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
@@ -59,6 +62,20 @@ const config = {
   },
   getStripeSecretWebhookKey: (): string => {
     return EnvironmentConfig.getEnvVariable("STRIPE_SECRET_WEBHOOK_KEY");
+  },
+  // Twilio (workspace verification - OTP).
+  getTwilioAccountSid: (): string => {
+    return EnvironmentConfig.getEnvVariable("TWILIO_ACCOUNT_SID");
+  },
+  getTwilioAuthToken: (): string => {
+    return EnvironmentConfig.getEnvVariable("TWILIO_AUTH_TOKEN");
+  },
+  getTwilioVerifyServiceSid: (): string => {
+    return EnvironmentConfig.getEnvVariable("TWILIO_VERIFY_SERVICE_SID");
+  },
+  // Persona (workspace verification - phone risk).
+  getPersonaApiKey: (): string => {
+    return EnvironmentConfig.getEnvVariable("PERSONA_API_KEY");
   },
   getServiceAccount: (): string => {
     return EnvironmentConfig.getEnvVariable("SERVICE_ACCOUNT");
@@ -123,27 +140,6 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDustAppsWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
-  },
-  getDustAppsSpaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_SPACE_ID");
-  },
-  getDustAppsHelperDatasourceViewId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
-    );
-  },
-  getDustAppsInteractiveContentDatasourceViewId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_INTERACTIVE_CONTENT_DATASOURCE_VIEW_ID"
-    );
-  },
-  getDustAppsInteractiveContentFeedbackAnalysisTemplateFileName: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_INTERACTIVE_CONTENT_FEEDBACK_ANALYSIS_TEMPLATE_FILE_NAME"
-    );
-  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
@@ -206,6 +202,9 @@ const config = {
   },
   getOAuthZendeskClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_ZENDESK_CLIENT_ID");
+  },
+  getOAuthProductboardClientId: (): string => {
+    return EnvironmentConfig.getEnvVariable("OAUTH_PRODUCTBOARD_CLIENT_ID");
   },
   getOAuthHubspotClientId: (): string => {
     return EnvironmentConfig.getEnvVariable("OAUTH_HUBSPOT_CLIENT_ID");
@@ -347,6 +346,25 @@ const config = {
     }
 
     return isEnabled;
+  },
+  getLangfuseClientConfig: (): {
+    publicKey: string;
+    secretKey: string;
+    baseUrl: string | undefined;
+  } => {
+    return {
+      publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
+      secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
+      baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
+    };
+  },
+  getLangfuseUiBaseUrl: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_UI_BASE_URL");
+  },
+  getTemporalConnectorsNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "TEMPORAL_CONNECTORS_NAMESPACE"
+    );
   },
 };
 

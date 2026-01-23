@@ -67,6 +67,7 @@ export function getContentNodeInternalIdFromTableId(
     case "webcrawler":
     case "zendesk":
     case "discord_bot":
+    case "dust_project":
       throw new Error(
         `Provider ${dataSource.connectorProvider} is not supported`
       );
@@ -108,6 +109,7 @@ export function getContentNodeFromCoreNode(
     parentInternalIds: coreNode.parents,
     type: coreNode.node_type,
     expandable: isExpandable(coreNode, viewType),
+    childrenCount: coreNode.children_count,
     mimeType: coreNode.mime_type,
     preventSelection:
       // In data_warehouse view, all nodes are selectable (databases, schemas, tables)

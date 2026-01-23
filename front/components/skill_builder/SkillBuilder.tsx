@@ -3,11 +3,11 @@ import {
   BarHeader,
   Button,
   cn,
+  ContentMessage,
+  InformationCircleIcon,
   ScrollArea,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -27,10 +27,12 @@ import {
   transformSkillTypeToFormData,
 } from "@app/components/skill_builder/skillFormData";
 import { submitSkillBuilderForm } from "@app/components/skill_builder/submitSkillBuilderForm";
+import { ExtendedSkillBadge } from "@app/components/skills/ExtendedSkillBadge";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAppRouter } from "@app/lib/platform";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -44,7 +46,7 @@ export default function SkillBuilder({
   extendedSkill,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -148,30 +150,34 @@ export default function SkillBuilder({
             <BarHeader
               variant="default"
               className="mx-4"
-              title={
-                (skill ? `Edit skill ${skill.name}` : "Create new skill") +
-                (extendedSkill ? ` - extending ${extendedSkill.name}` : "")
+              title={skill ? `Edit skill ${skill.name}` : "Create new skill"}
+              description={
+                extendedSkill ? (
+                  <ExtendedSkillBadge
+                    extendedSkill={extendedSkill}
+                    className="text-sm"
+                  />
+                ) : undefined
               }
               rightActions={
-                <Button
-                  icon={XMarkIcon}
-                  onClick={handleCancel}
-                  variant="ghost"
-                  type="button"
-                />
+                <BarHeader.ButtonBar variant="close" onClose={handleCancel} />
               }
             />
 
             <ScrollArea className="flex-1">
-              <div className="mx-auto space-y-10 p-4 2xl:max-w-5xl">
-                <div>
-                  <h2 className="heading-lg text-foreground dark:text-foreground-night">
-                    Create new skill
-                  </h2>
-                  <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    Create a custom capability for specific tasks
-                  </p>
-                </div>
+              <div className="mx-auto space-y-10 p-8 2xl:max-w-5xl">
+                {skill?.status === "suggested" && (
+                  <ContentMessage
+                    title="This is a generated skill suggestion"
+                    variant="primary"
+                    icon={InformationCircleIcon}
+                    size="lg"
+                  >
+                    This skill was automatically generated based on your
+                    workspace's configuration. We recommend reviewing and
+                    editing it to match your specific needs before saving.
+                  </ContentMessage>
+                )}
                 <SkillBuilderRequestedSpacesSection />
                 <SkillBuilderAgentFacingDescriptionSection />
                 <SkillBuilderInstructionsSection skill={skill} />

@@ -16,6 +16,8 @@ import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
+import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { withTransaction } from "@app/lib/utils/sql_utils";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
@@ -47,39 +49,43 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     auth: Authenticator,
     blob: CreationAttributes<WebhookSourceModel>,
     {
-      transaction,
       icon,
       description,
-    }: { transaction?: Transaction; icon?: string; description?: string } = {}
+    }: {
+      icon?: string;
+      description?: string;
+    } = {}
   ): Promise<WebhookSourceResource> {
     assert(
       await SpaceResource.canAdministrateSystemSpace(auth),
       "The user is not authorized to create a webhook source"
     );
 
-    const webhookSource = await WebhookSourceModel.create(blob, {
-      transaction,
-    });
-
-    const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
-    // Immediately create a view for the webhook source in the system space.
-    await WebhookSourcesViewModel.create(
-      {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        vaultId: systemSpace.id,
-        editedAt: new Date(),
-        editedByUserId: auth.user()?.id,
-        webhookSourceId: webhookSource.id,
-        description: description ?? "",
-        icon: normalizeWebhookIcon(icon),
-      },
-      {
+    return withTransaction(async (transaction) => {
+      const webhookSource = await WebhookSourceModel.create(blob, {
         transaction,
-      }
-    );
+      });
 
-    return new this(WebhookSourceModel, webhookSource.get());
+      const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
+
+      // Immediately create a view for the webhook source in the system space.
+      await WebhookSourcesViewModel.create(
+        {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          vaultId: systemSpace.id,
+          editedAt: new Date(),
+          editedByUserId: auth.user()?.id,
+          webhookSourceId: webhookSource.id,
+          description: description ?? "",
+          icon: normalizeWebhookIcon(icon),
+        },
+        {
+          transaction,
+        }
+      );
+
+      return new this(WebhookSourceModel, webhookSource.get());
+    });
   }
 
   private static async baseFetch(
@@ -94,7 +100,6 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
         workspaceId: workspace.id,
       },
       limit: options.limit,
-      order: options.order,
     });
 
     return res.map((c) => new this(this.model, c.get()));
@@ -145,33 +150,29 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   }
 
   static async listByWorkspace(auth: Authenticator) {
-    return this.baseFetch(auth, {
-      order: [["createdAt", "DESC"]],
-    });
+    return this.baseFetch(auth);
   }
 
   async updateRemoteMetadata(
     updates: Partial<
       Pick<WebhookSourceModel, "remoteMetadata" | "oauthConnectionId">
-    >,
-    { transaction }: { transaction?: Transaction } = {}
+    >
   ): Promise<void> {
-    await this.update(updates, transaction);
+    await this.update(updates);
   }
 
-  async updateSecret(
-    secret: WebhookSourceModel["secret"],
-    { transaction }: { transaction?: Transaction } = {}
-  ): Promise<void> {
-    await this.update({ secret }, transaction);
+  async updateSecret(secret: WebhookSourceModel["secret"]): Promise<void> {
+    await this.update({ secret });
   }
 
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
   ): Promise<Result<undefined, Error>> {
+    const canAdministrate =
+      await SpaceResource.canAdministrateSystemSpace(auth);
     assert(
-      await SpaceResource.canAdministrateSystemSpace(auth),
+      canAdministrate,
       "The user is not authorized to delete a webhook source"
     );
 
@@ -195,12 +196,11 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     }
 
     // Find all webhook sources views for this webhook source
-    const webhookSourceViews = await WebhookSourcesViewModel.findAll({
-      where: {
-        workspaceId: owner.id,
-        webhookSourceId: this.id,
-      },
-    });
+    const webhookSourceViews =
+      await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
+        auth,
+        this.id
+      );
 
     // Delete all triggers for each webhook source view
     for (const webhookSourceView of webhookSourceViews) {

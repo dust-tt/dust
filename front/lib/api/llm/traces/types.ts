@@ -17,17 +17,18 @@ interface LLMTraceContextBase {
     | "agent_builder_name_suggestion"
     | "agent_builder_tags_suggestion"
     | "agent_conversation"
+    | "agent_observability_summary"
     | "agent_suggestion"
     | "conversation_title_suggestion"
     | "process_data_sources"
     | "process_schema_generator"
     | "skill_builder_description_suggestion"
+    | "skill_builder_icon_suggestion"
+    | "skills_similarity_checker"
     | "trigger_cron_timezone_generator"
     | "trigger_webhook_filter_generator"
     | "voice_agent_finder"
-    | "workspace_tags_suggestion"
-    | "agent_observability_summary"
-    | "skills_similarity_checker";
+    | "workspace_tags_suggestion";
 
   workspaceId?: string;
   /** User who triggered the operation */
@@ -38,6 +39,15 @@ export type LLMTraceContext = LLMTraceContextBase & {
   /** Additional context fields for tagging - MUST be camelCase (no underscores, starts lowercase) */
   [key: string]: string | undefined;
 };
+
+export interface LLMTraceCustomization {
+  getTraceInput?: (
+    conversation: ModelConversationTypeMultiActions
+  ) => string | undefined;
+  getTraceOutput?: (
+    output: LLMTraceOutput
+  ) => LLMTraceOutput | string | undefined;
+}
 
 /**
  * Input parameters for an LLM call

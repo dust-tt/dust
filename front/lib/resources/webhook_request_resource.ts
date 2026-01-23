@@ -172,6 +172,40 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
     });
   }
 
+  /**
+   * Fetch webhook request triggers for a given trigger ID, including the associated
+   * webhook request data. Used for displaying recent webhook request history.
+   */
+  static async listForTriggerId(
+    auth: Authenticator,
+    {
+      triggerId,
+      limit,
+    }: {
+      triggerId: ModelId;
+      limit?: number;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return WebhookRequestTriggerModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        triggerId,
+      },
+      include: [
+        {
+          model: WebhookRequestModel,
+          as: "webhookRequest",
+          required: true,
+          attributes: ["id", "createdAt", "webhookSourceId"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
+    });
+  }
+
   static async listByStatus(
     auth: Authenticator,
     {

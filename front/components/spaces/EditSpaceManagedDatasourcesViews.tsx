@@ -11,7 +11,6 @@ import {
   PlusIcon,
   Tooltip,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import React, {
   useCallback,
   useContext,
@@ -29,6 +28,7 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import { getDisplayNameForDataSource, isManaged } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useKillSwitches } from "@app/lib/swr/kill";
 import {
   useSpaceDataSourceViews,
@@ -73,7 +73,7 @@ export function EditSpaceManagedDataSourcesViews({
 
   const [showDataSourcesModal, setShowDataSourcesModal] = useState(false);
   const [showNoConnectionDialog, setShowNoConnectionDialog] = useState(false);
-  const router = useRouter();
+  const router = useAppRouter();
 
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 

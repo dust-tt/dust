@@ -1,9 +1,17 @@
 import { Tooltip } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
 import type Stripe from "stripe";
 
 import { makeColumnsForCredits } from "@app/components/poke/credits/columns";
-import { PokeProgrammaticCostChart } from "@app/components/poke/credits/PokeProgrammaticCostChart";
 import { PokeDataTableConditionalFetch } from "@app/components/poke/PokeConditionalDataTables";
+
+const PokeProgrammaticCostChart = dynamic(
+  () =>
+    import("@app/components/poke/credits/PokeProgrammaticCostChart").then(
+      (mod) => mod.PokeProgrammaticCostChart
+    ),
+  { ssr: false }
+);
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import type { PokeCreditsData } from "@app/poke/swr/credits";

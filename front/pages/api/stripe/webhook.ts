@@ -19,7 +19,10 @@ import {
   startCreditFromProOneOffInvoice,
   voidFailedProCreditPurchaseInvoice,
 } from "@app/lib/credits/committed";
-import { grantFreeCreditsFromSubscriptionStateChange } from "@app/lib/credits/free";
+import {
+  grantFreeCreditFromSubscriptionStateChangeYearly,
+  grantFreeCreditsFromSubscriptionStateChange,
+} from "@app/lib/credits/free";
 import {
   allocatePAYGCreditsOnCycleRenewal,
   invoiceEnterprisePAYGCredits,
@@ -66,6 +69,32 @@ export const StripeBillingPeriodSchema = z.object({
   current_period_start: z.number(),
   current_period_end: z.number(),
 });
+
+function isYearlySubscription(
+  stripeSubscription: Stripe.Subscription
+): boolean {
+  const firstItem = stripeSubscription.items.data[0];
+  return firstItem?.price?.recurring?.interval === "year";
+}
+
+async function grantFreeCreditsForSubscription({
+  auth,
+  stripeSubscription,
+}: {
+  auth: Authenticator;
+  stripeSubscription: Stripe.Subscription;
+}) {
+  if (isYearlySubscription(stripeSubscription)) {
+    return grantFreeCreditFromSubscriptionStateChangeYearly({
+      auth,
+      stripeSubscription,
+    });
+  }
+  return grantFreeCreditsFromSubscriptionStateChange({
+    auth,
+    stripeSubscription,
+  });
+}
 
 async function handler(
   req: NextApiRequest,
@@ -799,17 +828,14 @@ async function handler(
               subscription.workspace.sId
             );
 
-            const freeCreditsResult =
-              await grantFreeCreditsFromSubscriptionStateChange({
-                auth,
-                stripeSubscription,
-              });
+            const freeCreditsResult = await grantFreeCreditsForSubscription({
+              auth,
+              stripeSubscription,
+            });
 
             if (freeCreditsResult.isErr()) {
               logger.error(
                 {
-                  panic: true,
-                  stripeError: true,
                   error: freeCreditsResult.error,
                   subscriptionId: stripeSubscription.id,
                   workspaceId: subscription.workspace.sId,
@@ -850,17 +876,14 @@ async function handler(
                 subscription.workspace.sId
               );
 
-              const freeCreditsResult =
-                await grantFreeCreditsFromSubscriptionStateChange({
-                  auth,
-                  stripeSubscription,
-                });
+              const freeCreditsResult = await grantFreeCreditsForSubscription({
+                auth,
+                stripeSubscription,
+              });
 
               if (freeCreditsResult.isErr()) {
                 logger.error(
                   {
-                    panic: true,
-                    stripeError: true,
                     error: freeCreditsResult.error,
                     subscriptionId: stripeSubscription.id,
                     workspaceId: subscription.workspace.sId,

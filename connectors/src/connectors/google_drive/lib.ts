@@ -31,9 +31,7 @@ import {
 } from "@connectors/lib/models/google_drive";
 import { getLoggerArgs } from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
-import type { ConnectorModel } from "@connectors/resources/storage/models/connector_model";
-import type { ContentNodesViewType } from "@connectors/types";
-import type { ModelId } from "@connectors/types";
+import type { ContentNodesViewType, ModelId } from "@connectors/types";
 import {
   cacheWithRedis,
   concurrentExecutor,
@@ -184,7 +182,7 @@ export async function internalDeleteFile(
 }
 
 export async function updateParentsField(
-  connector: ConnectorResource | ConnectorModel,
+  connector: ConnectorResource,
   file: GoogleDriveFilesModel,
   parentIds: string[],
   logger: Logger

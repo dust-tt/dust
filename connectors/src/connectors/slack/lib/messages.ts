@@ -7,6 +7,7 @@ import {
 } from "@connectors/connectors/slack/lib/bot_user_helpers";
 import type { CoreAPIDataSourceDocumentSection } from "@connectors/lib/data_sources";
 import { renderDocumentTitleAndContent } from "@connectors/lib/data_sources";
+import { formatDateForUpsert } from "@connectors/lib/formatting";
 import type { DataSourceConfig, ModelId } from "@connectors/types";
 import { safeSubstring } from "@connectors/types";
 
@@ -30,16 +31,6 @@ async function processMessageForMentions(
   }
 
   return message;
-}
-
-function formatDateForUpsert(date: Date) {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const day = date.getDate().toString().padStart(2, "0");
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-
-  return `${year}${month}${day} ${hours}:${minutes}`;
 }
 
 export async function formatMessagesForUpsert({

@@ -13,7 +13,7 @@ export function useReaction({
   message,
 }: {
   owner: { sId: string };
-  conversationId: string;
+  conversationId?: string | null;
   message: VirtuosoMessage;
 }) {
   const { user } = useUser();
@@ -21,6 +21,10 @@ export function useReaction({
   const { submit: onReactionToggle } = useSubmitFunction(
     async ({ emoji }: { emoji: string }) => {
       if (!isUserMessage(message) && !isMessageTemporayState(message)) {
+        return;
+      }
+
+      if (!conversationId) {
         return;
       }
 

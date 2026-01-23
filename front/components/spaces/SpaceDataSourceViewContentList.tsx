@@ -16,7 +16,6 @@ import type {
   ColumnDef,
   SortingState,
 } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import * as React from "react";
 import {
   useCallback,
@@ -52,6 +51,7 @@ import { usePeriodicRefresh } from "@app/hooks/usePeriodicRefresh";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -64,6 +64,7 @@ import type {
   ContentNodesViewType,
   DataSourceViewContentNode,
   DataSourceViewType,
+  FileUseCase,
   LightWorkspaceType,
   PlanType,
   SpaceType,
@@ -265,6 +266,7 @@ interface SpaceDataSourceViewContentListProps {
   plan: PlanType;
   space: SpaceType;
   systemSpace: SpaceType;
+  useCaseForDocument?: FileUseCase;
 }
 
 export const SpaceDataSourceViewContentList = ({
@@ -279,6 +281,7 @@ export const SpaceDataSourceViewContentList = ({
   plan,
   space,
   systemSpace,
+  useCaseForDocument,
 }: SpaceDataSourceViewContentListProps) => {
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
@@ -297,11 +300,12 @@ export const SpaceDataSourceViewContentList = ({
     "viewType",
     DEFAULT_VIEW_TYPE
   ) as [ContentNodesViewType, (viewType: ContentNodesViewType) => void];
-  const router = useRouter();
+  const router = useAppRouter();
   const showSpaceUsage =
     dataSourceView.kind === "default" && isManaged(dataSourceView.dataSource);
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular"],
     disabled: !showSpaceUsage,
   });
   const { dataSourceViews, mutateDataSourceViews } = useDataSourceViews(owner, {
@@ -699,6 +703,7 @@ export const SpaceDataSourceViewContentList = ({
           owner={owner}
           plan={plan}
           onSave={onSaveAction}
+          useCaseForDocument={useCaseForDocument}
         />
       </DropzoneContainer>
     </FileDropProvider>

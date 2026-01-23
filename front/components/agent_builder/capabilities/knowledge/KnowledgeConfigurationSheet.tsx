@@ -253,7 +253,6 @@ function KnowledgeConfigurationSheetContent({
   const { currentPageId, setSheetPageId } = useKnowledgePageContext();
   const { setValue, getValues, setFocus } =
     useFormContext<CapabilityFormData>();
-  const [isAdvancedSettingsOpen, setAdvancedSettingsOpen] = useState(false);
 
   const mcpServerView = useWatch<CapabilityFormData, "mcpServerView">({
     name: "mcpServerView",
@@ -408,11 +407,8 @@ function KnowledgeConfigurationSheetContent({
           {/* Advanced Settings collapsible section */}
           {mcpServerView?.serverType === "internal" &&
             mcpServerView.server.name === SEARCH_SERVER_NAME && (
-              <Collapsible
-                open={isAdvancedSettingsOpen}
-                onOpenChange={setAdvancedSettingsOpen}
-              >
-                <CollapsibleTrigger isOpen={isAdvancedSettingsOpen}>
+              <Collapsible>
+                <CollapsibleTrigger>
                   <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
                     Advanced Settings
                   </h3>

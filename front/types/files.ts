@@ -49,6 +49,7 @@ export type FileShareScope = z.infer<typeof fileShareScopeSchema>;
 export interface FileType {
   contentType: AllSupportedFileContentType;
   downloadUrl?: string;
+  version: number;
   fileName: string;
   fileSize: number;
   sId: string;
@@ -164,6 +165,7 @@ export const FILE_FORMATS = {
   "image/png": { cat: "image", exts: [".png"], isSafeToDisplay: true },
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
+  "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: true },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -6,7 +6,10 @@ import { clientFetch } from "@app/lib/egress/client";
 import { getErrorFromResponse } from "@app/lib/swr/swr";
 import { fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import { debounce } from "@app/lib/utils/debounce";
-import type { PostMentionActionResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
+import type {
+  PostMentionActionRequestBody,
+  PostMentionActionResponseBody,
+} from "@app/pages/api/w/[wId]/assistant/conversations/[cId]/messages/[mId]/mentions";
 import type { RichMention, RichMentionWithStatus } from "@app/types";
 
 type MentionSuggestionsResponseBody = {
@@ -82,7 +85,7 @@ export function useMentionSuggestions({
   };
 }
 
-export function useMentionValidation({
+export function useDismissMention({
   workspaceId,
   conversationId,
   messageId,
@@ -92,58 +95,123 @@ export function useMentionValidation({
   messageId: string;
 }) {
   const sendNotification = useSendNotification();
+  const dismissMention = useCallback(
+    async (mention: RichMentionWithStatus): Promise<boolean> => {
+      try {
+        const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
 
-  const validateMention = async (
-    mention: RichMentionWithStatus,
-    action: "approved" | "rejected"
-  ): Promise<boolean> => {
-    try {
-      const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
+        const res = await clientFetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: mention.type,
+            id: mention.id,
+            action: "dismissed",
+          } as PostMentionActionRequestBody),
+        });
 
-      const res = await clientFetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: mention.type,
-          id: mention.id,
-          action,
-        }),
-      });
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: `Error dismissing mention`,
+            description: errorData.message ?? "An error occurred",
+          });
+          return false;
+        }
 
-      if (!res.ok) {
-        const errorData = await getErrorFromResponse(res);
+        const result: PostMentionActionResponseBody = await res.json();
+
+        return result.success;
+      } catch (error) {
+        console.error(error);
+        return false;
+      }
+    },
+    [workspaceId, conversationId, messageId, sendNotification]
+  );
+
+  return { dismissMention };
+}
+
+export function useMentionValidation({
+  workspaceId,
+  conversationId,
+  messageId,
+  isProjectConversation,
+}: {
+  workspaceId: string;
+  conversationId: string;
+  messageId: string;
+  isProjectConversation: boolean;
+}) {
+  const sendNotification = useSendNotification();
+
+  const validateMention = useCallback(
+    async (
+      mention: RichMentionWithStatus,
+      action: "approved" | "rejected"
+    ): Promise<boolean> => {
+      try {
+        const url = `/api/w/${workspaceId}/assistant/conversations/${conversationId}/messages/${messageId}/mentions`;
+
+        const res = await clientFetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: mention.type,
+            id: mention.id,
+            action,
+          } as PostMentionActionRequestBody),
+        });
+
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          const actionLabel = action === "approved" ? "approving" : "rejecting";
+          sendNotification({
+            type: "error",
+            title: `Error ${actionLabel} mention`,
+            description: errorData.message ?? "An error occurred",
+          });
+          return false;
+        }
+
+        const result: PostMentionActionResponseBody = await res.json();
+
+        if (result.success && action === "approved") {
+          sendNotification({
+            type: "success",
+            title: "Success",
+            description: isProjectConversation
+              ? `${mention.label} has been added to the project, and added to the conversation`
+              : `${mention.label} has been invited to the conversation.`,
+          });
+        }
+
+        return result.success;
+      } catch (error) {
+        const actionLabel = action === "approved" ? "approving" : "rejecting";
         sendNotification({
           type: "error",
-          title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
-          description: errorData.message || "An error occurred",
+          title: `Error ${actionLabel} mention`,
+          description:
+            error instanceof Error ? error.message : "An error occurred",
         });
         return false;
       }
-
-      const result: PostMentionActionResponseBody = await res.json();
-
-      if (result.success && action === "approved") {
-        sendNotification({
-          type: "success",
-          title: "Success",
-          description: `${mention.label} has been invited to the conversation.`,
-        });
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: `Error ${action === "approved" ? "approving" : "rejecting"} mention`,
-        description:
-          error instanceof Error ? error.message : "An error occurred",
-      });
-      return false;
-    }
-  };
+    },
+    [
+      workspaceId,
+      conversationId,
+      messageId,
+      isProjectConversation,
+      sendNotification,
+    ]
+  );
 
   return { validateMention };
 }

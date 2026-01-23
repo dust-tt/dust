@@ -7,6 +7,7 @@ import {
   actionSchema,
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
+import { TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
 
@@ -49,9 +50,11 @@ const webhookConfigSchema = z.object({
   filter: z.string().optional(),
 });
 
+export const triggerStatusSchema = z.enum(TRIGGER_STATUSES);
+
 const webhookTriggerSchema = z.object({
   sId: z.string().optional(),
-  enabled: z.boolean().default(true),
+  status: triggerStatusSchema.default("enabled"),
   name: z.string(),
   kind: z.enum(["webhook"]),
   provider: z.enum(WEBHOOK_PROVIDERS).optional(),
@@ -67,7 +70,7 @@ const webhookTriggerSchema = z.object({
 
 const scheduleTriggerSchema = z.object({
   sId: z.string().optional(),
-  enabled: z.boolean().default(true),
+  status: triggerStatusSchema.default("enabled"),
   name: z.string(),
   kind: z.enum(["schedule"]),
   customPrompt: z.string().nullable(),

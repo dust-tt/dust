@@ -22,6 +22,12 @@ export const sendOnboardingConversationPlugin = createPlugin({
         description:
           "Target user stable id (e.g., usr_xxx) belonging to this workspace.",
       },
+      language: {
+        type: "string",
+        label: "Language",
+        description:
+          "Language code for the onboarding conversation (e.g., 'en', 'fr', 'de'). Defaults to English if not specified.",
+      },
     },
   },
   execute: async (auth, _resource, args) => {
@@ -51,6 +57,7 @@ export const sendOnboardingConversationPlugin = createPlugin({
 
     const convoRes = await createOnboardingConversationIfNeeded(targetAuth, {
       force: true,
+      language: args.language || null,
     });
 
     if (convoRes.isErr()) {

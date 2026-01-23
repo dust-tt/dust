@@ -32,7 +32,7 @@ export const startCommand = withEnvironment("start", async (env) => {
   console.log();
   console.log("Next steps:");
   console.log(`  dust-hive warm ${env.name}    # Start all services`);
-  console.log(`  dust-hive open ${env.name}    # Open zellij session`);
+  console.log(`  dust-hive open ${env.name}    # Open terminal session`);
   console.log();
 
   return Ok(undefined);

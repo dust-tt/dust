@@ -6,7 +6,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
 import handler from "./restore";
@@ -39,7 +39,7 @@ async function setupTest(
     );
   }
 
-  const skill = await SkillConfigurationFactory.create(skillOwnerAuth, {
+  const skill = await SkillFactory.create(skillOwnerAuth, {
     status: "archived",
   });
 

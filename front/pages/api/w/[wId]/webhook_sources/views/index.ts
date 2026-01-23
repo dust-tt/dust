@@ -46,7 +46,7 @@ async function handler(
 
       const normalizedQuery = {
         ...req.query,
-        spaceIds: spaceIds.split(","),
+        spaceIds: spaceIds ? spaceIds.split(",") : [],
       };
 
       const r = GetWebhookSourceViewsRequestSchema.safeParse(normalizedQuery);
@@ -60,10 +60,8 @@ async function handler(
         });
       }
 
-      const query = r.data;
-
       const webhookSourceViews = await concurrentExecutor(
-        query.spaceIds,
+        normalizedQuery.spaceIds,
         async (spaceId) => {
           const space = await SpaceResource.fetchById(auth, spaceId);
           if (!space || !space.canReadOrAdministrate(auth)) {

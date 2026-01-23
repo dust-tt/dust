@@ -1,12 +1,12 @@
 import { setCacheSource } from "../lib/cache";
 import { withEnvironment } from "../lib/commands";
-import { getDockerProjectName, startDocker } from "../lib/docker";
+import { startDocker } from "../lib/docker";
 import { isInitialized, markInitialized } from "../lib/environment";
 import { startForwarder } from "../lib/forward";
 import { FORWARDER_PORTS } from "../lib/forwarderConfig";
 import { createTemporalNamespaces, runAllDbInits, runSeedScript } from "../lib/init";
 import { logger } from "../lib/logger";
-import { cleanupServicePorts } from "../lib/ports";
+import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { isServiceRunning, readPid } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { CommandError, Err, Ok } from "../lib/result";
@@ -109,14 +109,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   });
 
   if (blockedPorts.length > 0) {
-    const details = blockedPorts
-      .map(({ port, processes }) => {
-        const procInfo = processes
-          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
-          .join(", ");
-        return `${port}: ${procInfo}`;
-      })
-      .join("; ");
+    const details = formatBlockedPorts(blockedPorts);
     return Err(
       new CommandError(
         `Ports in use by other processes: ${details}. Stop them or rerun with --force-ports to terminate.`
@@ -130,7 +123,6 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
 
   // Check if first warm (needs initialization)
   const needsInit = !(await isInitialized(env.name));
-  const projectName = getDockerProjectName(env.name);
 
   // Start Docker + front + pre-warming all in parallel
   // Front can compile pages while Docker starts and init runs
@@ -157,7 +149,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     console.log();
 
     // Run all init tasks in parallel with Rust service compilation
-    const dbInitPromise = runAllDbInits(env, projectName);
+    const dbInitPromise = runAllDbInits(env);
     const temporalRunningPromise = isTemporalRunning();
     const [, , temporalRunning] = await Promise.all([
       // Start Rust services - they'll compile while init runs
@@ -240,7 +232,7 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   }
   console.log();
   console.log("Next steps:");
-  console.log(`  dust-hive open ${env.name}      # Open zellij session`);
+  console.log(`  dust-hive open ${env.name}      # Open terminal session`);
   console.log(`  dust-hive status ${env.name}    # Check service health`);
   console.log(`  dust-hive cool ${env.name}      # Stop services, keep SDK`);
   console.log();

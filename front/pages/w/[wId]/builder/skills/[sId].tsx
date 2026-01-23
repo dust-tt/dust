@@ -9,6 +9,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
@@ -34,7 +35,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (typeof context.params?.sId !== "string") {
+  if (!isString(context.params?.sId)) {
     return {
       notFound: true,
     };
@@ -47,7 +48,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  if (!skillResource.canWrite(auth)) {
+  if (!skillResource.canWrite(auth) || skillResource.status === "archived") {
     return {
       notFound: true,
     };
@@ -76,10 +77,6 @@ export default function EditSkill({
   owner,
   user,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (skill.status === "archived") {
-    throw new Error("Cannot edit archived skill");
-  }
-
   return (
     <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
       <>

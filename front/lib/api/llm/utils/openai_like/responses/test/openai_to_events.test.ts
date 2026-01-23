@@ -8,7 +8,7 @@ import { functionCallModelEvents } from "@app/lib/api/llm/utils/openai_like/resp
 import { reasoningModelOutput } from "@app/lib/api/llm/utils/openai_like/responses/test/fixtures/model_output/reasoning";
 
 const metadata = {
-  clientId: "openai_responses",
+  clientId: "openai",
   modelId: "gpt-5",
 } as const;
 

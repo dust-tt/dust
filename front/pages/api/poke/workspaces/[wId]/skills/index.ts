@@ -23,8 +23,8 @@ async function handler(
     return apiError(req, res, {
       status_code: 400,
       api_error: {
-        type: "workspace_not_found",
-        message: "The workspace you're trying to access was not found.",
+        type: "invalid_request_error",
+        message: "Missing or invalid workspace id.",
       },
     });
   }
@@ -43,7 +43,9 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const skills = await SkillResource.listSkills(auth);
+      const skills = await SkillResource.listByWorkspace(auth, {
+        status: ["active", "archived", "suggested"],
+      });
 
       return res.status(200).json({
         skills: skills.map((skill) => skill.toJSON(auth)),

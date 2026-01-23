@@ -10,6 +10,7 @@ import {
   ConversationMessageContent,
   ConversationMessageTitle,
   InteractiveImageGrid,
+  LinkIcon,
   MoreIcon,
   StopIcon,
   TrashIcon,
@@ -30,9 +31,8 @@ import { markdownCitationToAttachmentCitation } from "@app/components/assistant/
 import { useBlockedActionsContext } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessage";
-import type { FeedbackSelectorProps } from "@app/components/assistant/conversation/FeedbackSelector";
+import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
-import { FeedbackSelectorPopoverContent } from "@app/components/assistant/conversation/FeedbackSelectorPopoverContent";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
@@ -65,11 +65,13 @@ import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import { isImageProgressOutput } from "@app/lib/actions/mcp_internal_actions/output_schemas";
+import config from "@app/lib/api/config";
 import type { DustError } from "@app/lib/error";
 import {
   useCancelMessage,
   usePostOnboardingFollowUp,
 } from "@app/lib/swr/conversations";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   ContentFragmentsType,
@@ -82,7 +84,7 @@ import type {
 } from "@app/types";
 import {
   assertNever,
-  GLOBAL_AGENTS_SID,
+  isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
@@ -91,7 +93,7 @@ interface AgentMessageProps {
   conversationId: string;
   isLastMessage: boolean;
   agentMessage: MessageTemporaryState;
-  messageFeedback: FeedbackSelectorProps;
+  messageFeedback: FeedbackSelectorBaseProps;
   owner: WorkspaceType;
   user: UserType;
   triggeringUser: UserType | null;
@@ -100,6 +102,7 @@ interface AgentMessageProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
+  enableExtendedActions: boolean;
 }
 
 export function AgentMessage({
@@ -111,6 +114,7 @@ export function AgentMessage({
   user,
   triggeringUser,
   handleSubmit,
+  enableExtendedActions,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
 
@@ -123,10 +127,6 @@ export function AgentMessage({
   const [isCopied, copy] = useCopyToClipboard();
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
-
-  const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
-    agentMessage.configuration.sId as GLOBAL_AGENTS_SID
-  );
 
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
     useBlockedActionsContext();
@@ -272,15 +272,7 @@ export function AgentMessage({
     }
   }, [shouldStream, generationContext, sId, conversationId]);
 
-  const PopoverContent = useCallback(
-    () => (
-      <FeedbackSelectorPopoverContent
-        owner={owner}
-        agentMessageToRender={agentMessage}
-      />
-    ),
-    [owner, agentMessage]
-  );
+  const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
 
   async function handleCopyToClipboard() {
     const messageContent = agentMessage.content ?? "";
@@ -344,6 +336,20 @@ export function AgentMessage({
         "text/html": new Blob([htmlContent], { type: "text/html" }),
       })
     );
+  }
+
+  function handleCopyMessageLink() {
+    const messageUrl = `${getConversationRoute(
+      owner.sId,
+      conversationId,
+      undefined,
+      config.getClientFacingUrl()
+    )}#${agentMessage.sId}`;
+    void navigator.clipboard.writeText(messageUrl);
+    sendNotification({
+      type: "success",
+      title: "Message link copied to clipboard",
+    });
   }
 
   const { deleteAgentMessage, isDeleting } = useDeleteAgentMessage({
@@ -452,7 +458,6 @@ export function AgentMessage({
     !isDeleted &&
     agentMessage.status !== "created" &&
     agentMessage.status !== "failed" &&
-    !isGlobalAgent &&
     agentMessage.configuration.status !== "draft";
 
   const retryMessage = useRetryMessage({ owner });
@@ -484,7 +489,9 @@ export function AgentMessage({
       <FeedbackSelector
         key="feedback-selector"
         {...messageFeedback}
-        getPopoverInfo={PopoverContent}
+        owner={owner}
+        agentConfigurationId={agentMessage.configuration.sId}
+        isGlobalAgent={isGlobalAgent}
       />
     );
   }
@@ -492,6 +499,14 @@ export function AgentMessage({
   // Add copy button or split button with dropdown
   if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
     const dropdownItems = [];
+
+    if (enableExtendedActions) {
+      dropdownItems.push({
+        label: "Copy message link",
+        icon: LinkIcon,
+        onSelect: handleCopyMessageLink,
+      });
+    }
 
     if (shouldShowRetry) {
       dropdownItems.push({
@@ -562,6 +577,20 @@ export function AgentMessage({
           className="text-muted-foreground"
         />
       );
+
+      if (enableExtendedActions) {
+        messageButtons.push(
+          <Button
+            key="copy-msg-link-button"
+            tooltip="Copy message link"
+            variant="ghost-secondary"
+            size="xs"
+            onClick={handleCopyMessageLink}
+            icon={LinkIcon}
+            className="text-muted-foreground"
+          />
+        );
+      }
     }
 
     if (shouldShowRetry) {

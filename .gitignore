@@ -11,7 +11,11 @@ qdrant_storage
 core-api-keys.json
 oauth-api-keys.json
 /extension/build/
-**/.claude
+**/.claude/*
+!**/.claude/skills/
+**/.claude/skills/*
+!**/.claude/skills/dust-*/
+**/.claude/skills/dust-hive/
 **/.codex
 **/.yalc
 yalc.lock
@@ -25,11 +29,6 @@ CLAUDE.local.md
 
 # Direnv
 .direnv/
+.envrc
 .envrc.local
-
-# Devbox
-.devbox/
-devbox.lock
-.env.secrets
-.qdrant-initialized
 

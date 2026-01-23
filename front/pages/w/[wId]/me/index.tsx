@@ -3,6 +3,7 @@ import {
   BoltIcon,
   Page,
   Separator,
+  Spinner,
   Tabs,
   TabsContent,
   TabsList,
@@ -18,51 +19,30 @@ import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getMembershipInvitationToken } from "@app/lib/api/invitation";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
-import type { PendingInvitationOption } from "@app/types/membership_invitation";
+import { usePendingInvitations } from "@app/lib/swr/user";
+import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  pendingInvitations: PendingInvitationOption[];
+  plan: PlanType;
 }>(async (_context, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
-  const userResource = auth.user();
+  const plan = auth.plan();
 
-  if (!owner || !subscription || !userResource) {
+  if (!owner || !subscription || !plan) {
     return {
       notFound: true,
     };
   }
 
-  const invitationResources =
-    await MembershipInvitationResource.listPendingForEmail({
-      email: userResource.email,
-    });
-
-  const pendingInvitations: PendingInvitationOption[] = invitationResources.map(
-    (invitation) => {
-      const workspace = invitation.workspace;
-
-      return {
-        workspaceName: workspace.name,
-        initialRole: invitation.initialRole,
-        createdAt: invitation.createdAt.getTime(),
-        token: getMembershipInvitationToken(invitation.toJSON()),
-        isExpired: invitation.isExpired(),
-      };
-    }
-  );
-
   return {
     props: {
       owner,
       subscription,
-      pendingInvitations,
+      plan,
     },
   };
 });
@@ -70,8 +50,27 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function ProfilePage({
   owner,
   subscription,
-  pendingInvitations,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const { pendingInvitations, isPendingInvitationsLoading } =
+    usePendingInvitations({
+      workspaceId: owner.sId,
+    });
+
+  if (isPendingInvitationsLoading) {
+    return (
+      <AppCenteredLayout
+        subscription={subscription}
+        owner={owner}
+        pageTitle="Dust - Profile"
+        navChildren={<AgentSidebarMenu owner={owner} />}
+      >
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AppCenteredLayout>
+    );
+  }
+
   return (
     <AppCenteredLayout
       subscription={subscription}

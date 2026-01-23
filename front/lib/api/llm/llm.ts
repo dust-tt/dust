@@ -1,12 +1,17 @@
 import { startObservation } from "@langfuse/tracing";
 import { randomUUID } from "crypto";
+import pickBy from "lodash/pickBy";
+import startCase from "lodash/startCase";
 
 import type { LLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import {
   createLLMTraceId,
   LLMTraceBuffer,
 } from "@app/lib/api/llm/traces/buffer";
-import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
+import type {
+  LLMTraceContext,
+  LLMTraceCustomization,
+} from "@app/lib/api/llm/traces/types";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type {
@@ -25,7 +30,32 @@ import type {
   ReasoningEffort,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import { AGENT_CREATIVITY_LEVEL_TEMPERATURES, removeNulls } from "@app/types";
+import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
+import type { Content } from "@app/types/assistant/generation";
+import { isTextContent } from "@app/types/assistant/generation";
+
+function contentToText(contents: Content[]): string {
+  return contents
+    .filter(isTextContent)
+    .map((c) => c.text)
+    .join("\n");
+}
+
+function buildDefaultTraceInput(
+  prompt: string,
+  conversation: LLMStreamParameters["conversation"]
+): unknown[] {
+  return [
+    { role: "system", content: prompt },
+    ...conversation.messages.map((message): unknown => {
+      if (message.role !== "user") {
+        return message;
+      }
+
+      return { ...message, content: contentToText(message.content) };
+    }),
+  ];
+}
 
 export abstract class LLM {
   protected modelId: ModelIdType;
@@ -40,47 +70,50 @@ export abstract class LLM {
   protected readonly authenticator: Authenticator;
   protected readonly context?: LLMTraceContext;
   protected readonly traceId: LLMTraceId;
+  protected readonly getTraceInput?: LLMTraceCustomization["getTraceInput"];
+  protected readonly getTraceOutput?: LLMTraceCustomization["getTraceOutput"];
 
   protected constructor(
     auth: Authenticator,
+    providerId: ModelProviderIdType,
     {
       bypassFeatureFlag = false,
       context,
-      clientId,
+      getTraceInput,
+      getTraceOutput,
       modelId,
       reasoningEffort = "none",
       responseFormat = null,
       temperature = AGENT_CREATIVITY_LEVEL_TEMPERATURES.balanced,
-    }: LLMParameters & { clientId: ModelProviderIdType }
+    }: LLMParameters
   ) {
     this.modelId = modelId;
     this.modelConfig = getSupportedModelConfig({
       modelId: this.modelId,
-      providerId: clientId,
+      providerId,
     });
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;
     this.bypassFeatureFlag = bypassFeatureFlag;
-    this.metadata = { clientId, modelId };
+    this.metadata = {
+      clientId: providerId,
+      modelId: this.modelId,
+    };
 
     // Initialize tracing.
     this.authenticator = auth;
     this.context = context;
     this.traceId = createLLMTraceId(randomUUID());
+    this.getTraceInput = getTraceInput;
+    this.getTraceOutput = getTraceOutput;
   }
 
-  private async *completeStream({
-    conversation,
-    prompt,
-    specifications,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  private async *completeStream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
     let currentEvent: LLMEvent | null = null;
-    for await (const event of this.internalStream({
-      conversation,
-      prompt,
-      specifications,
-    })) {
+    for await (const event of this.internalStream(streamParameters)) {
       currentEvent = event;
       yield event;
     }
@@ -102,23 +135,27 @@ export abstract class LLM {
   /**
    * Private method that wraps the abstract internalStream() with tracing functionality
    */
-  private async *streamWithTracing({
-    conversation,
-    prompt,
-    specifications,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
+  private async *streamWithTracing(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
     if (!this.context) {
-      yield* this.completeStream({ conversation, prompt, specifications });
+      yield* this.completeStream(streamParameters);
       return;
     }
+    const { conversation, prompt, specifications } = streamParameters;
 
     const workspaceId = this.authenticator.getNonNullableWorkspace().sId;
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
+    // Use custom trace input if provided, otherwise use the full conversation.
+    const traceInput =
+      this.getTraceInput?.(conversation) ??
+      buildDefaultTraceInput(prompt, conversation);
+
     const generation = startObservation(
       "llm-completion",
       {
-        input: [{ role: "system", content: prompt }, ...conversation.messages],
+        input: traceInput,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
@@ -133,24 +170,24 @@ export abstract class LLM {
     );
 
     generation.updateTrace({
-      tags: removeNulls([
-        this.authenticator.user()?.sId
-          ? `actualUserId:${this.authenticator.user()?.sId}`
-          : null,
-        this.authenticator.key()
-          ? `apiKeyId:${this.authenticator.key()?.id}`
-          : null,
-        `authMethod:${this.authenticator.authMethod() ?? "unknown"}`,
-        // Dynamic tags from all context fields (except userId and workspaceId).
-        ...Object.entries(this.context)
-          .filter(
-            ([key, value]) =>
-              value !== undefined && !["userId", "workspaceId"].includes(key)
-          )
-          .map(([key, value]) => `${key}:${value}`),
-      ]),
+      name: startCase(this.context.operationType),
+      input: traceInput,
       metadata: {
         dustTraceId: this.traceId,
+        // All contextual data as key-value pairs for better filtering in Langfuse UI.
+        ...(this.authenticator.user()?.sId && {
+          actualUserId: this.authenticator.user()!.sId,
+        }),
+        ...(this.authenticator.key() && {
+          apiKeyId: this.authenticator.key()!.id,
+        }),
+        authMethod: this.authenticator.authMethod() ?? "unknown",
+        // Include all context fields (except userId and workspaceId).
+        ...pickBy(
+          this.context,
+          (value, key) =>
+            value !== undefined && !["userId", "workspaceId"].includes(key)
+        ),
       },
       // In observability, userId maps to workspaceId for consistent grouping.
       userId: this.authenticator.getNonNullableWorkspace().sId,
@@ -176,15 +213,10 @@ export abstract class LLM {
     ];
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
-    // TODO(LLM-Router 13/11/2025): Temporary logs, TBRemoved
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 
-    for await (const event of this.completeStream({
-      conversation,
-      prompt,
-      specifications,
-    })) {
+    for await (const event of this.completeStream(streamParameters)) {
       if (currentEvent === null) {
         timeToFirstEventMs = Date.now() - startTime;
       }
@@ -251,6 +283,16 @@ export abstract class LLM {
         output: { ...rest },
       });
 
+      // Use custom trace output transformer if provided, otherwise use the full output.
+      if (this.getTraceOutput) {
+        const traceOutput = this.getTraceOutput(rest);
+        if (traceOutput) {
+          generation.updateTrace({ output: traceOutput });
+        }
+      } else {
+        generation.updateTrace({ output: { ...rest } });
+      }
+
       if (tokenUsage) {
         generation.update({
           usageDetails: {
@@ -304,24 +346,20 @@ export abstract class LLM {
     return this.traceId;
   }
 
-  async *stream({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent> {
-    yield* this.streamWithTracing({
-      conversation,
-      prompt,
-      specifications,
-      forceToolCall,
-    });
+  /**
+   * Get the metadata for this LLM instance
+   */
+  getMetadata(): LLMClientMetadata {
+    return this.metadata;
   }
 
-  protected abstract internalStream({
-    conversation,
-    prompt,
-    specifications,
-    forceToolCall,
-  }: LLMStreamParameters): AsyncGenerator<LLMEvent>;
+  async *stream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent> {
+    yield* this.streamWithTracing(streamParameters);
+  }
+
+  protected abstract internalStream(
+    streamParameters: LLMStreamParameters
+  ): AsyncGenerator<LLMEvent>;
 }

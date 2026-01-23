@@ -115,6 +115,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       pdfEnabled: false,
       largeFilesEnabled: false,
       csvEnabled: false,
+      useParallelSync: true,
     };
 
     const connector = await ConnectorResource.makeNew(
@@ -583,19 +584,13 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       }
     }
 
-    if (addedFolderIds.length > 0) {
+    if (addedFolderIds.length > 0 || removedFolderIds.length > 0) {
       const res = await launchGoogleDriveFullSyncWorkflow(
         this.connectorId,
         null,
-        addedFolderIds
+        addedFolderIds,
+        removedFolderIds
       );
-      if (res.isErr()) {
-        return res;
-      }
-    } else if (removedFolderIds.length > 0) {
-      // If we have added folders, the garbage collector will be automatically at the end of the full sync,
-      // but if we only removed folders, we need launch it manually.
-      const res = await launchGoogleGarbageCollector(this.connectorId);
       if (res.isErr()) {
         return res;
       }
@@ -647,8 +642,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -661,8 +655,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -675,8 +668,19 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         });
         const workflowRes = await launchGoogleDriveFullSyncWorkflow(
           this.connectorId,
-          null,
-          []
+          null
+        );
+        if (workflowRes.isErr()) {
+          return workflowRes;
+        }
+        return new Ok(void 0);
+      }
+      case "useParallelSync": {
+        await config.update({
+          useParallelSync: configValue === "true",
+        });
+        const workflowRes = await launchGoogleDriveIncrementalSyncWorkflow(
+          this.connectorId
         );
         if (workflowRes.isErr()) {
           return workflowRes;
@@ -771,6 +775,9 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
       case "csvEnabled": {
         return new Ok(config.csvEnabled ? "true" : "false");
       }
+      case "useParallelSync": {
+        return new Ok(config.useParallelSync ? "true" : "false");
+      }
       default:
         return new Err(new Error(`Invalid config key ${configKey}`));
     }
@@ -815,7 +822,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
   }: {
     fromTs: number | null;
   }): Promise<Result<string, Error>> {
-    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs, []);
+    return launchGoogleDriveFullSyncWorkflow(this.connectorId, fromTs);
   }
 
   async configure(): Promise<Result<void, Error>> {

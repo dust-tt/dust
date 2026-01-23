@@ -13,8 +13,14 @@ Each environment gets its own:
 Install these before using dust-hive:
 
 ```bash
-# Bun (runtime)
+# Bun (runtime for dust-hive itself)
 curl -fsSL https://bun.sh/install | bash
+
+# nvm (Node version manager for front/connectors)
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# Rust toolchain (for core/oauth)
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 # Zellij (terminal multiplexer)
 brew install zellij
@@ -25,11 +31,54 @@ brew install --cask orbstack
 # Temporal CLI (workflow engine)
 brew install temporal
 
-# sccache (Rust compilation cache - speeds up builds across worktrees)
+# direnv (auto-load environment variables)
+brew install direnv
+
+# Build dependencies
+brew install cmake protobuf
+
+# sccache (optional - Rust compilation cache, speeds up rebuilds)
 brew install sccache
+
+# fzf (optional - used by `dust-hive open` when NAME is omitted)
+brew install fzf
+
+# psql (required for seed-config command)
+brew install postgresql
 ```
 
-Then configure cargo to use sccache by adding to `~/.cargo/config.toml`:
+> **Linux users**: Also install `lsof` if not already available (`sudo apt install lsof`)
+
+### direnv setup
+
+1. **Add the shell hook** to your shell config:
+
+   **For zsh** (`~/.zshrc`):
+   ```bash
+   eval "$(direnv hook zsh)"
+   ```
+
+   **For bash** (`~/.bashrc`):
+   ```bash
+   eval "$(direnv hook bash)"
+   ```
+
+2. **Silence verbose output** by creating `~/.config/direnv/direnv.toml`:
+   ```bash
+   mkdir -p ~/.config/direnv
+   cat > ~/.config/direnv/direnv.toml << 'EOF'
+   [global]
+   hide_env_diff = true
+   EOF
+   ```
+
+This enables automatic environment loading when you `cd` into any dust-hive worktree. The `.envrc` file in each worktree sources the environment variables for that environment.
+
+After adding the hook, restart your shell or run `source ~/.zshrc` (or `~/.bashrc`).
+
+### sccache setup
+
+Configure cargo to use sccache by adding to `~/.cargo/config.toml`:
 
 ```toml
 [build]
@@ -58,7 +107,7 @@ mkdir -p ~/.dust-hive
 cp /path/to/your/.env ~/.dust-hive/config.env
 ```
 
-The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.). See `local-dev-setup.md` for the full list.
+The `config.env` must use `export` statements (e.g., `export API_KEY=xxx`). It contains all the environment variables from your local dev setup (API keys, OAuth secrets, etc.).
 
 2. **Start managed services** (temporal server + main zellij session):
 
@@ -75,7 +124,7 @@ This runs `dust-hive sync` to update dependencies, starts the Temporal server as
 ## Quick Start
 
 ```bash
-# Start managed services (temporal + main session)
+# Start managed services (temporal + test postgres + test redis + main session)
 dust-hive up
 
 # Create a new environment
@@ -100,16 +149,15 @@ dust-hive down
 
 ## Commands
 
+> **Tip**: Run `dust-hive <command> --help` for all available options.
+
 ### Managed Services
 
 | Command | Description |
 |---------|-------------|
-| `up [-a\|--attach]` | Start temporal + sync + create main session (from main repo) |
-| `down [-f\|--force]` | Stop all environments, temporal, and zellij sessions |
-| `temporal start` | Start Temporal server only |
-| `temporal stop` | Stop Temporal server only |
-| `temporal restart` | Restart Temporal server |
-| `temporal status` | Show Temporal server status |
+| `up [-a] [-f]` | Start temporal + test postgres + test redis + sync + create main session (from main repo) |
+| `down [-f]` | Stop all envs, temporal, test postgres, test redis, and sessions |
+| `temporal start\|stop\|restart\|status\|logs` | Manage Temporal server |
 
 ### Environment Commands
 
@@ -117,10 +165,10 @@ dust-hive down
 |---------|-------------|
 | `spawn [NAME] [--no-open] [--no-attach] [--warm] [--wait]` | Create new environment |
 | `warm [NAME] [--no-forward] [--force-ports]` | Start docker + all services |
-| `cool [NAME]` | Stop services, keep SDK watch |
+| `cool [NAME]` | Pause services + docker, keep SDK (fast restart) |
 | `start [NAME]` | Resume stopped environment (when NAME provided) |
-| `stop [NAME]` | Full stop of environment (when NAME provided) |
-| `destroy NAME [--force]` | Remove environment completely |
+| `stop [NAME]` | Full stop + remove docker containers |
+| `destroy [NAME] [--force]` | Remove environment completely (multi-select if NAME omitted) |
 | `restart [NAME] SERVICE` | Restart a single service |
 | `open [NAME]` | Open zellij terminal session |
 | `reload [NAME]` | Kill and reopen zellij session |
@@ -133,11 +181,14 @@ dust-hive down
 
 | Command | Description |
 |---------|-------------|
-| `doctor` | Check prerequisites |
+| `setup [-y]` | Check prerequisites and guide initial setup (run this first!) |
+| `doctor` | Check prerequisites (non-interactive) |
 | `cache` | Show binary cache status |
 | `forward [NAME\|status\|stop]` | Manage OAuth port forwarding |
-| `sync` | Pull latest main, rebuild binaries, refresh deps |
+| `sync [-f]` | Pull latest main, rebuild binaries, refresh deps |
 | `seed-config <postgres-uri>` | Extract user data from existing DB for seeding |
+
+**Aliases**: Most commands have short aliases (e.g., `s` for spawn, `o` for open, `w` for warm). Run `dust-hive --help` to see all aliases.
 
 > **Tip**: When `NAME` is omitted, you'll get an interactive picker to select an environment.
 > It pre-selects the current environment (if you're in a worktree) or the last one you used.
@@ -207,14 +258,44 @@ dust-hive forward env-b     # Switch OAuth to env-b
 If the ports are already owned by another dust-hive forwarder, `dust-hive forward NAME` will switch it automatically.
 If those ports are owned by a different process, the command will fail with details so you can stop it.
 
-## Zellij Sessions
+## Preconditions
+
+### `dust-hive up` and `dust-hive sync`
+
+These commands must be run from the **main Dust repository** (not a worktree):
+
+1. **Not in a worktree**: Run from `~/path/to/dust` (the main clone)
+2. **On main branch**: Run `git checkout main` first
+3. **Clean working directory**: Commit or stash changes (untracked files OK)
+
+If you see errors about "cannot run from worktree" or "checkout main first", these preconditions aren't met.
+
+## Configuration settings
+
+You can customize the behavior of `dust-hive` by editing `~/.dust-hive/settings.json`:
+
+```json
+{
+  "multiplexer": "zellij",
+  "branchPrefix": "tom-",
+  "useGitSpice": false
+}
+```
+
+* **multiplexer**: Terminal multiplexer to use (`"zellij"` or `"tmux"`, default: `"zellij"`)
+* **branchPrefix**: Prefix to add to branch names (e.g., `"tom-"` creates branches like `"tom-myenv"`)
+* **useGitSpice**: Use git-spice to manage stacks (requires git-spice installed and configured)
+
+## Terminal Sessions (zellij/tmux)
+
+> **Note**: The following describes the default zellij experience. If you set `"multiplexer": "tmux"` in settings, sessions use tmux instead (with different shortcuts).
 
 ### Main Session
 
 When you run `dust-hive up`, a main session (`dust-hive-main`) is created with:
 
 - **main** - Shell at the repo root
-- **temporal** - Temporal server logs with Ctrl+C menu (r=restart, c=clear, q=quit)
+- **temporal** - Temporal server logs (runs `dust-hive temporal logs`)
 
 Attach to it with `dust-hive up -a` or by running zellij directly: `zellij attach dust-hive-main`.
 
@@ -245,14 +326,6 @@ dust-hive spawn myenv --warm --no-attach
 ```
 
 This creates the zellij session and starts services, but leaves you in your current terminal. Use `dust-hive open myenv` to attach later.
-
-### Zellij Shortcuts
-
-- `Ctrl+o` then `d` - Detach (keeps services running)
-- `Ctrl+o` then `w` - Session manager
-- `Ctrl+o` then `[` - Scroll mode (arrow keys to scroll)
-- `Alt+n` - Next tab
-- `Alt+p` - Previous tab
 
 ## Workflow Examples
 
@@ -347,66 +420,13 @@ dust-hive logs myenv front
 dust-hive logs myenv front -f
 ```
 
-## Performance
+### Running `npm install`
 
-dust-hive uses aggressive caching and parallelization:
-
-| Operation | Time |
-|-----------|------|
-| `spawn` | ~7 seconds |
-| `warm` (first) | ~80 seconds |
-| `warm` (subsequent) | ~18 seconds |
-
-First warm is slower because it initializes databases (Postgres, Qdrant, Elasticsearch). Subsequent warms are fast because services just reconnect to existing data.
-
-### Cache System
-
-The cache uses your main Dust repo as source:
-
-1. **Node modules**: Symlinked from main repo (instant)
-2. **Cargo target**: Symlinked from main repo (shared compilation + linking cache)
-3. **Rust binaries**: Pre-compiled for init scripts (qdrant, elasticsearch, init_db)
-
-> **Warning**: node_modules are symlinked, not copied. Running `npm install` in a worktree will modify the main repo's node_modules. If you need isolation, manually run: `rm -rf node_modules && npm ci`
-
-> **sccache** (optional but recommended): When worktree code differs from main, cargo recompiles. sccache caches these compilations by content hash, so rebuilding after switching branches is faster.
-
+To run `npm install` in a dust-hive worktree, you must first delete `node_modules`:
 ```bash
-# Check cache status
-dust-hive cache
-
-# Update main repo with latest, rebuild binaries, refresh deps
-dust-hive sync
+rm -rf node_modules && npm install
 ```
-
-## File Locations
-
-```
-~/.dust-hive/
-├── config.env                 # Your secrets (create this)
-├── temporal.pid               # Temporal server process ID
-├── temporal.log               # Temporal server logs
-├── forward.pid                # Forwarder process ID
-├── forward.log                # Forwarder logs
-├── forward.json               # Forwarder state (target env)
-├── cache/
-│   └── source.path            # Path to cache source repo
-├── envs/
-│   └── NAME/
-│       ├── env.sh             # Port overrides
-│       ├── ports.json         # Port allocation
-│       ├── metadata.json      # Environment info
-│       ├── *.pid              # Process IDs
-│       └── *.log              # Service logs
-├── scripts/
-│   └── watch-logs.sh          # Log watcher (supports --temporal flag)
-└── zellij/
-    ├── layout.kdl             # Environment zellij layout
-    └── main-layout.kdl        # Main session layout
-
-~/dust-hive/
-└── NAME/                      # Git worktree
-```
+This is necessary because dust-hive uses a shallow copy structure (symlinks) that is incompatible with npm's expectations.
 
 ## Development
 

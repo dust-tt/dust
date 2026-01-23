@@ -114,12 +114,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   let editorIds = agentIdsForUserAsEditor;
   if (!editorIds) {
     const agentIdsForGroups = user
-      ? await GroupResource.findAgentIdsForGroups(auth, [
-          ...auth
-            .groups()
-            .filter((g) => g.kind === "agent_editors")
-            .map((g) => g.id),
-        ])
+      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
       : [];
 
     editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);

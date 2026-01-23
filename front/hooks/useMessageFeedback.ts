@@ -10,7 +10,7 @@ export function useMessageFeedback({
   conversationId,
 }: {
   owner: LightWorkspaceType;
-  conversationId: string | null;
+  conversationId?: string | null;
 }) {
   const sendNotification = useSendNotification();
   const { mutateReactions } = useConversationFeedbacks({

@@ -13,7 +13,6 @@ import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
-import { runDocumentUpsertHooks } from "@app/lib/document_upsert_hooks/hooks";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -686,17 +685,6 @@ async function handler(
         res.status(200).json({
           document: upsertRes.value.document,
           data_source: dataSource.toJSON(),
-        });
-
-        runDocumentUpsertHooks({
-          auth,
-          dataSourceId: dataSource.sId,
-          documentId: req.query.documentId as string,
-          documentHash: upsertRes.value.document.hash,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          dataSourceConnectorProvider: dataSource.connectorProvider || null,
-          // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-          upsertContext: r.data.upsert_context || undefined,
         });
         return;
       }

@@ -5,7 +5,7 @@ import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type { MembershipRoleType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -56,20 +56,20 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     // Create skills and link them to the agent
-    const skill1 = await SkillConfigurationFactory.create(auth, {
+    const skill1 = await SkillFactory.create(auth, {
       name: "Test Skill 1",
       agentFacingDescription: "First test skill",
     });
-    const skill2 = await SkillConfigurationFactory.create(auth, {
+    const skill2 = await SkillFactory.create(auth, {
       name: "Test Skill 2",
       agentFacingDescription: "Second test skill",
     });
 
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill1.id,
       agentConfigurationId: agent.id,
     });
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill2.id,
       agentConfigurationId: agent.id,
     });
@@ -158,10 +158,10 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     const agent = await AgentConfigurationFactory.createTestAgent(auth);
 
     // Create skill and link it to agent
-    const skill = await SkillConfigurationFactory.create(auth, {
+    const skill = await SkillFactory.create(auth, {
       name: "Workspace Skill",
     });
-    await SkillConfigurationFactory.linkToAgent(auth, {
+    await SkillFactory.linkToAgent(auth, {
       skillId: skill.id,
       agentConfigurationId: agent.id,
     });
@@ -186,10 +186,10 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
       );
 
       const agent = await AgentConfigurationFactory.createTestAgent(auth);
-      const skill = await SkillConfigurationFactory.create(auth, {
+      const skill = await SkillFactory.create(auth, {
         name: `Skill for ${role}`,
       });
-      await SkillConfigurationFactory.linkToAgent(auth, {
+      await SkillFactory.linkToAgent(auth, {
         skillId: skill.id,
         agentConfigurationId: agent.id,
       });

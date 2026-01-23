@@ -16,16 +16,13 @@ import {
   setCacheSource,
 } from "../lib/cache";
 import { directoryExists } from "../lib/fs";
+import { isGitSpiceAvailable, repoSyncWithGitSpice } from "../lib/git-spice";
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
+import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
+import { loadSettings } from "../lib/settings";
 import { runNpmInstall } from "../lib/setup";
-import {
-  getCurrentBranch,
-  getMainRepoPath,
-  hasUncommittedChanges,
-  isWorktree,
-} from "../lib/worktree";
 
 export interface SyncOptions {
   force?: boolean;
@@ -122,40 +119,6 @@ async function checkMissingBinaries(repoRoot: string): Promise<Binary[]> {
     }
   }
   return missing;
-}
-
-// Check preconditions for sync command
-async function checkSyncPreconditions(repoRoot: string): Promise<Result<void>> {
-  // Must be run from main repo, not a worktree
-  const inWorktree = await isWorktree(repoRoot);
-  if (inWorktree) {
-    const mainRepo = await getMainRepoPath(repoRoot);
-    return Err(
-      new CommandError(`Cannot sync from a worktree. Run sync from the main repo: cd ${mainRepo}`)
-    );
-  }
-
-  // Must be on main branch
-  const currentBranch = await getCurrentBranch(repoRoot);
-  if (currentBranch !== "main") {
-    return Err(
-      new CommandError(
-        `Cannot sync from branch '${currentBranch}'. Checkout main first: git checkout main`
-      )
-    );
-  }
-
-  // Must have clean working directory (ignoring untracked files)
-  logger.step("Checking for uncommitted changes...");
-  const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
-  if (hasChanges) {
-    return Err(
-      new CommandError("Repository has uncommitted changes. Commit or stash them before syncing.")
-    );
-  }
-  logger.success("Working directory clean");
-
-  return Ok(undefined);
 }
 
 // Determine which npm directories need updating based on lock file changes
@@ -307,6 +270,35 @@ function buildSyncState(
   return newState;
 }
 
+// Pull and sync repository (uses git-spice if enabled, otherwise standard git)
+async function pullAndSync(repoRoot: string): Promise<Result<void>> {
+  const settings = await loadSettings();
+
+  // Use git-spice repo sync if enabled
+  if (settings.useGitSpice) {
+    const gsAvailable = await isGitSpiceAvailable();
+    if (gsAvailable) {
+      logger.step("Syncing repository with git-spice...");
+      const syncResult = await repoSyncWithGitSpice(repoRoot);
+      if (!syncResult.success) {
+        return Err(new CommandError(`Failed to sync with git-spice: ${syncResult.error}`));
+      }
+      logger.success("Repository synced with git-spice");
+      return Ok(undefined);
+    }
+    logger.warn("git-spice not available, falling back to standard git pull");
+  }
+
+  // Fall back to standard git pull
+  logger.step("Pulling latest main...");
+  const pullResult = await gitPull(repoRoot);
+  if (!pullResult.success) {
+    return Err(new CommandError(`Failed to pull: ${pullResult.error}`));
+  }
+  logger.success("Pulled latest changes");
+  return Ok(undefined);
+}
+
 export async function syncCommand(options: SyncOptions = {}): Promise<Result<void>> {
   const startTimeMs = Date.now();
   const force = options.force ?? false;
@@ -318,7 +310,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   }
 
   // Check preconditions
-  const preconditionResult = await checkSyncPreconditions(repoRoot);
+  const preconditionResult = await checkMainRepoPreconditions(repoRoot, { commandName: "sync" });
   if (!preconditionResult.ok) {
     return preconditionResult;
   }
@@ -329,13 +321,11 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   // Capture state before pull for change detection
   const savedState = await getSyncState();
 
-  // Pull latest main
-  logger.step("Pulling latest main...");
-  const pullResult = await gitPull(repoRoot);
-  if (!pullResult.success) {
-    return Err(new CommandError(`Failed to pull: ${pullResult.error}`));
+  // Pull and sync (uses git-spice if enabled, otherwise standard git)
+  const pullResult = await pullAndSync(repoRoot);
+  if (!pullResult.ok) {
+    return pullResult;
   }
-  logger.success("Pulled latest changes");
 
   // Update cache source
   await setCacheSource(repoRoot);

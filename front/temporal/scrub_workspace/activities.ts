@@ -29,7 +29,6 @@ import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resou
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { TagResource } from "@app/lib/resources/tags_resource";
-import { TrackerConfigurationResource } from "@app/lib/resources/tracker_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -125,7 +124,6 @@ export async function scrubWorkspaceData({
   await deleteAgentMemories(auth);
   await deleteOnboardingTasks(auth);
   await deleteTags(auth);
-  await deleteTrackers(auth);
   await deleteDatasources(auth);
   await deleteSpaces(auth);
   await cleanupCustomerio(auth);
@@ -156,7 +154,10 @@ export async function pauseAllTriggers({
   workspaceId: string;
 }) {
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
-  const disableResult = await TriggerResource.disableAllForWorkspace(auth);
+  const disableResult = await TriggerResource.disableAllForWorkspace(
+    auth,
+    "downgraded"
+  );
   if (disableResult.isErr()) {
     // Don't fail the whole scrub workflow if we can't disable triggers, just log it.
     logger.error(
@@ -235,20 +236,6 @@ async function deleteTags(auth: Authenticator) {
   }
 }
 
-async function deleteTrackers(auth: Authenticator) {
-  const workspace = auth.workspace();
-  if (!workspace) {
-    throw new Error("No workspace found");
-  }
-
-  const trackers = await TrackerConfigurationResource.listByWorkspace(auth, {
-    includeDeleted: true,
-  });
-  for (const tracker of trackers) {
-    await tracker.delete(auth, { hardDelete: true });
-  }
-}
-
 async function deleteDatasources(auth: Authenticator) {
   const globalAndSystemSpaces = await SpaceResource.listWorkspaceDefaultSpaces(
     auth,
@@ -274,7 +261,9 @@ async function deleteDatasources(auth: Authenticator) {
 // Remove all user-created spaces and their associated groups,
 // preserving only the system and global spaces.
 async function deleteSpaces(auth: Authenticator) {
-  const spaces = await SpaceResource.listWorkspaceSpaces(auth);
+  const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
+    includeProjectSpaces: true,
+  });
 
   // Filter out system and global spaces.
   const filteredSpaces = spaces.filter(

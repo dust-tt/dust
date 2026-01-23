@@ -25,9 +25,12 @@ import { MicrosoftOAuthProvider } from "@app/lib/api/oauth/providers/microsoft";
 import { MicrosoftToolsOAuthProvider } from "@app/lib/api/oauth/providers/microsoft_tools";
 import { MondayOAuthProvider } from "@app/lib/api/oauth/providers/monday";
 import { NotionOAuthProvider } from "@app/lib/api/oauth/providers/notion";
+import { ProductboardOAuthProvider } from "@app/lib/api/oauth/providers/productboard";
 import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce";
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
+import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
+import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
@@ -47,7 +50,8 @@ export type OAuthError = {
   code:
     | "connection_creation_failed"
     | "connection_not_implemented"
-    | "connection_finalization_failed";
+    | "connection_finalization_failed"
+    | "credential_retrieval_failed";
   message: string;
   oAuthAPIError?: OAuthAPIError;
 };
@@ -74,9 +78,12 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   microsoft_tools: new MicrosoftToolsOAuthProvider(),
   monday: new MondayOAuthProvider(),
   notion: new NotionOAuthProvider(),
+  productboard: new ProductboardOAuthProvider(),
   salesforce: new SalesforceOAuthProvider(),
   slack: new SlackOAuthProvider(),
   slack_tools: new SlackToolsOAuthProvider(),
+  snowflake: new SnowflakeOAuthProvider(),
+  ukg_ready: new UkgReadyOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
   vanta: new VantaOAuthProvider(),
 };
@@ -115,12 +122,25 @@ export async function createConnectionAndGetSetupUrl(
   const userId = auth.getNonNullableUser().sId;
 
   if (providerStrategy.getRelatedCredential) {
-    const credentials = await providerStrategy.getRelatedCredential!(auth, {
-      extraConfig,
-      workspaceId,
-      userId,
-      useCase,
-    });
+    const credentialResult = await providerStrategy.getRelatedCredential!(
+      auth,
+      {
+        extraConfig,
+        workspaceId,
+        userId,
+        useCase,
+      }
+    );
+
+    // If getRelatedCredential returned an error, propagate it
+    if (credentialResult && credentialResult.isErr()) {
+      return new Err(credentialResult.error);
+    }
+
+    // credentialResult is either undefined or Ok at this point
+    const credentials = credentialResult?.isOk()
+      ? credentialResult.value
+      : undefined;
     if (credentials) {
       if (!providerStrategy.getUpdatedExtraConfig) {
         // You probably need to clean up the extra config to remove any sensitive data (such as client_secret).

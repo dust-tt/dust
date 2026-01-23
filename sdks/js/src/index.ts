@@ -75,6 +75,9 @@ import {
   GetFeedbacksResponseSchema,
   GetMCPServerViewsResponseSchema,
   GetMentionSuggestionsResponseBodySchema,
+  GetSpaceConversationIdsResponseSchema,
+  GetSpaceConversationsForDataSourceResponseSchema,
+  GetSpaceMetadataResponseSchema,
   GetSpacesResponseSchema,
   GetWorkspaceFeatureFlagsResponseSchema,
   GetWorkspaceVerifiedDomainsResponseSchema,
@@ -1077,6 +1080,8 @@ export class DustAPI {
         const reader = res.value.response.body.getReader();
         const decoder = new TextDecoder();
 
+        let streamEndedWithError = false;
+
         try {
           for (;;) {
             const { value, done } = await reader.read();
@@ -1099,6 +1104,8 @@ export class DustAPI {
           }
         } catch (e) {
           logger.error({ error: e }, "Failed processing event stream");
+          streamEndedWithError = true;
+
           // Respect caller-initiated aborts.
           if (signal?.aborted) {
             return;
@@ -1114,10 +1121,13 @@ export class DustAPI {
 
         // Stream ended - check if we need to reconnect
         if (!receivedTerminalEvent && autoReconnect) {
-          reconnectAttempts += 1;
+          // Only increment reconnect attempts for actual errors, not clean closures (pagination).
+          if (streamEndedWithError) {
+            reconnectAttempts += 1;
 
-          if (reconnectAttempts >= maxReconnectAttempts) {
-            throw new Error("Exceeded maximum reconnection attempts");
+            if (reconnectAttempts >= maxReconnectAttempts) {
+              throw new Error("Exceeded maximum reconnection attempts");
+            }
           }
 
           await new Promise((resolve) => setTimeout(resolve, reconnectDelay));
@@ -1225,6 +1235,48 @@ export class DustAPI {
       return r;
     }
     return new Ok(r.value.feedbacks);
+  }
+
+  async getSpaceConversationsForDataSource({
+    spaceId,
+    updatedSince,
+  }: {
+    spaceId: string;
+    updatedSince?: number | null;
+  }) {
+    const query = new URLSearchParams();
+    if (updatedSince !== undefined && updatedSince !== null) {
+      query.append("updatedSince", String(updatedSince));
+    }
+
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/conversations`,
+      query,
+    });
+
+    return this._resultFromResponse(
+      GetSpaceConversationsForDataSourceResponseSchema,
+      res
+    );
+  }
+
+  async getSpaceConversationIds({ spaceId }: { spaceId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/conversation_ids`,
+    });
+
+    return this._resultFromResponse(GetSpaceConversationIdsResponseSchema, res);
+  }
+
+  async getSpaceMetadata({ spaceId }: { spaceId: string }) {
+    const res = await this.request({
+      method: "GET",
+      path: `spaces/${spaceId}/project_metadata`,
+    });
+
+    return this._resultFromResponse(GetSpaceMetadataResponseSchema, res);
   }
 
   async postFeedback(

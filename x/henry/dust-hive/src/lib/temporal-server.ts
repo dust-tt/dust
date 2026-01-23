@@ -3,7 +3,7 @@
 import { open, rename, unlink } from "node:fs/promises";
 import { createConnection } from "node:net";
 import { isErrnoException } from "./errors";
-import { TEMPORAL_LOG_PATH, TEMPORAL_PID_PATH, TEMPORAL_PORT } from "./paths";
+import { TEMPORAL_DB_PATH, TEMPORAL_LOG_PATH, TEMPORAL_PID_PATH, TEMPORAL_PORT } from "./paths";
 import { isProcessRunning, killProcess } from "./process";
 
 // Check if something is listening on the temporal port
@@ -143,7 +143,7 @@ export async function startTemporalServer(): Promise<{
   await rotateLogIfNeeded();
   const logHandle = await open(TEMPORAL_LOG_PATH, "a");
 
-  const proc = Bun.spawn(["temporal", "server", "start-dev"], {
+  const proc = Bun.spawn(["temporal", "server", "start-dev", "--db-filename", TEMPORAL_DB_PATH], {
     stdout: logHandle.fd,
     stderr: logHandle.fd,
     detached: true,
@@ -197,6 +197,21 @@ export async function stopTemporalServer(): Promise<{ success: boolean; wasRunni
   return { success: true, wasRunning: true };
 }
 
+// Wait for the temporal port to be free
+async function waitForPortFree(timeoutMs = 10000): Promise<boolean> {
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const portInUse = await isTemporalPortInUse();
+    if (!portInUse) {
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  return false;
+}
+
 // Restart the temporal server
 export async function restartTemporalServer(): Promise<{
   success: boolean;
@@ -204,5 +219,16 @@ export async function restartTemporalServer(): Promise<{
   pid?: number;
 }> {
   await stopTemporalServer();
+
+  // Wait for the port to be free before starting
+  // This avoids a race condition where the old process is still releasing the port
+  const portFree = await waitForPortFree();
+  if (!portFree) {
+    return {
+      success: false,
+      error: `Port ${TEMPORAL_PORT} is still in use after stopping temporal. Another process may be using it.`,
+    };
+  }
+
   return startTemporalServer();
 }

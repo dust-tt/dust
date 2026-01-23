@@ -1,18 +1,16 @@
 // Data-driven database initialization with binary caching
 
 import { type InitBinary, binaryExists, getBinaryPath, getCacheSource } from "./cache";
+import { getServiceContainerId } from "./docker";
 import { buildPostgresUri, loadEnvVars } from "./env-utils";
 import type { Environment } from "./environment";
 import { logger } from "./logger";
-import { SEED_USER_PATH, getEnvFilePath, getWorktreeDir } from "./paths";
+import { getEnvFilePath, getWorktreeDir } from "./paths";
 import { runSqlSeed } from "./seed";
 import { buildShell } from "./shell";
 import { SEARCH_ATTRIBUTES, TEMPORAL_NAMESPACE_CONFIG, getTemporalNamespaces } from "./temporal";
 
 export { getTemporalNamespaces } from "./temporal";
-
-// Re-export from paths.ts for backwards compatibility
-export { SEED_USER_PATH } from "./paths";
 
 // Run a binary directly or fall back to cargo run
 async function runBinary(
@@ -22,7 +20,12 @@ async function runBinary(
     cwd: string;
     env: Record<string, string>;
   }
-): Promise<{ success: boolean; usedCache: boolean; stdout: string; stderr: string }> {
+): Promise<{
+  success: boolean;
+  usedCache: boolean;
+  stdout: string;
+  stderr: string;
+}> {
   const cacheSource = await getCacheSource();
   const hasCachedBinary = cacheSource ? await binaryExists(cacheSource, binary) : false;
 
@@ -77,7 +80,14 @@ async function initPostgres(envVars: Record<string, string>): Promise<void> {
 
   for (const db of databases) {
     const existsProc = Bun.spawn(
-      ["psql", uri, "-tAc", `SELECT 1 FROM pg_database WHERE datname='${db}';`],
+      [
+        "psql",
+        uri,
+        "-tAc",
+        `SELECT 1
+                                   FROM pg_database
+                                   WHERE datname = '${db}';`,
+      ],
       { stdout: "pipe", stderr: "pipe" }
     );
     const existsOut = await new Response(existsProc.stdout).text();
@@ -102,30 +112,55 @@ async function initPostgres(envVars: Record<string, string>): Promise<void> {
   }
 }
 
-// Initialize Qdrant collections
+// Initialize Qdrant collections with retry logic
+// The Rust binary creates 24 shard keys sequentially, which can timeout.
+// Retrying is safe because the binary is idempotent (skips existing shard keys).
 async function initQdrant(
   worktreePath: string,
   envVars: Record<string, string>
 ): Promise<{ success: boolean; usedCache: boolean }> {
-  const result = await runBinary(
-    "qdrant_create_collection",
-    ["--cluster", "cluster-0", "--provider", "openai", "--model", "text-embedding-3-large-1536"],
-    {
-      cwd: `${worktreePath}/core`,
-      env: envVars,
+  const maxRetries = 3;
+  const baseDelayMs = 2000;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const result = await runBinary(
+      "qdrant_create_collection",
+      ["--cluster", "cluster-0", "--provider", "openai", "--model", "text-embedding-3-large-1536"],
+      {
+        cwd: `${worktreePath}/core`,
+        env: envVars,
+      }
+    );
+
+    // Treat "already exists" as success (idempotent)
+    const alreadyExists =
+      result.stderr.includes("already exists") || result.stdout.includes("already exists");
+
+    if (result.success || alreadyExists) {
+      return { success: true, usedCache: result.usedCache };
     }
-  );
 
-  // Treat "already exists" as success (idempotent)
-  const alreadyExists =
-    result.stderr.includes("already exists") || result.stdout.includes("already exists");
+    // Check if it's a timeout error - worth retrying
+    const isTimeout =
+      result.stderr.includes("Timeout expired") ||
+      result.stderr.includes("operation was cancelled");
 
-  if (!(result.success || alreadyExists)) {
+    if (isTimeout && attempt < maxRetries) {
+      const delay = baseDelayMs * attempt;
+      logger.warn(
+        `Qdrant init timed out (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      continue;
+    }
+
+    // Non-timeout error or final attempt - fail
     console.log(result.stdout);
     console.error(result.stderr);
+    return { success: false, usedCache: result.usedCache };
   }
 
-  return { success: result.success || alreadyExists, usedCache: result.usedCache };
+  return { success: false, usedCache: false };
 }
 
 // Initialize Elasticsearch indices (Rust binaries)
@@ -210,14 +245,22 @@ async function initElasticsearchTS(
 }
 
 // Wait for a Docker container to be healthy
-async function waitForContainer(projectName: string, service: string): Promise<void> {
-  const containerName = `${projectName}-${service}-1`;
+// Uses getServiceContainerId instead of constructing container name (more reliable)
+async function waitForContainer(envName: string, service: string): Promise<void> {
   const maxWait = 60000;
   const start = Date.now();
 
   while (Date.now() - start < maxWait) {
+    // Get container ID using docker compose (handles naming variations)
+    const containerId = await getServiceContainerId(envName, service);
+    if (!containerId) {
+      // Container doesn't exist yet, wait and retry
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      continue;
+    }
+
     const proc = Bun.spawn(
-      ["docker", "inspect", "--format", "{{.State.Health.Status}}", containerName],
+      ["docker", "inspect", "--format", "{{.State.Health.Status}}", containerId],
       { stdout: "pipe", stderr: "pipe" }
     );
     const output = await new Response(proc.stdout).text();
@@ -308,7 +351,10 @@ async function runCoreDbInit(env: Environment): Promise<{ success: boolean; used
   const alreadyExists =
     result.stderr.includes("already exists") || result.stdout.includes("already exists");
 
-  return { success: result.success || alreadyExists, usedCache: result.usedCache };
+  return {
+    success: result.success || alreadyExists,
+    usedCache: result.usedCache,
+  };
 }
 
 // Run front database init
@@ -386,11 +432,11 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
   const stderr = await new Response(proc.stderr).text();
   await proc.exited;
 
-  // Treat "already exists" or "relation already exists" as success (idempotent)
+  // Treat "already exists" or "No migrations" as success (idempotent)
+  // Note: Postgres outputs "relation X already exists" which is caught by "already exists"
   const alreadyExists =
     stderr.includes("already exists") ||
     stdout.includes("already exists") ||
-    stderr.includes("relation") ||
     stdout.includes("No migrations");
 
   if (proc.exitCode !== 0 && !alreadyExists) {
@@ -404,17 +450,17 @@ async function runConnectorsDbInit(env: Environment): Promise<boolean> {
 
 // Run all DB initialization steps in parallel
 // Each init waits for its container, then runs
-export async function runAllDbInits(env: Environment, projectName: string): Promise<void> {
+export async function runAllDbInits(env: Environment): Promise<void> {
   logger.info("Initializing databases (parallel)...");
 
   // Run all inits in parallel - each waits for its container first
   await Promise.all([
     // Postgres: wait for container → create DBs → run schema inits
-    waitForContainer(projectName, "db").then(() => initAllPostgres(env)),
+    waitForContainer(env.name, "db").then(() => initAllPostgres(env)),
     // Qdrant: wait for container → create collections
-    waitForContainer(projectName, "qdrant_primary").then(() => initAllQdrant(env)),
+    waitForContainer(env.name, "qdrant").then(() => initAllQdrant(env)),
     // Elasticsearch: wait for container → create indices
-    waitForContainer(projectName, "elasticsearch").then(() => initAllElasticsearch(env)),
+    waitForContainer(env.name, "elasticsearch").then(() => initAllElasticsearch(env)),
   ]);
 
   logger.success("All databases initialized");
@@ -460,7 +506,7 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   const namespaces = getTemporalNamespaces(env.name);
 
   for (const ns of namespaces) {
-    const proc = Bun.spawn(["temporal", "operator", "namespace", "create", ns], {
+    const proc = Bun.spawn(["temporal", "operator", "namespace", "create", "-n", ns], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -489,11 +535,6 @@ export async function createTemporalNamespaces(env: Environment): Promise<void> 
   }
 
   logger.success("Temporal search attributes created");
-}
-
-export async function hasSeedConfig(): Promise<boolean> {
-  const file = Bun.file(SEED_USER_PATH);
-  return file.exists();
 }
 
 export async function runSeedScript(env: Environment): Promise<boolean> {

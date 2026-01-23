@@ -62,7 +62,7 @@ export function SpaceBreadCrumbs({
     const items: BreadcrumbItem[] = [
       {
         icon: getSpaceIcon(space),
-        label: space.kind === "global" ? "Company Data" : space.name,
+        label: getSpaceName(space),
         href: `/w/${owner.sId}/spaces/${space.sId}`,
       },
       {

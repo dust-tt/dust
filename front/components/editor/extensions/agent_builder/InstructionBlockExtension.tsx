@@ -17,6 +17,8 @@ import {
   OPENING_TAG_BEGINNING_REGEX,
   OPENING_TAG_REGEX,
 } from "@app/components/editor/extensions/agent_builder/instructionBlockUtils";
+import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 export interface InstructionBlockAttributes {
   type: string;
@@ -81,7 +83,8 @@ const InstructionBlockComponent: React.FC<NodeViewProps> = ({
 
     updateAttributes({ isCollapsed: newCollapsed });
 
-    if (editor.isFocused) {
+    // Safety check for Safari: ensure editor and docView are available
+    if (editor.isFocused && !editor.isDestroyed) {
       editor.commands.focus();
     }
   };
@@ -285,10 +288,6 @@ export const InstructionBlockExtension =
             const type = match[1] ? match[1].toLowerCase() : "";
             const tagType = type || "instructions";
 
-            if (this.editor.isActive(this.name)) {
-              return;
-            }
-
             const content = {
               type: this.name,
               attrs: { type: tagType, isCollapsed: false },
@@ -373,6 +372,11 @@ export const InstructionBlockExtension =
             return false;
           }
 
+          // Safety check for Safari: ensure editor is not destroyed before dispatch
+          if (this.editor.isDestroyed) {
+            return false;
+          }
+
           const tr = state.tr;
           const fromPos = $from.before(blockDepth);
           const toPos = fromPos + blockNode.nodeSize;
@@ -390,7 +394,10 @@ export const InstructionBlockExtension =
           }
 
           this.editor.view.dispatch(tr);
-          this.editor.commands.focus();
+          // Focus after dispatch
+          if (!this.editor.isDestroyed) {
+            this.editor.commands.focus();
+          }
           return true;
         },
         /**
@@ -451,6 +458,11 @@ export const InstructionBlockExtension =
             return false;
           }
 
+          // Safety check for Safari: ensure editor is not destroyed before dispatch
+          if (this.editor.isDestroyed) {
+            return false;
+          }
+
           // Exit the block by creating a new paragraph after it
           const tr = state.tr;
           const posBeforeBlock = $from.before(blockDepth);
@@ -464,7 +476,10 @@ export const InstructionBlockExtension =
           tr.setSelection(TextSelection.create(tr.doc, posAfterBlock + 1));
 
           this.editor.view.dispatch(tr);
-          this.editor.commands.focus();
+          // Focus after dispatch
+          if (!this.editor.isDestroyed) {
+            this.editor.commands.focus();
+          }
           return true;
         },
       };
@@ -490,6 +505,35 @@ export const InstructionBlockExtension =
 
         const tagName = match[1] || "instructions";
 
+        let tokens;
+        try {
+          // Attempt to tokenize nested content with original text in a try-catch
+          // Sometimes we can't tokenize with non-breakable-space content, hence
+          // the .trim() fallback
+          tokens = lexer.blockTokens(match[2]);
+        } catch (error) {
+          try {
+            tokens = lexer.blockTokens(match[2].trim());
+            logger.warn("Marked lexer state corruption, passed with trim()", {
+              error: normalizeError(error),
+              sourceString: src,
+              match2: match[2],
+            });
+          } catch (error) {
+            // Marked lexer state corruption - fallback to treating as undefined, so we still at least display the content
+            // but not the `<instructions>`
+            logger.error(
+              "Marked lexer state corruption, failed with trim(). Fallbacking...",
+              {
+                error: normalizeError(error),
+                sourceString: src,
+                match2: match[2].trim(),
+              }
+            );
+            return undefined;
+          }
+        }
+
         return {
           type: "instructionBlock",
           raw: match[0],
@@ -497,7 +541,7 @@ export const InstructionBlockExtension =
             type: tagName.toLowerCase(),
           },
           text: match[2],
-          tokens: lexer.blockTokens(match[2]),
+          tokens,
         };
       },
     },

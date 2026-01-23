@@ -201,7 +201,8 @@ export const createProPlanCheckoutSession = async ({
 
   // Only allow a subscription to have a trial if the workspace never had a
   // subscription before.
-  // User under the grandfathered free plan are not allowed to have a trial.
+  // The exception is that if they were under the grandfathered free plan,
+  // we do allow them to have a trial again.
   let trialAllowed = true;
   const existingSubscription = await SubscriptionModel.findOne({
     where: { workspaceId: owner.id },

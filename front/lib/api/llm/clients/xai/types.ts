@@ -11,6 +11,8 @@ import {
   GROK_4_MODEL_ID,
 } from "@app/types";
 
+export const XAI_PROVIDER_ID = "xai";
+
 export const XAI_MODEL_FAMILIES = [
   "no-vision",
   "non-reasoning",
@@ -74,9 +76,7 @@ export function overwriteLLMParameters(
   llmParameters: LLMParameters & {
     modelId: XaiWhitelistedModelId;
   }
-): LLMParameters & { modelId: XaiWhitelistedModelId } & {
-  clientId: "xai";
-} {
+): LLMParameters & { modelId: XaiWhitelistedModelId } {
   const config = Object.values(XAI_MODEL_FAMILIES_CONFIGS).find((config) =>
     new Set<string>(config.modelIds).has(llmParameters.modelId)
   );
@@ -84,6 +84,5 @@ export function overwriteLLMParameters(
   return {
     ...llmParameters,
     ...config?.overwrites,
-    clientId: "xai" as const,
   };
 }

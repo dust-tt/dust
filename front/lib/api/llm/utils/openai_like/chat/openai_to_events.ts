@@ -1,5 +1,6 @@
 import type { ChatCompletionChunk } from "openai/resources/chat/completions";
 
+import { SuccessAggregate } from "@app/lib/api/llm/types/aggregates";
 import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
@@ -10,12 +11,14 @@ export async function* streamLLMEvents(
   chatCompletionStream: AsyncIterable<ChatCompletionChunk>,
   metadata: LLMClientMetadata
 ): AsyncGenerator<LLMEvent> {
+  const aggregate = new SuccessAggregate();
   let textDelta = "";
   const toolCalls: Map<
     number,
     { id: string; name: string; arguments: string }
   > = new Map();
   let hasYieldedResponseId = false;
+  let hasError = false;
 
   for await (const chunk of chatCompletionStream) {
     if (!hasYieldedResponseId) {
@@ -72,7 +75,7 @@ export async function* streamLLMEvents(
     if (choice.finish_reason) {
       if (chunk.usage) {
         // Token usage is sent when we receive the finish reason
-        yield {
+        const tokenUsageEvent: LLMEvent = {
           type: "token_usage",
           content: {
             inputTokens: chunk.usage.prompt_tokens,
@@ -82,34 +85,41 @@ export async function* streamLLMEvents(
           },
           metadata,
         };
+        aggregate.add(tokenUsageEvent);
+        yield tokenUsageEvent;
       }
       switch (choice.finish_reason) {
-        case "stop":
+        case "stop": {
           if (textDelta) {
-            yield {
+            const textGeneratedEvent: LLMEvent = {
               type: "text_generated",
               content: {
                 text: textDelta,
               },
               metadata,
             };
+            aggregate.add(textGeneratedEvent);
+            yield textGeneratedEvent;
           }
           break;
+        }
 
-        case "tool_calls":
+        case "tool_calls": {
           if (textDelta) {
-            yield {
+            const textGeneratedEvent: LLMEvent = {
               type: "text_generated",
               content: {
                 text: textDelta,
               },
               metadata,
             };
+            aggregate.add(textGeneratedEvent);
+            yield textGeneratedEvent;
           }
           // Yield all tool calls.
           for (const toolCall of toolCalls.values()) {
             if (toolCall.id && toolCall.name) {
-              yield {
+              const toolCallEvent: LLMEvent = {
                 type: "tool_call",
                 content: {
                   id: toolCall.id,
@@ -121,11 +131,15 @@ export async function* streamLLMEvents(
                 },
                 metadata,
               };
+              aggregate.add(toolCallEvent);
+              yield toolCallEvent;
             }
           }
           break;
+        }
 
-        case "length":
+        case "length": {
+          hasError = true;
           yield new EventError(
             {
               type: "maximum_length",
@@ -135,8 +149,10 @@ export async function* streamLLMEvents(
             metadata
           );
           break;
+        }
 
-        case "content_filter":
+        case "content_filter": {
+          hasError = true;
           yield new EventError(
             {
               type: "refusal_error",
@@ -146,6 +162,7 @@ export async function* streamLLMEvents(
             metadata
           );
           break;
+        }
 
         case "function_call":
           // Function calls are handled via tool_calls deltas
@@ -156,5 +173,17 @@ export async function* streamLLMEvents(
           assertNever(choice.finish_reason);
       }
     }
+  }
+
+  // Yield success event if no error occurred.
+  if (!hasError) {
+    yield {
+      type: "success",
+      aggregated: aggregate.aggregated,
+      textGenerated: aggregate.textGenerated,
+      reasoningGenerated: aggregate.reasoningGenerated,
+      toolCalls: aggregate.toolCalls,
+      metadata,
+    };
   }
 }

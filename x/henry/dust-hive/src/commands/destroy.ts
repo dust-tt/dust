@@ -3,35 +3,32 @@ import { removeDockerVolumes, stopDocker } from "../lib/docker";
 import { type Environment, deleteEnvironmentDir, getEnvironment } from "../lib/environment";
 import { directoryExists } from "../lib/fs";
 import { logger } from "../lib/logger";
+import { getConfiguredMultiplexer, getSessionName } from "../lib/multiplexer";
 import { getWorktreeDir } from "../lib/paths";
-import { cleanupServicePorts } from "../lib/ports";
+import { cleanupServicePorts, formatBlockedPorts } from "../lib/ports";
 import { readPid, stopAllServices } from "../lib/process";
 import { restoreTerminal, selectMultipleEnvironments } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import type { ServiceName } from "../lib/services";
+import { type Settings, loadSettings } from "../lib/settings";
 import { isDockerRunning } from "../lib/state";
+import { dropTestDatabase } from "../lib/test-postgres";
 import { deleteBranch, hasUncommittedChanges, removeWorktree } from "../lib/worktree";
 
-async function cleanupZellijSession(envName: string): Promise<void> {
-  const sessionName = `dust-hive-${envName}`;
+async function cleanupMultiplexerSession(envName: string): Promise<void> {
+  const multiplexer = await getConfiguredMultiplexer();
+  const sessionName = getSessionName(envName);
 
   // Kill session first (stops it)
-  const killProc = Bun.spawn(["zellij", "kill-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await killProc.exited;
+  await multiplexer.killSession(sessionName);
 
   // Then delete it (removes from list)
-  const deleteProc = Bun.spawn(["zellij", "delete-session", sessionName], {
-    stdout: "ignore",
-    stderr: "ignore",
-  });
-  await deleteProc.exited;
+  await multiplexer.deleteSession(sessionName);
 }
 
 interface DestroyOptions {
   force: boolean;
+  keepBranch: boolean;
 }
 
 async function cleanupDocker(envName: string): Promise<void> {
@@ -54,7 +51,8 @@ async function cleanupDocker(envName: string): Promise<void> {
 // Destroy a single environment (internal helper)
 async function destroySingleEnvironment(
   env: Environment,
-  options: DestroyOptions
+  options: DestroyOptions,
+  settings: Settings
 ): Promise<Result<void>> {
   const worktreePath = getWorktreeDir(env.name);
 
@@ -84,9 +82,9 @@ async function destroySingleEnvironment(
   logger.step("Stopping all services...");
   await stopAllServices(env.name);
 
-  // Clean up zellij session
-  logger.step("Cleaning up zellij session...");
-  await cleanupZellijSession(env.name);
+  // Clean up multiplexer session
+  logger.step("Cleaning up multiplexer session...");
+  await cleanupMultiplexerSession(env.name);
 
   // Force cleanup any orphaned processes on service ports
   const { killedPorts, blockedPorts } = await cleanupServicePorts(env.ports, {
@@ -94,14 +92,7 @@ async function destroySingleEnvironment(
     force: options.force,
   });
   if (blockedPorts.length > 0) {
-    const details = blockedPorts
-      .map(({ port, processes }) => {
-        const procInfo = processes
-          .map((proc) => `${proc.pid}${proc.command ? ` (${proc.command})` : ""}`)
-          .join(", ");
-        return `${port}: ${procInfo}`;
-      })
-      .join("; ");
+    const details = formatBlockedPorts(blockedPorts);
     return Err(
       new CommandError(
         `Ports in use by other processes: ${details}. Stop them or rerun destroy with --force to terminate.`
@@ -116,15 +107,28 @@ async function destroySingleEnvironment(
   // Stop Docker and remove volumes
   await cleanupDocker(env.name);
 
+  // Drop test database
+  logger.step("Dropping test database...");
+  const testDbResult = await dropTestDatabase(env.name);
+  if (testDbResult.success) {
+    logger.success("Test database dropped");
+  } else {
+    logger.warn(`Could not drop test database: ${testDbResult.error}`);
+  }
+
   // Remove git worktree
   logger.step("Removing git worktree...");
   await removeWorktree(env.metadata.repoRoot, worktreePath);
   logger.success("Git worktree removed");
 
-  // Delete the workspace branch
-  logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
-  await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch);
-  logger.success("Branch deleted");
+  // Delete the workspace branch (unless --keep-branch is specified)
+  if (!options.keepBranch) {
+    logger.step(`Deleting branch '${env.metadata.workspaceBranch}'...`);
+    await deleteBranch(env.metadata.repoRoot, env.metadata.workspaceBranch, settings);
+    logger.success("Branch deleted");
+  } else {
+    logger.info(`Keeping branch '${env.metadata.workspaceBranch}'`);
+  }
 
   // Remove environment directory
   logger.step("Removing environment config...");
@@ -142,7 +146,10 @@ export async function destroyCommand(
   name: string | undefined,
   options?: Partial<DestroyOptions>
 ): Promise<Result<void>> {
-  const resolvedOptions: DestroyOptions = { force: false, ...options };
+  const resolvedOptions: DestroyOptions = { force: false, keepBranch: false, ...options };
+
+  // Load settings for git-spice support
+  const settings = await loadSettings();
 
   // If a name is provided, use single-environment flow with confirmation
   if (name) {
@@ -151,7 +158,7 @@ export async function destroyCommand(
     });
     if (!envResult.ok) return envResult;
 
-    return destroySingleEnvironment(envResult.value, resolvedOptions);
+    return destroySingleEnvironment(envResult.value, resolvedOptions, settings);
   }
 
   // No name provided - use multi-select for batch destruction
@@ -179,7 +186,7 @@ export async function destroyCommand(
 
   // Destroy each environment sequentially
   for (const env of envs) {
-    const result = await destroySingleEnvironment(env, resolvedOptions);
+    const result = await destroySingleEnvironment(env, resolvedOptions, settings);
     if (!result.ok) {
       return result;
     }

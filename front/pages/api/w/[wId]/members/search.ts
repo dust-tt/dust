@@ -1,7 +1,7 @@
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import { formatValidationErrors } from "io-ts-reporters";
-import { NumberFromString, withFallback } from "io-ts-types";
+import { BooleanFromString, NumberFromString, withFallback } from "io-ts-types";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -37,6 +37,7 @@ const SearchMembersQueryCodec = t.type({
   searchTerm: t.union([t.string, t.undefined]),
   searchEmails: t.union([t.string, t.undefined]),
   groupKind: t.union([GroupKindWithoutSystemCodec, t.undefined]),
+  buildersOnly: t.union([BooleanFromString, t.undefined]),
 });
 
 export type SearchMembersResponseBody = {
@@ -83,6 +84,7 @@ async function handler(
           searchTerm: query.searchTerm,
           searchEmails: emails,
           groupKind: query.groupKind,
+          buildersOnly: query.buildersOnly,
         },
         query
       );

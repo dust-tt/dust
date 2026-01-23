@@ -2,7 +2,9 @@ import {
   ActionDocumentTextIcon,
   ClockIcon,
   cn,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   GlobeAltIcon,
   MagnifyingGlassIcon,
@@ -381,9 +383,8 @@ export function GenericActionDetails({
     >
       {viewType !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: false }}
-            triggerChildren={
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
               <div
                 className={cn(
                   "text-foreground dark:text-foreground-night",
@@ -392,16 +393,15 @@ export function GenericActionDetails({
               >
                 <span className="heading-base">Inputs</span>
               </div>
-            }
-            contentChildren={
+            </CollapsibleTrigger>
+            <CollapsibleContent>
               <RenderToolItemMarkdown text={inputs} type="input" />
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
 
           {action.output && (
-            <CollapsibleComponent
-              rootProps={{ defaultOpen: false }}
-              triggerChildren={
+            <Collapsible defaultOpen={false}>
+              <CollapsibleTrigger>
                 <div
                   className={cn(
                     "text-foreground dark:text-foreground-night",
@@ -410,8 +410,8 @@ export function GenericActionDetails({
                 >
                   <span className="heading-base">Output</span>
                 </div>
-              }
-              contentChildren={
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="flex flex-col gap-2">
                   {action.output
                     .filter(
@@ -425,22 +425,25 @@ export function GenericActionDetails({
                       />
                     ))}
                 </div>
-              }
-            />
+              </CollapsibleContent>
+            </Collapsible>
           )}
 
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((file) => !file.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (
-                        <div key={file.fileId} className="mr-5">
+                        <div
+                          key={file.fileId}
+                          className="h-24 w-24 flex-shrink-0"
+                        >
                           <img
-                            className="rounded-xl"
+                            className="h-full w-full rounded-xl object-cover"
                             src={`/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />

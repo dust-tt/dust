@@ -1,7 +1,9 @@
 import {
   Chip,
   CodeBlock,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentBlockWrapper,
   ContentMessage,
   FaviconIcon,
@@ -238,27 +240,24 @@ export function SearchResultDetails({
           </div>
           {actionOutput && viewType === "sidebar" && (
             <div>
-              <CollapsibleComponent
-                rootProps={{ defaultOpen: false }}
-                triggerChildren={
+              <Collapsible defaultOpen={false}>
+                <CollapsibleTrigger>
                   <span className="text-sm font-bold text-foreground dark:text-foreground-night">
                     Results
                   </span>
-                }
-                contentChildren={
-                  <>
-                    {singleFileContentText && (
-                      <Markdown
-                        content={singleFileContentText}
-                        isStreaming={false}
-                        forcedTextSize="text-sm"
-                        textColor="text-muted-foreground dark:text-muted-foreground-night"
-                      />
-                    )}
-                    <PaginatedCitationsGrid items={citations} />
-                  </>
-                }
-              />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  {singleFileContentText && (
+                    <Markdown
+                      content={singleFileContentText}
+                      isStreaming={false}
+                      forcedTextSize="text-sm"
+                      textColor="text-muted-foreground dark:text-muted-foreground-night"
+                    />
+                  )}
+                  <PaginatedCitationsGrid items={citations} />
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           )}
         </div>

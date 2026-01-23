@@ -10,9 +10,24 @@ export const labsTranscriptsProviders = [
 export type LabsTranscriptsProviderType =
   (typeof labsTranscriptsProviders)[number];
 
+export const LABS_TRANSCRIPTS_CONFIGURATION_STATUSES = [
+  "active",
+  "disabled",
+  "relocating",
+] as const;
+export type LabsTranscriptsConfigurationStatus =
+  (typeof LABS_TRANSCRIPTS_CONFIGURATION_STATUSES)[number];
+
+export function isValidLabsTranscriptsConfigurationStatus(
+  status: string
+): status is LabsTranscriptsConfigurationStatus {
+  return (
+    LABS_TRANSCRIPTS_CONFIGURATION_STATUSES as readonly string[]
+  ).includes(status);
+}
+
 export const labsFeatures = [
   "transcripts",
-  "trackers",
   "mcp_actions",
   "transcription",
 ] as const;
@@ -26,7 +41,7 @@ export type LabsTranscriptsConfigurationType = {
   workspaceId: ModelId;
   provider: LabsTranscriptsProviderType;
   agentConfigurationId: string | null;
-  isActive: boolean;
+  status: LabsTranscriptsConfigurationStatus;
   isDefaultWorkspaceConfiguration: boolean;
   credentialId: string | null;
   dataSourceViewId: ModelId | null;

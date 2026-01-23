@@ -8,11 +8,12 @@ import {
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
-import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -23,11 +24,12 @@ export type WorkspaceLimit =
   | "message_limit";
 
 function getLimitPromptForCode(
-  router: NextRouter,
+  router: AppRouter,
   owner: WorkspaceType,
   code: WorkspaceLimit,
   subscription: SubscriptionType,
-  displayFairUseModal: () => void
+  displayFairUseModal: () => void,
+  isAdmin: boolean
 ) {
   switch (code) {
     case "cant_invite_no_seats_available": {
@@ -103,13 +105,33 @@ function getLimitPromptForCode(
       };
 
     case "message_limit": {
-      if (subscription.trialing) {
+      if (isFreeTrialPhonePlan(subscription.plan.code)) {
+        return {
+          title: "Dust trial message limit reached",
+          validateLabel: isAdmin ? "Subscribe to Dust" : "Ok",
+          onValidate: isAdmin
+            ? () => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }
+            : undefined,
+          children: (
+            <>
+              <Page.P>
+                You have reached the message limit under the trial. You can
+                subscribe to a paid plan to continue using Dust.
+              </Page.P>
+            </>
+          ),
+        };
+      } else if (subscription.trialing) {
         return {
           title: "Fair usage limit reached",
-          validateLabel: "Manage your subscription",
-          onValidate: () => {
-            void router.push(`/w/${owner.sId}/subscription`);
-          },
+          validateLabel: isAdmin ? "Manage your subscription" : "Ok",
+          onValidate: isAdmin
+            ? () => {
+                void router.push(`/w/${owner.sId}/subscription`);
+              }
+            : undefined,
           children: (
             <>
               <Page.P>
@@ -154,12 +176,14 @@ function getLimitPromptForCode(
 }
 
 export function ReachedLimitPopup({
+  isAdmin,
   isOpened,
   onClose,
   subscription,
   owner,
   code,
 }: {
+  isAdmin: boolean;
   isOpened: boolean;
   onClose: () => void;
   subscription: SubscriptionType;
@@ -168,13 +192,14 @@ export function ReachedLimitPopup({
 }) {
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
     router,
     owner,
     code,
     subscription,
-    () => setIsFairUsageModalOpened(true)
+    () => setIsFairUsageModalOpened(true),
+    isAdmin
   );
 
   return (

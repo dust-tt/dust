@@ -3,7 +3,10 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { validateUserMention } from "@app/lib/api/assistant/conversation/validate_actions";
+import {
+  dismissMention,
+  validateUserMention,
+} from "@app/lib/api/assistant/conversation/mentions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -14,8 +17,16 @@ import { isString } from "@app/types";
 const PostMentionActionRequestBodySchema = t.type({
   type: t.union([t.literal("agent"), t.literal("user")]),
   id: t.string,
-  action: t.union([t.literal("approved"), t.literal("rejected")]),
+  action: t.union([
+    t.literal("approved"),
+    t.literal("rejected"),
+    t.literal("dismissed"),
+  ]),
 });
+
+export type PostMentionActionRequestBody = t.TypeOf<
+  typeof PostMentionActionRequestBodySchema
+>;
 
 export type PostMentionActionResponseBody = {
   success: boolean;
@@ -79,25 +90,37 @@ async function handler(
       }
       const { type, id, action } = bodyValidation.right;
 
-      if (type !== "user") {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message: "Only user mentions are supported.",
-          },
+      if (action === "dismissed") {
+        const dismissMentionRes = await dismissMention(auth, {
+          conversationId: cId,
+          messageId: mId,
+          type,
+          id,
         });
-      }
+        if (dismissMentionRes.isErr()) {
+          return apiError(req, res, dismissMentionRes.error);
+        }
+      } else {
+        if (type !== "user") {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Only user mentions are supported.",
+            },
+          });
+        }
 
-      const validateUserMentionRes = await validateUserMention(auth, {
-        conversationId: cId,
-        userId: id,
-        messageId: mId,
-        approvalState: action,
-      });
+        const validateUserMentionRes = await validateUserMention(auth, {
+          conversationId: cId,
+          userId: id,
+          messageId: mId,
+          approvalState: action,
+        });
 
-      if (validateUserMentionRes.isErr()) {
-        return apiError(req, res, validateUserMentionRes.error);
+        if (validateUserMentionRes.isErr()) {
+          return apiError(req, res, validateUserMentionRes.error);
+        }
       }
 
       res.status(200).json({

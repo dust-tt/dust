@@ -1,10 +1,13 @@
 import {
   Avatar,
+  BoltIcon,
+  BoltOffIcon,
   BracesIcon,
   Button,
   ChatBubbleBottomCenterTextIcon,
+  ChatBubbleLeftRightIcon,
   Checkbox,
-  ContactsRobotIcon,
+  CheckDoubleIcon,
   DocumentIcon,
   DropdownMenu,
   DropdownMenuContent,
@@ -34,8 +37,6 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import {
   forwardRef,
   memo,
@@ -58,15 +59,20 @@ import { StackedInAppBanners } from "@app/components/assistant/conversation/InAp
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { ProjectsList } from "@app/components/assistant/conversation/sidebar/ProjectsList";
 import {
+  filterTriggeredConversations,
   getGroupConversationsByDate,
   getGroupConversationsByUnreadAndActionRequired,
 } from "@app/components/assistant/conversation/utils";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
+import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useUnifiedAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -102,11 +108,13 @@ type GroupLabel =
 const CONVERSATIONS_PER_PAGE = 10;
 
 export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
-  const router = useRouter();
+  const router = useAppRouter();
+  const { hasFeature } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const agentsSearchInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
-  // Use the same hook as the input bar and the new conversation page to avoid concurrent calls to getAgentConfigurations.
   const { agentConfigurations } = useUnifiedAgentConfigurations({
     workspaceId: owner.sId,
   });
@@ -131,9 +139,23 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       workspaceId: owner.sId,
     });
 
+  const hasSpaceConversations = hasFeature("projects");
+
+  const {
+    summary,
+    isLoading: isSummaryLoading,
+    mutate: mutateSpaceSummary,
+  } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: !hasSpaceConversations },
+  });
+
   useEffect(() => {
     const handleConversationsUpdated = () => {
       void mutateConversations();
+      if (hasSpaceConversations) {
+        void mutateSpaceSummary();
+      }
     };
     window.addEventListener(
       CONVERSATIONS_UPDATED_EVENT,
@@ -145,7 +167,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         handleConversationsUpdated
       );
     };
-  }, [mutateConversations]);
+  }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
@@ -153,21 +175,15 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
   >([]);
   const doDelete = useDeleteConversation(owner);
 
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
+  const { hideTriggeredConversations } = useHideTriggeredConversations();
+
+  const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
+    useProjectsSectionCollapsed();
 
   const hasSkills = hasFeature("skills");
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
-
-  const hasSpaceConversations = hasFeature("projects");
-
-  const { summary } = useSpaceConversationsSummary({
-    workspaceId: owner.sId,
-    options: { disabled: !hasSpaceConversations },
-  });
 
   const [showDeleteDialog, setShowDeleteDialog] = useState<
     "all" | "selection" | null
@@ -293,7 +309,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       // We have more conversations to show.
       conversations.length > conversationsPage * CONVERSATIONS_PER_PAGE &&
       // The entry is different from the previous one to avoid multiple calls for the same intersection.
-      entry != previousEntry.current
+      entry !== previousEntry.current
     ) {
       previousEntry.current = entry;
       nextPage();
@@ -314,11 +330,79 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     }
   }, [setSidebarOpen, router, setAnimate]);
 
+  const hasTriggeredConversations = useMemo(
+    () => conversations.some((c) => c.triggerId !== null),
+    [conversations]
+  );
+
+  const filteredConversations = useMemo(() => {
+    return filterTriggeredConversations(
+      conversations,
+      hideTriggeredConversations
+    );
+  }, [conversations, hideTriggeredConversations]);
+
+  const projectsSection = useMemo(() => {
+    if (!hasSpaceConversations) {
+      return null;
+    }
+    const projectCount = summary.length;
+    const showCount = isProjectsSectionCollapsed && projectCount > 0;
+
+    return (
+      <NavigationList className="px-2">
+        <NavigationListCollapsibleSection
+          label={showCount ? `Projects (${projectCount})` : "Projects"}
+          type="collapse"
+          open={!isProjectsSectionCollapsed}
+          onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
+          action={
+            isAdmin(owner) ? (
+              <Button
+                size="xs"
+                icon={PlusIcon}
+                label="New"
+                variant="ghost"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsCreateProjectModalOpen(true);
+                }}
+              />
+            ) : null
+          }
+        >
+          {isSummaryLoading ? (
+            <div className="flex items-center justify-center">
+              <Spinner size="xs" />
+            </div>
+          ) : summary.length > 0 ? (
+            <ProjectsList owner={owner} summary={summary} />
+          ) : (
+            <NavigationListItem
+              label="Create a Project"
+              icon={PlusIcon}
+              onClick={() => setIsCreateProjectModalOpen(true)}
+            />
+          )}
+        </NavigationListCollapsibleSection>
+      </NavigationList>
+    );
+  }, [
+    hasSpaceConversations,
+    owner,
+    summary,
+    setIsCreateProjectModalOpen,
+    isProjectsSectionCollapsed,
+    setProjectsSectionCollapsed,
+    isSummaryLoading,
+  ]);
+
   const conversationsList = useMemo(() => {
     return (
       <NavigationListWithInbox
         ref={ref}
-        conversations={conversations}
+        conversations={filteredConversations}
         conversationsPage={conversationsPage}
         titleFilter={titleFilter}
         isMultiSelect={isMultiSelect}
@@ -326,11 +410,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         toggleConversationSelection={toggleConversationSelection}
         router={router}
         owner={owner}
+        projectsSection={projectsSection}
+        hasTriggeredConversations={hasTriggeredConversations}
+        handleNewClick={handleNewClick}
+        toggleMultiSelect={toggleMultiSelect}
+        setShowDeleteDialog={setShowDeleteDialog}
       />
     );
   }, [
     ref,
-    conversations,
+    filteredConversations,
     conversationsPage,
     titleFilter,
     isMultiSelect,
@@ -338,6 +427,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     toggleConversationSelection,
     router,
     owner,
+    projectsSection,
+    hasTriggeredConversations,
+    handleNewClick,
+    toggleMultiSelect,
+    setShowDeleteDialog,
   ]);
 
   return (
@@ -466,75 +560,69 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                                   onChange={setSearchText}
                                   placeholder="Search"
                                 />
-                                {filteredAgents.map((agent) => (
-                                  <DropdownMenuItem
-                                    key={agent.sId}
-                                    href={getAgentBuilderRoute(
-                                      owner.sId,
-                                      agent.sId
-                                    )}
-                                    truncateText
-                                    label={agent.name}
-                                    icon={() => (
-                                      <Avatar
-                                        size="sm"
-                                        visual={agent.pictureUrl}
-                                      />
-                                    )}
-                                  />
-                                ))}
+                                <div className="max-h-150 overflow-y-auto">
+                                  {filteredAgents.map((agent) => (
+                                    <DropdownMenuItem
+                                      key={agent.sId}
+                                      href={getAgentBuilderRoute(
+                                        owner.sId,
+                                        agent.sId
+                                      )}
+                                      truncateText
+                                      label={agent.name}
+                                      icon={() => (
+                                        <Avatar
+                                          size="xs"
+                                          visual={agent.pictureUrl}
+                                        />
+                                      )}
+                                    />
+                                  ))}
+                                </div>
                               </DropdownMenuSubContent>
                             </DropdownMenuPortal>
                           </DropdownMenuSub>
                         )}
+                        <DropdownMenuItem
+                          href={getAgentBuilderRoute(owner.sId, "manage")}
+                          icon={RobotIcon}
+                          label="Manage agents"
+                          data-gtm-label="assistantManagementButton"
+                          data-gtm-location="sidebarMenu"
+                          onClick={withTracking(
+                            TRACKING_AREAS.BUILDER,
+                            "manage_agents"
+                          )}
+                        />
                       </>
                     )}
-                    {!isBuilder(owner) ? null : hasSkills ? (
-                      <DropdownMenuSub>
-                        <DropdownMenuSubTrigger
-                          icon={ContactsRobotIcon}
-                          label="Manage"
+                    {hasSkills && isBuilder(owner) && (
+                      <>
+                        <DropdownMenuLabel>Skills</DropdownMenuLabel>
+                        <DropdownMenuItem
+                          href={getSkillBuilderRoute(owner.sId, "new")}
+                          icon={PlusIcon}
+                          label="New skill"
                         />
-                        <DropdownMenuPortal>
-                          <DropdownMenuSubContent className="pointer-events-auto">
-                            <DropdownMenuItem
-                              href={getAgentBuilderRoute(owner.sId, "manage")}
-                              icon={RobotIcon}
-                              label="Agents"
-                            />
-                            <DropdownMenuItem
-                              href={getSkillBuilderRoute(owner.sId, "manage")}
-                              icon={SKILL_ICON}
-                              label="Skills"
-                            />
-                          </DropdownMenuSubContent>
-                        </DropdownMenuPortal>
-                      </DropdownMenuSub>
-                    ) : (
-                      <DropdownMenuItem
-                        href={getAgentBuilderRoute(owner.sId, "manage")}
-                        icon={ContactsRobotIcon}
-                        label="Manage agents"
-                        data-gtm-label="assistantManagementButton"
-                        data-gtm-location="sidebarMenu"
-                        onClick={withTracking(
-                          TRACKING_AREAS.BUILDER,
-                          "manage_agents"
-                        )}
-                      />
+                        <DropdownMenuItem
+                          href={getSkillBuilderRoute(owner.sId, "manage")}
+                          icon={SKILL_ICON}
+                          label="Manage skills"
+                        />
+                      </>
                     )}
                     <DropdownMenuLabel>Conversations</DropdownMenuLabel>
                     <DropdownMenuItem
                       label="Edit conversations"
                       onClick={toggleMultiSelect}
                       icon={ListCheckIcon}
-                      disabled={conversations.length === 0}
+                      disabled={filteredConversations.length === 0}
                     />
                     <DropdownMenuItem
                       label="Clear conversation history"
                       onClick={() => setShowDeleteDialog("all")}
                       icon={TrashIcon}
-                      disabled={conversations.length === 0}
+                      disabled={filteredConversations.length === 0}
                     />
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -545,43 +633,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                 Error loading conversations
               </Label>
             )}
-            <>
-              {hasSpaceConversations ? (
-                <div className="overflow-y-auto">
-                  <NavigationListCollapsibleSection
-                    label="Projects"
-                    defaultOpen
-                    action={
-                      isAdmin(owner) ? (
-                        <Button
-                          size="xs"
-                          icon={PlusIcon}
-                          label="New"
-                          variant="ghost"
-                          // aria-label="Create new project"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setIsCreateProjectModalOpen(true);
-                          }}
-                        />
-                      ) : null
-                    }
-                  >
-                    <ProjectsList owner={owner} summary={summary} />
-                  </NavigationListCollapsibleSection>
+            {conversationsList}
 
-                  <NavigationListCollapsibleSection
-                    label="My conversations"
-                    defaultOpen
-                  >
-                    {conversationsList}
-                  </NavigationListCollapsibleSection>
-                </div>
-              ) : (
-                conversationsList
-              )}
-            </>
             <StackedInAppBanners owner={owner} />
           </div>
         </div>
@@ -598,7 +651,7 @@ interface InboxConversationListProps {
   onMarkAllAsRead: (conversations: ConversationWithoutContentType[]) => void;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: NextRouter;
+  router: AppRouter;
   owner: WorkspaceType;
   titleFilter: string;
 }
@@ -610,7 +663,7 @@ interface ConversationListContainerProps {
 const ConversationListContainer = ({
   children,
 }: ConversationListContainerProps) => {
-  return <div className="px-3 sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
+  return <div className="sm:flex sm:flex-col sm:gap-0.5">{children}</div>;
 };
 
 const InboxConversationList = ({
@@ -633,26 +686,24 @@ const InboxConversationList = ({
     onMarkAllAsRead;
 
   return (
-    <ConversationListContainer>
-      <div className="sticky top-0 z-10 flex items-center justify-between overflow-auto bg-background dark:bg-background-night">
-        <NavigationListLabel
-          label={dateLabel}
-          className="bg-background dark:bg-background-night"
-        />
-        {shouldShowMarkAllAsReadButton && (
-          <div className="flex">
-            <Button
-              size="xs"
-              variant="ghost"
-              label={`Mark as read`}
-              onClick={() => onMarkAllAsRead(inboxConversations)}
-              isLoading={isMarkingAllAsRead}
-              className="mt-2 text-muted-foreground dark:text-muted-foreground-night"
-            />
-          </div>
-        )}
-      </div>
-
+    <NavigationListCollapsibleSection
+      label={dateLabel}
+      className="border-b border-t border-border bg-background/50 px-2 pb-2 dark:border-border-night dark:bg-background-night/50"
+      defaultOpen
+      actionOnHover={false}
+      action={
+        shouldShowMarkAllAsReadButton ? (
+          <Button
+            size="xmini"
+            variant="ghost"
+            icon={CheckDoubleIcon}
+            tooltip="Mark all as read"
+            onClick={() => onMarkAllAsRead(inboxConversations)}
+            isLoading={isMarkingAllAsRead}
+          />
+        ) : null
+      }
+    >
       {inboxConversations.map((conversation) => (
         <ConversationListItem
           key={conversation.sId}
@@ -661,7 +712,7 @@ const InboxConversationList = ({
           {...props}
         />
       ))}
-    </ConversationListContainer>
+    </NavigationListCollapsibleSection>
   );
 };
 
@@ -675,7 +726,7 @@ const ConversationList = ({
   isMultiSelect: boolean;
   selectedConversations: ConversationWithoutContentType[];
   toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-  router: NextRouter;
+  router: AppRouter;
   owner: WorkspaceType;
 }) => {
   if (!conversations.length) {
@@ -684,11 +735,13 @@ const ConversationList = ({
 
   return (
     <ConversationListContainer>
-      <NavigationListLabel
-        label={dateLabel}
-        isSticky
-        className="bg-muted-background dark:bg-muted-background-night"
-      />
+      {dateLabel !== "Today" && (
+        <NavigationListLabel
+          label={dateLabel}
+          isSticky
+          className="bg-muted-background dark:bg-muted-background-night"
+        />
+      )}
 
       {conversations.map((conversation) => (
         <ConversationListItem
@@ -729,7 +782,7 @@ const ConversationListItem = memo(
     isMultiSelect: boolean;
     selectedConversations: ConversationWithoutContentType[];
     toggleConversationSelection: (c: ConversationWithoutContentType) => void;
-    router: NextRouter;
+    router: AppRouter;
     owner: WorkspaceType;
   }) => {
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
@@ -746,54 +799,50 @@ const ConversationListItem = memo(
         ? "New Conversation"
         : `Conversation from ${new Date(conversation.created).toLocaleDateString()}`);
 
-    return (
-      <>
-        {isMultiSelect ? (
-          <div className="flex items-center px-2 py-2">
-            <Checkbox
-              id={`conversation-${conversation.sId}`}
-              className="bg-background dark:bg-background-night"
-              checked={selectedConversations.includes(conversation)}
-              onCheckedChange={() => toggleConversationSelection(conversation)}
-            />
-            <Label
-              htmlFor={`conversation-${conversation.sId}`}
-              className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
-            >
-              {conversationLabel}
-            </Label>
-          </div>
-        ) : (
-          <NavigationListItem
-            selected={router.query.cId === conversation.sId}
-            status={getConversationDotStatus(conversation)}
-            label={conversationLabel}
-            href={getConversationRoute(owner.sId, conversation.sId)}
-            shallow
-            moreMenu={
-              <ConversationMenu
-                activeConversationId={conversation.sId}
-                conversation={conversation}
-                owner={owner}
-                trigger={<NavigationListItemAction />}
-                isConversationDisplayed={router.query.cId === conversation.sId}
-                isOpen={isMenuOpen}
-                onOpenChange={handleMenuOpenChange}
-                triggerPosition={menuTriggerPosition}
-              />
-            }
-            onContextMenu={handleRightClick}
-            onClick={async () => {
-              // Side bar is the floating sidebar that appears when the screen is small.
-              if (sidebarOpen) {
-                setSidebarOpen(false);
-                // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
-                await new Promise((resolve) => setTimeout(resolve, 600));
-              }
-            }}
+    return isMultiSelect ? (
+      <div className="flex items-center px-2 py-2">
+        <Checkbox
+          id={`conversation-${conversation.sId}`}
+          className="bg-background dark:bg-background-night"
+          checked={selectedConversations.includes(conversation)}
+          onCheckedChange={() => toggleConversationSelection(conversation)}
+        />
+        <Label
+          htmlFor={`conversation-${conversation.sId}`}
+          className="copy-sm ml-2 text-muted-foreground dark:text-muted-foreground-night"
+        >
+          {conversationLabel}
+        </Label>
+      </div>
+    ) : (
+      <NavigationListItem
+        selected={router.query.cId === conversation.sId}
+        status={getConversationDotStatus(conversation)}
+        label={conversationLabel}
+        href={getConversationRoute(owner.sId, conversation.sId)}
+        shallow
+        moreMenu={
+          <ConversationMenu
+            activeConversationId={conversation.sId}
+            conversation={conversation}
+            owner={owner}
+            trigger={<NavigationListItemAction />}
+            isConversationDisplayed={router.query.cId === conversation.sId}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
           />
-        )}
-      </>
+        }
+        onContextMenu={handleRightClick}
+        onClick={async () => {
+          // Side bar is the floating sidebar that appears when the screen is small.
+          if (sidebarOpen) {
+            setSidebarOpen(false);
+            // Wait a bit before moving to the new conversation to avoid the sidebar from flickering.
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
+        }}
+      />
     );
   }
 );
@@ -807,8 +856,13 @@ interface NavigationListWithInboxProps {
   toggleConversationSelection: (
     conversation: ConversationWithoutContentType
   ) => void;
-  router: NextRouter;
+  router: AppRouter;
   owner: WorkspaceType;
+  projectsSection?: React.ReactNode;
+  hasTriggeredConversations: boolean;
+  handleNewClick: () => void;
+  toggleMultiSelect: () => void;
+  setShowDeleteDialog: (value: "all" | "selection" | null) => void;
 }
 
 const NavigationListWithInbox = forwardRef<
@@ -825,9 +879,19 @@ const NavigationListWithInbox = forwardRef<
       toggleConversationSelection,
       router,
       owner,
+      projectsSection,
+      hasTriggeredConversations,
+      handleNewClick,
+      toggleMultiSelect,
+      setShowDeleteDialog,
     },
     ref
   ) => {
+    const {
+      hideTriggeredConversations,
+      setHideTriggeredConversations,
+      isLoading: isHideTriggeredLoading,
+    } = useHideTriggeredConversations();
     const { readConversations, inboxConversations } = useMemo(() => {
       return getGroupConversationsByUnreadAndActionRequired(
         conversations,
@@ -841,8 +905,6 @@ const NavigationListWithInbox = forwardRef<
       }
     );
 
-    const shouldDisplayInbox = inboxConversations.length > 0;
-
     // TODO: Remove filtering by titleFilter when we release the inbox.
     const conversationsByDate = readConversations?.length
       ? getGroupConversationsByDate({
@@ -854,48 +916,115 @@ const NavigationListWithInbox = forwardRef<
         })
       : ({} as Record<GroupLabel, ConversationWithoutContentType[]>);
 
+    const conversationsContent = (
+      <>
+        {Object.keys(conversationsByDate).map((dateLabel) => (
+          <ConversationList
+            key={dateLabel}
+            conversations={conversationsByDate[dateLabel as GroupLabel]}
+            dateLabel={dateLabel}
+            isMultiSelect={isMultiSelect}
+            selectedConversations={selectedConversations}
+            toggleConversationSelection={toggleConversationSelection}
+            router={router}
+            owner={owner}
+          />
+        ))}
+        <div
+          // Change the key each page to force a re-render and get a new entry
+          key={`infinite-scroll-conversation-${conversationsPage}`}
+          id="infinite-scroll-conversations"
+          ref={ref}
+          style={{ height: "2px" }}
+        />
+      </>
+    );
+
     return (
-      <NavigationList className="dd-privacy-mask h-full w-full">
-        {shouldDisplayInbox && (
-          <div className="bg-background pb-3 dark:bg-background-night">
-            <InboxConversationList
-              inboxConversations={inboxConversations}
-              dateLabel={`Inbox (${inboxConversations.length})`}
-              isMultiSelect={isMultiSelect}
-              isMarkingAllAsRead={isMarkingAllAsRead}
-              titleFilter={titleFilter}
-              onMarkAllAsRead={markAllAsRead}
-              selectedConversations={selectedConversations}
-              toggleConversationSelection={toggleConversationSelection}
-              router={router}
-              owner={owner}
-            />
-          </div>
+      <div className="dd-privacy-mask h-full w-full overflow-y-auto">
+        {inboxConversations.length > 0 && (
+          <InboxConversationList
+            inboxConversations={inboxConversations}
+            dateLabel={`Inbox (${inboxConversations.length})`}
+            isMultiSelect={isMultiSelect}
+            isMarkingAllAsRead={isMarkingAllAsRead}
+            titleFilter={titleFilter}
+            onMarkAllAsRead={markAllAsRead}
+            selectedConversations={selectedConversations}
+            toggleConversationSelection={toggleConversationSelection}
+            router={router}
+            owner={owner}
+          />
         )}
-        {readConversations.length > 0 && (
-          <>
-            {Object.keys(conversationsByDate).map((dateLabel) => (
-              <ConversationList
-                key={dateLabel}
-                conversations={conversationsByDate[dateLabel as GroupLabel]}
-                dateLabel={dateLabel}
-                isMultiSelect={isMultiSelect}
-                selectedConversations={selectedConversations}
-                toggleConversationSelection={toggleConversationSelection}
-                router={router}
-                owner={owner}
-              />
-            ))}
-            <div
-              // Change the key each page to force a re-render and get a new entry
-              key={`infinite-scroll-conversation-${conversationsPage}`}
-              id="infinite-scroll-conversations"
-              ref={ref}
-              style={{ height: "2px" }}
-            />
-          </>
-        )}
-      </NavigationList>
+        {projectsSection}
+        <NavigationList className="px-2">
+          <NavigationListCollapsibleSection
+            label="Conversations"
+            defaultOpen
+            action={
+              <>
+                <Button
+                  size="xs"
+                  icon={ChatBubbleLeftRightIcon}
+                  variant="ghost"
+                  aria-label="New Conversation"
+                  tooltip="New Conversation"
+                  href={getConversationRoute(owner.sId)}
+                  onClick={handleNewClick}
+                />
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="xs"
+                      icon={MoreIcon}
+                      variant="ghost"
+                      aria-label="Conversations options"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuLabel label="Conversations" />
+                    <DropdownMenuItem
+                      label={
+                        hideTriggeredConversations
+                          ? "Show triggered"
+                          : "Hide triggered"
+                      }
+                      icon={hideTriggeredConversations ? BoltIcon : BoltOffIcon}
+                      disabled={
+                        isHideTriggeredLoading || !hasTriggeredConversations
+                      }
+                      onClick={() =>
+                        setHideTriggeredConversations(
+                          !hideTriggeredConversations
+                        )
+                      }
+                    />
+                    <DropdownMenuItem
+                      label="Edit history"
+                      icon={ListCheckIcon}
+                      onClick={toggleMultiSelect}
+                      disabled={conversations.length === 0}
+                    />
+                    <DropdownMenuItem
+                      label="Clear history"
+                      variant="warning"
+                      icon={TrashIcon}
+                      onClick={() => setShowDeleteDialog("all")}
+                      disabled={conversations.length === 0}
+                    />
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            }
+          >
+            {conversationsContent}
+          </NavigationListCollapsibleSection>
+        </NavigationList>
+      </div>
     );
   }
 );

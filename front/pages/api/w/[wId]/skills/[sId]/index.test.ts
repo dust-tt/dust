@@ -1,7 +1,9 @@
 import type { RequestMethod } from "node-mocks-http";
+import type { WhereOptions } from "sequelize";
 import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
+import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
@@ -10,7 +12,7 @@ import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_ap
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
-import { SkillConfigurationFactory } from "@app/tests/utils/SkillConfigurationFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 
@@ -84,7 +86,7 @@ async function setupTest(
   }
 
   // Create skill owned by skillOwner
-  const skillModel = await SkillConfigurationFactory.create(skillOwnerAuth);
+  const skillModel = await SkillFactory.create(skillOwnerAuth);
   const skill = await SkillResource.fetchByModelIdWithAuth(
     skillOwnerAuth,
     skillModel.id
@@ -172,7 +174,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "User is not a builder.",
+        message: "Only editors can modify this skill.",
       },
     });
   });
@@ -184,7 +186,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     });
 
     // Create another skill with a different name
-    await SkillConfigurationFactory.create(requestUserAuth, {
+    await SkillFactory.create(requestUserAuth, {
       name: "Other Skill",
     });
 
@@ -229,6 +231,30 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
     expect(res._getJSONData().error.message).toContain("Invalid MCP server");
+  });
+
+  it("should return 404 when MCP server views not found", async () => {
+    const { req, res } = await setupTest({
+      requestUserRole: "admin",
+      method: "PATCH",
+    });
+
+    req.body = {
+      name: "Updated Skill",
+      agentFacingDescription: "Agent description",
+      userFacingDescription: "User description",
+      instructions: "Instructions",
+      icon: null,
+      tools: [{ mcpServerViewId: "msv_nonexistent123456" }],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+    expect(res._getJSONData().error.message).toContain(
+      "MCP server views not all found"
+    );
   });
 
   it("should return 400 for invalid request body", async () => {
@@ -465,6 +491,73 @@ describe("PATCH /api/w/[wId]/skills/[sId]", () => {
   });
 });
 
+describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
+  it("should activate a suggested skill and set the author when saving", async () => {
+    const {
+      req,
+      res,
+      workspace,
+      user: requestUser,
+    } = await createPrivateApiMockRequest({
+      role: "admin",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic("skills", workspace);
+
+    const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      requestUser.sId,
+      workspace.sId
+    );
+    await SpaceFactory.defaults(adminAuth);
+
+    const suggestedSkill = await SkillFactory.create(adminAuth, {
+      name: "Suggested Skill",
+      status: "suggested",
+    });
+
+    expect(suggestedSkill.status).toBe("suggested");
+    expect(suggestedSkill.editedBy).toBeNull();
+
+    req.query = { wId: workspace.sId, sId: suggestedSkill.sId };
+    req.body = {
+      name: "Activated Skill",
+      agentFacingDescription: "Updated agent description",
+      userFacingDescription: "Updated user description",
+      instructions: "Updated instructions",
+      icon: null,
+      tools: [],
+      attachedKnowledge: [],
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    const data = res._getJSONData();
+    expect(data).toHaveProperty("skill");
+    expect(data.skill.status).toBe("active");
+    expect(data.skill.editedBy).toBe(requestUser.id);
+
+    const updatedSkill = await SkillResource.fetchById(
+      adminAuth,
+      suggestedSkill.sId
+    );
+    expect(updatedSkill).not.toBeNull();
+    expect(updatedSkill?.status).toBe("active");
+    expect(updatedSkill?.editedBy).toBe(requestUser.id);
+
+    const where: WhereOptions<SkillVersionModel> = {
+      workspaceId: workspace.id,
+      skillConfigurationId: updatedSkill!.id,
+    };
+    const versions = await SkillVersionModel.findAll({
+      where,
+    });
+    expect(versions).toHaveLength(1);
+    expect(versions[0].editedBy).toBeNull();
+  });
+});
+
 describe("DELETE /api/w/[wId]/skills/[sId]", () => {
   it("should return 403 for non-editor user", async () => {
     const { req, res } = await setupTest({
@@ -478,7 +571,7 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
     expect(res._getJSONData()).toEqual({
       error: {
         type: "app_auth_error",
-        message: "User is not a builder.",
+        message: "Only editors can delete this skill.",
       },
     });
   });
@@ -495,6 +588,36 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
         message: "The skill you're trying to access was not found.",
       },
     });
+  });
+
+  it("should successfully archive a suggested skill", async () => {
+    const { req, res, requestUserAuth, workspace } = await setupTest({
+      requestUserRole: "admin",
+      method: "DELETE",
+    });
+
+    // Create a suggested skill
+    const suggestedSkill = await SkillFactory.create(requestUserAuth, {
+      name: "Suggested Skill To Archive",
+      status: "suggested",
+    });
+
+    expect(suggestedSkill.status).toBe("suggested");
+
+    req.query = { ...req.query, wId: workspace.sId, sId: suggestedSkill.sId };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+    expect(res._getJSONData()).toEqual({ success: true });
+
+    // Verify the skill is now archived
+    const archivedSkill = await SkillResource.fetchById(
+      requestUserAuth,
+      suggestedSkill.sId
+    );
+    expect(archivedSkill).not.toBeNull();
+    expect(archivedSkill?.status).toBe("archived");
   });
 });
 

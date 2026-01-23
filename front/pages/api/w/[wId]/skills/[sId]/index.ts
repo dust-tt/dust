@@ -4,7 +4,6 @@ import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
@@ -12,10 +11,11 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { isResourceSId } from "@app/lib/resources/string_ids";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import { AttachedKnowledgeSchema } from "@app/pages/api/w/[wId]/skills";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isBuilder, isString } from "@app/types";
+import { isString } from "@app/types";
 import type {
   SkillType,
   SkillWithRelationsType,
@@ -37,7 +37,7 @@ export type PatchSkillResponseBody = {
     | "workspaceId"
     | "createdAt"
     | "updatedAt"
-    | "authorId"
+    | "editedBy"
   >;
 };
 
@@ -87,16 +87,6 @@ async function handler(
     });
   }
 
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
-
   const { sId } = req.query;
   if (!isString(sId)) {
     return apiError(req, res, {
@@ -128,7 +118,7 @@ async function handler(
       if (withRelations === "true") {
         const usage = await skillResource.fetchUsage(auth);
         const editors = await skillResource.listEditors(auth);
-        const author = await skillResource.fetchAuthor(auth);
+        const editedByUser = await skillResource.fetchEditedByUser(auth);
         const extendedSkill = skill.extendedSkillId
           ? await SkillResource.fetchById(auth, skill.extendedSkillId)
           : null;
@@ -138,7 +128,7 @@ async function handler(
           relations: {
             usage,
             editors: editors ? editors.map((e) => e.toJSON()) : null,
-            author: author ? author.toJSON() : null,
+            editedByUser: editedByUser ? editedByUser.toJSON() : null,
             extendedSkill: extendedSkill ? extendedSkill.toJSON(auth) : null,
           },
         };
@@ -165,6 +155,17 @@ async function handler(
       }
 
       const body: PatchSkillRequestBody = bodyValidation.right;
+      const name = body.name.trim();
+
+      if (!name) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Skill name cannot be empty.",
+          },
+        });
+      }
 
       // Check if user can write.
       if (!skillResource.canWrite(auth)) {
@@ -178,17 +179,14 @@ async function handler(
       }
 
       // Check for existing active skill with the same name (excluding current skill).
-      const existingSkill = await SkillResource.fetchActiveByName(
-        auth,
-        body.name
-      );
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
       if (existingSkill && existingSkill.id !== skillResource.id) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `A skill with the name "${body.name}" already exists.`,
+            message: `A skill with the name "${name}" already exists.`,
           },
         });
       }
@@ -207,7 +205,7 @@ async function handler(
       }
 
       // Fetch MCP server views first to compute requestedSpaceIds.
-      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
+      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
       const mcpServerViews = await MCPServerViewResource.fetchByIds(
         auth,
         mcpServerViewIds
@@ -215,7 +213,7 @@ async function handler(
 
       if (mcpServerViewIds.length !== mcpServerViews.length) {
         return apiError(req, res, {
-          status_code: 400,
+          status_code: 404,
           api_error: {
             type: "invalid_request_error",
             message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
@@ -223,10 +221,11 @@ async function handler(
         });
       }
 
-      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
-        auth,
-        mcpServerViewIds
-      );
+      const spaceIdsFromMcpServerViews =
+        await MCPServerViewResource.listSpaceRequirementsByIds(
+          auth,
+          mcpServerViewIds
+        );
 
       // Validate all data source views from attached knowledge exist and user has access.
       const { attachedKnowledge } = body;
@@ -256,9 +255,30 @@ async function handler(
         (attachment) => ({
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
-          nodeType: attachment.nodeType,
         })
       );
+
+      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
+        (dsv) => dsv.space.id
+      );
+
+      const requestedSpaceIds = uniq([
+        ...spaceIdsFromMcpServerViews,
+        ...spaceIdsFromAttachedKnowledge,
+      ]);
+
+      // When saving a suggested skill, automatically activate it.
+      const shouldActivate = skillResource.status === "suggested";
+
+      if (shouldActivate) {
+        logger.info(
+          {
+            skillId: skillResource.sId,
+            workspaceId: owner.sId,
+          },
+          "Suggested skill accepted"
+        );
+      }
 
       await skillResource.updateSkill(auth, {
         agentFacingDescription: body.agentFacingDescription,
@@ -266,9 +286,10 @@ async function handler(
         icon: body.icon,
         instructions: body.instructions,
         mcpServerViews,
-        name: body.name,
+        name,
         requestedSpaceIds,
         userFacingDescription: body.userFacingDescription,
+        ...(shouldActivate ? { status: "active" as const } : {}),
       });
 
       return res.status(200).json({
@@ -286,6 +307,16 @@ async function handler(
             message: "Only editors can delete this skill.",
           },
         });
+      }
+
+      if (skillResource.status === "suggested") {
+        logger.info(
+          {
+            skillId: skillResource.sId,
+            workspaceId: owner.sId,
+          },
+          "Suggested skill rejected"
+        );
       }
 
       await skillResource.archive(auth);

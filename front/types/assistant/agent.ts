@@ -36,8 +36,11 @@ export type GlobalAgentStatus =
  *   version
  * - "draft" is used for the "try" button in builder, when the agent is not yet
  *   fully created / updated
+ * - "pending" is used when the agent builder is opened for a new agent, before
+ *   it is saved for the first time (allows capturing sId early). It allows having
+ *   a sId before creating the agent.
  */
-export type AgentStatus = "active" | "archived" | "draft";
+export type AgentStatus = "active" | "archived" | "draft" | "pending";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**

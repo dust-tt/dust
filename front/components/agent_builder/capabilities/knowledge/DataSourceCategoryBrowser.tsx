@@ -126,6 +126,7 @@ function getCategoryRows(
     ? removeNulls(
         DATA_SOURCE_VIEW_CATEGORIES.map((category) =>
           spaceCategories[category] &&
+          spaceCategories[category].count > 0 &&
           hasFeature(CATEGORY_DETAILS[category].flag) &&
           isDataSourceViewCategoryWithoutApps(category)
             ? {

@@ -1,42 +1,53 @@
-import { Page } from "@dust-tt/sparkle";
+import { Avatar, Page } from "@dust-tt/sparkle";
 
-import { useAgentConfigurationLastAuthor } from "@app/lib/swr/assistants";
-import type { LightAgentMessageType, LightWorkspaceType } from "@app/types";
+import { useEditors } from "@app/lib/swr/agent_editors";
+import type { LightWorkspaceType } from "@app/types";
 
 interface FeedbackSelectorPopoverContentProps {
-  agentMessageToRender: LightAgentMessageType;
   owner: LightWorkspaceType;
+  agentConfigurationId: string;
+  isGlobalAgent: boolean;
 }
 
 export function FeedbackSelectorPopoverContent({
   owner,
-  agentMessageToRender,
+  agentConfigurationId,
+  isGlobalAgent,
 }: FeedbackSelectorPopoverContentProps) {
-  const { agentLastAuthor } = useAgentConfigurationLastAuthor({
-    workspaceId: owner.sId,
-    agentConfigurationId: agentMessageToRender.configuration.sId,
+  const { editors } = useEditors({
+    owner,
+    agentConfigurationId,
+    disabled: isGlobalAgent,
   });
 
-  return (
-    agentLastAuthor && (
+  if (isGlobalAgent) {
+    return (
       <div className="mb-4 mt-2 flex flex-col gap-2">
         <Page.P variant="secondary">
-          Your feedback is available to editors of the agent. The last agent
-          editor is:
+          Your feedback will be available to Dust for future improvement to our
+          default agents.
         </Page.P>
-        <div className="flex flex-row items-center gap-2">
-          {agentLastAuthor.image && (
-            <img
-              src={agentLastAuthor.image}
-              alt={agentLastAuthor.firstName}
-              className="h-8 w-8 rounded-full"
-            />
-          )}
-          <Page.P variant="primary">
-            {agentLastAuthor.firstName} {agentLastAuthor.lastName}
-          </Page.P>
-        </div>
       </div>
-    )
+    );
+  }
+
+  if (editors.length === 0) {
+    return null;
+  }
+
+  const avatarProps = editors.map((editor) => ({
+    name: `${editor.firstName} ${editor.lastName}`,
+    visual: editor.image ?? undefined,
+  }));
+
+  return (
+    <div className="mb-4 mt-2 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <Page.P variant="secondary">
+          Your feedback is available to editors of the agent:
+        </Page.P>
+        <Avatar.Stack avatars={avatarProps} size="xs" nbVisibleItems={4} />
+      </div>
+    </div>
   );
 }

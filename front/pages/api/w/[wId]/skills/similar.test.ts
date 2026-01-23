@@ -50,22 +50,6 @@ describe("POST /api/w/[wId]/skills/similar", () => {
     }
   });
 
-  it("returns 403 when user is not a builder", async () => {
-    const { req, res } = await setupTest("user", "POST");
-
-    req.body = { naturalDescription: "test description" };
-
-    await handler(req, res);
-
-    expect(res._getStatusCode()).toBe(403);
-    expect(res._getJSONData()).toEqual({
-      error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  });
-
   it("returns similar skills when runMultiActionsAgent succeeds", async () => {
     const { req, res } = await setupTest("builder", "POST");
 

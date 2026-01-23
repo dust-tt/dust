@@ -1,7 +1,9 @@
 import { configEnvExists } from "../lib/config";
-import { createConfigEnvTemplate, hasHomebrew, hasInstaller, tryInstall } from "../lib/installer";
+import { createConfigEnvTemplate } from "../lib/installer";
 import { logger } from "../lib/logger";
+import { getConfiguredMultiplexer } from "../lib/multiplexer";
 import { CONFIG_ENV_PATH, findRepoRoot } from "../lib/paths";
+import { getInstallInstructions } from "../lib/platform";
 import { confirm } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 
@@ -9,9 +11,8 @@ interface CheckResult {
   name: string;
   ok: boolean;
   message: string;
-  fix?: string;
-  optional?: boolean; // If true, failing this check doesn't fail the overall doctor
-  installable?: boolean; // If true, we can offer to install this
+  fix?: string | undefined;
+  optional?: boolean | undefined; // If true, failing this check doesn't fail the overall doctor
 }
 
 export interface SetupOptions {
@@ -48,36 +49,36 @@ async function getCommandVersion(command: string): Promise<string | null> {
   }
 }
 
-async function checkHomebrew(): Promise<CheckResult> {
-  const exists = await hasHomebrew();
-  return {
-    name: "Homebrew",
-    ok: exists,
-    message: exists ? "Available" : "Not found",
-    fix: "Install Homebrew: https://brew.sh",
-    installable: true,
-  };
-}
-
 async function checkBun(): Promise<CheckResult> {
   const version = await getCommandVersion("bun");
   return {
     name: "Bun",
     ok: version !== null,
     message: version ?? "Not found",
-    fix: "Install Bun: curl -fsSL https://bun.sh/install | bash",
-    installable: true,
+    fix: getInstallInstructions("bun"),
   };
 }
 
-async function checkZellij(): Promise<CheckResult> {
-  const version = await getCommandVersion("zellij");
+async function checkLsof(): Promise<CheckResult> {
+  const exists = await checkCommand("lsof", ["-v"]);
   return {
-    name: "Zellij",
-    ok: version !== null,
-    message: version ?? "Not found",
-    fix: "Install Zellij: brew install zellij",
-    installable: true,
+    name: "lsof",
+    ok: exists,
+    message: exists ? "Available" : "Not found",
+    fix: getInstallInstructions("lsof"),
+  };
+}
+
+async function checkMultiplexer(): Promise<CheckResult> {
+  const multiplexer = await getConfiguredMultiplexer();
+  const result = await multiplexer.checkInstalled();
+  const name = multiplexer.type.charAt(0).toUpperCase() + multiplexer.type.slice(1); // Capitalize
+
+  return {
+    name,
+    ok: result.ok,
+    message: result.ok ? (result.version ?? "Unknown version") : (result.error ?? "Not found"),
+    fix: result.ok ? undefined : multiplexer.getInstallInstructions(),
   };
 }
 
@@ -89,8 +90,9 @@ async function checkDocker(): Promise<CheckResult> {
     name: "Docker",
     ok: version !== null && running,
     message,
-    fix: version ? "Start Docker Desktop" : "Install Docker Desktop",
-    installable: false,
+    fix: version
+      ? "Start Docker Desktop"
+      : "Install Docker Desktop: https://docs.docker.com/get-docker/",
   };
 }
 
@@ -101,7 +103,6 @@ async function checkDockerCompose(): Promise<CheckResult> {
     ok: available,
     message: available ? "Available" : "Not available",
     fix: "Docker Compose should be included with Docker Desktop",
-    installable: false,
   };
 }
 
@@ -111,8 +112,7 @@ async function checkTemporalCli(): Promise<CheckResult> {
     name: "Temporal CLI",
     ok: version !== null,
     message: version ?? "Not found",
-    fix: "Install Temporal: brew install temporal",
-    installable: true,
+    fix: getInstallInstructions("temporal"),
   };
 }
 
@@ -122,8 +122,7 @@ async function checkNvm(): Promise<CheckResult> {
     name: "nvm",
     ok: exists,
     message: exists ? "Available" : "Not found",
-    fix: "Install nvm: https://github.com/nvm-sh/nvm",
-    installable: true,
+    fix: getInstallInstructions("nvm"),
   };
 }
 
@@ -133,8 +132,71 @@ async function checkCargo(): Promise<CheckResult> {
     name: "Cargo",
     ok: version !== null,
     message: version ?? "Not found",
-    fix: "Install Rust: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh",
-    installable: true,
+    fix: getInstallInstructions("cargo"),
+  };
+}
+
+async function checkCmake(): Promise<CheckResult> {
+  const version = await getCommandVersion("cmake");
+  return {
+    name: "CMake",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("cmake"),
+  };
+}
+
+async function checkProtobuf(): Promise<CheckResult> {
+  const version = await getCommandVersion("protoc");
+  return {
+    name: "Protobuf",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("protobuf"),
+  };
+}
+
+async function checkDirenv(): Promise<CheckResult> {
+  const version = await getCommandVersion("direnv");
+  if (!version) {
+    return {
+      name: "direnv",
+      ok: false,
+      message: "Not found",
+      fix: getInstallInstructions("direnv"),
+    };
+  }
+
+  // Check if shell hook is configured by looking for it in shell config files
+  const { HOME: home = "" } = process.env;
+  const shellConfigs = [".zshrc", ".bashrc", ".bash_profile"];
+  let hookConfigured = false;
+
+  for (const configFile of shellConfigs) {
+    const configPath = `${home}/${configFile}`;
+    const file = Bun.file(configPath);
+    if (await file.exists()) {
+      const content = await file.text();
+      if (content.includes("direnv hook")) {
+        hookConfigured = true;
+        break;
+      }
+    }
+  }
+
+  if (!hookConfigured) {
+    return {
+      name: "direnv",
+      ok: false,
+      message: `${version} (shell hook not configured)`,
+      fix: 'Add to your shell config: eval "$(direnv hook $SHELL)" - see README for details',
+    };
+  }
+
+  return {
+    name: "direnv",
+    ok: true,
+    message: version,
   };
 }
 
@@ -146,8 +208,7 @@ async function checkSccache(): Promise<CheckResult> {
       ok: false,
       optional: true,
       message: "Not found (recommended for faster rebuilds)",
-      fix: "Install sccache: brew install sccache",
-      installable: true,
+      fix: getInstallInstructions("sccache"),
     };
   }
 
@@ -165,7 +226,6 @@ async function checkSccache(): Promise<CheckResult> {
       optional: true,
       message: `${version} (not configured)`,
       fix: configFix,
-      installable: true,
     };
   }
 
@@ -186,7 +246,6 @@ async function checkSccache(): Promise<CheckResult> {
     optional: true,
     message: `${version} (not configured)`,
     fix: configFix,
-    installable: true,
   };
 }
 
@@ -197,7 +256,6 @@ async function checkRepo(): Promise<CheckResult> {
     ok: root !== null,
     message: root ?? "Not found",
     fix: "Run dust-hive from within the Dust repository",
-    installable: false,
   };
 }
 
@@ -208,7 +266,26 @@ async function checkConfig(): Promise<CheckResult> {
     ok: exists,
     message: exists ? CONFIG_ENV_PATH : "Not found",
     fix: `Create ${CONFIG_ENV_PATH} with required environment variables`,
-    installable: true,
+  };
+}
+
+async function checkPsql(): Promise<CheckResult> {
+  const version = await getCommandVersion("psql");
+  return {
+    name: "psql",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("psql"),
+  };
+}
+
+async function checkFzf(): Promise<CheckResult> {
+  const version = await getCommandVersion("fzf");
+  return {
+    name: "fzf",
+    ok: version !== null,
+    message: version ?? "Not found",
+    fix: getInstallInstructions("fzf"),
   };
 }
 
@@ -239,29 +316,26 @@ function printResults(results: CheckResult[]): boolean {
 
 async function runAllChecks(): Promise<CheckResult[]> {
   return [
-    await checkHomebrew(),
     await checkBun(),
-    await checkZellij(),
+    await checkLsof(),
+    await checkMultiplexer(),
     await checkDocker(),
     await checkDockerCompose(),
     await checkTemporalCli(),
+    await checkPsql(),
+    await checkFzf(),
     await checkNvm(),
     await checkCargo(),
+    await checkCmake(),
+    await checkProtobuf(),
+    await checkDirenv(),
     await checkSccache(),
     await checkRepo(),
     await checkConfig(),
   ];
 }
 
-function getInstallableFailures(results: CheckResult[]): CheckResult[] {
-  return results.filter((r) => !r.ok && r.installable);
-}
-
-function getManualFailures(results: CheckResult[]): CheckResult[] {
-  return results.filter((r) => !(r.ok || r.installable || r.optional));
-}
-
-async function installConfigEnv(): Promise<boolean> {
+async function offerConfigEnvCreation(): Promise<boolean> {
   const shouldCreate = await confirm("Create config.env template?", true);
   if (!shouldCreate) {
     logger.info("→ Skipped");
@@ -269,46 +343,6 @@ async function installConfigEnv(): Promise<boolean> {
   }
   await createConfigEnvTemplate(CONFIG_ENV_PATH);
   return true;
-}
-
-async function installPrerequisite(
-  check: CheckResult,
-  hasBrew: boolean
-): Promise<{ installed: boolean; brewInstalled: boolean }> {
-  if (!hasInstaller(check.name)) {
-    return { installed: false, brewInstalled: false };
-  }
-
-  const installed = await tryInstall(check.name, check.optional ?? false, hasBrew);
-  const brewInstalled = installed && check.name === "Homebrew";
-  return { installed, brewInstalled };
-}
-
-async function interactiveInstall(results: CheckResult[]): Promise<boolean> {
-  const installable = getInstallableFailures(results);
-  if (installable.length === 0) {
-    return false;
-  }
-
-  console.log();
-  logger.info("Some prerequisites can be installed automatically.\n");
-
-  const brewCheck = results.find((r) => r.name === "Homebrew");
-  let hasBrew = brewCheck?.ok ?? false;
-  let anyInstalled = false;
-
-  for (const check of installable) {
-    if (check.name === "config.env") {
-      anyInstalled = (await installConfigEnv()) || anyInstalled;
-      continue;
-    }
-
-    const result = await installPrerequisite(check, hasBrew);
-    anyInstalled = result.installed || anyInstalled;
-    hasBrew = result.brewInstalled || hasBrew;
-  }
-
-  return anyInstalled;
 }
 
 export async function setupCommand(options: SetupOptions = {}): Promise<Result<void>> {
@@ -330,48 +364,38 @@ export async function setupCommand(options: SetupOptions = {}): Promise<Result<v
     return Ok(undefined);
   }
 
-  // In non-interactive mode, just report and exit
-  if (options.nonInteractive) {
-    logger.warn("Some prerequisites are missing. Please install them to use dust-hive.");
-    return Err(new CommandError("Prerequisites check failed"));
-  }
+  // Check if only config.env is missing and offer to create it (interactive only)
+  const configCheck = results.find((r) => r.name === "config.env");
+  if (!options.nonInteractive && configCheck && !configCheck.ok) {
+    console.log();
+    const created = await offerConfigEnvCreation();
+    if (created) {
+      // Re-run checks after config creation
+      console.log();
+      logger.info("Re-checking prerequisites...\n");
+      results = await runAllChecks();
+      console.log();
+      allOk = printResults(results);
+      console.log();
 
-  // Interactive mode: offer to install what we can
-  const anyInstalled = await interactiveInstall(results);
-
-  if (anyInstalled) {
-    // Re-run checks after installations
-    console.log();
-    logger.info("Re-checking prerequisites...\n");
-    results = await runAllChecks();
-    console.log();
-    allOk = printResults(results);
-    console.log();
-  }
-
-  if (allOk) {
-    logger.success("All prerequisites met!");
-    console.log();
-    console.log("Next steps:");
-    console.log("  dust-hive up            # Start temporal server + sync main repo");
-    console.log("  dust-hive spawn <name>  # Create a new environment");
-    console.log();
-    return Ok(undefined);
-  }
-
-  // Report remaining manual fixes needed
-  const manualFixes = getManualFailures(results);
-  if (manualFixes.length > 0) {
-    logger.warn("Some prerequisites require manual action:");
-    for (const fix of manualFixes) {
-      if (fix.fix) {
-        console.log(`  • ${fix.name}: ${fix.fix}`);
+      if (allOk) {
+        logger.success("All prerequisites met!");
+        console.log();
+        console.log("Next steps:");
+        console.log("  dust-hive up            # Start temporal server + sync main repo");
+        console.log("  dust-hive spawn <name>  # Create a new environment");
+        console.log();
+        return Ok(undefined);
       }
     }
-    console.log();
   }
 
-  logger.info("Once prerequisites are met, run: dust-hive up");
+  // Report failure
+  if (options.nonInteractive) {
+    logger.warn("Some prerequisites are missing. Please install them to use dust-hive.");
+  } else {
+    logger.info("Once prerequisites are met, run: dust-hive up");
+  }
   return Err(new CommandError("Prerequisites check failed"));
 }
 

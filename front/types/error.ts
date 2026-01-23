@@ -113,8 +113,6 @@ const API_ERROR_TYPES = [
   // Plugins:
   "plugin_not_found",
   "plugin_execution_failed",
-  // Trackers:
-  "tracker_not_found",
   // Triggers:
   "trigger_not_found",
   "webhook_source_not_found",
@@ -147,6 +145,8 @@ const API_ERROR_TYPES = [
   "elasticsearch_error",
   // Skills
   "skill_not_found",
+  // Projects
+  "project_metadata_not_found",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];

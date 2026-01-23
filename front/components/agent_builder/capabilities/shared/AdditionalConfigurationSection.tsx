@@ -15,11 +15,9 @@ import { InformationCircleIcon } from "@heroicons/react/20/solid";
 import React, { useMemo, useState } from "react";
 import { useController } from "react-hook-form";
 
-import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { MCPFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { ConfigurationSectionContainer } from "@app/components/agent_builder/capabilities/shared/ConfigurationSectionContainer";
 import type { MCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { asDisplayName } from "@app/types";
 
 function formatKeyForDisplay(key: string): string {
@@ -542,20 +540,6 @@ export function AdditionalConfigurationSection({
   requiredEnums,
   requiredLists,
 }: AdditionalConfigurationSectionProps) {
-  const { owner } = useAgentBuilderContext();
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const hasWebSummarizationFlag = featureFlags.includes("web_summarization");
-
-  const filteredBooleanConfigurations = useMemo(
-    () =>
-      requiredBooleans.filter(
-        ({ key }) => !(key === "useSummary" && !hasWebSummarizationFlag)
-      ),
-    [requiredBooleans, hasWebSummarizationFlag]
-  );
-
   // Group configuration fields by prefix.
   const groupedStrings = useMemo(
     () => groupKeysByPrefix(requiredStrings),
@@ -566,8 +550,8 @@ export function AdditionalConfigurationSection({
     [requiredNumbers]
   );
   const groupedBooleans = useMemo(
-    () => groupKeysByPrefix(filteredBooleanConfigurations),
-    [filteredBooleanConfigurations]
+    () => groupKeysByPrefix(requiredBooleans),
+    [requiredBooleans]
   );
   const groupedEnums = useMemo(() => {
     const groups: Record<string, MCPServerRequirements["requiredEnums"]> = {};
@@ -619,7 +603,7 @@ export function AdditionalConfigurationSection({
   const hasConfiguration =
     requiredStrings.length > 0 ||
     requiredNumbers.length > 0 ||
-    filteredBooleanConfigurations.length > 0 ||
+    requiredBooleans.length > 0 ||
     Object.keys(requiredEnums).length > 0 ||
     Object.keys(requiredLists).length > 0;
 

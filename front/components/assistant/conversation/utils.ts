@@ -17,33 +17,38 @@ export function getGroupConversationsByUnreadAndActionRequired(
   conversations: ConversationWithoutContentType[],
   titleFilter: string
 ) {
-  return conversations.reduce(
-    (acc, conversation) => {
-      if (
-        titleFilter &&
-        !subFilter(
-          removeDiacritics(titleFilter).toLowerCase(),
-          removeDiacritics(conversation.title ?? "").toLowerCase()
-        )
-      ) {
-        return acc;
-      }
+  return (
+    conversations
+      // Ensure that the conversations are always sorted by updated time as the list might have been manipulated client-side.
+      .toSorted((a, b) => b.updated - a.updated)
+      .reduce(
+        (acc, conversation) => {
+          if (
+            titleFilter &&
+            !subFilter(
+              removeDiacritics(titleFilter).toLowerCase(),
+              removeDiacritics(conversation.title ?? "").toLowerCase()
+            )
+          ) {
+            return acc;
+          }
 
-      if (conversation.unread || conversation.actionRequired) {
-        acc.inboxConversations.push(conversation);
-        return acc;
-      }
+          if (conversation.unread || conversation.actionRequired) {
+            acc.inboxConversations.push(conversation);
+            return acc;
+          }
 
-      acc.readConversations.push(conversation);
-      return acc;
-    },
-    {
-      readConversations: [],
-      inboxConversations: [],
-    } as {
-      readConversations: ConversationWithoutContentType[];
-      inboxConversations: ConversationWithoutContentType[];
-    }
+          acc.readConversations.push(conversation);
+          return acc;
+        },
+        {
+          readConversations: [],
+          inboxConversations: [],
+        } as {
+          readConversations: ConversationWithoutContentType[];
+          inboxConversations: ConversationWithoutContentType[];
+        }
+      )
   );
 }
 
@@ -97,4 +102,17 @@ export function getGroupConversationsByDate({
   });
 
   return groups;
+}
+
+export function filterTriggeredConversations(
+  conversations: ConversationWithoutContentType[],
+  hideTriggered: boolean
+): ConversationWithoutContentType[] {
+  if (!hideTriggered) {
+    return conversations;
+  }
+
+  return conversations.filter(
+    (c) => c.triggerId === null || c.unread || c.actionRequired
+  );
 }

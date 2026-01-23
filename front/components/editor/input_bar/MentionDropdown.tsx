@@ -82,7 +82,10 @@ export const MentionDropdown = forwardRef<
           return true;
         }
 
-        if (event.key === "Enter" || event.key === "Tab") {
+        if (event.key === "Enter" || event.key === "Tab" || event.key === " ") {
+          if (suggestions.length === 0) {
+            return false;
+          }
           selectItem(selectedIndex);
           return true;
         }

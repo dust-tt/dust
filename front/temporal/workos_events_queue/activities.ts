@@ -24,19 +24,20 @@ import {
   getWorkspaceInfos,
   isWorkspaceRelocationDone,
 } from "@app/lib/api/workspace";
-import {
-  deleteWorkspaceDomain,
-  getWorkspaceVerifiedDomains,
-  upsertWorkspaceDomain,
-} from "@app/lib/api/workspace_domains";
 import { Authenticator } from "@app/lib/auth";
 import type { ExternalUser } from "@app/lib/iam/provider";
-import { createOrUpdateUser } from "@app/lib/iam/users";
+import type { CustomAttributeKey } from "@app/lib/iam/users";
+import {
+  createOrUpdateUser,
+  CUSTOM_ATTRIBUTES_TO_SYNC,
+  WORKOS_METADATA_KEY_PREFIX,
+} from "@app/lib/iam/users";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import mainLogger from "@app/logger/logger";
 import type { LightWorkspaceType, Result } from "@app/types";
@@ -50,6 +51,10 @@ const logger = mainLogger.child(
 
 const ADMIN_GROUP_NAME = "dust-admins";
 const BUILDER_GROUP_NAME = "dust-builders";
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
 
 /**
  * Verify if workspace exist, if it does will call the callback with the found workspace.
@@ -129,6 +134,7 @@ async function handleRoleAssignmentForGroup(
         user,
         workspace,
         newRole,
+        allowLastAdminRemoval: true,
         author: auth.user()?.toJSON() ?? "no-author",
       });
 
@@ -167,6 +173,7 @@ async function handleRoleAssignmentForGroup(
         user,
         workspace,
         newRole,
+        allowLastAdminRemoval: true,
         author: auth.user()?.toJSON() ?? "no-author",
       });
 
@@ -308,9 +315,14 @@ async function handleOrganizationDomainEvent(
     `Domain state is not ${expectedState} -- expected ${expectedState} but got ${state}`
   );
 
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${workspace.sId}`);
+  }
+
   let domainResult: Result<any, Error>;
   if (expectedState === "verified") {
-    domainResult = await upsertWorkspaceDomain(workspace, {
+    domainResult = await workspaceResource.upsertWorkspaceDomain({
       domain,
       // If a workspace has a verified domain, it means that they went through the DNS
       // verification process. If this domain is already assigned to another workspace,
@@ -318,7 +330,7 @@ async function handleOrganizationDomainEvent(
       dropExistingDomain: true,
     });
   } else {
-    domainResult = await deleteWorkspaceDomain(workspace, { domain });
+    domainResult = await workspaceResource.deleteDomain({ domain });
   }
 
   if (domainResult.isErr()) {
@@ -352,7 +364,12 @@ async function handleOrganizationUpdated(
 ) {
   const { domains } = eventData;
 
-  const existingVerifiedDomains = await getWorkspaceVerifiedDomains(workspace);
+  const workspaceResource = await WorkspaceResource.fetchById(workspace.sId);
+  if (!workspaceResource) {
+    throw new Error(`Workspace not found: ${workspace.sId}`);
+  }
+
+  const existingVerifiedDomains = await workspaceResource.getVerifiedDomains();
   const existingVerifiedDomainsSet = new Set(
     existingVerifiedDomains.map((d) => d.domain)
   );
@@ -365,7 +382,7 @@ async function handleOrganizationUpdated(
   // Add new verified domains that don't exist yet.
   for (const domain of workOSVerifiedDomains) {
     if (!existingVerifiedDomainsSet.has(domain)) {
-      const result = await upsertWorkspaceDomain(workspace, { domain });
+      const result = await workspaceResource.upsertWorkspaceDomain({ domain });
 
       // Swallow errors, we don't want to block the event from being processed. Sole error returned
       // is if the domain is already in use by another workspace.
@@ -381,7 +398,7 @@ async function handleOrganizationUpdated(
   // Delete domains that are no longer verified in WorkOS.
   for (const domain of existingVerifiedDomainsSet) {
     if (!workOSVerifiedDomains.has(domain)) {
-      await deleteWorkspaceDomain(workspace, { domain });
+      await workspaceResource.deleteDomain({ domain });
     }
   }
 }
@@ -571,7 +588,7 @@ async function handleUserAddedToGroup(
 
   const isMember = await group.isMember(user);
   if (!isMember) {
-    const res = await group.addMember(auth, user.toJSON());
+    const res = await group.addMember(auth, { user: user.toJSON() });
     if (res.isErr()) {
       throw new Error(res.error.message);
     }
@@ -664,8 +681,8 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const res = await group.removeMember(auth, user.toJSON());
-  if (res.isErr()) {
+  const res = await group.removeMember(auth, { user: user.toJSON() });
+  if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
   }
 
@@ -676,6 +693,46 @@ async function handleUserRemovedFromGroup(
     group,
     action: "remove",
   });
+}
+
+// Extracts WorkOS custom attributes from DirectoryUser.
+function extractCustomAttributes(
+  directoryUser: DirectoryUser
+): Record<CustomAttributeKey, string | null> {
+  const result: Record<CustomAttributeKey, string | null> = {
+    job_title: null,
+    department_name: null,
+  };
+
+  const { customAttributes } = directoryUser;
+  if (isRecord(customAttributes)) {
+    for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+      const value = customAttributes[attr];
+      if (typeof value === "string" && value.trim() !== "") {
+        result[attr] = value.trim();
+      }
+    }
+  }
+
+  return result;
+}
+
+// Clears all WorkOS custom attributes for a user in a workspace.
+// Called when the user is deleted from the directory.
+async function clearCustomAttributesFromUserMetadata(
+  user: UserResource,
+  workspace: LightWorkspaceType
+): Promise<void> {
+  for (const attr of CUSTOM_ATTRIBUTES_TO_SYNC) {
+    await user.deleteMetadata({
+      key: `${WORKOS_METADATA_KEY_PREFIX}${attr}`,
+      workspaceId: workspace.id,
+    });
+  }
+  logger.info(
+    { userId: user.sId, workspaceId: workspace.sId },
+    "Cleared WorkOS custom attributes from user metadata"
+  );
 }
 
 async function handleCreateOrUpdateWorkOSUser(
@@ -701,12 +758,14 @@ async function handleCreateOrUpdateWorkOSUser(
     given_name: workOSUser.firstName ?? undefined,
     family_name: workOSUser.lastName ?? undefined,
     picture: workOSUser.profilePictureUrl ?? undefined,
+    customAttributes: extractCustomAttributes(event),
   };
 
   const { user: createdOrUpdatedUser } = await createOrUpdateUser({
     user,
     externalUser,
     forceNameUpdate: !!(workOSUser.firstName && workOSUser.lastName),
+    workspace,
   });
 
   const membership =
@@ -755,6 +814,9 @@ async function handleDeleteWorkOSUser(
     );
   }
 
+  // Clear WorkOS custom attributes before revoking membership.
+  await clearCustomAttributesFromUserMetadata(user, workspace);
+
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
   const groups = await GroupResource.listUserGroupsInWorkspace({
     user,
@@ -762,7 +824,9 @@ async function handleDeleteWorkOSUser(
   });
 
   for (const group of groups) {
-    const removeResult = await group.removeMember(auth, user.toJSON());
+    const removeResult = await group.removeMember(auth, {
+      user: user.toJSON(),
+    });
     if (removeResult.isErr()) {
       logger.warn(
         {

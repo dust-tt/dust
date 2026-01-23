@@ -23,7 +23,6 @@ export function SkillBuilderAgentFacingDescriptionSection() {
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({
     owner,
-    disabled: !isSimilarSkillsEnabled,
   });
 
   const [similarSkills, setSimilarSkills] = useState<SkillType[]>([]);
@@ -31,17 +30,16 @@ export function SkillBuilderAgentFacingDescriptionSection() {
 
   const fetchSimilarSkills = useCallback(
     async (description: string, signal: AbortSignal) => {
-      if (!isSimilarSkillsEnabled) {
-        return;
-      }
-
       if (description.length < MIN_DESCRIPTION_LENGTH) {
         setSimilarSkills([]);
         setIsLoading(false);
         return;
       }
 
-      const result = await getSimilarSkills(description, signal);
+      const result = await getSimilarSkills(description, {
+        excludeSkillId: skillId, // Exclude the skill being edited.
+        signal,
+      });
 
       // Only update state if the request was not aborted
       if (!signal.aborted) {
@@ -49,15 +47,14 @@ export function SkillBuilderAgentFacingDescriptionSection() {
         if (result.isOk()) {
           const similarSkillIds = result.value;
           const similarSkillIdsSet = new Set(similarSkillIds);
-          const matchedSkills = skills.filter(
-            (skill) =>
-              similarSkillIdsSet.has(skill.sId) && skill.sId !== skillId
+          const matchedSkills = skills.filter((skill) =>
+            similarSkillIdsSet.has(skill.sId)
           );
           setSimilarSkills(matchedSkills);
         }
       }
     },
-    [getSimilarSkills, isSimilarSkillsEnabled, skillId, skills]
+    [getSimilarSkills, skillId, skills]
   );
 
   const triggerSimilarSkillsFetch = useDebounceWithAbort(fetchSimilarSkills, {
@@ -70,19 +67,18 @@ export function SkillBuilderAgentFacingDescriptionSection() {
       formOnChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
     ) => {
       formOnChange(e);
-      if (isSimilarSkillsEnabled) {
-        const value = e.target.value;
-        // Set loading immediately when description is long enough
-        setIsLoading(value.length >= MIN_DESCRIPTION_LENGTH);
-        triggerSimilarSkillsFetch(value);
-      }
+      const value = e.target.value;
+      // Set loading immediately when description is long enough
+      setIsLoading(value.length >= MIN_DESCRIPTION_LENGTH);
+      triggerSimilarSkillsFetch(value);
     },
-    [triggerSimilarSkillsFetch, isSimilarSkillsEnabled]
+    [triggerSimilarSkillsFetch]
   );
 
   return (
     <BaseFormFieldSection
       title="What will this skill be used for?"
+      titleClassName="heading-lg"
       fieldName={AGENT_FACING_DESCRIPTION_FIELD_NAME}
       triggerValidationOnChange={false}
     >
@@ -106,6 +102,7 @@ export function SkillBuilderAgentFacingDescriptionSection() {
           />
           {isSimilarSkillsEnabled && (
             <SimilarSkillsDisplay
+              owner={owner}
               similarSkills={similarSkills}
               isLoading={isLoading}
             />

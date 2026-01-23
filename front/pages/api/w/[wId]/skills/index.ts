@@ -4,14 +4,15 @@ import * as reporter from "io-ts-reporters";
 import uniq from "lodash/uniq";
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getRequestedSpaceIdsFromMCPServerViewIds } from "@app/lib/api/assistant/permissions";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getSkillIconSuggestion } from "@app/lib/api/skills/icon_suggestion";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isBuilder } from "@app/types";
@@ -44,7 +45,6 @@ const SkillStatusSchema = t.union([
 export const AttachedKnowledgeSchema = t.type({
   dataSourceViewId: t.string,
   nodeId: t.string,
-  nodeType: t.union([t.literal("folder"), t.literal("document")]),
   spaceId: t.string,
   title: t.string,
 });
@@ -80,16 +80,6 @@ async function handler(
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
 
-  if (!isBuilder(owner)) {
-    return apiError(req, res, {
-      status_code: 403,
-      api_error: {
-        type: "app_auth_error",
-        message: "User is not a builder.",
-      },
-    });
-  }
-
   const featureFlags = await getFeatureFlags(owner);
   if (!featureFlags.includes("skills")) {
     return apiError(req, res, {
@@ -117,7 +107,7 @@ async function handler(
       }
       const skillStatus = statusValidation.right;
 
-      const skills = await SkillResource.listSkills(auth, {
+      const skills = await SkillResource.listByWorkspace(auth, {
         status: skillStatus,
         globalSpaceOnly: globalSpaceOnly === "true",
       });
@@ -128,7 +118,7 @@ async function handler(
           async (sc) => {
             const usage = await sc.fetchUsage(auth);
             const editors = await sc.listEditors(auth);
-            const author = await sc.fetchAuthor(auth);
+            const editedByUser = await sc.fetchEditedByUser(auth);
             const extendedSkill = sc.extendedSkillId
               ? await SkillResource.fetchById(auth, sc.extendedSkillId)
               : null;
@@ -138,7 +128,7 @@ async function handler(
               relations: {
                 usage,
                 editors: editors ? editors.map((e) => e.toJSON()) : null,
-                author: author ? author.toJSON() : null,
+                editedByUser: editedByUser ? editedByUser.toJSON() : null,
                 extendedSkill: extendedSkill
                   ? extendedSkill.toJSON(auth)
                   : null,
@@ -157,6 +147,16 @@ async function handler(
     }
 
     case "POST": {
+      if (!isBuilder(owner)) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "app_auth_error",
+            message: "User is not a builder.",
+          },
+        });
+      }
+
       const user = auth.getNonNullableUser();
 
       const bodyValidation = PostSkillRequestBodySchema.decode(req.body);
@@ -173,40 +173,45 @@ async function handler(
       }
 
       const body: PostSkillRequestBody = bodyValidation.right;
+      const name = body.name.trim();
 
-      const existingSkill = await SkillResource.fetchActiveByName(
-        auth,
-        body.name
-      );
+      if (!name) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Skill name cannot be empty.",
+          },
+        });
+      }
+
+      const existingSkill = await SkillResource.fetchActiveByName(auth, name);
 
       if (existingSkill) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `A skill with the name "${body.name}" already exists.`,
+            message: `A skill with the name "${name}" already exists.`,
           },
         });
       }
 
       // Validate all MCP server views exist before creating anything
-      const mcpServerViewIds = body.tools.map((t) => t.mcpServerViewId);
-      const mcpServerViews: MCPServerViewResource[] = [];
-      for (const mcpServerViewId of mcpServerViewIds) {
-        const mcpServerView = await MCPServerViewResource.fetchById(
-          auth,
-          mcpServerViewId
-        );
-        if (!mcpServerView) {
-          return apiError(req, res, {
-            status_code: 404,
-            api_error: {
-              type: "invalid_request_error",
-              message: `MCP server view not found ${mcpServerViewId}`,
-            },
-          });
-        }
-        mcpServerViews.push(mcpServerView);
+      const mcpServerViewIds = uniq(body.tools.map((t) => t.mcpServerViewId));
+      const mcpServerViews = await MCPServerViewResource.fetchByIds(
+        auth,
+        mcpServerViewIds
+      );
+
+      if (mcpServerViewIds.length !== mcpServerViews.length) {
+        return apiError(req, res, {
+          status_code: 404,
+          api_error: {
+            type: "invalid_request_error",
+            message: `MCP server views not all found, ${mcpServerViews.length} found, ${mcpServerViewIds.length} requested`,
+          },
+        });
       }
 
       // Validate all data source views from attached knowledge exist and user has access.
@@ -237,24 +242,30 @@ async function handler(
         (attachment) => ({
           dataSourceView: dataSourceViewIdMap.get(attachment.dataSourceViewId)!,
           nodeId: attachment.nodeId,
-          nodeType: attachment.nodeType,
         })
       );
 
-      const requestedSpaceIds = await getRequestedSpaceIdsFromMCPServerViewIds(
-        auth,
-        mcpServerViewIds
+      const spaceIdsFromMcpServerViews =
+        await MCPServerViewResource.listSpaceRequirementsByIds(
+          auth,
+          mcpServerViewIds
+        );
+
+      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
+        (dsv) => dsv.space.id
       );
+
+      const requestedSpaceIds = uniq([
+        ...spaceIdsFromMcpServerViews,
+        ...spaceIdsFromAttachedKnowledge,
+      ]);
 
       const extendedSkill = body.extendedSkillId
         ? await SkillResource.fetchById(auth, body.extendedSkillId)
         : null;
 
-      // Only global skills can be extended
-      if (
-        extendedSkill !== null &&
-        (extendedSkill === null || !extendedSkill.isExtendable)
-      ) {
+      // Only global skills can be extended.
+      if (extendedSkill !== null && !extendedSkill.isExtendable) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
@@ -264,17 +275,36 @@ async function handler(
         });
       }
 
+      // Generate icon suggestion if not provided.
+      let icon = body.icon;
+      if (!icon) {
+        const iconResult = await getSkillIconSuggestion(auth, {
+          name,
+          instructions: body.instructions,
+          agentFacingDescription: body.agentFacingDescription,
+        });
+        if (iconResult.isOk()) {
+          icon = iconResult.value;
+        } else {
+          logger.warn(
+            { error: iconResult.error },
+            "Failed to generate icon suggestion for skill"
+          );
+        }
+      }
+
       const skillResource = await SkillResource.makeNew(
         auth,
         {
           status: "active",
-          name: body.name,
+          name,
           agentFacingDescription: body.agentFacingDescription,
           userFacingDescription: body.userFacingDescription,
           instructions: body.instructions,
-          authorId: user.id,
+          editedBy: user.id,
           requestedSpaceIds,
           extendedSkillId: body.extendedSkillId,
+          icon,
         },
         {
           mcpServerViews,

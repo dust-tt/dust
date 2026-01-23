@@ -7,8 +7,9 @@ import { requiresBearerTokenConfiguration } from "@app/lib/actions/mcp_helper";
 import { DEFAULT_MCP_SERVER_ICON } from "@app/lib/actions/mcp_icons";
 import {
   allowsMultipleInstancesOfInternalMCPServerByName,
+  getInternalMCPServerInfo,
   isInternalMCPServerName,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
@@ -27,7 +28,10 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { headersArrayToRecord } from "@app/types";
+import {
+  getOverridablePersonalAuthInputs,
+  headersArrayToRecord,
+} from "@app/types";
 import { getOAuthConnectionAccessToken } from "@app/types/oauth/client/access_token";
 
 export type GetMCPServersResponseBody = {
@@ -301,7 +305,7 @@ async function handler(
             });
 
           const alreadyUsed = installedMCPServers.some((mcpServer) =>
-            isInternalMCPServerOfName(mcpServer.internalMCPServerId, name)
+            matchesInternalMCPServerName(mcpServer.internalMCPServerId, name)
           );
 
           if (alreadyUsed) {
@@ -325,7 +329,14 @@ async function handler(
         if (body.connectionId) {
           // For personal tools, automatically create a personal connection for the admin
           // so they don't need to re-authenticate when they first use the tool.
-          if (body.useCase === "personal_actions") {
+          // Exception: If the provider has overridable credentials at personal auth time,
+          // each user should authenticate separately with their own settings.
+          const serverInfo = getInternalMCPServerInfo(name);
+          const provider = serverInfo.authorization?.provider;
+          const hasOverridableInputs = provider
+            ? !!getOverridablePersonalAuthInputs({ provider })
+            : false;
+          if (body.useCase === "personal_actions" && !hasOverridableInputs) {
             await MCPServerConnectionResource.makeNew(auth, {
               connectionId: body.connectionId,
               connectionType: "personal",

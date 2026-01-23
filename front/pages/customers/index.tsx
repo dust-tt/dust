@@ -1,5 +1,11 @@
-import { Chip, CollapsibleComponent, Pagination } from "@dust-tt/sparkle";
-import type { GetStaticProps } from "next";
+import {
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  Pagination,
+} from "@dust-tt/sparkle";
+import type { GetServerSideProps } from "next";
 import Head from "next/head";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,10 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
-import {
-  CONTENTFUL_REVALIDATE_SECONDS,
-  getAllCustomerStories,
-} from "@app/lib/contentful/client";
+import { getAllCustomerStories } from "@app/lib/contentful/client";
 import { contentfulImageLoader } from "@app/lib/contentful/imageLoader";
 import type {
   CustomerStoryFilterOptions,
@@ -66,7 +69,7 @@ function extractFilterOptions(
   };
 }
 
-export const getStaticProps: GetStaticProps<
+export const getServerSideProps: GetServerSideProps<
   CustomerStoryListingPageProps
 > = async () => {
   const storiesResult = await getAllCustomerStories();
@@ -87,7 +90,6 @@ export const getStaticProps: GetStaticProps<
         },
         gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
       },
-      revalidate: CONTENTFUL_REVALIDATE_SECONDS,
     };
   }
 
@@ -99,7 +101,6 @@ export const getStaticProps: GetStaticProps<
       filterOptions: extractFilterOptions(stories),
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
     },
-    revalidate: CONTENTFUL_REVALIDATE_SECONDS,
   };
 };
 
@@ -151,13 +152,9 @@ function FilterSection({
 
   return (
     <div className="mb-6">
-      <CollapsibleComponent
-        rootProps={{ defaultOpen }}
-        triggerProps={{
-          label: title,
-          variant: "secondary",
-        }}
-        contentChildren={
+      <Collapsible defaultOpen={defaultOpen}>
+        <CollapsibleTrigger label={title} variant="secondary" />
+        <CollapsibleContent>
           <div className="flex flex-col gap-2">
             {options.map((option) => (
               <FilterCheckbox
@@ -168,8 +165,8 @@ function FilterSection({
               />
             ))}
           </div>
-        }
-      />
+        </CollapsibleContent>
+      </Collapsible>
     </div>
   );
 }

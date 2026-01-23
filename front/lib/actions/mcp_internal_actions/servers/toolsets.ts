@@ -39,8 +39,10 @@ function createServer(
             .map((action) => action.mcpServerViewId) ?? [];
 
         const owner = auth.getNonNullableWorkspace();
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const requestedGroupIds = auth.groupIds();
+        const prodCredentials = await prodAPICredentialsForOwner(owner, {
+          useLocalInDev: true,
+        });
         const config = apiConfig.getDustAPIConfig();
         const api = new DustAPI(
           config,
@@ -114,8 +116,10 @@ function createServer(
           return new Err(new MCPError("User not found", { tracked: false }));
         }
 
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
-        const prodCredentials = await prodAPICredentialsForOwner(owner);
+        const requestedGroupIds = auth.groupIds();
+        const prodCredentials = await prodAPICredentialsForOwner(owner, {
+          useLocalInDev: true,
+        });
         const config = apiConfig.getDustAPIConfig();
 
         const api = new DustAPI(

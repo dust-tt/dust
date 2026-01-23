@@ -19,6 +19,7 @@ export default defineConfig(
     ignores: [
       "eslint.config.ts",
       "**/*.config.js",
+      ".prettierrc.js",
       "**/node_modules/**",
       "**/.next/**",
       "**/out/**",
@@ -230,6 +231,15 @@ export default defineConfig(
     },
   },
 
+  // Shared code directories - no direct Next.js imports
+  {
+    files: ["components/**/*.{ts,tsx}", "hooks/**/*.{ts,tsx}"],
+    ignores: ["components/home/**/*.{ts,tsx}"],
+    rules: {
+      "dust/no-next-imports": "warn",
+    },
+  },
+
   // Public API endpoints - require Swagger docs
   {
     files: ["pages/api/v1/**/*.ts"],
@@ -249,6 +259,15 @@ export default defineConfig(
           ],
         },
       ],
+    },
+  },
+
+  // Poke pages - enforce patterns for SPA compatibility
+  {
+    files: ["pages/poke/**/*.tsx"],
+    rules: {
+      "dust/nextjs-no-data-fetching-in-getssp": "error",
+      "dust/nextjs-page-component-naming": "error",
     },
   }
 ) satisfies Linter.Config[];

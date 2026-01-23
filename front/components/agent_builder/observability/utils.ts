@@ -1,4 +1,5 @@
 import {
+  INDEXED_BASE_COLORS,
   INDEXED_COLORS,
   OTHER_LABEL,
   UNKNOWN_LABEL,
@@ -43,6 +44,14 @@ export function getIndexedColor(label: string, allLabels: string[]): string {
 
   const idx = allLabels.indexOf(label);
   return INDEXED_COLORS[(idx >= 0 ? idx : 0) % INDEXED_COLORS.length];
+}
+
+export function getIndexedBaseColor(
+  label: string,
+  allLabels: string[]
+): string {
+  const idx = allLabels.indexOf(label);
+  return INDEXED_BASE_COLORS[(idx >= 0 ? idx : 0) % INDEXED_BASE_COLORS.length];
 }
 
 export function buildSourceChartData(

@@ -7,9 +7,9 @@ import {
   DropdownMenuTrigger,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
 import {
   getAgentBuilderRoute,
@@ -22,7 +22,7 @@ interface ManageDropdownMenuProps {
 }
 
 export const ManageDropdownMenu = ({ owner }: ManageDropdownMenuProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
 
   return (

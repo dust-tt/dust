@@ -1,4 +1,6 @@
 import { escape } from "html-escaper";
+import fromPairs from "lodash/fromPairs";
+import sortBy from "lodash/sortBy";
 import type {
   Attributes,
   ModelStatic,
@@ -14,6 +16,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import {
   UserMetadataModel,
   UserModel,
+  UserToolApprovalModel,
 } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { searchUsers } from "@app/lib/user_search/search";
@@ -21,7 +24,7 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type { LightWorkspaceType, ModelId, Result, UserType } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, md5, normalizeError, Ok } from "@app/types";
 import type { UserSearchDocument } from "@app/types/user_search/user_search";
 
 export interface SearchMembersPaginationParams {
@@ -31,6 +34,7 @@ export interface SearchMembersPaginationParams {
 
 const USER_METADATA_COMMA_SEPARATOR = ",";
 const USER_METADATA_COMMA_REPLACEMENT = "DUST_COMMA";
+const TOOLS_VALIDATION_WILDCARD = "*";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -352,7 +356,7 @@ export class UserResource extends BaseResource<UserModel> {
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
-    await this.deleteAllMetadata();
+    await this.deleteAllMetadata(auth);
 
     try {
       await this.model.destroy({
@@ -469,12 +473,21 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
-  async deleteAllMetadata() {
-    return UserMetadataModel.destroy({
+  async deleteAllMetadata(auth: Authenticator) {
+    await UserMetadataModel.destroy({
       where: {
         userId: this.id,
       },
     });
+
+    await UserToolApprovalModel.destroy({
+      where: {
+        userId: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+
+    return;
   }
 
   async getToolValidations(): Promise<
@@ -498,6 +511,93 @@ export class UserResource extends BaseResource<UserModel> {
 
       return { mcpServerId, toolNames };
     });
+  }
+
+  /**
+   * Create a tool approval for this user.
+   *
+   * For low stake (tool-level): omit agentId and argsAndValues (both default to null)
+   * For medium stake (per-agent, per-args): pass agentId and argsAndValues
+   */
+  async createToolApproval(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
+  ): Promise<void> {
+    // Sort keys to ensure consistent JSONB storage for unique constraint.
+    const sortedArgsAndValues = argsAndValues
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
+      : null;
+
+    const argsAndValuesMd5 = md5(JSON.stringify(sortedArgsAndValues));
+
+    const findClause = {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      userId: this.id,
+      mcpServerId,
+      toolName,
+      agentId: agentId ?? { [Op.is]: null },
+      argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : { [Op.is]: null },
+    };
+
+    await UserToolApprovalModel.findOrCreate({
+      where: findClause,
+      defaults: {
+        ...findClause,
+        agentId,
+        argsAndValues: sortedArgsAndValues,
+        argsAndValuesMd5: argsAndValues ? argsAndValuesMd5 : null,
+      },
+    });
+  }
+
+  async hasApprovedTool(
+    auth: Authenticator,
+    {
+      mcpServerId,
+      toolName,
+      agentId = null,
+      argsAndValues = null,
+    }: {
+      mcpServerId: string;
+      toolName: string;
+      agentId?: string | null;
+      argsAndValues?: Record<string, string> | null;
+    }
+  ): Promise<boolean> {
+    const sortedArgsAndValues = argsAndValues
+      ? fromPairs(sortBy(Object.entries(argsAndValues), ([key]) => key))
+      : null;
+
+    // For low-stake tools (agentId=null, argsAndValues=null), also check for
+    // wildcard "*" approval which approves all tools for the server.
+    const isLowStake = agentId === null && argsAndValues === null;
+
+    const approval = await UserToolApprovalModel.findOne({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: this.id,
+        mcpServerId,
+        toolName: isLowStake
+          ? { [Op.in]: [toolName, TOOLS_VALIDATION_WILDCARD] }
+          : toolName,
+        agentId: agentId ?? { [Op.is]: null },
+        argsAndValuesMd5: argsAndValues
+          ? md5(JSON.stringify(sortedArgsAndValues))
+          : { [Op.is]: null },
+      },
+    });
+
+    return approval !== null;
   }
 
   fullName(): string {

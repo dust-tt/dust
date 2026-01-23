@@ -2,44 +2,56 @@ import {
   Button,
   CheckIcon,
   ContentMessage,
-  ExclamationCircleIcon,
   Icon,
   InformationCircleIcon,
+  PlusIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
+import {
+  isMessageTemporayState,
+  isProjectConversation,
+} from "@app/components/assistant/conversation/types";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
+  ConversationWithoutContentType,
   LightWorkspaceType,
   RichMentionWithStatus,
   UserType,
 } from "@app/types";
 
-interface MentionValidationRequired {
+interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
   owner: LightWorkspaceType;
-  pendingMention: RichMentionWithStatus;
-  conversationId: string;
+  mention: Extract<
+    RichMentionWithStatus,
+    {
+      status: "pending";
+    }
+  >;
+  conversation: ConversationWithoutContentType;
   message: VirtuosoMessage;
 }
 
 export function MentionValidationRequired({
   triggeringUser,
   owner,
-  pendingMention,
-  conversationId,
+  mention,
+  conversation,
   message,
-}: MentionValidationRequired) {
+}: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isProjectConv = isProjectConversation(conversation);
+
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
-    conversationId,
+    conversationId: conversation.sId,
     messageId: message.sId,
+    isProjectConversation: isProjectConv,
   });
 
   const isTriggeredByCurrentUser = useMemo(
@@ -50,7 +62,7 @@ export function MentionValidationRequired({
   const handleReject = async () => {
     setIsSubmitting(true);
     try {
-      await validateMention(pendingMention, "rejected");
+      await validateMention(mention, "rejected");
     } finally {
       setIsSubmitting(false);
     }
@@ -59,7 +71,7 @@ export function MentionValidationRequired({
   const handleApprove = async () => {
     setIsSubmitting(true);
     try {
-      await validateMention(pendingMention, "approved");
+      await validateMention(mention, "approved");
     } finally {
       setIsSubmitting(false);
     }
@@ -69,38 +81,6 @@ export function MentionValidationRequired({
     return null;
   }
 
-  // Check if this is a user mention without conversation access
-  const cannotAccessConversation =
-    pendingMention.type === "user" &&
-    pendingMention.userConversationAccessStatus !== "accessible";
-
-  if (cannotAccessConversation) {
-    // Show warning message without approve/reject buttons
-    return (
-      <ContentMessage variant="warning" className="my-3 w-full max-w-full">
-        <div className="flex items-center gap-2">
-          <Icon visual={ExclamationCircleIcon} className="hidden sm:block" />
-          <div>
-            <span className="font-semibold">{pendingMention.label}</span>{" "}
-            doesn't have access to this conversation's spaces and won't be able
-            to view it nor be invited.
-          </div>
-          <div className="ml-auto">
-            <Button
-              label="Dismiss"
-              variant="outline"
-              size="xs"
-              icon={XMarkIcon}
-              disabled={isSubmitting}
-              onClick={handleReject}
-            />
-          </div>
-        </div>
-      </ContentMessage>
-    );
-  }
-
-  // Original behavior for users who can access
   return (
     <ContentMessage variant="info" className="my-3 w-full max-w-full">
       <div className="flex flex-col items-center gap-2 sm:flex-row">
@@ -111,15 +91,30 @@ export function MentionValidationRequired({
               <span className="font-semibold">
                 @{message.configuration.name}
               </span>{" "}
-              mentioned{" "}
-              <span className="font-semibold">{pendingMention.label}</span>. Do
-              you want to invite them? They'll see the full history and be able
-              to reply.
+              mentioned <span className="font-semibold">{mention.label}</span>.
+              {isProjectConv ? (
+                <> Do you want to add them to this project?</>
+              ) : (
+                <>
+                  {" "}
+                  Do you want to invite them? They'll see the full history and
+                  be able to reply.
+                </>
+              )}
             </>
           ) : (
             <>
-              Invite <b>{pendingMention.label}</b> to this conversation? They'll
-              see the full history and be able to reply.
+              {isProjectConv ? (
+                <>
+                  Add <b>{mention.label}</b> to this project? They'll have
+                  access to all project conversations.
+                </>
+              ) : (
+                <>
+                  Invite <b>{mention.label}</b> to this conversation? They'll
+                  see the full history and be able to reply.
+                </>
+              )}
             </>
           )}
         </div>
@@ -133,10 +128,10 @@ export function MentionValidationRequired({
             onClick={handleReject}
           />
           <Button
-            label="Yes"
+            label={isProjectConv ? "Add to project" : "Yes"}
             variant="highlight"
             size="xs"
-            icon={CheckIcon}
+            icon={isProjectConv ? PlusIcon : CheckIcon}
             disabled={isSubmitting}
             onClick={handleApprove}
           />

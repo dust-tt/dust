@@ -2,7 +2,9 @@ import {
   Button,
   Card,
   Checkbox,
-  CollapsibleComponent,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
   ContentMessage,
   DropdownMenu,
   DropdownMenuContent,
@@ -74,15 +76,14 @@ const ToolItem = memo(
     };
 
     const toolPermissionLabel: Record<MCPToolStakeLevelType, string> = {
-      high: "High (update data or send information)",
-      low: "Low (retrieve data or generate content)",
+      high: "High (always ask for confirmation)",
+      medium: "Medium (allows per-agent confirmation save)",
+      low: "Low (allows user-global confirmation save)",
       never_ask: "Never ask (automatic execution)",
     };
 
     return (
-      <div
-        className={`flex flex-col gap-1 pb-2 ${!toolEnabled ? "opacity-50" : ""}`}
-      >
+      <div className="flex flex-col gap-1 pb-2">
         <div className="flex items-center gap-2">
           {mayUpdate && (
             <Checkbox checked={toolEnabled} onClick={handleToggle} />
@@ -152,15 +153,14 @@ export const ToolsList = memo(
     return (
       <>
         {tools && tools.length > 0 && (
-          <CollapsibleComponent
-            rootProps={{ defaultOpen: tools.length <= 5 }}
-            triggerChildren={
+          <Collapsible defaultOpen={tools.length <= 5}>
+            <CollapsibleTrigger>
               <div className="heading-lg">Available Tools ({tools.length})</div>
-            }
-            contentChildren={
+            </CollapsibleTrigger>
+            <CollapsibleContent>
               <>
                 <ContentMessage
-                  className="mb-4 w-full"
+                  className="mb-4 mt-2 w-full"
                   variant="blue"
                   size="lg"
                   icon={InformationCircleIcon}
@@ -218,8 +218,8 @@ export const ToolsList = memo(
                   )}
                 </div>
               </>
-            }
-          />
+            </CollapsibleContent>
+          </Collapsible>
         )}
       </>
     );

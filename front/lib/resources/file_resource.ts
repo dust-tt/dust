@@ -1,8 +1,15 @@
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
+import type { File } from "@google-cloud/storage";
 import assert from "assert";
-import type { Attributes, CreationAttributes, Transaction } from "sequelize";
+import type {
+  Attributes,
+  CreationAttributes,
+  Transaction,
+  WhereOptions,
+} from "sequelize";
+import { Op } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 
@@ -23,11 +30,13 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
+import logger from "@app/logger/logger";
 import type {
   FileShareScope,
   FileType,
   FileTypeWithMetadata,
   FileTypeWithUploadUrl,
+  FileUseCase,
   FileUseCaseMetadata,
   LightWorkspaceType,
   ModelId,
@@ -64,11 +73,12 @@ export class FileResource extends BaseResource<FileModel> {
   }
 
   static async makeNew(
-    blob: Omit<CreationAttributes<FileModel>, "status" | "sId">
+    blob: Omit<CreationAttributes<FileModel>, "status" | "sId" | "version">
   ) {
     const key = await FileResource.model.create({
       ...blob,
       status: "created",
+      version: 0,
     });
 
     return new this(FileResource.model, key.get());
@@ -112,20 +122,32 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  static async fetchByModelIdWithAuth(
+  static async fetchByModelIdsWithAuth(
     auth: Authenticator,
-    id: ModelId,
+    ids: ModelId[],
     transaction?: Transaction
-  ): Promise<FileResource | null> {
-    const file = await this.model.findOne({
+  ): Promise<FileResource[]> {
+    const files = await this.model.findAll({
       where: {
-        id,
+        id: {
+          [Op.in]: ids,
+        },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
 
-    return file ? new this(this.model, file.get()) : null;
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<FileResource | null> {
+    const [file] = await this.fetchByModelIdsWithAuth(auth, [id], transaction);
+
+    return file ?? null;
   }
 
   static async fetchByShareTokenWithContent(token: string): Promise<{
@@ -226,6 +248,31 @@ export class FileResource extends BaseResource<FileModel> {
     return file ? new this(this.model, file.get()) : null;
   }
 
+  static async listByProject(
+    auth: Authenticator,
+    {
+      projectId,
+    }: {
+      projectId: string;
+    }
+  ): Promise<FileResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    const whereClause: WhereOptions = {
+      workspaceId: owner.id,
+      useCase: "project_context",
+      status: "ready",
+      useCaseMetadata: { spaceId: projectId },
+    };
+
+    const files = await this.model.findAll({
+      where: whereClause,
+      order: [["createdAt", "DESC"]],
+    });
+
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     // Delete all shareable file records.
     await this.shareableFileModel.destroy({
@@ -301,6 +348,7 @@ export class FileResource extends BaseResource<FileModel> {
       await this.model.destroy({
         where: {
           id: this.id,
+          workspaceId: this.workspaceId,
         },
       });
 
@@ -484,6 +532,87 @@ export class FileResource extends BaseResource<FileModel> {
       : getPrivateUploadBucket();
   }
 
+  /**
+   * Get sorted file versions from GCS (newest first).
+   * Used for reverting Interactive Content files to previous versions.
+   * Returns an empty array if versions cannot be retrieved.
+   */
+  private async getSortedFileVersions(
+    auth: Authenticator,
+    maxResults?: number
+  ): Promise<File[]> {
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const fileStorage = getPrivateUploadBucket();
+
+    return fileStorage.getSortedFileVersions({
+      filePath,
+      maxResults,
+    });
+  }
+
+  /**
+   * Revert the file to its previous version.
+   * Uses GCS copy function to restore the previous version as the current version.
+   * Deletes old versions to prevent accumulation.
+   */
+  async revert(
+    auth: Authenticator,
+    {
+      revertedByAgentConfigurationId,
+    }: {
+      revertedByAgentConfigurationId: string;
+    }
+  ): Promise<Result<undefined, string>> {
+    // Get all versions of the file (sorted newest to oldest)
+    const versions = await this.getSortedFileVersions(auth);
+
+    // Check if there's a previous version available before attempting revert
+    if (versions.length < 2) {
+      return new Err("No previous version available to revert to");
+    }
+
+    const currentVersion = versions[0];
+    const previousVersion = versions[1];
+
+    // Update metadata before copy
+    await this.setUseCaseMetadata({
+      ...this.useCaseMetadata,
+      lastEditedByAgentConfigurationId: revertedByAgentConfigurationId,
+    });
+
+    // Use GCS copy function to make a copy of the previous version the current version
+    const filePath = this.getCloudStoragePath(auth, "original");
+    const bucket = this.getBucketForVersion("original");
+    const destinationFile = bucket.file(filePath);
+
+    try {
+      await previousVersion.copy(destinationFile);
+    } catch (error) {
+      return new Err(
+        `Revert unsuccessful. Failed to copy previous version: ${normalizeError(error)}`
+      );
+    }
+
+    // Delete old versions to prevent accumulation and infinite loops
+    try {
+      // Decrement version after deletion to ensure version counter only changes on success
+      await currentVersion.delete();
+      await previousVersion.delete();
+      await this.decrementVersion();
+    } catch (error) {
+      logger.error(
+        {
+          fileId: this.sId,
+          workspaceId: this.workspaceId,
+          error: normalizeError(error),
+        },
+        "Failed to delete old file versions after successful revert, future reverts may loop"
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   // Stream logic.
 
   getWriteStream({
@@ -570,7 +699,8 @@ export class FileResource extends BaseResource<FileModel> {
       filePath: this.getCloudStoragePath(auth, "original"),
     });
 
-    // Mark the file as ready.
+    // Increment version after successful upload and mark as ready
+    await this.incrementVersion();
     await this.markAsReady();
   }
 
@@ -580,6 +710,14 @@ export class FileResource extends BaseResource<FileModel> {
 
   setSnippet(snippet: string) {
     return this.update({ snippet });
+  }
+
+  private incrementVersion() {
+    return this.update({ version: this.version + 1 });
+  }
+
+  private decrementVersion() {
+    return this.update({ version: Math.max(0, this.version - 1) });
   }
 
   rename(newFileName: string) {
@@ -684,6 +822,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      version: this.version,
       status: this.status,
       useCase: this.useCase,
     };
@@ -725,6 +864,7 @@ export class FileResource extends BaseResource<FileModel> {
       contentType: this.contentType,
       fileName: this.fileName,
       fileSize: this.fileSize,
+      version: this.version,
       status: this.status,
       useCase: this.useCase,
     };
@@ -752,5 +892,85 @@ export class FileResource extends BaseResource<FileModel> {
 
   isSafeToDisplay(): boolean {
     return ALL_FILE_FORMATS[this.contentType].isSafeToDisplay;
+  }
+
+  /**
+   * Copy a file to a new file with the specified use case and metadata.
+   * This method copies both the file metadata and the content stored in GCS.
+   *
+   * @param auth - Authenticator for workspace isolation
+   * @param params - Parameters for copying the file
+   * @param params.sourceId - The sId of the source file to copy
+   * @param params.useCase - The use case for the new file
+   * @param params.useCaseMetadata - Metadata for the new file's use case
+   * @returns Result containing the new FileResource or an error
+   */
+  static async copy(
+    auth: Authenticator,
+    {
+      sourceId,
+      useCase,
+      useCaseMetadata,
+    }: {
+      sourceId: string;
+      useCase: FileUseCase;
+      useCaseMetadata?: FileUseCaseMetadata;
+    }
+  ): Promise<
+    Result<
+      FileResource,
+      Error | { name: "dust_error"; code: string; message: string }
+    >
+  > {
+    // Fetch the source file.
+    const sourceFile = await FileResource.fetchById(auth, sourceId);
+    if (!sourceFile) {
+      return new Err(new Error(`Source file not found: ${sourceId}`));
+    }
+
+    if (!sourceFile.isReady) {
+      return new Err(
+        new Error(
+          `Source file is not ready for copying: ${sourceId} (status: ${sourceFile.status})`
+        )
+      );
+    }
+
+    try {
+      // Create a new file with the same properties.
+      const newFile = await FileResource.makeNew({
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.user()?.id ?? null,
+        contentType: sourceFile.contentType,
+        fileName: sourceFile.fileName,
+        fileSize: sourceFile.fileSize,
+        useCase,
+        useCaseMetadata,
+      });
+
+      // Get a read stream from the source file's original version.
+      const readStream = sourceFile.getReadStream({
+        auth,
+        version: "original",
+      });
+
+      // Use processAndStoreFile to handle the content processing and storage.
+      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const result = await processAndStoreFile(auth, {
+        file: newFile,
+        content: {
+          type: "readable",
+          value: readStream,
+        },
+      });
+
+      if (result.isErr()) {
+        return new Err(result.error);
+      }
+
+      return new Ok(result.value);
+    } catch (error) {
+      return new Err(normalizeError(error));
+    }
   }
 }

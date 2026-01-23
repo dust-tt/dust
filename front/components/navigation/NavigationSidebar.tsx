@@ -2,6 +2,7 @@ import {
   classNames,
   cn,
   CollapseButton,
+  LinkWrapper,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -11,10 +12,9 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
@@ -23,11 +23,8 @@ import { useNavigationLoading } from "@app/components/sparkle/NavigationLoadingC
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
-import {
-  FREE_TRIAL_PHONE_PLAN_CODE,
-  isFreePlan,
-} from "@app/lib/plans/plan_codes";
-import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
+import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -61,13 +58,13 @@ export const NavigationSidebar = React.forwardRef<
   }: NavigationSidebarProps,
   ref
 ) {
-  const router = useRouter();
+  const router = useAppRouter();
   const activePath = useMemo(() => {
-    if (router.isReady && router.route) {
-      return router.route;
+    if (router.isReady && router.pathname) {
+      return router.pathname;
     }
     return "";
-  }, [router.isReady, router.route]);
+  }, [router.isReady, router.pathname]);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -96,24 +93,19 @@ export const NavigationSidebar = React.forwardRef<
 
   const { appStatus } = useAppStatus();
 
-  const hasIncidentBanner =
-    appStatus?.dustStatus !== null || appStatus?.providersStatus !== null;
-  const endDate = subscription.endDate;
-  // eslint-disable-next-line react-hooks/purity
-  const in30Days = Date.now() + 30 * 24 * 60 * 60 * 1000;
-
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2 pt-3">
-        {appStatus && <AppStatusBanner appStatus={appStatus} />}
-        {!hasIncidentBanner && endDate && endDate < in30Days && (
-          <SubscriptionEndBanner
-            endDate={endDate}
-            startDate={subscription.startDate}
-            isFreePlan={isFreePlan(subscription.plan.code)}
-            workspaceId={owner.sId}
-          />
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          appStatus?.dustStatus ||
+            appStatus?.providersStatus ||
+            subscription.paymentFailingSince
+            ? ""
+            : "pt-3"
         )}
+      >
+        {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
         )}
@@ -210,7 +202,9 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
-        <TrialMessageUsage workspaceId={owner.sId} />
+        <div className="mx-3 mb-3">
+          <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
+        </div>
       )}
       {user && (
         <div
@@ -282,6 +276,7 @@ function StatusBanner({
 interface AppStatusBannerProps {
   appStatus: AppStatus;
 }
+
 function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
@@ -293,9 +288,13 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
         footer={
           <>
             Check our{" "}
-            <Link href={dustStatus.link} target="_blank" className="underline">
+            <LinkWrapper
+              href={dustStatus.link}
+              target="_blank"
+              className="underline"
+            >
               status page
-            </Link>{" "}
+            </LinkWrapper>{" "}
             for updates.
           </>
         }
@@ -315,86 +314,6 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   return null;
 }
 
-function getTrialDaysRemainingVariant(
-  startDateMs: number | null,
-  endDateMs: number
-): "success" | "warning" | "danger" {
-  if (!startDateMs) {
-    // If no start date, default to warning (should not happen)
-    return "warning";
-  }
-
-  const totalDurationMs = endDateMs - startDateMs;
-  const remainingMs = endDateMs - Date.now();
-  const remainingPercentage = remainingMs / totalDurationMs;
-
-  if (remainingPercentage > 0.4) {
-    return "success";
-  } else if (remainingPercentage > 0.1) {
-    return "warning";
-  } else {
-    return "danger";
-  }
-}
-
-function SubscriptionEndBanner({
-  endDate,
-  startDate,
-  isFreePlan,
-  workspaceId,
-}: {
-  endDate: number;
-  startDate: number | null;
-  isFreePlan: boolean;
-  workspaceId: string;
-}) {
-  const formattedEndDate = new Date(endDate).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
-  const variant = isFreePlan
-    ? getTrialDaysRemainingVariant(startDate, endDate)
-    : "info";
-  const title = isFreePlan
-    ? `Free trial ending on ${formattedEndDate}`
-    : `Subscription ending on ${formattedEndDate}`;
-
-  return (
-    <StatusBanner
-      variant={variant}
-      title={title}
-      description={
-        <>
-          Your connections and member access will be removed after this date.
-          Details{" "}
-          <Link
-            href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
-            target="_blank"
-            className="underline"
-          >
-            here
-          </Link>
-          .
-          {isFreePlan && (
-            <p className="mt-2">Keep everything. Subscribe now.</p>
-          )}
-        </>
-      }
-      footer={
-        isFreePlan && (
-          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background">
-              Subscribe to Dust
-            </button>
-          </Link>
-        )
-      }
-    />
-  );
-}
-
 function SubscriptionPastDueBanner() {
   return (
     <StatusBanner
@@ -409,83 +328,17 @@ function SubscriptionPastDueBanner() {
           <br />
           After 3 attempts, your workspace will be downgraded to the free plan.
           Connections will be deleted and members will be revoked. Details{" "}
-          <Link
+          <LinkWrapper
             href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
             target="_blank"
             className="underline"
           >
             here
-          </Link>
+          </LinkWrapper>
           .
         </>
       }
     />
-  );
-}
-
-const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
-
-interface TrialMessageUsageProps {
-  workspaceId: string;
-}
-
-function TrialMessageUsage({ workspaceId }: TrialMessageUsageProps) {
-  const { messageUsage } = useTrialMessageUsage({ workspaceId });
-
-  if (!messageUsage || messageUsage.limit === -1) {
-    return null;
-  }
-
-  const { count, limit } = messageUsage;
-  const percentage = limit > 0 ? count / limit : 0;
-  const isCritical = percentage >= MESSAGE_USAGE_CRITICAL_THRESHOLD;
-  const isAtLimit = count >= limit;
-
-  return (
-    <div
-      className={cn(
-        "mx-3 mb-3 rounded-lg border p-3",
-        "border-border dark:border-border-night",
-        "bg-muted-background dark:bg-muted-background-night"
-      )}
-    >
-      <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground dark:text-muted-foreground-night">
-          Trial message used
-        </span>
-        <span className="font-medium text-foreground dark:text-foreground-night">
-          <span className={cn(isCritical && "text-red-600 dark:text-red-400")}>
-            {count}
-          </span>{" "}
-          / {limit}
-        </span>
-      </div>
-      <div
-        className={cn(
-          "h-2 w-full overflow-hidden rounded-full",
-          "bg-structure-200 dark:bg-structure-200-night"
-        )}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            isCritical
-              ? "bg-red-700 dark:bg-red-600"
-              : "bg-foreground dark:bg-foreground-night"
-          )}
-          style={{ width: `${Math.min(percentage * 100, 100)}%` }}
-        />
-      </div>
-      {isAtLimit && (
-        <div className="mt-3">
-          <Link href={`/w/${workspaceId}/subscribe`} className="no-underline">
-            <button className="w-full rounded bg-foreground px-3 py-1.5 text-xs font-medium text-background dark:bg-foreground-night dark:text-background-night">
-              Subscribe to Dust
-            </button>
-          </Link>
-        </div>
-      )}
-    </div>
   );
 }
 

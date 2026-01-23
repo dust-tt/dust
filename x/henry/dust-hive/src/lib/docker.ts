@@ -13,11 +13,8 @@ export interface DockerComposeOverride {
     redis: {
       ports: string[];
     };
-    qdrant_primary: {
+    qdrant: {
       ports: string[];
-      volumes: string[];
-    };
-    qdrant_secondary: {
       volumes: string[];
     };
     elasticsearch: {
@@ -31,7 +28,7 @@ export interface DockerComposeOverride {
   volumes: Record<string, null>;
 }
 
-const VOLUME_KEYS = ["pgsql", "qdrant-primary", "qdrant-secondary", "elasticsearch"] as const;
+const VOLUME_KEYS = ["pgsql", "qdrant", "elasticsearch"] as const;
 type VolumeKey = (typeof VOLUME_KEYS)[number];
 
 function getVolumeName(envName: string, volume: VolumeKey): string {
@@ -57,12 +54,9 @@ export function generateDockerComposeOverride(
       redis: {
         ports: [`${ports.redis}:6379`],
       },
-      qdrant_primary: {
+      qdrant: {
         ports: [`${ports.qdrantHttp}:6333`, `${ports.qdrantGrpc}:6334`],
-        volumes: [`${getVolumeName(name, "qdrant-primary")}:/qdrant/storage`],
-      },
-      qdrant_secondary: {
-        volumes: [`${getVolumeName(name, "qdrant-secondary")}:/qdrant/storage`],
+        volumes: [`${getVolumeName(name, "qdrant")}:/qdrant/storage`],
       },
       elasticsearch: {
         ports: [`${ports.elasticsearch}:9200`],
@@ -92,6 +86,44 @@ export function getDockerProjectName(name: string): string {
   return `dust-hive-${name}`;
 }
 
+// Get container ID for a service in an environment
+// Uses docker compose ps -q which is more reliable than constructing container names
+export async function getServiceContainerId(
+  envName: string,
+  service: string
+): Promise<string | null> {
+  const projectName = getDockerProjectName(envName);
+  const overridePath = getDockerOverridePath(envName);
+  const basePath = getDockerComposePath();
+
+  const proc = Bun.spawn(
+    [
+      "docker",
+      "compose",
+      "-f",
+      basePath,
+      "-f",
+      overridePath,
+      "-p",
+      projectName,
+      "ps",
+      "-q",
+      service,
+    ],
+    { stdout: "pipe", stderr: "pipe" }
+  );
+
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+
+  if (proc.exitCode !== 0) {
+    return null;
+  }
+
+  const containerId = output.trim();
+  return containerId || null;
+}
+
 // Start docker-compose containers (starts in background, services have retry logic)
 export async function startDocker(env: Environment): Promise<void> {
   logger.step("Starting Docker containers...");
@@ -118,7 +150,35 @@ export async function startDocker(env: Environment): Promise<void> {
   logger.success("Docker containers started");
 }
 
-// Stop docker-compose containers
+// Pause docker-compose containers (stop without removing)
+// Returns true if paused successfully, false if docker-compose failed
+// Use this for cool operations - faster restart since containers don't need to be recreated
+export async function pauseDocker(envName: string): Promise<boolean> {
+  logger.step("Pausing Docker containers...");
+
+  const projectName = getDockerProjectName(envName);
+  const overridePath = getDockerOverridePath(envName);
+  const basePath = getDockerComposePath();
+
+  const args = ["docker", "compose", "-f", basePath, "-f", overridePath, "-p", projectName, "stop"];
+
+  const proc = Bun.spawn(args, {
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+
+  await proc.exited;
+
+  if (proc.exitCode === 0) {
+    logger.success("Docker containers paused");
+    return true;
+  }
+
+  logger.warn("Docker containers may not have paused cleanly");
+  return false;
+}
+
+// Stop docker-compose containers (stop and remove)
 // Returns true if stopped successfully, false if docker-compose failed
 export async function stopDocker(
   envName: string,
@@ -146,7 +206,7 @@ export async function stopDocker(
   if (proc.exitCode === 0) {
     const msg = options.removeVolumes
       ? "Docker containers and volumes removed"
-      : "Docker containers stopped";
+      : "Docker containers stopped and removed";
     logger.success(msg);
     return true;
   }

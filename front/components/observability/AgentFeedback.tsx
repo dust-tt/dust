@@ -3,10 +3,18 @@ import {
   HandThumbUpIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
 
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
-import { FeedbackDistributionChart } from "@app/components/agent_builder/observability/charts/FeedbackDistributionChart";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+
+const FeedbackDistributionChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/FeedbackDistributionChart").then(
+      (mod) => mod.FeedbackDistributionChart
+    ),
+  { ssr: false }
+);
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
@@ -31,7 +39,10 @@ export function AgentFeedback({
     workspaceId: owner.sId,
     agentConfigurationId,
     period,
-    version: mode === "version" ? selectedVersion?.version : undefined,
+    version:
+      allowReactions && mode === "version"
+        ? selectedVersion?.version
+        : undefined,
   });
 
   return (
@@ -41,6 +52,7 @@ export function AgentFeedback({
         <SharedObservabilityFilterSelector
           workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={allowReactions}
         />
       }
     >
@@ -73,6 +85,7 @@ export function AgentFeedback({
         <FeedbackDistributionChart
           workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={allowReactions}
         />
       </TabContentChildSectionLayout>
 

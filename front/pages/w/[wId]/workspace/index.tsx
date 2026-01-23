@@ -1,4 +1,4 @@
-import { GlobeAltIcon, Page } from "@dust-tt/sparkle";
+import { GlobeAltIcon, Page, Spinner } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
@@ -9,29 +9,15 @@ import { CapabilitiesSection } from "@app/components/workspace/settings/Capabili
 import { IntegrationsSection } from "@app/components/workspace/settings/IntegrationsSection";
 import { ModelSelectionSection } from "@app/components/workspace/settings/ModelSelectionSection";
 import { WorkspaceNameEditor } from "@app/components/workspace/settings/WorkspaceNameEditor";
-import type { RegionType } from "@app/lib/api/regions/config";
-import { config as regionConfig } from "@app/lib/api/regions/config";
-import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import { useBotDataSources } from "@app/lib/swr/data_sources";
+import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  DataSourceType,
-  SpaceType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
+import type { SubscriptionType, WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   owner: WorkspaceType;
   subscription: SubscriptionType;
-  isDiscordBotAvailable: boolean;
-  slackBotDataSource: DataSourceType | null;
-  microsoftBotDataSource: DataSourceType | null;
-  discordBotDataSource: DataSourceType | null;
-  systemSpace: SpaceType;
-  region: RegionType;
 }>(async (_, auth) => {
   const owner = auth.workspace();
   const subscription = auth.subscription();
@@ -41,31 +27,10 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     };
   }
 
-  const [
-    [slackBotDataSource],
-    [microsoftBotDataSource],
-    [discordBotDataSource],
-  ] = await Promise.all([
-    DataSourceResource.listByConnectorProvider(auth, "slack_bot"),
-    DataSourceResource.listByConnectorProvider(auth, "microsoft_bot"),
-    DataSourceResource.listByConnectorProvider(auth, "discord_bot"),
-  ]);
-
-  const featureFlags = await getFeatureFlags(owner);
-  const isDiscordBotAvailable = featureFlags.includes("discord_bot");
-
-  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
   return {
     props: {
       owner,
       subscription,
-      isDiscordBotAvailable,
-      slackBotDataSource: slackBotDataSource?.toJSON() ?? null,
-      microsoftBotDataSource: microsoftBotDataSource?.toJSON() ?? null,
-      discordBotDataSource: discordBotDataSource?.toJSON() ?? null,
-      systemSpace: systemSpace.toJSON(),
-      region: regionConfig.getCurrentRegion(),
     },
   };
 });
@@ -73,14 +38,42 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 export default function WorkspaceAdmin({
   owner,
   subscription,
-  isDiscordBotAvailable,
-  slackBotDataSource,
-  microsoftBotDataSource,
-  discordBotDataSource,
-  systemSpace,
-  region,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
+    workspaceId: owner.sId,
+  });
+  const {
+    slackBotDataSource,
+    microsoftBotDataSource,
+    discordBotDataSource,
+    isBotDataSourcesLoading,
+  } = useBotDataSources({ workspaceId: owner.sId });
+
+  const isDiscordBotAvailable = featureFlags.includes("discord_bot");
+
+  const isLoading =
+    isFeatureFlagsLoading || isSystemSpaceLoading || isBotDataSourcesLoading;
+
+  if (isLoading || !systemSpace) {
+    return (
+      <AppCenteredLayout
+        subscription={subscription}
+        owner={owner}
+        subNavigation={subNavigationAdmin({
+          owner,
+          current: "workspace",
+          featureFlags,
+        })}
+      >
+        <div className="flex h-full items-center justify-center">
+          <Spinner size="lg" />
+        </div>
+      </AppCenteredLayout>
+    );
+  }
 
   return (
     <AppCenteredLayout
@@ -97,11 +90,7 @@ export default function WorkspaceAdmin({
         <Page.Vertical align="stretch" gap="md">
           <WorkspaceNameEditor owner={owner} />
         </Page.Vertical>
-        <ModelSelectionSection
-          owner={owner}
-          plan={subscription.plan}
-          region={region}
-        />
+        <ModelSelectionSection owner={owner} plan={subscription.plan} />
         <CapabilitiesSection
           owner={owner}
           showRestrictAgentsPublishing={featureFlags.includes(

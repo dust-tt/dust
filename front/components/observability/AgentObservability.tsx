@@ -9,13 +9,46 @@ import {
   Spinner,
   ValueCard,
 } from "@dust-tt/sparkle";
+import dynamic from "next/dynamic";
 
-import { DatasourceRetrievalTreemapChart } from "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart";
-import { LatencyChart } from "@app/components/agent_builder/observability/charts/LatencyChart";
-import { SourceChart } from "@app/components/agent_builder/observability/charts/SourceChart";
-import { ToolUsageChart } from "@app/components/agent_builder/observability/charts/ToolUsageChart";
-import { UsageMetricsChart } from "@app/components/agent_builder/observability/charts/UsageMetricsChart";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+
+// Dynamic imports for chart components to exclude recharts from server bundle
+const DatasourceRetrievalTreemapChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart").then(
+      (mod) => mod.DatasourceRetrievalTreemapChart
+    ),
+  { ssr: false }
+);
+const LatencyChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/LatencyChart").then(
+      (mod) => mod.LatencyChart
+    ),
+  { ssr: false }
+);
+const SourceChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/SourceChart").then(
+      (mod) => mod.SourceChart
+    ),
+  { ssr: false }
+);
+const ToolUsageChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/ToolUsageChart").then(
+      (mod) => mod.ToolUsageChart
+    ),
+  { ssr: false }
+);
+const UsageMetricsChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/UsageMetricsChart").then(
+      (mod) => mod.UsageMetricsChart
+    ),
+  { ssr: false }
+);
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
@@ -45,7 +78,10 @@ export function AgentObservability({
     workspaceId,
     agentConfigurationId,
     period,
-    version: mode === "version" ? selectedVersion?.version : undefined,
+    version:
+      isCustomAgent && mode === "version"
+        ? selectedVersion?.version
+        : undefined,
   });
 
   const shouldShowMessagesPerActiveUser =
@@ -68,6 +104,7 @@ export function AgentObservability({
         <SharedObservabilityFilterSelector
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
       }
     >
@@ -186,11 +223,13 @@ export function AgentObservability({
         <UsageMetricsChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         <Separator />
         <SourceChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         {featureFlags.includes("agent_tool_outputs_analytics") && (
           <>
@@ -198,6 +237,7 @@ export function AgentObservability({
             <DatasourceRetrievalTreemapChart
               workspaceId={workspaceId}
               agentConfigurationId={agentConfigurationId}
+              isCustomAgent={isCustomAgent}
             />
           </>
         )}
@@ -205,11 +245,13 @@ export function AgentObservability({
         <ToolUsageChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
         <Separator />
         <LatencyChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
         />
       </TabContentChildSectionLayout>
     </TabContentLayout>

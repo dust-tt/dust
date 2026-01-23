@@ -1,5 +1,8 @@
+import * as p from "@clack/prompts";
+
 import { logger } from "../lib/logger";
 import { SEED_USER_PATH } from "../lib/paths";
+import { restoreTerminal } from "../lib/prompt";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 
 export interface SeedUserConfig {
@@ -35,19 +38,43 @@ async function runPsqlQuery(uri: string, query: string): Promise<Result<string, 
   return Ok(stdout.trim());
 }
 
-async function extractUser(postgresUri: string): Promise<Result<string[], CommandError>> {
+// Sentinel value for NULL fields - ensures psql outputs all columns even when NULL.
+// Without this, trailing NULLs get trimmed and field count becomes unpredictable.
+const NULL_SENTINEL = "__NULL__";
+
+interface UserRow {
+  fields: string[];
+  email: string;
+  name: string;
+  username: string;
+}
+
+function nullableField(value: string | undefined): string | null {
+  if (!value || value === NULL_SENTINEL) {
+    return null;
+  }
+  return value;
+}
+
+async function extractUsers(postgresUri: string): Promise<Result<UserRow[], CommandError>> {
+  // Use COALESCE with sentinel value to ensure all 10 fields are always present.
+  // psql doesn't output trailing tabs for NULL columns, and .trim() removes any
+  // remaining trailing whitespace, making field count unreliable without this.
   const query = `
-    SELECT u."sId", u.username, u.email, u.name, u."firstName", u."lastName",
-           u."workOSUserId", u.provider, u."providerId", u."imageUrl"
+    SELECT u."sId", u.username, u.email, u.name, u."firstName",
+           COALESCE(u."lastName", '${NULL_SENTINEL}'),
+           COALESCE(u."workOSUserId", '${NULL_SENTINEL}'),
+           COALESCE(u.provider, '${NULL_SENTINEL}'),
+           COALESCE(u."providerId", '${NULL_SENTINEL}'),
+           COALESCE(u."imageUrl", '${NULL_SENTINEL}')
     FROM users u
     WHERE u."workOSUserId" IS NOT NULL
-    ORDER BY u."lastLoginAt" DESC NULLS LAST, u."createdAt" DESC
-    LIMIT 1;
+    ORDER BY u."lastLoginAt" DESC NULLS LAST, u."createdAt" DESC;
   `;
 
   const result = await runPsqlQuery(postgresUri, query);
   if (!result.ok) {
-    return Err(new CommandError(`Failed to query user: ${result.error.message}`));
+    return Err(new CommandError(`Failed to query users: ${result.error.message}`));
   }
 
   if (!result.value) {
@@ -58,12 +85,23 @@ async function extractUser(postgresUri: string): Promise<Result<string[], Comman
     );
   }
 
-  const fields = result.value.split("\t");
-  if (fields.length < 10) {
-    return Err(new CommandError(`Unexpected user data format: ${result.value}`));
+  const rows = result.value.split("\n");
+  const users: UserRow[] = [];
+
+  for (const row of rows) {
+    const fields = row.split("\t");
+    if (fields.length !== 10) {
+      return Err(new CommandError(`Unexpected user data format: ${row}`));
+    }
+    users.push({
+      fields,
+      email: fields[2] ?? "",
+      name: fields[3] ?? "",
+      username: fields[1] ?? "",
+    });
   }
 
-  return Ok(fields);
+  return Ok(users);
 }
 
 async function extractWorkspace(
@@ -116,16 +154,46 @@ export async function seedConfigCommand(postgresUri?: string): Promise<Result<vo
 
   logger.info("Extracting user data from existing database...");
 
-  const userResult = await extractUser(postgresUri);
-  if (!userResult.ok) {
-    return userResult;
+  const usersResult = await extractUsers(postgresUri);
+  if (!usersResult.ok) {
+    return usersResult;
   }
 
-  const f = userResult.value;
+  const users = usersResult.value;
+  let selectedUser: UserRow;
+
+  const firstUser = users[0];
+  if (users.length === 1 && firstUser) {
+    selectedUser = firstUser;
+    logger.success(`Found user: ${selectedUser.email} (${selectedUser.name})`);
+  } else if (users.length > 1) {
+    logger.info(`Found ${users.length} users`);
+
+    const result = await p.select<UserRow>({
+      message: "Select user to copy",
+      options: users.map((user) => ({
+        value: user,
+        label: user.email,
+        hint: user.name || user.username,
+      })),
+    });
+
+    restoreTerminal();
+
+    if (p.isCancel(result)) {
+      return Err(new CommandError("User selection cancelled"));
+    }
+
+    selectedUser = result;
+    logger.success(`Selected user: ${selectedUser.email} (${selectedUser.name})`);
+  } else {
+    // This shouldn't happen since extractUsers returns an error if no users found
+    return Err(new CommandError("No users found"));
+  }
+
+  const f = selectedUser.fields;
   const sId = f[0] ?? "";
   const firstName = f[4] ?? "";
-
-  logger.success(`Found user: ${f[2]} (${f[3]})`);
 
   const workspaceResult = await extractWorkspace(postgresUri, sId);
   if (!workspaceResult.ok) {
@@ -140,11 +208,11 @@ export async function seedConfigCommand(postgresUri?: string): Promise<Result<vo
     email: f[2] ?? "",
     name: f[3] ?? "",
     firstName,
-    lastName: f[5] || null,
-    workOSUserId: f[6] || null,
-    provider: f[7] || null,
-    providerId: f[8] || null,
-    imageUrl: f[9] || null,
+    lastName: nullableField(f[5]),
+    workOSUserId: nullableField(f[6]),
+    provider: nullableField(f[7]),
+    providerId: nullableField(f[8]),
+    imageUrl: nullableField(f[9]),
     workspaceSId: workspace.sId,
     workspaceName: workspace.name,
     extractedAt: new Date().toISOString(),
