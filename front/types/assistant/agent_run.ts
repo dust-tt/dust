@@ -14,6 +14,17 @@ import { cacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { ConversationError, Err, isGlobalAgentId, Ok } from "@app/types";
+import type { AgentConfigurationType } from "@app/types/assistant/agent";
+import type {
+  AgentMessageType,
+  ConversationType,
+  UserMessageOrigin,
+  UserMessageType,
+} from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isUserMessageType,
+} from "@app/types/assistant/conversation";
 
 /**
  * Error types for getAgentLoopData that indicate soft-deleted resources.
@@ -45,17 +56,6 @@ export function isAgentLoopDataSoftDeleteError(
     AGENT_LOOP_DATA_SOFT_DELETE_ERROR_TYPES.includes(error.type)
   );
 }
-import type { AgentConfigurationType } from "@app/types/assistant/agent";
-import type {
-  AgentMessageType,
-  ConversationType,
-  UserMessageOrigin,
-  UserMessageType,
-} from "@app/types/assistant/conversation";
-import {
-  isAgentMessageType,
-  isUserMessageType,
-} from "@app/types/assistant/conversation";
 
 export type ConversationCaching =
   | { useCachedGetConversation: false }
