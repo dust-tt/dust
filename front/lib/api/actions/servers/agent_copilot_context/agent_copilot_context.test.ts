@@ -1,14 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { Authenticator } from "@app/lib/auth";
-import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
-import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
-import { UserFactory } from "@app/tests/utils/UserFactory";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 
 import { TOOLS } from "./tools";
 
@@ -22,7 +20,7 @@ vi.mock("@app/lib/api/assistant/feedback", () => ({
 }));
 
 // Mock the helper that extracts agent configuration ID from context.
-vi.mock("@app/lib/api/actions/servers/agent_copilot_context/helpers", () => ({
+vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
 }));
 
@@ -47,26 +45,20 @@ describe("agent_copilot_context tools", () => {
   describe("get_available_models", () => {
     it("filters out models from non-whitelisted providers", async () => {
       // Create workspace with only anthropic provider whitelisted.
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
+      // This test needs special handling to override whiteListedProviders.
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
-      // Create a restricted auth context.
-      const restrictedAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
       // We need to override the workspace to test the filtering.
-      Object.defineProperty(restrictedAuth, "_workspace", {
+      Object.defineProperty(authenticator, "_workspace", {
         value: {
-          ...restrictedAuth["_workspace"],
+          ...authenticator["_workspace"],
           whiteListedProviders: ["anthropic"],
         },
         writable: true,
       });
 
       const tool = getToolByName("get_available_models");
-      const result = await tool.handler({}, createTestExtra(restrictedAuth));
+      const result = await tool.handler({}, createTestExtra(authenticator));
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -84,15 +76,10 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("returns all non-legacy models when no provider filter is applied", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       const tool = getToolByName("get_available_models");
-      const result = await tool.handler({}, createTestExtra(auth));
+      const result = await tool.handler({}, createTestExtra(authenticator));
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -111,17 +98,12 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("filters by providerId when specified", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       const tool = getToolByName("get_available_models");
       const result = await tool.handler(
         { providerId: "openai" },
-        createTestExtra(auth)
+        createTestExtra(authenticator)
       );
 
       expect(result.isOk()).toBe(true);
@@ -141,27 +123,17 @@ describe("agent_copilot_context tools", () => {
 
   describe("get_available_skills", () => {
     it("returns skills with toolSIds array", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await SpaceFactory.defaults(
-        await Authenticator.internalAdminForWorkspace(workspace.sId)
-      );
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.fromUserIdAndWorkspaceId(
-        user.sId,
-        workspace.sId
-      );
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a skill.
-      const skill = await SkillFactory.create(auth, {
+      const skill = await SkillFactory.create(authenticator, {
         name: "Test Skill",
         userFacingDescription: "A test skill",
         agentFacingDescription: "Agent facing description",
       });
 
       const tool = getToolByName("get_available_skills");
-      const result = await tool.handler({}, createTestExtra(auth));
+      const result = await tool.handler({}, createTestExtra(authenticator));
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -185,16 +157,8 @@ describe("agent_copilot_context tools", () => {
 
   describe("get_available_tools", () => {
     it("does not return tools from spaces the user cannot access", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      const adminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-
-      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
-
-      // Create a user with restricted access.
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "user" });
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
 
       // Create a regular space (user won't be a member).
       const restrictedSpace = await SpaceFactory.regular(workspace);
@@ -211,14 +175,8 @@ describe("agent_copilot_context tools", () => {
         restrictedSpace
       );
 
-      // Create user auth context.
-      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        user.sId,
-        workspace.sId
-      );
-
       const tool = getToolByName("get_available_tools");
-      const result = await tool.handler({}, createTestExtra(userAuth));
+      const result = await tool.handler({}, createTestExtra(authenticator));
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -241,15 +199,8 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("returns tools from spaces the user has access to", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      const adminAuth = await Authenticator.internalAdminForWorkspace(
-        workspace.sId
-      );
-
-      const { globalSpace } = await SpaceFactory.defaults(adminAuth);
-
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "admin" });
 
       // Create MCP server and view in global space.
       const server = await RemoteMCPServerFactory.create(workspace);
@@ -259,13 +210,8 @@ describe("agent_copilot_context tools", () => {
         globalSpace
       );
 
-      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        user.sId,
-        workspace.sId
-      );
-
       const tool = getToolByName("get_available_tools");
-      const result = await tool.handler({}, createTestExtra(userAuth));
+      const result = await tool.handler({}, createTestExtra(authenticator));
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
@@ -286,22 +232,17 @@ describe("agent_copilot_context tools", () => {
 
   describe("get_agent_feedback", () => {
     it("returns error when agent configuration ID is not available", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return null (no agent config ID).
       const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_context/helpers");
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("get_agent_feedback");
       const result = await tool.handler(
         { limit: 10, filter: "active" },
-        createTestExtra(auth)
+        createTestExtra(authenticator)
       );
 
       // Should return an error when no agent config ID is available.
@@ -309,16 +250,11 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("returns feedback when agent configuration ID is available", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_context/helpers");
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
@@ -336,7 +272,7 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("get_agent_feedback");
       const result = await tool.handler(
         { limit: 10, filter: "active" },
-        createTestExtra(auth)
+        createTestExtra(authenticator)
       );
 
       expect(result.isOk()).toBe(true);
@@ -353,16 +289,11 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("accepts limit parameter", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_context/helpers");
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
@@ -377,7 +308,10 @@ describe("agent_copilot_context tools", () => {
       } as never);
 
       const tool = getToolByName("get_agent_feedback");
-      await tool.handler({ limit: 5, filter: "active" }, createTestExtra(auth));
+      await tool.handler(
+        { limit: 5, filter: "active" },
+        createTestExtra(authenticator)
+      );
 
       // The mock should have been called with the limit parameter.
       expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
@@ -390,16 +324,11 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("accepts filter parameter for active feedback", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_context/helpers");
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
@@ -414,7 +343,7 @@ describe("agent_copilot_context tools", () => {
       } as never);
 
       const tool = getToolByName("get_agent_feedback");
-      await tool.handler({ filter: "active" }, createTestExtra(auth));
+      await tool.handler({ filter: "active" }, createTestExtra(authenticator));
 
       expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -424,16 +353,11 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("accepts filter parameter for all feedback", async () => {
-      const workspace = await WorkspaceFactory.basic();
-      await GroupFactory.defaults(workspace);
-      const user = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, user, { role: "admin" });
-
-      const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
       const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_context/helpers");
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
@@ -448,13 +372,315 @@ describe("agent_copilot_context tools", () => {
       } as never);
 
       const tool = getToolByName("get_agent_feedback");
-      await tool.handler({ filter: "all" }, createTestExtra(auth));
+      await tool.handler({ filter: "all" }, createTestExtra(authenticator));
 
       expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
         expect.objectContaining({
           filter: "all",
         })
       );
+    });
+  });
+
+  // Suggestion tools tests
+  describe("suggest_prompt_editions", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_prompt_editions");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "old text", newString: "new text" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates suggestion successfully when agent configuration ID is provided", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_prompt_editions");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "old text", newString: "new text" }],
+          analysis: "Test analysis",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.success).toBe(true);
+          expect(parsed.suggestions).toHaveLength(1);
+          expect(parsed.suggestions[0].sId).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("suggest_tools", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [{ id: "slack" }],
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates tool suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [{ id: "slack" }],
+            deletions: ["jira"],
+          },
+          analysis: "Adding Slack for better communication",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.success).toBe(true);
+          expect(parsed.sId).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("suggest_skills", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: ["skill-1"],
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates skill suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: ["skill-1", "skill-2"],
+          },
+          analysis: "Adding skills for better capabilities",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.success).toBe(true);
+          expect(parsed.sId).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("suggest_model", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_model");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "claude-3-5-sonnet-20241022",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates model suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "claude-3-5-sonnet-20241022",
+            reasoningEffort: "high",
+          },
+          analysis: "Upgrading to better model for complex tasks",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.success).toBe(true);
+          expect(parsed.sId).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("list_suggestions", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("list_suggestions");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("lists suggestions with default status (pending)", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const tool = getToolByName("list_suggestions");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.suggestions).toBeDefined();
+          expect(Array.isArray(parsed.suggestions)).toBe(true);
+        }
+      }
+    });
+
+    it("lists suggestions with specific status and kind filters", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const tool = getToolByName("list_suggestions");
+      const result = await tool.handler(
+        {
+          status: "approved",
+          kind: "tools",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.suggestions).toBeDefined();
+        }
+      }
     });
   });
 });

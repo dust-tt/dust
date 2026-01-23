@@ -275,7 +275,7 @@ export function getProviderRequiredOAuthCredentialInputs({
       return null;
     case "ukg_ready":
       if (useCase === "personal_actions") {
-        // UKG Ready uses standard authorization code flow with client_secret
+        // UKG Ready uses PKCE authorization code flow (no client_secret needed)
         const result: OAuthCredentialInputs = {
           instance_url: {
             label: "UKG Ready Instance URL",
@@ -294,12 +294,6 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "OAuth Client ID",
             value: undefined,
             helpMessage: "The client ID from your UKG Ready OAuth app",
-            validator: isValidClientIdOrSecret,
-          },
-          client_secret: {
-            label: "OAuth Client Secret",
-            value: undefined,
-            helpMessage: "The client secret from your UKG Ready OAuth app",
             validator: isValidClientIdOrSecret,
           },
         };

@@ -36,10 +36,17 @@ impl UkgReadyConnectionProvider {
         }
     }
 
-    /// Gets the UKG Ready client_id and client_secret from the related credential
-    pub async fn get_client_credentials(
-        credentials: Option<Credential>,
-    ) -> Result<(String, String)> {
+    pub fn get_code_verifier(metadata: &serde_json::Value) -> Result<String> {
+        match metadata["code_verifier"].as_str() {
+            Some(verifier) => Ok(verifier.to_string()),
+            None => Err(anyhow!(
+                "PKCE code_verifier is missing from connection metadata"
+            )),
+        }
+    }
+
+    /// Gets the UKG Ready client_id from the related credential
+    pub async fn get_client_id(credentials: Option<Credential>) -> Result<String> {
         let credentials =
             credentials.ok_or_else(|| anyhow!("Missing credentials for UKG Ready connection"))?;
 
@@ -54,18 +61,13 @@ impl UkgReadyConnectionProvider {
             ));
         }
 
-        // Extract client ID and client secret
+        // Extract client ID
         let client_id = content
             .get("client_id")
             .and_then(|v| v.as_str())
             .ok_or_else(|| anyhow!("Missing client_id in UKG Ready credential"))?;
 
-        let client_secret = content
-            .get("client_secret")
-            .and_then(|v| v.as_str())
-            .ok_or_else(|| anyhow!("Missing client_secret in UKG Ready credential"))?;
-
-        Ok((client_id.to_string(), client_secret.to_string()))
+        Ok(client_id.to_string())
     }
 }
 
@@ -95,26 +97,20 @@ impl Provider for UkgReadyConnectionProvider {
     ) -> Result<FinalizeResult, ProviderError> {
         let instance_url = Self::get_instance_url(&connection.metadata())?;
         let company_id = Self::get_company_id(&connection.metadata())?;
+        let code_verifier = Self::get_code_verifier(&connection.metadata())?;
 
-        let (client_id, client_secret) = Self::get_client_credentials(related_credentials).await?;
+        let client_id = Self::get_client_id(related_credentials).await?;
 
         let mut form_data = std::collections::HashMap::new();
         form_data.insert("grant_type", "authorization_code");
         form_data.insert("client_id", &client_id);
-        form_data.insert("client_secret", &client_secret);
         form_data.insert("code", code);
+        form_data.insert("code_verifier", &code_verifier);
         form_data.insert("redirect_uri", redirect_uri);
 
-        // Use !{company_id} format per UKG Ready docs for company reference
         let token_url = format!(
             "{}/ta/rest/v2/companies/!{}/oauth2/token",
             instance_url, company_id
-        );
-
-        tracing::info!(
-            token_url = %token_url,
-            client_id = %client_id,
-            "UKG Ready token request (authorization_code)"
         );
 
         let req = self
@@ -156,21 +152,21 @@ impl Provider for UkgReadyConnectionProvider {
             .unseal_refresh_token()?
             .ok_or_else(|| anyhow!("Missing `refresh_token` in UKG Ready connection"))?;
 
-        let (client_id, client_secret) = Self::get_client_credentials(related_credentials).await?;
+        let client_id = Self::get_client_id(related_credentials).await?;
 
         let mut form_data = std::collections::HashMap::new();
         form_data.insert("grant_type", "refresh_token");
         form_data.insert("client_id", &client_id);
-        form_data.insert("client_secret", &client_secret);
         form_data.insert("refresh_token", &refresh_token);
 
-        // Use !{company_id} format per UKG Ready docs for company reference
+        let token_url = format!(
+            "{}/ta/rest/v2/companies/!{}/oauth2/token",
+            instance_url, company_id
+        );
+
         let req = self
             .reqwest_client()
-            .post(format!(
-                "{}/ta/rest/v2/companies/!{}/oauth2/token",
-                instance_url, company_id
-            ))
+            .post(&token_url)
             .header("Content-Type", "application/x-www-form-urlencoded")
             .form(&form_data);
 
