@@ -2,7 +2,7 @@ import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
 import debounce from "lodash/debounce";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
@@ -75,18 +75,6 @@ export function SkillBuilderInstructionsEditor({
   const displayError =
     !!instructionsFieldState.error || !!attachedKnowledgeFieldState.error;
 
-  // Use refs for onChange to avoid recreating debouncedUpdate when the field references change.
-  // This prevents pending updates from being canceled on re-renders.
-  const instructionsOnChangeRef = useRef(instructionsField.onChange);
-  const attachedKnowledgeOnChangeRef = useRef(attachedKnowledgeField.onChange);
-
-  useEffect(() => {
-    instructionsOnChangeRef.current = instructionsField.onChange;
-  }, [instructionsField.onChange]);
-  useEffect(() => {
-    attachedKnowledgeOnChangeRef.current = attachedKnowledgeField.onChange;
-  }, [attachedKnowledgeField.onChange]);
-
   // Helper function to extract attached knowledge and update form.
   const extractAttachedKnowledge = useCallback((editorInstance: Editor) => {
     const knowledgeItems: KnowledgeItem[] = [];
@@ -116,20 +104,20 @@ export function SkillBuilderInstructionsEditor({
         spaceId: item.spaceId,
         title: item.label,
       }));
-      attachedKnowledgeOnChangeRef.current(transformedAttachments);
+      attachedKnowledgeField.onChange(transformedAttachments);
     },
-    [extractAttachedKnowledge]
+    [extractAttachedKnowledge, attachedKnowledgeField]
   );
 
   const debouncedUpdate = useMemo(
     () =>
       debounce((editor: Editor) => {
         if (!isInstructionDiffMode && !editor.isDestroyed) {
-          instructionsOnChangeRef.current(editor.getMarkdown().trim());
+          instructionsField.onChange(editor.getMarkdown().trim());
           updateAttachedKnowledge(editor);
         }
       }, 250),
-    [isInstructionDiffMode, updateAttachedKnowledge]
+    [instructionsField, isInstructionDiffMode, updateAttachedKnowledge]
   );
 
   const handleUpdate = useCallback(
