@@ -41,7 +41,7 @@ describe("AgentSuggestionResource", () => {
       expect(suggestion).toBeDefined();
       expect(suggestion.sId).toMatch(/^asu_/);
       expect(suggestion.workspaceId).toBe(workspace.id);
-      expect(suggestion.agentConfigurationId).toBe(agentConfiguration.sId);
+      expect(suggestion.agentConfigurationIdTmp).toBe(agentConfiguration.sId);
       expect(suggestion.kind).toBe("instructions");
       expect(suggestion.state).toBe("pending");
       expect(suggestion.source).toBe("reinforcement");
@@ -270,7 +270,7 @@ describe("AgentSuggestionResource", () => {
 
       await expect(
         AgentSuggestionResource.makeNew(otherAuthenticator, {
-          agentConfigurationId: agentConfiguration.sId,
+          agentConfigurationIdTmp: agentConfiguration.sId,
           agentConfigurationVersion: 1,
           kind: "instructions",
           suggestion: { oldString: "old", newString: "new" },

@@ -114,10 +114,10 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     // Look up the agent's editors group.
     const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
-      blob.agentConfigurationId,
+      blob.agentConfigurationIdTmp,
     ]);
     const editorsGroupId =
-      editorsGroupIdMap.get(blob.agentConfigurationId) ?? null;
+      editorsGroupIdMap.get(blob.agentConfigurationIdTmp) ?? null;
 
     // Check permission.
     const canWrite =
@@ -158,7 +158,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     }
 
     const agentSIds = [
-      ...new Set(suggestions.map((s) => s.agentConfigurationId)),
+      ...new Set(suggestions.map((s) => s.agentConfigurationIdTmp)),
     ];
 
     const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
@@ -174,14 +174,14 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         if (auth.isAdmin()) {
           return true;
         }
-        const groupId = editorsGroupIdBySId.get(s.agentConfigurationId);
+        const groupId = editorsGroupIdBySId.get(s.agentConfigurationIdTmp);
         return (
           groupId !== undefined && groupId !== null && authGroupIds.has(groupId)
         );
       })
       .map((suggestion) => {
         const editorsGroupId =
-          editorsGroupIdBySId.get(suggestion.agentConfigurationId) ?? null;
+          editorsGroupIdBySId.get(suggestion.agentConfigurationIdTmp) ?? null;
         return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
       });
   }
@@ -274,7 +274,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       sId: this.sId,
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
-      agentConfigurationId: this.agentConfigurationId,
+      agentConfigurationId: this.agentConfigurationIdTmp,
       agentConfigurationVersion: this.agentConfigurationVersion,
       analysis: this.analysis,
       state: this.state,

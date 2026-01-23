@@ -15,7 +15,7 @@ export class AgentSuggestionModel extends WorkspaceAwareModel<AgentSuggestionMod
   declare updatedAt: CreationOptional<Date>;
 
   // Reference agent by sId because sId cannot be inferred from id alone
-  declare agentConfigurationId: string;
+  declare agentConfigurationIdTmp: string;
   declare agentConfigurationVersion: number;
 
   declare kind: AgentSuggestionKind;
@@ -38,7 +38,7 @@ AgentSuggestionModel.init(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
-    agentConfigurationId: {
+    agentConfigurationIdTmp: {
       type: DataTypes.STRING,
       allowNull: false,
     },
@@ -83,7 +83,7 @@ AgentSuggestionModel.init(
     sequelize: frontSequelize,
     indexes: [
       {
-        fields: ["workspaceId", "agentConfigurationId"],
+        fields: ["workspaceId", "agentConfigurationIdTmp"],
         concurrently: true,
       },
     ],
