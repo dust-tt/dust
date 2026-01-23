@@ -88,14 +88,14 @@ function CreateSkillSuggestionSheet({
   const [userFacingDescription, setUserFacingDescription] = useState("");
   const [agentFacingDescription, setAgentFacingDescription] = useState("");
   const [instructions, setInstructions] = useState("");
-  const [icon, setIcon] = useState<string>("ActionListCheckIcon");
+  const [icon, setIcon] = useState<string | null>(null);
 
   const resetForm = () => {
     setName("");
     setUserFacingDescription("");
     setAgentFacingDescription("");
     setInstructions("");
-    setIcon("ActionListCheckIcon");
+    setIcon(null);
   };
 
   const handleSubmit = async () => {
@@ -117,7 +117,7 @@ function CreateSkillSuggestionSheet({
           userFacingDescription: userFacingDescription.trim(),
           agentFacingDescription: agentFacingDescription.trim(),
           instructions: instructions.trim(),
-          icon: icon || null,
+          icon: icon ?? null,
         }),
       }
     );
@@ -244,12 +244,6 @@ function CreateSkillSuggestionSheet({
                 disabled={isSubmitting || !name.trim()}
               />
             </div>
-
-            {isSubmitting && (
-              <div className="flex items-center justify-center">
-                <Spinner />
-              </div>
-            )}
           </div>
         </SheetContainer>
       </SheetContent>
