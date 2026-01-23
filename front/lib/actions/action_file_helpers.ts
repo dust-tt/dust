@@ -1,7 +1,7 @@
 import type { CSVRecord } from "@app/lib/api/csv";
 import { generateCSVSnippet, toCsv } from "@app/lib/api/csv";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";

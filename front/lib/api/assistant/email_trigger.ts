@@ -12,7 +12,7 @@ import {
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
-import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";

@@ -3,7 +3,7 @@ import { Readable } from "stream";
 import { getConnectionForMCPServer } from "@app/lib/actions/mcp_authentication";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
-import { processAndStoreFile } from "@app/lib/api/files/processing";
+import { processAndStoreFile } from "@app/lib/api/files/upload";
 import type { Authenticator } from "@app/lib/auth";
 import {
   download as githubDownload,

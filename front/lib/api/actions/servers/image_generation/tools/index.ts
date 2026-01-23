@@ -6,6 +6,7 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { streamToBuffer } from "@app/lib/actions/mcp_internal_actions/utils/file_utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   checkImageGenerationRateLimit,
@@ -21,7 +22,6 @@ import { IMAGE_GENERATION_TOOLS_METADATA } from "@app/lib/api/actions/servers/im
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { getStatsDClient } from "@app/lib/utils/statsd";
-import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
 import { Err, normalizeError } from "@app/types";
 import { GEMINI_2_5_FLASH_IMAGE_MODEL_ID } from "@app/types/assistant/models/google_ai_studio";
