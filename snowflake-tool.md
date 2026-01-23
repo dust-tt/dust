@@ -1,12 +1,8 @@
 # Snowflake
 
-> This tool uses personal credentials.
->
-> This tool interacts with Snowflake using user accounts: it adapts to each user.
-
 ## Overview
 
-The Snowflake tool lets you add to your agent the capability to browse your Snowflake data warehouse schema and execute read-only SQL queries. Agents can explore databases, schemas, tables, and run SELECT queries — all within the permissions of the authenticated user's role.
+The Snowflake tool lets you add to your agent the capability to browse your Snowflake data warehouse schema and execute read-only SQL queries. Agents can explore databases, schemas, tables, and run SELECT queries — all within the permissions of the authenticated role.
 
 ## Available Tools
 
@@ -63,7 +59,12 @@ Fill in the following fields:
 - **Client ID** — The `OAUTH_CLIENT_ID` from the security integration.
 - **Client Secret** — The `OAUTH_CLIENT_SECRET` from the security integration.
 - **Warehouse** — The warehouse to use for query execution (e.g., `COMPUTE_WH`). This warehouse is shared for all users.
-- **Role** — The default Snowflake role for users (e.g., `ANALYST`). Users can override this during their personal authentication.
+- **Role** — The Snowflake role to use (e.g., `ANALYST`). In personal mode, users can override this during their authentication.
+
+Then choose the **Credentials Type**:
+
+- **Personal** — Each user authenticates individually with their own Snowflake account. Queries run under each user's credentials, respecting their individual Snowflake permissions. Users can override the default role during their personal authentication.
+- **Workspace** — The admin authenticates once with a service account. All workspace users share that connection — no individual authentication is required. The role and warehouse are fixed by the admin.
 
 You will then be redirected to a Snowflake OAuth flow to validate the connection. Dust will verify that the provided role has access to the specified warehouse.
 
@@ -73,7 +74,13 @@ By default this tool is added to the Company data Space, so accessible in all th
 
 Once the tool has been configured by the admin as described before, it can be selected on any agent: in the Agent Builder, simply click on `Add Tool` and select Snowflake.
 
+### With Personal credentials
+
 When users use an agent with the Snowflake tool for the first time, they will need to click the `Connect` button to authenticate with their own Snowflake credentials. During this step, users can optionally override the default role with a different one (leave empty to use the workspace default). After connecting, they can click the `Retry` button to replay the agent answer.
+
+### With Workspace credentials
+
+No individual authentication is required. All agents use the admin's connected account when querying Snowflake. Users can start using the tool immediately after the admin completes setup.
 
 ## Adding Snowflake Tools to Agents
 
