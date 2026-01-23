@@ -1,4 +1,5 @@
 import type {
+  ClientSideMCPServerConfigurationType,
   ClientSideMCPToolConfigurationType,
   LightClientSideMCPToolConfigurationType,
   LightMCPToolConfigurationType,
