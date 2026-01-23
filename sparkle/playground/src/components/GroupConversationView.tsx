@@ -21,11 +21,13 @@ import {
   InformationCircleIcon,
   Input,
   ListGroup,
+  ListItem,
   ListItemSection,
   MoreIcon,
   LogoutIcon,
   ReplySection,
   SearchInput,
+  SearchInputWithPopover,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -41,7 +43,7 @@ import {
   ArrowUpOnSquareIcon,
   UserGroupIcon,
   TrashIcon,
-  Bar,
+  cn,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
@@ -81,6 +83,23 @@ interface Member {
   joinedAt: Date;
   onClick?: () => void; // For DataTable compatibility
 }
+
+type UniversalSearchItem =
+  | {
+      type: "document";
+      dataSource: DataSource;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "conversation";
+      conversation: Conversation;
+      creator?: User;
+      title: string;
+      description: string;
+      score: number;
+    };
 
 // Helper function to get random participants for a conversation
 function getRandomParticipants(
@@ -250,6 +269,43 @@ function generateJoinedAt(spaceId: string, memberId: string): Date {
   return joinedAt;
 }
 
+const fakeDocumentFirstLines = [
+  "Introduction: This document outlines the initial scope and goals.",
+  "Summary: Key findings are consolidated in the sections below.",
+  "Overview: A first pass at the requirements and assumptions.",
+  "Draft note: Please review the proposed changes and provide feedback.",
+  "Excerpt: The following section captures the primary constraints.",
+  "Context: This file compiles the core decisions made so far.",
+  "Opening: A quick recap of the current state and next steps.",
+  "First line: The document begins with a brief background statement.",
+];
+
+function getFakeDocumentFirstLine(dataSource: DataSource): string {
+  const seed = `${dataSource.id}-${dataSource.fileName}`;
+  const index = Math.floor(
+    seededRandom(seed, 2) * fakeDocumentFirstLines.length
+  );
+  return (
+    fakeDocumentFirstLines[index] ||
+    "Overview: This document contains a summary of the content."
+  );
+}
+
+function getBaseConversationId(
+  conversation: Conversation,
+  allConversations: Conversation[]
+): string {
+  const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
+  if (expandedIdMatch) {
+    const potentialBase = expandedIdMatch[1];
+    const baseExists = allConversations.some((c) => c.id === potentialBase);
+    if (baseExists) {
+      return potentialBase;
+    }
+  }
+  return conversation.id;
+}
+
 export function GroupConversationView({
   space,
   conversations,
@@ -267,6 +323,7 @@ export function GroupConversationView({
   onLeaveProject = () => {},
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -319,18 +376,143 @@ export function GroupConversationView({
     return generateConversationsWithDates(conversations, targetCount);
   }, [conversations, space.id]);
 
-  // Filter conversations by search text
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) {
-      return expandedConversations;
+  const searchResults = useMemo((): UniversalSearchItem[] => {
+    const trimmed = searchText.trim();
+    if (!trimmed) {
+      return [];
     }
-    const searchLower = searchText.toLowerCase();
-    return expandedConversations.filter(
-      (conv) =>
-        conv.title.toLowerCase().includes(searchLower) ||
-        conv.description?.toLowerCase().includes(searchLower)
+
+    const searchLower = trimmed.toLowerCase();
+
+    const documentResults = dataSources.reduce<UniversalSearchItem[]>(
+      (acc, dataSource) => {
+        const title = dataSource.fileName;
+        const description = getFakeDocumentFirstLine(dataSource);
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "document",
+            dataSource,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
     );
-  }, [expandedConversations, searchText]);
+
+    const conversationResults = expandedConversations.reduce<
+      UniversalSearchItem[]
+    >((acc, conversation) => {
+      const creator = getRandomCreator(conversation, users);
+      const title = conversation.title;
+      const description = conversation.description ?? "";
+      const searchableTitle = creator ? `${creator.fullName} ${title}` : title;
+      const titleMatch = searchableTitle.toLowerCase().includes(searchLower);
+      const descriptionMatch = description.toLowerCase().includes(searchLower);
+      if (titleMatch || descriptionMatch) {
+        acc.push({
+          type: "conversation",
+          conversation,
+          creator: creator || undefined,
+          title,
+          description,
+          score: titleMatch ? 2 : 1,
+        });
+      }
+      return acc;
+    }, []);
+
+    return [...documentResults, ...conversationResults].sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [dataSources, expandedConversations, searchText, users]);
+
+  const SearchResultItem = ({
+    item,
+    selected,
+  }: {
+    item: UniversalSearchItem;
+    selected: boolean;
+  }) => {
+    const isDocument = item.type === "document";
+    const key = isDocument ? item.dataSource.id : item.conversation.id;
+    const onClick = isDocument
+      ? () => {
+          setSelectedDataSource(item.dataSource);
+          setIsDocumentSheetOpen(true);
+          setIsSearchOpen(false);
+        }
+      : () => {
+          const baseConversationId = getBaseConversationId(
+            item.conversation,
+            conversations
+          );
+          onConversationClick?.({
+            ...item.conversation,
+            id: baseConversationId,
+          });
+          setIsSearchOpen(false);
+        };
+    const description = isDocument
+      ? item.description
+      : item.description || "No description available.";
+    const visual = isDocument ? (
+      item.dataSource.icon ? (
+        <Icon visual={item.dataSource.icon} size="md" />
+      ) : null
+    ) : item.creator ? (
+      <Avatar
+        name={item.creator.fullName}
+        visual={item.creator.portrait}
+        size="xs"
+        isRounded={true}
+      />
+    ) : null;
+    const titlePrefix =
+      !isDocument && item.creator ? item.creator.fullName : "";
+
+    return (
+      <ListItem
+        key={key}
+        onClick={onClick}
+        className={cn(
+          selected && "s-bg-highlight-50 dark:s-bg-highlight-50-night"
+        )}
+        hasSeparator={false}
+      >
+        <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-2">
+          {visual}
+          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col s-text-foreground">
+            <div className="s-heading-sm s-flex s-min-w-0 s-gap-1 s-truncate s-text-foreground dark:s-text-foreground-night">
+              {titlePrefix ? (
+                <>
+                  <span className="s-shrink-0">{titlePrefix}</span>
+                  <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-foreground-night">
+                    {" "}
+                    {item.title}
+                  </span>
+                </>
+              ) : (
+                <span className="s-min-w-0 s-truncate">{item.title}</span>
+              )}
+            </div>
+            <div className="s-line-clamp-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {description}
+            </div>
+          </div>
+        </div>
+      </ListItem>
+    );
+  };
 
   // Group conversations by date bucket
   const conversationsByBucket = useMemo(() => {
@@ -346,7 +528,7 @@ export function GroupConversationView({
       "Last Month": [],
     };
 
-    filteredConversations.forEach((conversation) => {
+    expandedConversations.forEach((conversation) => {
       const bucket = getDateBucket(conversation.updatedAt);
       buckets[bucket].push(conversation);
     });
@@ -360,7 +542,7 @@ export function GroupConversationView({
     });
 
     return buckets;
-  }, [filteredConversations]);
+  }, [expandedConversations]);
 
   // Determine if space is new (no conversations and no members)
   const isNew = useMemo(() => {
@@ -825,12 +1007,28 @@ export function GroupConversationView({
                 {expandedConversations.length > 0 && (
                   <>
                     <div className="s-flex s-w-full s-px-3">
-                      <SearchInput
+                      <SearchInputWithPopover
                         name="conversation-search"
                         value={searchText}
-                        onChange={setSearchText}
+                        onChange={(value) => {
+                          setSearchText(value);
+                          if (!value.trim()) {
+                            setIsSearchOpen(false);
+                          }
+                        }}
+                        open={isSearchOpen}
+                        onOpenChange={setIsSearchOpen}
                         placeholder={`Search in ${space.name}`}
                         className="s-w-full"
+                        items={searchResults}
+                        noResults={
+                          searchText.trim()
+                            ? "No results found"
+                            : "Start typing to search"
+                        }
+                        renderItem={(item, selected) => (
+                          <SearchResultItem item={item} selected={selected} />
+                        )}
                       />
                     </div>
                     <div className="s-flex s-flex-col">
@@ -882,26 +1080,12 @@ export function GroupConversationView({
                                   Math.random() * 8 + 1
                                 );
 
-                                // Extract base conversation ID if this is an expanded conversation
-                                // Expanded IDs have pattern: {baseId}-{number} (e.g., "conv-1-5")
-                                // Check if ID matches expanded pattern (ends with -{digits})
-                                // Use a more specific pattern to avoid false matches with IDs like "conv-10"
-                                const expandedIdMatch =
-                                  conversation.id.match(/^(.+)-(\d+)$/);
-                                // Only extract if the match makes sense (base ID exists in original conversations)
-                                let baseConversationId = conversation.id;
-                                if (expandedIdMatch) {
-                                  const potentialBase = expandedIdMatch[1];
-                                  // Check if the base ID exists in the original conversations
-                                  const baseExists = conversations.some(
-                                    (c) => c.id === potentialBase
+                                const baseConversationId =
+                                  getBaseConversationId(
+                                    conversation,
+                                    conversations
                                   );
-                                  if (baseExists) {
-                                    baseConversationId = potentialBase;
-                                  }
-                                }
 
-                                // Create a conversation object with the base ID for lookup
                                 const conversationForLookup = {
                                   ...conversation,
                                   id: baseConversationId,
