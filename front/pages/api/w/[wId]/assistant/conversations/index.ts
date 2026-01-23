@@ -84,8 +84,14 @@ async function handler(
         });
       }
 
-      const { title, visibility, spaceId, message, contentFragments, metadata } =
-        bodyValidation.right;
+      const {
+        title,
+        visibility,
+        spaceId,
+        message,
+        contentFragments,
+        metadata,
+      } = bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(

@@ -431,10 +431,7 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(
-        auth,
-        copilotMCPServers
-      );
+      agentConfiguration = _getCopilotGlobalAgent(auth, copilotMCPServers);
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
