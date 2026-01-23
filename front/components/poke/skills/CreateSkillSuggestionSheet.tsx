@@ -30,6 +30,7 @@ import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { usePokeMCPServerViews } from "@app/poke/swr/mcp_server_views";
 import { useCreatePokeSkillSuggestion } from "@app/poke/swr/skills";
+import { usePokeSpaces } from "@app/poke/swr/spaces";
 import type { LightWorkspaceType } from "@app/types";
 
 const DEFAULT_ICON: keyof typeof ActionIcons = "ActionListCheckIcon";
@@ -65,14 +66,32 @@ export function CreateSkillSuggestionSheet({
   const { data: allMCPServerViews, isLoading: isMCPServerViewsLoading } =
     usePokeMCPServerViews({ owner, disabled: !show });
 
-  // Filter to only show MCP server views that don't require configuration.
-  const noConfigMCPServerViews = useMemo(() => {
-    return allMCPServerViews.filter((view) => {
-      const { noRequirement } = getMCPServerRequirements(view);
+  const { data: spaces, isLoading: isSpacesLoading } = usePokeSpaces({
+    owner,
+    disabled: !show,
+  });
 
+  const globalSpace = useMemo(
+    () => spaces.find((s) => s.kind === "global"),
+    [spaces]
+  );
+
+  const noConfigMCPServerViews = useMemo(() => {
+    if (!globalSpace) {
+      return [];
+    }
+    return allMCPServerViews.filter((view) => {
+      if (view.spaceId !== globalSpace.sId) {
+        return false;
+      }
+      const { availability } = view.server;
+      if (availability !== "manual" && availability !== "auto") {
+        return false;
+      }
+      const { noRequirement } = getMCPServerRequirements(view);
       return noRequirement;
     });
-  }, [allMCPServerViews]);
+  }, [allMCPServerViews, globalSpace]);
 
   const resetForm = () => {
     setName("");
@@ -210,7 +229,7 @@ export function CreateSkillSuggestionSheet({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <Label>MCP Servers</Label>
-                {isMCPServerViewsLoading ? (
+                {isMCPServerViewsLoading || isSpacesLoading ? (
                   <Spinner size="xs" />
                 ) : (
                   <DropdownMenu modal={false}>
