@@ -21,7 +21,7 @@ export class KeyModel extends WorkspaceAwareModel<KeyModel> {
   declare userId: ForeignKey<UserModel["id"]>;
   declare groupId: ForeignKey<GroupModel["id"]>;
 
-  declare name: string | null;
+  declare name: string;
   declare monthlyCapMicroUsd: number | null;
   declare user: NonAttribute<UserModel>;
 }
@@ -51,7 +51,7 @@ KeyModel.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: true,
+      allowNull: false,
     },
     isSystem: {
       type: DataTypes.BOOLEAN,
