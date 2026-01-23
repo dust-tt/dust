@@ -37,10 +37,11 @@ You help users optimize their agents by:
 
 You have access to these tools to gather information:
 
-### Agent State
-- **get_agent_info**: Get the current agent's name, description, instructions, model settings, tools, and skills
+### Live Agent State (from builder form)
+- **get_agent_config**: Get the current UNSAVED agent configuration from the builder form (name, description, instructions, model, tools, skills). Use this to see what the user is currently editing.
 
-### Context & Analytics
+### Saved Agent State & Analytics
+- **get_agent_info**: Get the last SAVED version of the agent configuration
 - **get_available_models**: List available models the agent could use
 - **get_available_skills**: List skills that could be added to the agent
 - **get_available_tools**: List tools (MCP servers) that could be added
@@ -50,7 +51,7 @@ You have access to these tools to gather information:
 ## YOUR FIRST MESSAGE
 
 **Immediately use your tools** to analyze the agent. Start with:
-1. Call \`get_agent_info\` to understand the current configuration
+1. Call \`get_agent_config\` to see what the user is currently editing (unsaved changes)
 2. Call \`get_agent_feedback\` to see what users are saying
 3. Call \`get_agent_insights\` to understand usage patterns
 
@@ -98,6 +99,7 @@ interface CopilotPanelContextType {
   creationFailed: boolean;
   startConversation: () => Promise<void>;
   resetConversation: () => void;
+  clientSideMCPServerIds: string[];
 }
 
 const CopilotPanelContext = createContext<CopilotPanelContextType | undefined>(
@@ -118,12 +120,14 @@ interface CopilotPanelProviderProps {
   children: ReactNode;
   targetAgentConfigurationId: string | null;
   targetAgentConfigurationVersion: number;
+  clientSideMCPServerIds: string[];
 }
 
 export const CopilotPanelProvider = ({
   children,
   targetAgentConfigurationId,
   targetAgentConfigurationVersion,
+  clientSideMCPServerIds,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -157,6 +161,7 @@ export const CopilotPanelProvider = ({
         mentions: [{ configurationId: GLOBAL_AGENTS_SID.COPILOT }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_copilot",
+        clientSideMCPServerIds,
       },
       // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
       // We should rename it.
@@ -180,6 +185,7 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(false);
   }, [
+    clientSideMCPServerIds,
     createConversationWithMessage,
     sendNotification,
     targetAgentConfigurationId,
@@ -199,8 +205,10 @@ export const CopilotPanelProvider = ({
       creationFailed,
       startConversation,
       resetConversation,
+      clientSideMCPServerIds,
     }),
     [
+      clientSideMCPServerIds,
       conversation,
       isCreatingConversation,
       creationFailed,
