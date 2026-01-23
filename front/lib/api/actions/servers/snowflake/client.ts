@@ -409,7 +409,7 @@ export class SnowflakeClient {
     // Strip trailing semicolons before wrapping. Multi-statement injection is
     // already prevented by the SDK (MULTI_STATEMENT_COUNT defaults to 1) and by
     // the EXPLAIN/LIMIT wrappers which would produce invalid SQL with embedded semicolons.
-    sql = sql.replace(/;\s*$/, "");
+    const sanitizedSql = sql.replace(/;\s*$/, "");
 
     const connRes = await this.connect();
     if (connRes.isErr()) {
@@ -451,7 +451,7 @@ export class SnowflakeClient {
       // This checks what the query actually does, not what it looks like.
       const validationResult = await this.validateReadOnlyWithExplain(
         conn,
-        sql
+        sanitizedSql
       );
 
       if (validationResult.isErr()) {
@@ -459,7 +459,7 @@ export class SnowflakeClient {
       }
 
       // Wrap query to enforce row limit
-      const wrappedSql = `SELECT * FROM (${sql.trim()}) AS _limited_query LIMIT ${maxRows}`;
+      const wrappedSql = `SELECT * FROM (${sanitizedSql.trim()}) AS _limited_query LIMIT ${maxRows}`;
 
       return await this.executeQuery(conn, wrappedSql);
     } finally {
