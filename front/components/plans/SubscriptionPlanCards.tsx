@@ -17,6 +17,7 @@ const PRO_FEATURES = [
 ];
 
 const ENTERPRISE_FEATURES = [
+  "Everything in Pro",
   "Advanced security and controls",
   "Larger storage and file size limits",
   "Access to programmatic usage",
@@ -98,9 +99,6 @@ export function SubscriptionPlanCards({
           </div>
         </div>
         <div className="mb-4 border-t border-border" />
-        <p className="mb-3 text-sm font-semibold text-foreground">
-          Everything in Pro, plus:
-        </p>
         <ul className="flex flex-1 flex-col gap-3">
           {ENTERPRISE_FEATURES.map((feature, index) => (
             <li key={index} className="flex items-start gap-2">
