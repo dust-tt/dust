@@ -100,9 +100,10 @@ async function exportFrameToPdf(options: ExportOptions): Promise<Buffer> {
         left: "1cm",
         right: "1cm",
       },
-      // For PoC: try to fit content, may need adjustment
+      // Scale down to match screen proportions better (1 = 100%, 0.8 = 80%)
+      scale: 0.8,
       preferCSSPageSize: false,
-      landscape: true,
+      landscape: false,
     });
 
     console.log(`PDF generated: ${pdf.length} bytes`);
