@@ -13,7 +13,10 @@ import { useEffect, useRef, useState } from "react";
 import { useController, useFormContext } from "react-hook-form";
 
 import type { MCPServerOAuthFormValues } from "@app/components/actions/mcp/forms/types";
-import { ProviderSetupInstructions } from "@app/components/actions/mcp/provider_setup_instructions";
+import {
+  ProviderAuthNote,
+  ProviderSetupInstructions,
+} from "@app/components/actions/mcp/provider_setup_instructions";
 import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction";
 import type {
   MCPOAuthUseCase,
@@ -243,6 +246,8 @@ export function MCPServerOAuthConnexion({
           })}
         </div>
       )}
+
+      <ProviderAuthNote provider={authorization.provider} />
 
       {documentationUrl && (
         <div className="w-full pt-6 text-sm text-muted-foreground dark:text-muted-foreground-night">
