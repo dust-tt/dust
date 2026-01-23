@@ -201,27 +201,56 @@ export const ConversationViewer = ({
 
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
-      if (!hash || !hash.startsWith("#")) {
-        return;
-      }
+      if (hash && hash.startsWith("#")) {
+        const messageId = hash.substring(1); // Remove the '#' prefix.
+        if (!messageId) {
+          return;
+        }
 
-      const messageId = hash.substring(1); // Remove the '#' prefix.
-      if (!messageId) {
-        return;
-      }
+        // Find the message index in the current data.
+        const messageIndex = messagesToRender.findIndex(
+          (m) => m.sId === messageId
+        );
 
-      // Find the message index in the current data.
-      const messageIndex = messagesToRender.findIndex(
-        (m) => m.sId === messageId
-      );
+        if (messageIndex === -1) {
+          // nothing found to scroll to.
+          return;
+        }
+        setMessageIdToScrollTo(messageIndex);
+      } else if (conversation?.unread) {
+        const lastRead = conversation.lastRead;
 
-      if (messageIndex === -1) {
-        // nothing found to scroll to.
-        return;
+        if (lastRead === null) {
+          // Conversation has never been read, scroll to the beginning.
+          setMessageIdToScrollTo(0);
+          return;
+        }
+
+        const firstUnreadIndex = messagesToRender.findIndex((m) => {
+          if (m.created > lastRead) {
+            return true;
+          }
+          if (m.type === "agent_message" && (m.completedTs ?? 0) > lastRead) {
+            return true;
+          }
+          return false;
+        });
+
+        if (firstUnreadIndex === -1) {
+          return;
+        }
+
+        setMessageIdToScrollTo(firstUnreadIndex);
       }
-      setMessageIdToScrollTo(messageIndex);
     }
-  }, [initialListData, messages, setInitialListData, isValidating]);
+  }, [
+    initialListData,
+    messages,
+    setInitialListData,
+    isValidating,
+    conversation?.unread,
+    conversation?.lastRead,
+  ]);
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {

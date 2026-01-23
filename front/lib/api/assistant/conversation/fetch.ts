@@ -131,6 +131,7 @@ export async function getConversation(
     content,
     actionRequired,
     unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
+    lastRead: lastReadAt?.getTime() ?? null,
     hasError: conversation.hasError,
     requestedGroupIds: [],
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
