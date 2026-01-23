@@ -5,24 +5,18 @@
  * Form ID: 95a83867-b22c-440a-8ba0-2733d35e4a7b
  * Form Name: Demo Contact Form - v3 - 2025-10-10
  *
- * To regenerate, run: npm run generate:contact-form
+ * To regenerate, run: npm run generate:hubspot-forms
  * Requires HUBSPOT_PRIVATE_APP_TOKEN in .env.local
  *
- * Generated at: 2026-01-15T10:43:44.211Z
+ * Generated at: 2026-01-23T10:06:05.263Z
  */
 
 import { z } from "zod";
 
-// Field options from HubSpot dropdown fields
+// Field options from HubSpot dropdown/checkbox/radio fields
 export const LANGUAGE_OPTIONS = [
-  {
-    value: "I would like my meeting to be in English 🇬🇧🇺🇸",
-    label: "I would like my meeting to be in English 🇬🇧🇺🇸",
-  },
-  {
-    value: "I would like my meeting to be in French 🇫🇷",
-    label: "I would like my meeting to be in French 🇫🇷",
-  },
+  { value: "I would like my meeting to be in English 🇬🇧🇺🇸", label: "I would like my meeting to be in English" },
+  { value: "I would like my meeting to be in French 🇫🇷", label: "I would like my meeting to be in French 🇫🇷" },
 ] as const;
 
 export const HEADQUARTERS_REGION_OPTIONS = [
@@ -40,6 +34,7 @@ export const COMPANY_HEADCOUNT_FORM_OPTIONS = [
   { value: "501-1000", label: "501-10000" },
   { value: "10000+", label: "10000+" },
 ] as const;
+
 
 // Field definitions for dynamic form rendering
 export const FIELD_DEFINITIONS = [
@@ -100,15 +95,13 @@ export const FIELD_DEFINITIONS = [
 export const ContactFormSchema = z.object({
   firstname: z.string().optional(),
   lastname: z.string().optional(),
-  email: z
-    .string()
-    .min(1, "Work email is required")
-    .email("Please enter a valid email address"),
+  email: z.string().min(1, "Work Email is required").email("Please enter a valid email address"),
   mobilephone: z.string().optional(),
   language: z.string().min(1, "Language is required"),
   headquarters_region: z.string().optional(),
   company_headcount_form: z.string().min(1, "Company headcount is required"),
   landing_use_cases: z.string().optional(),
+  // Local field for GDPR marketing consent (not sent to HubSpot)
   consent_marketing: z.boolean().optional(),
 });
 

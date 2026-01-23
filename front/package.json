@@ -31,7 +31,7 @@
     "sparkle:dev": "./admin/sparkle_dev.sh",
     "analyze": "NODE_OPTIONS=--max-old-space-size=16384 ANALYZE=true npm run build",
     "knip": "knip",
-    "generate:contact-form": "tsx scripts/generate-contact-form-schema.ts"
+    "generate:hubspot-forms": "tsx scripts/generate-hubspot-forms.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.71.0",
