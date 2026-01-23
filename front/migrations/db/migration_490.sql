@@ -1,6 +1,6 @@
 -- Migration created on Jan 23, 2026
 -- Change agent_suggestions to use a proper FK to agent_configurations instead of sId + version tuple
--- Part 2: Post-deploy - Drop old columns and update index
+-- Part 2: Post-deploy - Drop old columns and index
 
 -- Step 1: Drop old index that used the old columns
 DROP INDEX IF EXISTS "agent_suggestions_workspace_agent_config";
@@ -8,10 +8,3 @@ DROP INDEX IF EXISTS "agent_suggestions_workspace_agent_config";
 -- Step 2: Drop old columns
 ALTER TABLE "agent_suggestions" DROP COLUMN "agentConfigurationSId";
 ALTER TABLE "agent_suggestions" DROP COLUMN "agentConfigurationVersion";
-
--- Step 3: Create new composite indexes to support listByAgentConfigurationId queries
-CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config_state_kind"
-ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "state", "kind");
-
-CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config_kind"
-ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "kind");

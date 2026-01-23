@@ -26,6 +26,12 @@ FOREIGN KEY ("agentConfigurationId")
 REFERENCES "agent_configurations" ("id")
 ON DELETE RESTRICT ON UPDATE CASCADE;
 
--- Step 4: Create index on agentConfigurationId for efficient FK lookups
+-- Step 4: Create indexes
 CREATE INDEX CONCURRENTLY "agent_suggestions_agentConfigurationId"
 ON "agent_suggestions" ("agentConfigurationId");
+
+CREATE INDEX CONCURRENTLY "agent_suggestions_list_by_agent_configuration"
+ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "state", "kind");
+
+CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_agent_config_kind"
+ON "agent_suggestions" ("workspaceId", "agentConfigurationId", "kind");
