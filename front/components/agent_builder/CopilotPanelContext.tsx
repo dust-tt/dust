@@ -160,10 +160,8 @@ export const CopilotPanelProvider = ({
       },
       visibility: "unlisted",
       metadata: {
-        agentCopilot: {
-          targetAgentConfigurationId,
-          targetAgentConfigurationVersion,
-        },
+        copilotTargetAgentConfigurationId: targetAgentConfigurationId,
+        copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
       },
     });
 

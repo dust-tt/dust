@@ -6,6 +6,6 @@ export function getAgentConfigurationIdFromContext(
 ): string | null {
   return (
     getCopilotMetadataFromContext(agentLoopContext)
-      ?.targetAgentConfigurationId ?? null
+      ?.copilotTargetAgentConfigurationId ?? null
   );
 }

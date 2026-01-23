@@ -278,14 +278,7 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
-export interface AgentCopilotMetadata {
-  targetAgentConfigurationId: string;
-  targetAgentConfigurationVersion: number;
-}
-
-export interface ConversationMetadata {
-  agentCopilot?: AgentCopilotMetadata;
-}
+export type ConversationMetadata = Record<string, unknown>;
 
 /**
  * A lighter version of Conversation without the content (for menu display).

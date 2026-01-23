@@ -6,7 +6,7 @@ export function getAgentConfigurationIdFromContext(
 ): string | null {
   return (
     getCopilotMetadataFromContext(agentLoopContext)
-      ?.targetAgentConfigurationId ?? null
+      ?.copilotTargetAgentConfigurationId ?? null
   );
 }
 
@@ -15,6 +15,6 @@ export function getAgentConfigurationVersionFromContext(
 ): number | null {
   return (
     getCopilotMetadataFromContext(agentLoopContext)
-      ?.targetAgentConfigurationVersion ?? null
+      ?.copilotTargetAgentConfigurationVersion ?? null
   );
 }

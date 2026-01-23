@@ -193,14 +193,7 @@ export type InternalPostContentFragmentRequestBodyType = t.TypeOf<
   typeof InternalPostContentFragmentRequestBodySchema
 >;
 
-const AgentCopilotMetadataSchema = t.type({
-  targetAgentConfigurationId: t.string,
-  targetAgentConfigurationVersion: t.number,
-});
-
-const ConversationMetadataSchema = t.partial({
-  agentCopilot: AgentCopilotMetadataSchema,
-});
+const ConversationMetadataSchema = t.UnknownRecord;
 
 export const InternalPostConversationsRequestBodySchema = t.intersection([
   t.type({

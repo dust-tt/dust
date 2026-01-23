@@ -1,6 +1,27 @@
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import type { ConversationMetadata } from "@app/types";
 
-// TODO(copilot 2026-01-23): move all copilot mcp servers and this helper in the same folder
+// TODO(copilot 2026-01-23): move all copilot mcp servers and these helpers in dedicated folder
+export interface CopilotMetadata {
+  copilotTargetAgentConfigurationId: string;
+  copilotTargetAgentConfigurationVersion: number;
+}
+
+function extractCopilotMetadata(
+  metadata: ConversationMetadata
+): CopilotMetadata | null {
+  const id = metadata.copilotTargetAgentConfigurationId;
+  const version = metadata.copilotTargetAgentConfigurationVersion;
+
+  if (typeof id === "string" && typeof version === "number") {
+    return {
+      copilotTargetAgentConfigurationId: id,
+      copilotTargetAgentConfigurationVersion: version,
+    };
+  }
+  return null;
+}
+
 /**
  * Extracts the copilot metadata from the agent loop context.
  *
@@ -12,10 +33,10 @@ import type { AgentLoopContextType } from "@app/lib/actions/types";
  */
 export function getCopilotMetadataFromContext(
   agentLoopContext?: AgentLoopContextType
-) {
-  return (
-    agentLoopContext?.runContext?.conversation.metadata.agentCopilot ??
-    agentLoopContext?.listToolsContext?.conversation.metadata.agentCopilot ??
-    null
-  );
+): CopilotMetadata | null {
+  const metadata =
+    agentLoopContext?.runContext?.conversation.metadata ??
+    agentLoopContext?.listToolsContext?.conversation.metadata;
+
+  return metadata ? extractCopilotMetadata(metadata) : null;
 }
