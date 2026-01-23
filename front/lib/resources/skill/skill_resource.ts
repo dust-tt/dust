@@ -12,7 +12,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   getAgentConfiguration,
   updateAgentRequirements,
@@ -306,18 +305,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       "workspaceId" | "status" | "editedBy" | "requestedSpaceIds"
     >,
     {
-      mcpServerNames,
+      mcpServerViewIds,
     }: {
-      mcpServerNames: AutoInternalMCPServerNameType[];
+      mcpServerViewIds: string[];
     }
   ): Promise<Result<SkillResource, Error>> {
-    const mcpServerViews =
-      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(
-        auth,
-        mcpServerNames
-      );
+    const mcpServerViews = await MCPServerViewResource.fetchByIds(
+      auth,
+      mcpServerViewIds
+    );
 
-    if (mcpServerViews.length !== mcpServerNames.length) {
+    if (mcpServerViews.length !== mcpServerViewIds.length) {
       return new Err(new Error("Some MCP server views are missing."));
     }
 
