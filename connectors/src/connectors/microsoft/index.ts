@@ -128,9 +128,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     await syncSucceeded(connector.id);
 
-    const res = await launchMicrosoftIncrementalSyncWorkflow(connector.id);
-    if (res.isErr()) {
-      throw res.error;
+    const incrementalSyncRes = await launchMicrosoftIncrementalSyncWorkflow(
+      connector.id
+    );
+    if (incrementalSyncRes.isErr()) {
+      throw incrementalSyncRes.error;
+    }
+
+    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(connector.id);
+    if (gcRes.isErr()) {
+      throw gcRes.error;
     }
 
     return new Ok(connector.id.toString());
