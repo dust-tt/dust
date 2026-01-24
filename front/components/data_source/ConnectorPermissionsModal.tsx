@@ -651,6 +651,12 @@ interface ConnectorPermissionsModalProps {
   dataSourceView: DataSourceViewType;
   initialModalState?: ModalType;
   isAdmin: boolean;
+  /**
+   * When true, closing the modal will trigger a setPermissions call even if
+   * nothing is selected. This ensures that connector workflows (full sync,
+   * garbage collection, incremental sync) are properly initialized.
+   */
+  isNewlyCreated?: boolean;
   isOpen: boolean;
   onClose: (save: boolean) => void;
   onManageButtonClick?: () => void;
@@ -663,6 +669,7 @@ export function ConnectorPermissionsModal({
   dataSourceView,
   initialModalState = "selection",
   isAdmin,
+  isNewlyCreated = false,
   isOpen,
   onClose,
   onManageButtonClick,
@@ -760,7 +767,31 @@ export function ConnectorPermissionsModal({
   const sendNotification = useSendNotification();
   const { user } = useUser();
 
-  function closeModal(save: boolean) {
+  // For newly created connectors, we need to call setPermissions even if the
+  // user doesn't select anything. This ensures that connector workflows (full
+  // sync, garbage collection, incremental sync) are properly initialized.
+  async function initializeConnectorPermissions() {
+    try {
+      await clientFetch(
+        `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resources: [] }),
+        }
+      );
+    } catch (e) {
+      // Silent failure - this is a best-effort initialization.
+      console.error("Failed to initialize connector permissions", e);
+    }
+  }
+
+  async function closeModal(save: boolean) {
+    // For newly created connectors, ensure we call setPermissions to initialize
+    // workflows even if nothing was selected.
+    if (isNewlyCreated && !save) {
+      await initializeConnectorPermissions();
+    }
     setModalToShow(null);
     onClose(save);
     setTimeout(() => {
@@ -781,7 +812,9 @@ export function ConnectorPermissionsModal({
     }
     setSaving(true);
     try {
-      if (Object.keys(selectedNodes).length) {
+      // For newly created connectors, always call the API to initialize
+      // workflows, even with empty selection.
+      if (Object.keys(selectedNodes).length || isNewlyCreated) {
         const r = await clientFetch(
           `/api/w/${owner.sId}/data_sources/${dataSource.sId}/managed/permissions`,
           {
@@ -827,7 +860,7 @@ export function ConnectorPermissionsModal({
           setModalToShow("data_updated");
         }
       } else {
-        closeModal(false);
+        await closeModal(false);
       }
     } catch (e) {
       sendNotification({
@@ -891,7 +924,7 @@ export function ConnectorPermissionsModal({
         open={modalToShow === "selection"}
         onOpenChange={(open) => {
           if (!open) {
-            onClose(open);
+            void closeModal(false);
           }
         }}
       >
@@ -1063,11 +1096,11 @@ export function ConnectorPermissionsModal({
               return (
                 <SetupNotionPrivateIntegrationModal
                   isOpen={true}
-                  onClose={() => closeModal(false)}
+                  onClose={() => void closeModal(false)}
                   dataSource={dataSource}
                   owner={owner}
                   onSuccess={() => {
-                    closeModal(false);
+                    void closeModal(false);
                   }}
                   sendNotification={sendNotification}
                 />
@@ -1097,7 +1130,7 @@ export function ConnectorPermissionsModal({
                     extraConfig,
                     sendNotification
                   );
-                  closeModal(false);
+                  await closeModal(false);
                 }}
               />
             );
@@ -1115,14 +1148,14 @@ export function ConnectorPermissionsModal({
 
       <DataSourceDeletionModal
         isOpen={modalToShow === "deletion"}
-        onClose={() => closeModal(false)}
+        onClose={() => void closeModal(false)}
         dataSource={dataSource}
         owner={owner}
       />
       <ConnectorDataUpdatedModal
         isOpen={modalToShow === "data_updated"}
         onClose={() => {
-          closeModal(false);
+          void closeModal(false);
         }}
         connectorProvider={connector.type}
       />

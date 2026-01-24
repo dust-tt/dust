@@ -288,6 +288,7 @@ export const SpaceResourcesList = ({
   const [assistantSId, setAssistantSId] = useState<string | null>(null);
   const [showConnectorPermissionsModal, setShowConnectorPermissionsModal] =
     useState(false);
+  const [isNewlyCreatedConnector, setIsNewlyCreatedConnector] = useState(false);
   const [selectedDataSourceView, setSelectedDataSourceView] =
     useState<DataSourceViewsWithDetails | null>(null);
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
@@ -546,6 +547,7 @@ export const SpaceResourcesList = ({
                   if (
                     isConnectorPermissionsEditable(dataSource.connectorProvider)
                   ) {
+                    setIsNewlyCreatedConnector(true);
                     setShowConnectorPermissionsModal(true);
                   }
                 }
@@ -660,10 +662,12 @@ export const SpaceResourcesList = ({
           initialModalState={
             shouldOpenSlackEditionModal ? "edition" : "selection"
           }
+          isNewlyCreated={isNewlyCreatedConnector}
           isOpen={showConnectorPermissionsModal && !!selectedDataSourceView}
           onClose={() => {
             setShowConnectorPermissionsModal(false);
             setShouldOpenSlackEditionModal(false);
+            setIsNewlyCreatedConnector(false);
           }}
           readOnly={false}
           isAdmin={isAdmin}
