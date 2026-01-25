@@ -395,6 +395,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     const customSkills = await this.model.findAll({
       ...otherOptions,
       where: {
+        // Fetch active by default, unless explicitly overridden by the caller.
+        status: "active",
         ...omit(where, "sId"),
         workspaceId: workspace.id,
       },
@@ -650,7 +652,13 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       customSkillId: ModelId | null;
       globalSkillId: string | null;
     }[],
-    context: { agentConfiguration?: LightAgentConfigurationType } = {}
+    {
+      agentConfiguration,
+      status,
+    }: {
+      agentConfiguration?: LightAgentConfigurationType;
+      status?: SkillStatus | SkillStatus[];
+    } = {}
   ): Promise<SkillResource[]> {
     const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
     const globalSkillIds = removeNulls(refs.map((r) => r.globalSkillId));
@@ -661,9 +669,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         where: {
           id: customSkillModelIds,
           sId: globalSkillIds,
+          ...(status ? { status } : {}),
         },
       },
-      context
+      { agentConfiguration }
     );
   }
 
@@ -1228,20 +1237,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(this.canWrite(auth), "User is not authorized to archive this skill");
 
-    const workspace = auth.getNonNullableWorkspace();
-    let affectedCount = 0;
-
-    await withTransaction(async (transaction) => {
-      [affectedCount] = await this.update({ status: "archived" }, transaction);
-
-      await AgentSkillModel.destroy({
-        where: {
-          customSkillId: this.id,
-          workspaceId: workspace.id,
-        },
-        transaction,
-      });
-    });
+    // We preserve AgentSkillModel and ConversationSkillModel relationships
+    // so they can be restored when the skill is unarchived.
+    const [affectedCount] = await this.update({ status: "archived" });
 
     return { affectedCount };
   }
@@ -1652,7 +1650,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where,
     });
 
-    return this.fetchBySkillReferences(auth, agentMessageSkills);
+    // Include all statuses for historical accuracy.
+    return this.fetchBySkillReferences(auth, agentMessageSkills, {
+      status: ["active", "archived", "suggested"],
+    });
   }
 
   static async deleteAllForWorkspace(auth: Authenticator): Promise<void> {
