@@ -1,8 +1,8 @@
 import {
-  Button,
   classNames,
   cn,
   CollapseButton,
+  LinkWrapper,
   NavigationList,
   NavigationListItem,
   NavigationListLabel,
@@ -12,10 +12,9 @@ import {
   TabsTrigger,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
-import { useRouter } from "next/router";
 import React, { useCallback, useContext, useMemo, useState } from "react";
 
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { useWelcomeTourGuide } from "@app/components/assistant/WelcomeTourGuideProvider";
 import type { SidebarNavigation } from "@app/components/navigation/config";
 import { getTopNavigationTabs } from "@app/components/navigation/config";
@@ -25,7 +24,7 @@ import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { UserMenu } from "@app/components/UserMenu";
 import type { AppStatus } from "@app/lib/api/status";
 import { FREE_TRIAL_PHONE_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { useTrialMessageUsage } from "@app/lib/swr/trial_message_usage";
+import { useAppRouter } from "@app/lib/platform";
 import { useAppStatus } from "@app/lib/swr/useAppStatus";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -59,13 +58,13 @@ export const NavigationSidebar = React.forwardRef<
   }: NavigationSidebarProps,
   ref
 ) {
-  const router = useRouter();
+  const router = useAppRouter();
   const activePath = useMemo(() => {
-    if (router.isReady && router.route) {
-      return router.route;
+    if (router.isReady && router.pathname) {
+      return router.pathname;
     }
     return "";
-  }, [router.isReady, router.route]);
+  }, [router.isReady, router.pathname]);
 
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -96,7 +95,16 @@ export const NavigationSidebar = React.forwardRef<
 
   return (
     <div ref={ref} className="flex min-w-0 grow flex-col">
-      <div className="flex flex-col gap-2 pt-3">
+      <div
+        className={cn(
+          "flex flex-col gap-2",
+          appStatus?.dustStatus ||
+            appStatus?.providersStatus ||
+            subscription.paymentFailingSince
+            ? ""
+            : "pt-3"
+        )}
+      >
         {appStatus && <AppStatusBanner appStatus={appStatus} />}
         {subscription.paymentFailingSince && isAdmin(owner) && (
           <SubscriptionPastDueBanner />
@@ -194,7 +202,9 @@ export const NavigationSidebar = React.forwardRef<
       </div>
       <div className="flex grow flex-col">{children}</div>
       {subscription.plan.code === FREE_TRIAL_PHONE_PLAN_CODE && (
-        <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
+        <div className="mx-3 mb-3">
+          <TrialMessageUsage isAdmin={isAdmin(owner)} workspaceId={owner.sId} />
+        </div>
       )}
       {user && (
         <div
@@ -266,6 +276,7 @@ function StatusBanner({
 interface AppStatusBannerProps {
   appStatus: AppStatus;
 }
+
 function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
   const { providersStatus, dustStatus } = appStatus;
 
@@ -277,9 +288,13 @@ function AppStatusBanner({ appStatus }: AppStatusBannerProps) {
         footer={
           <>
             Check our{" "}
-            <Link href={dustStatus.link} target="_blank" className="underline">
+            <LinkWrapper
+              href={dustStatus.link}
+              target="_blank"
+              className="underline"
+            >
               status page
-            </Link>{" "}
+            </LinkWrapper>{" "}
             for updates.
           </>
         }
@@ -313,85 +328,17 @@ function SubscriptionPastDueBanner() {
           <br />
           After 3 attempts, your workspace will be downgraded to the free plan.
           Connections will be deleted and members will be revoked. Details{" "}
-          <Link
+          <LinkWrapper
             href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
             target="_blank"
             className="underline"
           >
             here
-          </Link>
+          </LinkWrapper>
           .
         </>
       }
     />
-  );
-}
-
-const MESSAGE_USAGE_CRITICAL_THRESHOLD = 0.9;
-
-interface TrialMessageUsageProps {
-  isAdmin: boolean;
-  workspaceId: string;
-}
-
-function TrialMessageUsage({ isAdmin, workspaceId }: TrialMessageUsageProps) {
-  const { messageUsage } = useTrialMessageUsage({ workspaceId });
-
-  if (!messageUsage || messageUsage.limit === -1) {
-    return null;
-  }
-
-  const { count, limit } = messageUsage;
-  const percentage = limit > 0 ? count / limit : 0;
-  const isCritical = percentage >= MESSAGE_USAGE_CRITICAL_THRESHOLD;
-  const isAtLimit = count >= limit;
-
-  return (
-    <div
-      className={cn(
-        "mx-3 mb-3 rounded-lg border p-3",
-        "border-border dark:border-border-night",
-        "bg-background dark:bg-background-night"
-      )}
-    >
-      <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="font-semibold text-foreground dark:text-foreground-night">
-          Trial messages used
-        </span>
-        <span className="font-medium text-foreground dark:text-foreground-night">
-          <span className={cn(isCritical && "text-red-600 dark:text-red-400")}>
-            {count}
-          </span>{" "}
-          / {limit}
-        </span>
-      </div>
-      <div
-        className={cn(
-          "h-2 w-full overflow-hidden rounded-full",
-          "bg-gray-100 dark:bg-gray-100-night"
-        )}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            isCritical
-              ? "bg-red-700 dark:bg-red-700-night"
-              : "bg-foreground dark:bg-foreground-night"
-          )}
-          style={{ width: `${Math.min(percentage * 100, 100)}%` }}
-        />
-      </div>
-      {isAtLimit && isAdmin && (
-        <div className="mt-3">
-          <Link
-            href={`/w/${workspaceId}/subscription`}
-            className="no-underline"
-          >
-            <Button label="Subscribe to Dust" variant="primary" />
-          </Link>
-        </div>
-      )}
-    </div>
   );
 }
 

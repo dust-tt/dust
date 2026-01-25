@@ -42,7 +42,7 @@ export const AttachmentViewer = ({
   viewerOpen: boolean;
   setViewerOpen: (open: boolean) => void;
   attachmentCitation: FileAttachmentCitation | MCPAttachmentCitation;
-  conversationId: string | null;
+  conversationId?: string | null;
   owner: LightWorkspaceType;
 }) => {
   const fileUploaderService = useFileUploaderService({

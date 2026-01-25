@@ -47,6 +47,7 @@ import { removeNulls } from "@app/types";
 interface KnowledgeDisplayProps {
   item: KnowledgeItem;
   owner: LightWorkspaceType;
+  isSpacesLoading?: boolean;
   onRemove?: () => void;
   updateAttributes: (attrs: Partial<KnowledgeNodeAttributes>) => void;
 }
@@ -54,6 +55,7 @@ interface KnowledgeDisplayProps {
 export function KnowledgeDisplayComponent({
   item,
   owner,
+  isSpacesLoading = false,
   onRemove,
   updateAttributes,
 }: KnowledgeDisplayProps) {
@@ -62,7 +64,7 @@ export function KnowledgeDisplayComponent({
 
   const { dataSourceView, isDataSourceViewError } = useSpaceDataSourceView({
     dataSourceViewId: item.dataSourceViewId,
-    disabled: !needsFetch,
+    disabled: !needsFetch || isSpacesLoading,
     owner,
     spaceId: item.spaceId,
   });
@@ -158,6 +160,7 @@ function KnowledgeSearchComponent({
   // Get spaces for location display.
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: false,
   });
 
@@ -466,7 +469,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
   node,
   updateAttributes,
 }) => {
-  const { owner } = useSpacesContext();
+  const { owner, isSpacesLoading } = useSpacesContext();
   const { selectedItems } = node.attrs as KnowledgeNodeAttributes;
 
   const handleRemove = useCallback(
@@ -512,6 +515,7 @@ export const KnowledgeNodeView: React.FC<ExtendedNodeViewProps> = ({
         <KnowledgeDisplayComponent
           item={selectedItems[0]}
           owner={owner}
+          isSpacesLoading={isSpacesLoading}
           onRemove={editor.isEditable ? handleRemove : undefined}
           updateAttributes={updateAttributes}
         />

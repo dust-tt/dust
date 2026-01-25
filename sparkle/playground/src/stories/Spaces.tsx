@@ -48,7 +48,7 @@ import {
   TrashIcon,
   UserIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 // Store conversations by ID for lookup (for dynamically generated conversations)
 const conversationCache = new Map<string, Conversation>();
@@ -532,7 +532,7 @@ function DustMain() {
           <DropdownMenuItem
             label="Rename"
             icon={PencilSquareIcon}
-            onClick={(e) => {
+            onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
               console.log("Rename conversation:", conversation.id);
@@ -576,7 +576,7 @@ function DustMain() {
                           />
                         )
                       }
-                      onClick={(e) => {
+                      onClick={(e: MouseEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
                         console.log(
@@ -599,7 +599,7 @@ function DustMain() {
             label="Delete"
             icon={TrashIcon}
             variant="warning"
-            onClick={(e) => {
+            onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
               console.log("Delete conversation:", conversation.id);
@@ -629,7 +629,7 @@ function DustMain() {
           <DropdownMenuTrigger asChild>
             <Card
               size="xs"
-              onClick={(e) => e.preventDefault()}
+              onClick={(e: MouseEvent) => e.preventDefault()}
               className="s-p-1"
               containerClassName="s-flex-1 s-min-w-0"
             >
@@ -655,7 +655,7 @@ function DustMain() {
             <DropdownMenuItem
               label="Profile"
               icon={UserIcon}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("View profile");
@@ -664,7 +664,7 @@ function DustMain() {
             <DropdownMenuItem
               label="Administration"
               icon={Cog6ToothIcon}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("Administration");
@@ -678,7 +678,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Quickstart Guide"
                     icon={LightbulbIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Quickstart Guide");
@@ -687,7 +687,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Guides & Documentation"
                     icon={BookOpenIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Guides & Documentation");
@@ -696,7 +696,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="Join the Slack Community"
                     icon={SlackLogo}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Join the Slack Community");
@@ -707,7 +707,7 @@ function DustMain() {
                     label="Ask @help"
                     description="Ask anything about Dust"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("Ask @help");
@@ -716,7 +716,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="How to invite new users?"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("How to invite new users?");
@@ -725,7 +725,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="How to use agents in Slack workflow?"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("How to use agents in Slack workflow?");
@@ -734,7 +734,7 @@ function DustMain() {
                   <DropdownMenuItem
                     label="How to manage billing?"
                     icon={ChatBubbleLeftRightIcon}
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                       console.log("How to manage billing?");
@@ -747,7 +747,7 @@ function DustMain() {
             <DropdownMenuItem
               label="Signout"
               icon={LogoutIcon}
-              onClick={(e) => {
+              onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
                 console.log("Signout");
@@ -844,7 +844,7 @@ function DustMain() {
                     icon={PlusIcon}
                     variant="ghost"
                     aria-label="Agents options"
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
@@ -856,7 +856,7 @@ function DustMain() {
                         icon={MoreIcon}
                         variant="ghost"
                         aria-label="Spaces options"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
@@ -866,7 +866,7 @@ function DustMain() {
                       <DropdownMenuItem
                         label="Browse"
                         icon={PencilSquareIcon}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Manage Spaces");
@@ -875,7 +875,7 @@ function DustMain() {
                       <DropdownMenuItem
                         icon={PlusIcon}
                         label="Create"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Create Space");
@@ -910,7 +910,7 @@ function DustMain() {
                           <DropdownMenuItem
                             label="Edit"
                             icon={PencilSquareIcon}
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log("Edit space:", space.id);
@@ -919,7 +919,7 @@ function DustMain() {
                           <DropdownMenuItem
                             label="Explore"
                             icon={MagnifyingGlassIcon}
-                            onClick={(e) => {
+                            onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
                               console.log("Explore space:", space.id);
@@ -956,7 +956,7 @@ function DustMain() {
                     variant="ghost"
                     tooltip="Create an Agent"
                     aria-label="Agents options"
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
@@ -968,7 +968,7 @@ function DustMain() {
                         icon={MoreIcon}
                         variant="ghost"
                         aria-label="Agents options"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
@@ -979,7 +979,7 @@ function DustMain() {
                       <DropdownMenuItem
                         label="Create agent"
                         icon={PlusIcon}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Create Agent");
@@ -988,7 +988,7 @@ function DustMain() {
                       <DropdownMenuItem
                         icon={ContactsRobotIcon}
                         label="Manage"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Manage Agents");
@@ -1021,7 +1021,7 @@ function DustMain() {
                                         backgroundColor={agent.backgroundColor}
                                       />
                                     }
-                                    onClick={(e) => {
+                                    onClick={(e: MouseEvent) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       console.log("Edit agent:", agent.id);
@@ -1066,7 +1066,7 @@ function DustMain() {
                                         isRounded={true}
                                       />
                                     }
-                                    onClick={(e) => {
+                                    onClick={(e: MouseEvent) => {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       console.log("Edit person:", person.id);
@@ -1115,7 +1115,7 @@ function DustMain() {
                             <DropdownMenuItem
                               label="Edit"
                               icon={PencilSquareIcon}
-                              onClick={(e) => {
+                              onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 console.log("Edit agent:", agent.id);
@@ -1124,7 +1124,7 @@ function DustMain() {
                             <DropdownMenuItem
                               label="Remove from favorites"
                               icon={StarStrokeIcon}
-                              onClick={(e) => {
+                              onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 console.log("Remove from favorites:", agent.id);
@@ -1134,7 +1134,7 @@ function DustMain() {
                               label="Delete"
                               icon={TrashIcon}
                               variant="warning"
-                              onClick={(e) => {
+                              onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 console.log("Delete agent:", agent.id);
@@ -1180,7 +1180,7 @@ function DustMain() {
                             <DropdownMenuItem
                               label="View profile"
                               icon={UserIcon}
-                              onClick={(e) => {
+                              onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 console.log("View profile:", person.id);
@@ -1190,7 +1190,7 @@ function DustMain() {
                               label="Remove from favorites"
                               icon={TrashIcon}
                               variant="warning"
-                              onClick={(e) => {
+                              onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 console.log(
@@ -1230,7 +1230,7 @@ function DustMain() {
                     variant="ghost"
                     aria-label="New Conversation"
                     tooltip="New Conversation"
-                    onClick={(e) => {
+                    onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
                     }}
@@ -1242,7 +1242,7 @@ function DustMain() {
                         icon={MoreIcon}
                         variant="ghost"
                         aria-label="Conversations options"
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                         }}
@@ -1253,7 +1253,7 @@ function DustMain() {
                       <DropdownMenuItem
                         label="Hide triggered"
                         icon={BoltOffIcon}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Edit Conversations");
@@ -1262,7 +1262,7 @@ function DustMain() {
                       <DropdownMenuItem
                         label="Edit history"
                         icon={ListSelectIcon}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Edit Conversations");
@@ -1272,7 +1272,7 @@ function DustMain() {
                         label="Clear history"
                         variant="warning"
                         icon={TrashIcon}
-                        onClick={(e) => {
+                        onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
                           console.log("Clear history");

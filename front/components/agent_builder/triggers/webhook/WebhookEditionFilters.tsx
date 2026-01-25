@@ -3,10 +3,10 @@ import {
   ContentMessage,
   ContentMessageInline,
   Label,
+  LinkWrapper,
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React, { useMemo, useState } from "react";
 import { useController, useFormContext, useWatch } from "react-hook-form";
 
@@ -209,14 +209,14 @@ export function WebhookEditionFilters({
             to specify conditions on your webhook's payload.
             <br />
             See documentation on{" "}
-            <Link
+            <LinkWrapper
               href="https://docs.dust.tt/docs/filter-webhooks-payload#/"
               target="_blank"
               rel="noreferrer"
               className="underline"
             >
               filter expressions
-            </Link>{" "}
+            </LinkWrapper>{" "}
             to learn how to write them.
           </ContentMessage>
           <TextArea

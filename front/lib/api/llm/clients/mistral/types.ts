@@ -7,6 +7,8 @@ import {
   MISTRAL_SMALL_MODEL_ID,
 } from "@app/types";
 
+export const MISTRAL_PROVIDER_ID = "mistral";
+
 export const MISTRAL_WHITELISTED_MODEL_IDS_WITHOUT_IMAGE_SUPPORT = [
   MISTRAL_CODESTRAL_MODEL_ID,
 ];

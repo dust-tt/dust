@@ -63,11 +63,12 @@ export function MCPRunAgentActionDetails({
 
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global"],
     disabled: addedMCPServerViewIds.length === 0,
   });
   const { serverViews: mcpServerViews } = useMCPServerViews({
     owner,
-    space: spaces.find((s) => s.kind === "global"),
+    space: spaces[0] ?? undefined,
     availability: "all",
     disabled: addedMCPServerViewIds.length === 0,
   });

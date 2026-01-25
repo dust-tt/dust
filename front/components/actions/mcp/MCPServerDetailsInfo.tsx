@@ -1,9 +1,9 @@
 import { Separator } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
+import { MCPServerViewForm } from "@app/components/actions/mcp/create/MCPServerViewForm";
 import { InternalMCPBearerTokenForm } from "@app/components/actions/mcp/InternalMCPBearerTokenForm";
 import { MCPServerSettings } from "@app/components/actions/mcp/MCPServerSettings";
-import { MCPServerViewForm } from "@app/components/actions/mcp/MCPServerViewForm";
 import { RemoteMCPForm } from "@app/components/actions/mcp/RemoteMCPForm";
 import { ToolsList } from "@app/components/actions/mcp/ToolsList";
 import {

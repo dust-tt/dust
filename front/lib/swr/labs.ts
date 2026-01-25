@@ -121,9 +121,9 @@ export function useUpdateTranscriptsConfiguration({
       type: "success",
       title: "Success!",
       description:
-        // Check if we're updating processing (isActive field)
-        data.isActive !== undefined
-          ? data.isActive
+        // Check if we're updating processing (status field)
+        data.status !== undefined
+          ? data.status === "active"
             ? "We will now process your meeting transcripts."
             : "We will no longer process your meeting transcripts."
           : // Check if we're updating storage (dataSourceViewId field)

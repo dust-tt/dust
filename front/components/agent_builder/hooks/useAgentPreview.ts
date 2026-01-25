@@ -106,16 +106,18 @@ export function useDraftAgent() {
 export function useDraftConversation({
   draftAgent,
   getDraftAgent,
+  clientSideMCPServerId,
 }: {
   draftAgent: LightAgentConfigurationType | null;
   getDraftAgent: () => Promise<LightAgentConfigurationType | null>;
+  clientSideMCPServerId?: string;
 }) {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
   const sendNotification = useSendNotification();
-  const [conversation, setConversation] = useState<ConversationType | null>(
-    null
-  );
+  const [conversation, setConversation] = useState<
+    ConversationType | undefined
+  >();
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -160,6 +162,10 @@ export function useDraftConversation({
           configurationId: mention.id,
         })),
         contentFragments,
+        // Include client-side MCP server IDs for the agent builder copilot.
+        clientSideMCPServerIds: clientSideMCPServerId
+          ? [clientSideMCPServerId]
+          : undefined,
       };
 
       const result = await createConversationWithMessage({
@@ -185,6 +191,7 @@ export function useDraftConversation({
       });
     },
     [
+      clientSideMCPServerId,
       createConversationWithMessage,
       draftAgent?.sId,
       getDraftAgent,
@@ -193,7 +200,7 @@ export function useDraftConversation({
   );
 
   const resetConversation = useCallback(() => {
-    setConversation(null);
+    setConversation(undefined);
   }, [setConversation]);
 
   return {

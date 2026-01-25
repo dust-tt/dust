@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   ExternalLinkIcon,
+  LinkWrapper,
   MagnifyingGlassIcon,
   ScrollArea,
   ScrollBar,
@@ -18,7 +19,6 @@ import {
   Tooltip,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import Link from "next/link";
 import { useState } from "react";
 
 import {
@@ -149,15 +149,15 @@ export function ViewDataSourceTable({
                 <PokeTableRow>
                   <PokeTableCell>Logs</PokeTableCell>
                   <PokeTableCell>
-                    <Link
+                    <LinkWrapper
                       href={`https://app.datadoghq.eu/logs?query=%40connectorId%3A${dataSource.connectorId}`}
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >
                       Datadog(connector)
-                    </Link>{" "}
+                    </LinkWrapper>{" "}
                     /{" "}
-                    <Link
+                    <LinkWrapper
                       href={`https://cloud.temporal.io/namespaces/${temporalWorkspace}/${
                         isScheduleBased ? "schedules" : "workflows"
                       }?query=connectorId%3D%22${dataSource.connectorId}%22`}
@@ -165,15 +165,15 @@ export function ViewDataSourceTable({
                       className="text-sm text-highlight-400"
                     >
                       Temporal
-                    </Link>{" "}
+                    </LinkWrapper>{" "}
                     /{" "}
-                    <Link
+                    <LinkWrapper
                       href={`https://app.datadoghq.eu/logs?query=service%3Acore%20%40data_source_internal_id%3A${coreDataSource.data_source_internal_id}%20&agg_m=count&agg_m_source=base&agg_t=count&cols=host%2Cservice&fromUser=true&messageDisplay=inline&refresh_mode=sliding&storage=hot&stream_sort=desc&view=spans&viz=stream`}
                       target="_blank"
                       className="text-sm text-highlight-400"
                     >
                       Datadog(Qdrant)
-                    </Link>
+                    </LinkWrapper>
                   </PokeTableCell>
                 </PokeTableRow>
                 {connector && (

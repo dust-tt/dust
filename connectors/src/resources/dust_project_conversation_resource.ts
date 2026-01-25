@@ -5,6 +5,7 @@ import type { Attributes, ModelStatic, Transaction } from "sequelize";
 import { DustProjectConversationModel } from "@connectors/lib/models/dust_project";
 import logger from "@connectors/logger/logger";
 import { BaseResource } from "@connectors/resources/base_resource";
+import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ReadonlyAttributesType } from "@connectors/resources/storage/types";
 import type { ModelId } from "@connectors/types";
 import { normalizeError } from "@connectors/types";
@@ -153,6 +154,19 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
       );
       return new Err(normalizeError(err));
     }
+  }
+
+  static async deleteByConnector(
+    connector: ConnectorResource,
+    transaction?: Transaction
+  ): Promise<Result<undefined, Error>> {
+    await this.model.destroy({
+      where: {
+        connectorId: connector.id,
+      },
+      transaction,
+    });
+    return new Ok(undefined);
   }
 
   static async getMaxSourceUpdatedAt(

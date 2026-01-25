@@ -30,6 +30,7 @@ import { SalesforceOAuthProvider } from "@app/lib/api/oauth/providers/salesforce
 import { SlackOAuthProvider } from "@app/lib/api/oauth/providers/slack";
 import { SlackToolsOAuthProvider } from "@app/lib/api/oauth/providers/slack_tools";
 import { SnowflakeOAuthProvider } from "@app/lib/api/oauth/providers/snowflake";
+import { UkgReadyOAuthProvider } from "@app/lib/api/oauth/providers/ukg_ready";
 import { VantaOAuthProvider } from "@app/lib/api/oauth/providers/vanta";
 import { ZendeskOAuthProvider } from "@app/lib/api/oauth/providers/zendesk";
 import { finalizeUriForProvider } from "@app/lib/api/oauth/utils";
@@ -81,6 +82,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   slack: new SlackOAuthProvider(),
   slack_tools: new SlackToolsOAuthProvider(),
   snowflake: new SnowflakeOAuthProvider(),
+  ukg_ready: new UkgReadyOAuthProvider(),
   zendesk: new ZendeskOAuthProvider(),
   vanta: new VantaOAuthProvider(),
 };

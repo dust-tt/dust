@@ -23,9 +23,11 @@ import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
 import type {
   ContentFragmentsType,
+  ConversationWithoutContentType,
   DataSourceViewContentNode,
   Result,
   RichMention,
+  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -44,7 +46,9 @@ interface InputBarProps {
     selectedMCPServerViewIds?: string[],
     selectedSkillIds?: string[]
   ) => Promise<Result<undefined, DustError>>;
-  conversationId: string | null;
+  draftKey: string;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
   stickyMentions?: RichMention[];
   actions?: InputBarContainerProps["actions"];
   disableAutoFocus: boolean;
@@ -59,7 +63,9 @@ export const InputBar = React.memo(function InputBar({
   owner,
   user,
   onSubmit,
-  conversationId,
+  conversation,
+  draftKey,
+  space,
   stickyMentions,
   actions = DEFAULT_INPUT_BAR_ACTIONS,
   disableAutoFocus = false,
@@ -84,7 +90,9 @@ export const InputBar = React.memo(function InputBar({
   const fileUploaderService = useFileUploaderService({
     owner,
     useCase: "conversation",
-    useCaseMetadata: conversationId ? { conversationId } : undefined,
+    useCaseMetadata: conversation
+      ? { conversationId: conversation.sId }
+      : undefined,
   });
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
@@ -92,7 +100,7 @@ export const InputBar = React.memo(function InputBar({
   const { saveDraft, getDraft, clearDraft } = useConversationDrafts({
     workspaceId: owner.sId,
     userId: user?.sId ?? null,
-    conversationId,
+    draftKey,
     shouldUseDraft,
   });
 
@@ -151,7 +159,7 @@ export const InputBar = React.memo(function InputBar({
   const [selectedSkills, setSelectedSkills] = useState<SkillType[]>([]);
 
   const { conversationTools } = useConversationTools({
-    conversationId,
+    conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
 
@@ -161,12 +169,12 @@ export const InputBar = React.memo(function InputBar({
   }, [conversationTools]);
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
-    conversationId,
+    conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
 
   const { conversationSkills } = useConversationSkills({
-    conversationId,
+    conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
 
@@ -177,7 +185,7 @@ export const InputBar = React.memo(function InputBar({
 
   // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
   const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
-    conversationId,
+    conversationId: conversation?.sId,
     workspaceId: owner.sId,
   });
 
@@ -231,13 +239,13 @@ export const InputBar = React.memo(function InputBar({
       object: "message_send",
       action: "submit",
       extra: {
-        conversation_id: conversationId ?? "new",
+        conversation_id: conversation?.sId ?? "new",
         has_attachments: attachedNodes.length > 0 || uploadedFiles.length > 0,
         has_tools: selectedMCPServerViews.length > 0,
         has_agents: mentionedAgents.length > 0,
         has_default_agent: mentionedAgents.some((a) => isGlobalAgentId(a.sId)),
         has_custom_agent: mentionedAgents.some((a) => !isGlobalAgentId(a.sId)),
-        is_new_conversation: !conversationId,
+        is_new_conversation: !conversation,
         agent_count: mentions.length,
         agent_ids: mentionedAgents.map((a) => a.sId).join(","),
         attachment_count: attachedNodes.length + uploadedFiles.length,
@@ -249,7 +257,7 @@ export const InputBar = React.memo(function InputBar({
 
     // When we are creating a new conversation, we will disable the input bar, show a loading
     // spinner and in case of error, re-enable the input bar
-    if (!conversationId) {
+    if (!conversation) {
       setLoading(true);
       setIsLocalSubmitting(true);
 
@@ -277,8 +285,8 @@ export const InputBar = React.memo(function InputBar({
       setLoading(false);
       setIsLocalSubmitting(false);
       if (r.isOk()) {
-        resetEditorText();
         clearDraft();
+        resetEditorText();
         fileUploaderService.resetUpload();
       }
     } else {
@@ -351,7 +359,7 @@ export const InputBar = React.memo(function InputBar({
               items: attachedNodes,
               onRemove: handleNodesAttachmentRemove,
             }}
-            conversationId={conversationId}
+            conversationId={conversation?.sId}
             disable={disable}
           />
           <InputBarContainer
@@ -359,7 +367,8 @@ export const InputBar = React.memo(function InputBar({
             disableAutoFocus={disableAutoFocus}
             allAgents={activeAgents}
             owner={owner}
-            conversationId={conversationId}
+            conversation={conversation}
+            space={space}
             selectedAgent={selectedAgent}
             onEnterKeyDown={handleSubmit}
             stickyMentions={stickyMentions}

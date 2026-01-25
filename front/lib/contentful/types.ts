@@ -16,6 +16,7 @@ export interface BlogPageFields {
   image?: Asset;
   publishedAt?: string;
   authors?: Entry<AuthorSkeleton>[];
+  isSeoArticle?: boolean;
 }
 
 export type BlogPageSkeleton = EntrySkeletonType<BlogPageFields, "blogPage">;
@@ -43,6 +44,7 @@ export interface BlogPost {
   authors: BlogAuthor[];
   createdAt: string;
   updatedAt: string;
+  isSeoArticle: boolean;
 }
 
 export interface BlogPostSummary {
@@ -53,6 +55,7 @@ export interface BlogPostSummary {
   tags: string[];
   image: BlogImage | null;
   createdAt: string;
+  isSeoArticle: boolean;
 }
 
 export interface BlogListingPageProps {
@@ -186,6 +189,145 @@ export interface CustomerStoryListingPageProps {
 export interface CustomerStoryPageProps {
   story: CustomerStory;
   relatedStories: CustomerStorySummary[];
+  gtmTrackingId: string | null;
+  preview?: boolean;
+}
+
+// Course types
+
+export interface CourseFields {
+  title: string;
+  dateOfAddition: string;
+  courseImage: Asset;
+  description: string;
+  courseId: string;
+  slug: string;
+  tableOfContents?: string;
+  estimatedDurationMinutes?: number;
+  preRequisites?: Document;
+  courseContent: Document;
+  previousCourse?: Entry<CourseSkeleton>;
+  nextCourse?: Entry<CourseSkeleton>;
+  author?: Entry<AuthorSkeleton>;
+}
+
+export type CourseSkeleton = EntrySkeletonType<CourseFields, "course">;
+
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  courseId: string | null;
+  dateOfAddition: string | null;
+  estimatedDurationMinutes: number | null;
+  courseContent: Document;
+  preRequisites: Document | null;
+  tableOfContents: string | null;
+  image: BlogImage | null;
+  author: BlogAuthor | null;
+  previousCourse: CourseSummary | null;
+  nextCourse: CourseSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseSummary {
+  kind: "course";
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  courseId: string | null;
+  dateOfAddition: string | null;
+  estimatedDurationMinutes: number | null;
+  image: BlogImage | null;
+  createdAt: string;
+}
+
+export interface CourseListingPageProps {
+  courses: CourseSummary[];
+  gtmTrackingId: string | null;
+}
+
+export interface CoursePageProps {
+  course: Course;
+  courses: CourseSummary[];
+  gtmTrackingId: string | null;
+  preview?: boolean;
+}
+
+// Lesson types
+
+export interface LessonFields {
+  title: string;
+  dateOfAddition: string;
+  description: string;
+  lessonObjectives?: string;
+  lessonId: string;
+  slug: string;
+  estimatedDurationMinutes?: number;
+  preRequisites?: Document;
+  lessonContent: Document;
+  previousContent?: Entry<CourseSkeleton | LessonSkeleton>;
+  nextContent?: Entry<CourseSkeleton | LessonSkeleton>;
+  Category?: string;
+  tools?: string[];
+  complexity?: string;
+  parentCourse?: Entry<CourseSkeleton>;
+}
+
+export type LessonSkeleton = EntrySkeletonType<LessonFields, "lesson">;
+
+export type ContentSummary = CourseSummary | LessonSummary;
+
+export interface Lesson {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  lessonId: string | null;
+  dateOfAddition: string | null;
+  estimatedDurationMinutes: number | null;
+  lessonObjectives: string | null;
+  lessonContent: Document;
+  preRequisites: Document | null;
+  previousContent: ContentSummary | null;
+  nextContent: ContentSummary | null;
+  category: string | null;
+  tools: string[];
+  complexity: string | null;
+  parentCourse: CourseSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LessonSummary {
+  kind: "lesson";
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  lessonId: string | null;
+  estimatedDurationMinutes: number | null;
+  createdAt: string;
+}
+
+export function isCourseSummary(
+  content: ContentSummary
+): content is CourseSummary {
+  return content.kind === "course";
+}
+
+export function isLessonSummary(
+  content: ContentSummary
+): content is LessonSummary {
+  return content.kind === "lesson";
+}
+
+export interface LessonPageProps {
+  lesson: Lesson;
+  courses: CourseSummary[];
   gtmTrackingId: string | null;
   preview?: boolean;
 }

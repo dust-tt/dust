@@ -192,7 +192,7 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
   } else {
     switch (customerPaymentStatus) {
       case "not_paying":
-        logger.info(
+        logger.warn(
           {
             workspaceId: workspaceSId,
             subscriptionId: stripeSubscription.id,
@@ -287,6 +287,165 @@ export async function grantFreeCreditsFromSubscriptionStateChange({
       periodEnd,
     },
     "[Free Credits] Successfully granted and activated free credit on renewal"
+  );
+
+  return new Ok(undefined);
+}
+
+const YEARLY_MULTIPLIER = 12;
+
+export async function grantFreeCreditFromSubscriptionStateChangeYearly({
+  auth,
+  stripeSubscription,
+}: {
+  auth: Authenticator;
+  stripeSubscription: Stripe.Subscription;
+}): Promise<Result<undefined, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const workspaceSId = workspace.sId;
+
+  // Check if credit already exists for this billing cycle (idempotency)
+  const idempotencyKey = `free-renewal-yearly-${stripeSubscription.id}-${stripeSubscription.current_period_start}`;
+  const existingCredit = await CreditResource.fetchByInvoiceOrLineItemId(
+    auth,
+    idempotencyKey
+  );
+
+  if (existingCredit) {
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        creditId: existingCredit.id,
+        subscriptionId: stripeSubscription.id,
+      },
+      "[Free Credits Yearly] Credit already exists for this billing cycle, skipping"
+    );
+    return new Ok(undefined);
+  }
+
+  const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+  const customerPaymentStatus: CustomerPaymentStatus =
+    await getCustomerPaymentStatus(stripeSubscription);
+
+  logger.info(
+    {
+      workspaceId: workspaceSId,
+      subscriptionId: stripeSubscription.id,
+      isEnterprise,
+    },
+    "[Free Credits Yearly] Processing free credit grant on yearly subscription renewal"
+  );
+
+  // Yearly subscriptions don't have trials - must be paying
+  if (customerPaymentStatus !== "paying") {
+    logger.warn(
+      {
+        workspaceId: workspaceSId,
+        subscriptionId: stripeSubscription.id,
+        customerPaymentStatus,
+      },
+      "[Free Credits Yearly] Yearly subscription not eligible for free credits (not paying)"
+    );
+    return new Err(
+      new Error("Yearly subscription not eligible for free credits")
+    );
+  }
+
+  let creditAmountMicroUsd: number;
+
+  const programmaticConfig =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  if (programmaticConfig && programmaticConfig.freeCreditMicroUsd !== null) {
+    // For yearly subscriptions, the configured amount is assumed to be yearly
+    creditAmountMicroUsd = programmaticConfig.freeCreditMicroUsd;
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        creditAmountMicroUsd,
+      },
+      "[Free Credits Yearly] Using ProgrammaticUsageConfiguration override amount (yearly)"
+    );
+  } else {
+    // Calculate monthly amount and multiply by 12 for yearly
+    const userCount = await countEligibleUsersForFreeCredits(workspace);
+    const monthlyAmountMicroUsd = calculateFreeCreditAmountMicroUsd(userCount);
+    creditAmountMicroUsd = monthlyAmountMicroUsd * YEARLY_MULTIPLIER;
+    logger.info(
+      {
+        workspaceId: workspaceSId,
+        userCount,
+        monthlyAmountMicroUsd,
+        creditAmountMicroUsd,
+      },
+      "[Free Credits Yearly] Calculated credit amount using brackets system x 12"
+    );
+  }
+
+  assert(
+    creditAmountMicroUsd > 0,
+    "Unexpected programmatic usage free credit amount equal to zero"
+  );
+
+  const periodStart = new Date(stripeSubscription.current_period_start * 1000);
+  const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
+
+  const credit = await CreditResource.makeNew(auth, {
+    type: "free",
+    initialAmountMicroUsd: creditAmountMicroUsd,
+    consumedAmountMicroUsd: 0,
+    discount: null,
+    invoiceOrLineItemId: idempotencyKey,
+  });
+
+  logger.info(
+    {
+      workspaceId: workspaceSId,
+      creditId: credit.id,
+      creditAmountMicroUsd,
+      periodStart,
+      periodEnd,
+    },
+    "[Free Credits Yearly] Created credit, now starting"
+  );
+
+  // Start the credit at beginning of billing cycle (spans the full year).
+  const startResult = await credit.start(auth, {
+    startDate: periodStart,
+    expirationDate: periodEnd,
+  });
+  if (startResult.isErr()) {
+    logger.error(
+      {
+        panic: true,
+        workspaceId: workspaceSId,
+        creditId: credit.id,
+        error: startResult.error,
+      },
+      "[Free Credits Yearly] Error starting credit"
+    );
+    statsDClient.increment("credits.top_up.error", 1, [
+      `workspace_id:${workspaceSId}`,
+      "type:free_yearly",
+      `customer:${isEnterprise ? "enterprise" : "pro"}`,
+    ]);
+    return new Err(startResult.error);
+  }
+
+  statsDClient.increment("credits.top_up.success", 1, [
+    `workspace_id:${workspaceSId}`,
+    "type:free_yearly",
+    `customer:${isEnterprise ? "enterprise" : "pro"}`,
+  ]);
+  logger.info(
+    {
+      workspaceId: workspaceSId,
+      creditId: credit.id,
+      creditAmountMicroUsd,
+      periodStart,
+      periodEnd,
+    },
+    "[Free Credits Yearly] Successfully granted and activated free credit on yearly renewal"
   );
 
   return new Ok(undefined);

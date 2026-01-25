@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
-import { CreateMCPServerDialog } from "@app/components/actions/mcp/CreateMCPServerDialog";
+import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -148,14 +148,11 @@ export function ToolsPicker({
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasSkillsFeature = hasFeature("skills");
 
-  const { spaces } = useSpaces({
+  const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global"],
     disabled: !shouldFetchToolsData,
   });
-  const globalSpaces = useMemo(
-    () => spaces.filter((s) => s.kind === "global"),
-    [spaces]
-  );
 
   const isAdmin = owner.role === "admin";
 

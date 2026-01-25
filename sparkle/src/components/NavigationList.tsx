@@ -167,7 +167,7 @@ const NavigationListItem = React.forwardRef<
             {icon && <Icon visual={icon} size="xs" className="s-m-0.5" />}
             {avatar}
             {label && (
-              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-hover/menu-item:s-pr-8 group-focus-within/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
+              <span className="s-grow s-overflow-hidden s-text-ellipsis s-whitespace-nowrap group-focus-within/menu-item:s-pr-8 group-hover/menu-item:s-pr-8 group-data-[selected=true]/menu-item:s-pr-8">
                 {label}
               </span>
             )}
@@ -179,7 +179,7 @@ const NavigationListItem = React.forwardRef<
                 className={cn(
                   "s-flex-shrink-0 s-translate-x-0.5",
                   moreMenu &&
-                    "group-hover/menu-item:s-hidden group-focus-within/menu-item:s-hidden"
+                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden"
                 )}
               />
             )}
@@ -188,7 +188,7 @@ const NavigationListItem = React.forwardRef<
                 className={cn(
                   "s-heading-xs s-flex s-flex-shrink-0 s-items-center s-justify-center s-rounded-full",
                   moreMenu &&
-                    "group-hover/menu-item:s-hidden group-focus-within/menu-item:s-hidden",
+                    "group-focus-within/menu-item:s-hidden group-hover/menu-item:s-hidden",
                   getStatusDotColor()
                 )}
               />
@@ -282,7 +282,7 @@ const NavigationListLabel = React.forwardRef<
 NavigationListLabel.displayName = "NavigationListLabel";
 
 const variantCompactStyles = cva(
-  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
+  "s-flex s-px-2 s-py-1 s-pl-3 s-text-[10px] s-font-semibold s-text-foreground dark:s-text-foreground-night s-pt-3 s-uppercase s-whitespace-nowrap s-overflow-hidden s-text-ellipsis",
   {
     variants: {
       isSticky: {

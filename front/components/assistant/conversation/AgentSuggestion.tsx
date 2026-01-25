@@ -6,7 +6,6 @@ import {
   Page,
   RobotIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import {
   useCallback,
   useContext,
@@ -20,6 +19,7 @@ import { AgentPicker } from "@app/components/assistant/AgentPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import { useAddUserMessageMention } from "@app/hooks/useAddUserMessageMention";
 import { useSubmitFunction } from "@app/lib/client/utils";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useAgentConfigurations,
   useSuggestedAgentConfigurations,
@@ -65,7 +65,7 @@ export function AgentSuggestion({
   const autoSelectedMessageIdRef = useRef<string | null>(null);
   const [showSuggestion, setShowSuggestion] = useState(false);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { setSelectedAgent } = useContext(InputBarContext);
 
   const dustAgent = agentConfigurations.find(

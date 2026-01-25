@@ -80,6 +80,10 @@ AgentStepContentModel.init(
       },
       {
         concurrently: true,
+        fields: ["agentMessageId"],
+      },
+      {
+        concurrently: true,
         fields: ["workspaceId", "agentMessageId"],
       },
       {

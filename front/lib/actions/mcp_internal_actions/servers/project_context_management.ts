@@ -9,15 +9,15 @@ import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
-import { getProjectContextDataSourceView } from "@app/lib/api/assistant/jit/utils";
-import { getOrCreateProjectContextDataSource } from "@app/lib/api/data_sources";
-import { processAndUpsertToDataSource } from "@app/lib/api/files/upsert";
+import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
+import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { FileUseCase, SupportedFileContentType } from "@app/types";
+import { normalizeError } from "@app/types";
 import {
   Err,
   isAllSupportedFileContentType,
@@ -28,6 +28,9 @@ import {
 const LIST_PROJECT_FILES_TOOL_NAME = "list_project_files";
 const ADD_PROJECT_FILE_TOOL_NAME = "add_project_file";
 const UPDATE_PROJECT_FILE_TOOL_NAME = "update_project_file";
+const EDIT_PROJECT_DESCRIPTION_TOOL_NAME = "edit_project_description";
+const ADD_PROJECT_URL_TOOL_NAME = "add_project_url";
+const EDIT_PROJECT_URL_TOOL_NAME = "edit_project_url";
 
 // Use cases that are not allowed for copying.
 const DISALLOWED_USE_CASES: FileUseCase[] = [
@@ -109,9 +112,9 @@ function createServer(
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(
-              `Failed to list project files: ${error instanceof Error ? error.message : String(error)}`
-            )
+            new MCPError("Failed to list project files", {
+              cause: normalizeError(error),
+            })
           );
         }
       }
@@ -254,34 +257,7 @@ function createServer(
               )
             );
           }
-
-          // Get or create project context datasource.
-          const dataSourceRes = await getOrCreateProjectContextDataSource(
-            auth,
-            space
-          );
-
-          if (dataSourceRes.isErr()) {
-            logger.error(
-              {
-                error: dataSourceRes.error,
-                spaceId: space.sId,
-              },
-              "Failed to get/create project context datasource"
-            );
-            return new Err(
-              new MCPError(
-                `Failed to create project datasource: ${dataSourceRes.error.message}`
-              )
-            );
-          }
-
-          // Upsert to datasource
-          const upsertRes = await processAndUpsertToDataSource(
-            auth,
-            dataSourceRes.value,
-            { file }
-          );
+          const upsertRes = await upsertProjectContextFile(auth, file);
 
           if (upsertRes.isErr()) {
             logger.error(
@@ -311,9 +287,9 @@ function createServer(
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(
-              `Failed to add file: ${error instanceof Error ? error.message : String(error)}`
-            )
+            new MCPError("Failed to add file", {
+              cause: normalizeError(error),
+            })
           );
         }
       }
@@ -354,7 +330,7 @@ function createServer(
           return contextRes;
         }
 
-        const { conversation, space } = contextRes.value;
+        const { space } = contextRes.value;
 
         // Check write permissions.
         if (!space.canWrite(auth)) {
@@ -440,29 +416,17 @@ function createServer(
           await file.uploadContent(auth, fileContent);
 
           // Re-upsert to datasource to update search index.
-          const projectDataSourceView = await getProjectContextDataSourceView(
-            auth,
-            conversation
-          );
+          const upsertRes = await upsertProjectContextFile(auth, file);
 
-          if (projectDataSourceView) {
-            const dataSource = projectDataSourceView.dataSource;
-            const upsertRes = await processAndUpsertToDataSource(
-              auth,
-              dataSource,
-              { file }
+          if (upsertRes.isErr()) {
+            logger.error(
+              {
+                error: upsertRes.error,
+                fileId: file.sId,
+              },
+              "Failed to re-index updated file"
             );
-
-            if (upsertRes.isErr()) {
-              logger.error(
-                {
-                  error: upsertRes.error,
-                  fileId: file.sId,
-                },
-                "Failed to re-index updated file"
-              );
-              // Don't fail - content is updated, just not re-indexed.
-            }
+            // Don't fail - content is updated, just not re-indexed.
           }
 
           return new Ok([
@@ -482,9 +446,315 @@ function createServer(
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(
-              `Failed to update file: ${error instanceof Error ? error.message : String(error)}`
-            )
+            new MCPError("Failed to update file", {
+              cause: normalizeError(error),
+            })
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    EDIT_PROJECT_DESCRIPTION_TOOL_NAME,
+    "Edit the project description. This updates the project's description text.",
+    {
+      description: z
+        .string()
+        .describe("New project description (free-form text)."),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: EDIT_PROJECT_DESCRIPTION_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (params) => {
+        const contextRes = await getConversationAndSpace(
+          auth,
+          agentLoopContext
+        );
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        // Check write permissions for the space.
+        if (!space.canWrite(auth)) {
+          return new Err(
+            new MCPError("You do not have write permissions for this project", {
+              tracked: false,
+            })
+          );
+        }
+
+        const { description } = params;
+
+        try {
+          // Fetch or create project metadata.
+          let metadata = await ProjectMetadataResource.fetchBySpace(
+            auth,
+            space
+          );
+
+          if (!metadata) {
+            // Create metadata if it doesn't exist.
+            metadata = await ProjectMetadataResource.makeNew(auth, space, {
+              description,
+              urls: [],
+            });
+          } else {
+            // Update existing metadata.
+            const updateRes = await metadata.updateMetadata({ description });
+            if (updateRes.isErr()) {
+              return new Err(
+                new MCPError(
+                  `Failed to update project description: ${updateRes.error.message}`,
+                  { tracked: false }
+                )
+              );
+            }
+          }
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  description,
+                  message: "Project description updated successfully.",
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (error) {
+          return new Err(
+            new MCPError("Failed to edit project description", {
+              cause: normalizeError(error),
+            })
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    ADD_PROJECT_URL_TOOL_NAME,
+    "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
+    {
+      name: z
+        .string()
+        .describe("Name/label for the URL (e.g., 'Documentation')"),
+      url: z.string().describe("The URL to add"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: ADD_PROJECT_URL_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (params) => {
+        const contextRes = await getConversationAndSpace(
+          auth,
+          agentLoopContext
+        );
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        // Check write permissions for the space.
+        if (!space.canWrite(auth)) {
+          return new Err(
+            new MCPError("You do not have write permissions for this project", {
+              tracked: false,
+            })
+          );
+        }
+
+        const { name, url } = params;
+
+        try {
+          // Fetch or create project metadata.
+          let metadata = await ProjectMetadataResource.fetchBySpace(
+            auth,
+            space
+          );
+
+          if (!metadata) {
+            // Create metadata with the new URL.
+            metadata = await ProjectMetadataResource.makeNew(auth, space, {
+              description: null,
+              urls: [{ name, url }],
+            });
+          } else {
+            // Add the new URL to existing URLs.
+            const existingUrls = metadata.urls;
+            const updatedUrls = [...existingUrls, { name, url }];
+
+            const updateRes = await metadata.updateMetadata({
+              urls: updatedUrls,
+            });
+            if (updateRes.isErr()) {
+              return new Err(
+                new MCPError(
+                  `Failed to add project URL: ${updateRes.error.message}`,
+                  { tracked: false }
+                )
+              );
+            }
+          }
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  name,
+                  url,
+                  message: `URL "${name}" added to project successfully.`,
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (error) {
+          return new Err(
+            new MCPError("Failed to add project URL", {
+              cause: normalizeError(error),
+            })
+          );
+        }
+      }
+    )
+  );
+
+  server.tool(
+    EDIT_PROJECT_URL_TOOL_NAME,
+    "Edit an existing URL in the project. You can change the name and/or the URL itself. " +
+      "Identify the URL to edit by its current name.",
+    {
+      currentName: z.string().describe("Current name/label of the URL to edit"),
+      newName: z
+        .string()
+        .optional()
+        .describe("New name/label for the URL (leave empty to keep current)"),
+      newUrl: z
+        .string()
+        .optional()
+        .describe("New URL value (leave empty to keep current)"),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: EDIT_PROJECT_URL_TOOL_NAME,
+        agentLoopContext,
+      },
+      async (params) => {
+        const contextRes = await getConversationAndSpace(
+          auth,
+          agentLoopContext
+        );
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+
+        // Check write permissions for the space.
+        if (!space.canWrite(auth)) {
+          return new Err(
+            new MCPError("You do not have write permissions for this project", {
+              tracked: false,
+            })
+          );
+        }
+
+        const { currentName, newName, newUrl } = params;
+
+        // Validate at least one field is being updated.
+        if (!newName && !newUrl) {
+          return new Err(
+            new MCPError("At least one of newName or newUrl must be provided", {
+              tracked: false,
+            })
+          );
+        }
+
+        try {
+          // Fetch project metadata.
+          const metadata = await ProjectMetadataResource.fetchBySpace(
+            auth,
+            space
+          );
+
+          if (!metadata) {
+            return new Err(
+              new MCPError("No project metadata found", { tracked: false })
+            );
+          }
+
+          // Find the URL to edit.
+          const existingUrls = metadata.urls;
+          const urlIndex = existingUrls.findIndex(
+            (item) => item.name === currentName
+          );
+
+          if (urlIndex === -1) {
+            return new Err(
+              new MCPError(`URL with name "${currentName}" not found`, {
+                tracked: false,
+              })
+            );
+          }
+
+          // Update the URL.
+          const updatedUrls = [...existingUrls];
+          updatedUrls[urlIndex] = {
+            name: newName ?? existingUrls[urlIndex].name,
+            url: newUrl ?? existingUrls[urlIndex].url,
+          };
+
+          const updateRes = await metadata.updateMetadata({
+            urls: updatedUrls,
+          });
+          if (updateRes.isErr()) {
+            return new Err(
+              new MCPError(
+                `Failed to edit project URL: ${updateRes.error.message}`,
+                { tracked: false }
+              )
+            );
+          }
+
+          return new Ok([
+            {
+              type: "text" as const,
+              text: JSON.stringify(
+                {
+                  success: true,
+                  oldName: currentName,
+                  newName: newName ?? currentName,
+                  newUrl: newUrl ?? "unchanged",
+                  message: `URL "${currentName}" updated successfully.`,
+                },
+                null,
+                2
+              ),
+            },
+          ]);
+        } catch (error) {
+          return new Err(
+            new MCPError("Failed to edit project URL", {
+              cause: normalizeError(error),
+            })
           );
         }
       }

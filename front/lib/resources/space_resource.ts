@@ -32,7 +32,13 @@ import type {
   SpaceKind,
   SpaceType,
 } from "@app/types";
-import { Err, GLOBAL_SPACE_NAME, Ok, removeNulls } from "@app/types";
+import {
+  assertNever,
+  Err,
+  GLOBAL_SPACE_NAME,
+  Ok,
+  removeNulls,
+} from "@app/types";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -60,24 +66,46 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async makeNew(
     blob: CreationAttributes<SpaceModel>,
-    groups: GroupResource[],
+    groups: { members: GroupResource[]; editors?: GroupResource[] },
     transaction?: Transaction
   ) {
     return withTransaction(async (t: Transaction) => {
       const space = await SpaceModel.create(blob, { transaction: t });
+      const { members, editors = [] } = groups;
 
-      for (const group of groups) {
+      for (const memberGroup of members) {
         await GroupSpaceModel.create(
           {
-            groupId: group.id,
+            groupId: memberGroup.id,
             vaultId: space.id,
             workspaceId: space.workspaceId,
+            kind: "member",
           },
           { transaction: t }
         );
       }
+      if (editors.length > 0) {
+        assert(
+          blob.kind === "project",
+          "Only projects can have editor groups."
+        );
+        for (const editorGroup of editors) {
+          await GroupSpaceModel.create(
+            {
+              groupId: editorGroup.id,
+              vaultId: space.id,
+              workspaceId: space.workspaceId,
+              kind: "project_editor",
+            },
+            { transaction: t }
+          );
+        }
+      }
 
-      return new this(SpaceModel, space.get(), groups);
+      return new this(SpaceModel, space.get(), [
+        ...groups.members,
+        ...(groups.editors ?? []),
+      ]);
     }, transaction);
   }
 
@@ -106,7 +134,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "system",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [systemGroup],
+        { members: [systemGroup] },
         transaction
       ));
 
@@ -119,7 +147,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "global",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup],
+        { members: [globalGroup] },
         transaction
       ));
 
@@ -132,7 +160,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
           kind: "conversations",
           workspaceId: auth.getNonNullableWorkspace().id,
         },
-        [globalGroup],
+        { members: [globalGroup] },
         transaction
       ));
 
@@ -199,28 +227,41 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   static async listWorkspaceSpaces(
     auth: Authenticator,
-    options?: { includeConversationsSpace?: boolean; includeDeleted?: boolean },
+    options?: {
+      includeConversationsSpace?: boolean;
+      includeProjectSpaces?: boolean;
+      includeDeleted?: boolean;
+    },
     t?: Transaction
   ): Promise<SpaceResource[]> {
     const spaces = await this.baseFetch(
       auth,
       {
         includeDeleted: options?.includeDeleted,
+        where: {
+          kind: {
+            [Op.in]: [
+              "system",
+              "global",
+              "regular",
+              "public",
+              ...(options?.includeConversationsSpace ? ["conversations"] : []),
+              ...(options?.includeProjectSpaces ? ["project"] : []),
+            ],
+          },
+        },
       },
       t
     );
 
-    if (!options?.includeConversationsSpace) {
-      return spaces.filter((s) => !s.isConversations());
-    }
     return spaces;
   }
 
   static async listWorkspaceSpacesAsMember(auth: Authenticator) {
     const spaces = await this.baseFetch(auth);
 
-    // Filtering to the spaces the auth can read that are not conversations.
-    return spaces.filter((s) => s.canRead(auth) && !s.isConversations());
+    // TODO(projects): we might want to filter early on the groups membership to avoid fetching all spaces and then filtering.
+    return spaces.filter((s) => s.isMember(auth));
   }
 
   static async listWorkspaceDefaultSpaces(
@@ -449,9 +490,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await this.update({ name: newName });
     // For regular spaces that only have a single group, update
     // the group's name too (see https://github.com/dust-tt/tasks/issues/1738)
-    const regularGroups = this.groups.filter((g) => g.isRegular());
-    if (regularGroups.length === 1 && (this.isRegular() || this.isPublic())) {
-      await regularGroups[0].updateName(auth, `Group for space ${newName}`);
+    const regularGroup = this.getSpaceManualMemberGroup();
+    if (this.isRegular() || this.isPublic()) {
+      await regularGroup.updateName(
+        auth,
+        `Group for ${this.isProject() ? "project" : "space"} ${newName}`
+      );
+    }
+    const spaceEditorGroup = this.getSpaceManualEditorGroup();
+    if (spaceEditorGroup && (this.isRegular() || this.isPublic())) {
+      await spaceEditorGroup.updateName(
+        auth,
+        `Editors for ${this.isProject() ? "project" : "space"} ${newName}`
+      );
     }
 
     return new Ok(undefined);
@@ -546,13 +597,13 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       if (previousManagementMode !== managementMode) {
         if (managementMode === "group") {
           // When switching to group mode, suspend all active members of the default group
-          await this.suspendDefaultGroupMembers(auth, t);
+          await this.suspendManualGroupMembers(auth, t);
         } else if (
           managementMode === "manual" &&
           previousManagementMode === "group"
         ) {
           // When switching from group to manual mode, restore suspended members
-          await this.restoreDefaultGroupMembers(auth, t);
+          await this.restoreManualGroupMembers(auth, t);
         }
       }
 
@@ -561,11 +612,10 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);
 
-        const setMembersRes = await defaultSpaceGroup.setMembers(
-          auth,
-          users.map((u) => u.toJSON()),
-          { transaction: t }
-        );
+        const setMembersRes = await defaultSpaceGroup.setMembers(auth, {
+          users: users.map((u) => u.toJSON()),
+          transaction: t,
+        });
         if (setMembersRes.isErr()) {
           return setMembersRes;
         }
@@ -604,6 +654,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
               groupId: selectedGroup.id,
               vaultId: this.id,
               workspaceId: this.workspaceId,
+              kind: "member",
             },
             { transaction: t }
           );
@@ -619,6 +670,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       groupId: group.id,
       vaultId: this.id,
       workspaceId: auth.getNonNullableWorkspace().id,
+      kind: "member",
     });
   }
 
@@ -660,17 +712,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const defaultSpaceGroup = this.getSpaceManualMemberGroup();
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    const addMemberRes = await defaultSpaceGroup.addMembers(
-      auth,
-      users.map((user) => user.toJSON())
-    );
+    const addMemberRes = await defaultSpaceGroup.addMembers(auth, {
+      users: users.map((user) => user.toJSON()),
+    });
 
     if (addMemberRes.isErr()) {
       return addMemberRes;
@@ -706,17 +757,16 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
     }
 
-    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const defaultSpaceGroup = this.getSpaceManualMemberGroup();
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
       return new Err(new DustError("user_not_found", "User not found."));
     }
 
-    const removeMemberRes = await defaultSpaceGroup.removeMembers(
-      auth,
-      users.map((user) => user.toJSON())
-    );
+    const removeMemberRes = await defaultSpaceGroup.removeMembers(auth, {
+      users: users.map((user) => user.toJSON()),
+    });
 
     if (removeMemberRes.isErr()) {
       return removeMemberRes;
@@ -725,7 +775,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(users);
   }
 
-  private getDefaultSpaceGroup(): GroupResource {
+  private getSpaceManualMemberGroup(): GroupResource {
     const regularGroups = this.groups.filter(
       (group) => group.kind === "regular"
     );
@@ -736,9 +786,68 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return regularGroups[0];
   }
 
-  async isMember(user: UserResource): Promise<boolean> {
-    const defaultGroup = this.getDefaultSpaceGroup();
-    return defaultGroup.isMember(user);
+  private getSpaceManualEditorGroup(): GroupResource | null {
+    const editorGroups = this.groups.filter(
+      (group) => group.kind === "space_editors"
+    );
+    if (editorGroups.length === 0) {
+      return null;
+    }
+    assert(
+      editorGroups.length === 1,
+      `Expected at most one space editors group for the space, but found ${editorGroups.length}.`
+    );
+    return editorGroups[0];
+  }
+
+  /**
+   * Check if the auth is a member of this space.
+   */
+
+  isMember(auth: Authenticator): boolean {
+    // TODO(projects): update this method to check groups whose group_vaults relationship is
+    // to remove the complexity of checking the global group based on the space type.
+    switch (this.kind) {
+      case "regular":
+        for (const group of this.groups) {
+          // In regular spaces, having the global group means that you are a member.
+          if (group.isGlobal()) {
+            return true;
+          }
+          if (auth.hasGroupByModelId(group.id)) {
+            return true;
+          }
+        }
+        return false;
+      case "project":
+        for (const group of this.groups) {
+          // Ignore the global group for project spaces as it means that the group is public but not that you are a member.
+          if (group.isGlobal()) {
+            continue;
+          }
+          if (auth.hasGroupByModelId(group.id)) {
+            return true;
+          }
+        }
+        return false;
+      case "global":
+        return true;
+      case "conversations":
+      case "system":
+        return false;
+      case "public":
+        // I have a doubt on this one.
+        return true;
+
+      default:
+        assertNever(this.kind);
+    }
+  }
+
+  // TODO(projects): update this method to check groups whose group_vaults relationship is
+  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
+  isEditor(auth: Authenticator): boolean {
+    return this.isMember(auth);
   }
 
   /**
@@ -942,17 +1051,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   /**
    * Suspends all active members of the default group when switching to group management mode
    */
-  private async suspendDefaultGroupMembers(
+  private async suspendManualGroupMembers(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const defaultSpaceGroup = this.getDefaultSpaceGroup();
+    const spaceManualMemberGroup = this.getSpaceManualMemberGroup();
 
     await GroupMembershipModel.update(
       { status: "suspended" },
       {
         where: {
-          groupId: defaultSpaceGroup.id,
+          groupId: spaceManualMemberGroup.id,
           workspaceId: this.workspaceId,
           status: "active",
           startAt: { [Op.lte]: new Date() },
@@ -961,22 +1070,38 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction,
       }
     );
+
+    const spaceManualEditorGroup = this.getSpaceManualEditorGroup();
+    if (spaceManualEditorGroup) {
+      await GroupMembershipModel.update(
+        { status: "suspended" },
+        {
+          where: {
+            groupId: spaceManualEditorGroup.id,
+            workspaceId: this.workspaceId,
+            status: "active",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+          transaction,
+        }
+      );
+    }
   }
 
   /**
    * Restores all suspended members of the default group when switching to manual management mode
    */
-  private async restoreDefaultGroupMembers(
+  private async restoreManualGroupMembers(
     auth: Authenticator,
     transaction?: Transaction
   ): Promise<void> {
-    const defaultSpaceGroup = this.getDefaultSpaceGroup();
-
+    const spaceManualMemberGroup = this.getSpaceManualMemberGroup();
     await GroupMembershipModel.update(
       { status: "active" },
       {
         where: {
-          groupId: defaultSpaceGroup.id,
+          groupId: spaceManualMemberGroup.id,
           workspaceId: this.workspaceId,
           status: "suspended",
           startAt: { [Op.lte]: new Date() },
@@ -985,6 +1110,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         transaction,
       }
     );
+
+    const spaceManualEditorGroup = this.getSpaceManualEditorGroup();
+    if (spaceManualEditorGroup) {
+      await GroupMembershipModel.update(
+        { status: "active" },
+        {
+          where: {
+            groupId: spaceManualEditorGroup.id,
+            workspaceId: this.workspaceId,
+            status: "suspended",
+            startAt: { [Op.lte]: new Date() },
+            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
+          },
+          transaction,
+        }
+      );
+    }
   }
 
   toJSON(): SpaceType {

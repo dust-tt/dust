@@ -27,7 +27,7 @@ import {
   prunePreviousInteractions,
 } from "./pruning";
 
-// When previous iteractions pruning is enabled, we'll attempt to fully preserve this number of interactions.
+// When previous interactions pruning is enabled, we'll attempt to fully preserve this number of interactions.
 const PREVIOUS_INTERACTIONS_TO_PRESERVE = 1;
 
 // Fixed number of tokens assumed for image contents
@@ -74,18 +74,22 @@ export async function renderConversationForModel(
     onMissingAction,
   });
 
-  const messagesWithTokensRes = await countTokensForMessages(messages, model);
+  // Tokenize messages and prompt/tools in parallel to reduce latency
+  const [messagesWithTokensRes, promptToolsRes] = await Promise.all([
+    countTokensForMessages(messages, model),
+    tokenCountForTexts([prompt, tools], model),
+  ]);
+
   if (messagesWithTokensRes.isErr()) {
     return messagesWithTokensRes;
   }
 
-  const messagesWithTokens = messagesWithTokensRes.value;
-
-  const res = await tokenCountForTexts([prompt, tools], model);
-  if (res.isErr()) {
-    return new Err(res.error);
+  if (promptToolsRes.isErr()) {
+    return promptToolsRes;
   }
-  const [promptCount, toolDefinitionsCount] = res.value;
+
+  const messagesWithTokens = messagesWithTokensRes.value;
+  const [promptCount, toolDefinitionsCount] = promptToolsRes.value;
 
   // Calculate base token usage.
   const toolDefinitionsCountAdjustmentFactor = 0.7;

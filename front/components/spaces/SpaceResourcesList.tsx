@@ -12,7 +12,6 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef, SortingState } from "@tanstack/react-table";
-import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import React, {
   useCallback,
@@ -43,6 +42,7 @@ import {
   isConnectorPermissionsEditable,
 } from "@app/lib/connector_providers_ui";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useDeleteFolderOrWebsite,
   useSpaceDataSourceViewsWithDetails,
@@ -306,7 +306,7 @@ export const SpaceResourcesList = ({
   const [shouldOpenSlackEditionModal, setShouldOpenSlackEditionModal] =
     useState(false);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const isSystemSpace = systemSpace.sId === space.sId;
   const isManagedCategory = category === "managed";
   const isWebsite = category === "website";

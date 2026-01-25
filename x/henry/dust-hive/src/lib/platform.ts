@@ -120,6 +120,7 @@ export function getPidsOnPort(port: number): number[] {
 
 type InstallableTool =
   | "zellij"
+  | "tmux"
   | "temporal"
   | "sccache"
   | "lsof"
@@ -128,11 +129,14 @@ type InstallableTool =
   | "cargo"
   | "cmake"
   | "protobuf"
-  | "direnv";
+  | "direnv"
+  | "psql"
+  | "fzf";
 
 const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>> = {
   macos: {
     zellij: "brew install zellij",
+    tmux: "brew install tmux",
     temporal: "brew install temporal",
     sccache: "brew install sccache",
     lsof: "lsof is included with macOS",
@@ -142,9 +146,12 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
     cmake: "brew install cmake",
     protobuf: "brew install protobuf",
     direnv: "brew install direnv && add shell hook (see README for setup)",
+    psql: "brew install postgresql (provides psql client)",
+    fzf: "brew install fzf",
   },
   linux: {
     zellij: "cargo install zellij (or download from https://github.com/zellij-org/zellij/releases)",
+    tmux: "sudo apt install tmux (Debian/Ubuntu) or sudo dnf install tmux (Fedora)",
     temporal: "curl -sSf https://temporal.download/cli.sh | sh",
     sccache: "cargo install sccache",
     lsof: "sudo apt install lsof (Debian/Ubuntu) or sudo dnf install lsof (Fedora)",
@@ -156,6 +163,8 @@ const INSTALL_INSTRUCTIONS: Record<PlatformName, Record<InstallableTool, string>
       "sudo apt install protobuf-compiler (Debian/Ubuntu) or sudo dnf install protobuf-compiler (Fedora)",
     direnv:
       "sudo apt install direnv (Debian/Ubuntu) or sudo dnf install direnv (Fedora) && add shell hook (see README)",
+    psql: "sudo apt install postgresql-client (Debian/Ubuntu) or sudo dnf install postgresql (Fedora)",
+    fzf: "sudo apt install fzf (Debian/Ubuntu) or sudo dnf install fzf (Fedora)",
   },
 };
 

@@ -12,7 +12,6 @@ import {
   LightbulbIcon,
   SlackLogo,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useCallback, useContext } from "react";
 
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
@@ -20,6 +19,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { serializeMention } from "@app/lib/mentions/format";
+import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   AgentMention,
@@ -36,7 +36,7 @@ export function HelpDropdown({
   owner: WorkspaceType;
   user: UserTypeWithWorkspaces;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
 
   const createConversationWithMessage = useCreateConversationWithMessage({

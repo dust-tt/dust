@@ -7,8 +7,8 @@ import {
   DialogTitle,
   SliderToggle,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 
+import { useAppRouter } from "@app/lib/platform";
 import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 import { GLOBAL_AGENTS_SID, isBuilder } from "@app/types";
 
@@ -29,7 +29,7 @@ export function GlobalAgentAction({
   showDisabledFreeWorkspacePopup,
   setShowDisabledFreeWorkspacePopup,
 }: GlobalAgentActionProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   const canBeDisabled = agent.sId !== GLOBAL_AGENTS_SID.HELPER;
 

@@ -12,10 +12,10 @@ import {
   PuzzleIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import {
@@ -23,6 +23,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
+import { isBuilder } from "@app/types";
 
 interface CreateDropdownProps {
   owner: LightWorkspaceType;
@@ -33,7 +34,7 @@ export const CreateDropdown = ({
   owner,
   dataGtmLocation,
 }: CreateDropdownProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isLoading, setIsLoading] = useState(false);
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
@@ -58,7 +59,9 @@ export const CreateDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {hasFeature("skills") && <DropdownMenuLabel label="Agents" />}
+        {hasFeature("skills") && isBuilder(owner) && (
+          <DropdownMenuLabel label="Agents" />
+        )}
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
@@ -91,7 +94,7 @@ export const CreateDropdown = ({
             onClick={triggerYAMLUpload}
           />
         )}
-        {hasFeature("skills") && (
+        {hasFeature("skills") && isBuilder(owner) && (
           <>
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem

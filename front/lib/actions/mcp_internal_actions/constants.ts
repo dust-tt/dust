@@ -3,9 +3,9 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_MCP_REQUEST_TIMEOUT_MS,
   DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
+  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
 import {
   DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
@@ -17,7 +17,11 @@ import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
+import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -92,6 +96,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_copilot_agent_state",
+  "agent_copilot_context",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
@@ -137,9 +143,12 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "slab",
   "slack",
   "slack_bot",
+  "snowflake",
   "sound_studio",
   "speech_generator",
+  "statuspage",
   "toolsets",
+  "ukg_ready",
   "val_town",
   "vanta",
   "front",
@@ -177,32 +186,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      create_issue: "low",
-      comment_on_issue: "low",
-      add_issue_to_project: "low",
-      get_pull_request: "never_ask",
-      list_organization_projects: "never_ask",
-      list_issues: "never_ask",
-      list_pull_requests: "never_ask",
-      search_advanced: "never_ask",
-      get_issue: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "github",
-      version: "1.0.0",
-      description: "Manage issues and pull requests.",
-      authorization: {
-        provider: "github" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "GithubLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: GITHUB_SERVER,
   },
   image_generation: {
     id: 2,
@@ -210,20 +197,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "image_generation",
-      version: "1.0.0",
-      description:
-        "Create or edit visual content from text descriptions and images.",
-      icon: "ActionImageIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: IMAGE_GENERATION_SERVER,
   },
   file_generation: {
     id: 3,
@@ -518,11 +495,14 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_stakes: {
       get_drafts: "never_ask",
-      create_draft: "low",
+      create_draft: "medium",
       get_messages: "never_ask",
-      create_reply_draft: "low",
+      create_reply_draft: "medium",
+      get_attachment: "never_ask",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_draft: ["to"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -546,7 +526,11 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_event: ["calendarId"],
+      update_event: ["calendarId"],
+      delete_event: ["calendarId"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: GOOGLE_CALENDAR_SERVER,
@@ -588,12 +572,15 @@ export const INTERNAL_MCP_SERVERS = {
       get_user: "never_ask",
 
       // Write operations - low stakes
-      post_message: "low",
-      schedule_message: "low",
+      post_message: "medium",
+      schedule_message: "medium",
       add_reaction: "low",
       remove_reaction: "low",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      post_message: ["channel"],
+      schedule_message: ["channel"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -808,14 +795,16 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: {
       get_messages: "never_ask",
       get_drafts: "never_ask",
-      create_draft: "low",
+      create_draft: "medium",
       delete_draft: "low",
-      create_reply_draft: "low",
+      create_reply_draft: "medium",
       get_contacts: "never_ask",
       create_contact: "high",
       update_contact: "high",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      create_draft: ["to"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1172,9 +1161,11 @@ export const INTERNAL_MCP_SERVERS = {
       list_channels: "never_ask",
       list_chats: "never_ask",
       list_messages: "never_ask",
-      post_message: "low",
+      post_message: "medium",
     },
-    tools_arguments_requiring_approval: undefined,
+    tools_arguments_requiring_approval: {
+      post_message: ["channelId"],
+    },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     serverInfo: {
@@ -1429,6 +1420,164 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
+  databricks: {
+    id: 45,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("databricks_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_warehouses: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "databricks",
+      version: "1.0.0",
+      description:
+        "Execute SQL queries and manage databases in Databricks SQL.",
+      authorization: {
+        provider: "databricks" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ActionTableIcon",
+      documentationUrl: "https://docs.dust.tt/docs/databricks",
+      instructions: null,
+    },
+  },
+  productboard: {
+    id: 46,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_note: "never_ask",
+      query_notes: "never_ask",
+      create_note: "low",
+      update_note: "low",
+      query_entities: "never_ask",
+      get_relationships: "never_ask",
+      create_entity: "low",
+      update_entity: "low",
+      get_configuration: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "productboard",
+      version: "1.0.0",
+      description: "Manage productboard entities and notes.",
+      authorization: {
+        provider: "productboard" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ProductboardLogo",
+      documentationUrl: "https://docs.dust.tt/docs/productboard",
+      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
+    },
+  },
+  snowflake: {
+    id: 47,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("snowflake_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_databases: "never_ask",
+      list_schemas: "never_ask",
+      list_tables: "never_ask",
+      describe_table: "never_ask",
+      query: "low",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "snowflake",
+      version: "1.0.0",
+      description:
+        "Execute read-only SQL queries and browse schema in Snowflake.",
+      authorization: {
+        provider: "snowflake" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "SnowflakeLogo",
+      documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
+      instructions: null,
+    },
+  },
+  ukg_ready: {
+    id: 48,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ukg_ready_mcp");
+    },
+    isPreview: false,
+    tools_stakes: {
+      get_my_info: "never_ask",
+      get_pto_requests: "never_ask",
+      get_accrual_balances: "never_ask",
+      get_pto_request_notes: "never_ask",
+      create_pto_request: "low",
+      delete_pto_request: "low",
+      get_schedules: "never_ask",
+      get_employees: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ukg_ready",
+      version: "1.0.0",
+      description:
+        "Manage employee time-off requests, schedules, and accrual balances in UKG Ready.",
+      authorization: {
+        provider: "ukg_ready" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "UkgLogo",
+      documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
+      instructions: null,
+    },
+  },
+  statuspage: {
+    id: 49,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("statuspage_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_pages: "never_ask",
+      list_components: "never_ask",
+      list_incidents: "never_ask",
+      get_incident: "never_ask",
+      create_incident: "high",
+      update_incident: "high",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "statuspage",
+      version: "1.0.0",
+      description: "Monitor and manage Atlassian Statuspage incidents.",
+      authorization: null,
+      icon: "StatuspageLogo",
+      documentationUrl: null,
+      instructions: null,
+      developerSecretSelection: "required",
+    },
+  },
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -1481,7 +1630,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: DEFAULT_MCP_REQUEST_TIMEOUT_MS,
+    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
     serverInfo: {
       name: "run_agent",
       version: "1.0.0",
@@ -1807,66 +1956,31 @@ export const INTERNAL_MCP_SERVERS = {
         "Requires write permissions on the project space.",
     },
   },
-  databricks: {
-    id: 45,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("databricks_tool");
-    },
-    isPreview: true,
-    tools_stakes: {
-      list_warehouses: "never_ask",
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "databricks",
-      version: "1.0.0",
-      description:
-        "Execute SQL queries and manage databases in Databricks SQL.",
-      authorization: {
-        provider: "databricks" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ActionTableIcon",
-      documentationUrl: "https://docs.dust.tt/docs/databricks",
-      instructions: null,
-    },
-  },
-  productboard: {
-    id: 46,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: undefined,
+  agent_copilot_context: {
+    id: 1022,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
     isPreview: false,
-    tools_stakes: {
-      get_note: "never_ask",
-      query_notes: "never_ask",
-      create_note: "low",
-      update_note: "low",
-      query_entities: "never_ask",
-      get_relationships: "never_ask",
-      create_entity: "low",
-      update_entity: "low",
-      get_configuration: "never_ask",
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
     },
+    metadata: AGENT_COPILOT_CONTEXT_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "productboard",
-      version: "1.0.0",
-      description: "Manage productboard entities and notes.",
-      authorization: {
-        provider: "productboard" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ProductboardLogo",
-      documentationUrl: "https://docs.dust.tt/docs/productboard",
-      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
+  },
+  agent_copilot_agent_state: {
+    id: 1023,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
     },
+    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

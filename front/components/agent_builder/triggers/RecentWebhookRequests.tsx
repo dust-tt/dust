@@ -4,12 +4,12 @@ import {
   CollapsibleTrigger,
   ContentMessageInline,
   Label,
+  LinkWrapper,
   Markdown,
   Separator,
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import Link from "next/link";
 import React, { useState } from "react";
 
 import type { AgentBuilderWebhookTriggerType } from "@app/components/agent_builder/AgentBuilderFormContext";
@@ -108,12 +108,12 @@ function RecentWebhookRequestsContent({
             Some requests were rate limited.
             <br />
             Contact{" "}
-            <Link
+            <LinkWrapper
               href="mailto:support@dust.tt?subject=Increase%20Webhook%20Trigger%20Rate%20Limit"
               className="underline"
             >
               support@dust.tt
-            </Link>{" "}
+            </LinkWrapper>{" "}
             to increase the rate limit for this trigger.
           </p>
         </div>

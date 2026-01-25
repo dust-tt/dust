@@ -9,6 +9,7 @@ import type {
 } from "@connectors/resources/connector/strategy";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import { DustProjectConfigurationResource } from "@connectors/resources/dust_project_configuration_resource";
+import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
 import type { ModelId } from "@connectors/types";
 
 export class DustProjectConnectorStrategy implements ConnectorProviderStrategy<"dust_project"> {
@@ -28,6 +29,10 @@ export class DustProjectConnectorStrategy implements ConnectorProviderStrategy<"
     connector: ConnectorResource,
     transaction: Transaction
   ): Promise<void> {
+    await DustProjectConversationResource.deleteByConnector(
+      connector,
+      transaction
+    );
     await DustProjectConfigurationModel.destroy({
       where: { connectorId: connector.id },
       transaction,

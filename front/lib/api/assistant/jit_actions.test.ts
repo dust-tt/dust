@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
@@ -8,7 +8,6 @@ import {
 } from "@app/lib/actions/constants";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
-import { getProjectContextDatasourceName } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -24,6 +23,22 @@ import type {
   LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
+
+// Mock config to avoid requiring environment variables
+vi.mock("@app/lib/api/config", () => ({
+  default: {
+    getCoreAPIConfig: () => ({
+      url: "http://localhost:3001",
+      apiKey: "test-api-key",
+    }),
+    getConnectorsAPIConfig: () => ({
+      url: "http://localhost:3002",
+      secret: "test-secret",
+      webhookSecret: "test-webhook-secret",
+    }),
+    getClientFacingUrl: () => "http://localhost:3000",
+  },
+}));
 
 describe("getJITServers", () => {
   let auth: Authenticator;
@@ -191,28 +206,24 @@ describe("getJITServers", () => {
       await FeatureFlagFactory.basic("projects", workspace);
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
-      // Create a data source view with the project context name.
-      const projectContextName = getProjectContextDatasourceName(
-        conversationsSpace.id
-      );
-      const dataSourceView = await DataSourceViewFactory.folder(
+      const projectDatasourceView = await DataSourceViewFactory.fromConnector(
         workspace,
         conversationsSpace,
+        "dust_project",
         auth.user()
       );
 
-      // Update the datasource name to match the project context name.
-      // @ts-expect-error -- access protected member for test
-      await dataSourceView.dataSource.update({
-        name: projectContextName,
-      });
+      // Use a conversation with spaceId when checking for datasource view
+      const conversationWithSpace = {
+        ...conversation,
+        spaceId: conversationsSpace.sId,
+      };
+
+      expect(projectDatasourceView).toBeDefined();
 
       const jitServers = await getJITServers(auth, {
         agentConfiguration: agentConfig,
-        conversation: {
-          ...conversation,
-          spaceId: conversationsSpace.sId,
-        },
+        conversation: conversationWithSpace,
         attachments: [],
       });
 
@@ -230,7 +241,7 @@ describe("getJITServers", () => {
       if (projectSearchServer?.dataSources) {
         expect(projectSearchServer.dataSources.length).toBeGreaterThan(0);
         expect(projectSearchServer.dataSources[0].dataSourceViewId).toBe(
-          dataSourceView.sId
+          projectDatasourceView!.sId
         );
       }
     });

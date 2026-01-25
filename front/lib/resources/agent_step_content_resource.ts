@@ -344,6 +344,18 @@ export class AgentStepContentResource extends BaseResource<AgentStepContentModel
     return new Ok(deletedCount);
   }
 
+  static async deleteByAgentMessageIds(
+    auth: Authenticator,
+    { agentMessageIds }: { agentMessageIds: ModelId[] }
+  ): Promise<number> {
+    return this.model.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        agentMessageId: { [Op.in]: agentMessageIds },
+      },
+    });
+  }
+
   toJSON(): AgentStepContentType {
     let value = this.value;
     if (this.type === "reasoning" && value.type === "reasoning") {

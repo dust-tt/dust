@@ -20,6 +20,7 @@ export interface CreateTemplateResponseBody {
 
 interface PokeFetchAssistantTemplatesResponse {
   templates: AssistantTemplateListType[];
+  dustRegionSyncEnabled: boolean;
 }
 
 async function handler(
@@ -47,9 +48,10 @@ async function handler(
     case "GET":
       const templates = await TemplateResource.listAll();
 
-      return res
-        .status(200)
-        .json({ templates: templates.map((t) => t.toListJSON()) });
+      return res.status(200).json({
+        templates: templates.map((t) => t.toListJSON()),
+        dustRegionSyncEnabled: regionConfig.getDustRegionSyncEnabled(),
+      });
 
     case "POST":
       const bodyValidation = CreateTemplateFormSchema.decode(req.body);

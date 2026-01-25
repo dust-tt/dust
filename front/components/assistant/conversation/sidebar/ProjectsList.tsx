@@ -1,9 +1,11 @@
 import { NavigationListItem } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { memo, useContext } from "react";
 
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
+import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
+import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
+import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
@@ -24,18 +26,27 @@ const ProjectListItem = memo(
     unreadCount: number;
     owner: WorkspaceType;
   }) => {
-    const router = useRouter();
+    const router = useAppRouter();
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
-    const spaceLabel = `${space.name}${unreadCount > 0 ? ` (${unreadCount})` : ""}`;
+
+    const activeConversationId = useActiveConversationId();
+    const { conversation } = useConversation({
+      conversationId: activeConversationId,
+      workspaceId: owner.sId,
+    });
+
+    const isSpaceSelected =
+      router.asPath.startsWith(spacePath) ||
+      conversation?.spaceId === space.sId;
 
     return (
       <NavigationListItem
         icon={getSpaceIcon(space)}
-        selected={router.asPath.startsWith(spacePath)}
-        status={unreadCount > 0 ? "unread" : "idle"}
-        label={spaceLabel}
+        selected={isSpaceSelected}
+        label={space.name}
+        count={unreadCount > 0 ? unreadCount : undefined}
         onClick={async () => {
           // Side bar is the floating sidebar that appears when the screen is small.
           if (sidebarOpen) {

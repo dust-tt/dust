@@ -7,9 +7,9 @@ import {
   ENABLE_SKILL_TOOL_NAME,
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
 import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   isMCPConfigurationForInternalNotion,
@@ -23,6 +23,7 @@ import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type {
   AgentConfigurationType,
+  ConversationWithoutContentType,
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
@@ -35,14 +36,14 @@ function constructContextSection({
   userMessage,
   agentConfiguration,
   model,
-  conversationId,
+  conversation,
   owner,
   errorContext,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
-  conversationId?: string;
+  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType | null;
   errorContext?: string;
 }): string {
@@ -52,8 +53,8 @@ function constructContextSection({
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
-  if (conversationId) {
-    context += `conversation_id: ${conversationId}\n`;
+  if (conversation?.sId) {
+    context += `conversation_id: ${conversation.sId}\n`;
   }
   if (owner) {
     context += `workspace: ${owner.name}\n`;
@@ -77,6 +78,37 @@ function constructContextSection({
   }
 
   return context;
+}
+
+export function constructProjectContextSection(
+  conversation?: ConversationWithoutContentType
+): string | null {
+  if (!conversation?.spaceId) {
+    return null;
+  }
+
+  return `# PROJECT CONTEXT
+  
+This conversation is associated with a project. The project provides:
+- Persistent file storage shared across all conversations in this project
+- Project metadata (description and URLs) for organizational context
+- Semantic search capabilities over project files
+- Collaborative context that persists beyond individual conversations
+
+## Using Project Tools
+
+**project_context_management**: Use these tools to manage persistent project files and metadata
+**search_project_context**: Use this tool to semantically search across all project files when you need to:
+- Find relevant information within the project
+- Locate specific content across multiple files
+- Answer questions based on project knowledge
+
+## Project Files vs Conversation Attachments
+- **Project files**: Persistent, shared across all conversations in the project, managed via project_context_management
+- **Conversation attachments**: Scoped to this conversation only, temporary context for the current discussion
+
+When information should be preserved for future conversations or context, add it to project files.
+`;
 }
 
 function constructToolsSection({
@@ -415,7 +447,7 @@ export function constructPromptMultiActions(
     hasAvailableActions,
     errorContext,
     agentsList,
-    conversationId,
+    conversation,
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
@@ -428,7 +460,7 @@ export function constructPromptMultiActions(
     hasAvailableActions: boolean;
     errorContext?: string;
     agentsList: LightAgentConfigurationType[] | null;
-    conversationId?: string;
+    conversation?: ConversationWithoutContentType;
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
@@ -437,15 +469,16 @@ export function constructPromptMultiActions(
 ) {
   const owner = auth.workspace();
 
-  return [
+  const sections = [
     constructContextSection({
       userMessage,
       agentConfiguration,
       model,
-      conversationId,
+      conversation,
       owner,
       errorContext,
     }),
+    constructProjectContextSection(conversation),
     constructToolsSection({
       hasAvailableActions,
       model,
@@ -472,5 +505,7 @@ export function constructPromptMultiActions(
       userMessage,
       agentsList,
     }),
-  ].join("\n");
+  ];
+
+  return sections.filter((section) => section !== null).join("\n");
 }

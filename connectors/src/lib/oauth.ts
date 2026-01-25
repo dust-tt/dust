@@ -43,7 +43,8 @@ export async function getOAuthConnectionAccessTokenWithThrow({
         tokRes.error.message.includes("Token was globally revoked")) ||
       // Happens with microsoft
       (tokRes.error.code === "provider_access_token_refresh_error" &&
-        tokRes.error.message.includes("invalid_grant")) ||
+        (tokRes.error.message.includes("invalid_grant") ||
+          tokRes.error.message.includes("invalid_client"))) ||
       // Happens with google drive
       (tokRes.error.code === "provider_access_token_refresh_error" &&
         tokRes.error.message.includes("Account Restricted"))

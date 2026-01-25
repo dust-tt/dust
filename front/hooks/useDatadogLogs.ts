@@ -1,14 +1,14 @@
 import { datadogLogs } from "@datadog/browser-logs";
-import { useRouter } from "next/router";
 import { useEffect } from "react";
 
+import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 
 export function useDatadogLogs() {
   const { user } = useUser();
   const userId = user?.sId;
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { wId } = router.query;
 
   useEffect(() => {

@@ -50,7 +50,6 @@ interface MakeGetServerSidePropsRequirementsWrapperOptions<
   enableLogging?: boolean;
   requireUserPrivilege: R;
   requireCanUseProduct?: boolean;
-  allowUserOutsideCurrentWorkspace?: boolean;
 }
 
 export type CustomGetServerSideProps<
@@ -122,7 +121,6 @@ export function makeGetServerSidePropsRequirementsWrapper<
   enableLogging = true,
   requireUserPrivilege,
   requireCanUseProduct = false,
-  allowUserOutsideCurrentWorkspace,
 }: MakeGetServerSidePropsRequirementsWrapperOptions<RequireUserPrivilege>) {
   return <T extends { [key: string]: any } = { [key: string]: any }>(
     getServerSideProps: CustomGetServerSideProps<
@@ -219,7 +217,7 @@ export function makeGetServerSidePropsRequirementsWrapper<
         }
 
         // If we target a workspace and the user is not in the workspace, return not found.
-        if (!allowUserOutsideCurrentWorkspace && workspace && !auth?.isUser()) {
+        if (workspace && !auth?.isUser()) {
           return {
             notFound: true,
           };
@@ -268,31 +266,16 @@ export const withDefaultUserAuthPaywallWhitelisted =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: false,
-    allowUserOutsideCurrentWorkspace: false,
   });
 
 export const withDefaultUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "user",
     requireCanUseProduct: true,
-    allowUserOutsideCurrentWorkspace: false,
-  });
-
-/**
- * This should only be used for pages that don't require
- * the current user to be in the current workspace.
- */
-export const withDefaultUserAuthRequirementsNoWorkspaceCheck =
-  makeGetServerSidePropsRequirementsWrapper({
-    requireUserPrivilege: "user",
-    requireCanUseProduct: true,
-    // This is a special case where we don't want to check if the user is in the current workspace.
-    allowUserOutsideCurrentWorkspace: true,
   });
 
 export const withSuperUserAuthRequirements =
   makeGetServerSidePropsRequirementsWrapper({
     requireUserPrivilege: "superuser",
     requireCanUseProduct: false,
-    allowUserOutsideCurrentWorkspace: false,
   });

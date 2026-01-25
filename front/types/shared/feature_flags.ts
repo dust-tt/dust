@@ -35,6 +35,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
     stage: "dust_only",
   },
+  agent_builder_copilot: {
+    description: "Enable Copilot in Agent Builder",
+    stage: "dust_only",
+  },
   ashby_tool: {
     description: "Ashby tool for ATS integration",
     stage: "on_demand",
@@ -182,6 +186,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Slideshow MCP tool",
     stage: "dust_only",
   },
+  snowflake_tool: {
+    description: "Snowflake MCP tool for read-only SQL queries",
+    stage: "on_demand",
+  },
   slack_message_splitting: {
     description:
       "Enable splitting agent responses into multiple Slack messages for Slack (instead of truncation)",
@@ -225,6 +233,18 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   phone_trial_paywall: {
     description: "Phone verification during trial sign-up",
     stage: "dust_only",
+  },
+  ukg_ready_mcp: {
+    description: "UKG Ready MCP tool for workforce management",
+    stage: "dust_only",
+  },
+  statuspage_tool: {
+    description: "Statuspage MCP tool for incident management",
+    stage: "dust_only",
+  },
+  dust_academy: {
+    description: "Access to Dust Academy learning content",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

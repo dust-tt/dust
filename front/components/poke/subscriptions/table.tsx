@@ -6,6 +6,7 @@ import {
   GlobeAltIcon,
   GoogleLogo,
   IntercomLogo,
+  LinkWrapper,
   NotionLogo,
   Page,
   SalesforceLogo,
@@ -19,8 +20,6 @@ import {
 } from "@dust-tt/sparkle";
 import { Separator } from "@radix-ui/react-select";
 import { format } from "date-fns/format";
-import Link from "next/link";
-import { useRouter } from "next/router";
 
 import { PokeDataTable } from "@app/components/poke/shadcn/ui/data_table";
 import {
@@ -36,6 +35,7 @@ import FreePlanUpgradeDialog from "@app/components/poke/subscriptions/FreePlanUp
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { FREE_NO_PLAN_CODE, isProPlanPrefix } from "@app/lib/plans/plan_codes";
+import { useAppRouter } from "@app/lib/platform";
 import { usePokePlans } from "@app/lib/swr/poke";
 import type {
   PlanType,
@@ -202,7 +202,7 @@ export function ActiveSubscriptionTable({
                 <PokeTableCell>Stripe Subscription Id</PokeTableCell>
                 <PokeTableCell>
                   {subscription.stripeSubscriptionId ? (
-                    <Link
+                    <LinkWrapper
                       href={
                         isDevelopment()
                           ? `https://dashboard.stripe.com/test/subscriptions/${subscription.stripeSubscriptionId}`
@@ -212,7 +212,7 @@ export function ActiveSubscriptionTable({
                       className="text-xs text-highlight-400"
                     >
                       {subscription.stripeSubscriptionId}
-                    </Link>
+                    </LinkWrapper>
                   ) : (
                     "No subscription id"
                   )}
@@ -384,7 +384,7 @@ function UpgradeDowngradeModal({
   subscription,
   programmaticUsageConfig,
 }: UpgradeDowngradeModalProps) {
-  const router = useRouter();
+  const router = useAppRouter();
   const { plans } = usePokePlans();
 
   const { submit: onDowngrade } = useSubmitFunction(async () => {
@@ -500,6 +500,7 @@ function UpgradeDowngradeModal({
             <div>
               <EnterpriseUpgradeDialog
                 owner={owner}
+                subscription={subscription}
                 programmaticUsageConfig={programmaticUsageConfig}
               />
             </div>

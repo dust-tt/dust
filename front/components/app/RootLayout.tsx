@@ -1,7 +1,6 @@
 import { SparkleContext } from "@dust-tt/sparkle";
 import { Notification } from "@dust-tt/sparkle";
 import Link from "next/link";
-import { useRouter } from "next/router";
 import type { MouseEvent } from "react";
 import { SWRConfig } from "swr";
 import type { UrlObject } from "url";
@@ -9,6 +8,7 @@ import type { UrlObject } from "url";
 import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
+import { useAppRouter } from "@app/lib/platform";
 import { isAPIErrorResponse } from "@app/types";
 
 function NextLinkWrapper({
@@ -70,7 +70,7 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   return (
     <SparkleContext.Provider value={{ components: { link: NextLinkWrapper } }}>

@@ -48,6 +48,7 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
+  "ukg_ready",
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
   "snowflake", // Snowflake OAuth for MCP server integration.
@@ -78,6 +79,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
+  ukg_ready: "UKG Ready",
   mcp: "MCP",
   mcp_static: "MCP",
   snowflake: "Snowflake",
@@ -91,6 +93,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "resource",
   "token_endpoint",
   "authorization_endpoint",
   "freshservice_domain",
@@ -100,6 +103,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "snowflake_account",
   "snowflake_role",
   "snowflake_warehouse",
+  "ukg_ready_company_id",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -116,7 +120,14 @@ export type OAuthCredentialInput = {
   value: string | undefined;
   helpMessage?: string;
   validator?: (value: string) => boolean;
-};
+} & (
+  | {
+      overridableAtPersonalAuth: true;
+      personalAuthLabel: string;
+      personalAuthHelpMessage: string;
+    }
+  | { overridableAtPersonalAuth?: false }
+);
 
 export type OAuthCredentialInputs = Partial<
   Record<SupportedOAuthCredentials, OAuthCredentialInput>
@@ -126,13 +137,36 @@ export type OAuthCredentials = Partial<
   Record<SupportedOAuthCredentials, string>
 >;
 
-export const getProviderRequiredOAuthCredentialInputs = async ({
+export function getOverridablePersonalAuthInputs({
+  provider,
+}: {
+  provider: OAuthProvider;
+}): OAuthCredentialInputs | null {
+  const allInputs = getProviderRequiredOAuthCredentialInputs({
+    provider,
+    useCase: "personal_actions",
+  });
+  if (!allInputs) {
+    return null;
+  }
+
+  const filtered: OAuthCredentialInputs = {};
+  for (const [key, input] of Object.entries(allInputs)) {
+    if (input.overridableAtPersonalAuth && isSupportedOAuthCredential(key)) {
+      filtered[key] = input;
+    }
+  }
+
+  return Object.keys(filtered).length > 0 ? filtered : null;
+}
+
+export function getProviderRequiredOAuthCredentialInputs({
   provider,
   useCase,
 }: {
   provider: OAuthProvider;
   useCase: OAuthUseCase;
-}): Promise<OAuthCredentialInputs | null> => {
+}): OAuthCredentialInputs | null {
   switch (provider) {
     case "salesforce":
       if (useCase === "personal_actions" || useCase === "platform_actions") {
@@ -233,6 +267,39 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             label: "OAuth Client Secret",
             value: undefined,
             helpMessage: "The client secret from your Databricks OAuth app.",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null;
+    case "ukg_ready":
+      if (useCase === "personal_actions") {
+        // UKG Ready uses standard authorization code flow with client_secret
+        const result: OAuthCredentialInputs = {
+          instance_url: {
+            label: "UKG Ready Instance URL",
+            value: undefined,
+            helpMessage:
+              "Your UKG Ready instance URL (e.g., https://secure0.saashr.com)",
+            validator: isValidUrl,
+          },
+          ukg_ready_company_id: {
+            label: "Company ID",
+            value: undefined,
+            helpMessage: "Your UKG Ready company identifier",
+            validator: isValidClientIdOrSecret,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your UKG Ready OAuth app",
+            validator: isValidClientIdOrSecret,
+          },
+          client_secret: {
+            label: "OAuth Client Secret",
+            value: undefined,
+            helpMessage: "The client secret from your UKG Ready OAuth app",
             validator: isValidClientIdOrSecret,
           },
         };
@@ -344,6 +411,10 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
             helpMessage:
               "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
+            overridableAtPersonalAuth: true,
+            personalAuthLabel: "Snowflake Role",
+            personalAuthHelpMessage:
+              "Enter a role to override the default, or leave empty to use the workspace default.",
           },
           snowflake_warehouse: {
             label: "Snowflake Warehouse",
@@ -358,7 +429,7 @@ export const getProviderRequiredOAuthCredentialInputs = async ({
     default:
       assertNever(provider);
   }
-};
+}
 
 export type OAuthProvider = (typeof OAUTH_PROVIDERS)[number];
 

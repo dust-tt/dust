@@ -16,7 +16,7 @@
       "type": "node-terminal",
       "name": "Debug front worker",
       "request": "launch",
-      "command": "npm run start:worker",
+      "command": "npm run dev:worker",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env.local"
     }

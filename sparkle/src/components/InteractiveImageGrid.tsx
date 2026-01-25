@@ -5,9 +5,9 @@ import { ImageZoomDialog } from "@sparkle/components/ImageZoomDialog";
 import { cn } from "@sparkle/lib/utils";
 
 const SIZE_CLASSES = {
-  sm: "s-h-24 s-w-24",
-  md: "s-h-48 s-w-48",
-  lg: "s-h-80 s-w-80",
+  sm: "s-relative s-h-24 s-w-24",
+  md: "s-relative s-h-48 s-w-48",
+  lg: "s-relative s-h-80 s-w-80",
 } as const;
 
 type InteractiveImageGridSize = keyof typeof SIZE_CLASSES;
@@ -85,7 +85,7 @@ function InteractiveImageGrid({
               isLoading={images[0].isLoading}
               onClick={() => setCurrentImageIndex(0)}
               onClose={onClose ? () => onClose() : undefined}
-              variant="square"
+              variant="embedded"
               titlePosition="center"
               manageZoomDialog={false}
             />
@@ -101,7 +101,7 @@ function InteractiveImageGrid({
                 downloadUrl={image.downloadUrl}
                 isLoading={image.isLoading}
                 onClick={() => setCurrentImageIndex(idx)}
-                variant="square"
+                variant="standalone"
                 titlePosition="center"
                 manageZoomDialog={false}
               />

@@ -1,5 +1,10 @@
-import { Button, ChevronRightIcon, Chip, Logo } from "@dust-tt/sparkle";
-import Link from "next/link";
+import {
+  Button,
+  ChevronRightIcon,
+  Chip,
+  LinkWrapper,
+  Logo,
+} from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
 import { useEffect, useState } from "react";
 
@@ -51,9 +56,9 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
       )}
     >
       <div className="flex items-center">
-        <Link href="/poke">
+        <LinkWrapper href="/poke">
           <Logo type="colored-grey" className="-mr-5 h-4 w-32 p-0" />
-        </Link>
+        </LinkWrapper>
         <div className="flex flex-row gap-4">
           <Button href="/poke/plans" variant="ghost" label="Plans" />
           <Button href="/poke/templates" variant="ghost" label="Templates" />
@@ -183,9 +188,9 @@ export function PokeSearchCommand() {
             );
 
             return item.link ? (
-              <Link href={item.link} key={item.id}>
+              <LinkWrapper href={item.link} key={item.id}>
                 <CommandItem />
-              </Link>
+              </LinkWrapper>
             ) : (
               <CommandItem />
             );

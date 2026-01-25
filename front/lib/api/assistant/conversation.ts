@@ -7,6 +7,8 @@ import {
   getAgentConfiguration,
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
+import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
@@ -38,11 +40,12 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
-import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
 import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -432,36 +435,6 @@ async function getConversationRankVersionLock(
   );
 }
 
-export function getRelatedContentFragments(
-  conversation: ConversationType,
-  message: UserMessageType
-): ContentFragmentType[] {
-  const potentialContentFragments = conversation.content
-    // Only the latest version of each message.
-    .map((versions) => versions[versions.length - 1])
-    // Only the content fragments.
-    .filter(isContentFragmentType)
-    // That are preceding the message by rank in the conversation.
-    .filter((m) => m.rank < message.rank)
-    // Sort by rank descending.
-    .toSorted((a, b) => b.rank - a.rank);
-
-  const relatedContentFragments: ContentFragmentType[] = [];
-  let lastRank = message.rank;
-
-  // Add until we reach a gap in ranks.
-  for (const contentFragment of potentialContentFragments) {
-    if (contentFragment.rank === lastRank - 1) {
-      relatedContentFragments.push(contentFragment);
-      lastRank = contentFragment.rank;
-    } else {
-      break;
-    }
-  }
-
-  return relatedContentFragments;
-}
-
 export function isUserMessageContextValid(
   auth: Authenticator,
   req: NextApiRequest,
@@ -508,6 +481,7 @@ export function isUserMessageContextValid(
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
+    case "agent_copilot":
     case "web":
       return false;
     default:
@@ -740,6 +714,16 @@ export async function postUserMessage(
     agentMessages,
   });
 
+  // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  if (agentMessages.length > 0) {
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages,
+      conversation,
+      userMessage,
+    });
+  }
+
   await Promise.all([
     publishMessageEventsOnMessagePostOrEdit(
       conversation,
@@ -779,6 +763,7 @@ function canAccessAgent(
     case "disabled_missing_datasource":
     case "disabled_by_admin":
     case "archived":
+    case "pending":
       return false;
     default:
       assertNever(agentConfiguration.status);
@@ -1044,6 +1029,16 @@ export async function editUserMessage(
     } else {
       throw e;
     }
+  }
+
+  // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  if (agentMessages.length > 0) {
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages,
+      conversation,
+      userMessage,
+    });
   }
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
@@ -1312,6 +1307,27 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  // Project conversations only allow content fragments from the project space or the global space.
+  if (conversation.spaceId && isContentFragmentInputWithContentNode(cf)) {
+    const dsView = await DataSourceViewResource.fetchById(
+      auth,
+      cf.nodeDataSourceViewId
+    );
+    if (!dsView) {
+      return new Err(new Error("Data source view not found"));
+    }
+    if (
+      dsView.space.sId !== conversation.spaceId &&
+      dsView.space.kind !== "global"
+    ) {
+      return new Err(
+        new Error(
+          "Only content fragments from the project space or the global space are allowed in a project conversation"
+        )
+      );
+    }
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -1402,8 +1418,8 @@ export async function postNewContentFragment(
 
     return { contentFragment, messageRow };
   });
-  const render = await contentFragment.renderFromMessage({
-    auth,
+
+  const render = await contentFragment.renderFromMessage(auth, {
     conversationId: conversation.sId,
     message: messageRow,
   });
@@ -1714,10 +1730,11 @@ async function isMessagesLimitReached(
   // anything (no LLM call) so we don't count them toward the limit.
   // The return value won't account for the parallel calls depending on network timing
   // but we are fine with a little bit of overusage.
-  // For free phone plans, don't multiply by activeSeats to prevent increased limits with more users.
-  const effectiveMaxMessages = isFreeTrialPhonePlan(plan.code)
-    ? maxMessages
-    : maxMessages * activeSeats;
+  const effectiveMaxMessages = computeEffectiveMessageLimit({
+    planCode: plan.code,
+    maxMessages,
+    activeSeats,
+  });
   const agentMentions = mentions.filter(isAgentMention);
   const remainingMentions = await Promise.all(
     agentMentions.map(() =>

@@ -1,11 +1,30 @@
 import { withEnvironment } from "../lib/commands";
 import { stopDocker } from "../lib/docker";
 import { logger } from "../lib/logger";
-import { stopAllServices } from "../lib/process";
-import { Ok } from "../lib/result";
+import { stopAllServices, stopService } from "../lib/process";
+import { CommandError, Err, Ok } from "../lib/result";
+import { ALL_SERVICES, isServiceName } from "../lib/services";
 import { getStateInfo, isDockerRunning } from "../lib/state";
 
-export const stopCommand = withEnvironment("stop", async (env) => {
+export const stopCommand = withEnvironment("stop", async (env, service?: string) => {
+  // If a service is specified, stop just that service
+  if (service !== undefined) {
+    if (!isServiceName(service)) {
+      console.log(`\nServices: ${ALL_SERVICES.join(", ")}`);
+      return Err(new CommandError(`Unknown service '${service}'`));
+    }
+
+    logger.info(`Stopping ${service} in '${env.name}'...`);
+    const stopped = await stopService(env.name, service);
+    if (stopped) {
+      logger.success(`${service} stopped`);
+    } else {
+      logger.info(`${service} was not running`);
+    }
+    return Ok(undefined);
+  }
+
+  // No service specified - stop everything
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state === "stopped") {
     logger.info("Environment is already stopped.");

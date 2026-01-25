@@ -33,6 +33,7 @@ const BuyCreditPurchaseArgsSchema = z
       .finite("Discount must be a valid number"),
     confirm: z.boolean(),
     confirmFreeCredit: z.boolean(),
+    confirmProOverride: z.boolean(),
   })
   .refine(
     (data) => {
@@ -51,7 +52,7 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
     id: "buy-programmatic-usage-credits",
     name: "Buy Committed Credits",
     description:
-      "Purchase committed credits for enterprise customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. An invoice will be sent to the customer.",
+      "Purchase committed credits for paying customers. Committed credits are consumed after free credits and before pay-as-you-go (PAYG) credits. An invoice will be sent to the customer.",
     resourceTypes: ["workspaces"],
     args: {
       amountDollars: {
@@ -109,6 +110,13 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
         description:
           "I understand that this will create FREE credits without an invoice. This is giving money to the customer for free.",
         dependsOn: { field: "isFreeCredit", value: true },
+      },
+      confirmProOverride: {
+        type: "boolean",
+        label: "⚠️ Confirm Pro Override",
+        description:
+          "I confirm this Pro customer is trusted and will pay the invoice. This is an exceptional override - Pro users normally pay upfront.",
+        dependsOn: { field: "isFreeCredit", value: false },
       },
     },
   },
@@ -194,9 +202,12 @@ export const buyProgrammaticUsageCreditsPlugin = createPlugin({
       return new Err(new Error("Failed to retrieve Stripe subscription."));
     }
 
-    if (!isEnterpriseSubscription(stripeSubscription)) {
+    const isEnterprise = isEnterpriseSubscription(stripeSubscription);
+    if (!isEnterprise && !validatedArgs.confirmProOverride) {
       return new Err(
-        new Error("This plugin is only available for enterprise customers.")
+        new Error(
+          "This is a Pro customer. Please check the Pro Override confirmation to proceed."
+        )
       );
     }
 

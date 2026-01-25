@@ -33,7 +33,10 @@ function loadAssets(): Assets {
   const conversations = JSON.parse(
     fs.readFileSync(path.join(assetsDir, "conversations.json"), "utf-8")
   );
-  return { agent, skill, conversations };
+  const suggestedSkills = JSON.parse(
+    fs.readFileSync(path.join(assetsDir, "suggested-skills.json"), "utf-8")
+  );
+  return { agent, skill, conversations, suggestedSkills };
 }
 
 describe("basics seed script integration test", () => {
@@ -90,27 +93,39 @@ describe("basics seed script integration test", () => {
 
       // Verify messages exist
       const messages = await MessageModel.findAll({
-        where: { conversationId: conversation!.id },
+        where: {
+          workspaceId: workspace.id,
+          conversationId: conversation!.id,
+        },
         order: [["rank", "ASC"]],
       });
       expect(messages.length).toBe(convAsset.exchanges.length * 2);
 
       // Verify user message content
       const userMessageRow = messages[0];
-      const userMessage = await UserMessageModel.findByPk(
-        userMessageRow.userMessageId!
-      );
+      const userMessage = await UserMessageModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          id: userMessageRow.userMessageId!,
+        },
+      });
       expect(userMessage?.content).toBeDefined();
 
       // Verify agent message and step content
       const agentMessageRow = messages[1];
-      const agentMessage = await AgentMessageModel.findByPk(
-        agentMessageRow.agentMessageId!
-      );
+      const agentMessage = await AgentMessageModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          id: agentMessageRow.agentMessageId!,
+        },
+      });
       expect(agentMessage?.status).toBe("succeeded");
 
       const stepContent = await AgentStepContentModel.findOne({
-        where: { agentMessageId: agentMessage!.id },
+        where: {
+          workspaceId: workspace.id,
+          agentMessageId: agentMessage!.id,
+        },
       });
       expect(stepContent).toBeDefined();
       expect((stepContent?.value as { value: string }).value).toBe(

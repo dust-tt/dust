@@ -4,9 +4,7 @@ import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
-import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -835,22 +833,13 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   }[]
 > {
   const workspace = auth.getNonNullableWorkspace();
-  const webhookRequestTriggers = await WebhookRequestTriggerModel.findAll({
-    where: {
-      workspaceId: workspace.id,
+  const webhookRequestTriggers = await WebhookRequestResource.listForTriggerId(
+    auth,
+    {
       triggerId: trigger.id,
-    },
-    include: [
-      {
-        model: WebhookRequestModel,
-        as: "webhookRequest",
-        required: true,
-        attributes: ["id", "createdAt", "webhookSourceId"],
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-    limit,
-  });
+      limit,
+    }
+  );
 
   // Fetch payloads from GCS for each request
   const bucket = getWebhookRequestsBucket();

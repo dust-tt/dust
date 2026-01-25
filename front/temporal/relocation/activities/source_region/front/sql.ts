@@ -70,10 +70,16 @@ export async function readCoreEntitiesFromSourceRegion({
   });
 
   // Fetch all associated users metadata of the workspace.
+  // Only fetch metadata where workspaceId is null (global) or matches the workspace being
+  // relocated. This avoids FK violations when inserting into destination region for metadata
+  // referencing other workspaces.
   const userMetadata = await UserMetadataModel.findAll({
     where: {
       userId: {
         [Op.in]: memberships.map((m) => m.userId),
+      },
+      workspaceId: {
+        [Op.or]: [{ [Op.is]: null }, { [Op.eq]: workspace.id }],
       },
     },
     raw: true,

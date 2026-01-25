@@ -8,6 +8,10 @@ import {
   jsonToMarkdown,
   makeInternalMCPServer,
 } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  extractTextFromBuffer,
+  processAttachment,
+} from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,6 +26,18 @@ interface GmailHeader {
 interface GmailMessageBody {
   data?: string;
   size?: number;
+  attachmentId?: string;
+}
+
+interface AttachmentMetadata {
+  attachmentId: string;
+  partId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  // True if attachmentId is a real Gmail attachment ID (can be fetched via API)
+  // False if attachmentId is actually a partId (inline content, data in message body)
+  hasRealAttachmentId: boolean;
 }
 
 interface GmailMessagePart {
@@ -59,6 +75,10 @@ interface MessageDetail {
   messageId?: string;
   error?: string;
 }
+
+const MESSAGES_MAX_RESULTS = 50;
+
+const MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS = 10;
 
 // Typeguard for GmailMessage
 function isGmailMessage(data: unknown): data is GmailMessage {
@@ -312,12 +332,18 @@ function createServer(
         .number()
         .optional()
         .describe(
-          "Maximum number of messages to return (default: 10, max: 100)"
+          `Maximum number of messages to return (default: 10, max: ${MESSAGES_MAX_RESULTS} without attachments, ${MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS} with attachments)`
         ),
       pageToken: z
         .string()
         .optional()
         .describe("Token for fetching the next page of results."),
+      includeAttachments: z
+        .boolean()
+        .optional()
+        .describe(
+          "Include message attachments in the response (default: false)"
+        ),
     },
     withToolLogging(
       auth,
@@ -325,7 +351,10 @@ function createServer(
         toolNameForMonitoring: "gmail",
         agentLoopContext,
       },
-      async ({ q, maxResults = 10, pageToken }, { authInfo }) => {
+      async (
+        { q, maxResults = 10, pageToken, includeAttachments },
+        { authInfo }
+      ) => {
         const accessToken = authInfo?.token;
         if (!accessToken) {
           return new Err(new MCPError("Authentication required"));
@@ -335,7 +364,15 @@ function createServer(
         if (q) {
           params.append("q", q);
         }
-        params.append("maxResults", Math.min(maxResults, 100).toString());
+        params.append(
+          "maxResults",
+          Math.min(
+            maxResults,
+            includeAttachments
+              ? MESSAGES_WITH_ATTACHMENTS_MAX_RESULTS
+              : MESSAGES_MAX_RESULTS
+          ).toString()
+        );
         if (pageToken) {
           params.append("pageToken", pageToken);
         }
@@ -397,6 +434,11 @@ function createServer(
             // Decode the full email body
             const body = decodeMessageBody(messageData.payload);
 
+            // Extract attachment metadata
+            const attachments = includeAttachments
+              ? extractAttachments(messageData.payload)
+              : null;
+
             return {
               success: true,
               data: {
@@ -409,6 +451,7 @@ function createServer(
                 subject,
                 date,
                 body,
+                attachments,
               },
             };
           },
@@ -433,6 +476,127 @@ function createServer(
             text: markdownOutput,
           },
         ]);
+      }
+    )
+  );
+
+  server.tool(
+    "get_attachment",
+    "Get the content of a specific attachment from a Gmail message. The attachment will be uploaded and made available in the conversation.",
+    {
+      messageId: z
+        .string()
+        .describe("The ID of the message containing the attachment"),
+      attachmentId: z
+        .string()
+        .describe(
+          "The attachment ID (from the attachments array in get_messages)"
+        ),
+      partId: z
+        .string()
+        .describe("The part ID (from the attachments array in get_messages)"),
+      filename: z
+        .string()
+        .describe(
+          "The filename of the attachment (from the attachments array in get_messages)"
+        ),
+      mimeType: z
+        .string()
+        .describe(
+          "The MIME type of the attachment (from the attachments array in get_messages)"
+        ),
+      hasRealAttachmentId: z
+        .boolean()
+        .describe(
+          "Whether the attachment has a real attachment ID that can be fetched via API (from the attachments array in get_messages)"
+        ),
+    },
+    withToolLogging(
+      auth,
+      {
+        toolNameForMonitoring: "gmail",
+        agentLoopContext,
+      },
+      async (
+        {
+          messageId,
+          attachmentId,
+          partId,
+          filename,
+          mimeType,
+          hasRealAttachmentId,
+        },
+        { authInfo }
+      ) => {
+        const accessToken = authInfo?.token;
+        if (!accessToken) {
+          return new Err(new MCPError("Authentication required"));
+        }
+
+        const encodedMessageId = encodeURIComponent(messageId);
+        let base64Data: string | null = null;
+
+        // Only try the attachments API if we have a real attachment ID
+        if (hasRealAttachmentId && attachmentId) {
+          const encodedAttachmentId = encodeURIComponent(attachmentId);
+          const response = await fetchFromGmail(
+            `/gmail/v1/users/me/messages/${encodedMessageId}/attachments/${encodedAttachmentId}`,
+            accessToken,
+            { method: "GET" }
+          );
+
+          if (response.ok) {
+            const result = await response.json();
+            base64Data = result.data;
+          } else {
+            const attachmentErrorText = await getErrorText(response);
+            return new Err(
+              new MCPError(
+                `Failed to fetch attachment via API: ${attachmentErrorText}`
+              )
+            );
+          }
+        } else {
+          // For inline content (no real attachmentId), fetch from message body
+          const messageResponse = await fetchFromGmail(
+            `/gmail/v1/users/me/messages/${encodedMessageId}?format=full`,
+            accessToken,
+            { method: "GET" }
+          );
+
+          if (!messageResponse.ok) {
+            const messageErrorText = await getErrorText(messageResponse);
+            return new Err(
+              new MCPError(`Failed to fetch message: ${messageErrorText}`)
+            );
+          }
+
+          const messageData: GmailMessage = await messageResponse.json();
+          base64Data = findAttachmentData(messageData.payload, partId);
+
+          if (!base64Data) {
+            return new Err(
+              new MCPError(
+                `Inline attachment data not found in message body. This attachment may not be retrievable.`
+              )
+            );
+          }
+        }
+
+        if (!base64Data) {
+          return new Err(new MCPError("Failed to retrieve attachment data"));
+        }
+
+        // Gmail returns URL-safe base64, convert to standard base64
+        const standardBase64 = base64Data.replace(/-/g, "+").replace(/_/g, "/");
+        const buffer = Buffer.from(standardBase64, "base64");
+
+        return processAttachment({
+          mimeType,
+          filename,
+          extractText: async () => extractTextFromBuffer(buffer, mimeType),
+          downloadContent: async () => new Ok(buffer),
+        });
       }
     )
   );
@@ -648,6 +812,66 @@ const decodeMessageBody = (
   }
 
   return "";
+};
+
+const extractAttachments = (
+  payload: GmailMessagePayload | undefined
+): AttachmentMetadata[] => {
+  if (!payload) {
+    return [];
+  }
+
+  const attachments: AttachmentMetadata[] = [];
+
+  const traverse = (part: GmailMessagePart): void => {
+    if (part.filename && part.filename.length > 0) {
+      const hasRealAttachmentId = Boolean(part.body?.attachmentId);
+      attachments.push({
+        // Use the real attachmentId if available, otherwise use partId
+        attachmentId: part.body?.attachmentId ?? part.partId ?? "",
+        partId: part.partId ?? "",
+        filename: part.filename,
+        mimeType: part.mimeType ?? "application/octet-stream",
+        size: part.body?.size ?? 0,
+        hasRealAttachmentId,
+      });
+    }
+    if (part.parts) {
+      for (const nested of part.parts) {
+        traverse(nested);
+      }
+    }
+  };
+
+  traverse(payload);
+  return attachments;
+};
+
+const findAttachmentData = (
+  payload: GmailMessagePayload | undefined,
+  partId: string
+): string | null => {
+  if (!payload) {
+    return null;
+  }
+
+  const traverse = (part: GmailMessagePart): string | null => {
+    // Match by partId to find inline attachment data
+    if (part.partId === partId && part.body?.data) {
+      return part.body.data;
+    }
+    if (part.parts) {
+      for (const nested of part.parts) {
+        const found = traverse(nested);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return null;
+  };
+
+  return traverse(payload);
 };
 
 const createQuoteSection = (

@@ -14,6 +14,7 @@ import {
 import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
 import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
 import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
@@ -22,9 +23,11 @@ import { ObservabilityProvider } from "@app/components/agent_builder/observabili
 import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 type AgentBuilderRightPanelTabType =
-  | "testing"
+  | "copilot"
+  | "preview"
   | "feedback"
   | "template"
   | "insights";
@@ -35,6 +38,7 @@ interface PanelHeaderProps {
   onTogglePanel: () => void;
   onTabChange: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  hasCopilot: boolean;
 }
 
 function PanelHeader({
@@ -43,6 +47,7 @@ function PanelHeader({
   onTogglePanel,
   onTabChange,
   hasTemplate,
+  hasCopilot,
 }: PanelHeaderProps) {
   return (
     <div className="flex h-16 items-end">
@@ -58,11 +63,19 @@ function PanelHeader({
                   tooltip="Hide preview"
                   onClick={onTogglePanel}
                 />
+                {hasCopilot && (
+                  <TabsTrigger
+                    value="copilot"
+                    label="Copilot"
+                    icon={MagicIcon}
+                    onClick={() => onTabChange("copilot")}
+                  />
+                )}
                 <TabsTrigger
-                  value="testing"
-                  label="Testing"
+                  value="preview"
+                  label="Preview"
                   icon={TestTubeIcon}
-                  onClick={() => onTabChange("testing")}
+                  onClick={() => onTabChange("preview")}
                 />
                 <TabsTrigger
                   value="insights"
@@ -106,17 +119,31 @@ function PanelHeader({
 interface CollapsedTabsProps {
   onTabSelect: (tab: AgentBuilderRightPanelTabType) => void;
   hasTemplate: boolean;
+  hasCopilot: boolean;
 }
 
-function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
+function CollapsedTabs({
+  onTabSelect,
+  hasTemplate,
+  hasCopilot,
+}: CollapsedTabsProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
+      {hasCopilot && (
+        <Button
+          icon={MagicIcon}
+          variant="ghost"
+          size="sm"
+          tooltip="Copilot"
+          onClick={() => onTabSelect("copilot")}
+        />
+      )}
       <Button
         icon={TestTubeIcon}
         variant="ghost"
         size="sm"
-        tooltip="Testing"
-        onClick={() => onTabSelect("testing")}
+        tooltip="Preview"
+        onClick={() => onTabSelect("preview")}
       />
       <Button
         icon={BarChartIcon}
@@ -148,11 +175,15 @@ function CollapsedTabs({ onTabSelect, hasTemplate }: CollapsedTabsProps) {
 interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
+  hasCopilot: boolean;
+  clientSideMCPServerId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
+  hasCopilot,
+  clientSideMCPServerId,
 }: ExpandedContentProps) {
   const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
 
@@ -164,16 +195,21 @@ function ExpandedContent({
           onAddPresetAction={setPresetActionToAdd}
         />
       )}
-      {selectedTab === "testing" && (
+      {selectedTab === "copilot" && hasCopilot && (
         <div className="min-h-0 flex-1">
-          <AgentBuilderPreview />
+          <AgentBuilderCopilot />
+        </div>
+      )}
+      {selectedTab === "preview" && (
+        <div className="min-h-0 flex-1">
+          <AgentBuilderPreview clientSideMCPServerId={clientSideMCPServerId} />
         </div>
       )}
       <ObservabilityProvider>
         {selectedTab === "insights" &&
           (agentConfigurationSId ? (
             <AgentBuilderObservability
-              agentConfigurationSId={agentConfigurationSId ?? ""}
+              agentConfigurationSId={agentConfigurationSId}
             />
           ) : (
             <TabContentLayout title="Insights">
@@ -205,23 +241,27 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
+  clientSideMCPServerId?: string;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
+  clientSideMCPServerId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
-  const { assistantTemplate } = useAgentBuilderContext();
+  const { assistantTemplate, owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const hasTemplate = !!assistantTemplate;
+  const hasCopilot = hasFeature("agent_builder_copilot");
 
   const [selectedTab, setSelectedTab] = useState<AgentBuilderRightPanelTabType>(
-    hasTemplate ? "template" : "testing"
+    hasTemplate ? "template" : "preview"
   );
 
   const handleTogglePanel = () => {
-    setIsPreviewPanelOpen(!isPreviewPanelOpen);
+    setIsPreviewPanelOpen((prev) => !prev);
   };
 
   const handleTabChange = (tab: AgentBuilderRightPanelTabType) => {
@@ -242,17 +282,21 @@ export function AgentBuilderRightPanel({
           onTogglePanel={handleTogglePanel}
           onTabChange={handleTabChange}
           hasTemplate={hasTemplate}
+          hasCopilot={hasCopilot}
         />
       </div>
       {isPreviewPanelOpen ? (
         <ExpandedContent
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
+          hasCopilot={hasCopilot}
+          clientSideMCPServerId={clientSideMCPServerId}
         />
       ) : (
         <CollapsedTabs
           onTabSelect={handleTabSelect}
           hasTemplate={hasTemplate}
+          hasCopilot={hasCopilot}
         />
       )}
     </div>

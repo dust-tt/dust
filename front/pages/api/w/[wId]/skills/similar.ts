@@ -33,7 +33,7 @@ async function handler(
 
   switch (req.method) {
     case "POST": {
-      const { naturalDescription } = req.body;
+      const { naturalDescription, excludeSkillId } = req.body;
 
       if (!isString(naturalDescription)) {
         return apiError(req, res, {
@@ -45,7 +45,20 @@ async function handler(
         });
       }
 
-      const result = await getSimilarSkills(auth, { naturalDescription });
+      if (excludeSkillId !== undefined && !isString(excludeSkillId)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "excludeSkillId must be a string if provided.",
+          },
+        });
+      }
+
+      const result = await getSimilarSkills(auth, {
+        naturalDescription,
+        excludeSkillId: excludeSkillId ?? null,
+      });
 
       if (result.isErr()) {
         logger.error(

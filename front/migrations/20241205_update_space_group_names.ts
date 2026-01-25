@@ -1,7 +1,9 @@
 import { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
+import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+
 makeScript({}, async ({ execute }) => {
   await runOnAllWorkspaces(async (w) => {
     const auth = await Authenticator.internalAdminForWorkspace(w.sId);
@@ -9,7 +11,7 @@ makeScript({}, async ({ execute }) => {
     const regularSpaces = allSpaces.filter(
       (s) => s.kind === "regular" || s.kind === "public"
     );
-    console.log(
+    logger.info(
       `Found ${regularSpaces.length} regular spaces for workspace ${w.name}`
     );
     for (const space of regularSpaces) {
@@ -19,11 +21,24 @@ makeScript({}, async ({ execute }) => {
         if (execute) {
           await group.updateName(auth, `Group for space ${space.name}`);
         }
-        console.log(
+        logger.info(
           `[Execute: ${execute}] Updating group ${group.id} to "Group for space ${space.name}"`
         );
       }
+
+      const spaceEditorsGroups = space.groups.filter(
+        (g) => g.kind === "space_editors"
+      );
+      if (spaceEditorsGroups.length === 1) {
+        const group = spaceEditorsGroups[0];
+        if (execute) {
+          await group.updateName(auth, `Editors for space ${space.name}`);
+        }
+        logger.info(
+          `[Execute: ${execute}] Updating group ${group.id} to "Editors for space ${space.name}"`
+        );
+      }
     }
-    console.log(`Done for workspace ${w.name}`);
+    logger.info(`Done for workspace ${w.name}`);
   });
 });

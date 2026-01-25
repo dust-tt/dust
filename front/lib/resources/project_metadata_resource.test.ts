@@ -32,8 +32,7 @@ describe("ProjectMetadataResource", () => {
     it("returns metadata when it exists", async () => {
       await ProjectMetadataResource.makeNew(auth, projectSpace, {
         description: "Test",
-        urls: ["https://example.com"],
-        tags: ["tag1"],
+        urls: [{ name: "Website", url: "https://example.com" }],
       });
 
       const metadata = await ProjectMetadataResource.fetchBySpace(
@@ -52,13 +51,13 @@ describe("ProjectMetadataResource", () => {
         projectSpace,
         {
           description: "Full metadata",
-          urls: ["https://github.com"],
-          tags: ["frontend"],
+          urls: [{ name: "GitHub", url: "https://github.com" }],
         }
       );
 
       expect(metadata.description).toBe("Full metadata");
-      expect(metadata.urls).toContain("https://github.com");
+      expect(metadata.urls[0].name).toBe("GitHub");
+      expect(metadata.urls[0].url).toBe("https://github.com");
       expect(metadata.sId).toMatch(/^pmd_/);
     });
   });
@@ -71,13 +70,12 @@ describe("ProjectMetadataResource", () => {
         {
           description: "Initial",
           urls: [],
-          tags: [],
         }
       );
 
       await metadata.updateMetadata({
         description: "Updated",
-        tags: ["new-tag"],
+        urls: [{ name: "Website", url: "https://updated.com" }],
       });
 
       const updated = await ProjectMetadataResource.fetchBySpace(
@@ -85,7 +83,7 @@ describe("ProjectMetadataResource", () => {
         projectSpace
       );
       expect(updated!.description).toBe("Updated");
-      expect(updated!.tags).toContain("new-tag");
+      expect(updated!.urls[0].url).toBe("https://updated.com");
     });
   });
 
@@ -97,7 +95,6 @@ describe("ProjectMetadataResource", () => {
         {
           description: "To delete",
           urls: [],
-          tags: [],
         }
       );
 
@@ -118,8 +115,7 @@ describe("ProjectMetadataResource", () => {
         projectSpace,
         {
           description: "JSON test",
-          urls: ["https://test.com"],
-          tags: ["test"],
+          urls: [{ name: "Website", url: "https://test.com" }],
         }
       );
 

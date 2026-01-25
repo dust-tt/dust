@@ -1,4 +1,5 @@
 import * as t from "io-ts";
+import { z } from "zod";
 
 export const ContentSchema = t.type({
   dataSourceId: t.string,
@@ -37,12 +38,24 @@ export type GetPostNotionSyncResponseBody = t.TypeOf<
   typeof GetPostNotionSyncResponseBodySchema
 >;
 
-export const PatchProjectMetadataBodySchema = t.partial({
-  description: t.union([t.string, t.null]),
-  urls: t.array(t.string),
-  tags: t.array(t.string),
+export const PatchProjectMetadataBodySchema = z.object({
+  description: z.string().optional(),
+  urls: z
+    .array(
+      z.object({
+        name: z
+          .string()
+          .nonempty("URL name is required")
+          .max(255, "URL name should be less than 255 characters"),
+        url: z
+          .string()
+          .url("Please enter a valid URL")
+          .nonempty("URL is required"),
+      })
+    )
+    .optional(),
 });
 
-export type PatchProjectMetadataBodyType = t.TypeOf<
+export type PatchProjectMetadataBodyType = z.infer<
   typeof PatchProjectMetadataBodySchema
 >;

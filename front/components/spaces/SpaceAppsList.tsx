@@ -7,7 +7,6 @@ import {
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import sortBy from "lodash/sortBy";
-import { useRouter } from "next/router";
 import type { ParsedUrlQuery } from "querystring";
 import type { ComponentType } from "react";
 import * as React from "react";
@@ -18,6 +17,7 @@ import { ACTION_BUTTONS_CONTAINER_ID } from "@app/components/spaces/SpacePageHea
 import { useActionButtonsPortal } from "@app/hooks/useActionButtonsPortal";
 import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useQueryParams } from "@app/hooks/useQueryParams";
+import { useAppRouter } from "@app/lib/platform";
 import { useApps } from "@app/lib/swr/apps";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type { AppType, LightWorkspaceType, SpaceType } from "@app/types";
@@ -77,7 +77,7 @@ export const SpaceAppsList = ({
   space,
   onSelect,
 }: SpaceAppsListProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const [isCreateAppModalOpened, setIsCreateAppModalOpened] = useState(false);
 
   const { q: searchParam } = useQueryParams(["q"]);

@@ -21,7 +21,6 @@ import type {
 } from "@app/types/core/data_source";
 import type { DataSourceViewType } from "@app/types/data_source_view";
 import type { DustAppSecretType } from "@app/types/dust_app_secret";
-import type { GroupType } from "@app/types/groups";
 import type { Project } from "@app/types/project";
 import type { CredentialsType } from "@app/types/provider";
 import type {
@@ -504,7 +503,7 @@ export class CoreAPI {
   async createRun(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groups: GroupType[],
+    groupIds: string[],
     {
       projectId,
       runType,
@@ -526,7 +525,7 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },
@@ -550,7 +549,7 @@ export class CoreAPI {
   async createRunStream(
     workspace: LightWorkspaceType,
     featureFlags: WhitelistableFeature[],
-    groups: GroupType[],
+    groupIds: string[],
     {
       projectId,
       runType,
@@ -577,7 +576,7 @@ export class CoreAPI {
         headers: {
           "Content-Type": "application/json",
           "X-Dust-Feature-Flags": featureFlags.join(","),
-          "X-Dust-Group-Ids": groups.map((g) => g.sId).join(","),
+          "X-Dust-Group-Ids": groupIds.join(","),
           "X-Dust-IsSystemRun": isSystemKey ? "true" : "false",
           "X-Dust-Workspace-Id": workspace.sId,
         },

@@ -170,7 +170,7 @@ export async function renderAllMessages(
 
     if (isAgentMessageType(m)) {
       if (m.visibility === "visible") {
-        const steps = await getSteps(auth, {
+        const steps = getSteps(auth, {
           model,
           message: m,
           workspaceId: conversation.owner.sId,
@@ -195,7 +195,6 @@ export async function renderAllMessages(
         const renderedContentFragment = await renderContentFragment(
           auth,
           m,
-          conversation,
           model,
           !!excludeImages
         );

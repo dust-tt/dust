@@ -34,6 +34,15 @@ const WorkspaceAllowedDomainUpdateBodySchema = t.type({
   domainAutoJoinEnabled: t.boolean,
 });
 
+const WorkspaceBatchDomainUpdateBodySchema = t.type({
+  domainUpdates: t.array(
+    t.type({
+      domain: t.string,
+      domainAutoJoinEnabled: t.boolean,
+    })
+  ),
+});
+
 const WorkspaceProvidersUpdateBodySchema = t.type({
   whiteListedProviders: t.array(ModelProviderIdCodec),
   defaultEmbeddingProvider: t.union([EmbeddingProviderCodec, t.null]),
@@ -53,6 +62,7 @@ const WorkspaceVoiceTranscriptionUpdateBodySchema = t.type({
 
 const PostWorkspaceRequestBodySchema = t.union([
   WorkspaceAllowedDomainUpdateBodySchema,
+  WorkspaceBatchDomainUpdateBodySchema,
   WorkspaceNameUpdateBodySchema,
   WorkspaceSsoEnforceUpdateBodySchema,
   WorkspaceProvidersUpdateBodySchema,
@@ -169,6 +179,22 @@ async function handler(
         };
         await workspace.updateWorkspaceSettings({ metadata: newMetadata });
         owner.metadata = newMetadata;
+      } else if ("domainUpdates" in body) {
+        for (const update of body.domainUpdates) {
+          const updateResult = await workspace.updateDomainAutoJoinEnabled({
+            domainAutoJoinEnabled: update.domainAutoJoinEnabled,
+            domain: update.domain,
+          });
+          if (updateResult.isErr()) {
+            return apiError(req, res, {
+              status_code: 400,
+              api_error: {
+                type: "invalid_request_error",
+                message: updateResult.error.message,
+              },
+            });
+          }
+        }
       } else {
         const { domain, domainAutoJoinEnabled } = body;
         const updateResult = await workspace.updateDomainAutoJoinEnabled({

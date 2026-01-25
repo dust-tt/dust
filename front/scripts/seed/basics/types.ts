@@ -52,8 +52,16 @@ export interface Assets {
   agent: AgentAsset;
   skill: SkillAsset;
   conversations: ConversationsAsset;
+  suggestedSkills: SuggestedSkillAsset[];
 }
 
 export interface SeedSpaceResult {
   restrictedSpace: SpaceResource | undefined;
+}
+
+export interface SuggestedSkillAsset {
+  name: string;
+  agentFacingDescription: string;
+  userFacingDescription: string;
+  instructions: string;
 }

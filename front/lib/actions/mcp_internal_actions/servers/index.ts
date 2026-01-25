@@ -19,13 +19,11 @@ import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions
 import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
-import { default as githubServer } from "@app/lib/actions/mcp_internal_actions/servers/github";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
-import { default as imageGenerationServer } from "@app/lib/actions/mcp_internal_actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/actions/mcp_internal_actions/servers/include";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
@@ -56,8 +54,10 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
+import { default as statuspageServer } from "@app/lib/actions/mcp_internal_actions/servers/statuspage";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
+import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as webtoolsServer } from "@app/lib/actions/mcp_internal_actions/servers/webtools";
@@ -67,7 +67,12 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
+import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
+import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
+import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
+import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
+import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -162,6 +167,8 @@ export async function getInternalMCPServer(
       return salesloftServer(auth, agentLoopContext);
     case "slab":
       return slabServer(auth, agentLoopContext);
+    case "snowflake":
+      return snowflakeServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
     case "google_calendar":
@@ -198,6 +205,10 @@ export async function getInternalMCPServer(
       return outlookServer(auth, agentLoopContext);
     case "outlook_calendar":
       return outlookCalendarServer(auth, agentLoopContext);
+    case "agent_copilot_agent_state":
+      return agentCopilotAgentStateServer(auth, agentLoopContext);
+    case "agent_copilot_context":
+      return agentCopilotContextServer(auth, agentLoopContext);
     case "agent_management":
       return agentManagementServer(auth, agentLoopContext);
     case "freshservice":
@@ -226,6 +237,10 @@ export async function getInternalMCPServer(
       return productboardServer(auth, agentLoopContext);
     case "project_context_management":
       return projectContextManagementServer(auth, agentLoopContext);
+    case "ukg_ready":
+      return ukgReadyServer(auth, agentLoopContext);
+    case "statuspage":
+      return statuspageServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

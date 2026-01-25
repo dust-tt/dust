@@ -1,9 +1,13 @@
 "use client";
 
-import { Dialog, DialogContent, MagnifyingGlassIcon } from "@dust-tt/sparkle";
+import {
+  Dialog,
+  DialogContent,
+  LinkWrapper,
+  MagnifyingGlassIcon,
+} from "@dust-tt/sparkle";
 import type { DialogProps } from "@radix-ui/react-dialog";
 import { Command as CommandPrimitive } from "cmdk";
-import Link from "next/link";
 import * as React from "react";
 
 import { cn } from "@app/components/poke/shadcn/lib/utils";
@@ -250,9 +254,9 @@ const CommandItem = React.forwardRef<
   );
 
   return href ? (
-    <Link ref={linkRef} href={href} className="block">
+    <LinkWrapper ref={linkRef} href={href} className="block">
       {content}
-    </Link>
+    </LinkWrapper>
   ) : (
     content
   );

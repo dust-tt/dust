@@ -13,6 +13,7 @@ vi.mock("@app/lib/api/redis", () => ({
   getRedisClient: vi.fn().mockResolvedValue({
     get: vi.fn(),
     set: vi.fn(),
+    del: vi.fn(),
     ttl: vi.fn(),
     zAdd: vi.fn(),
     expire: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@app/lib/api/redis", () => ({
         const mockRedisClient = {
           get: vi.fn(),
           set: vi.fn(),
+          del: vi.fn(),
           ttl: vi.fn(),
           zAdd: vi.fn(),
           expire: vi.fn(),

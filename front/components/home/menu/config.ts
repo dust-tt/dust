@@ -404,40 +404,11 @@ export const menuConfig: DocsConfig = {
           title: "Security",
           href: "/home/security",
         },
-        {
-          title: DevelopersMenuConfig.title,
-        },
-        ...DevelopersMenuConfig.items,
       ],
     },
     {
-      title: "Compare",
-      items: [
-        {
-          title: "Dust vs ChatGPT Enterprise",
-          href: "/compare/chatgpt",
-        },
-        {
-          title: "Dust vs Gemini Enterprise",
-          href: "/compare/gemini",
-        },
-        {
-          title: "Dust vs Glean",
-          href: "/compare/glean",
-        },
-        {
-          title: "Dust vs Langdock",
-          href: "/compare/langdock",
-        },
-        {
-          title: "Dust vs n8n",
-          href: "/compare/n8n",
-        },
-        {
-          title: "Dust vs Notion AI",
-          href: "/compare/notion",
-        },
-      ],
+      title: DevelopersMenuConfig.title,
+      items: DevelopersMenuConfig.items,
     },
     {
       title: "Company",

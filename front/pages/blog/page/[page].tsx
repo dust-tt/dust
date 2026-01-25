@@ -76,9 +76,13 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
   allPosts.forEach((post) => post.tags.forEach((tag) => tagSet.add(tag)));
   const allTags = Array.from(tagSet).sort();
 
-  // Paginate: skip featured post (index 0) and previous pages
-  const FEATURED_POST_OFFSET = 1;
-  const remainingPosts = allPosts.slice(FEATURED_POST_OFFSET);
+  // Featured post is the first non-SEO post (shown on page 1 at /blog).
+  const featuredPost = allPosts.find((post) => !post.isSeoArticle);
+
+  // Remaining posts exclude the featured post.
+  const remainingPosts = featuredPost
+    ? allPosts.filter((post) => post.id !== featuredPost.id)
+    : allPosts;
   const totalPages = Math.ceil(remainingPosts.length / BLOG_PAGE_SIZE);
 
   // If page is beyond available pages, 404
@@ -87,7 +91,15 @@ export const getStaticProps: GetStaticProps<BlogPageProps> = async ({
   }
 
   const startIndex = (page - 1) * BLOG_PAGE_SIZE;
-  const posts = remainingPosts.slice(startIndex, startIndex + BLOG_PAGE_SIZE);
+  // Sort within each page: regular articles first, SEO articles at the bottom.
+  const posts = remainingPosts
+    .slice(startIndex, startIndex + BLOG_PAGE_SIZE)
+    .sort((a, b) => {
+      if (a.isSeoArticle !== b.isSeoArticle) {
+        return a.isSeoArticle ? 1 : -1;
+      }
+      return 0;
+    });
 
   return {
     props: {

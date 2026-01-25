@@ -200,16 +200,19 @@ export function getSpacesByIds(ids: string[]): Space[] {
  * Create a new space
  * @param name - Space name
  * @param description - Optional space description
+ * @param isPublic - Optional public visibility flag (defaults to true)
  * @returns The newly created Space
  */
 export function createSpace(
   name: string,
-  description?: string
+  description?: string,
+  isPublic?: boolean
 ): Space {
   const newSpace: Space = {
     id: `space-${Date.now()}`,
     name,
     description: description || `Room for ${name}`,
+    isPublic: isPublic !== undefined ? isPublic : true,
   };
   mockSpaces.push(newSpace);
   return newSpace;

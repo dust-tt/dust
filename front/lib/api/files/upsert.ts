@@ -50,8 +50,12 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
   // Use the file id as the document id to make it easy to track the document back to the file.
   const sourceUrl = file.getPrivateUrl(auth);
   let documentId = file.sId;
+  let parent_id: string | null = null;
+  let parents: string[] = [documentId];
   if (isUpsertDocumentArgs(upsertArgs)) {
     documentId = upsertArgs.document_id;
+    parent_id = upsertArgs.parent_id ?? null;
+    parents = upsertArgs.parents ?? [documentId];
   }
   const { title: upsertTitle, ...restArgs } = upsertArgs ?? {};
   const title = upsertTitle ?? file.fileName;
@@ -70,7 +74,8 @@ const upsertDocumentToDatasource: ProcessingFunction = async (
     document_id: documentId,
     source_url: sourceUrl,
     text: content,
-    parents: [documentId],
+    parent_id,
+    parents,
     tags: [`title:${title}`, `fileId:${file.sId}`, `fileName:${file.fileName}`],
     light_document_output: true,
     dataSource,

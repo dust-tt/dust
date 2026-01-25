@@ -245,11 +245,20 @@ async function handler(
         })
       );
 
-      const requestedSpaceIds =
+      const spaceIdsFromMcpServerViews =
         await MCPServerViewResource.listSpaceRequirementsByIds(
           auth,
           mcpServerViewIds
         );
+
+      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
+        (dsv) => dsv.space.id
+      );
+
+      const requestedSpaceIds = uniq([
+        ...spaceIdsFromMcpServerViews,
+        ...spaceIdsFromAttachedKnowledge,
+      ]);
 
       const extendedSkill = body.extendedSkillId
         ? await SkillResource.fetchById(auth, body.extendedSkillId)

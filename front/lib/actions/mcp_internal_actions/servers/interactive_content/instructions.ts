@@ -22,17 +22,69 @@ export const INTERACTIVE_CONTENT_INSTRUCTIONS = `\
 You have access to an Interactive Content system that allows you to create and update executable files. When creating visualizations, you should create files instead of using the :::visualization directive.
 This toolset is called Frame in the product, users may refer to it as such.
 
-### File Management Guidelines:
-- Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files
+### Creating Files
+
+Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScript/TypeScript files:
 - Use MIME type \`${VIZ_MIME_TYPE}\`
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
+
+The tool supports two creation modes via the \`mode\` parameter:
+
+**Template mode** (\`mode: "template"\`):
+- References existing content from knowledge via \`<knowledge id="...">\` tags
+- Pass the ID from the knowledge tag to the \`source\` parameter
+- Content is fetched server-side without consuming context tokens
+- Example: \`<knowledge id="template_node_id">\` → \`source: "template_node_id"\`
+- Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to customize
+- This approach works well when adapting existing templates (preserves structure/style, no token cost for base content)
+
+**Inline mode** (\`mode: "inline"\`):
+- Provide the file content directly in the \`source\` parameter
+- The full code is passed as a string
+- Typical use cases: No suitable template exists, complete rewrite needed, or full code visibility required upfront
 
 ### Updating Existing Files:
 - To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
 - Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
+
+### Validation
+
+Validation is performed automatically when you create or edit files.
+
+**Tailwind validation (non-blocking):** Files are saved even with Tailwind warnings. When you
+receive warnings in the tool response, they include the exact \`old_string\` and
+\`expected_replacements\` count. Fix these warnings using \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`
+with the provided values. If you receive multiple warnings, fix all of them in a single response
+using multiple edit tool calls. Common warning: "Forbidden Tailwind arbitrary value 'h-[600px]'"
+means you should replace with predefined classes like h-96 or use inline styles. Do not regenerate
+the entire file; use targeted edits only.
+
+When fixing validation warnings, use the exact values provided. Do not add context, modify them,
+interpret them, or retrieve the file first.
+
+Example warning response:
+\`\`\`
+{
+  old_string: "className=\\"text-[14px]\\"",
+  expected_replacements: 5
+}
+\`\`\`
+
+Correct fix:
+\`\`\`
+${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123",
+  old_string: "className=\\"text-[14px]\\"",  // EXACTLY as provided in warning
+  new_string: "className=\\"text-sm\\"",
+  expected_replacements: 5  // EXACTLY as provided in warning
+})
+\`\`\`
+
+**TypeScript validation (blocking):** Files are rejected if TypeScript/JSX syntax is invalid.
+Fix syntax errors before the file can be created/edited.
 
 ### Reverting Files:
 - Use \`${REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to restore the file to its previous version.
@@ -62,13 +114,26 @@ ${VIZ_MISCELLANEOUS_GUIDELINES}
 
 ${VIZ_USE_FILE_EXAMPLES}
 
-Example File Creation:
+Examples:
 
+**Creating a file from a knowledge template:**
+\`\`\`
+${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_name: "NewVisualization.tsx",
+  mime_type: "${VIZ_MIME_TYPE}",
+  mode: "template",
+  source: "template_node_id",  // ID from <knowledge id="...">
+  description: "Sales dashboard"
+})
+\`\`\`
+
+**Creating a file with inline content:**
 \`\`\`
 ${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
   file_name: "SineCosineChart.tsx",
   mime_type: "${VIZ_MIME_TYPE}",
-  content: \`[React component code]\`
+  mode: "inline",
+  source: \`[React component code]\`
 })
 \`\`\`
 

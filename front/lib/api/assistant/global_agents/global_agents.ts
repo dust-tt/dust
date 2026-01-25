@@ -23,10 +23,7 @@ import {
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
-import {
-  _getHelperGlobalAgent,
-  HelperAssistantPrompt,
-} from "@app/lib/api/assistant/global_agents/configurations/helper";
+import { _getHelperGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/helper";
 import {
   _getMistralLargeGlobalAgent,
   _getMistralMediumGlobalAgent,
@@ -76,7 +73,6 @@ function getGlobalAgent({
   auth,
   sId,
   preFetchedDataSources,
-  helperPromptInstance,
   globalAgentSettings,
   agentRouterMCPServerView,
   webSearchBrowseMCPServerView,
@@ -95,7 +91,6 @@ function getGlobalAgent({
   auth: Authenticator;
   sId: string | number;
   preFetchedDataSources: PrefetchedDataSourcesType | null;
-  helperPromptInstance: HelperAssistantPrompt;
   globalAgentSettings: GlobalAgentSettingsModel[];
   agentRouterMCPServerView: MCPServerViewResource | null;
   webSearchBrowseMCPServerView: MCPServerViewResource | null;
@@ -120,10 +115,8 @@ function getGlobalAgent({
     case GLOBAL_AGENTS_SID.HELPER:
       agentConfiguration = _getHelperGlobalAgent({
         auth,
-        helperPromptInstance,
         agentRouterMCPServerView,
         webSearchBrowseMCPServerView,
-        searchMCPServerView,
         interactiveContentMCPServerView,
       });
       break;
@@ -495,7 +488,6 @@ export async function getGlobalAgents(
   const [
     preFetchedDataSources,
     globalAgentSettings,
-    helperPromptInstance,
     agentRouterMCPServerView,
     webSearchBrowseMCPServerView,
     searchMCPServerView,
@@ -514,7 +506,6 @@ export async function getGlobalAgents(
     GlobalAgentSettingsModel.findAll({
       where: { workspaceId: owner.id },
     }),
-    HelperAssistantPrompt.getInstance(),
     variant === "full"
       ? MCPServerViewResource.getMCPServerViewForAutoInternalTool(
           auth,
@@ -669,7 +660,6 @@ export async function getGlobalAgents(
       auth,
       sId,
       preFetchedDataSources,
-      helperPromptInstance,
       globalAgentSettings,
       agentRouterMCPServerView,
       webSearchBrowseMCPServerView,

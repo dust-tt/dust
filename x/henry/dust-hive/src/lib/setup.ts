@@ -88,12 +88,13 @@ async function symlinkCargoTarget(srcDir: string, destDir: string): Promise<void
   }
 }
 
-// Find all AGENTS.local.md files in the repo (excluding node_modules and other large dirs)
+// Find all files matching filename in the repo (excluding node_modules and other large dirs)
 // Uses -prune to skip entire directory trees rather than filtering after traversal
-async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
+async function findAgentsFiles(srcDir: string, filename: string): Promise<string[]> {
   const proc = Bun.spawn(
     [
       "find",
+      "-L", // Follow symlinks so -type f matches symlinked files
       srcDir,
       // Prune large directories (skips traversal entirely, much faster than -not -path)
       "-type",
@@ -116,9 +117,8 @@ async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
       ")",
       "-prune",
       "-o",
-      // Find AGENTS.local.md files
       "-name",
-      "AGENTS.local.md",
+      filename,
       "-type",
       "f",
       "-print",
@@ -141,16 +141,19 @@ async function findAgentsLocalFiles(srcDir: string): Promise<string[]> {
     .filter((line) => line.length > 0);
 }
 
-// Copy user config files (AGENTS.local.md files, .claude/) from main repo to worktree
+// Copy user config files (AGENTS.local.md, AGENTS.override.md files, .claude/) from main repo to worktree
 async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<void> {
-  // Find and copy all AGENTS.local.md files, preserving directory structure
-  const agentsFiles = await findAgentsLocalFiles(srcDir);
-  for (const srcPath of agentsFiles) {
-    // Get relative path from srcDir
-    const relativePath = srcPath.slice(srcDir.length + 1);
-    const destPath = `${destDir}/${relativePath}`;
-    await Bun.spawn(["cp", srcPath, destPath]).exited;
-    logger.success(`Copied ${relativePath}`);
+  // Find and copy all AGENTS.local.md and AGENTS.override.md files, preserving directory structure
+  const filenames = ["AGENTS.local.md", "AGENTS.override.md"];
+  for (const filename of filenames) {
+    const agentsFiles = await findAgentsFiles(srcDir, filename);
+    for (const srcPath of agentsFiles) {
+      // Get relative path from srcDir
+      const relativePath = srcPath.slice(srcDir.length + 1);
+      const destPath = `${destDir}/${relativePath}`;
+      await Bun.spawn(["cp", srcPath, destPath]).exited;
+      logger.success(`Copied ${relativePath}`);
+    }
   }
 
   // Copy directories recursively, merging with existing content
@@ -283,7 +286,7 @@ export async function installAllDependencies(
     throw new Error(`Failed to install dependencies for: ${failed.join(", ")}`);
   }
 
-  // Copy user config files (AGENTS.local.md, CLAUDE.md, .claude/) if they exist
+  // Copy user config files (AGENTS.local.md, AGENTS.override.md, .claude/) if they exist
   logger.step("Copying user config files...");
   await copyUserConfigFiles(repoRoot, worktreePath);
 }

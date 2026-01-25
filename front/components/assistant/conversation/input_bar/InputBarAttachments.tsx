@@ -25,10 +25,9 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
-import { getSpaceIcon } from "@app/lib/spaces";
+import { getSpaceIcon, getSpaceName } from "@app/lib/spaces";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { DataSourceViewContentNode, LightWorkspaceType } from "@app/types";
-import { GLOBAL_SPACE_NAME } from "@app/types";
 
 interface FileAttachmentsProps {
   service: FileUploaderService;
@@ -43,7 +42,7 @@ interface InputBarAttachmentsProps {
   owner: LightWorkspaceType;
   files: FileAttachmentsProps;
   nodes?: NodeAttachmentsProps;
-  conversationId: string | null;
+  conversationId?: string | null;
   disable?: boolean;
 }
 
@@ -56,6 +55,7 @@ export function InputBarAttachments({
 }: InputBarAttachmentsProps) {
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !nodes?.items.length,
   });
   const spacesMap = useMemo(
@@ -64,7 +64,7 @@ export function InputBarAttachments({
         spaces?.map((space) => [
           space.sId,
           {
-            name: space.kind === "global" ? GLOBAL_SPACE_NAME : space.name,
+            name: getSpaceName(space),
             icon: getSpaceIcon(space),
           },
         ]) || []

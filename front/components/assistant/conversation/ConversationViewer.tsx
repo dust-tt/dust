@@ -39,6 +39,7 @@ import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/cit
 import type { AgentMessageFeedbackType } from "@app/lib/api/assistant/feedback";
 import { getUpdatedParticipantsFromEvent } from "@app/lib/client/conversation/event_handlers";
 import type { DustError } from "@app/lib/error";
+import { AgentMessageCompletedEvent } from "@app/lib/notifications/events";
 import {
   useConversation,
   useConversationFeedbacks,
@@ -180,6 +181,10 @@ export const ConversationViewer = ({
     VirtuosoMessage[] | undefined
   >(undefined);
 
+  const [messageIdToScrollTo, setMessageIdToScrollTo] = useState<number | null>(
+    null
+  );
+
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
@@ -193,6 +198,28 @@ export const ConversationViewer = ({
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
+
+      // Fetch the message to scroll to from the URL hash.
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith("#")) {
+        return;
+      }
+
+      const messageId = hash.substring(1); // Remove the '#' prefix.
+      if (!messageId) {
+        return;
+      }
+
+      // Find the message index in the current data.
+      const messageIndex = messagesToRender.findIndex(
+        (m) => m.sId === messageId
+      );
+
+      if (messageIndex === -1) {
+        // nothing found to scroll to.
+        return;
+      }
+      setMessageIdToScrollTo(messageIndex);
     }
   }, [initialListData, messages, setInitialListData, isValidating]);
 
@@ -414,6 +441,8 @@ export const ConversationViewer = ({
               },
               { revalidate: false }
             );
+
+            window.dispatchEvent(new AgentMessageCompletedEvent());
             break;
           default:
             ((t: never) => {
@@ -458,6 +487,7 @@ export const ConversationViewer = ({
         input,
         mentions: mentions.map(toMentionType),
         contentFragments,
+        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
       };
 
       const lastMessageRank = Math.max(
@@ -580,12 +610,13 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
-      submitMessage,
-      user,
+      agentBuilderContext?.clientSideMCPServerIds,
       conversationId,
+      mutateConversations,
       sendNotification,
       setPlanLimitReached,
-      mutateConversations,
+      submitMessage,
+      user,
     ]
   );
 
@@ -621,7 +652,7 @@ export const ConversationViewer = ({
       data: VirtuosoMessage;
       context: VirtuosoMessageListContext;
     }) => {
-      return `conversation-${context.conversationId}-message-rank-${data.rank}`;
+      return `conversation-${context.conversation?.sId}-message-rank-${data.rank}`;
     },
     []
   );
@@ -640,13 +671,14 @@ export const ConversationViewer = ({
     );
   }, [feedbacks]);
 
-  const context = useMemo(() => {
+  const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
       owner,
       handleSubmit,
-      conversationId,
-      enableReactions: !!conversation?.spaceId,
+      conversation,
+      draftKey: `conversation-${conversationId}`,
+      enableExtendedActions: !!conversation?.spaceId,
       agentBuilderContext,
       feedbacksByMessageId,
     };
@@ -654,8 +686,8 @@ export const ConversationViewer = ({
     user,
     owner,
     handleSubmit,
+    conversation,
     conversationId,
-    conversation?.spaceId,
     agentBuilderContext,
     feedbacksByMessageId,
   ]);
@@ -676,17 +708,12 @@ export const ConversationViewer = ({
             scrollModifier: {
               type: "item-location",
               location: {
-                index: "LAST",
-                align: "end",
+                index: messageIdToScrollTo ?? "LAST",
+                align: messageIdToScrollTo ? "start" : "end",
                 behavior: "instant",
               },
               purgeItemSizes: true,
             },
-          }}
-          initialLocation={{
-            index: "LAST",
-            align: "end",
-            behavior: "instant",
           }}
           ref={ref}
           ItemContent={MessageItem}

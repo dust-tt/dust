@@ -55,17 +55,19 @@ export const AgentInputBar = ({
   }
 
   const { mutateConversation } = useConversation({
-    conversationId: context.conversationId,
+    conversationId: context.conversation?.sId,
     workspaceId: context.owner.sId,
     options: { disabled: true }, // We just want to get the mutation function
   });
   const cancelMessage = useCancelMessage({
     owner: context.owner,
-    conversationId: context.conversationId,
+    conversationId: context.conversation?.sId,
   });
 
   const generatingMessages =
-    generationContext.getConversationGeneratingMessages(context.conversationId);
+    generationContext.getConversationGeneratingMessages(
+      context.conversation?.sId ?? ""
+    );
 
   const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
@@ -149,7 +151,9 @@ export const AgentInputBar = ({
     );
 
     const canUp = fullyAboveIndices.length > 0;
-    const canDown = belowTopQuarterIndices.length > 0 || bottomOffset > 0;
+    const canDown =
+      (belowTopQuarterIndices.length > 0 || bottomOffset > 0) &&
+      !methods.getScrollLocation().isAtBottom;
 
     return {
       canScrollUp: canUp,
@@ -189,10 +193,9 @@ export const AgentInputBar = ({
     };
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
-  const showClearButton =
-    context.agentBuilderContext?.resetConversation &&
-    generatingMessages.length > 0;
   const showStopButton = generatingMessages.length > 0;
+  const showMessageNavigation = !context.agentBuilderContext;
+  const showNavigationContainer = showStopButton || showMessageNavigation;
   const blockedActions = getBlockedActions(context.user.sId);
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
@@ -214,13 +217,13 @@ export const AgentInputBar = ({
   };
 
   const handleStopGeneration = async () => {
-    if (!context.conversationId) {
+    if (!context.conversation) {
       return;
     }
     setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
     await cancelMessage(
       generationContext.generatingMessages
-        .filter((m) => m.conversationId === context.conversationId)
+        .filter((m) => m.conversationId === context.conversation?.sId)
         .map((m) => m.messageId)
     );
     void mutateConversation();
@@ -230,16 +233,12 @@ export const AgentInputBar = ({
     if (
       isStopping &&
       !generationContext.generatingMessages.some(
-        (m) => m.conversationId === context.conversationId
+        (m) => m.conversationId === context.conversation?.sId
       )
     ) {
       setIsStopping(false);
     }
-  }, [
-    isStopping,
-    generationContext.generatingMessages,
-    context.conversationId,
-  ]);
+  }, [isStopping, generationContext.generatingMessages, context.conversation]);
 
   return (
     <div
@@ -248,47 +247,55 @@ export const AgentInputBar = ({
       }
     >
       <div className="flex w-full justify-center gap-2">
-        <div
-          className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
-          style={{
-            position: "absolute",
-            top: "-2em",
-          }}
-        >
-          {showStopButton && (
-            <>
-              <Button
-                variant="ghost"
-                label={getStopButtonLabel()}
-                icon={StopIcon}
-                onClick={handleStopGeneration}
-                disabled={isStopping}
-                size="xs"
-              />
-              <div className="h-4 w-px bg-border dark:bg-border-night" />
-            </>
-          )}
-          <IconButton
-            icon={ArrowUpIcon}
-            onClick={scrollToPreviousUserMessage}
-            disabled={!canScrollUp}
-            size="xs"
-            tooltip="Previous message"
-          />
-          <IconButton
-            icon={ArrowDownIcon}
-            onClick={scrollToNextUserMessage}
-            disabled={!canScrollDown}
-            size="xs"
-            tooltip="Next message"
-          />
-        </div>
+        {showNavigationContainer && (
+          <div
+            className="flex items-center gap-1 rounded-xl border border-border bg-white p-1 dark:border-border-night dark:bg-muted-night"
+            style={{
+              position: "absolute",
+              top: "-2em",
+            }}
+          >
+            {showStopButton && (
+              <>
+                <Button
+                  variant="ghost"
+                  label={getStopButtonLabel()}
+                  icon={StopIcon}
+                  onClick={handleStopGeneration}
+                  disabled={isStopping}
+                  size="xs"
+                />
+                {showMessageNavigation && (
+                  <div className="h-4 w-px bg-border dark:bg-border-night" />
+                )}
+              </>
+            )}
+            {showMessageNavigation && (
+              <>
+                <IconButton
+                  icon={ArrowUpIcon}
+                  onClick={scrollToPreviousUserMessage}
+                  disabled={!canScrollUp}
+                  size="xs"
+                  tooltip="Previous message"
+                />
+                <IconButton
+                  icon={ArrowDownIcon}
+                  onClick={scrollToNextUserMessage}
+                  disabled={!canScrollDown}
+                  size="xs"
+                  tooltip="Next message"
+                />
+              </>
+            )}
+          </div>
+        )}
 
-        {showClearButton && (
+        {context.agentBuilderContext?.resetConversation && !showStopButton && (
           <Button
             variant="outline"
             icon={ArrowPathIcon}
-            onClick={context.agentBuilderContext?.resetConversation}
+            onClick={context.agentBuilderContext.resetConversation}
             label="Clear"
             style={{
               position: "absolute",
@@ -345,10 +352,11 @@ export const AgentInputBar = ({
         user={context.user}
         onSubmit={context.handleSubmit}
         stickyMentions={autoMentions}
-        conversationId={context.conversationId}
+        conversation={context.conversation}
+        draftKey={context.draftKey}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
-        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
+        isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />
     </div>
   );

@@ -53,7 +53,9 @@ export function ArchiveSkillDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          <div className="font-bold">Are you sure you want to proceed?</div>
+          <div className="text-sm font-medium">
+            Are you sure you want to proceed?
+          </div>
         </DialogContainer>
         <DialogFooter
           leftButtonProps={{

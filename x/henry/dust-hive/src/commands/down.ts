@@ -1,6 +1,7 @@
 import { stopDocker } from "../lib/docker";
 import { getEnvironment, listEnvironments } from "../lib/environment";
 import { logger } from "../lib/logger";
+import { getConfiguredMultiplexer } from "../lib/multiplexer";
 import { stopAllServices } from "../lib/process";
 import { confirm } from "../lib/prompt";
 import { Ok, type Result } from "../lib/result";
@@ -11,41 +12,6 @@ import { stopTestRedis } from "../lib/test-redis";
 
 interface DownOptions {
   force?: boolean;
-}
-
-// Get all dust-hive zellij sessions
-async function getDustHiveSessions(): Promise<string[]> {
-  const proc = Bun.spawn(["zellij", "list-sessions"], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  const output = await new Response(proc.stdout).text();
-  await proc.exited;
-
-  if (proc.exitCode !== 0) {
-    return [];
-  }
-
-  // Strip ANSI codes and find dust-hive sessions
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional for ANSI escape code stripping
-  const stripAnsi = (str: string) => str.replace(/\x1b\[[0-9;]*m/g, "");
-
-  return output
-    .split("\n")
-    .map((line) => stripAnsi(line).trim())
-    .filter((line) => line.length > 0)
-    .map((line) => line.split(/\s+/)[0])
-    .filter((name): name is string => name?.startsWith("dust-hive-") ?? false);
-}
-
-// Kill a zellij session
-async function killZellijSession(sessionName: string): Promise<boolean> {
-  const proc = Bun.spawn(["zellij", "delete-session", sessionName, "--force"], {
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-  return proc.exitCode === 0;
 }
 
 // Stop a single environment (services + docker)
@@ -109,7 +75,7 @@ async function confirmStopAll(envNames: string[], sessions: string[]): Promise<b
     console.log(`  - ${envNames.length} environment(s): ${envNames.join(", ")}`);
   }
   if (sessions.length > 0) {
-    console.log(`  - ${sessions.length} zellij session(s): ${sessions.join(", ")}`);
+    console.log(`  - ${sessions.length} multiplexer session(s): ${sessions.join(", ")}`);
   }
   console.log("  - Temporal server");
   console.log("  - Shared test Postgres");
@@ -121,6 +87,8 @@ async function confirmStopAll(envNames: string[], sessions: string[]): Promise<b
 
 // Execute the actual stop operations
 async function executeStopAll(envNames: string[], sessions: string[]): Promise<void> {
+  const multiplexer = await getConfiguredMultiplexer();
+
   logger.info("Stopping all dust-hive services...");
   console.log();
 
@@ -140,11 +108,11 @@ async function executeStopAll(envNames: string[], sessions: string[]): Promise<v
   // Stop test Redis
   await stopTestRedisAndLog();
 
-  // Kill all zellij sessions
+  // Kill all multiplexer sessions
   if (sessions.length > 0) {
-    logger.step(`Killing ${sessions.length} zellij session(s)...`);
-    await Promise.all(sessions.map((name) => killZellijSession(name)));
-    logger.success("All zellij sessions killed");
+    logger.step(`Killing ${sessions.length} multiplexer session(s)...`);
+    await Promise.all(sessions.map((name) => multiplexer.deleteSession(name)));
+    logger.success("All multiplexer sessions killed");
   }
 
   console.log();
@@ -152,8 +120,9 @@ async function executeStopAll(envNames: string[], sessions: string[]): Promise<v
 }
 
 export async function downCommand(options: DownOptions = {}): Promise<Result<void>> {
+  const multiplexer = await getConfiguredMultiplexer();
   const envNames = await listEnvironments();
-  const sessions = await getDustHiveSessions();
+  const sessions = await multiplexer.listSessions();
 
   // Nothing to stop - just check managed services
   if (envNames.length === 0 && sessions.length === 0) {

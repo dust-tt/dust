@@ -14,6 +14,7 @@ export type ConfirmDataType = {
   message: string | ReactNode;
   validateLabel?: string;
   validateVariant?: "primary" | "warning";
+  validateDisabled?: boolean;
   cancelLabel?: string;
 };
 
@@ -97,6 +98,7 @@ export function ConfirmDialog({
           rightButtonProps={{
             label: confirmData?.validateLabel ?? "OK",
             variant: confirmData?.validateVariant ?? "warning",
+            disabled: confirmData?.validateDisabled ?? false,
             onClick: () => resolveConfirm(true),
           }}
         />

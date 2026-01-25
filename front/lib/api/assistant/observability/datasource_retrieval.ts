@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import type { ConnectorProvider } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
@@ -22,6 +23,7 @@ export type DatasourceRetrievalData = {
     dataSourceId: string;
     displayName: string;
     count: number;
+    connectorProvider?: ConnectorProvider;
   }[];
 };
 
@@ -147,7 +149,7 @@ export async function fetchDatasourceRetrievalMetrics(
   const serverConfigByModelId = new Map(
     serverConfigs.map((cfg) => [cfg.id, cfg])
   );
-  const dataSourceById = new Map(dataSources.map((ds) => [ds.sId, ds]));
+  const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
   const data: DatasourceRetrievalData[] = mcpServerConfigBuckets.map(
     (mcpConfigBucket) => {
@@ -168,13 +170,14 @@ export async function fetchDatasourceRetrievalMetrics(
         mcpServerName,
         count: mcpConfigBucket.doc_count,
         datasources: datasourceBuckets.map((dsBucket) => {
-          const dataSource = dataSourceById.get(dsBucket.key);
+          const dataSource = dataSourceBySId.get(dsBucket.key);
           return {
             dataSourceId: dsBucket.key,
             displayName: dataSource
               ? getDisplayNameForDataSource(dataSource.toJSON())
               : dsBucket.key,
             count: dsBucket.doc_count,
+            connectorProvider: dataSource?.connectorProvider ?? undefined,
           };
         }),
       };

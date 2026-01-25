@@ -38,11 +38,13 @@ export async function seedSpace(
         kind: "regular",
         workspaceId: workspace.id,
       },
-      [group]
+      { members: [group] }
     );
 
     // Add the user to the group so they can access the space
-    const addMemberResult = await group.addMember(auth, user.toJSON());
+    const addMemberResult = await group.addMember(auth, {
+      user: user.toJSON(),
+    });
     if (addMemberResult.isErr()) {
       throw new Error(
         `Failed to add user to group: ${addMemberResult.error.message}`

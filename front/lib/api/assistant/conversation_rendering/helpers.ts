@@ -15,7 +15,6 @@ import { renderLightContentFragmentForModel } from "@app/lib/resources/content_f
 import logger from "@app/logger/logger";
 import type {
   AgentMessageType,
-  ConversationType,
   FunctionCallType,
   FunctionMessageTypeModel,
   ModelConfigurationType,
@@ -104,7 +103,7 @@ export function renderActionForMultiActionsModel(
 /**
  * Processes agent message steps
  */
-export async function getSteps(
+export function getSteps(
   auth: Authenticator,
   {
     model,
@@ -119,7 +118,7 @@ export async function getSteps(
     conversationId: string;
     onMissingAction: "inject-placeholder" | "skip";
   }
-): Promise<Step[]> {
+): Step[] {
   const supportedModel = getSupportedModelConfig(model);
   const actions = removeNulls(message.actions);
 
@@ -342,14 +341,12 @@ export function renderUserMessage(m: UserMessageType): UserMessageTypeModel {
 export async function renderContentFragment(
   auth: Authenticator,
   m: any, // ContentFragmentType
-  conversation: ConversationType,
   model: ModelConfigurationType,
   excludeImages: boolean
 ): Promise<ModelMessageTypeMultiActions | null> {
   const renderedContentFragment = await renderLightContentFragmentForModel(
     auth,
     m,
-    conversation,
     model,
     {
       excludeImages: Boolean(excludeImages),

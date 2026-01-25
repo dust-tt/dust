@@ -1,0 +1,48 @@
+{
+  "name": "dust-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo/AppEntry",
+  "scripts": {
+    "start": "expo start --dev-client",
+    "ios": "expo run:ios",
+    "build:dev": "eas build --profile development --platform ios",
+    "build:preview": "eas build --profile preview --platform ios",
+    "android": "expo run:android"
+  },
+  "dependencies": {
+    "@dust-tt/client": "file:../../../sdks/js",
+    "@react-navigation/native": "^7.0.0",
+    "@react-navigation/native-stack": "^7.0.0",
+    "buffer": "^6.0.3",
+    "event-source-polyfill": "^1.0.31",
+    "eventsource-parser": "^3.0.6",
+    "expo": "~52.0.0",
+    "expo-asset": "~11.0.5",
+    "expo-auth-session": "~6.0.0",
+    "expo-constants": "~17.0.8",
+    "expo-crypto": "~14.0.0",
+    "expo-dev-client": "~5.0.0",
+    "expo-file-system": "~18.0.12",
+    "expo-font": "~13.0.4",
+    "expo-keep-awake": "~14.0.3",
+    "expo-secure-store": "~14.0.0",
+    "expo-web-browser": "~14.0.0",
+    "jwt-decode": "^4.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.6",
+    "react-native-gesture-handler": "~2.20.0",
+    "react-native-markdown-display": "^7.0.2",
+    "react-native-mmkv": "^3.2.0",
+    "react-native-safe-area-context": "4.14.0",
+    "react-native-screens": "~4.4.0",
+    "swr": "^2.2.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.25.0",
+    "@types/event-source-polyfill": "^1.0.5",
+    "@types/react": "~18.3.0",
+    "typescript": "~5.3.0"
+  }
+}

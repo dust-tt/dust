@@ -251,7 +251,8 @@ export async function resolveChannelId({
   const searchString = channelNameOrId
     .trim()
     .replace(/^#/, "")
-    .replace(/^@/, "");
+    .replace(/^@/, "")
+    .replace(/^U/, "D");
 
   // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
   if (searchString.match(/^[CGD][A-Z0-9]+$/)) {
@@ -686,8 +687,7 @@ export async function executePostMessage(
     message: string;
     threadTs: string | undefined;
     fileId: string | undefined;
-  },
-  mcpServerId: string
+  }
 ) {
   const slackClient = await getSlackClient(accessToken);
   const originalMessage = message;
@@ -715,47 +715,20 @@ export async function executePostMessage(
       );
     }
 
-    // Resolve channel id - optimize by trying conversations.info first if it looks like an ID.
-    const searchString = to.trim().replace(/^#/, "");
-    let channelId: string | undefined;
-
-    // If searchString looks like a Slack channel ID (starts with C or G), try direct lookup first.
-    if (searchString.match(/^[CG][A-Z0-9]+$/)) {
-      try {
-        const infoResp = await slackClient.conversations.info({
-          channel: searchString,
-        });
-        if (infoResp.ok && infoResp.channel?.id) {
-          channelId = infoResp.channel.id;
-        }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (error) {
-        // Fall through to list-based search.
-      }
-    }
-
-    // If not found via direct lookup, search through cached channels list.
+    // Resolve channel id using the shared helper function.
+    const channelId = await resolveChannelId({
+      channelNameOrId: to,
+      accessToken,
+    });
     if (!channelId) {
-      const conversationsList = await getCachedPublicChannels({
-        mcpServerId,
-        slackClient,
-      });
-      const channel = conversationsList.find(
-        (c) =>
-          c.name?.toLowerCase() === searchString.toLowerCase() ||
-          c.id?.toLowerCase() === searchString.toLowerCase()
+      return new Err(
+        new MCPError(
+          `Unable to resolve channel id for "${to}". Please use a channel id, user id, or a valid channel name.`,
+          {
+            tracked: false,
+          }
+        )
       );
-      if (!channel) {
-        return new Err(
-          new MCPError(
-            `Unable to resolve channel id for "${to}". Please use a channel id or a valid channel name.`,
-            {
-              tracked: false,
-            }
-          )
-        );
-      }
-      channelId = channel.id;
     }
 
     const signedUrl = await file.getSignedUrlForDownload(auth, "original");
@@ -1145,12 +1118,14 @@ export async function executeReadThreadMessages({
   const formattedOutput = {
     parent_message: {
       text: parentMessage?.text ?? "",
+      blocks: parentMessage?.blocks,
       user: parentMessage?.user ?? "",
       ts: parentMessage?.ts ?? "",
       reply_count: parentMessage?.reply_count ?? 0,
     },
     thread_replies: threadReplies.map((msg) => ({
       text: msg.text ?? "",
+      blocks: msg.blocks,
       user: msg.user ?? "",
       ts: msg.ts ?? "",
     })),

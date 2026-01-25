@@ -12,4 +12,5 @@ export type KeyType = {
   groupId: ModelId;
   role: RoleType;
   scope: "default" | "restricted_group_only";
+  monthlyCapMicroUsd: number | null;
 };

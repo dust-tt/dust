@@ -7,6 +7,10 @@ export type DustErrorCode =
   | "file_not_found"
   | "unauthorized"
   | "agent_loop_already_running"
+  | "data_source_not_found"
+  | "data_source_view_not_found"
+  | "space_not_found"
+  | "invalid_request_error"
   // Data source
   | "data_source_error"
   | "data_source_quota_error"
@@ -39,6 +43,7 @@ export type DustErrorCode =
   | "mcp_server_view_not_found"
   | "action_not_found"
   | "action_not_blocked"
+  | "mcp_access_token_error"
   // Triggers errors
   | "webhook_source_not_found"
   // Space errors

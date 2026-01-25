@@ -203,6 +203,7 @@ export const supportedImageFileFormats = {
   "image/png": [".png"],
   "image/gif": [".gif"],
   "image/webp": [".webp"],
+  "image/svg+xml": [".svg"],
 } as const;
 
 export const supportedAudioFileFormats = {
@@ -321,6 +322,7 @@ const UserMessageOriginSchema = z
     "zapier",
     "zendesk",
     "onboarding_conversation",
+    "agent_copilot",
   ])
   .catch("api")
   .or(z.null())
@@ -640,6 +642,7 @@ export type RetrievalDocumentPublicType = z.infer<
 
 const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "advanced_notion_management"
+  | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
   | "agent_tool_outputs_analytics"
@@ -656,6 +659,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "dust_academy"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
@@ -691,6 +695,8 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
+  | "statuspage_tool"
+  | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
 >();
@@ -789,7 +795,9 @@ const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "disabled_free_workspace"
 >();
 
-const AgentStatusSchema = FlexibleEnumSchema<"active" | "archived" | "draft">();
+const AgentStatusSchema = FlexibleEnumSchema<
+  "active" | "archived" | "draft" | "pending"
+>();
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
@@ -2408,6 +2416,24 @@ export type GetSpaceConversationIdsResponseType = z.infer<
   typeof GetSpaceConversationIdsResponseSchema
 >;
 
+export const ProjectMetadataSchema = z.object({
+  sId: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  spaceId: z.string(),
+  description: z.string().nullable(),
+  urls: z.array(z.object({ name: z.string(), url: z.string() })),
+  members: z.array(z.string()),
+});
+export type ProjectMetadataType = z.infer<typeof ProjectMetadataSchema>;
+
+export const GetSpaceMetadataResponseSchema = z.object({
+  metadata: ProjectMetadataSchema.nullable(),
+});
+export type GetSpaceMetadataResponseType = z.infer<
+  typeof GetSpaceMetadataResponseSchema
+>;
+
 const GetDocumentsResponseSchema = z.object({
   documents: z.array(CoreAPIDocumentSchema),
   total: z.number(),
@@ -2938,8 +2964,10 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
+  | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
+  | "UkgLogo"
   | "ValTownLogo"
   | "VantaLogo"
   | "ZendeskLogo"

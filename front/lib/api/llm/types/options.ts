@@ -6,6 +6,7 @@ import type {
 import type {
   ModelConversationTypeMultiActions,
   ModelIdType,
+  ModelProviderIdType,
   ReasoningEffort,
 } from "@app/types";
 
@@ -19,7 +20,7 @@ export type LLMParameters = {
 } & LLMTraceCustomization;
 
 export type LLMClientMetadata = {
-  clientId: string;
+  clientId: ModelProviderIdType;
   modelId: ModelIdType;
 };
 

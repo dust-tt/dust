@@ -5,6 +5,8 @@ import type {
 
 export const DEFAULT_MCP_REQUEST_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes.
 
+export const RUN_AGENT_CALL_TOOL_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes.
+
 export const RETRY_ON_INTERRUPT_MAX_ATTEMPTS = 15;
 
 // Stored in a separate file to prevent a circular dependency issue.
@@ -50,6 +52,8 @@ export const DEFAULT_MCP_ACTION_NAME = "mcp";
 export const DEFAULT_MCP_ACTION_VERSION = "1.0.0";
 export const DEFAULT_MCP_ACTION_DESCRIPTION =
   "Call a tool to answer a question.";
+
+export const TOOL_NAME_SEPARATOR = "__";
 
 export const MCP_TOOL_STAKE_LEVELS = [
   "high",

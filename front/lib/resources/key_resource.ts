@@ -22,6 +22,7 @@ export interface KeyAuthType {
   name: string | null;
   isSystem: boolean;
   role: RoleType;
+  monthlyCapMicroUsd: number | null;
 }
 
 export const SECRET_KEY_PREFIX = "sk-";
@@ -233,6 +234,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       groupId: this.groupId,
       role: this.role,
       scope: this.scope,
+      monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }
 
@@ -243,6 +245,7 @@ export class KeyResource extends BaseResource<KeyModel> {
       name: this.name,
       isSystem: this.isSystem,
       role: this.role,
+      monthlyCapMicroUsd: this.monthlyCapMicroUsd,
     };
   }
 
@@ -252,5 +255,13 @@ export class KeyResource extends BaseResource<KeyModel> {
 
   async updateRole({ newRole }: { newRole: RoleType }) {
     await this.update({ role: newRole });
+  }
+
+  async updateMonthlyCap({
+    monthlyCapMicroUsd,
+  }: {
+    monthlyCapMicroUsd: number | null;
+  }) {
+    await this.update({ monthlyCapMicroUsd });
   }
 }

@@ -71,7 +71,7 @@ export function DataSourceSpaceSelector({
 
   return (
     <>
-      <span className="text-sm font-medium">Select your space:</span>
+      <span className="text-sm font-medium">From:</span>
       <DataSourceList
         items={spaceItems}
         showCheckboxOnlyForPartialSelection

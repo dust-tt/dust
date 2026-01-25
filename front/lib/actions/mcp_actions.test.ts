@@ -1,12 +1,12 @@
 import { assert, describe, expect, it } from "vitest";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   getToolExtraFields,
   listToolsForServerSideMCPServer,
-  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
@@ -288,15 +288,19 @@ describe("makeToolsWithStakesAndTimeout", () => {
         list_calendars: "high",
         list_events: "never_ask",
         get_event: "never_ask",
-        create_event: "low",
-        update_event: "low",
-        delete_event: "low",
+        create_event: "medium",
+        update_event: "medium",
+        delete_event: "medium",
         check_availability: "never_ask",
         get_user_timezones: "never_ask",
       },
       toolsRetryPolicies: undefined,
       serverTimeoutMs: undefined,
-      toolsArgumentsRequiringApproval: undefined,
+      toolsArgumentsRequiringApproval: {
+        create_event: ["calendarId"],
+        update_event: ["calendarId"],
+        delete_event: ["calendarId"],
+      },
     });
   });
 

@@ -76,7 +76,6 @@ export async function syncConversation({
   dataSourceConfig,
   projectId,
   conversation,
-
   syncType,
 }: {
   connectorId: ModelId;
@@ -130,7 +129,7 @@ export async function syncConversation({
       folderId: folderInternalId,
       parents: [folderInternalId],
       parentId: null,
-      title: `Project ${projectId}`,
+      title: `Conversations`,
       mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONVERSATION_FOLDER,
     });
 

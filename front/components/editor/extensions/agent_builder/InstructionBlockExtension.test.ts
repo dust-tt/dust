@@ -361,4 +361,36 @@ Toto:
 
 <br>`);
   });
+
+  it("should work on deep-nested instruction blocks with NBSP", () => {
+    editor.commands.setContent(
+      // Contains NBSP before the `1. something`
+      // eslint-disable-next-line no-irregular-whitespace
+      `<prompt>\n<instructions>\n<do>\n    1. something\n</do>\n</instructions>\n</prompt>`,
+      {
+        contentType: "markdown",
+      }
+    );
+
+    // check it doesn't fail
+    void editor.getJSON();
+
+    const markdown = editor.getMarkdown();
+    // We loose the <do> but at least the content can be displayed
+    expect(markdown).toEqual(`<prompt>
+
+<instructions>
+
+<do>
+
+1. something
+
+</do>
+
+</instructions>
+
+</prompt>
+
+<br>`);
+  });
 });

@@ -3,8 +3,9 @@
  * ISC License
  */
 
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useState } from "react";
+
+import { useAppRouter } from "@app/lib/platform";
 
 const getUrlFromLocation = (location: Location) => {
   return `${location.pathname}${location.search}${location.hash}`;
@@ -48,7 +49,7 @@ export const useHashParam = (
   key: string,
   defaultValue?: string
 ): [string | undefined, Setter] => {
-  const router = useRouter();
+  const router = useAppRouter();
 
   // Hold the internal value for the search param defined by "key" in the hash.
   const [innerValue, setInnerValue] = useState<{

@@ -33,6 +33,24 @@ if (DATADOG_CLIENT_TOKEN) {
     site: "datadoghq.eu",
     forwardErrorsToLogs: true,
     sessionSampleRate: 100,
+    beforeSend: (log) => {
+      // Filter out benign ResizeObserver errors that have no user impact.
+      // Different browsers use different messages:
+      // - Safari/Firefox: "ResizeObserver loop completed with undelivered notifications"
+      // - Chrome: "ResizeObserver loop limit exceeded"
+      // See: https://github.com/DataDog/browser-sdk/issues/1616
+      if (log.message && typeof log.message === "string") {
+        if (
+          log.message.includes(
+            "ResizeObserver loop completed with undelivered notifications"
+          ) ||
+          log.message.includes("ResizeObserver loop limit exceeded")
+        ) {
+          return false;
+        }
+      }
+      return true;
+    },
   });
 }
 

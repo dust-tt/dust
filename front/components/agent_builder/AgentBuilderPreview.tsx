@@ -1,4 +1,4 @@
-import { Spinner, TestTubeIcon } from "@dust-tt/sparkle";
+import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useRef } from "react";
 import { useWatch } from "react-hook-form";
 
@@ -7,9 +7,8 @@ import {
   useDraftAgent,
   useDraftConversation,
 } from "@app/components/agent_builder/hooks/useAgentPreview";
-import { EmptyPlaceholder } from "@app/components/agent_builder/observability/shared/EmptyPlaceholder";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { usePreviewPanelContext } from "@app/components/agent_builder/PreviewPanelContext";
+import { TrialMessageUsage } from "@app/components/app/TrialMessageUsage";
 import { BlockedActionsProvider } from "@app/components/assistant/conversation/BlockedActionsProvider";
 import ConversationSidePanelContent from "@app/components/assistant/conversation/ConversationSidePanelContent";
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
@@ -18,7 +17,9 @@ import { GenerationContextProvider } from "@app/components/assistant/conversatio
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import type { DustError } from "@app/lib/error";
+import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
+import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
 import type {
   ContentFragmentsType,
   ConversationWithoutContentType,
@@ -65,7 +66,7 @@ function LoadingState({ message }: LoadingStateProps) {
 }
 
 interface PreviewContentProps {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   user: UserType | null;
   owner: WorkspaceType;
   currentPanel: ConversationSidePanelType;
@@ -77,6 +78,9 @@ interface PreviewContentProps {
   ) => Promise<Result<undefined, DustError>>;
   draftAgent: LightAgentConfigurationType | null;
   isSavingDraftAgent: boolean;
+  isTrialPlan: boolean;
+  isAdmin: boolean;
+  clientSideMCPServerId?: string;
 }
 
 function PreviewContent({
@@ -88,11 +92,19 @@ function PreviewContent({
   createConversation,
   draftAgent,
   isSavingDraftAgent,
+  isTrialPlan,
+  isAdmin,
+  clientSideMCPServerId,
 }: PreviewContentProps) {
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
         <div className="flex-1 overflow-y-auto">
+          {isTrialPlan && (
+            <div className="px-4 pt-4">
+              <TrialMessageUsage isAdmin={isAdmin} workspaceId={owner.sId} />
+            </div>
+          )}
           {conversation && user && (
             <ConversationViewer
               owner={owner}
@@ -100,12 +112,22 @@ function PreviewContent({
               conversationId={conversation.sId}
               agentBuilderContext={{
                 draftAgent: draftAgent ?? undefined,
-                isSavingDraftAgent,
+                isSubmitting: isSavingDraftAgent,
                 resetConversation,
                 actionsToShow: ["attachment"],
+                clientSideMCPServerIds: clientSideMCPServerId
+                  ? [clientSideMCPServerId]
+                  : undefined,
               }}
               key={conversation.sId}
             />
+          )}
+          {!conversation && (
+            <div className="flex h-full items-center justify-center px-6 text-center">
+              <div className="text-base font-medium text-muted-foreground">
+                Preview your agent here
+              </div>
+            </div>
           )}
         </div>
 
@@ -119,7 +141,7 @@ function PreviewContent({
               stickyMentions={
                 draftAgent ? [toRichAgentMentionType(draftAgent)] : []
               }
-              conversationId={null}
+              draftKey={`agent-${draftAgent?.name}-builder-preview`}
               actions={["attachment"]}
               disableAutoFocus
               isFloating={false}
@@ -140,9 +162,18 @@ function PreviewContent({
   );
 }
 
-export function AgentBuilderPreview() {
-  const { owner } = useAgentBuilderContext();
+interface AgentBuilderPreviewProps {
+  clientSideMCPServerId?: string;
+}
+
+export function AgentBuilderPreview({
+  clientSideMCPServerId,
+}: AgentBuilderPreviewProps) {
+  const { owner, isAdmin } = useAgentBuilderContext();
   const { user } = useUser();
+  const { activeSubscription } = useWorkspaceActiveSubscription({ owner });
+  const isTrialPlan =
+    activeSubscription && isFreeTrialPhonePlan(activeSubscription.plan.code);
   const { isMCPServerViewsLoading } = useMCPServerViewsContext();
   const { isPreviewPanelOpen } = usePreviewPanelContext();
 
@@ -154,9 +185,10 @@ export function AgentBuilderPreview() {
 
   const [instructions, actions, agentName] = watchedFields;
 
-  const hasContent = useMemo(() => {
-    return !!instructions?.trim() || (actions?.length ?? 0) > 0;
-  }, [instructions, actions]);
+  const hasContent = useMemo(
+    () => !!instructions?.trim() || !!actions?.length,
+    [instructions, actions]
+  );
 
   const {
     draftAgent,
@@ -171,6 +203,7 @@ export function AgentBuilderPreview() {
     useDraftConversation({
       draftAgent,
       getDraftAgent,
+      clientSideMCPServerId,
     });
 
   const debounceTimerRef = useRef<NodeJS.Timeout>();
@@ -245,13 +278,11 @@ export function AgentBuilderPreview() {
   const renderContent = () => {
     if (!hasContent) {
       return (
-        <TabContentLayout title="Testing">
-          <EmptyPlaceholder
-            icon={TestTubeIcon}
-            title="Ready to test your agent?"
-            description="Add some instructions or actions to your agent to start testing it here."
-          />
-        </TabContentLayout>
+        <div className="flex h-full flex-1 items-center justify-center px-6 text-center">
+          <div className="text-base font-medium text-muted-foreground">
+            Preview your agent here
+          </div>
+        </div>
       );
     }
 
@@ -278,6 +309,9 @@ export function AgentBuilderPreview() {
         createConversation={createConversation}
         draftAgent={draftAgent}
         isSavingDraftAgent={isSavingDraftAgent}
+        isTrialPlan={!!isTrialPlan}
+        isAdmin={isAdmin}
+        clientSideMCPServerId={clientSideMCPServerId}
       />
     );
   };

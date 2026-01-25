@@ -38,7 +38,6 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import type {
-  ConversationWithoutContentType,
   DataSourceViewCategory,
   DataSourceViewType,
   ModelId,
@@ -485,60 +484,33 @@ export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewMode
     return dataSourceViews ?? [];
   }
 
-  static async fetchByConversation(
+  static async fetchByConversationModelIds(
     auth: Authenticator,
-    conversation: ConversationWithoutContentType
-  ): Promise<DataSourceViewResource | null> {
-    // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByConversation(
-      auth,
-      conversation
-    );
-    if (!dataSource) {
-      return null;
+    conversationModelIds: ModelId[]
+  ): Promise<DataSourceViewResource[]> {
+    if (conversationModelIds.length === 0) {
+      return [];
     }
 
-    const dataSourceViews = await this.baseFetch(
+    const dataSources = await DataSourceResource.fetchByConversationModelIds(
+      auth,
+      conversationModelIds
+    );
+    if (dataSources.length === 0) {
+      return [];
+    }
+
+    return this.baseFetch(
       auth,
       {},
       {
         where: {
           workspaceId: auth.getNonNullableWorkspace().id,
           kind: "default",
-          dataSourceId: dataSource.id,
+          dataSourceId: { [Op.in]: dataSources.map((ds) => ds.id) },
         },
       }
     );
-
-    return dataSourceViews[0] ?? null;
-  }
-
-  static async fetchByProjectId(
-    auth: Authenticator,
-    projectId: ModelId
-  ): Promise<DataSourceViewResource | null> {
-    // Fetch the data source view associated with the datasource that is associated with the conversation.
-    const dataSource = await DataSourceResource.fetchByProjectId(
-      auth,
-      projectId
-    );
-    if (!dataSource) {
-      return null;
-    }
-
-    const dataSourceViews = await this.baseFetch(
-      auth,
-      {},
-      {
-        where: {
-          workspaceId: auth.getNonNullableWorkspace().id,
-          kind: "default",
-          dataSourceId: dataSource.id,
-        },
-      }
-    );
-
-    return dataSourceViews[0] ?? null;
   }
 
   static async search(

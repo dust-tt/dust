@@ -19,15 +19,10 @@ import { directoryExists } from "../lib/fs";
 import { isGitSpiceAvailable, repoSyncWithGitSpice } from "../lib/git-spice";
 import { logger } from "../lib/logger";
 import { findRepoRoot } from "../lib/paths";
+import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { loadSettings } from "../lib/settings";
 import { runNpmInstall } from "../lib/setup";
-import {
-  getCurrentBranch,
-  getMainRepoPath,
-  hasUncommittedChanges,
-  isWorktree,
-} from "../lib/worktree";
 
 export interface SyncOptions {
   force?: boolean;
@@ -124,40 +119,6 @@ async function checkMissingBinaries(repoRoot: string): Promise<Binary[]> {
     }
   }
   return missing;
-}
-
-// Check preconditions for sync command
-async function checkSyncPreconditions(repoRoot: string): Promise<Result<void>> {
-  // Must be run from main repo, not a worktree
-  const inWorktree = await isWorktree(repoRoot);
-  if (inWorktree) {
-    const mainRepo = await getMainRepoPath(repoRoot);
-    return Err(
-      new CommandError(`Cannot sync from a worktree. Run sync from the main repo: cd ${mainRepo}`)
-    );
-  }
-
-  // Must be on main branch
-  const currentBranch = await getCurrentBranch(repoRoot);
-  if (currentBranch !== "main") {
-    return Err(
-      new CommandError(
-        `Cannot sync from branch '${currentBranch}'. Checkout main first: git checkout main`
-      )
-    );
-  }
-
-  // Must have clean working directory (ignoring untracked files)
-  logger.step("Checking for uncommitted changes...");
-  const hasChanges = await hasUncommittedChanges(repoRoot, { ignoreUntracked: true });
-  if (hasChanges) {
-    return Err(
-      new CommandError("Repository has uncommitted changes. Commit or stash them before syncing.")
-    );
-  }
-  logger.success("Working directory clean");
-
-  return Ok(undefined);
 }
 
 // Determine which npm directories need updating based on lock file changes
@@ -349,7 +310,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   }
 
   // Check preconditions
-  const preconditionResult = await checkSyncPreconditions(repoRoot);
+  const preconditionResult = await checkMainRepoPreconditions(repoRoot, { commandName: "sync" });
   if (!preconditionResult.ok) {
     return preconditionResult;
   }

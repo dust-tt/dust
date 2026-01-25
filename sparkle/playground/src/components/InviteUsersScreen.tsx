@@ -99,66 +99,61 @@ export function InviteUsersScreen({
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="lg" side="right">
         <SheetHeader>
-          <SheetTitle>Invite users to {spaceName}</SheetTitle>
+          <SheetTitle>Invite Members to {spaceName}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="s-flex s-flex-col s-gap-4">
-            <p className="s-text-sm s-text-muted-foreground">
-              Select users to invite to this room.
-            </p>
-            <SearchInput
-              name="user-search"
-              value={searchText}
-              onChange={setSearchText}
-              placeholder="Search users..."
-              className="s-w-full"
-            />
-            <div className="s-flex s-flex-1 s-flex-col s-min-h-0">
-              <ListGroup>
-                {filteredUsers.map((user) => {
-                  const isSelected = selectedUserIds.has(user.id);
-                  return (
-                    <ListItem
-                      key={user.id}
-                      interactive={true}
-                      itemsAlignment="center"
-                      onClick={() => toggleUser(user.id)}
-                      className={
-                        isSelected
-                          ? "s-bg-primary-50 dark:s-bg-primary-50-night"
-                          : ""
-                      }
-                    >
-                      <Avatar
-                        name={user.fullName}
-                        visual={user.portrait}
-                        size="sm"
-                        isRounded={true}
-                      />
-                      <div className="s-flex s-flex-1 s-flex-col s-min-w-0">
-                        <span className="s-text-sm s-font-medium s-text-foreground s-truncate">
-                          {user.fullName}
-                        </span>
-                        <span className="s-text-xs s-text-muted-foreground s-truncate">
-                          {user.email}
-                        </span>
-                      </div>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked !== "indeterminate") {
-                            handleCheckboxChange(user.id, checked);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </ListGroup>
-            </div>
+          <SearchInput
+            name="user-search"
+            value={searchText}
+            onChange={setSearchText}
+            placeholder="Search users..."
+            className="s-mt-2"
+          />
+          <div className="s-flex s-min-h-0 s-flex-1 s-flex-col">
+            <ListGroup>
+              {filteredUsers.map((user) => {
+                const isSelected = selectedUserIds.has(user.id);
+                return (
+                  <ListItem
+                    key={user.id}
+                    interactive={true}
+                    itemsAlignment="center"
+                    onClick={() => toggleUser(user.id)}
+                    className={
+                      isSelected
+                        ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                        : ""
+                    }
+                  >
+                    <Avatar
+                      name={user.fullName}
+                      visual={user.portrait}
+                      size="sm"
+                      isRounded={true}
+                    />
+                    <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                      <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                        {user.fullName}
+                      </span>
+                      <span className="s-truncate s-text-xs s-text-muted-foreground">
+                        {user.email}
+                      </span>
+                    </div>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        if (checked !== "indeterminate") {
+                          handleCheckboxChange(user.id, checked);
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    />
+                  </ListItem>
+                );
+              })}
+            </ListGroup>
           </div>
         </SheetContainer>
         <SheetFooter
@@ -169,7 +164,7 @@ export function InviteUsersScreen({
           }}
           rightButtonProps={{
             label: inviteButtonLabel,
-            variant: "primary",
+            variant: "highlight",
             onClick: handleInvite,
             tooltip: inviteButtonTooltip,
             disabled: selectedCount === 0,

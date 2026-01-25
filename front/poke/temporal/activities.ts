@@ -184,7 +184,13 @@ async function deleteSpaceConversations(
 ) {
   const conversations = await ConversationResource.listConversationsInSpace(
     auth,
-    { spaceId: space.sId, options: { includeDeleted: true } }
+    {
+      spaceId: space.sId,
+      options: {
+        includeDeleted: true,
+        dangerouslySkipPermissionFiltering: true,
+      },
+    }
   );
 
   hardDeleteLogger.info(
@@ -548,6 +554,7 @@ export async function deleteSpacesActivity({
   const auth = await Authenticator.internalAdminForWorkspace(workspaceId);
   const spaces = await SpaceResource.listWorkspaceSpaces(auth, {
     includeConversationsSpace: true,
+    includeProjectSpaces: true,
     includeDeleted: true,
   });
 
