@@ -114,6 +114,7 @@ export enum GLOBAL_AGENTS_SID {
   DUST_TASK = "dust-task",
   DUST_BROWSER_SUMMARY = "dust-browser-summary",
   DUST_PLANNING = "dust-planning",
+  COPILOT = "copilot",
   SLACK = "slack",
   GOOGLE_DRIVE = "google_drive",
   NOTION = "notion",

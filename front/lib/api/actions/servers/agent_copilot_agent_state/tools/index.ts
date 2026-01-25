@@ -1,11 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import {
   getAgentConfigurationIdFromContext,
   getAgentConfigurationVersionFromContext,
-} from "@app/lib/api/actions/servers/agent_copilot_agent_state/helpers";
-import { AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
+} from "@app/lib/api/actions/servers/agent_copilot_helpers";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { Err, Ok } from "@app/types";

@@ -240,6 +240,13 @@ const config = {
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
+  getDocumentRendererUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
+  },
+  // Internal viz service URL (K8s service in production).
+  getVizInternalUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VIZ_INTERNAL_URL");
+  },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_PROVIDERS_PAGE_ID");

@@ -319,6 +319,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
       };
+    case GLOBAL_AGENTS_SID.COPILOT:
+      return {
+        sId: GLOBAL_AGENTS_SID.COPILOT,
+        name: "copilot",
+        description: "An agent that suggest improvements for another agent.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.NOOP:
       return {
         sId: GLOBAL_AGENTS_SID.NOOP,

@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
+  ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
@@ -27,6 +28,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
+  declare metadata: CreationOptional<ConversationMetadata>;
 
   declare requestedSpaceIds: number[];
 
@@ -74,6 +76,11 @@ ConversationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    metadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
   },
   {

@@ -6,8 +6,6 @@ import type {
 } from "@app/components/agent_builder/skills/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 
-export type CapabilityFilterType = "all" | "tools" | "skills";
-
 export type CapabilitiesSheetContentProps = {
   isOpen: boolean;
   sheetState: CapabilitiesSheetState;

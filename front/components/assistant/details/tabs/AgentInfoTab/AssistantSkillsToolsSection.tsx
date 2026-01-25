@@ -11,11 +11,12 @@ import {
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   isMCPServerConfiguration,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
@@ -48,7 +49,7 @@ const isHiddenDustAction = (action: MCPServerConfigurationType) => {
   }
   if (isServerSideMCPServerConfiguration(action)) {
     return HIDDEN_DUST_ACTIONS.some((serverName) =>
-      isInternalMCPServerOfName(action.internalMCPServerId, serverName)
+      matchesInternalMCPServerName(action.internalMCPServerId, serverName)
     );
   }
   return false;
@@ -182,10 +183,8 @@ function useAvailableToolsets({
 }) {
   const toolsetsAction = useMemo(
     () =>
-      agentConfiguration.actions.find(
-        (action) =>
-          isServerSideMCPServerConfiguration(action) &&
-          isInternalMCPServerOfName(action.internalMCPServerId, "toolsets")
+      agentConfiguration.actions.find((action) =>
+        isServerSideMCPServerConfigurationWithName(action, "toolsets")
       ),
     [agentConfiguration.actions]
   );

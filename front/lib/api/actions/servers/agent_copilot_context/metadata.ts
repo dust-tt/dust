@@ -4,11 +4,65 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import {
+  AGENT_SUGGESTION_KINDS,
+  AGENT_SUGGESTION_STATES,
+} from "@app/types/suggestions/agent_suggestion";
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
-// Key used to store the agent configuration ID in additionalConfiguration.
-export const AGENT_CONFIGURATION_ID_KEY = "agentConfigurationId";
+// Suggestion tool schemas
+
+const InstructionsSuggestionSchema = z.object({
+  oldString: z
+    .string()
+    .describe("The exact text to find (including surrounding context)"),
+  newString: z.string().describe("The exact replacement text"),
+  expectedOccurrences: z
+    .number()
+    .optional()
+    .describe("Number of occurrences to replace."),
+});
+
+const ToolAdditionSchema = z.object({
+  id: z.string().describe("The tool/server identifier"),
+  additionalConfiguration: z
+    .record(z.unknown())
+    .optional()
+    .describe("Optional configuration for the tool"),
+});
+
+const ToolsSuggestionSchema = z.object({
+  additions: z
+    .array(ToolAdditionSchema)
+    .optional()
+    .describe("Tools to add to the agent"),
+  deletions: z
+    .array(z.string())
+    .optional()
+    .describe("Tool IDs to remove from the agent"),
+});
+
+const SkillsSuggestionSchema = z.object({
+  additions: z
+    .array(z.string())
+    .optional()
+    .describe("Skill IDs to add to the agent"),
+  deletions: z
+    .array(z.string())
+    .optional()
+    .describe("Skill IDs to remove from the agent"),
+});
+
+const ModelSuggestionSchema = z.object({
+  modelId: z.enum(MODEL_IDS).describe("The model ID to suggest"),
+  reasoningEffort: z
+    .enum(REASONING_EFFORTS)
+    .optional()
+    .describe("Optional reasoning effort level"),
+});
 
 export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   get_available_models: {
@@ -67,6 +121,82 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
   },
+  // Suggestion tools
+  suggest_prompt_editions: {
+    description:
+      "Create one or more suggestions to modify the agent's instructions/prompt. Each suggestion specifies text to find and replace.",
+    schema: {
+      suggestions: z
+        .array(InstructionsSuggestionSchema)
+        .describe("Array of instruction modifications to suggest"),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestions"),
+    },
+    stake: "never_ask",
+  },
+  suggest_tools: {
+    description:
+      "Suggest adding or removing tools from the agent's configuration.",
+    schema: {
+      suggestion: ToolsSuggestionSchema.describe(
+        "The tool additions and/or deletions to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+  },
+  suggest_skills: {
+    description:
+      "Suggest adding or removing skills from the agent's configuration.",
+    schema: {
+      suggestion: SkillsSuggestionSchema.describe(
+        "The skill additions and/or deletions to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+  },
+  suggest_model: {
+    description: "Suggest changing the agent's LLM model configuration.",
+    schema: {
+      suggestion: ModelSuggestionSchema.describe(
+        "The model configuration to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+  },
+  list_suggestions: {
+    description:
+      "List existing suggestions for the agent's configuration changes.",
+    schema: {
+      status: z
+        .enum(AGENT_SUGGESTION_STATES)
+        .optional()
+        .default("pending")
+        .describe(
+          `Filter by suggestion status (default: 'pending'). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
+        ),
+      kind: z
+        .enum(AGENT_SUGGESTION_KINDS)
+        .optional()
+        .describe(
+          `Filter by suggestion type. Options: ${AGENT_SUGGESTION_KINDS.join(", ")}. If not provided, returns all types.`
+        ),
+    },
+    stake: "never_ask",
+  },
 });
 
 export const AGENT_COPILOT_CONTEXT_SERVER = {
@@ -74,7 +204,7 @@ export const AGENT_COPILOT_CONTEXT_SERVER = {
     name: "agent_copilot_context",
     version: "1.0.0",
     description:
-      "Retrieve context about available models, skills, tools, and agent-specific feedback and insights.",
+      "Retrieve context about available models, skills, tools, and agent-specific feedback and insights. Create and manage suggestions for agent configuration changes.",
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,

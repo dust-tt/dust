@@ -79,7 +79,7 @@ export const MAX_FILE_SIZES: Record<FileFormatCategory, number> = {
   data: 50 * 1024 * 1024, // 50MB.
   code: 50 * 1024 * 1024, // 50MB.
   delimited: 50 * 1024 * 1024, // 50MB.
-  image: 5 * 1024 * 1024, // 5 MB
+  image: 20 * 1024 * 1024, // 20MB - Gemini limit due to base64 conversion overhead
   audio: 100 * 1024 * 1024, // 100 MB, audio files can be large, ex transcript of meetings
 };
 
@@ -166,6 +166,7 @@ export const FILE_FORMATS = {
   "image/gif": { cat: "image", exts: [".gif"], isSafeToDisplay: true },
   "image/webp": { cat: "image", exts: [".webp"], isSafeToDisplay: true },
   "image/svg+xml": { cat: "image", exts: [".svg"], isSafeToDisplay: true },
+  "image/bmp": { cat: "image", exts: [".bmp"], isSafeToDisplay: true },
 
   // Structured.
   "text/csv": { cat: "delimited", exts: [".csv"], isSafeToDisplay: true },

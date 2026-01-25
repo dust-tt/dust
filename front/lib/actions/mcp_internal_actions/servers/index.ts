@@ -16,7 +16,6 @@ import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_int
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
-import { default as generateFileServer } from "@app/lib/actions/mcp_internal_actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
@@ -54,7 +53,6 @@ import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
-import { default as statuspageServer } from "@app/lib/actions/mcp_internal_actions/servers/statuspage";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
@@ -69,10 +67,12 @@ import {
 } from "@app/lib/actions/types/guards";
 import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
+import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
+import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -124,7 +124,7 @@ export async function getInternalMCPServer(
     case "sound_studio":
       return soundStudio(auth, agentLoopContext);
     case "file_generation":
-      return generateFileServer(auth, agentLoopContext);
+      return fileGenerationServer(auth, agentLoopContext);
     case "interactive_content":
       return interactiveContentServer(auth, agentLoopContext);
     case "query_tables_v2":

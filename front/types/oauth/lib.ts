@@ -275,7 +275,7 @@ export function getProviderRequiredOAuthCredentialInputs({
       return null;
     case "ukg_ready":
       if (useCase === "personal_actions") {
-        // UKG Ready uses standard authorization code flow with client_secret
+        // UKG Ready uses PKCE authorization code flow (no client_secret needed)
         const result: OAuthCredentialInputs = {
           instance_url: {
             label: "UKG Ready Instance URL",
@@ -294,12 +294,6 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "OAuth Client ID",
             value: undefined,
             helpMessage: "The client ID from your UKG Ready OAuth app",
-            validator: isValidClientIdOrSecret,
-          },
-          client_secret: {
-            label: "OAuth Client Secret",
-            value: undefined,
-            helpMessage: "The client secret from your UKG Ready OAuth app",
             validator: isValidClientIdOrSecret,
           },
         };
@@ -409,7 +403,9 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
+              useCase === "platform_actions"
+                ? "The Snowflake role for all users (e.g., ANALYST)."
+                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",

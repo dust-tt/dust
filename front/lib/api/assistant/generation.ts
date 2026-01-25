@@ -10,13 +10,13 @@ import {
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
-import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  isMCPConfigurationForInternalNotion,
-  isMCPConfigurationForInternalSlack,
-  isMCPConfigurationForInternalWebsearch,
-  isMCPConfigurationForRunAgent,
-  isMCPConfigurationWithDataSource,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  SKILL_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  areDataSourcesConfigured,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
@@ -328,15 +328,17 @@ export function constructGuidelinesSection({
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isMCPConfigurationWithDataSource(action) ||
-      isMCPConfigurationForInternalWebsearch(action) ||
-      isMCPConfigurationForRunAgent(action) ||
-      isMCPConfigurationForInternalSlack(action) ||
-      isMCPConfigurationForInternalNotion(action)
+      areDataSourcesConfigured(action) ||
+      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+        isServerSideMCPServerConfigurationWithName(action, n)
+      ) ||
+      isServerSideMCPServerConfigurationWithName(action, "run_agent") ||
+      isServerSideMCPServerConfigurationWithName(action, "slack") ||
+      isServerSideMCPServerConfigurationWithName(action, "notion")
   );
 
   const isUsingRunAgent = agentConfiguration.actions.some((action) =>
-    isMCPConfigurationForRunAgent(action)
+    isServerSideMCPServerConfigurationWithName(action, "run_agent")
   );
 
   if (canRetrieveDocuments) {

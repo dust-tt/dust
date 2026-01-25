@@ -92,8 +92,7 @@ type BaseAgentSuggestionType = {
   sId: string;
   createdAt: number;
   updatedAt: number;
-  agentConfigurationId: string;
-  agentConfigurationVersion: number;
+  agentConfigurationId: ModelId;
   analysis: string | null;
   state: AgentSuggestionState;
   source: AgentSuggestionSource;

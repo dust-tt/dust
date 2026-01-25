@@ -8,17 +8,28 @@ RUN apt-get update && \
 ARG COMMIT_HASH
 ARG COMMIT_HASH_LONG
 
-# Build SDK (shared by both front-nextjs and workers)
-WORKDIR /sdks/js
-COPY /sdks/js/package*.json ./
+WORKDIR /app
+
+# Copy all package.json files and lockfile
+COPY package.json package-lock.json ./
+COPY sdks/js/package.json ./sdks/js/
+COPY sparkle/package.json ./sparkle/
+COPY front/package.json ./front/
+
+RUN npm ci -w sdks/js -w sparkle -w front
+
+# Build SDK
+WORKDIR /app/sdks/js
 COPY /sdks/js/ .
-RUN npm ci
 RUN npm run build
 
-# Install front dependencies and copy source (shared by both)
-WORKDIR /app
-COPY /front/package*.json ./
-RUN npm ci
+# Build Sparkle
+WORKDIR /app/sparkle
+COPY /sparkle/ .
+RUN npm run build
+
+# Copy front source
+WORKDIR /app/front
 COPY /front .
 
 # Remove test files (shared optimization)
@@ -67,25 +78,25 @@ ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
 # DATADOG_API_KEY is used to conditionally enable source map generation and upload to Datadog
 RUN BUILD_WITH_SOURCE_MAPS=${DATADOG_API_KEY:+true} \
-    FRONT_DATABASE_URI="sqlite:foo.sqlite" \
-    NODE_OPTIONS="--max-old-space-size=8192" \
-    npm run build -- --no-lint && \
-    if [ -n "$DATADOG_API_KEY" ]; then \
-        export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
-        npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
-        --minified-path-prefix=/_next/static/ \
-        --repository-url=https://github.com/dust-tt/dust \
-        --project-path=front \
-        --release-version=$COMMIT_HASH \
-        --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
-        npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
-        --minified-path-prefix=/app/.next/server/ \
-        --repository-url=https://github.com/dust-tt/dust \
-        --project-path=front \
-        --release-version=$COMMIT_HASH \
-        --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
-        find .next -type f -name "*.map" -print -delete; \
-    fi
+  FRONT_DATABASE_URI="sqlite:foo.sqlite" \
+  NODE_OPTIONS="--max-old-space-size=8192" \
+  npm run build -- --no-lint && \
+  if [ -n "$DATADOG_API_KEY" ] && [ -n "$NEXT_PUBLIC_DATADOG_SERVICE" ]; then \
+  export DATADOG_SITE=datadoghq.eu DATADOG_API_KEY=$DATADOG_API_KEY; \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/static \
+  --minified-path-prefix=/_next/static/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE-browser && \
+  npx --yes @datadog/datadog-ci sourcemaps upload ./.next/server \
+  --minified-path-prefix=/app/front/.next/server/ \
+  --repository-url=https://github.com/dust-tt/dust \
+  --project-path=front \
+  --release-version=$COMMIT_HASH \
+  --service=$NEXT_PUBLIC_DATADOG_SERVICE && \
+  find .next -type f -name "*.map" -print -delete; \
+  fi
 
 RUN npm run sitemap
 
@@ -105,16 +116,18 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy Next.js standalone output from Next.js-specific build
-COPY --from=front-nextjs-build /app/.next/standalone ./
-COPY --from=front-nextjs-build /app/.next/static ./.next/static
-COPY --from=front-nextjs-build /app/public ./public
+# Copy entire standalone output (self-contained with traced node_modules)
+COPY --from=front-nextjs-build /app/front/.next/standalone ./
+
+WORKDIR /app/front
+
+# Copy static assets and public (not included in standalone)
+COPY --from=front-nextjs-build /app/front/.next/static ./.next/static
+COPY --from=front-nextjs-build /app/front/public ./public
 # Copy admin directory (contains prestop.sh and other scripts)
-COPY --from=base-deps /app/admin ./admin
+COPY --from=base-deps /app/front/admin ./admin
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
-# Copy built SDK from base dependencies (maintain absolute path for symlink resolution)
-COPY --from=base-deps /sdks /sdks
+COPY --from=base-deps /app/front/scripts ./scripts
 
 # Re-declare build args needed at runtime
 ARG NEXT_PUBLIC_DUST_CLIENT_FACING_URL
@@ -140,15 +153,25 @@ RUN apt-get update && \
 
 WORKDIR /app
 
-# Copy worker assets from workers-specific build
-COPY --from=workers-build /app/dist ./dist
-# Copy full dependencies from base dependencies (includes all node_modules)
+# Copy root node_modules from base-deps (includes all hoisted dependencies)
 COPY --from=base-deps /app/node_modules ./node_modules
 COPY --from=base-deps /app/package.json ./package.json
+
+WORKDIR /app/front
+
+# Copy worker assets from workers-specific build
+COPY --from=workers-build /app/front/dist ./dist
+# Copy front's package.json and local node_modules (non-hoisted deps)
+COPY --from=base-deps /app/front/package.json ./package.json
+COPY --from=base-deps /app/front/node_modules ./node_modules
 # Copy scripts directory
-COPY --from=base-deps /app/scripts ./scripts
-# Copy built SDK that workers depend on (maintain absolute path for symlink resolution)
-COPY --from=base-deps /sdks/js /sdks/js
+COPY --from=base-deps /app/front/scripts ./scripts
+# Copy built SDK
+COPY --from=base-deps /app/sdks/js/dist /app/sdks/js/dist
+COPY --from=base-deps /app/sdks/js/package.json /app/sdks/js/package.json
+# Copy built Sparkle
+COPY --from=base-deps /app/sparkle/dist /app/sparkle/dist
+COPY --from=base-deps /app/sparkle/package.json /app/sparkle/package.json
 
 # Re-declare build arg needed at runtime
 ARG NEXT_PUBLIC_VIZ_URL

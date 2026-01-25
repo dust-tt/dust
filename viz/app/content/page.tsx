@@ -5,6 +5,7 @@ interface RenderVisualizationSearchParams {
   accessToken?: string;
   fullHeight?: string;
   identifier?: string;
+  pdfMode?: string;
 }
 
 const { ALLOWED_VISUALIZATION_ORIGIN } = process.env;
@@ -18,9 +19,10 @@ export default function RenderVisualization({
     ? ALLOWED_VISUALIZATION_ORIGIN.split(",").map((s) => s.trim())
     : [];
 
-  const { accessToken, fullHeight, identifier } = searchParams;
+  const { accessToken, fullHeight, identifier, pdfMode } = searchParams;
 
   const isFullHeight = fullHeight === "true";
+  const isPdfMode = pdfMode === "true";
 
   // Use SSR approach for access tokens (publicly accessible).
   if (accessToken) {
@@ -30,6 +32,7 @@ export default function RenderVisualization({
         allowedOrigins={allowedOrigins}
         identifier={identifier!}
         isFullHeight={isFullHeight}
+        isPdfMode={isPdfMode}
       />
     );
   }

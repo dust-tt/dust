@@ -27,7 +27,7 @@ describe("AgentSuggestionResource", () => {
     it("should create and fetch an instructions suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createInstructions(
         authenticator,
-        agentConfiguration.sId,
+        agentConfiguration,
         {
           suggestion: {
             oldString: "Be helpful",
@@ -41,7 +41,7 @@ describe("AgentSuggestionResource", () => {
       expect(suggestion).toBeDefined();
       expect(suggestion.sId).toMatch(/^asu_/);
       expect(suggestion.workspaceId).toBe(workspace.id);
-      expect(suggestion.agentConfigurationId).toBe(agentConfiguration.sId);
+      expect(suggestion.agentConfigurationId).toBe(agentConfiguration.id);
       expect(suggestion.kind).toBe("instructions");
       expect(suggestion.state).toBe("pending");
       expect(suggestion.source).toBe("reinforcement");
@@ -68,7 +68,7 @@ describe("AgentSuggestionResource", () => {
     it("should create and fetch a tools suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createTools(
         authenticator,
-        agentConfiguration.sId,
+        agentConfiguration,
         {
           suggestion: {
             additions: [
@@ -106,7 +106,7 @@ describe("AgentSuggestionResource", () => {
     it("should create and fetch a skills suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createSkills(
         authenticator,
-        agentConfiguration.sId,
+        agentConfiguration,
         {
           suggestion: {
             additions: ["data_analysis"],
@@ -137,7 +137,7 @@ describe("AgentSuggestionResource", () => {
     it("should create and fetch a model suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createModel(
         authenticator,
-        agentConfiguration.sId,
+        agentConfiguration,
         {
           suggestion: {
             modelId: "claude-haiku-4-5-20251001",
@@ -175,7 +175,7 @@ describe("AgentSuggestionResource", () => {
       async (newState: "approved" | "declined" | "outdated") => {
         const suggestion = await AgentSuggestionFactory.createInstructions(
           authenticator,
-          agentConfiguration.sId,
+          agentConfiguration,
           {
             suggestion: { oldString: "old", newString: "new" },
           }
@@ -196,7 +196,7 @@ describe("AgentSuggestionResource", () => {
     it("should fail to update state when user is not an editor of the agent", async () => {
       const suggestion = await AgentSuggestionFactory.createInstructions(
         authenticator,
-        agentConfiguration.sId,
+        agentConfiguration,
         {
           suggestion: { oldString: "old", newString: "new" },
         }
@@ -220,7 +220,7 @@ describe("AgentSuggestionResource", () => {
     it("should delete a suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createTools(
         authenticator,
-        agentConfiguration.sId
+        agentConfiguration
       );
       const sId = suggestion.sId;
 
@@ -237,7 +237,7 @@ describe("AgentSuggestionResource", () => {
     it("should fail to delete when user is not an editor of the agent", async () => {
       const suggestion = await AgentSuggestionFactory.createTools(
         authenticator,
-        agentConfiguration.sId
+        agentConfiguration
       );
 
       // Create a different user who is not an editor of the agent.
@@ -258,7 +258,7 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
-  describe("makeNew permission check", () => {
+  describe("createSuggestionForAgent permission check", () => {
     it("should fail to create suggestion when user is not an editor of the agent", async () => {
       // Create a different user who is not an editor of the agent.
       const otherUser = await UserFactory.basic();
@@ -269,15 +269,17 @@ describe("AgentSuggestionResource", () => {
       );
 
       await expect(
-        AgentSuggestionResource.makeNew(otherAuthenticator, {
-          agentConfigurationId: agentConfiguration.sId,
-          agentConfigurationVersion: 1,
-          kind: "instructions",
-          suggestion: { oldString: "old", newString: "new" },
-          analysis: null,
-          state: "pending",
-          source: "copilot",
-        })
+        AgentSuggestionResource.createSuggestionForAgent(
+          otherAuthenticator,
+          agentConfiguration,
+          {
+            kind: "instructions",
+            suggestion: { oldString: "old", newString: "new" },
+            analysis: null,
+            state: "pending",
+            source: "copilot",
+          }
+        )
       ).rejects.toThrow("User does not have permission to edit this agent");
     });
   });
@@ -286,7 +288,7 @@ describe("AgentSuggestionResource", () => {
     it("should not return suggestion when user is not an editor of the agent", async () => {
       const suggestion = await AgentSuggestionFactory.createInstructions(
         authenticator,
-        agentConfiguration.sId
+        agentConfiguration
       );
 
       // Create a different user who is not an editor of the agent.
@@ -310,7 +312,7 @@ describe("AgentSuggestionResource", () => {
       const instructionsSuggestion =
         await AgentSuggestionFactory.createInstructions(
           authenticator,
-          agentConfiguration.sId,
+          agentConfiguration,
           {
             suggestion: {
               oldString: "old",
@@ -332,6 +334,348 @@ describe("AgentSuggestionResource", () => {
         case "model":
           throw new Error("Unexpected kind");
       }
+    });
+  });
+
+  describe("listByAgentConfigurationId", () => {
+    it("should list all suggestions for an agent by sId", async () => {
+      // Create multiple suggestions.
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "a", newString: "b" } }
+      );
+      await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration
+      );
+      await AgentSuggestionFactory.createModel(
+        authenticator,
+        agentConfiguration
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId
+        );
+
+      expect(suggestions).toHaveLength(3);
+    });
+
+    it("should filter by state", async () => {
+      const pending = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "a", newString: "b" }, state: "pending" }
+      );
+      await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration
+      );
+
+      await pending.updateState(authenticator, "approved");
+
+      const pendingSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { state: "pending" }
+        );
+
+      expect(pendingSuggestions).toHaveLength(1);
+      expect(pendingSuggestions[0].kind).toBe("tools");
+
+      const approvedSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { state: "approved" }
+        );
+
+      expect(approvedSuggestions).toHaveLength(1);
+      expect(approvedSuggestions[0].kind).toBe("instructions");
+    });
+
+    it("should filter by kind", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "a", newString: "b" } }
+      );
+      await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration
+      );
+      await AgentSuggestionFactory.createModel(
+        authenticator,
+        agentConfiguration
+      );
+
+      const instructionsSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { kind: "instructions" }
+        );
+
+      expect(instructionsSuggestions).toHaveLength(1);
+      expect(instructionsSuggestions[0].kind).toBe("instructions");
+
+      const toolsSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { kind: "tools" }
+        );
+
+      expect(toolsSuggestions).toHaveLength(1);
+      expect(toolsSuggestions[0].kind).toBe("tools");
+    });
+
+    it("should filter by both state and kind", async () => {
+      const instructions1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "a", newString: "b" } }
+      );
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "c", newString: "d" } }
+      );
+      await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration
+      );
+
+      await instructions1.updateState(authenticator, "approved");
+
+      const results = await AgentSuggestionResource.listByAgentConfigurationId(
+        authenticator,
+        agentConfiguration.sId,
+        { state: "pending", kind: "instructions" }
+      );
+
+      expect(results).toHaveLength(1);
+      expect(results[0].kind).toBe("instructions");
+      expect(results[0].state).toBe("pending");
+    });
+
+    it("should return empty array for non-existent agent", async () => {
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          "non_existent_sid"
+        );
+
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("should not return suggestions when user is not an editor of the agent", async () => {
+      await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "a", newString: "b" } }
+      );
+
+      // Create a different user who is not an editor of the agent.
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          otherAuthenticator,
+          agentConfiguration.sId
+        );
+
+      expect(suggestions).toHaveLength(0);
+    });
+
+    it("should retrieve suggestions from multiple agent versions", async () => {
+      // Create a suggestion for the initial agent (version 0).
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "v0-old", newString: "v0-new" } }
+      );
+
+      // Update the agent to create a new version (version 1).
+      const updatedAgent = await AgentConfigurationFactory.updateTestAgent(
+        authenticator,
+        agentConfiguration.sId,
+        { instructions: "Updated instructions for version 1" }
+      );
+
+      // The sId remains the same but the model ID changes.
+      expect(updatedAgent.sId).toBe(agentConfiguration.sId);
+      expect(updatedAgent.id).not.toBe(agentConfiguration.id);
+
+      // Create a suggestion for the new version.
+      const suggestion2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        updatedAgent
+      );
+
+      // Verify listByAgentConfigurationId returns both suggestions.
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId
+        );
+
+      expect(suggestions).toHaveLength(2);
+
+      const suggestionIds = suggestions.map((s) => s.sId);
+      expect(suggestionIds).toContain(suggestion1.sId);
+      expect(suggestionIds).toContain(suggestion2.sId);
+    });
+  });
+
+  describe("deleteAllForWorkspace", () => {
+    it("should delete all suggestions for the workspace", async () => {
+      // Create an admin authenticator for this workspace
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Create multiple suggestions for different agents
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old1", newString: "new1" },
+        }
+      );
+
+      const agentConfiguration2 =
+        await AgentConfigurationFactory.createTestAgent(authenticator, {
+          name: "Test Agent 2",
+        });
+      const suggestion2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration2
+      );
+
+      // Verify both suggestions exist
+      const fetched1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const fetched2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion2.sId
+      );
+      expect(fetched1).toBeDefined();
+      expect(fetched2).toBeDefined();
+      // Delete all suggestions for the workspace using admin auth
+      await AgentSuggestionResource.deleteAllForWorkspace(adminAuth);
+
+      // Verify both suggestions are deleted
+      const deletedSuggestion1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const deletedSuggestion2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion2.sId
+      );
+      expect(deletedSuggestion1).toBeNull();
+      expect(deletedSuggestion2).toBeNull();
+    });
+
+    it("should fail when user is not an admin", async () => {
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old", newString: "new" },
+        }
+      );
+
+      // Create a different user who is not an admin
+      const otherUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, otherUser, { role: "user" });
+      const otherAuthenticator = await Authenticator.fromUserIdAndWorkspaceId(
+        otherUser.sId,
+        workspace.sId
+      );
+
+      await expect(
+        AgentSuggestionResource.deleteAllForWorkspace(otherAuthenticator)
+      ).rejects.toThrow("Only workspace admins can delete all suggestions");
+
+      // Verify suggestion still exists
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+    });
+
+    it("should only delete suggestions from the authenticated workspace", async () => {
+      // Create an admin authenticator for workspace1
+      const adminAuth1 = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Create a suggestion in workspace1
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old1", newString: "new1" },
+        }
+      );
+
+      // Create a second workspace with its own suggestion
+      const { authenticator: authenticator2 } = await createResourceTest({
+        role: "builder",
+      });
+
+      const agentConfiguration2 =
+        await AgentConfigurationFactory.createTestAgent(authenticator2);
+      const suggestion2 = await AgentSuggestionFactory.createInstructions(
+        authenticator2,
+        agentConfiguration2,
+        {
+          suggestion: { oldString: "old2", newString: "new2" },
+        }
+      );
+
+      // Verify both suggestions exist
+      const fetched1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const fetched2 = await AgentSuggestionResource.fetchById(
+        authenticator2,
+        suggestion2.sId
+      );
+      expect(fetched1).toBeDefined();
+      expect(fetched2).toBeDefined();
+
+      // Delete all suggestions for workspace1
+      await AgentSuggestionResource.deleteAllForWorkspace(adminAuth1);
+
+      // Verify workspace1 suggestion is deleted
+      const deletedSuggestion1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      expect(deletedSuggestion1).toBeNull();
+
+      // Verify workspace2 suggestion still exists
+      const stillExistsSuggestion2 = await AgentSuggestionResource.fetchById(
+        authenticator2,
+        suggestion2.sId
+      );
+      expect(stillExistsSuggestion2).toBeDefined();
+      expect(stillExistsSuggestion2?.sId).toBe(suggestion2.sId);
     });
   });
 });

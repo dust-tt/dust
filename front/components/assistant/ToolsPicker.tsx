@@ -15,6 +15,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
+import { CapabilityFilterButtons } from "@app/components/shared/tools_picker/CapabilityFilterButtons";
+import type { CapabilityFilterType } from "@app/components/shared/tools_picker/types";
 import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
@@ -134,6 +136,7 @@ export function ToolsPicker({
 }: ToolsPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [filter, setFilter] = useState<CapabilityFilterType>("all");
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
@@ -292,6 +295,19 @@ export function ToolsPicker({
     return !!setupSheetServer || !!setupSheetRemoteServerConfig;
   }, [setupSheetServer, setupSheetRemoteServerConfig]);
 
+  const showSkillsSection = filter === "all" || filter === "skills";
+  const showToolsSection = filter === "all" || filter === "tools";
+
+  const hasVisibleSkills =
+    showSkillsSection &&
+    hasSkillsFeature &&
+    filteredSkillsUnselected.length > 0;
+  const hasVisibleTools =
+    showToolsSection &&
+    (filteredServerViewsUnselected.length > 0 ||
+      filteredUninstalledServers.length > 0);
+  const hasNoVisibleItems = !hasVisibleSkills && !hasVisibleTools;
+
   return (
     <>
       <DropdownMenu
@@ -305,6 +321,7 @@ export function ToolsPicker({
               action: TRACKING_ACTIONS.OPEN,
             });
             setSearchText("");
+            setFilter("all");
           }
         }}
       >
@@ -361,69 +378,45 @@ export function ToolsPicker({
                   }
                 }}
               />
+              {hasSkillsFeature && (
+                <div className="px-3 py-2">
+                  <CapabilityFilterButtons
+                    filter={filter}
+                    setFilter={setFilter}
+                    size="xs"
+                  />
+                </div>
+              )}
               <DropdownMenuSeparator />
             </>
           }
         >
           {!isDataReady && <ToolsPickerLoading />}
 
-          {isDataReady &&
-            hasSkillsFeature &&
-            filteredSkillsUnselected.length > 0 && (
-              <>
-                <div className="text-element-700 px-4 py-2 text-xs font-semibold">
-                  Skills
-                </div>
-                {filteredSkillsUnselected.map((skill) => (
-                  <CapabilityItem
-                    key={`skills-picker-${skill.sId}`}
-                    id={skill.sId}
-                    icon={getSkillAvatarIcon(skill.icon)}
-                    label={skill.name}
-                    description={skill.userFacingDescription}
-                    keyPrefix="skills-picker"
-                    onClick={() => {
-                      trackEvent({
-                        area: TRACKING_AREAS.TOOLS,
-                        object: "skill_select",
-                        action: TRACKING_ACTIONS.SELECT,
-                        extra: {
-                          skill_id: skill.sId,
-                          skill_name: skill.name,
-                        },
-                      });
-                      onSkillSelect(skill);
-                      setIsOpen(false);
-                    }}
-                  />
-                ))}
-              </>
-            )}
-
-          {isDataReady && filteredServerViews.length > 0 && (
+          {isDataReady && hasVisibleSkills && (
             <>
               <div className="text-element-700 px-4 py-2 text-xs font-semibold">
-                Tools
+                Skills
               </div>
-              {filteredServerViewsUnselected.map((v) => (
+              {filteredSkillsUnselected.map((skill) => (
                 <CapabilityItem
-                  key={`tools-picker-${v.sId}`}
-                  id={v.sId}
-                  icon={() => getAvatar(v.server)}
-                  label={getMcpServerViewDisplayName(v)}
-                  description={getMcpServerViewDescription(v)}
-                  keyPrefix="tools-picker"
+                  key={`skills-picker-${skill.sId}`}
+                  id={skill.sId}
+                  icon={getSkillAvatarIcon(skill.icon)}
+                  label={skill.name}
+                  description={skill.userFacingDescription}
+                  keyPrefix="skills-picker"
                   onClick={() => {
                     trackEvent({
                       area: TRACKING_AREAS.TOOLS,
-                      object: "tool_select",
+                      object: "skill_select",
                       action: TRACKING_ACTIONS.SELECT,
                       extra: {
-                        tool_id: v.sId,
-                        tool_name: v.server.name,
+                        skill_id: skill.sId,
+                        skill_name: skill.name,
                       },
                     });
-                    onSelect(v);
+                    onSkillSelect(skill);
                     setIsOpen(false);
                   }}
                 />
@@ -432,6 +425,40 @@ export function ToolsPicker({
           )}
 
           {isDataReady &&
+            showToolsSection &&
+            filteredServerViewsUnselected.length > 0 && (
+              <>
+                <div className="text-element-700 px-4 py-2 text-xs font-semibold">
+                  Tools
+                </div>
+                {filteredServerViewsUnselected.map((v) => (
+                  <CapabilityItem
+                    key={`tools-picker-${v.sId}`}
+                    id={v.sId}
+                    icon={() => getAvatar(v.server)}
+                    label={getMcpServerViewDisplayName(v)}
+                    description={getMcpServerViewDescription(v)}
+                    keyPrefix="tools-picker"
+                    onClick={() => {
+                      trackEvent({
+                        area: TRACKING_AREAS.TOOLS,
+                        object: "tool_select",
+                        action: TRACKING_ACTIONS.SELECT,
+                        extra: {
+                          tool_id: v.sId,
+                          tool_name: v.server.name,
+                        },
+                      });
+                      onSelect(v);
+                      setIsOpen(false);
+                    }}
+                  />
+                ))}
+              </>
+            )}
+
+          {isDataReady &&
+            showToolsSection &&
             filteredUninstalledServers.length > 0 &&
             filteredUninstalledServers.map((server) => (
               <CapabilityItem
@@ -465,34 +492,37 @@ export function ToolsPicker({
               />
             ))}
 
-          {isDataReady &&
-            filteredSkillsUnselected.length === 0 &&
-            filteredServerViewsUnselected.length === 0 &&
-            filteredUninstalledServers.length === 0 && (
-              <CapabilityItem
-                id="no-selected"
-                icon={() => <Icon visual={BoltIcon} size="xs" />}
-                label={
-                  searchText.length > 0
-                    ? "No result"
+          {isDataReady && hasNoVisibleItems && (
+            <CapabilityItem
+              id="no-selected"
+              icon={() => <Icon visual={BoltIcon} size="xs" />}
+              label={
+                searchText.length > 0
+                  ? "No result"
+                  : filter !== "all"
+                    ? `No more ${filter} to select`
                     : hasSkillsFeature
                       ? "No more skills or tools to select"
                       : "No more tools to select"
-                }
-                description={
-                  searchText.length > 0
-                    ? hasSkillsFeature
+              }
+              description={
+                searchText.length > 0
+                  ? filter !== "all"
+                    ? `No ${filter} found matching your search.`
+                    : hasSkillsFeature
                       ? "No skills or tools found matching your search."
                       : "No tools found matching your search."
+                  : filter !== "all"
+                    ? `All available ${filter} are already selected.`
                     : hasSkillsFeature
                       ? "All available skills and tools are already selected."
                       : "All available tools are already selected."
-                }
-                keyPrefix="tools-picker"
-                disabled
-                className="italic"
-              />
-            )}
+              }
+              keyPrefix="tools-picker"
+              disabled
+              className="italic"
+            />
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

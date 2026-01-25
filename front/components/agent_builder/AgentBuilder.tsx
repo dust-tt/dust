@@ -17,6 +17,7 @@ import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilde
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
@@ -100,7 +101,7 @@ export default function AgentBuilder({
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
-  const [pendingAgentSId, setPendingAgentSId] = useState<string | null>(null);
+  const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
@@ -301,7 +302,7 @@ export default function AgentBuilder({
   // Create pending agent on mount for NEW agents only
   useEffect(() => {
     // Only create pending agent for new agents (not editing or duplicating)
-    if (agentConfiguration || duplicateAgentId || pendingAgentSId) {
+    if (agentConfiguration || duplicateAgentId || pendingAgentId) {
       return;
     }
 
@@ -313,7 +314,7 @@ export default function AgentBuilder({
         );
         if (response.ok) {
           const data = await response.json();
-          setPendingAgentSId(data.sId);
+          setPendingAgentId(data.sId);
         } else {
           datadogLogger.error(
             { status: response.status },
@@ -328,7 +329,7 @@ export default function AgentBuilder({
       }
     };
     void createPendingAgent();
-  }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentSId]);
+  }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
@@ -344,7 +345,7 @@ export default function AgentBuilder({
       // For editing, pass the existing agent's sId
       const effectiveAgentConfigurationId = duplicateAgentId
         ? null
-        : (agentConfiguration?.sId ?? pendingAgentSId ?? null);
+        : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
       const result = await submitAgentBuilderForm({
         user,
@@ -482,6 +483,7 @@ export default function AgentBuilder({
       <FormProvider form={form} asForm={false}>
         <AgentBuilderContent
           agentConfiguration={agentConfiguration}
+          pendingAgentId={pendingAgentId}
           title={title}
           handleCancel={handleCancel}
           saveLabel={saveLabel}
@@ -503,6 +505,7 @@ export default function AgentBuilder({
  */
 interface AgentBuilderContentProps {
   agentConfiguration?: LightAgentConfigurationType;
+  pendingAgentId: string | null;
   title: string;
   handleCancel: () => Promise<void>;
   saveLabel: string;
@@ -524,6 +527,7 @@ interface AgentBuilderContentProps {
 
 function AgentBuilderContent({
   agentConfiguration,
+  pendingAgentId,
   title,
   handleCancel,
   saveLabel,
@@ -583,12 +587,21 @@ function AgentBuilderContent({
           />
         }
         rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
-              clientSideMCPServerId={clientSideMCPServerId}
-            />
-          </ConversationSidePanelProvider>
+          <CopilotPanelProvider
+            targetAgentConfigurationId={
+              agentConfiguration?.sId ?? pendingAgentId ?? null
+            }
+            targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
+            clientSideMCPServerIds={
+              clientSideMCPServerId ? [clientSideMCPServerId] : []
+            }
+          >
+            <ConversationSidePanelProvider>
+              <AgentBuilderRightPanel
+                agentConfigurationSId={agentConfiguration?.sId}
+              />
+            </ConversationSidePanelProvider>
+          </CopilotPanelProvider>
         }
       />
     </>

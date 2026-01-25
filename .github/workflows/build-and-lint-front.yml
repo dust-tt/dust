@@ -3,8 +3,10 @@ name: Lint & Build & Test (front)
 on:
   push:
     paths:
+      - package-lock.json
       - sdks/js/**
       - front/**
+      - sparkle/**
       - .github/workflows/build-and-lint-front.yml
 
 permissions:
@@ -13,14 +15,6 @@ permissions:
   checks: write
 
 jobs:
-  check-package-lock:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Node Dependencies
-        uses: ./.github/actions/setup-node-deps
-      - name: Check package.json and package-lock.json sync
-        run: ./scripts/check-package-lock-sync.sh front sdks/js
   tests:
     name: Test Shard ${{ matrix.shardIndex }} of ${{ matrix.shardTotal }}
     strategy:
@@ -32,6 +26,9 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
       - name: Install Redis
         uses: chenjuneking/redis-setup-action@v1
         with:
@@ -70,25 +67,32 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
       - name: Typecheck
-        working-directory: front
-        run: npx tsgo --version && npm run tsgo
+        run: npm -w front run tsgo -- --version && npm -w front run tsgo
   circular:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
       - name: Biome - Circular Dependency Check
-        working-directory: front
         run: |
-          npm run lint:circular
+          npm run -w front lint:circular
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup Node Dependencies
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
       - name: Cache ESLint
         id: eslint-cache
         uses: actions/cache@v4
@@ -98,15 +102,9 @@ jobs:
           restore-keys: |
             eslint-cache-v4-${{ runner.os }}-
       - name: Lint
-        working-directory: front
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
-        run: npm run lint
+        run: npm -w front run lint
       - name: Format Check
-        working-directory: front
         run: |
-          npm run format:check
-      - name: Knip
-        uses: ./.github/actions/knip
-        with:
-          working_directory: front
+          npm -w front run format:check

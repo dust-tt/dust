@@ -4,19 +4,22 @@ import type {
   CreationAttributes,
   ModelStatic,
   Transaction,
+  WhereOptions,
 } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type { ModelId, Result } from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type {
+  AgentSuggestionKind,
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
@@ -67,7 +70,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   private static async getEditorsGroupIdByAgentSId(
     auth: Authenticator,
     agentSIds: string[]
-  ): Promise<Map<string, ModelId | null>> {
+  ): Promise<Map<string, ModelId>> {
     if (agentSIds.length === 0) {
       return new Map();
     }
@@ -79,11 +82,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
 
     if (agentConfigs.length === 0) {
-      const result = new Map<string, ModelId | null>();
-      for (const sId of agentSIds) {
-        result.set(sId, null);
-      }
-      return result;
+      return new Map();
     }
 
     // Fetch editor groups for these agents.
@@ -93,38 +92,39 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     );
 
     // Build a map from agent sId to editors group ID.
-    const result = new Map<string, ModelId | null>();
-    for (const sId of agentSIds) {
-      if (groupsResult.isOk()) {
+    const result = new Map<string, ModelId>();
+    if (groupsResult.isOk()) {
+      for (const sId of agentSIds) {
         const group = groupsResult.value[sId];
-        result.set(sId, group?.id ?? null);
-      } else {
-        result.set(sId, null);
+        if (group !== undefined) {
+          result.set(sId, group.id);
+        }
       }
     }
 
     return result;
   }
 
-  static async makeNew(
+  static async createSuggestionForAgent(
     auth: Authenticator,
-    blob: Omit<CreationAttributes<AgentSuggestionModel>, "workspaceId">
+    agentConfiguration: LightAgentConfigurationType,
+    blob: Omit<
+      CreationAttributes<AgentSuggestionModel>,
+      "workspaceId" | "agentConfigurationId"
+    >
   ): Promise<AgentSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
     // Look up the agent's editors group.
     const editorsGroupIdMap = await this.getEditorsGroupIdByAgentSId(auth, [
-      blob.agentConfigurationId,
+      agentConfiguration.sId,
     ]);
-    const editorsGroupId =
-      editorsGroupIdMap.get(blob.agentConfigurationId) ?? null;
+    const editorsGroupId = editorsGroupIdMap.get(agentConfiguration.sId);
 
     // Check permission.
     const canWrite =
       auth.isAdmin() ||
-      (editorsGroupId !== null &&
-        editorsGroupId !== null &&
-        auth.hasGroupByModelId(editorsGroupId));
+      (editorsGroupId !== undefined && auth.hasGroupByModelId(editorsGroupId));
 
     if (!canWrite) {
       throw new Error("User does not have permission to edit this agent");
@@ -132,10 +132,15 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
 
     const suggestion = await AgentSuggestionModel.create({
       ...blob,
+      agentConfigurationId: agentConfiguration.id,
       workspaceId: owner.id,
     });
 
-    return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
+    return new this(
+      AgentSuggestionModel,
+      suggestion.get(),
+      editorsGroupId ?? null
+    );
   }
 
   private static async baseFetch(
@@ -150,6 +155,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         ...where,
         workspaceId: owner.id,
       },
+      include: [
+        {
+          model: AgentConfigurationModel,
+          as: "agentConfiguration",
+          required: true,
+        },
+      ],
       ...otherOptions,
     });
 
@@ -157,33 +169,45 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       return [];
     }
 
-    const agentSIds = [
-      ...new Set(suggestions.map((s) => s.agentConfigurationId)),
-    ];
+    // Get unique agent sIds from the included AgentConfigurationModel.
+    const agentIds = [
+      ...new Set(suggestions.map((s) => s.agentConfiguration?.sId ?? "")),
+    ].filter((sId) => sId !== "");
 
     const editorsGroupIdBySId = await this.getEditorsGroupIdByAgentSId(
       auth,
-      agentSIds
+      agentIds
     );
 
-    const authGroupIds = new Set(auth.groupModelIds());
-
     // Filter suggestions to only include those for agents the user can edit.
-    return suggestions
-      .filter((s) => {
-        if (auth.isAdmin()) {
-          return true;
+    return removeNulls(
+      suggestions.map((suggestion) => {
+        if (!this.canWrite(auth, suggestion, editorsGroupIdBySId)) {
+          return null;
         }
-        const groupId = editorsGroupIdBySId.get(s.agentConfigurationId);
-        return (
-          groupId !== undefined && groupId !== null && authGroupIds.has(groupId)
-        );
-      })
-      .map((suggestion) => {
-        const editorsGroupId =
-          editorsGroupIdBySId.get(suggestion.agentConfigurationId) ?? null;
+        const agentConfig = suggestion.agentConfiguration;
+        const editorsGroupId = agentConfig
+          ? (editorsGroupIdBySId.get(agentConfig.sId) ?? null)
+          : null;
         return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
-      });
+      })
+    );
+  }
+
+  static canWrite(
+    auth: Authenticator,
+    suggestion: AgentSuggestionModel,
+    editorsGroupIdBySId: Map<string, ModelId>
+  ): boolean {
+    if (auth.isAdmin()) {
+      return true;
+    }
+    const agentConfig = suggestion.agentConfiguration;
+    if (!agentConfig) {
+      return false;
+    }
+    const groupId = editorsGroupIdBySId.get(agentConfig.sId);
+    return groupId !== undefined && auth.hasGroupByModelId(groupId);
   }
 
   static async fetchByIds(
@@ -205,6 +229,47 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return suggestion ?? null;
   }
 
+  /**
+   * Lists all suggestions for an agent identified by its sId.
+   * Optionally filter by state and kind.
+   */
+  static async listByAgentConfigurationId(
+    auth: Authenticator,
+    agentId: string,
+    filters?: {
+      state?: AgentSuggestionState;
+      kind?: AgentSuggestionKind;
+    }
+  ): Promise<AgentSuggestionResource[]> {
+    const owner = auth.getNonNullableWorkspace();
+
+    // First, find all agent configuration IDs for this agent sId (all versions).
+    const agentConfigs = await AgentConfigurationModel.findAll({
+      where: {
+        sId: agentId,
+        workspaceId: owner.id,
+      },
+      attributes: ["id", "sId"],
+    });
+
+    if (agentConfigs.length === 0) {
+      return [];
+    }
+
+    const agentConfigIds = agentConfigs.map((ac) => ac.id);
+
+    // Build the where clause with optional filters.
+    const whereClause: WhereOptions<AgentSuggestionModel> = {
+      agentConfigurationId: agentConfigIds,
+      ...(filters?.state && { state: filters.state }),
+      ...(filters?.kind && { kind: filters.kind }),
+    };
+
+    return this.baseFetch(auth, {
+      where: whereClause,
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
@@ -224,6 +289,28 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
 
     return new Ok(undefined);
+  }
+
+  /**
+   * WARNING: This method deletes ALL suggestions for a workspace.
+   * Only workspace admins can perform this operation.
+   * This is intended for internal use only (e.g., workspace deletion workflows).
+   */
+  static async deleteAllForWorkspace(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<void> {
+    if (!auth.isAdmin()) {
+      throw new Error("Only workspace admins can delete all suggestions");
+    }
+
+    const owner = auth.getNonNullableWorkspace();
+    await AgentSuggestionModel.destroy({
+      where: {
+        workspaceId: owner.id,
+      },
+      transaction,
+    });
   }
 
   get sId(): string {
@@ -275,7 +362,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       createdAt: this.createdAt.getTime(),
       updatedAt: this.updatedAt.getTime(),
       agentConfigurationId: this.agentConfigurationId,
-      agentConfigurationVersion: this.agentConfigurationVersion,
       analysis: this.analysis,
       state: this.state,
       source: this.source,

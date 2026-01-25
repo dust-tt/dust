@@ -1,6 +1,8 @@
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   CreateIncidentRequest,
   ListComponentsResponse,
@@ -8,15 +10,13 @@ import type {
   ListPagesResponse,
   StatuspageIncident,
   UpdateIncidentRequest,
-} from "@app/lib/actions/mcp_internal_actions/servers/statuspage/types";
+} from "@app/lib/api/actions/servers/statuspage/types";
 import {
   GetIncidentResponseSchema,
   ListComponentsResponseSchema,
   ListIncidentsResponseSchema,
   ListPagesResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/statuspage/types";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+} from "@app/lib/api/actions/servers/statuspage/types";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";

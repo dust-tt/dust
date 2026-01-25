@@ -19,7 +19,7 @@ import type {
 } from "@app/types";
 import { isString } from "@app/types";
 
-const MAX_UNIFIED_SEARCH_PER_USER_PER_MINUTE = 20;
+const MAX_UNIFIED_SEARCH_PER_USER_PER_FIVE_SECONDS = 30;
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -205,8 +205,8 @@ async function handler(
   const rateLimitKey = `unified_search:${auth.getNonNullableUser().sId}`;
   const remaining = await rateLimiter({
     key: rateLimitKey,
-    maxPerTimeframe: MAX_UNIFIED_SEARCH_PER_USER_PER_MINUTE,
-    timeframeSeconds: 60, // 1 minute
+    maxPerTimeframe: MAX_UNIFIED_SEARCH_PER_USER_PER_FIVE_SECONDS,
+    timeframeSeconds: 5,
     logger,
   });
 
@@ -215,7 +215,7 @@ async function handler(
       status_code: 429,
       api_error: {
         type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_UNIFIED_SEARCH_PER_USER_PER_MINUTE} unified searches per minute.`,
+        message: `You have reached the limit of ${MAX_UNIFIED_SEARCH_PER_USER_PER_FIVE_SECONDS} unified searches over 5 seconds.`,
       },
     });
   }

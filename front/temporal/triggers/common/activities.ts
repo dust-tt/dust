@@ -1,6 +1,6 @@
 import {
-  isMCPConfigurationForRunAgent,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -54,7 +54,7 @@ async function shouldCreateIndividualConversations(
       }
       // Check the chain of agents
       if (
-        isMCPConfigurationForRunAgent(action) &&
+        isServerSideMCPServerConfigurationWithName(action, "run_agent") &&
         action.childAgentId &&
         // Avoid infinite loop
         !checkedAgentConfigurationIds.includes(action.childAgentId)

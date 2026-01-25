@@ -29,6 +29,7 @@ const config: KnipConfig = {
     "eslint-plugin-dust",
     "sqlite3", // used during the build process by sequelize
     "@dust-tt/client",
+    "lefthook", // used as pre-commit hook
   ],
   ignoreBinaries: ["sleep"],
   paths: {

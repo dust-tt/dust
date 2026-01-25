@@ -19,9 +19,11 @@ import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/se
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
+import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -79,6 +81,7 @@ export const TOOLSETS_LIST_TOOL_NAME = "list";
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
+// Kept for backward compatibility with existing actions in conversations.
 export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
@@ -208,19 +211,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "file_generation",
-      version: "1.0.0",
-      description: "Generate and convert documents.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: FILE_GENERATION_SERVER,
   },
   [DEFAULT_WEBSEARCH_ACTION_NAME]: {
     id: 5,
@@ -1506,7 +1500,7 @@ export const INTERNAL_MCP_SERVERS = {
         "Execute read-only SQL queries and browse schema in Snowflake.",
       authorization: {
         provider: "snowflake" as const,
-        supported_use_cases: ["personal_actions"] as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
       },
       icon: "SnowflakeLogo",
       documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
@@ -1556,27 +1550,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("statuspage_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_pages: "never_ask",
-      list_components: "never_ask",
-      list_incidents: "never_ask",
-      get_incident: "never_ask",
-      create_incident: "high",
-      update_incident: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "statuspage",
-      version: "1.0.0",
-      description: "Monitor and manage Atlassian Statuspage incidents.",
-      authorization: null,
-      icon: "StatuspageLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: STATUSPAGE_SERVER,
   },
   primitive_types_debugger: {
     id: 1004,
@@ -2030,12 +2007,6 @@ type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
 type InternalMCPServerEntry =
   InternalMCPServerEntryBase<InternalMCPServerNameType>;
 
-const isServerWithMetadata = (
-  server: InternalMCPServerEntry
-): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> => {
-  return server.metadata !== undefined;
-};
-
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
 
@@ -2049,56 +2020,60 @@ export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
 
-export const isAutoInternalMCPServerName = (
+function isServerWithMetadata(
+  server: InternalMCPServerEntry
+): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> {
+  return server.metadata !== undefined;
+}
+
+export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
-): name is AutoInternalMCPServerNameType => {
+): name is AutoInternalMCPServerNameType {
   return (
     INTERNAL_MCP_SERVERS[name].availability === "auto" ||
     INTERNAL_MCP_SERVERS[name].availability === "auto_hidden_builder"
   );
-};
+}
 
-export const getAvailabilityOfInternalMCPServerByName = (
+export function getAvailabilityOfInternalMCPServerByName(
   name: InternalMCPServerNameType
-): MCPServerAvailability => {
+): MCPServerAvailability {
   return INTERNAL_MCP_SERVERS[name].availability;
-};
+}
 
-export const getAvailabilityOfInternalMCPServerById = (
+export function getAvailabilityOfInternalMCPServerById(
   sId: string
-): MCPServerAvailability => {
+): MCPServerAvailability {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isErr()) {
     return "manual";
   }
   return getAvailabilityOfInternalMCPServerByName(r.value.name);
-};
+}
 
-export const allowsMultipleInstancesOfInternalMCPServerByName = (
+export function allowsMultipleInstancesOfInternalMCPServerByName(
   name: InternalMCPServerNameType
-): boolean => {
+): boolean {
   return INTERNAL_MCP_SERVERS[name].allowMultipleInstances;
-};
+}
 
-export const allowsMultipleInstancesOfInternalMCPServerById = (
+export function allowsMultipleInstancesOfInternalMCPServerById(
   sId: string
-): boolean => {
+): boolean {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isErr()) {
     return false;
   }
   return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
-};
+}
 
-export const getInternalMCPServerNameAndWorkspaceId = (
-  sId: string
-): Result<
+export function getInternalMCPServerNameAndWorkspaceId(sId: string): Result<
   {
     name: InternalMCPServerNameType;
     workspaceModelId: ModelId;
   },
   Error
-> => {
+> {
   const sIdParts = getResourceNameAndIdFromSId(sId);
 
   if (!sIdParts) {
@@ -2138,11 +2113,11 @@ export const getInternalMCPServerNameAndWorkspaceId = (
     name,
     workspaceModelId: sIdParts.workspaceModelId,
   });
-};
+}
 
-export const getInternalMCPServerNameFromSId = (
+export function getInternalMCPServerNameFromSId(
   sId: string | null
-): InternalMCPServerNameType | null => {
+): InternalMCPServerNameType | null {
   if (sId === null) {
     return null;
   }
@@ -2153,61 +2128,62 @@ export const getInternalMCPServerNameFromSId = (
   }
 
   return null;
-};
+}
 
-export const getInternalMCPServerIconByName = (
+export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
-): InternalAllowedIconType => {
+): InternalAllowedIconType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata.serverInfo.icon;
   }
   return server.serverInfo.icon;
-};
+}
 
-export const getInternalMCPServerToolStakes = (
+export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> | undefined => {
+): Record<string, MCPToolStakeLevelType> | undefined {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata.tools_stakes;
   }
   return server.tools_stakes;
-};
+}
 
-export const getInternalMCPServerInfo = (
+export function getInternalMCPServerInfo(
   name: InternalMCPServerNameType
-): InternalMCPServerDefinitionType => {
+): InternalMCPServerDefinitionType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata.serverInfo;
   }
   return server.serverInfo;
-};
+}
 
-export const isInternalMCPServerName = (
+export function isInternalMCPServerName(
   name: string
-): name is InternalMCPServerNameType =>
-  AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
+): name is InternalMCPServerNameType {
+  return AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
     name as InternalMCPServerNameType
   );
+}
 
-export const isValidInternalMCPServerId = (
+export function isValidInternalMCPServerId(
   workspaceModelId: ModelId,
   sId: string
-): boolean => {
+): boolean {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isOk()) {
     return r.value.workspaceModelId === workspaceModelId;
   }
 
   return false;
-};
+}
 
-export const isInternalMCPServerOfName = (
+export function matchesInternalMCPServerName(
   sId: string | null,
   name: InternalMCPServerNameType
-): boolean => {
+): boolean {
   if (sId === null) {
     return false;
   }
@@ -2218,14 +2194,14 @@ export const isInternalMCPServerOfName = (
   }
 
   return false;
-};
+}
 
-export const getInternalMCPServerMetadata = (
+export function getInternalMCPServerMetadata(
   name: InternalMCPServerNameType
-): ServerMetadata | undefined => {
+): ServerMetadata | undefined {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata;
   }
   return undefined;
-};
+}
