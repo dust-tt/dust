@@ -42,5 +42,6 @@ export function useAnimatedText(
     return text;
   }
 
-  return text.split(delimiter).slice(0, cursor).join("");
+  const delimiterString = typeof delimiter === "string" ? delimiter : "";
+  return text.split(delimiter).slice(0, cursor).join(delimiterString);
 }
