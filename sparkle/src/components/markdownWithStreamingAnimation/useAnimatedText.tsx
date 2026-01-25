@@ -2,9 +2,18 @@ import { animate } from "framer-motion";
 import { useEffect, useState } from "react";
 
 // Regex to split text into individual characters (including newlines)
-const delimiter = /(?=[\s\S])/;
 
-export function useAnimatedText(text: string, shouldAnimate: boolean) {
+export interface AnimatedTextConfig {
+  delimiter?: RegExp | string;
+  duration?: number;
+}
+
+export function useAnimatedText(
+  text: string,
+  shouldAnimate: boolean,
+  animationDuration: number,
+  delimiter: RegExp | string,
+) {
   const [cursor, setCursor] = useState(0);
   const [startingCursor, setStartingCursor] = useState(0);
   const [prevText, setPrevText] = useState(text);
@@ -18,7 +27,7 @@ export function useAnimatedText(text: string, shouldAnimate: boolean) {
     if (shouldAnimate) {
       const textParts = text.split(delimiter);
       const controls = animate(startingCursor, textParts.length, {
-        duration: 4,
+        duration: animationDuration,
         ease: "easeOut",
         onUpdate(latest: number) {
           setCursor(Math.floor(latest));
@@ -27,7 +36,7 @@ export function useAnimatedText(text: string, shouldAnimate: boolean) {
 
       return () => controls.stop();
     }
-  }, [startingCursor, text, shouldAnimate]);
+  }, [startingCursor, text, shouldAnimate, delimiter, animationDuration]);
 
   if (!shouldAnimate) {
     return text;

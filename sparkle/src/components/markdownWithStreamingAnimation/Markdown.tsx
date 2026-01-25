@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { memo, useEffect, useMemo, useState } from "react";
+import React, { memo, useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import type { ReactMarkdownProps } from "react-markdown/lib/ast-to-react";
@@ -254,6 +253,9 @@ function showUnsupportedDirective() {
   };
 }
 
+const defaultDelimiter = /(?=[\s\S])/;
+const defaultAnimationDuration = 4;
+
 export function StreamingAnimationMarkdown({
   content,
   isStreaming = false,
@@ -264,6 +266,8 @@ export function StreamingAnimationMarkdown({
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
   canCopyQuotes = true,
+  delimiter = defaultDelimiter,
+  animationDuration = defaultAnimationDuration,
 }: {
   content: string;
   isStreaming?: boolean;
@@ -274,6 +278,8 @@ export function StreamingAnimationMarkdown({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   canCopyQuotes?: boolean;
+  delimiter?: RegExp | string;
+  animationDuration?: number;
 }) {
   const processedContent = useMemo(() => {
     let sanitized = sanitizeContent(content);
@@ -283,28 +289,11 @@ export function StreamingAnimationMarkdown({
     return sanitized;
   }, [content, compactSpacing]);
 
-  // Debounce isStreaming when it transitions from true to false
-  // This allows the animation to complete for the last part of streaming
-  const [debouncedIsStreaming, setDebouncedIsStreaming] = useState(isStreaming);
-
-  useEffect(() => {
-    if (isStreaming) {
-      // Immediately set to true when streaming starts
-      setDebouncedIsStreaming(true);
-    } else {
-      // When streaming ends, delay setting to false to allow animation to complete
-      // The delay gives time for the remaining text to animate (animation duration is 4s)
-      const timeoutId = setTimeout(() => {
-        setDebouncedIsStreaming(false);
-      }, 1000); // 1s delay to allow animation to complete for remaining text
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isStreaming]);
-
   const markdownContent = useAnimatedText(
     processedContent,
-    debouncedIsStreaming
+    isStreaming,
+    animationDuration,
+    delimiter
   );
 
   // Note on re-renderings. A lot of effort has been put into preventing rerendering across markdown
@@ -470,7 +459,7 @@ export function StreamingAnimationMarkdown({
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
-            isStreaming: debouncedIsStreaming,
+            isStreaming,
             isLastMessage,
           }}
         >
