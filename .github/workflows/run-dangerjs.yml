@@ -54,6 +54,9 @@ jobs:
       - name: Setup Node Dependencies
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}
         uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
 
       - name: Run Danger for front
         if: ${{ steps.file_changes.outputs.run_danger == 'true' }}

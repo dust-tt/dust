@@ -17,16 +17,23 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 COPY --from=build /tmp/poppler-23.07.0/build/utils/pdftotext /usr/bin/pdftotext
 COPY --from=build /tmp/poppler-23.07.0/build/libpoppler.so.130 /usr/lib/libpoppler.so.130
 
+WORKDIR /app
+
+# Copy all package.json files and lockfile
+COPY package.json package-lock.json ./
+COPY connectors/package.json ./connectors/
+COPY sdks/js/package.json ./sdks/js/
+
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci -w sdks/js -w connectors
+
+# Build SDK
 WORKDIR /app/sdks/js
-COPY /sdks/js/package*.json ./
-RUN npm ci
 COPY /sdks/js/ .
 RUN npm run build
 
+# Build connectors
 WORKDIR /app/connectors
-
-COPY /connectors/package*.json ./
-RUN npm ci
 COPY /connectors/ .
 
 # Remove test files
