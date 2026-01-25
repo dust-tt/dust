@@ -611,15 +611,17 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
 
-    // Verify the skill is now archived
-    const archivedSkill = await SkillResource.fetchById(
+    // Verify the skill is now archived.
+    const archivedSkills = await SkillResource.listByWorkspace(
       requestUserAuth,
-      suggestedSkill.sId,
       {
         status: "archived",
       }
     );
-    expect(archivedSkill).not.toBeNull();
+    const archivedSkill = archivedSkills.find(
+      (s) => s.sId === suggestedSkill.sId
+    );
+    expect(archivedSkill).not.toBeUndefined();
     expect(archivedSkill?.status).toBe("archived");
   });
 });
