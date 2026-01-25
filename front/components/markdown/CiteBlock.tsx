@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { memo, useEffect } from "react";
 import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import { visit } from "unist-util-visit";
 
@@ -24,7 +24,7 @@ function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
   return Object.prototype.hasOwnProperty.call(props, "references");
 }
 
-export function CiteBlock(props: ReactMarkdownProps) {
+export const CiteBlock = memo(function CiteBlock(props: ReactMarkdownProps) {
   const { references, updateActiveReferences } =
     React.useContext(CitationsContext);
   const refs =
@@ -82,7 +82,7 @@ export function CiteBlock(props: ReactMarkdownProps) {
     const { children } = props;
     return <sup>{children}</sup>;
   }
-}
+});
 
 export function getCiteDirective() {
   // Initialize a counter to keep track of citation references, starting from 1.

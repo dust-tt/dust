@@ -1025,7 +1025,7 @@ function AgentMessageContent({
             <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}
-              isStreaming={streaming && lastTokenClassification === "tokens"}
+              isStreaming={streaming}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
             />
