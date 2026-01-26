@@ -33,7 +33,7 @@ import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/s
 import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
-import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
+import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
