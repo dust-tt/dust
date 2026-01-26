@@ -4,11 +4,11 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { findTagsSchema } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   IncludeInputSchema,
   TagsInputSchema,
 } from "@app/lib/actions/mcp_internal_actions/types";
+import { findTagsSchema } from "@app/lib/api/actions/tools/find_tags";
 
 export const INCLUDE_DATA_TOOL_NAME = "include_data" as const;
 
