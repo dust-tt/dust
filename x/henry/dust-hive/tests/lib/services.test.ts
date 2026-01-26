@@ -17,8 +17,8 @@ describe("services", () => {
       expect(ALL_SERVICES).toHaveLength(7);
     });
 
-    it("has sparkle as first service (start order)", () => {
-      expect(ALL_SERVICES[0]).toBe("sparkle");
+    it("has sdk as first service (start order)", () => {
+      expect(ALL_SERVICES[0]).toBe("sdk");
     });
 
     it("has front-workers as last service", () => {
@@ -31,27 +31,27 @@ describe("services", () => {
       expect(Array.isArray(ALL_SERVICES)).toBe(true);
     });
 
-    it("defines start order with sparkle first, then SDK", () => {
-      const sparkleIndex = ALL_SERVICES.indexOf("sparkle");
+    it("defines start order with SDK first, then sparkle", () => {
       const sdkIndex = ALL_SERVICES.indexOf("sdk");
+      const sparkleIndex = ALL_SERVICES.indexOf("sparkle");
       const frontIndex = ALL_SERVICES.indexOf("front");
       const coreIndex = ALL_SERVICES.indexOf("core");
 
-      // Sparkle should be first
-      expect(sparkleIndex).toBe(0);
-      // SDK should be second
-      expect(sdkIndex).toBe(1);
-      // Front and core come after SDK
-      expect(frontIndex).toBeGreaterThan(sdkIndex);
-      expect(coreIndex).toBeGreaterThan(sdkIndex);
+      // SDK should be first
+      expect(sdkIndex).toBe(0);
+      // Sparkle should be second
+      expect(sparkleIndex).toBe(1);
+      // Front and core come after sparkle
+      expect(frontIndex).toBeGreaterThan(sparkleIndex);
+      expect(coreIndex).toBeGreaterThan(sparkleIndex);
     });
   });
 
   describe("ServiceName type", () => {
     it("accepts valid service names", () => {
       const services: ServiceName[] = [
-        "sparkle",
         "sdk",
+        "sparkle",
         "front",
         "core",
         "oauth",
