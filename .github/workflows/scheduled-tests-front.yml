@@ -36,6 +36,7 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
+          build-sparkle: "true"
 
       - name: Run ESLint (Full Check, No Cache)
         working-directory: front
