@@ -49,7 +49,6 @@ import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as soundStudio } from "@app/lib/actions/mcp_internal_actions/servers/sound_studio";
-import { default as speechGenerator } from "@app/lib/actions/mcp_internal_actions/servers/speech_generator";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready";
@@ -71,6 +70,7 @@ import { default as imageGenerationServer } from "@app/lib/api/actions/servers/i
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
+import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import type { Authenticator } from "@app/lib/auth";
