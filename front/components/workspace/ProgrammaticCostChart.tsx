@@ -81,7 +81,7 @@ const GROUP_BY_TYPE_OPTIONS: {
 }[] = [
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
-  { value: "apiKey", label: "By Api Key" },
+  { value: "apiKey", label: "By API Key" },
 ];
 
 const GROUP_BY_OPTIONS: {
