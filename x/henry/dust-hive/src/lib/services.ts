@@ -1,5 +1,6 @@
 // Service names - array order defines start order, reverse for stop order
 export const ALL_SERVICES = [
+  "sparkle",
   "sdk",
   "front",
   "core",

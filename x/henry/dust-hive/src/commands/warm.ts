@@ -80,10 +80,20 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   // Set cache source to use binaries from main repo
   await setCacheSource(env.metadata.repoRoot);
 
-  // Check if SDK is running (should be in cold state)
-  const sdkRunning = await isServiceRunning(env.name, "sdk");
-  if (!sdkRunning) {
-    return Err(new CommandError("SDK watch is not running. Run 'dust-hive start' first."));
+  // Check if build watchers are running (should be in cold state)
+  const [sparkleRunning, sdkRunning] = await Promise.all([
+    isServiceRunning(env.name, "sparkle"),
+    isServiceRunning(env.name, "sdk"),
+  ]);
+  if (!(sparkleRunning && sdkRunning)) {
+    const missing = [];
+    if (!sparkleRunning) missing.push("sparkle");
+    if (!sdkRunning) missing.push("SDK");
+    return Err(
+      new CommandError(
+        `${missing.join(" and ")} watch is not running. Run 'dust-hive start' first.`
+      )
+    );
   }
 
   // Check if already warm
