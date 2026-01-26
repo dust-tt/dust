@@ -1,7 +1,7 @@
 const GREETINGS = [
   "Hey [Name]! 👋",
   "Good to see you, [Name]! 😊",
-  "Whats up, [Name]? 🙌",
+  "What’s up, [Name]? 🙌",
   "How’s it going, [Name]? 🚀",
   "Hiya, [Name]! 🌟",
   "Yo [Name]! 😎",
