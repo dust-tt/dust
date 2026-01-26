@@ -976,9 +976,7 @@ export function GroupConversationView({
                       icon: BookOpenIcon,
                       description:
                         "Centralize the information used in this project for Agents and Participants.",
-                      onClick: () => {
-                        console.log("Add knowledge clicked");
-                      },
+                      onClick: () => {},
                     },
                     {
                       id: "invite-members",

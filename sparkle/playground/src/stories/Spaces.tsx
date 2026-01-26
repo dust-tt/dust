@@ -535,7 +535,6 @@ function DustMain() {
             onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Rename conversation:", conversation.id);
             }}
           />
           <DropdownMenuSub>
@@ -579,11 +578,6 @@ function DustMain() {
                       onClick={(e: MouseEvent) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log(
-                          "View participant:",
-                          participant.type,
-                          participant.data.id
-                        );
                       }}
                     />
                   ))
@@ -602,7 +596,6 @@ function DustMain() {
             onClick={(e: MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Delete conversation:", conversation.id);
             }}
           />
         </DropdownMenuContent>
@@ -658,7 +651,6 @@ function DustMain() {
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("View profile");
               }}
             />
             <DropdownMenuItem
@@ -667,7 +659,6 @@ function DustMain() {
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Administration");
               }}
             />
             <DropdownMenuSub>
@@ -681,7 +672,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Quickstart Guide");
                     }}
                   />
                   <DropdownMenuItem
@@ -690,7 +680,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Guides & Documentation");
                     }}
                   />
                   <DropdownMenuItem
@@ -699,7 +688,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Join the Slack Community");
                     }}
                   />
                   <DropdownMenuLabel label="Ask questions" />
@@ -710,7 +698,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Ask @help");
                     }}
                   />
                   <DropdownMenuItem
@@ -719,7 +706,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to invite new users?");
                     }}
                   />
                   <DropdownMenuItem
@@ -728,7 +714,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to use agents in Slack workflow?");
                     }}
                   />
                   <DropdownMenuItem
@@ -737,7 +722,6 @@ function DustMain() {
                     onClick={(e: MouseEvent) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to manage billing?");
                     }}
                   />
                 </DropdownMenuSubContent>
@@ -750,7 +734,6 @@ function DustMain() {
               onClick={(e: MouseEvent) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Signout");
               }}
             />
           </DropdownMenuContent>
@@ -869,7 +852,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Manage Spaces");
                         }}
                       />
                       <DropdownMenuItem
@@ -878,7 +860,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Create Space");
                         }}
                       />
                     </DropdownMenuContent>
@@ -913,7 +894,6 @@ function DustMain() {
                             onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit space:", space.id);
                             }}
                           />
                           <DropdownMenuItem
@@ -922,7 +902,6 @@ function DustMain() {
                             onClick={(e: MouseEvent) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Explore space:", space.id);
                             }}
                           />
                         </DropdownMenuContent>
@@ -982,7 +961,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Create Agent");
                         }}
                       />
                       <DropdownMenuItem
@@ -991,7 +969,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Manage Agents");
                         }}
                       />
                       <DropdownMenuSub>
@@ -1024,7 +1001,6 @@ function DustMain() {
                                     onClick={(e: MouseEvent) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      console.log("Edit agent:", agent.id);
                                     }}
                                   />
                                 ))
@@ -1069,7 +1045,6 @@ function DustMain() {
                                     onClick={(e: MouseEvent) => {
                                       e.preventDefault();
                                       e.stopPropagation();
-                                      console.log("Edit person:", person.id);
                                     }}
                                   />
                                 ))
@@ -1118,7 +1093,6 @@ function DustMain() {
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log("Edit agent:", agent.id);
                               }}
                             />
                             <DropdownMenuItem
@@ -1127,7 +1101,6 @@ function DustMain() {
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log("Remove from favorites:", agent.id);
                               }}
                             />
                             <DropdownMenuItem
@@ -1137,7 +1110,6 @@ function DustMain() {
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log("Delete agent:", agent.id);
                               }}
                             />
                           </DropdownMenuContent>
@@ -1183,7 +1155,6 @@ function DustMain() {
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log("View profile:", person.id);
                               }}
                             />
                             <DropdownMenuItem
@@ -1193,10 +1164,6 @@ function DustMain() {
                               onClick={(e: MouseEvent) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                console.log(
-                                  "Remove from favorites:",
-                                  person.id
-                                );
                               }}
                             />
                           </DropdownMenuContent>
@@ -1256,7 +1223,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Edit Conversations");
                         }}
                       />
                       <DropdownMenuItem
@@ -1265,7 +1231,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Edit Conversations");
                         }}
                       />
                       <DropdownMenuItem
@@ -1275,7 +1240,6 @@ function DustMain() {
                         onClick={(e: MouseEvent) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Clear history");
                         }}
                       />
                     </DropdownMenuContent>
