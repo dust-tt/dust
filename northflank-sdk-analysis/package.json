@@ -6,7 +6,8 @@
     "build": "tsc",
     "sandbox": "npx ts-node src/sandbox.ts",
     "sandbox:discover": "npx ts-node src/sandbox.ts --discover",
-    "sandbox:run": "npx ts-node src/sandbox.ts"
+    "sandbox:run": "npx ts-node src/sandbox.ts",
+    "sandbox:pool": "npx ts-node src/sandbox.ts --pool"
   },
   "keywords": [],
   "author": "",

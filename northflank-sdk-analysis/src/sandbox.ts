@@ -164,11 +164,13 @@ class NorthflankSandbox {
 
   /**
    * Create a new sandbox VM
+   * Returns timing information about the startup process
    */
-  async create(options?: { clusterId?: string; name?: string }): Promise<void> {
+  async create(options?: { clusterId?: string; name?: string }): Promise<{ startupTimeMs: number }> {
     await this.ensureReady();
 
-    const timestamp = Date.now();
+    const createStartTime = Date.now();
+    const timestamp = createStartTime;
     const serviceName = `vm-${timestamp}`;
 
     // Use existing project or create new one
@@ -246,6 +248,10 @@ class NorthflankSandbox {
 
     // Wait for service to be ready
     await this.waitForReady();
+
+    const startupTimeMs = Date.now() - createStartTime;
+    console.log(`[sandbox] Total startup time: ${(startupTimeMs / 1000).toFixed(1)}s`);
+    return { startupTimeMs };
   }
 
   /**
@@ -266,8 +272,9 @@ class NorthflankSandbox {
 
       const deploymentStatus = response.data.status?.deployment?.status;
       const buildStatus = response.data.status?.build?.status;
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       console.log(
-        `[sandbox] Status: deployment=${deploymentStatus || "N/A"}, build=${buildStatus || "N/A"}`
+        `[sandbox] Status: deployment=${deploymentStatus || "N/A"}, build=${buildStatus || "N/A"} (${elapsed}s)`
       );
 
       // For deployment services, we check deployment status
@@ -680,27 +687,46 @@ async function discoverClusters(): Promise<void> {
 }
 
 /**
- * Main demo: full sandbox lifecycle
+ * Main demo: full sandbox lifecycle using pre-warmed pool
  */
 async function runDemo(): Promise<void> {
   const token = getApiToken();
-  const sandbox = new NorthflankSandbox(token);
+
+  // Create pool with 1 sandbox for the demo
+  const pool = new SandboxPool({
+    size: 1,
+    apiToken: token,
+  });
+
+  let sandbox: NorthflankSandbox | null = null;
 
   try {
     // ========================================================================
-    // 1. Create sandbox VM
+    // 1. Warm up the pool
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 1: Create sandbox VM");
+    console.log("STEP 1: Warm up sandbox pool");
     console.log("=".repeat(60) + "\n");
 
-    await sandbox.create();
+    await pool.warmUp();
 
     // ========================================================================
-    // 2. Execute a simple command
+    // 2. Acquire sandbox from pool (instant!)
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 2: Execute command (simple)");
+    console.log("STEP 2: Acquire sandbox from pool");
+    console.log("=".repeat(60) + "\n");
+
+    const acquireStart = Date.now();
+    sandbox = await pool.acquire();
+    const acquireTime = Date.now() - acquireStart;
+    console.log(`\n>>> Sandbox acquired in ${acquireTime}ms <<<\n`);
+
+    // ========================================================================
+    // 3. Execute a simple command
+    // ========================================================================
+    console.log("\n" + "=".repeat(60));
+    console.log("STEP 3: Execute command (simple)");
     console.log("=".repeat(60) + "\n");
 
     const result = await sandbox.exec("echo 'Hello from sandbox!' && uname -a");
@@ -709,10 +735,10 @@ async function runDemo(): Promise<void> {
     if (result.stderr) console.log(`stderr: ${result.stderr}`);
 
     // ========================================================================
-    // 3. Execute with streaming output
+    // 4. Execute with streaming output
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 3: Execute command (streaming)");
+    console.log("STEP 4: Execute command (streaming)");
     console.log("=".repeat(60) + "\n");
 
     console.log("--- Streaming output start ---");
@@ -723,10 +749,10 @@ async function runDemo(): Promise<void> {
     console.log(`Exit code: ${exitCode}`);
 
     // ========================================================================
-    // 4. Upload a file
+    // 5. Upload a file
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 4: Upload file");
+    console.log("STEP 5: Upload file");
     console.log("=".repeat(60) + "\n");
 
     const testContent = `#!/bin/bash
@@ -745,10 +771,10 @@ ls -la /tmp/
     console.log(verifyResult.stdout);
 
     // ========================================================================
-    // 5. Execute the uploaded script
+    // 6. Execute the uploaded script
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 5: Execute uploaded script");
+    console.log("STEP 6: Execute uploaded script");
     console.log("=".repeat(60) + "\n");
 
     await sandbox.exec("chmod +x /tmp/test-script.sh");
@@ -756,10 +782,10 @@ ls -la /tmp/
     console.log(scriptResult.stdout);
 
     // ========================================================================
-    // 6. Create and download a file
+    // 7. Create and download a file
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 6: Download file");
+    console.log("STEP 7: Download file");
     console.log("=".repeat(60) + "\n");
 
     // Create a file in the sandbox
@@ -773,13 +799,15 @@ ls -la /tmp/
     console.log(downloadedContent.toString());
 
     // ========================================================================
-    // 7. Cleanup
+    // 8. Release sandbox and shutdown pool
     // ========================================================================
     console.log("\n" + "=".repeat(60));
-    console.log("STEP 7: Cleanup");
+    console.log("STEP 8: Cleanup");
     console.log("=".repeat(60) + "\n");
 
-    await sandbox.destroy();
+    await pool.release(sandbox);
+    sandbox = null;
+    await pool.shutdown();
 
     console.log("\n" + "=".repeat(60));
     console.log("DEMO COMPLETE!");
@@ -790,12 +818,269 @@ ls -la /tmp/
     // Always try to cleanup on error
     console.log("\nAttempting cleanup...");
     try {
-      await sandbox.destroy();
+      if (sandbox) {
+        await pool.release(sandbox);
+      }
+      await pool.shutdown();
     } catch (cleanupErr) {
       console.error("Cleanup also failed:", cleanupErr);
     }
 
     process.exit(1);
+  }
+}
+
+// ============================================================================
+// PRE-WARMED POOL
+// ============================================================================
+
+interface PoolConfig {
+  size: number;           // Number of warm sandboxes to maintain
+  apiToken: string;       // Northflank API token
+}
+
+class SandboxPool {
+  private config: PoolConfig;
+  private ready: NorthflankSandbox[] = [];
+  private warming: Promise<NorthflankSandbox>[] = [];
+  private isShuttingDown = false;
+
+  constructor(config: PoolConfig) {
+    this.config = config;
+  }
+
+  /**
+   * Initialize the pool with warm sandboxes
+   */
+  async warmUp(): Promise<void> {
+    console.log(`[pool] Warming up ${this.config.size} sandboxes...`);
+    const warmStart = Date.now();
+
+    // Start all sandboxes in parallel
+    const promises = Array.from({ length: this.config.size }, (_, i) =>
+      this.createWarmSandbox(i + 1)
+    );
+
+    const sandboxes = await Promise.all(promises);
+    this.ready.push(...sandboxes);
+
+    const warmupTime = ((Date.now() - warmStart) / 1000).toFixed(1);
+    console.log(`[pool] Pool ready: ${this.ready.length} sandboxes warmed in ${warmupTime}s`);
+  }
+
+  private async createWarmSandbox(index?: number): Promise<NorthflankSandbox> {
+    const label = index ? `#${index}` : "#new";
+    console.log(`[pool] Creating sandbox ${label}...`);
+
+    const sandbox = new NorthflankSandbox(this.config.apiToken);
+    const { startupTimeMs } = await sandbox.create();
+
+    console.log(`[pool] Sandbox ${label} ready (${(startupTimeMs / 1000).toFixed(1)}s)`);
+    return sandbox;
+  }
+
+  /**
+   * Acquire a sandbox from the pool (instant if pool has capacity)
+   */
+  async acquire(): Promise<NorthflankSandbox> {
+    if (this.isShuttingDown) {
+      throw new Error("Pool is shutting down");
+    }
+
+    const acquireStart = Date.now();
+
+    // Try to get a ready sandbox
+    const sandbox = this.ready.shift();
+
+    if (sandbox) {
+      console.log(`[pool] Acquired sandbox (instant) - ${this.ready.length} remaining`);
+
+      // Replenish the pool in background
+      this.replenish();
+
+      return sandbox;
+    }
+
+    // No ready sandbox - wait for one being warmed, or create new
+    if (this.warming.length > 0) {
+      console.log(`[pool] Waiting for sandbox being warmed...`);
+      const warmingSandbox = this.warming.shift()!;
+      const result = await warmingSandbox;
+
+      const waitTime = ((Date.now() - acquireStart) / 1000).toFixed(1);
+      console.log(`[pool] Acquired sandbox (waited ${waitTime}s)`);
+
+      this.replenish();
+      return result;
+    }
+
+    // Nothing available - create on demand (cold start)
+    console.log(`[pool] Pool empty! Cold start required...`);
+    const newSandbox = await this.createWarmSandbox();
+
+    const coldTime = ((Date.now() - acquireStart) / 1000).toFixed(1);
+    console.log(`[pool] Acquired sandbox (cold start ${coldTime}s)`);
+
+    this.replenish();
+    return newSandbox;
+  }
+
+  /**
+   * Release a sandbox back (destroys it and replenishes pool)
+   */
+  async release(sandbox: NorthflankSandbox): Promise<void> {
+    console.log(`[pool] Releasing sandbox ${sandbox.getServiceId()}`);
+
+    // Destroy the used sandbox (don't reuse for security)
+    try {
+      await sandbox.destroy();
+    } catch (err) {
+      console.warn(`[pool] Failed to destroy sandbox:`, err);
+    }
+
+    // Replenish is already triggered on acquire, but ensure pool stays full
+    this.replenish();
+  }
+
+  /**
+   * Replenish the pool to maintain target size
+   */
+  private replenish(): void {
+    if (this.isShuttingDown) return;
+
+    const total = this.ready.length + this.warming.length;
+    const needed = this.config.size - total;
+
+    if (needed > 0) {
+      console.log(`[pool] Replenishing: ${needed} sandbox(es) needed`);
+
+      for (let i = 0; i < needed; i++) {
+        const promise = this.createWarmSandbox().then((sandbox) => {
+          // Move from warming to ready when done
+          const idx = this.warming.indexOf(promise);
+          if (idx !== -1) this.warming.splice(idx, 1);
+
+          if (!this.isShuttingDown) {
+            this.ready.push(sandbox);
+            console.log(`[pool] Sandbox added to pool - ${this.ready.length} ready`);
+          } else {
+            // Pool is shutting down, destroy this sandbox
+            sandbox.destroy().catch(() => {});
+          }
+
+          return sandbox;
+        });
+
+        this.warming.push(promise);
+      }
+    }
+  }
+
+  /**
+   * Get pool status
+   */
+  status(): { ready: number; warming: number; target: number } {
+    return {
+      ready: this.ready.length,
+      warming: this.warming.length,
+      target: this.config.size,
+    };
+  }
+
+  /**
+   * Shutdown the pool and destroy all sandboxes
+   */
+  async shutdown(): Promise<void> {
+    console.log(`[pool] Shutting down...`);
+    this.isShuttingDown = true;
+
+    // Wait for warming sandboxes to complete
+    if (this.warming.length > 0) {
+      console.log(`[pool] Waiting for ${this.warming.length} warming sandboxes...`);
+      const warmingSandboxes = await Promise.allSettled(this.warming);
+      for (const result of warmingSandboxes) {
+        if (result.status === "fulfilled") {
+          this.ready.push(result.value);
+        }
+      }
+      this.warming = [];
+    }
+
+    // Destroy all ready sandboxes
+    console.log(`[pool] Destroying ${this.ready.length} sandboxes...`);
+    await Promise.allSettled(
+      this.ready.map((sandbox) => sandbox.destroy())
+    );
+    this.ready = [];
+
+    console.log(`[pool] Shutdown complete`);
+  }
+}
+
+/**
+ * Demo: Pre-warmed pool
+ */
+async function runPoolDemo(): Promise<void> {
+  const token = getApiToken();
+
+  // Create pool with 2 warm sandboxes
+  const pool = new SandboxPool({
+    size: 2,
+    apiToken: token,
+  });
+
+  try {
+    // Warm up the pool (this takes ~40s but happens once at startup)
+    await pool.warmUp();
+
+    console.log("\n" + "=".repeat(60));
+    console.log("POOL DEMO: Acquire sandboxes instantly");
+    console.log("=".repeat(60) + "\n");
+
+    // Acquire first sandbox - should be instant
+    console.log("\n--- Acquiring sandbox 1 ---");
+    let start = Date.now();
+    const sandbox1 = await pool.acquire();
+    console.log(`Acquired in ${Date.now() - start}ms`);
+
+    // Run a command
+    const result = await sandbox1.exec("echo 'Hello from pooled sandbox!'");
+    console.log(`Output: ${result.stdout}`);
+
+    // Acquire second sandbox - should also be instant
+    console.log("\n--- Acquiring sandbox 2 ---");
+    start = Date.now();
+    const sandbox2 = await pool.acquire();
+    console.log(`Acquired in ${Date.now() - start}ms`);
+
+    const result2 = await sandbox2.exec("hostname");
+    console.log(`Output: ${result2.stdout}`);
+
+    // Acquire third sandbox - pool is empty, might wait for replenish
+    console.log("\n--- Acquiring sandbox 3 (pool exhausted) ---");
+    start = Date.now();
+    const sandbox3 = await pool.acquire();
+    console.log(`Acquired in ${Date.now() - start}ms`);
+
+    // Release all
+    console.log("\n--- Releasing sandboxes ---");
+    await Promise.all([
+      pool.release(sandbox1),
+      pool.release(sandbox2),
+      pool.release(sandbox3),
+    ]);
+
+    // Check status
+    console.log("\nPool status:", pool.status());
+
+    // Give replenishment a moment
+    console.log("\nWaiting for pool to replenish...");
+    await sleep(5000);
+    console.log("Pool status:", pool.status());
+
+  } finally {
+    // Cleanup
+    await pool.shutdown();
   }
 }
 
@@ -815,6 +1100,7 @@ Usage:
 
 Options:
   --discover    List available clusters and regions
+  --pool        Run the pre-warmed pool demo
   --help, -h    Show this help message
 
 Environment:
@@ -835,11 +1121,16 @@ Configuration:
     return;
   }
 
+  if (args.includes("--pool")) {
+    await runPoolDemo();
+    return;
+  }
+
   await runDemo();
 }
 
 // Export for use as a module
-export { NorthflankSandbox, CONFIG };
+export { NorthflankSandbox, SandboxPool, CONFIG };
 
 // Run if executed directly
 main().catch(console.error);
