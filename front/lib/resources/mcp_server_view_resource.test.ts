@@ -136,8 +136,6 @@ describe("MCPServerViewResource", () => {
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
       // Mock the INTERNAL_MCP_SERVERS config.
-      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
-      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -229,8 +227,6 @@ describe("MCPServerViewResource", () => {
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
       // Mock the INTERNAL_MCP_SERVERS config.
-      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
-      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -299,8 +295,6 @@ describe("MCPServerViewResource", () => {
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
       // Mock the INTERNAL_MCP_SERVERS config.
-      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
-      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
