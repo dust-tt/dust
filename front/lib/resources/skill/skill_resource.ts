@@ -351,7 +351,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       transaction?: Transaction;
     } = {}
   ): Promise<GroupResource> {
-    const user = auth.getNonNullableUser();
     const workspace = auth.getNonNullableWorkspace();
 
     assert(
@@ -366,7 +365,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         kind: "skill_editors",
       },
       {
-        memberIds: addCurrentUserAsEditor ? [user.id] : [],
+        memberIds: addCurrentUserAsEditor ? [auth.getNonNullableUser().id] : [],
         transaction,
       }
     );
