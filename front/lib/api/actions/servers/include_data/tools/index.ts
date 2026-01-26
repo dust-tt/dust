@@ -11,15 +11,15 @@ import type {
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
-  makeIncludeResultResource,
-  makeIncludeWarningResource,
-} from "@app/lib/actions/mcp_internal_actions/tools/include/helpers";
-import {
   checkConflictingTags,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  makeIncludeResultResource,
+  makeIncludeWarningResource,
+} from "@app/lib/api/actions/servers/include_data/helpers";
 import {
   INCLUDE_DATA_BASE_TOOLS_METADATA,
   INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA,
