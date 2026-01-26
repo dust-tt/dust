@@ -844,7 +844,7 @@ export function useConversationMarkAsRead({
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
-    if (conversation?.sId && conversation.unread) {
+    if (conversation?.sId) {
       timeout = setTimeout(
         () => markAsRead(conversation.sId, true),
         DELAY_BEFORE_MARKING_AS_READ
@@ -856,7 +856,7 @@ export function useConversationMarkAsRead({
         clearTimeout(timeout);
       }
     };
-  }, [conversation?.sId, conversation?.unread, markAsRead]);
+  }, [conversation?.sId, markAsRead]);
 
   return {
     markAsRead,
