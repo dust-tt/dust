@@ -1,13 +1,14 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import trim from "lodash/trim";
+import z from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  ConfigurableToolInputSchemas,
-  type DataSourcesToolConfigurationType,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -17,8 +18,6 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import z from "zod";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
 
