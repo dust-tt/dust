@@ -9,3 +9,6 @@ c2c4f314962afc970419361225dacfba51ee00e5
 
 # refactor: migrate cli to Biome formatting
 0a2f4d5f9ed3a950b4d420b0b502a27bfc48bb2b
+
+# refactor: migrate firebase-functions to Biome formatting
+01afe83163048a19400fc0f84559d3a03335c49f
