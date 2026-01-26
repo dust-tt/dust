@@ -22,6 +22,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
+import type { AgentSuggestionType } from "@app/types";
 import {
   Err,
   isModelProviderId,
@@ -784,6 +785,78 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       },
     ]);
   },
+
+  update_suggestions_state: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const { suggestions: suggestionUpdates } = params;
+
+    const results: {
+      success: boolean;
+      suggestionId: string;
+      suggestion?: AgentSuggestionType;
+      error?: string;
+    }[] = [];
+
+    for (const { suggestionId, state } of suggestionUpdates) {
+      // Fetch the suggestion by ID.
+      const suggestion = await AgentSuggestionResource.fetchById(
+        auth,
+        suggestionId
+      );
+
+      if (!suggestion) {
+        results.push({
+          success: false,
+          suggestionId,
+          error: `Suggestion not found: ${suggestionId}`,
+        });
+        continue;
+      }
+
+      // Check write permission.
+      if (!suggestion.canWrite(auth)) {
+        results.push({
+          success: false,
+          suggestionId,
+          error:
+            "You don't have permission to update this suggestion. Only workspace admins or members of the agent's editors group can modify suggestions.",
+        });
+        continue;
+      }
+
+      try {
+        await suggestion.updateState(auth, state);
+        results.push({
+          success: true,
+          suggestionId,
+          suggestion: suggestion.toJSON(),
+        });
+      } catch (error) {
+        results.push({
+          success: false,
+          suggestionId,
+          error: `Failed to update suggestion state: ${normalizeError(error).message}`,
+        });
+      }
+    }
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            results,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
 };
 
 function getCategoryDisplayName(category: DataSourceViewCategory): string {
@@ -798,5 +871,6 @@ function getCategoryDisplayName(category: DataSourceViewCategory): string {
       return category;
   }
 }
+
 
 export const TOOLS = buildTools(AGENT_COPILOT_CONTEXT_TOOLS_METADATA, handlers);

@@ -229,6 +229,27 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
   },
+  update_suggestions_state: {
+    description:
+      "Update the state of one or more suggestions. Use this to approve, reject, or mark suggestions as outdated.",
+    schema: {
+      suggestions: z
+        .array(
+          z.object({
+            suggestionId: z
+              .string()
+              .describe("The sId of the suggestion to update"),
+            state: z
+              .enum(["approved", "rejected", "outdated"])
+              .describe(
+                "The new state for the suggestion. Cannot be set to 'pending'."
+              ),
+          })
+        )
+        .describe("Array of suggestions to update with their new states"),
+    },
+    stake: "never_ask",
+  },
 });
 
 export const AGENT_COPILOT_CONTEXT_SERVER = {

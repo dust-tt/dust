@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -818,6 +819,124 @@ describe("agent_copilot_context tools", () => {
           const parsed = JSON.parse(content.text);
           expect(parsed.count).toBeDefined();
           expect(parsed.suggestions).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("update_suggestions_state", () => {
+    it("returns error in results when suggestion is not found", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        {
+          suggestions: [{ suggestionId: "non-existent-id", state: "approved" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(1);
+          expect(parsed.results[0].success).toBe(false);
+          expect(parsed.results[0].error).toContain("Suggestion not found");
+        }
+      }
+    });
+
+    it.each([
+      { state: "approved" as const },
+      { state: "rejected" as const },
+      { state: "outdated" as const },
+    ])(
+      "updates suggestion state to $state and returns all fields",
+      async ({ state }) => {
+        const { authenticator } = await createResourceTest({ role: "admin" });
+
+        // Create a real agent configuration and suggestion.
+        const agentConfiguration =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const suggestion = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agentConfiguration,
+          { state: "pending", analysis: "Test analysis for skills" }
+        );
+
+        const tool = getToolByName("update_suggestions_state");
+        const result = await tool.handler(
+          { suggestions: [{ suggestionId: suggestion.sId, state }] },
+          createTestExtra(authenticator)
+        );
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const content = result.value[0];
+          expect(content.type).toBe("text");
+          if (content.type === "text") {
+            const parsed = JSON.parse(content.text);
+            expect(parsed.results).toHaveLength(1);
+            expect(parsed.results[0].success).toBe(true);
+            expect(parsed.results[0].suggestion.sId).toBe(suggestion.sId);
+            expect(parsed.results[0].suggestion.kind).toBe("skills");
+            expect(parsed.results[0].suggestion.state).toBe(state);
+            expect(parsed.results[0].suggestion.analysis).toBe(
+              "Test analysis for skills"
+            );
+            expect(parsed.results[0].suggestion.createdAt).toBeDefined();
+            expect(parsed.results[0].suggestion.updatedAt).toBeDefined();
+          }
+        }
+      }
+    );
+
+    it("updates multiple suggestions to outdated in a single call", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration and two suggestions.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { state: "pending" }
+      );
+      const suggestion2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration,
+        { state: "pending" }
+      );
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            { suggestionId: suggestion1.sId, state: "outdated" },
+            { suggestionId: suggestion2.sId, state: "outdated" },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(2);
+
+          expect(parsed.results[0].success).toBe(true);
+          expect(parsed.results[0].suggestionId).toBe(suggestion1.sId);
+          expect(parsed.results[0].suggestion.state).toBe("outdated");
+
+          expect(parsed.results[1].success).toBe(true);
+          expect(parsed.results[1].suggestionId).toBe(suggestion2.sId);
+          expect(parsed.results[1].suggestion.state).toBe("outdated");
         }
       }
     });
