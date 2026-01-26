@@ -21,7 +21,7 @@ import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useCallback, useContext, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
@@ -36,11 +36,11 @@ import {
 } from "@app/components/assistant/conversation/types";
 import { UserHandle } from "@app/components/assistant/conversation/UserHandle";
 import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdown";
-import { ConfirmContext } from "@app/components/Confirm";
-import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
-import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
-import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
-import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
+import type { ConfirmDataType } from "@app/components/Confirm";
+import type {
+  EditorService,
+  MarkdownAndMentions,
+} from "@app/components/editor/input_bar/useCustomEditor";
 import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import config from "@app/lib/api/config";
@@ -57,7 +57,7 @@ interface UserMessageEditorProps {
   editorService: EditorService;
   setShouldShowEditor: (shouldShowEditor: boolean) => void;
   isSaving: boolean;
-  onSave: () => void;
+  onSave: (isEmpty: boolean, markdownAndMentions: MarkdownAndMentions) => void;
 }
 
 function UserMessageEditor({
@@ -101,7 +101,11 @@ function UserMessageEditor({
         <Button
           variant="highlight"
           size="xs"
-          onClick={onSave}
+          onClick={() => {
+            const isEmpty = editorService.isEmpty();
+            const markdownAndMentions = editorService.getMarkdownAndMentions();
+            onSave(isEmpty, markdownAndMentions);
+          }}
           label="Save"
           isLoading={isSaving}
         />
@@ -119,8 +123,23 @@ interface UserMessageProps {
   message: UserMessageTypeWithContentFragments;
   owner: WorkspaceType;
   onReactionToggle: (emoji: string) => void;
+  isSavingMessage: boolean;
+  deleteMessage: (messageId: string) => Promise<void>;
+  isDeleting: boolean;
+  confirm: (n: ConfirmDataType) => Promise<boolean>;
+  shouldShowEditor: boolean;
+  setShouldShowEditor: (shouldShowEditor: boolean) => void;
+  handleSave: (
+    isEmpty: boolean,
+    markdownAndMentions: MarkdownAndMentions
+  ) => Promise<void>;
+  editor: Editor | null;
+  editorService: EditorService;
 }
 
+/**
+ * TODO(yuka: 2026-01-21): We will move this component to Sparkle so that we can reuse it in extension.
+ */
 export function UserMessage({
   citations,
   conversationId,
@@ -130,39 +149,19 @@ export function UserMessage({
   message,
   owner,
   onReactionToggle,
+  isSavingMessage,
+  deleteMessage,
+  isDeleting,
+  confirm,
+  shouldShowEditor,
+  setShouldShowEditor,
+  handleSave,
+  editor,
+  editorService,
 }: UserMessageProps) {
-  const [shouldShowEditor, setShouldShowEditor] = useState(false);
   const { ref: userMessageHoveredRef, isHovering: isUserMessageHovered } =
     useHover();
   const isAdmin = owner.role === "admin";
-  const { deleteMessage, isDeleting } = useDeleteMessage({
-    owner,
-    conversationId,
-  });
-  const { editMessage, isEditing: isSaving } = useEditUserMessage({
-    owner,
-    conversationId,
-  });
-  const confirm = useContext(ConfirmContext);
-
-  const handleSave = async () => {
-    const { markdown, mentions } = editorService.getMarkdownAndMentions();
-
-    await editMessage({
-      messageId: message.sId,
-      content: markdown,
-      mentions,
-    });
-
-    setShouldShowEditor(false);
-  };
-
-  const { editor, editorService } = useCustomEditor({
-    owner,
-    conversationId,
-    onEnterKeyDown: handleSave,
-    disableAutoFocus: false,
-  });
 
   const renderName = useCallback(
     (name: string | null) => {
@@ -257,7 +256,7 @@ export function UserMessage({
           editorService={editorService}
           setShouldShowEditor={setShouldShowEditor}
           onSave={handleSave}
-          isSaving={isSaving}
+          isSaving={isSavingMessage}
         />
       ) : (
         <ConversationMessageContainer

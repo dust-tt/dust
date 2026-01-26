@@ -162,12 +162,14 @@ const useEditorService = (editor: Editor | null) => {
 
 export type EditorService = ReturnType<typeof useEditorService>;
 
+export type MarkdownAndMentions = ReturnType<
+  ReturnType<typeof useEditorService>["getMarkdownAndMentions"]
+>;
+
 export interface CustomEditorProps {
   onEnterKeyDown: (
     isEmpty: boolean,
-    markdownAndMentions: ReturnType<
-      ReturnType<typeof useEditorService>["getMarkdownAndMentions"]
-    >,
+    markdownAndMentions: MarkdownAndMentions,
     clearEditor: () => void,
     setLoading: (loading: boolean) => void
   ) => void;

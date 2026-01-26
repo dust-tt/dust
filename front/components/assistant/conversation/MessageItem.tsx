@@ -1,5 +1,5 @@
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
-import React, { useMemo } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentMessage } from "@app/components/assistant/conversation/AgentMessage";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
@@ -19,6 +19,11 @@ import {
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
 import { UserMessage } from "@app/components/assistant/conversation/UserMessage";
+import { ConfirmContext } from "@app/components/Confirm";
+import type { MarkdownAndMentions } from "@app/components/editor/input_bar/useCustomEditor";
+import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
+import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useMessageFeedback } from "@app/hooks/useMessageFeedback";
 import { useReaction } from "@app/hooks/useReaction";
 import { useSubmitFunction } from "@app/lib/client/utils";
@@ -78,6 +83,48 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
       conversationId: context.conversation?.sId,
       message: data,
     });
+
+    const { deleteMessage, isDeleting } = useDeleteMessage({
+      owner: context.owner,
+      conversationId: context.conversation?.sId ?? "",
+    });
+
+    const { editMessage, isEditing } = useEditUserMessage({
+      owner: context.owner,
+      conversationId: context.conversation?.sId ?? "",
+    });
+
+    const confirm = useContext(ConfirmContext);
+
+    const [shouldShowEditor, setShouldShowEditor] = useState(false);
+
+    const { editor, editorService } = useCustomEditor({
+      owner: context.owner,
+      conversationId: context.conversation?.sId ?? "",
+      onEnterKeyDown: async (isEmpty, markdownAndMentions) => {
+        await handleSave(isEmpty, markdownAndMentions);
+      },
+      disableAutoFocus: false,
+    });
+
+    const handleSave = useCallback(
+      async (isEmpty: boolean, markdownAndMentions: MarkdownAndMentions) => {
+        if (isEmpty) {
+          return;
+        }
+
+        const { markdown, mentions } = markdownAndMentions;
+
+        await editMessage({
+          messageId: data.sId,
+          content: markdown,
+          mentions,
+        });
+
+        setShouldShowEditor(false);
+      },
+      [data, editMessage]
+    );
 
     const messageFeedback = context.feedbacksByMessageId[sId];
 
@@ -157,6 +204,15 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               message={data}
               owner={context.owner}
               onReactionToggle={(emoji: string) => onReactionToggle({ emoji })}
+              isSavingMessage={isEditing}
+              deleteMessage={deleteMessage}
+              isDeleting={isDeleting}
+              confirm={confirm}
+              shouldShowEditor={shouldShowEditor}
+              setShouldShowEditor={setShouldShowEditor}
+              handleSave={handleSave}
+              editor={editor}
+              editorService={editorService}
             />
           )}
           {isMessageTemporayState(data) && (
