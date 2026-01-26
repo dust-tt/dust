@@ -33,6 +33,9 @@ type ArrowKey =
   | "arrowright"
   | "right";
 
+const FUNCTION_KEY_REGEX = /^f\d{1,2}$/i;
+const SINGLE_LETTER_REGEX = /^[a-z]$/i;
+
 const KEY_SYMBOLS: Record<KeySymbolKey, string> = {
   cmd: "⌘",
   command: "⌘",
@@ -81,11 +84,11 @@ const normalizeKey = (rawKey: string) => {
     return ARROW_KEYS[lower as ArrowKey];
   }
 
-  if (/^f\d{1,2}$/i.test(trimmed)) {
+  if (FUNCTION_KEY_REGEX.test(trimmed)) {
     return trimmed.toUpperCase();
   }
 
-  if (/^[a-z]$/i.test(trimmed)) {
+  if (SINGLE_LETTER_REGEX.test(trimmed)) {
     return trimmed.toUpperCase();
   }
 
