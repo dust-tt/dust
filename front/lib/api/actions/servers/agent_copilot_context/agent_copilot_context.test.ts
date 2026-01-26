@@ -653,7 +653,7 @@ describe("agent_copilot_context tools", () => {
       }
     });
 
-    it("lists suggestions with specific status and kind filters", async () => {
+    it("lists suggestions with specific states and kind filters", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       const { getAgentConfigurationIdFromContext } =
@@ -665,7 +665,7 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler(
         {
-          status: "approved",
+          states: ["pending", "rejected"],
           kind: "tools",
         },
         createTestExtra(authenticator)

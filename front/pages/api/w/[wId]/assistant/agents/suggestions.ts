@@ -15,7 +15,7 @@ const PatchSuggestionRequestBodySchema = t.type({
   suggestionId: t.string,
   state: t.union([
     t.literal("approved"),
-    t.literal("declined"),
+    t.literal("rejected"),
     t.literal("outdated"),
   ]),
 });

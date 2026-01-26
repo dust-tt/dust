@@ -130,7 +130,7 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
 
   it.each<Exclude<AgentSuggestionState, "pending">>([
     "approved",
-    "declined",
+    "rejected",
     "outdated",
   ])("updates suggestion state to %s", async (newState) => {
     const { req, res, authenticator } = await setupTest();

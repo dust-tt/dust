@@ -16,7 +16,7 @@ export type AgentSuggestionKind = (typeof AGENT_SUGGESTION_KINDS)[number];
 export const AGENT_SUGGESTION_STATES = [
   "pending",
   "approved",
-  "declined",
+  "rejected",
   "outdated",
 ] as const;
 
