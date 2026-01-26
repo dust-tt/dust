@@ -7,6 +7,7 @@ import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import { subDays } from "date-fns";
 import { Op } from "sequelize";
 
+import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { TOOL_EXECUTION_BLOCKED_STATUSES } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import {
@@ -26,9 +27,9 @@ import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
-import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { sha256 } from "@app/types/shared/utils/hashing";
 
 const BATCH_SIZE = 500;
@@ -102,7 +103,7 @@ interface ActionWithContext {
   actionId: ModelId;
   workspaceId: ModelId;
   mcpServerConfigurationId: string;
-  toolServerId: string;
+  mcpServerName: string;
   agentMessageId: ModelId;
   agentConfigurationId: string;
   agentConfigurationVersion: number;
@@ -176,11 +177,17 @@ async function fetchActionsWithContext(
       continue;
     }
 
+    // Derive mcpServerName using the same logic as the temporal activity:
+    // internalMCPServerName ?? mcpServerId ?? "unknown"
+    const toolServerId = action.toolConfiguration.toolServerId;
+    const internalMCPServerName = getInternalMCPServerNameFromSId(toolServerId);
+    const mcpServerName = internalMCPServerName ?? toolServerId ?? "unknown";
+
     results.push({
       actionId: action.id,
       workspaceId: action.workspaceId,
       mcpServerConfigurationId: action.mcpServerConfigurationId,
-      toolServerId: action.toolConfiguration.toolServerId,
+      mcpServerName,
       agentMessageId: action.agentMessageId,
       agentConfigurationId: agentMessage.agentConfigurationId,
       agentConfigurationVersion: agentMessage.agentConfigurationVersion,
@@ -341,18 +348,19 @@ async function getDataSourceNames(
   return result;
 }
 
+interface WorkspaceStats {
+  rawActionsScanned: number;
+  actionsMatched: number;
+  documentsProduced: number;
+  documentsIndexed: number;
+}
+
 async function backfillForWorkspace(
   workspace: LightWorkspaceType,
   since: Date,
   execute: boolean,
-  logger: Logger,
-  globalStats: {
-    totalRawActionsScanned: number;
-    totalActionsMatched: number;
-    totalDocumentsProduced: number;
-    totalDocumentsIndexed: number;
-  }
-): Promise<void> {
+  logger: Logger
+): Promise<WorkspaceStats> {
   let lastActionId: ModelId | null = null;
   let workspaceRawActions = 0;
   let workspaceActionsMatched = 0;
@@ -421,7 +429,7 @@ async function backfillForWorkspace(
             agent_version: action.agentConfigurationVersion.toString(),
             timestamp: action.messageCreatedAt.toISOString(),
             mcp_server_configuration_id: action.mcpServerConfigurationId,
-            mcp_server_name: action.toolServerId,
+            mcp_server_name: action.mcpServerName,
             data_source_view_id: searchResult.dataSourceViewId,
             data_source_id: searchResult.dataSourceId,
             data_source_name: dataSourceName,
@@ -437,13 +445,6 @@ async function backfillForWorkspace(
     }
   }
 
-  globalStats.totalRawActionsScanned += workspaceRawActions;
-  globalStats.totalActionsMatched += workspaceActionsMatched;
-  globalStats.totalDocumentsProduced += workspaceDocuments;
-  if (execute) {
-    globalStats.totalDocumentsIndexed += workspaceDocuments;
-  }
-
   if (workspaceDocuments > 0) {
     logger.info(
       {
@@ -455,6 +456,25 @@ async function backfillForWorkspace(
       "[Backfill] Workspace processed"
     );
   }
+
+  return {
+    rawActionsScanned: workspaceRawActions,
+    actionsMatched: workspaceActionsMatched,
+    documentsProduced: workspaceDocuments,
+    documentsIndexed: execute ? workspaceDocuments : 0,
+  };
+}
+
+function aggregateStats(statsArray: WorkspaceStats[]): WorkspaceStats {
+  return statsArray.reduce(
+    (acc, stats) => ({
+      rawActionsScanned: acc.rawActionsScanned + stats.rawActionsScanned,
+      actionsMatched: acc.actionsMatched + stats.actionsMatched,
+      documentsProduced: acc.documentsProduced + stats.documentsProduced,
+      documentsIndexed: acc.documentsIndexed + stats.documentsIndexed,
+    }),
+    { rawActionsScanned: 0, actionsMatched: 0, documentsProduced: 0, documentsIndexed: 0 }
+  );
 }
 
 async function runBackfill(
@@ -477,43 +497,43 @@ async function runBackfill(
     "[Backfill] Starting agent document outputs backfill"
   );
 
-  const globalStats = {
-    totalRawActionsScanned: 0,
-    totalActionsMatched: 0,
-    totalDocumentsProduced: 0,
-    totalDocumentsIndexed: 0,
-  };
+  let allStats: WorkspaceStats[];
 
   if (workspaceId) {
     const workspace = await WorkspaceResource.fetchById(workspaceId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
-    await backfillForWorkspace(
+    const stats = await backfillForWorkspace(
       renderLightWorkspaceType({ workspace }),
       since,
       execute,
-      logger,
-      globalStats
+      logger
     );
+    allStats = [stats];
   } else {
-    await runOnAllWorkspaces(
-      async (workspace) => {
-        await backfillForWorkspace(
-          workspace,
+    const workspaces = await WorkspaceResource.listAll();
+    allStats = await concurrentExecutor(
+      workspaces,
+      async (workspace) =>
+        backfillForWorkspace(
+          renderLightWorkspaceType({ workspace }),
           since,
           execute,
-          logger,
-          globalStats
-        );
-      },
+          logger
+        ),
       { concurrency: 4 }
     );
   }
 
+  const globalStats = aggregateStats(allStats);
+
   logger.info(
     {
-      ...globalStats,
+      totalRawActionsScanned: globalStats.rawActionsScanned,
+      totalActionsMatched: globalStats.actionsMatched,
+      totalDocumentsProduced: globalStats.documentsProduced,
+      totalDocumentsIndexed: globalStats.documentsIndexed,
       execute,
       cacheSize: dataSourceNameCache.size,
     },
