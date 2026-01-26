@@ -52,12 +52,16 @@ export function SubscriptionPlanCards({
       {/* Pro card */}
       <div className="flex flex-col rounded-[20px] border border-border p-5">
         <div className="mb-4">
-          <h3 className="text-lg font-medium text-foreground">Pro</h3>
+          <h3 className="text-lg font-medium text-foreground dark:text-foreground-night">
+            Pro
+          </h3>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums text-foreground">
+            <span className="text-3xl font-bold tabular-nums text-foreground dark:text-foreground-night">
               {price}
             </span>
-            <span className="text-sm text-muted-foreground">per user</span>
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              per user
+            </span>
           </div>
         </div>
         <div className="mb-4 border-t border-border" />
@@ -69,7 +73,9 @@ export function SubscriptionPlanCards({
                 size="sm"
                 className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
               />
-              <span className="text-sm text-foreground">{feature}</span>
+              <span className="text-sm text-foreground dark:text-foreground-night">
+                {feature}
+              </span>
             </li>
           ))}
         </ul>
@@ -88,12 +94,14 @@ export function SubscriptionPlanCards({
       {/* Enterprise card */}
       <div className="flex flex-col rounded-[20px] border border-border p-5">
         <div className="mb-4">
-          <h3 className="text-lg font-medium text-foreground">Enterprise</h3>
+          <h3 className="text-lg font-medium text-foreground dark:text-foreground-night">
+            Enterprise
+          </h3>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-3xl font-bold tabular-nums text-foreground">
+            <span className="text-3xl font-bold tabular-nums text-foreground dark:text-foreground-night">
               Custom
             </span>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               pay-per-use, from 100+ users
             </span>
           </div>
@@ -107,7 +115,9 @@ export function SubscriptionPlanCards({
                 size="sm"
                 className="mt-0.5 shrink-0 text-highlight-500 dark:text-highlight-500-night"
               />
-              <span className="text-sm text-foreground">{feature}</span>
+              <span className="text-sm text-foreground dark:text-foreground-night">
+                {feature}
+              </span>
             </li>
           ))}
         </ul>
