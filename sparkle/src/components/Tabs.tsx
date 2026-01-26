@@ -9,7 +9,6 @@ import { cn } from "@sparkle/lib/utils";
 
 const Tabs = TabsPrimitive.Root;
 
-<<<<<<< HEAD
 const tabsTriggerVariants = cva(
   [
     "s-relative",
@@ -35,10 +34,7 @@ const tabsTriggerVariants = cva(
   }
 );
 
-const tabsListVariants = cva("s-inline-flex s-h-11 s-gap-2", {
-=======
 const tabsListVariants = cva("s-flex s-h-[45px] s-gap-2 s-w-full", {
->>>>>>> fee2ea77d6 (Search all project)
   variants: {
     border: {
       true: "s-border-b s-border-border dark:s-border-border-night",
@@ -121,14 +117,8 @@ const TabsTrigger = React.forwardRef<
           isCounter={isCounter}
           counterValue={counterValue}
           className={cn(
-<<<<<<< HEAD
             tabsTriggerVariants({ variant: variant ?? undefined }),
             className
-=======
-            "s-relative",
-            "after:s-absolute after:s-bottom-[-10px] after:s-left-1/2 after:s-h-[2px] after:s-w-full after:s--translate-x-1/2",
-            "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100 dark:after:s-bg-foreground-night"
->>>>>>> fee2ea77d6 (Search all project)
           )}
         />
       </TabsPrimitive.Trigger>
