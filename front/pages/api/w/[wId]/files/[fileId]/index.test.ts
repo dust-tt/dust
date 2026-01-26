@@ -73,7 +73,7 @@ vi.mock("@app/lib/api/data_sources", () => ({
 }));
 
 // Mock the file processing functions
-vi.mock("@app/lib/api/files/upload", () => ({
+vi.mock("@app/lib/api/files/processing", () => ({
   processAndStoreFile: vi.fn().mockResolvedValue({
     isErr: () => false,
     value: {},

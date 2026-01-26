@@ -17,8 +17,8 @@ import {
   upsertDocument,
   upsertTable,
 } from "@app/lib/api/data_sources";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
 import { generateSnippet } from "@app/lib/api/files/snippet";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
 import { getFileContent } from "@app/lib/api/files/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
