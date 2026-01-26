@@ -181,18 +181,26 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     description:
       "List existing suggestions for the agent's configuration changes.",
     schema: {
-      status: z
-        .enum(AGENT_SUGGESTION_STATES)
+      statuses: z
+        .array(z.enum(AGENT_SUGGESTION_STATES))
         .optional()
-        .default("pending")
+        .default(["pending"])
         .describe(
-          `Filter by suggestion status (default: 'pending'). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
+          `Filter by suggestion statuses (default: ['pending']). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
         ),
       kind: z
         .enum(AGENT_SUGGESTION_KINDS)
         .optional()
         .describe(
           `Filter by suggestion type. Options: ${AGENT_SUGGESTION_KINDS.join(", ")}. If not provided, returns all types.`
+        ),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
         ),
     },
     stake: "never_ask",
