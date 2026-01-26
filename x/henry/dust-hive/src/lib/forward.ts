@@ -1,16 +1,21 @@
 // TCP forwarder management for OAuth redirect support
 // Forwards traffic from port 3000 to the active environment's front port
 
-import { unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { z } from "zod";
-import { createTypeGuard, isErrnoException } from "./errors";
+import { createTypeGuard } from "./errors";
 import { FORWARDER_PORTS } from "./forwarderConfig";
 import { fileExists } from "./fs";
 import { logger } from "./logger";
 import { FORWARDER_LOG_PATH, FORWARDER_PID_PATH, FORWARDER_STATE_PATH } from "./paths";
+import {
+  isProcessRunning,
+  killProcess,
+  readPidFile,
+  stopProcessByPidFile,
+  writePidFile,
+} from "./pid-file";
 import { getPortProcessInfo, isPortInUse } from "./ports";
-import { isProcessRunning, killProcess } from "./process";
 
 const ForwarderStateFields = z.object({
   targetEnv: z.string(),
@@ -26,43 +31,7 @@ const isForwarderState = createTypeGuard<ForwarderState>(ForwarderStateSchema);
 
 // Read forwarder PID, returns null if not running
 export async function readForwarderPid(): Promise<number | null> {
-  const file = Bun.file(FORWARDER_PID_PATH);
-
-  if (!(await file.exists())) {
-    return null;
-  }
-
-  const content = await file.text();
-  const pid = Number.parseInt(content.trim(), 10);
-
-  if (Number.isNaN(pid)) {
-    return null;
-  }
-
-  if (!isProcessRunning(pid)) {
-    // Stale PID file, clean it up
-    await cleanupForwarderPid();
-    return null;
-  }
-
-  return pid;
-}
-
-// Write forwarder PID
-async function writeForwarderPid(pid: number): Promise<void> {
-  await Bun.write(FORWARDER_PID_PATH, String(pid));
-}
-
-// Remove forwarder PID file
-async function cleanupForwarderPid(): Promise<void> {
-  try {
-    await unlink(FORWARDER_PID_PATH);
-  } catch (error) {
-    if (isErrnoException(error) && error.code === "ENOENT") {
-      return;
-    }
-    throw error;
-  }
+  return readPidFile(FORWARDER_PID_PATH);
 }
 
 // Read forwarder state
@@ -88,30 +57,7 @@ async function writeForwarderState(state: ForwarderState): Promise<void> {
 
 // Stop forwarder if running
 export async function stopForwarder(): Promise<boolean> {
-  const pid = await readForwarderPid();
-
-  if (pid === null) {
-    return false; // Not running
-  }
-
-  // Kill the process
-  await killProcess(pid, "SIGTERM");
-
-  // Wait for process to exit (up to 2 seconds)
-  const start = Date.now();
-  while (Date.now() - start < 2000) {
-    if (!isProcessRunning(pid)) {
-      await cleanupForwarderPid();
-      return true;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  // Force kill if still running
-  await killProcess(pid, "SIGKILL");
-
-  await cleanupForwarderPid();
-  return true;
+  return stopProcessByPidFile(FORWARDER_PID_PATH, { timeoutMs: 2000 });
 }
 
 function looksLikeForwarderProcess(command: string | null): boolean {
@@ -221,7 +167,7 @@ export async function startForwarder(basePort: number, envName: string): Promise
   }
 
   // Write PID and state
-  await writeForwarderPid(proc.pid);
+  await writePidFile(FORWARDER_PID_PATH, proc.pid);
   await writeForwarderState({
     targetEnv: envName,
     basePort,
