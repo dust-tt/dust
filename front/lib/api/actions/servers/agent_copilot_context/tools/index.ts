@@ -36,21 +36,18 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "website",
 ];
 
-// Type for a data source item in the knowledge hierarchy
 interface KnowledgeDataSource {
   sId: string;
   name: string;
   connectorProvider: string | null;
 }
 
-// Type for a knowledge category in the hierarchy
 interface KnowledgeCategoryData {
   category: DataSourceViewCategory;
   displayName: string;
   dataSources: KnowledgeDataSource[];
 }
 
-// Type for a space in the knowledge hierarchy
 interface KnowledgeSpace {
   sId: string;
   name: string;
