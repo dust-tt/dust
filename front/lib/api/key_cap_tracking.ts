@@ -6,7 +6,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
 import type { ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
@@ -208,10 +207,6 @@ export async function hasKeyReachedUsageCap(
   const cap = await getKeyMonthlyCapCached(keyAuth.id);
 
   if (cap === null) {
-    statsDClient.increment("api_key.cap.check", 1, [
-      `result:no_cap`,
-      `key_id:${keyAuth.id}`,
-    ]);
     return false;
   }
 
@@ -226,20 +221,11 @@ export async function hasKeyReachedUsageCap(
       },
       "[Key Cap Tracking] Failed to get key usage, failing close"
     );
-    statsDClient.increment("api_key.cap.check", 1, [
-      `result:error`,
-      `key_id:${keyAuth.id}`,
-    ]);
     return true;
   }
 
   const usage = usageResult.value;
   const hasReached = usage >= cap;
-
-  statsDClient.increment("api_key.cap.check", 1, [
-    `result:${hasReached ? "reached" : "under_cap"}`,
-    `key_id:${keyAuth.id}`,
-  ]);
 
   if (hasReached) {
     logger.info(
