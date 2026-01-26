@@ -45,8 +45,6 @@ interface MessageUsageQueryResult {
   created_at: Date;
   assistant_id: string;
   assistant_name: string;
-  workspace_id: number;
-  workspace_name: string;
   conversation_id: number;
   parent_message_id: number | null;
   user_message_id: number | null;
@@ -222,9 +220,7 @@ export async function getMessageUsageData(
                WHEN ac."scope" = 'hidden' THEN 'unpublished'
                ELSE 'unknown'
                END                                                       AS "assistant_settings",
-             w."id"                                                      AS "workspace_id",
-             w."name"                                                    AS "workspace_name",
-             c."id"                                                      AS "conversation_id",
+             m."conversationId"                                          AS "conversation_id",
              m."parentId"                                                AS "parent_message_id",
              um."id"                                                     AS "user_message_id",
              um."userId"                                                 AS "user_id",
@@ -233,10 +229,6 @@ export async function getMessageUsageData(
       FROM "agent_messages" am
              JOIN
            "messages" m ON am."id" = m."agentMessageId"
-             JOIN
-           "conversations" c ON m."conversationId" = c."id"
-             JOIN
-           "workspaces" w ON c."workspaceId" = w."id"
              LEFT JOIN
            "agent_configurations" ac
            ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
@@ -245,7 +237,7 @@ export async function getMessageUsageData(
              LEFT JOIN
            "user_messages" um on m2."userMessageId" = um."id"
       WHERE am."status" = 'succeeded'
-        AND w."id" = :wId
+        AND am."workspaceId" = :wId
         AND am."createdAt" BETWEEN :startDate AND :endDate
     `,
     {
