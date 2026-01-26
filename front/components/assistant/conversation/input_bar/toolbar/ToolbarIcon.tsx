@@ -1,4 +1,4 @@
-import { Button } from "@dust-tt/sparkle";
+import { ToolbarIcon as SparkleToolbarIcon } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
 
 import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
@@ -12,6 +12,7 @@ interface ToolbarIconProps {
   shortcut?: string;
 }
 
+/** @deprecated Use @dust-tt/sparkle ToolbarIcon. */
 export function ToolbarIcon({
   icon,
   onClick,
@@ -25,22 +26,18 @@ export function ToolbarIcon({
 
   let tooltipText = tooltip;
   if (isMobile) {
-    tooltipText = ""; // No tooltips on mobile
+    tooltipText = "";
   } else if (shortcutLabel) {
     tooltipText = `${tooltip} (${shortcutLabel})`;
   }
 
   return (
-    <Button
-      tooltip={tooltipText}
+    <SparkleToolbarIcon
       icon={icon}
-      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault(); // Prevents editor from losing focus
-        e.stopPropagation(); // Prevents event from bubbling to InputBarContainer. Otherwise, focusEnd is triggered.
-        onClick();
-      }}
+      onClick={onClick}
+      active={active}
+      tooltip={tooltipText}
       size={buttonSize}
-      variant={active ? "ghost" : "ghost-secondary"}
     />
   );
 }

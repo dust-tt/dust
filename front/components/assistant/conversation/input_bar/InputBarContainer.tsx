@@ -4,6 +4,7 @@ import {
   Chip,
   cn,
   TextIcon,
+  Toolbar,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -26,8 +27,7 @@ import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -601,7 +601,11 @@ const InputBarContainer = ({
           )}
         />
         <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
-          <Toolbar editor={editor} className="hidden sm:inline-flex" />
+          {editor && (
+            <Toolbar className="hidden sm:inline-flex">
+              <ToolBarContent editor={editor} />
+            </Toolbar>
+          )}
         </BubbleMenu>
         <div className="flex w-full flex-col py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center px-2">
@@ -667,9 +671,9 @@ const InputBarContainer = ({
             ))}
           </div>
           <div className="relative flex w-full items-center justify-between">
-            {!isRecording && (
-              <MobileToolbar
-                editor={editor}
+            {!isRecording && editor && (
+              <Toolbar
+                variant="overlay"
                 className={cn(
                   "sm:hidden",
                   isToolbarOpen
@@ -680,7 +684,9 @@ const InputBarContainer = ({
                   e.stopPropagation();
                   setIsToolbarOpen(false);
                 }}
-              />
+              >
+                <ToolBarContent editor={editor} />
+              </Toolbar>
             )}
             <div
               className={cn(
