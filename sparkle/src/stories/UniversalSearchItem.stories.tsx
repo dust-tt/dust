@@ -22,6 +22,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const DocumentAndConversation: Story = {
+  args: {
+    title: "Placeholder",
+  },
   render: () => (
     <ListGroup>
       <UniversalSearchItem
