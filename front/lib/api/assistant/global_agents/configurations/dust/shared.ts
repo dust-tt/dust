@@ -7,7 +7,6 @@ import {
   isIncludedInDefaultCompanyData,
   isRemoteDatabase,
 } from "@app/lib/data_sources";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export function getCompanyDataAction(
