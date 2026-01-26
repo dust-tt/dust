@@ -1,4 +1,0 @@
-{
-  // this file exists only because of ESlint
-  "presets": ["@babel/preset-react"]
-}
