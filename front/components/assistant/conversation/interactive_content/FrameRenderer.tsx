@@ -157,7 +157,6 @@ function ExportContentDropdown({
           isSelect
           label={isExportingPdf ? "Exporting..." : "Export"}
           variant="ghost"
-          isLoading={isExportingPdf}
           tooltip={isExportingPdf ? "Exporting..." : "Export"}
         />
       </DropdownMenuTrigger>
