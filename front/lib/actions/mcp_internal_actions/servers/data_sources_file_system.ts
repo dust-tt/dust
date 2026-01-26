@@ -13,10 +13,10 @@ import { registerFindTool } from "@app/lib/actions/mcp_internal_actions/tools/da
 import { registerListTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/list";
 import { registerLocateTreeTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/locate_tree";
 import { registerSearchTool } from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/search";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import { shouldAutoGenerateTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { registerFindTagsTool } from "@app/lib/api/actions/tools/find_tags";
 import type { Authenticator } from "@app/lib/auth";
 
 function createServer(

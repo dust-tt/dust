@@ -1,49 +1,58 @@
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import {
+  FIND_TAGS_TOOL_NAME,
+  INCLUDE_TOOL_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type {
   IncludeResultResourceType,
   WarningResourceType,
 } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { renderRelativeTimeFrameForToolOutput } from "@app/lib/actions/mcp_internal_actions/rendering";
+import { registerFindTagsTool } from "@app/lib/actions/mcp_internal_actions/tools/tags/find_tags";
 import {
   checkConflictingTags,
   shouldAutoGenerateTags,
 } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
+import {
+  IncludeInputSchema,
+  TagsInputSchema,
+} from "@app/lib/actions/mcp_internal_actions/types";
+import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  makeIncludeResultResource,
-  makeIncludeWarningResource,
-} from "@app/lib/api/actions/servers/include_data/helpers";
-import {
-  INCLUDE_DATA_BASE_TOOLS_METADATA,
-  INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA,
-} from "@app/lib/api/actions/servers/include_data/metadata";
-import { executeFindTags } from "@app/lib/api/actions/tools/find_tags";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  getDataSourceNameFromView,
+  getDisplayNameForDocument,
+} from "@app/lib/data_sources";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
-import type { Result, TimeFrame } from "@app/types";
+import type { CoreAPIDocument, Result, TimeFrame } from "@app/types";
 import {
   CoreAPI,
   dustManagedCredentials,
   Err,
   Ok,
   removeNulls,
+  stripNullBytes,
   timeFrameFromNow,
 } from "@app/types";
 
-// Create tools with access to auth via closure
-export function createIncludeDataTools(
+function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
-) {
+): McpServer {
+  const server = makeInternalMCPServer("include_data");
+
   const areTagsDynamic = agentLoopContext
     ? shouldAutoGenerateTags(agentLoopContext)
     : false;
@@ -179,10 +188,23 @@ export function createIncludeDataTools(
 
         assert(dataSourceView, "DataSource view not found");
 
-        return makeIncludeResultResource(doc, dataSourceView, refs);
+        return {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.DATA_SOURCE_INCLUDE_RESULT,
+          uri: doc.source_url ?? "",
+          text: getDisplayNameForDocument(doc),
+
+          id: doc.document_id,
+          source: {
+            provider: dataSourceView.dataSource.connectorProvider ?? undefined,
+            name: getDataSourceNameFromView(dataSourceView),
+          },
+          tags: doc.tags,
+          ref: refs.shift() as string,
+          chunks: doc.chunks.map((chunk) => stripNullBytes(chunk.text)),
+        };
       });
 
-    const warningResource = makeIncludeWarningResource(
+    const warningResource = makeWarningResource(
       searchResults.value.documents,
       retrievalTopK,
       timeFrame ?? null
@@ -205,23 +227,68 @@ export function createIncludeDataTools(
   }
 
   if (!areTagsDynamic) {
-    // Return base tools without tags
-    const handlers: ToolHandlers<typeof INCLUDE_DATA_BASE_TOOLS_METADATA> = {
-      retrieve_recent_documents: async (params, _extra) => {
-        return includeFunction(params);
+    server.tool(
+      INCLUDE_TOOL_NAME,
+      "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
+      IncludeInputSchema.shape,
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "include", agentLoopContext },
+        includeFunction
+      )
+    );
+  } else {
+    server.tool(
+      INCLUDE_TOOL_NAME,
+      "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
+      {
+        ...IncludeInputSchema.shape,
+        ...TagsInputSchema.shape,
       },
-    };
-    return buildTools(INCLUDE_DATA_BASE_TOOLS_METADATA, handlers);
+      withToolLogging(
+        auth,
+        { toolNameForMonitoring: "include", agentLoopContext },
+        includeFunction
+      )
+    );
+
+    registerFindTagsTool(auth, server, agentLoopContext, {
+      name: FIND_TAGS_TOOL_NAME,
+      extraDescription: `This tool is meant to be used before the ${INCLUDE_TOOL_NAME} tool.`,
+    });
   }
 
-  // Return tools with tags support
-  const handlers: ToolHandlers<typeof INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA> = {
-    retrieve_recent_documents: async (params, _extra) => {
-      return includeFunction(params);
-    },
-    find_tags: async ({ query, dataSources }, _extra) => {
-      return executeFindTags(auth, query, dataSources);
-    },
-  };
-  return buildTools(INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA, handlers);
+  return server;
 }
+
+function makeWarningResource(
+  documents: CoreAPIDocument[],
+  topK: number,
+  timeFrame: TimeFrame | null
+): WarningResourceType | null {
+  const timeFrameAsString = renderRelativeTimeFrameForToolOutput(timeFrame);
+
+  // Check if the number of chunks reached the limit defined in params.topK.
+  const tooManyChunks =
+    documents &&
+    documents.reduce((sum, doc) => sum + doc.chunks.length, 0) >= topK;
+
+  // Determine the retrieval date limit from the last document's timestamp.
+  const retrievalTsLimit = documents?.[documents.length - 1]?.timestamp;
+  const date = retrievalTsLimit ? new Date(retrievalTsLimit) : null;
+  const retrievalDateLimitAsString = date
+    ? `${date.toLocaleString("default", { month: "short" })} ${date.getDate()}`
+    : null;
+
+  return tooManyChunks
+    ? {
+        mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.WARNING,
+        warningTitle: `Only includes documents since ${retrievalDateLimitAsString}.`,
+        warningData: { includeTimeLimit: retrievalDateLimitAsString ?? "" },
+        text: `Warning: could not include all documents ${timeFrameAsString}. Only includes documents since ${retrievalDateLimitAsString}.`,
+        uri: "",
+      }
+    : null;
+}
+
+export default createServer;
