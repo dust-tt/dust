@@ -1,17 +1,17 @@
-// eslint-disable-next-line dust/enforce-client-types-in-public-api
-import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
 import trim from "lodash/trim";
-import z from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
-import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  FIND_TAGS_BASE_DESCRIPTION,
+  findTagsSchema,
+} from "@app/lib/api/actions/tools/find_tags/metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -20,27 +20,6 @@ import type { Result } from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
-
-export const findTagsSchema = {
-  query: z
-    .string()
-    .describe(
-      "The text to search for in existing labels (also called tags) using edge ngram " +
-        "matching (case-insensitive). Matches labels that start with any word in the " +
-        "search text. The returned labels can be used in tagsIn/tagsNot parameters to " +
-        "restrict or exclude content based on the user request and conversation context."
-    ),
-  dataSources:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
-};
-
-export const FIND_TAGS_BASE_DESCRIPTION =
-  "Find exact matching labels (also called tags). " +
-  "Restricting or excluding content succeeds only with existing labels. " +
-  "Searching without verifying labels first typically returns no results. " +
-  "The output of this tool can typically be used in `tagsIn` (if we want " +
-  "to restrict the search to specific tags) or `tagsNot` (if we want to " +
-  "exclude specific tags) parameters.";
 
 export async function executeFindTags(
   auth: Authenticator,

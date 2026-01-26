@@ -11,7 +11,7 @@ import {
 import {
   FIND_TAGS_BASE_DESCRIPTION,
   findTagsSchema,
-} from "@app/lib/api/actions/tools/find_tags";
+} from "@app/lib/api/actions/tools/find_tags/metadata";
 
 export const INCLUDE_DATA_TOOL_NAME = "include_data" as const;
 
