@@ -76,20 +76,26 @@ import type {
   SkillType,
 } from "@app/types/assistant/skill_configuration";
 
+export type SkillMCPServerConfiguration = {
+  view: MCPServerViewResource;
+  childAgentId?: string;
+  serverNameOverride?: string;
+};
+
 type SkillResourceConstructorOptions =
   | {
       // For global skills, there is no editor group.
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: undefined;
       globalSId: string;
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     }
   | {
       dataSourceConfigurations: SkillDataSourceConfigurationModel[];
       editorGroup?: GroupResource;
       globalSId?: undefined;
-      mcpServerViews: MCPServerViewResource[];
+      mcpServerConfigurations: SkillMCPServerConfiguration[];
       version?: number;
     };
 
@@ -182,15 +188,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   private readonly globalSId: string | null;
 
-  private _mcpServerViews: MCPServerViewResource[];
+  private _mcpServerConfigurations: SkillMCPServerConfiguration[];
 
   private constructor(
-    model: ModelStatic<SkillConfigurationModel>,
+    _: ModelStatic<SkillConfigurationModel>,
     blob: Attributes<SkillConfigurationModel>,
     {
       dataSourceConfigurations,
       globalSId,
-      mcpServerViews,
+      mcpServerConfigurations,
       editorGroup,
       version,
     }: SkillResourceConstructorOptions
@@ -200,7 +206,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     this.dataSourceConfigurations = dataSourceConfigurations;
     this.editorGroup = editorGroup ?? null;
     this.globalSId = globalSId ?? null;
-    this._mcpServerViews = mcpServerViews;
+    this._mcpServerConfigurations = mcpServerConfigurations;
     this.version = version ?? null;
   }
 
@@ -216,11 +222,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   get mcpServerViews(): MCPServerViewResource[] {
-    return this._mcpServerViews;
+    return this._mcpServerConfigurations.map((config) => config.view);
   }
 
-  private set mcpServerViews(value: MCPServerViewResource[]) {
-    this._mcpServerViews = value;
+  get mcpServerConfigurations(): SkillMCPServerConfiguration[] {
+    return this._mcpServerConfigurations;
   }
 
   get isAutoEnabled(): boolean {
@@ -293,7 +299,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       return new this(this.model, skill.get(), {
         dataSourceConfigurations,
         editorGroup,
-        mcpServerViews,
+        mcpServerConfigurations: mcpServerViews.map((view) => ({
+          view,
+        })),
       });
     });
   }
@@ -510,10 +518,14 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         const skillDataSourceConfigs =
           dataSourceConfigsBySkillId[customSkill.id] ?? [];
 
+        const skillMCPServerViews = allMCPServerViews.filter((view) =>
+          skillMCPServerViewIds?.includes(view.id)
+        );
+
         return new this(this.model, customSkill.get(), {
-          mcpServerViews: allMCPServerViews.filter((view) =>
-            skillMCPServerViewIds?.includes(view.id)
-          ),
+          mcpServerConfigurations: skillMCPServerViews.map((view) => ({
+            view,
+          })),
           editorGroup: skillEditorGroupsMap.get(customSkill.id),
           dataSourceConfigurations: skillDataSourceConfigs,
         });
@@ -925,26 +937,33 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     def: GlobalSkillDefinition,
     context: { agentConfiguration?: LightAgentConfigurationType } = {}
   ): Promise<SkillResource> {
-    // Fetch MCP server configurations if the global skill has an internal MCP server.
-    let mcpServerViews: MCPServerViewResource[] = [];
     const requestedSpaceIds =
       context?.agentConfiguration?.requestedSpaceIds ?? [];
     const requestedSpaceModelIds = removeNulls(
       requestedSpaceIds.map(getResourceIdFromSId)
     );
 
-    if (def.internalMCPServerNames) {
-      const mcpServerViewsByName = await concurrentExecutor(
-        def.internalMCPServerNames,
-        async (name) =>
-          MCPServerViewResource.listMCPServerViewsAutoInternalForSpaces(
-            auth,
-            name,
-            requestedSpaceModelIds
-          ),
+    let mcpServerConfigurations: SkillMCPServerConfiguration[] = [];
+
+    if (def.mcpServers) {
+      const mcpServerConfigurationsByName = await concurrentExecutor(
+        def.mcpServers,
+        async ({ name, childAgentId, serverNameOverride }) => {
+          const views =
+            await MCPServerViewResource.listMCPServerViewsAutoInternalForSpaces(
+              auth,
+              name,
+              requestedSpaceModelIds
+            );
+          return views.map((view) => ({
+            view,
+            childAgentId,
+            serverNameOverride,
+          }));
+        },
         { concurrency: 5 }
       );
-      mcpServerViews = mcpServerViewsByName.flat();
+      mcpServerConfigurations = mcpServerConfigurationsByName.flat();
     }
 
     const instructions = def.fetchInstructions
@@ -973,7 +992,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         // Global skills do not have data source configurations.
         dataSourceConfigurations: [],
         globalSId: def.sId,
-        mcpServerViews,
+        mcpServerConfigurations,
       }
     );
   }
@@ -1171,7 +1190,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           // As when user saves we re-compute those from the nodes.
           dataSourceConfigurations: [],
           editorGroup: this.editorGroup ?? undefined,
-          mcpServerViews,
+          mcpServerConfigurations: mcpServerViews.map((view) => ({
+            view,
+          })),
           version: versionModel.version,
         }
       );
@@ -1375,7 +1396,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     // Update instance to avoid stale data.
-    this.mcpServerViews = mcpServerViews;
+    this._mcpServerConfigurations = mcpServerViews.map((view) => ({
+      view,
+    }));
   }
 
   static computeDataSourceConfigurationChanges(
