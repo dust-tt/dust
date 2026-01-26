@@ -1,0 +1,61 @@
+{
+  "name": "dashify",
+  "description": "Convert a camelcase or space-separated string to a dash-separated string. ~12 sloc, fast, supports diacritics.",
+  "version": "2.0.0",
+  "homepage": "https://github.com/jonschlinkert/dashify",
+  "author": "Jon Schlinkert (https://github.com/jonschlinkert)",
+  "contributors": [
+    "Jeffrey Priebe (https://github.com/jeffreypriebe)",
+    "Jon Schlinkert (http://twitter.com/jonschlinkert)",
+    "Ondrej Brinkel (https://www.anzui.de)"
+  ],
+  "repository": "jonschlinkert/dashify",
+  "bugs": {
+    "url": "https://github.com/jonschlinkert/dashify/issues"
+  },
+  "license": "MIT",
+  "files": [
+    "index.js"
+  ],
+  "main": "index.js",
+  "engines": {
+    "node": ">=4"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "devDependencies": {
+    "gulp-format-md": "^2.0.0",
+    "mocha": "^5.2.0"
+  },
+  "keywords": [
+    "dash",
+    "dashcase",
+    "dasherize",
+    "dashify",
+    "slug",
+    "slugify"
+  ],
+  "verb": {
+    "toc": false,
+    "layout": "default",
+    "tasks": [
+      "readme"
+    ],
+    "plugins": [
+      "gulp-format-md"
+    ],
+    "related": {
+      "description": "Other awesome string libs you might like:",
+      "list": [
+        "pascalcase",
+        "romanize",
+        "word-wrap",
+        "wordcount"
+      ]
+    },
+    "lint": {
+      "reflinks": true
+    }
+  }
+}

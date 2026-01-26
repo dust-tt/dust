@@ -1,0 +1,31 @@
+{
+  "parser": "babel-eslint",
+  "rules": {
+    "no-undef": 1,
+    "no-unused-expressions": 1,
+    "no-unused-vars": [1, {
+      "vars": "all",
+      "args": "none"
+    }],
+    "eqeqeq": [2, "allow-null"],
+    "indent": [2, 2],
+    "quotes": [2, "single"],
+    "curly": 0,
+    "no-shadow": 0,
+    "new-cap": 0,
+    "no-alert": 0,
+    "no-underscore-dangle": 0,
+    "camelcase": 0,
+    "consistent-return": 0
+  },
+  "ecmaFeatures": {
+    "modules": true,
+    "jsx": true
+  },
+  "env": {
+    "browser": true,
+    "node": true,
+    "es6": true
+  },
+  "plugins": ["react"]
+}

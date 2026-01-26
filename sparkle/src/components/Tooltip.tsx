@@ -2,7 +2,7 @@ import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import * as React from "react";
 import { useEffect, useState } from "react";
 
-import { KeyboardShortcut } from "@sparkle/components/KeyboardShortcut";
+import { KeyboardShortcut, KeyboardShortcutProps } from "@sparkle/components/KeyboardShortcut";
 import { classNames } from "@sparkle/lib/utils";
 
 const TooltipProvider = TooltipPrimitive.Provider;
@@ -79,7 +79,7 @@ interface TooltipProps extends TooltipContentProps {
   trigger: React.ReactNode;
   tooltipTriggerAsChild?: boolean;
   label: React.ReactNode;
-  shortcut?: string;
+  shortcut?: KeyboardShortcutProps["shortcut"];
 }
 
 const Tooltip = React.forwardRef<HTMLDivElement, TooltipProps>(

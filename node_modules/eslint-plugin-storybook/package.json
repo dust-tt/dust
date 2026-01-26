@@ -1,0 +1,98 @@
+{
+  "name": "eslint-plugin-storybook",
+  "version": "0.8.0",
+  "description": "Best practice rules for Storybook",
+  "keywords": [
+    "eslint",
+    "eslintplugin",
+    "eslint-plugin",
+    "storybook"
+  ],
+  "homepage": "https://github.com/storybookjs/eslint-plugin-storybook#readme",
+  "bugs": {
+    "url": "https://github.com/storybookjs/eslint-plugin-storybook/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/storybookjs/eslint-plugin-storybook"
+  },
+  "license": "MIT",
+  "author": "yannbf@gmail.com",
+  "contributors": [
+    {
+      "name": "Rafael Rozon",
+      "email": "rafaelrozon.developer@gmail.com"
+    }
+  ],
+  "main": "dist/index.js",
+  "files": [
+    "dist/**/*",
+    "README.md"
+  ],
+  "scripts": {
+    "prebuild": "rimraf dist",
+    "build": "tsc",
+    "generate-rule": "ts-node ./tools/generate-rule",
+    "lint": "eslint --fix .",
+    "migrate": "ts-migrate-full",
+    "prepare": "husky install",
+    "prettier": "prettier --write .",
+    "release": "pnpm run build && auto shipit --name storybookbot --email storybookbot@gmail.com",
+    "start": "tsc --watch",
+    "test": "jest",
+    "test:ci": "tsc --noEmit && jest --ci",
+    "update-all": "pnpm run update-configs && pnpm run update-docs",
+    "update-configs": "ts-node ./tools/update-configs",
+    "update-docs": "ts-node ./tools/update-rules-list"
+  },
+  "lint-staged": {
+    "*.js": "eslint --cache --fix",
+    "*.{js,css,md}": "prettier --write"
+  },
+  "dependencies": {
+    "@storybook/csf": "^0.0.1",
+    "@typescript-eslint/utils": "^5.62.0",
+    "requireindex": "^1.2.0",
+    "ts-dedent": "^2.2.0"
+  },
+  "devDependencies": {
+    "@auto-it/released": "^11.0.4",
+    "@types/eslint": "^8.56.2",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^18.19.17",
+    "@types/requireindex": "^1.2.4",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "auto": "^11.0.4",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-eslint-plugin": "^5.3.0",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-prettier": "^5.1.3",
+    "husky": "^9.0.11",
+    "jest": "^29.7.0",
+    "lint-staged": "^15.2.2",
+    "prettier": "^3.2.5",
+    "prompts": "^2.4.2",
+    "rimraf": "^3.0.2",
+    "ts-jest": "^29.1.2",
+    "ts-migrate": "^0.1.35",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "eslint": ">=6"
+  },
+  "engines": {
+    "node": ">= 18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "auto": {
+    "plugins": [
+      "npm",
+      "released"
+    ]
+  }
+}

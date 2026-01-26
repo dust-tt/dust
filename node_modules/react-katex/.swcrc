@@ -1,0 +1,17 @@
+{
+  "jsc": {
+    "parser": {
+      "syntax": "ecmascript",
+      "jsx": true,
+      "preserveAllComments": true
+    },
+    "target": "es2015",
+    "loose": false
+  },
+  "module": {
+    "type": "umd"
+  },
+  "minify": false,
+  "isModule": true,
+  "sourceMaps": "inline"
+}

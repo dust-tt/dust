@@ -1,0 +1,26 @@
+{
+  "parser": "@babel/eslint-parser",
+  "env": {
+    "es6": true,
+    "mocha": true
+  },
+  "extends": ["prettier", "eslint:recommended", "plugin:react/all"],
+  "plugins": ["react"],
+  "rules": {
+    "comma-spacing": ["error", { "before": false, "after": true }],
+    "indent": ["error", 2],
+    "linebreak-style": ["error", "unix"],
+    "quotes": ["error", "single"],
+    "semi": ["error", "always"],
+    "react/display-name": 0,
+    "react/jsx-indent": [2, 2],
+    "react/jsx-indent-props": [2, 2],
+    "react/no-danger": 0,
+    "react/no-unused-prop-types": 0,
+    "react/require-default-props": 0,
+    "react/function-component-definition": [2, { "namedComponents": "arrow-function" }],
+    "react/no-multi-comp": 0,
+    "react/jsx-sort-props": 0,
+    "react/jsx-max-props-per-line": 0
+  }
+}

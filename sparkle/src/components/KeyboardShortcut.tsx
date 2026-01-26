@@ -2,7 +2,30 @@ import * as React from "react";
 
 import { cn } from "@sparkle/lib/utils";
 
-const KEY_SYMBOLS: Record<string, string> = {
+type KeySymbolKey =
+  | "cmd"
+  | "command"
+  | "meta"
+  | "ctrl"
+  | "control"
+  | "ctl"
+  | "alt"
+  | "option"
+  | "opt"
+  | "shift"
+  | "enter"
+  | "return"
+  | "esc"
+  | "escape"
+  | "tab"
+  | "backspace"
+  | "delete"
+  | "del"
+  | "space";
+
+type ArrowKey = "arrowup" | "up" | "arrowdown" | "down" | "arrowleft" | "left" | "arrowright" | "right";
+
+const KEY_SYMBOLS: Record<KeySymbolKey, string> = {
   cmd: "⌘",
   command: "⌘",
   meta: "⌘",
@@ -24,7 +47,7 @@ const KEY_SYMBOLS: Record<string, string> = {
   space: "Space",
 };
 
-const ARROW_KEYS: Record<string, string> = {
+const ARROW_KEYS: Record<ArrowKey, string> = {
   arrowup: "↑",
   up: "↑",
   arrowdown: "↓",
@@ -42,12 +65,12 @@ const normalizeKey = (rawKey: string) => {
   }
 
   const lower = trimmed.toLowerCase();
-  if (KEY_SYMBOLS[lower]) {
-    return KEY_SYMBOLS[lower];
+  if (lower in KEY_SYMBOLS) {
+    return KEY_SYMBOLS[lower as KeySymbolKey];
   }
 
-  if (ARROW_KEYS[lower]) {
-    return ARROW_KEYS[lower];
+  if (lower in ARROW_KEYS) {
+    return ARROW_KEYS[lower as ArrowKey];
   }
 
   if (/^f\d{1,2}$/i.test(trimmed)) {

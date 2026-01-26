@@ -1,0 +1,55 @@
+{
+  "name": "emoji-mart",
+  "version": "5.6.0",
+  "description": "Emoji picker for the web",
+  "license": "MIT",
+  "homepage": "https://missiveapp.com/open/emoji-mart",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/missive/emoji-mart",
+    "directory": "packages/emoji-mart"
+  },
+  "source": "src/index.ts",
+  "types": "dist/index.d.ts",
+  "main": "dist/main.js",
+  "module": "dist/module.js",
+  "global": "dist/browser.js",
+  "browserslist": "defaults",
+  "targets": {
+    "main": {
+      "includeNodeModules": true
+    },
+    "module": {
+      "includeNodeModules": true
+    },
+    "global": {
+      "source": "src/browser.js",
+      "includeNodeModules": true
+    }
+  },
+  "keywords": [
+    "emoji",
+    "emoticons",
+    "emoji-picker",
+    "web-component",
+    "twemoji"
+  ],
+  "scripts": {
+    "build": "parcel build --no-autoinstall",
+    "prepublishOnly": "yarn build"
+  },
+  "devDependencies": {
+    "preact": "10.6.4"
+  },
+  "alias": {
+    "react": "preact/compat",
+    "react-dom/test-utils": "preact/test-utils",
+    "react-dom": "preact/compat",
+    "react/jsx-runtime": "preact/jsx-runtime",
+    "preact/jsx-dev-runtime": "preact/jsx-runtime"
+  },
+  "files": [
+    "/dist",
+    "LICENSE"
+  ]
+}

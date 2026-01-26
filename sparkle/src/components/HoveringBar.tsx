@@ -30,7 +30,7 @@ export interface HoveringBarProps extends VariantProps<
   className?: string;
 }
 
-function HoveringBarRoot({ children, className, size }: HoveringBarProps) {
+export function HoveringBar({ children, className, size }: HoveringBarProps) {
   return (
     <div className={cn(hoveringBarVariants({ size }), className)}>
       <ScrollArea orientation="horizontal" hideScrollBar className="s-h-full">
@@ -44,6 +44,4 @@ function HoveringBarSeparator() {
   return <Separator orientation="vertical" className="s-my-1" />;
 }
 
-export const HoveringBar = Object.assign(HoveringBarRoot, {
-  Separator: HoveringBarSeparator,
-});
+HoveringBar.Separator = HoveringBarSeparator;

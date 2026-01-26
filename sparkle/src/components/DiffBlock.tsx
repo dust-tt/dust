@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 
 import { ArrowRightIcon } from "@sparkle/icons";
@@ -6,10 +7,23 @@ import { cn } from "../lib/utils";
 import { Button } from "./Button";
 import { ContentBlockWrapper } from "./markdown/ContentBlockWrapper";
 
-const diffAddClasses =
-  "s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-px-1 s-text-highlight-800 dark:s-text-highlight-800-night";
-const diffRemoveClasses =
-  "s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-px-1 s-text-warning-800 dark:s-text-warning-800-night s-line-through";
+const DIFF_LINE_SPLIT_REGEX = /\n/;
+const DIFF_ADD_PREFIX = "+";
+const DIFF_REMOVE_PREFIX = "-";
+
+const diffLineVariants = cva("s-rounded s-px-1", {
+  variants: {
+    type: {
+      add: "s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800 dark:s-text-highlight-800-night",
+      remove:
+        "s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 dark:s-text-warning-800-night s-line-through",
+      neutral: "s-text-foreground dark:s-text-foreground-night",
+    },
+  },
+  defaultVariants: {
+    type: "neutral",
+  },
+});
 
 type DiffBlockProps = {
   content: string;
@@ -21,8 +35,8 @@ export function DiffBlock({
   content,
   onApply,
   className,
-}: DiffBlockProps): JSX.Element {
-  const lines = content.split("\n");
+}: DiffBlockProps) {
+  const lines = content.split(DIFF_LINE_SPLIT_REGEX);
 
   return (
     <ContentBlockWrapper
@@ -35,7 +49,7 @@ export function DiffBlock({
           variant="primary"
           label="Apply"
           icon={ArrowRightIcon}
-          onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+          onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
             onApply?.();
@@ -53,13 +67,11 @@ export function DiffBlock({
         <div className="s-space-y-1 s-font-mono s-text-sm">
           {lines.map((line, index) => {
             const trimmed = line.trimStart();
-            const isAddition = trimmed.startsWith("+");
-            const isRemoval = trimmed.startsWith("-");
-            const lineClasses = isAddition
-              ? diffAddClasses
-              : isRemoval
-                ? diffRemoveClasses
-                : "s-text-foreground dark:s-text-foreground-night";
+            const isAddition = trimmed.startsWith(DIFF_ADD_PREFIX);
+            const isRemoval = trimmed.startsWith(DIFF_REMOVE_PREFIX);
+            const lineClasses = diffLineVariants({
+              type: isAddition ? "add" : isRemoval ? "remove" : "neutral",
+            });
 
             return (
               <div key={`${index}-${line}`} className="s-whitespace-pre-wrap">

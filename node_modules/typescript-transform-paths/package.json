@@ -1,0 +1,95 @@
+{
+  "name": "typescript-transform-paths",
+  "version": "3.5.6",
+  "description": "Transforms module resolution paths using TypeScript path mapping and/or custom paths",
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./register": "./dist/register-entry.js",
+    "./nx-transformer": "./nx-transformer.js",
+    "./plugins/nx": "./dist/plugins/nx-transformer-plugin.js"
+  },
+  "files": [
+    "dist",
+    "types",
+    "README.md",
+    "CHANGELOG.md",
+    "register.js",
+    "nx-transformer.js"
+  ],
+  "scripts": {
+    "compile": "tsc",
+    "build": "yarn clean && yarn compile",
+    "test": "yarn test/ test",
+    "release": "changelogen --release --push",
+    "--------------": "",
+    "format": "prettier --write .",
+    "lint": "prettier --check . && eslint .",
+    "clean": "rm -rf \"**/dist\"",
+    "clean:all": "yarn clean && rm -rf node_modules \"**/node_modules\" \"**/yarn.lock\" yarn.lock",
+    "reset": "yarn clean:all && yarn install && yarn build",
+    "-------------- ": "",
+    "prepack": "yarn build"
+  },
+  "keywords": [
+    "typescript",
+    "transform",
+    "transformer",
+    "plugin",
+    "path",
+    "paths",
+    "virtual directory",
+    "import",
+    "require"
+  ],
+  "homepage": "https://github.com/LeDDGroup/typescript-transform-paths#readme",
+  "bugs": {
+    "url": "https://github.com/LeDDGroup/typescript-transform-paths/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LeDDGroup/typescript-transform-paths.git"
+  },
+  "license": "MIT",
+  "contributors": [
+    "Daniel Perez",
+    "Ron S. (https://twitter.com/Ron)"
+  ],
+  "devDependencies": {
+    "@eslint/js": "^9.9.1",
+    "@tsconfig/node18": "^18.2.4",
+    "@tsconfig/strictest": "^2.0.5",
+    "@types/eslint": "^9",
+    "@types/minimatch": "^5.1.2",
+    "@types/node": "^22.5.2",
+    "@types/ts-expose-internals": "npm:ts-expose-internals@4.9.5",
+    "@types/ts-node": "npm:ts-node@^10.9.2",
+    "@types/typescript-3": "npm:typescript@3.x",
+    "@types/typescript-4.7": "npm:typescript@4.9.x",
+    "changelogen": "^0.5.5",
+    "eslint": "9.x",
+    "globals": "^15.9.0",
+    "prettier": "^3.3.3",
+    "prettier-plugin-jsdoc": "^1.3.0",
+    "ts-patch": "^3.2.1",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^8.3.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=3.6.5"
+  },
+  "dependencies": {
+    "minimatch": "^9.0.5"
+  },
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-jsdoc"
+    ]
+  },
+  "packageManager": "yarn@4.7.0+sha512.5a0afa1d4c1d844b3447ee3319633797bcd6385d9a44be07993ae52ff4facabccafb4af5dcd1c2f9a94ac113e5e9ff56f6130431905884414229e284e37bb7c9"
+}
