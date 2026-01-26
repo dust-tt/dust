@@ -5,9 +5,11 @@ import {
   AgentConfigurationModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
-import { UserMessageModel } from "@app/lib/models/agent/conversation";
+import {
+  ConversationParticipantModel,
+  UserMessageModel,
+} from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
@@ -322,11 +324,23 @@ export async function mergeUserIdentities({
     },
   };
 
-  // Merge conversation participations from secondary user to primary user.
-  await ConversationResource.mergeUserParticipations(workspaceId, {
-    primaryUserId: primaryUser.id,
-    secondaryUserId: secondaryUser.id,
+  // Delete all conversation participants for the secondary user that are already in conversations with the primary user.
+  const conversations = await ConversationParticipantModel.findAll({
+    where: {
+      userId: primaryUser.id,
+      workspaceId: workspaceId,
+    },
+    attributes: ["conversationId"],
   });
+  await ConversationParticipantModel.destroy({
+    where: {
+      userId: secondaryUser.id,
+      conversationId: conversations.map((p) => p.conversationId),
+      workspaceId: workspaceId,
+    },
+  });
+  // Replace all conversation participants for the secondary user with the primary user.
+  await ConversationParticipantModel.update(userIdValues, userIdOptions);
   // Migrate authorship of user messages from the secondary user to the primary user.
   await UserMessageModel.update(userIdValues, userIdOptions);
   // Migrate authorship of content fragments from the secondary user to the primary user.
