@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
+import {
+  SkillDataSourceConfigurationModel,
+  SkillMCPServerConfigurationModel,
+  SkillVersionModel,
+} from "@app/lib/models/skill";
 import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
@@ -11,6 +16,8 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
@@ -689,6 +696,168 @@ describe("SkillResource", () => {
         [editorGroupId]
       );
       expect(editorGroupsAfter).toHaveLength(0);
+    });
+
+    it("should delete agent-skill links when deleting a skill", async () => {
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Skill With Agent Link" }
+      );
+
+      // Link the skill to an agent.
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent With Skill" }
+      );
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Verify agent-skill link exists before deletion.
+      const agentSkillsBefore = await AgentSkillModel.findAll({
+        where: {
+          customSkillId: skillResource.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(agentSkillsBefore.length).toBeGreaterThan(0);
+
+      // Delete the skill.
+      const result = await skillResource.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      // Verify agent-skill link is deleted.
+      const agentSkillsAfter = await AgentSkillModel.findAll({
+        where: {
+          customSkillId: skillResource.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(agentSkillsAfter).toHaveLength(0);
+    });
+
+    it("should delete skill versions when deleting a skill", async () => {
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Skill With Versions" }
+      );
+
+      // Update the skill to create a version entry.
+      await skillResource.updateSkill(testContext.authenticator, {
+        name: skillResource.name,
+        agentFacingDescription: skillResource.agentFacingDescription,
+        userFacingDescription: skillResource.userFacingDescription,
+        instructions: "Updated instructions",
+        icon: skillResource.icon,
+        mcpServerViews: [],
+        attachedKnowledge: [],
+        requestedSpaceIds: skillResource.requestedSpaceIds,
+      });
+
+      // Verify version exists before deletion.
+      const versionsBefore = await skillResource.listVersions(
+        testContext.authenticator
+      );
+      expect(versionsBefore.length).toBeGreaterThan(0);
+
+      // Delete the skill.
+      const result = await skillResource.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      const whereClause = {
+        skillConfigurationId: skillResource.id,
+        workspaceId: testContext.workspace.id,
+      };
+      const versionsAfter = await SkillVersionModel.findAll({
+        where: whereClause,
+      });
+      expect(versionsAfter).toHaveLength(0);
+    });
+
+    it("should delete data source configurations when deleting a skill", async () => {
+      const dataSourceView = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        testContext.globalSpace,
+        testContext.user
+      );
+
+      // Create a skill with attached knowledge (data source configuration).
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Skill With Data Source Config",
+          attachedKnowledge: [
+            {
+              dataSourceView,
+              nodeId: "node1",
+            },
+          ],
+        }
+      );
+
+      // Verify data source config exists before deletion.
+      expect(skillResource.dataSourceConfigurations.length).toBeGreaterThan(0);
+
+      // Delete the skill.
+      const result = await skillResource.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      // Verify data source configs are deleted.
+      const dataSourceConfigsAfter =
+        await SkillDataSourceConfigurationModel.findAll({
+          where: {
+            skillConfigurationId: skillResource.id,
+            workspaceId: testContext.workspace.id,
+          },
+        });
+      expect(dataSourceConfigsAfter).toHaveLength(0);
+    });
+
+    it("should delete MCP server configurations when deleting a skill", async () => {
+      // Create an MCP server and its view.
+      const server = await RemoteMCPServerFactory.create(
+        testContext.workspace,
+        {
+          name: "Test MCP Server",
+        }
+      );
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        testContext.globalSpace
+      );
+
+      // Create a skill with MCP server view.
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Skill With MCP Server Config",
+          mcpServerViews: [serverView],
+        }
+      );
+
+      // Verify MCP server config exists before deletion.
+      const mcpConfigsBefore = await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          skillConfigurationId: skillResource.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(mcpConfigsBefore.length).toBeGreaterThan(0);
+
+      // Delete the skill.
+      const result = await skillResource.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      // Verify MCP server configs are deleted.
+      const mcpConfigsAfter = await SkillMCPServerConfigurationModel.findAll({
+        where: {
+          skillConfigurationId: skillResource.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(mcpConfigsAfter).toHaveLength(0);
     });
   });
 
