@@ -471,6 +471,16 @@ export async function runModelActivity(
   // listing, conversation rendering, etc.).
   heartbeat();
 
+  localLogger.info(
+    {
+      modelId: model.modelId,
+      messageCount:
+        modelConversationRes.value.modelConversation.messages.length,
+      toolCount: specifications.length,
+    },
+    "[AGENT_LOOP_DEBUG] Starting LLM stream"
+  );
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
