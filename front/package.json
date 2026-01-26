@@ -55,6 +55,7 @@
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@mistralai/mistralai": "^1.10.0",
     "@modelcontextprotocol/sdk": "git://github.com:dust-tt/typescript-sdk.git#77ce858cd0dd10025a068b897dc29c2c9303fe17",
+    "@northflank/js-client": "^0.8.10",
     "@notionhq/client": "^2.3.0",
     "@novu/framework": "^2.7.1",
     "@novu/js": "^3.11.0",

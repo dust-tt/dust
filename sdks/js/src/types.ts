@@ -686,6 +686,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool_write"
   | "salesforce_tool"
   | "salesloft_tool"
+  | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
   | "skills_similar_display"

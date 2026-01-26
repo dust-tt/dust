@@ -246,6 +246,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to Dust Academy learning content",
     stage: "on_demand",
   },
+  sandbox_tools: {
+    description:
+      "Sandbox MCP tool for code execution in isolated Linux environments",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";

@@ -70,6 +70,7 @@ import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
+import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
@@ -241,6 +242,8 @@ export async function getInternalMCPServer(
       return ukgReadyServer(auth, agentLoopContext);
     case "statuspage":
       return statuspageServer(auth, agentLoopContext);
+    case "sandbox":
+      return sandboxServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
