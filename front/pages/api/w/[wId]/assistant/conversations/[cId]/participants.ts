@@ -4,7 +4,6 @@ import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/hel
 import { fetchConversationParticipants } from "@app/lib/api/assistant/participants";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { ConversationParticipantModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -81,26 +80,13 @@ async function handler(
         });
       }
 
-      const owner = auth.workspace();
-      if (!owner) {
-        return apiError(req, res, {
-          status_code: 401,
-          api_error: {
-            type: "app_auth_error",
-            message: "Workspace not found",
-          },
+      const isAlreadyParticipant =
+        await ConversationResource.isConversationParticipant(auth, {
+          conversation: conversationWithoutContent,
+          user,
         });
-      }
 
-      const existingParticipant = await ConversationParticipantModel.findOne({
-        where: {
-          conversationId: conversationWithoutContent.id,
-          workspaceId: owner.id,
-          userId: user.id,
-        },
-      });
-
-      if (existingParticipant !== null) {
+      if (isAlreadyParticipant) {
         return apiErrorForConversation(
           req,
           res,
@@ -108,13 +94,11 @@ async function handler(
         );
       }
 
-      await ConversationParticipantModel.create({
-        conversationId: conversationWithoutContent.id,
-        workspaceId: owner.id,
-        userId: user.id,
+      await ConversationResource.upsertParticipation(auth, {
+        conversation: conversationWithoutContent,
         action: "subscribed",
+        user,
         unread: false,
-        actionRequired: false,
       });
 
       res.status(201).end();

@@ -1526,6 +1526,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }));
   }
 
+  /**
+   * Returns participant details (userId and action) ordered by createdAt ASC.
+   * The first participant is considered the conversation creator.
+   */
+  static async listParticipantDetails(
+    auth: Authenticator,
+    conversation: ConversationWithoutContentType
+  ): Promise<{ userId: ModelId; action: ParticipantActionType }[]> {
+    const participants = await ConversationParticipantModel.findAll({
+      where: {
+        conversationId: conversation.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+      attributes: ["userId", "action"],
+      order: [["createdAt", "ASC"]],
+    });
+
+    return participants.map((p) => ({
+      userId: p.userId,
+      action: p.action,
+    }));
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction | undefined } = {}
@@ -1599,6 +1622,72 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     return new Ok(undefined);
+  }
+
+  /**
+   * Removes all participants from a conversation.
+   * Returns the number of participants removed.
+   */
+  async removeAllParticipants(auth: Authenticator): Promise<number> {
+    return ConversationParticipantModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
+      },
+    });
+  }
+
+  /**
+   * Merges conversation participations from a secondary user into a primary user.
+   * - Removes secondary user's participations in conversations where primary user already participates
+   * - Updates remaining secondary user participations to point to primary user
+   * Used during user account merging.
+   */
+  static async mergeUserParticipations(
+    workspaceId: ModelId,
+    {
+      primaryUserId,
+      secondaryUserId,
+    }: {
+      primaryUserId: ModelId;
+      secondaryUserId: ModelId;
+    }
+  ): Promise<void> {
+    // Find conversations where primary user is already a participant
+    const primaryUserParticipations =
+      await ConversationParticipantModel.findAll({
+        where: {
+          userId: primaryUserId,
+          workspaceId,
+        },
+        attributes: ["conversationId"],
+      });
+
+    const primaryUserConversationIds = primaryUserParticipations.map(
+      (p) => p.conversationId
+    );
+
+    // Delete secondary user's participations in conversations where primary user already participates
+    if (primaryUserConversationIds.length > 0) {
+      await ConversationParticipantModel.destroy({
+        where: {
+          userId: secondaryUserId,
+          conversationId: primaryUserConversationIds,
+          workspaceId,
+        },
+      });
+    }
+
+    // Update remaining secondary user participations to point to primary user
+    await ConversationParticipantModel.update(
+      { userId: primaryUserId },
+      {
+        where: {
+          userId: secondaryUserId,
+          workspaceId,
+        },
+      }
+    );
   }
 
   toJSON(): ConversationWithoutContentType {
