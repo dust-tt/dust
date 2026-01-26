@@ -63,7 +63,8 @@ const IMAGE_GENERATION_SERVER_INSTRUCTIONS =
   "Use generate_image to create images from text or transform existing images.\n\n" +
   "GENERATION FROM TEXT:\n" +
   "- Provide a detailed prompt describing the desired image\n" +
-  "- Be specific about style, composition, colors, lighting, and mood\n\n" +
+  "- Be very specific about style, composition, colors, lighting, and mood\n" +
+  "- In most usecases, medium quality is enough\n\n" +
   "REFERENCE IMAGES:\n" +
   "- For object inclusion: up to 6 images to reproduce objects with high fidelity\n" +
   "- For human consistency: up to 5 images to maintain character appearance\n" +
