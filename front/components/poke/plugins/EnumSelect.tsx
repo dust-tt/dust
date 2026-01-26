@@ -46,7 +46,7 @@ export function EnumSelect({
   }
 
   return (
-    <PopoverRoot modal={true} open={open} onOpenChange={setOpen}>
+    <PopoverRoot modal={false} open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <PokeFormControl>
           <PokeButton
@@ -67,6 +67,9 @@ export function EnumSelect({
       <PopoverContent
         className="z-[100] w-[var(--radix-popover-trigger-width)]"
         mountPortal={false}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+        }}
         onWheelCapture={(e) => {
           e.stopPropagation();
         }}
@@ -75,7 +78,11 @@ export function EnumSelect({
         }}
       >
         <PokeCommand className="gap-2 py-3">
-          <PokeCommandInput placeholder={label} className="h-9 p-2" />
+          <PokeCommandInput
+            placeholder={label}
+            className="h-9 p-2"
+            onKeyDown={(e) => e.stopPropagation()}
+          />
           <PokeCommandList>
             <PokeCommandEmpty>No values found.</PokeCommandEmpty>
             <PokeCommandGroup>
