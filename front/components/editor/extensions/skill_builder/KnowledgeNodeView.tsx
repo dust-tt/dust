@@ -311,12 +311,12 @@ function KnowledgeSearchComponent({
 
   // Delete empty node helper.
   const deleteIfEmpty = useCallback(
-    (delay: number = 50) => {
+    (delayMs: number = 50) => {
       setTimeout(() => {
         if (!searchQuery.trim()) {
           onCancel();
         }
-      }, delay);
+      }, delayMs);
     },
     [searchQuery, onCancel]
   );
