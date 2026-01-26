@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -14,6 +15,22 @@ import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType, WhitelistableFeature, WorkspaceType } from "@app/types";
+
+// Mock metadata for primitive_types_debugger to avoid falling back to `getCachedMetadata`
+// which tries to connect to the actual MCP server.
+const PRIMITIVE_TYPES_DEBUGGER_MOCK_METADATA: ServerMetadata = {
+  serverInfo: {
+    name: "primitive_types_debugger",
+    version: "1.0.0",
+    description: "Test server",
+    icon: "ActionEmotionLaughIcon",
+    authorization: null,
+    documentationUrl: null,
+    instructions: null,
+  },
+  tools: [],
+  tools_stakes: {},
+};
 
 describe("MCPServerViewResource", () => {
   describe("listByWorkspace", () => {
@@ -35,6 +52,8 @@ describe("MCPServerViewResource", () => {
 
       // Mock the INTERNAL_MCP_SERVERS to override the "primitive_types_debugger" server config
       // so that the test passes even if we edit the server config.
+      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
+      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -48,6 +67,7 @@ describe("MCPServerViewResource", () => {
           }) => {
             return !featureFlags.includes("dev_mcp_actions");
           },
+          metadata: PRIMITIVE_TYPES_DEBUGGER_MOCK_METADATA,
         },
         writable: true,
         configurable: true,
@@ -135,7 +155,9 @@ describe("MCPServerViewResource", () => {
       // Create feature flag to enable MCP actions
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-      // Mock the INTERNAL_MCP_SERVERS config
+      // Mock the INTERNAL_MCP_SERVERS config.
+      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
+      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -149,6 +171,7 @@ describe("MCPServerViewResource", () => {
           }) => {
             return !featureFlags.includes("dev_mcp_actions");
           },
+          metadata: PRIMITIVE_TYPES_DEBUGGER_MOCK_METADATA,
         },
         writable: true,
         configurable: true,
@@ -226,7 +249,9 @@ describe("MCPServerViewResource", () => {
       // Create feature flag to enable MCP actions
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-      // Mock the INTERNAL_MCP_SERVERS config
+      // Mock the INTERNAL_MCP_SERVERS config.
+      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
+      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -240,6 +265,7 @@ describe("MCPServerViewResource", () => {
           }) => {
             return !featureFlags.includes("dev_mcp_actions");
           },
+          metadata: PRIMITIVE_TYPES_DEBUGGER_MOCK_METADATA,
         },
         writable: true,
         configurable: true,
@@ -294,7 +320,9 @@ describe("MCPServerViewResource", () => {
       // Create feature flag to enable MCP actions
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-      // Mock the INTERNAL_MCP_SERVERS config
+      // Mock the INTERNAL_MCP_SERVERS config.
+      // We include `metadata` to avoid falling back to `getCachedMetadata` which tries to
+      // connect to the actual MCP server.
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -308,6 +336,7 @@ describe("MCPServerViewResource", () => {
           }) => {
             return !featureFlags.includes("dev_mcp_actions");
           },
+          metadata: PRIMITIVE_TYPES_DEBUGGER_MOCK_METADATA,
         },
         writable: true,
         configurable: true,
