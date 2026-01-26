@@ -80,18 +80,27 @@ export class InternalMCPServerInMemoryResource {
     const server = new this(id, availability);
 
     const serverMetadata = getInternalMCPServerMetadata(name);
-    if (typeof serverMetadata !== "undefined") {
+    if (serverMetadata) {
       server.metadata = {
         ...serverMetadata.serverInfo,
         tools: serverMetadata.tools,
       };
-      server.internalServerCredential =
-        await server.fetchInternalServerCredential(auth);
+    } else {
+      // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
+      // Bigger refactoring to extract this logic from the resource will come later.
+      const { getCachedMetadata } =
+        await import("@app/lib/actions/mcp_cached_metadata");
+      const cachedMetadata = await getCachedMetadata(auth, id);
+      if (!cachedMetadata) {
+        return null;
+      }
 
-      return server;
+      server.metadata = cachedMetadata;
     }
+    server.internalServerCredential =
+      await server.fetchInternalServerCredential(auth);
 
-    return undefined;
+    return server;
   }
 
   static async makeNew(
