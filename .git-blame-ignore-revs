@@ -6,3 +6,6 @@
 
 # refactor: migrate sdks/js to Biome formatting
 c2c4f314962afc970419361225dacfba51ee00e5
+
+# refactor: migrate cli to Biome formatting
+0a2f4d5f9ed3a950b4d420b0b502a27bfc48bb2b
