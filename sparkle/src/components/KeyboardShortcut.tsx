@@ -69,6 +69,11 @@ const ARROW_KEYS: Record<ArrowKey, string> = {
   right: "→",
 };
 
+const isKeySymbolKey = (value: string): value is KeySymbolKey =>
+  value in KEY_SYMBOLS;
+
+const isArrowKey = (value: string): value is ArrowKey => value in ARROW_KEYS;
+
 const normalizeKey = (rawKey: string) => {
   const trimmed = rawKey.trim();
   if (!trimmed) {
@@ -76,12 +81,12 @@ const normalizeKey = (rawKey: string) => {
   }
 
   const lower = trimmed.toLowerCase();
-  if (lower in KEY_SYMBOLS) {
-    return KEY_SYMBOLS[lower as KeySymbolKey];
+  if (isKeySymbolKey(lower)) {
+    return KEY_SYMBOLS[lower];
   }
 
-  if (lower in ARROW_KEYS) {
-    return ARROW_KEYS[lower as ArrowKey];
+  if (isArrowKey(lower)) {
+    return ARROW_KEYS[lower];
   }
 
   if (FUNCTION_KEY_REGEX.test(trimmed)) {

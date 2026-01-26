@@ -607,14 +607,7 @@ const DropdownMenuShortcut = ({
 
   if (!resolvedShortcut && children) {
     return (
-      <span
-        className={cn(
-          menuStyleClasses.shortcut,
-          "s-text-xs s-text-faint",
-          className
-        )}
-        {...props}
-      >
+      <span className={cn(className)} {...props}>
         {children}
       </span>
     );

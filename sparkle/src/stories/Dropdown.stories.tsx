@@ -16,6 +16,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSearchbar,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuStaticItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -183,6 +184,43 @@ export const ComplexDropdown: Story = {
             label="Log out"
             variant="warning"
             href="/api/auth/logout"
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  },
+};
+
+export const WithShortcuts: Story = {
+  render: () => {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button label="Quick Actions" variant="outline" size="sm" isSelect />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="s-w-64">
+          <DropdownMenuLabel label="Create" />
+          <DropdownMenuItem
+            icon={DocumentIcon}
+            label="New File"
+            endComponent={<DropdownMenuShortcut shortcut="cmd+n" />}
+          />
+          <DropdownMenuItem
+            icon={FolderIcon}
+            label="New Folder"
+            endComponent={<DropdownMenuShortcut shortcut="cmd+shift+n" />}
+          />
+          <DropdownMenuSeparator />
+          <DropdownMenuLabel label="Actions" />
+          <DropdownMenuItem
+            icon={ActionCommand1Icon}
+            label="Command Palette"
+            endComponent={<DropdownMenuShortcut shortcut="cmd+shift+p" />}
+          />
+          <DropdownMenuItem
+            icon={CloudArrowDownIcon}
+            label="Download"
+            endComponent={<DropdownMenuShortcut shortcut="cmd+shift+d" />}
           />
         </DropdownMenuContent>
       </DropdownMenu>
