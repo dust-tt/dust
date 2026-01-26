@@ -38,7 +38,6 @@ export function EnumSelect({
   multiple,
 }: EnumSelectProps) {
   const [open, setOpen] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
 
   let title = values?.length ? values.sort().join(", ") : placeholder;
 
@@ -66,27 +65,17 @@ export function EnumSelect({
         </PokeFormControl>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[var(--radix-popover-trigger-width)] z-[100]"
+        className="z-[100] w-[var(--radix-popover-trigger-width)]"
         mountPortal={false}
-        // Focus the search input when the popover opens
-        onOpenAutoFocus={(e) => {
-          e.preventDefault();
-          inputRef.current?.focus();
-        }}
-        // Ensure wheel events don't bubble to parent overlays
         onWheelCapture={(e) => {
           e.stopPropagation();
         }}
         onTouchMoveCapture={(e) => {
           e.stopPropagation();
         }}
-        // Stop keyboard events from bubbling to parent dialog
-        onKeyDownCapture={(e) => {
-          e.stopPropagation();
-        }}
       >
         <PokeCommand className="gap-2 py-3">
-          <PokeCommandInput ref={inputRef} placeholder={label} className="h-9 p-2" />
+          <PokeCommandInput placeholder={label} className="h-9 p-2" />
           <PokeCommandList>
             <PokeCommandEmpty>No values found.</PokeCommandEmpty>
             <PokeCommandGroup>
