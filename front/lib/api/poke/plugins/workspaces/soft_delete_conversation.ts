@@ -1,4 +1,5 @@
 import { createPlugin } from "@app/lib/api/poke/types";
+import { ConversationParticipantModel } from "@app/lib/models/agent/conversation";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { Err, Ok } from "@app/types";
 
@@ -53,7 +54,12 @@ export const softDeleteConversationPlugin = createPlugin({
     const participantEmails = participants.map((p) => p.email);
 
     // Remove all participants.
-    const destroyedCount = await conversation.removeAllParticipants(auth);
+    const destroyedCount = await ConversationParticipantModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: conversation.id,
+      },
+    });
 
     // Soft delete the conversation.
     await conversation.updateVisibilityToDeleted();
