@@ -590,9 +590,10 @@ export async function getGlobalAgents(
   // user agents).
   let agentsIdsToFetch =
     agentIds ??
-    Object.values(GLOBAL_AGENTS_SID).filter(
-      (sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId)
-    );
+    Object.values(GLOBAL_AGENTS_SID)
+      .filter((sId) => !RETIRED_GLOBAL_AGENTS_SID.includes(sId))
+      // We only want to fetch copilot global agent if explicitely requested.
+      .filter((sId) => sId !== GLOBAL_AGENTS_SID.COPILOT);
 
   const flags = await getFeatureFlags(owner);
 
