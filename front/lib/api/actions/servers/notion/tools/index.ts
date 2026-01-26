@@ -164,7 +164,7 @@ export function createNotionTools(
                 `created: ${result.created_time}`,
                 `lastEdited: ${result.last_edited_time}`,
               ],
-              ref: refs.shift() as string,
+              ref: refs.shift() ?? "",
               chunks: description ? [description] : [],
               source: {
                 provider: "notion",
@@ -186,7 +186,7 @@ export function createNotionTools(
                 `created: ${result.created_time}`,
                 `lastEdited: ${result.last_edited_time}`,
               ],
-              ref: refs.shift() as string,
+              ref: refs.shift() ?? "",
               chunks: description ? [description] : [],
               source: {
                 provider: "notion",
