@@ -24,6 +24,7 @@ import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_cale
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
@@ -1112,22 +1113,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      generate_music: "low",
-      generate_sound_effects: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "sound_studio",
-      version: "1.0.0",
-      description: "Create music tracks and sound effects",
-      authorization: null,
-      icon: "ActionNoiseIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SOUND_STUDIO_SERVER,
   },
   microsoft_excel: {
     id: 38,
