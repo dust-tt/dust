@@ -17,37 +17,28 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 
 function buildNewAgentInitMessage(): string {
   return `<dust_system>
-## CONTEXT
-The user is creating a NEW agent from scratch. There is no existing configuration, feedback, or usage data.
+NEW agent - no history/feedback exists.
 
-## YOUR TASK
-Help the user create their agent by:
-1. Call \`get_agent_config\` to see if they've started filling in the form
-2. Based on their job function and platform preferences (in your instructions), suggest 2-3 specific agent use cases that would be valuable for them
-3. Ask what problem they want this agent to solve
-4. Once you understand the goal, help draft initial instructions
+1. Call \`get_agent_config\` to check form state
+2. Ask ONE question: "What should this agent do?"
+3. Once clear, suggest 2-3 bullet points for instructions
 
-Focus on understanding their needs before suggesting specifics.
+Keep response under 50 words. No preamble.
 </dust_system>`;
 }
 
 function buildExistingAgentInitMessage(): string {
   return `<dust_system>
-## CONTEXT
-The user is editing an EXISTING agent with history.
+EXISTING agent - gather data first.
 
-## YOUR TASK
-**Immediately gather context using these tools IN PARALLEL:**
-1. \`list_suggestions\` - Get pending suggestions (prioritize showing reinforcement-source suggestions first)
-2. \`get_agent_config\` - See current state
-3. \`get_agent_feedback\` - See user feedback
-4. \`get_agent_insights\` - Understand usage patterns
+Call IN PARALLEL: \`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`, \`get_agent_insights\`
 
-Then provide:
-- If there are pending reinforced suggestions: Present them first with context on why they were suggested
-- If there's negative feedback: Highlight patterns and suggest fixes
-- 2-3 specific, actionable improvement suggestions based on your findings
-- Ask if the user wants to dive deeper into any area
+Then respond with MAX 3 bullet points:
+• Reinforced suggestions first (if any)
+• Top issue from negative feedback (if any)
+• One quick win
+
+No preamble. No "I found...". Just the suggestions.
 </dust_system>`;
 }
 
