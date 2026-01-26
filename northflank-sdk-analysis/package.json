@@ -1,0 +1,23 @@
+{
+  "name": "northflank-sdk-analysis",
+  "version": "1.0.0",
+  "main": "dist/sandbox.js",
+  "scripts": {
+    "build": "tsc",
+    "sandbox": "npx ts-node src/sandbox.ts",
+    "sandbox:discover": "npx ts-node src/sandbox.ts --discover",
+    "sandbox:run": "npx ts-node src/sandbox.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "Northflank sandbox experiments",
+  "dependencies": {
+    "@northflank/js-client": "^0.8.10"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.0"
+  }
+}
