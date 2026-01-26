@@ -3,3 +3,6 @@
 
 # refactor: migrate connectors to Biome formatting
 39796e781c0a993df6c83710b8f7a7d84c06c59c
+
+# refactor: migrate sdks/js to Biome formatting
+c2c4f314962afc970419361225dacfba51ee00e5
