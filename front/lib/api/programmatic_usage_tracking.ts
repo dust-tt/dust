@@ -5,7 +5,10 @@ import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
-import { hasKeyReachedUsageCap } from "@app/lib/api/key_cap_tracking";
+import {
+  hasKeyReachedUsageCap,
+  incrementRedisKeyUsageMicroUsd,
+} from "@app/lib/api/key_cap_tracking";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -475,6 +478,11 @@ export async function trackProgrammaticCost(
       },
       localLogger
     );
+
+  const keyAuth = auth.key();
+  if (keyAuth) {
+    await incrementRedisKeyUsageMicroUsd(keyAuth.id, costWithMarkupMicroUsd);
+  }
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(
