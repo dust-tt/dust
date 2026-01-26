@@ -4,22 +4,44 @@ import trim from "lodash/trim";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { FIND_TAGS_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
-import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import {
+  ConfigurableToolInputSchemas,
+  type DataSourcesToolConfigurationType,
+} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import {
-  FIND_TAGS_BASE_DESCRIPTION,
-  findTagsSchema,
-} from "@app/lib/api/actions/servers/include_data/metadata";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { CoreAPI, Err, Ok, removeNulls } from "@app/types";
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
+import z from "zod";
 
 const DEFAULT_SEARCH_LABELS_UPPER_LIMIT = 2000;
+
+export const findTagsSchema = {
+  query: z
+    .string()
+    .describe(
+      "The text to search for in existing labels (also called tags) using edge ngram " +
+        "matching (case-insensitive). Matches labels that start with any word in the " +
+        "search text. The returned labels can be used in tagsIn/tagsNot parameters to " +
+        "restrict or exclude content based on the user request and conversation context."
+    ),
+  dataSources:
+    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
+};
+
+export const FIND_TAGS_BASE_DESCRIPTION =
+  "Find exact matching labels (also called tags). " +
+  "Restricting or excluding content succeeds only with existing labels. " +
+  "Searching without verifying labels first typically returns no results. " +
+  "The output of this tool can typically be used in `tagsIn` (if we want " +
+  "to restrict the search to specific tags) or `tagsNot` (if we want to " +
+  "exclude specific tags) parameters.";
 
 export async function executeFindTags(
   auth: Authenticator,
