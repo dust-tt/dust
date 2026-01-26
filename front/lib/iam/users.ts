@@ -16,7 +16,6 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
@@ -97,16 +96,7 @@ export async function maybeUpdateFromExternalUser(
   externalUser: ExternalUser
 ) {
   if (!user.imageUrl && externalUser.picture) {
-    void UserModel.update(
-      {
-        imageUrl: externalUser.picture,
-      },
-      {
-        where: {
-          id: user.id,
-        },
-      }
-    );
+    void user.updateImage(externalUser.picture);
   }
 }
 
@@ -396,26 +386,8 @@ export async function mergeUserIdentities({
     !primaryUser.workOSUserId
   ) {
     const workOSUserId = secondaryUser.workOSUserId;
-    await UserModel.update(
-      {
-        workOSUserId: null,
-      },
-      {
-        where: {
-          id: secondaryUser.id,
-        },
-      }
-    );
-    await UserModel.update(
-      {
-        workOSUserId,
-      },
-      {
-        where: {
-          id: primaryUser.id,
-        },
-      }
-    );
+    await secondaryUser.setWorkOSUserId(null);
+    await primaryUser.setWorkOSUserId(workOSUserId);
   }
 
   if (revokeSecondaryUser) {
