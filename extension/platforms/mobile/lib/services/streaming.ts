@@ -11,6 +11,10 @@ import {
 
 import { parseSSEMessages } from "@/lib/sse-parser";
 
+// Heartbeat timeout - abort stream if no data received within this window
+const HEARTBEAT_TIMEOUT_MS = 90_000; // 90 seconds
+const HEARTBEAT_CHECK_INTERVAL_MS = 10_000; // Check every 10 seconds
+
 export async function* streamAgentAnswerRN(
   dustDomain: string,
   workspaceId: string,
@@ -42,9 +46,32 @@ export async function* streamAgentAnswerRN(
   let isDone = false;
   let error: Error | null = null;
 
+  // Heartbeat tracking
+  let lastEventTime = Date.now();
+  let heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+  // Set up heartbeat check
+  const checkHeartbeat = () => {
+    if (Date.now() - lastEventTime > HEARTBEAT_TIMEOUT_MS) {
+      xhr.abort();
+      error = new Error("Stream heartbeat timeout");
+      isDone = true;
+      if (rejectNext) {
+        rejectNext(error);
+        rejectNext = null;
+        resolveNext = null;
+      }
+    }
+  };
+
+  heartbeatTimer = setInterval(checkHeartbeat, HEARTBEAT_CHECK_INTERVAL_MS);
+
   // Handle abort signal
   if (signal) {
     signal.addEventListener("abort", () => {
+      if (heartbeatTimer) {
+        clearInterval(heartbeatTimer);
+      }
       xhr.abort();
       isDone = true;
       if (resolveNext) {
@@ -54,6 +81,9 @@ export async function* streamAgentAnswerRN(
   }
 
   xhr.onprogress = () => {
+    // Reset heartbeat timer on any data received
+    lastEventTime = Date.now();
+
     const newData = xhr.responseText.substring(lastProcessedIndex);
     lastProcessedIndex = xhr.responseText.length;
     buffer += newData;
@@ -89,6 +119,9 @@ export async function* streamAgentAnswerRN(
   };
 
   xhr.onerror = () => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+    }
     error = new Error("Stream connection error");
     isDone = true;
     if (rejectNext) {
@@ -99,6 +132,9 @@ export async function* streamAgentAnswerRN(
   };
 
   xhr.onload = () => {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+    }
     isDone = true;
     if (resolveNext) {
       resolveNext({ value: undefined, done: true });

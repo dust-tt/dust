@@ -5,6 +5,10 @@ import type { AgentMessage } from "@/lib/types/conversations";
 import { streamAgentAnswerRN } from "@/lib/services/streaming";
 import { MobileAuthService } from "@/lib/services/auth";
 import { storageService } from "@/lib/services/storage";
+import { useDustAPI } from "@/lib/useDustAPI";
+
+// Buffer tokens and flush every 50ms to reduce render frequency
+const TOKEN_THROTTLE_MS = 50;
 
 type AgentState = "thinking" | "acting" | "writing" | "done";
 
@@ -17,6 +21,7 @@ type StreamAction =
   | { type: "generation_tokens"; text: string; classification: "tokens" | "chain_of_thought" }
   | { type: "agent_message_success"; message: AgentMessage }
   | { type: "agent_error"; error: { code: string; message: string } }
+  | { type: "tool_approval_required" }
   | { type: "reset"; message: AgentMessage };
 
 function messageReducer(
@@ -52,7 +57,23 @@ function messageReducer(
         message: {
           ...state.message,
           status: "failed",
-          error: action.error,
+          error: { ...action.error, metadata: null },
+        },
+        agentState: "done",
+      };
+
+    case "tool_approval_required":
+      return {
+        ...state,
+        message: {
+          ...state.message,
+          status: "failed",
+          error: {
+            code: "tool_approval_required",
+            message:
+              "This agent requires action approval. Please use the web app to continue.",
+            metadata: null,
+          },
         },
         agentState: "done",
       };
@@ -87,6 +108,7 @@ export function useAgentMessageStream(
   options: UseAgentMessageStreamOptions
 ) {
   const { user } = useAuth();
+  const dustAPI = useDustAPI();
   const [state, dispatch] = useReducer(
     messageReducer,
     message,
@@ -102,12 +124,30 @@ export function useAgentMessageStream(
   const onStreamCompleteRef = useRef(options.onStreamComplete);
   const userRef = useRef(user);
 
+  // Token buffering refs for throttled updates
+  const tokenBufferRef = useRef("");
+  const tokenFlushTimerRef = useRef<ReturnType<typeof setInterval> | null>(
+    null
+  );
+
   // Keep refs updated
   useEffect(() => {
     conversationIdRef.current = options.conversationId;
     onStreamCompleteRef.current = options.onStreamComplete;
     userRef.current = user;
   });
+
+  // Flush buffered tokens to state
+  const flushTokens = useCallback(() => {
+    if (tokenBufferRef.current) {
+      dispatch({
+        type: "generation_tokens",
+        text: tokenBufferRef.current,
+        classification: "tokens",
+      });
+      tokenBufferRef.current = "";
+    }
+  }, []);
 
   // Reset state if message changes (e.g., from server refresh)
   useEffect(() => {
@@ -133,6 +173,9 @@ export function useAgentMessageStream(
     hasStartedStreamingRef.current = true;
     abortControllerRef.current = new AbortController();
 
+    // Set up token throttle flush timer
+    tokenFlushTimerRef.current = setInterval(flushTokens, TOKEN_THROTTLE_MS);
+
     try {
       const stream = streamAgentAnswerRN(
         currentUser.dustDomain,
@@ -146,14 +189,22 @@ export function useAgentMessageStream(
       for await (const event of stream) {
         switch (event.type) {
           case "generation_tokens":
-            dispatch({
-              type: "generation_tokens",
-              text: event.text,
-              classification: event.classification,
-            });
+            if (event.classification === "tokens") {
+              // Buffer tokens instead of dispatching immediately
+              tokenBufferRef.current += event.text;
+            } else {
+              // chain_of_thought - dispatch immediately
+              dispatch({
+                type: "generation_tokens",
+                text: event.text,
+                classification: event.classification,
+              });
+            }
             break;
 
           case "agent_message_success":
+            // Flush any remaining tokens before final message
+            flushTokens();
             dispatch({ type: "agent_message_success", message: event.message });
             onStreamCompleteRef.current?.(event.message);
             break;
@@ -161,6 +212,12 @@ export function useAgentMessageStream(
           case "agent_error":
           case "user_message_error":
             dispatch({ type: "agent_error", error: event.error });
+            break;
+
+          case "tool_approve_execution":
+          case "tool_personal_auth_required":
+            // These events require user action in the web app
+            dispatch({ type: "tool_approval_required" });
             break;
         }
       }
@@ -171,8 +228,16 @@ export function useAgentMessageStream(
           error: { code: "stream_error", message: err.message },
         });
       }
+    } finally {
+      // Clean up timer
+      if (tokenFlushTimerRef.current) {
+        clearInterval(tokenFlushTimerRef.current);
+        tokenFlushTimerRef.current = null;
+      }
+      // Flush any remaining tokens
+      flushTokens();
     }
-  }, [message.sId]);
+  }, [message.sId, flushTokens]);
 
   // Start streaming when message is in "created" status
   useEffect(() => {
@@ -185,12 +250,28 @@ export function useAgentMessageStream(
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();
+      if (tokenFlushTimerRef.current) {
+        clearInterval(tokenFlushTimerRef.current);
+      }
     };
   }, []);
 
-  const cancelStream = useCallback(() => {
+  const cancelStream = useCallback(async () => {
+    // Abort the stream immediately
     abortControllerRef.current?.abort();
-  }, []);
+
+    // Also notify the backend to stop generation
+    if (dustAPI) {
+      try {
+        await dustAPI.cancelMessageGeneration({
+          conversationId: conversationIdRef.current,
+          messageIds: [message.sId],
+        });
+      } catch {
+        // Best effort - stream is already aborted locally
+      }
+    }
+  }, [dustAPI, message.sId]);
 
   return {
     message: state.message,

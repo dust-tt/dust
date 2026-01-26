@@ -24,22 +24,46 @@ import { decodeJWT, normalizeError } from "@app/shared/lib/utils";
 export type { StoredTokens, StoredUser, OAuthAuthorizeResponse };
 export { AuthError };
 
+// Proactive refresh window - refresh tokens 60 seconds before they expire
+const PROACTIVE_REFRESH_WINDOW_MS = 60_000;
+
+// In-memory token cache (SecureStore is async/slow for hot-path reads)
+let cachedTokens: StoredTokens | null = null;
+
+// Deduplication lock for parallel refresh calls
+let refreshPromise: Promise<Result<StoredTokens, AuthError>> | null = null;
+
 // PKCE utilities
+function base64URLEncode(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+function base64ToBase64URL(base64: string): string {
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
 async function generatePKCE(): Promise<{
   codeVerifier: string;
   codeChallenge: string;
 }> {
-  const codeVerifier = Crypto.randomUUID() + Crypto.randomUUID();
+  // Generate 32 cryptographically random bytes for code verifier
+  const randomBytes = await Crypto.getRandomBytesAsync(32);
+  const codeVerifier = base64URLEncode(randomBytes);
+
+  // SHA-256 hash the verifier for the challenge
   const digest = await Crypto.digestStringAsync(
     Crypto.CryptoDigestAlgorithm.SHA256,
     codeVerifier,
     { encoding: Crypto.CryptoEncoding.BASE64 }
   );
-  // Convert to URL-safe base64
-  const codeChallenge = digest
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "");
+  const codeChallenge = base64ToBase64URL(digest);
 
   return { codeVerifier, codeChallenge };
 }
@@ -257,32 +281,78 @@ export class MobileAuthService extends AuthService {
   }
 
   async getAccessToken(forceRefresh?: boolean): Promise<string | null> {
-    let tokens = await this.getStoredTokens();
-
+    // Hot path: check in-memory cache first
     if (
-      !tokens ||
-      !tokens.accessToken ||
-      tokens.expiresAt < Date.now() ||
-      forceRefresh
+      !forceRefresh &&
+      cachedTokens &&
+      cachedTokens.expiresAt > Date.now() + PROACTIVE_REFRESH_WINDOW_MS
     ) {
-      const refreshResult = await this.refreshToken(tokens);
-      if (refreshResult.isOk()) {
-        tokens = refreshResult.value;
-      } else {
-        return null;
-      }
+      return cachedTokens.accessToken;
     }
 
-    return tokens?.accessToken ?? null;
+    // Load from storage if no cache
+    if (!cachedTokens) {
+      cachedTokens = await this.getStoredTokens();
+    }
+
+    if (!cachedTokens) {
+      return null;
+    }
+
+    // Check if still fresh after loading from storage
+    if (
+      !forceRefresh &&
+      cachedTokens.expiresAt > Date.now() + PROACTIVE_REFRESH_WINDOW_MS
+    ) {
+      return cachedTokens.accessToken;
+    }
+
+    // Need refresh — deduplicate concurrent calls
+    if (!refreshPromise) {
+      refreshPromise = this.refreshToken(cachedTokens);
+    }
+
+    const result = await refreshPromise;
+    refreshPromise = null;
+
+    if (result.isOk()) {
+      cachedTokens = result.value;
+      return cachedTokens.accessToken;
+    }
+
+    // Refresh failed, clear cache
+    cachedTokens = null;
+    return null;
   }
 
   async logout(): Promise<boolean> {
     try {
+      // Clear in-memory cache
+      cachedTokens = null;
+      refreshPromise = null;
       await this.storage.clear();
       return true;
     } catch {
       return false;
     }
+  }
+
+  // Override saveTokens to also update in-memory cache
+  async saveTokens(rawTokens: OAuthAuthorizeResponse) {
+    const tokens: StoredTokens = {
+      accessToken: rawTokens.accessToken,
+      refreshToken: rawTokens.refreshToken,
+      expiresAt: Date.now() + rawTokens.expiresIn * 1000,
+    };
+
+    // Update in-memory cache immediately
+    cachedTokens = tokens;
+
+    for (const [key, value] of Object.entries(tokens)) {
+      await this.storage.set(key, value);
+    }
+
+    return tokens;
   }
 
   // Mobile-specific method for workspace switching

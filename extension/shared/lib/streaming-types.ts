@@ -18,7 +18,9 @@ export type StreamEvent =
   | { type: "agent_message_success"; message: AgentMessagePublicType }
   | { type: "user_message_error"; error: StreamError }
   | { type: "agent_error"; error: StreamError }
-  | { type: "agent_action_success"; action: unknown };
+  | { type: "agent_action_success"; action: unknown }
+  | { type: "tool_approve_execution" }
+  | { type: "tool_personal_auth_required" };
 
 export type StreamError = {
   code: string;
@@ -79,6 +81,12 @@ export function mapToStreamEvent(
         type: "agent_action_success",
         action: parsed.action,
       };
+
+    case "tool_approve_execution":
+      return { type: "tool_approve_execution" };
+
+    case "tool_personal_auth_required":
+      return { type: "tool_personal_auth_required" };
 
     default:
       // Skip unknown event types
