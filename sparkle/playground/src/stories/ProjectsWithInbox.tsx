@@ -338,6 +338,23 @@ function DustMain() {
     return [...conversationsWithMessages, ...mockConversations];
   }, [conversationsWithMessages]);
 
+  const documentDataSources = useMemo(() => {
+    const seeds = [
+      "global-documents",
+      "global-documents-1",
+      "global-documents-2",
+      "global-documents-3",
+    ];
+    for (const seed of seeds) {
+      const dataSources = getDataSourcesBySpaceId(seed);
+      if (dataSources.length > 0) {
+        return dataSources;
+      }
+    }
+    return [];
+  }, []);
+  const defaultDocumentSpace = mockSpaces[0];
+
   const universalSearchResults = useMemo((): UniversalSearchItem[] => {
     const trimmed = universalSearchText.trim();
     if (!trimmed) {
@@ -346,10 +363,8 @@ function DustMain() {
 
     const searchLower = trimmed.toLowerCase();
 
-    const documentResults = mockSpaces.reduce<UniversalSearchItem[]>(
-      (acc, space) => {
-        const dataSources = getDataSourcesBySpaceId(space.id);
-        dataSources.forEach((dataSource) => {
+    const documentResults = defaultDocumentSpace
+      ? documentDataSources.reduce<UniversalSearchItem[]>((acc, dataSource) => {
           const title = dataSource.fileName;
           const description = getFakeDocumentFirstLine(dataSource);
           const titleMatch = title.toLowerCase().includes(searchLower);
@@ -360,17 +375,15 @@ function DustMain() {
             acc.push({
               type: "document",
               dataSource,
-              space,
+              space: defaultDocumentSpace,
               title,
               description,
               score: titleMatch ? 2 : 1,
             });
           }
-        });
-        return acc;
-      },
-      []
-    );
+          return acc;
+        }, [])
+      : [];
 
     const projectResults = mockSpaces.reduce<UniversalSearchItem[]>(
       (acc, space) => {
@@ -454,7 +467,13 @@ function DustMain() {
       }
       return a.title.localeCompare(b.title);
     });
-  }, [allConversations, mockSpaces, mockUsers, universalSearchText]);
+  }, [
+    allConversations,
+    defaultDocumentSpace,
+    documentDataSources,
+    mockUsers,
+    universalSearchText,
+  ]);
 
   const handleUniversalSearchSelect = (item: UniversalSearchItem) => {
     if (item.type === "document") {
