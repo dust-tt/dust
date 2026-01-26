@@ -3,6 +3,7 @@ import React from "react";
 
 import {
   Icon,
+  KeyboardShortcut,
   RobotIcon,
   Tooltip,
   TooltipContent,
@@ -29,6 +30,18 @@ export const TooltipExample = () => (
   />
 );
 
+export const TooltipWithShortcut = () => (
+  <Tooltip
+    trigger={
+      <div className="s-text-foreground dark:s-text-foreground-night">
+        Hover for shortcut
+      </div>
+    }
+    label="Add to library"
+    shortcut="Cmd+K"
+  />
+);
+
 export const TooltipWithManual = () => (
   <TooltipProvider delayDuration={800} skipDelayDuration={500}>
     <TooltipRoot
@@ -44,6 +57,24 @@ export const TooltipWithManual = () => (
         lines. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed non
         risus. Suspendisse lectus tortor, dignissim sit amet, adipiscing nec,
         ultricies sed, dolor.
+      </TooltipContent>
+    </TooltipRoot>
+  </TooltipProvider>
+);
+
+export const TooltipWithKeyboardShortcutComponent = () => (
+  <TooltipProvider>
+    <TooltipRoot>
+      <TooltipTrigger>
+        <div className="s-text-foreground dark:s-text-foreground-night">
+          Hover for inline shortcut
+        </div>
+      </TooltipTrigger>
+      <TooltipContent>
+        <div className="s-inline-flex s-items-center s-gap-2">
+          <span>Add to library</span>
+          <KeyboardShortcut shortcut="Cmd+K" />
+        </div>
       </TooltipContent>
     </TooltipRoot>
   </TooltipProvider>
