@@ -58,6 +58,7 @@ cli
   .option("-c, --command <cmd>", "Run command in shell tab after opening (drops to shell on exit)")
   .option("-C, --compact", "Use compact layout (no tab bar)")
   .option("-u, --unified-logs", "Use single unified logs tab instead of per-service tabs")
+  .option("-S, --sync", "Run dust-hive sync before spawning")
   .action(
     async (
       name: string | undefined,
@@ -71,6 +72,7 @@ cli
         command?: string;
         compact?: boolean;
         unifiedLogs?: boolean;
+        sync?: boolean;
       }
     ) => {
       // Validate --wait cannot be used with --no-open
@@ -90,6 +92,7 @@ cli
         command?: string;
         compact?: boolean;
         unifiedLogs?: boolean;
+        sync?: boolean;
       } = {};
       if (resolvedName !== undefined) {
         spawnOptions.name = resolvedName;
@@ -117,6 +120,9 @@ cli
       }
       if (options.unifiedLogs) {
         spawnOptions.unifiedLogs = true;
+      }
+      if (options.sync) {
+        spawnOptions.sync = true;
       }
       await prepareAndRun(spawnCommand(spawnOptions));
     }
