@@ -11,17 +11,23 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
+const CodeEditor = lazy(() =>
+  import("@uiw/react-textarea-code-editor").then((mod) => ({
+    default: mod.default,
+  }))
 );
+
+function CodeEditorFallback() {
+  return (
+    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
+  );
+}
 
 interface ViewFolderAPIModalProps {
   dataSource: DataSourceType;
@@ -122,22 +128,24 @@ export function ViewFolderAPIModal({
                 Use the following cURL command to upsert a document to folder{" "}
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={true}
-                value={`$ ${cURLRequest("upsert")}`}
-                language="shell"
-                padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
-                style={{
-                  fontSize: 13,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
-                  width: "100%",
-                  marginTop: "0rem",
-                }}
-              />
+              <Suspense fallback={<CodeEditorFallback />}>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  readOnly={true}
+                  value={`$ ${cURLRequest("upsert")}`}
+                  language="shell"
+                  padding={15}
+                  className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                  style={{
+                    fontSize: 13,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
+                    width: "100%",
+                    marginTop: "0rem",
+                  }}
+                />
+              </Suspense>
               <div className="mt-2 flex w-full justify-end">
                 <Button
                   variant="outline"
@@ -156,22 +164,24 @@ export function ViewFolderAPIModal({
                 Use the following cURL command to search in folder{" "}
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={true}
-                value={`$ ${cURLRequest("search")}`}
-                language="shell"
-                padding={15}
-                className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
-                style={{
-                  fontSize: 13,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  backgroundColor: "rgb(241 245 249)",
-                  width: "100%",
-                  marginTop: "0rem",
-                }}
-              />
+              <Suspense fallback={<CodeEditorFallback />}>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  readOnly={true}
+                  value={`$ ${cURLRequest("search")}`}
+                  language="shell"
+                  padding={15}
+                  className="mt-5 rounded-md bg-gray-700 px-4 py-4 font-mono text-[13px] text-white"
+                  style={{
+                    fontSize: 13,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    backgroundColor: "rgb(241 245 249)",
+                    width: "100%",
+                    marginTop: "0rem",
+                  }}
+                />
+              </Suspense>
               <div className="mt-2 flex w-full justify-end">
                 <Button
                   variant="outline"
