@@ -69,6 +69,8 @@ import {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+import { findFirstUnreadMessageIndex } from "./utils";
+
 const DEFAULT_PAGE_LIMIT = 50;
 
 // A conversation must be unread and older than that to enable the suggestion of enabling notifications.
@@ -201,6 +203,8 @@ export const ConversationViewer = ({
 
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
+      // If we arrive on an unread conversation from a deep link, we scroll to the linked message.
+      // This is useful when sharing a message link to someone else.
       if (hash && hash.startsWith("#")) {
         const messageId = hash.substring(1); // Remove the '#' prefix.
         if (!messageId) {
@@ -218,23 +222,17 @@ export const ConversationViewer = ({
         }
         setMessageIdToScrollTo(messageIndex);
       } else if (conversation?.unread) {
-        const lastRead = conversation.lastRead;
+        const lastReadMs = conversation.lastReadMs;
 
-        if (lastRead === null) {
+        if (lastReadMs === null) {
           // Conversation has never been read, scroll to the beginning.
-          setMessageIdToScrollTo(0);
           return;
         }
 
-        const firstUnreadIndex = messagesToRender.findIndex((m) => {
-          if (m.created > lastRead) {
-            return true;
-          }
-          if (m.type === "agent_message" && (m.completedTs ?? 0) > lastRead) {
-            return true;
-          }
-          return false;
-        });
+        const firstUnreadIndex = findFirstUnreadMessageIndex(
+          messagesToRender,
+          lastReadMs
+        );
 
         if (firstUnreadIndex === -1) {
           return;
@@ -249,7 +247,7 @@ export const ConversationViewer = ({
     setInitialListData,
     isValidating,
     conversation?.unread,
-    conversation?.lastRead,
+    conversation?.lastReadMs,
   ]);
 
   // This is to handle we just fetched more messages by scrolling up.

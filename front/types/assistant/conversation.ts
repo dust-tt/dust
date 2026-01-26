@@ -288,7 +288,7 @@ export type ConversationWithoutContentType = {
   created: number;
   updated: number;
   unread: boolean;
-  lastRead: number | null;
+  lastReadMs: number | null;
   actionRequired: boolean;
   hasError: boolean;
   sId: string;

@@ -597,7 +597,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       triggerId: conversation.triggerSId,
       actionRequired,
       unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
-      lastRead: lastReadAt?.getTime() ?? null,
+      lastReadMs: lastReadAt?.getTime() ?? null,
       hasError: conversation.hasError,
       requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
@@ -772,7 +772,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           triggerId: triggerId,
           actionRequired,
           unread: lastReadAt === null || c.updatedAt > lastReadAt,
-          lastRead: lastReadAt?.getTime() ?? null,
+          lastReadMs: lastReadAt?.getTime() ?? null,
           hasError: c.hasError,
           requestedGroupIds: [],
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
@@ -1602,7 +1602,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       unread:
         participation.lastReadAt === null ||
         (!!this.updatedAt && this.updatedAt > participation.lastReadAt),
-      lastRead: participation.lastReadAt?.getTime() ?? null,
+      lastReadMs: participation.lastReadAt?.getTime() ?? null,
       depth: this.depth,
       metadata: this.metadata,
     };
