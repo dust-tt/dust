@@ -475,7 +475,6 @@ function DustMain() {
     }
 
     if (item.type === "person") {
-      console.log("Select person:", item.user.id);
       setIsUniversalSearchOpen(false);
       return;
     }
@@ -748,7 +747,6 @@ function DustMain() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Rename conversation:", conversation.id);
             }}
           />
           <DropdownMenuSub>
@@ -792,11 +790,6 @@ function DustMain() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log(
-                          "View participant:",
-                          participant.type,
-                          participant.data.id
-                        );
                       }}
                     />
                   ))
@@ -815,7 +808,6 @@ function DustMain() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Delete conversation:", conversation.id);
             }}
           />
         </DropdownMenuContent>
@@ -989,7 +981,6 @@ function DustMain() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log("Edit space:", space.id);
                                 }}
                               />
                               <DropdownMenuItem
@@ -998,7 +989,6 @@ function DustMain() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log("Explore space:", space.id);
                                 }}
                               />
                             </DropdownMenuContent>
@@ -1055,7 +1045,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit Conversations");
                             }}
                           />
                           <DropdownMenuItem
@@ -1064,7 +1053,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit Conversations");
                             }}
                           />
                           <DropdownMenuItem
@@ -1074,7 +1062,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Clear history");
                             }}
                           />
                         </DropdownMenuContent>
@@ -1222,7 +1209,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("View profile");
               }}
             />
             <DropdownMenuItem
@@ -1231,7 +1217,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Administration");
               }}
             />
             <DropdownMenuSub>
@@ -1245,7 +1230,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Quickstart Guide");
                     }}
                   />
                   <DropdownMenuItem
@@ -1254,7 +1238,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Guides & Documentation");
                     }}
                   />
                   <DropdownMenuItem
@@ -1263,7 +1246,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Join the Slack Community");
                     }}
                   />
                   <DropdownMenuLabel label="Ask questions" />
@@ -1274,7 +1256,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Ask @help");
                     }}
                   />
                   <DropdownMenuItem
@@ -1283,7 +1264,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to invite new users?");
                     }}
                   />
                   <DropdownMenuItem
@@ -1292,7 +1272,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to use agents in Slack workflow?");
                     }}
                   />
                   <DropdownMenuItem
@@ -1301,7 +1280,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to manage billing?");
                     }}
                   />
                 </DropdownMenuSubContent>
@@ -1314,7 +1292,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Signout");
               }}
             />
           </DropdownMenuContent>
@@ -1399,7 +1376,6 @@ function DustMain() {
   // Handle space name update
   const handleUpdateSpaceName = (spaceId: string, newName: string) => {
     // For prototype, just log the update
-    console.log("Update space name:", spaceId, newName);
     // In a real implementation, this would update the space in the backend
     setSpaces((prev) =>
       prev.map((space) =>
@@ -1423,7 +1399,6 @@ function DustMain() {
       )
     );
     // For prototype, just log the update
-    console.log("Update space public setting:", spaceId, isPublic);
   };
 
   // Main content
