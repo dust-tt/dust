@@ -18,6 +18,10 @@ export type AuthorizationInfo = {
   provider: OAuthProvider;
   supported_use_cases: MCPOAuthUseCase[];
   scope?: string;
+  // Supported authentication methods for this server.
+  // - "oauth": OAuth2 flow
+  // - "keypair": Key pair authentication (e.g., Snowflake service accounts)
+  auth_methods?: ("oauth" | "keypair")[];
 };
 
 function isAuthorizationInfo(a: unknown): a is AuthorizationInfo {

@@ -25,9 +25,11 @@ async function createServer(
 
   const c = await getSlackConnectionForMCPServer(auth, mcpServerId);
 
-  const slackAIStatus: SlackAIStatus = c.isOk()
-    ? await getSlackAIEnablementStatus({ accessToken: c.value.access_token })
-    : "disconnected";
+  // Slack only supports OAuth authentication, not keypair.
+  const slackAIStatus: SlackAIStatus =
+    c.isOk() && c.value.authType === "oauth"
+      ? await getSlackAIEnablementStatus({ accessToken: c.value.access_token })
+      : "disconnected";
 
   localLogger.info(
     {

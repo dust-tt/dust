@@ -95,6 +95,11 @@ async function _getToolAndAccessTokenForView(
     return null;
   }
 
+  // Only OAuth connections are supported for search tools.
+  if (connectionResult.value.authType !== "oauth") {
+    return null;
+  }
+
   return {
     tool: SEARCHABLE_TOOLS[r.value.name],
     accessToken: connectionResult.value.access_token,
