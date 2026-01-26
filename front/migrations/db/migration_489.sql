@@ -10,3 +10,4 @@ ALTER TABLE "agent_suggestions" ALTER COLUMN "agentConfigurationIdTmp" SET NOT N
 
 -- Create new index on the new column
 CREATE INDEX CONCURRENTLY "agent_suggestions_workspace_id_agent_configuration_id_tmp" ON "agent_suggestions" ("workspaceId", "agentConfigurationIdTmp");
+
