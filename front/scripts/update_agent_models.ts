@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId, SupportedModel } from "@app/types";
 import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@app/types";
@@ -168,11 +168,8 @@ makeScript(
         usesResponseFormat,
       });
     } else {
-      const tmp = await WorkspaceModel.findAll({
-        attributes: ["id"],
-        where: { sId: workspaceIds },
-      });
-      matchingWorkspaceIds = tmp.map((w) => w.id);
+      matchingWorkspaceIds =
+        await WorkspaceResource.fetchModelIdsByIds(workspaceIds);
     }
 
     if (matchingWorkspaceIds.length === 0) {
@@ -180,15 +177,9 @@ makeScript(
       return;
     }
 
-    const whereClause = { id: matchingWorkspaceIds };
-    const workspaces = await WorkspaceModel.findAll({
-      attributes: ["id", "name", "sId"],
-      where: whereClause,
-    });
-
-    for (const workspace of workspaces) {
+    for (const workspaceId of matchingWorkspaceIds) {
       await updateWorkspaceAssistants(
-        workspace.id,
+        workspaceId,
         fromModel,
         toModel as SupportedModelIds,
         execute,
