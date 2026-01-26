@@ -358,6 +358,7 @@ export class MCPServerConnectionResource extends BaseResource<MCPServerConnectio
           remoteMCPServerId: this.remoteMCPServerId,
           workspaceId: this.workspaceId,
         }),
+      authMethod: this.credentialId ? "keypair" : "oauth",
     };
   }
 }
@@ -369,6 +370,8 @@ export const isMCPServerConnectionConnectionType = (
 ): connectionType is MCPServerConnectionConnectionType => {
   return connectionType === "workspace" || connectionType === "personal";
 };
+
+export type MCPServerConnectionAuthMethod = "oauth" | "keypair";
 
 export interface MCPServerConnectionType {
   sId: string;
@@ -384,4 +387,6 @@ export interface MCPServerConnectionType {
   serverType: string;
   remoteMCPServerId: string | null;
   internalMCPServerId: string | null;
+  // Indicates the authentication method used for this connection.
+  authMethod: MCPServerConnectionAuthMethod;
 }

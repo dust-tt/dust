@@ -11,7 +11,13 @@ export const MCP_SERVER_OAUTH_USE_CASES = [
 
 export type MCPServerOAuthUseCase = (typeof MCP_SERVER_OAUTH_USE_CASES)[number];
 
-// Auth methods
+// Connection auth methods for MCP servers that support both OAuth and key pair.
+export const MCP_SERVER_CONNECTION_AUTH_METHODS = ["oauth", "keypair"] as const;
+
+export type MCPServerConnectionAuthMethod =
+  (typeof MCP_SERVER_CONNECTION_AUTH_METHODS)[number];
+
+// Auth methods for creating remote MCP servers
 export const CREATE_MCP_SERVER_AUTH_METHODS = [
   "oauth-dynamic",
   "oauth-static",
@@ -52,6 +58,20 @@ const oAuthCredentialsSchema = z
   .nullable()
   .default(null);
 
+// Zod schema for SnowflakeCredentials (key pair auth).
+const snowflakeKeyPairCredentialsSchema = z
+  .object({
+    auth_type: z.literal("keypair"),
+    account: z.string(),
+    username: z.string(),
+    role: z.string(),
+    warehouse: z.string(),
+    private_key: z.string(),
+    private_key_passphrase: z.string().optional(),
+  })
+  .nullable()
+  .default(null);
+
 // Base OAuth form schema (used by ConnectMCPServerDialog)
 // Uses dynamic authCredentials from provider.
 // Validation is handled imperatively via setError/clearErrors since
@@ -59,6 +79,12 @@ const oAuthCredentialsSchema = z
 export const mcpServerOAuthFormSchema = z.object({
   useCase: z.enum(MCP_SERVER_OAUTH_USE_CASES).nullable().default(null),
   authCredentials: oAuthCredentialsSchema,
+  // For providers that support both OAuth and key pair (e.g., Snowflake).
+  connectionAuthMethod: z
+    .enum(MCP_SERVER_CONNECTION_AUTH_METHODS)
+    .default("oauth"),
+  // Key pair credentials (only used when connectionAuthMethod is "keypair").
+  keyPairCredentials: snowflakeKeyPairCredentialsSchema,
 });
 
 export type MCPServerOAuthFormValues = z.infer<typeof mcpServerOAuthFormSchema>;

@@ -107,6 +107,10 @@ export const SNOWFLAKE_SERVER = {
     authorization: {
       provider: "snowflake",
       supported_use_cases: ["personal_actions", "platform_actions"],
+      // Supported authentication methods for this server.
+      // oauth: OAuth2 flow for personal and workspace authentication.
+      // keypair: Key pair authentication for service account (workspace only).
+      auth_methods: ["oauth", "keypair"],
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
