@@ -14,19 +14,15 @@ import {
   launchIntercomSchedules,
 } from "@connectors/connectors/intercom/temporal/client";
 import {
-  deleteSchedule,
-  scheduleExists,
-} from "@connectors/lib/temporal_schedules";
-import {
-  makeIntercomConversationScheduleId,
-  makeIntercomHelpCenterScheduleId,
-} from "@connectors/types";
-import {
   IntercomArticleModel,
   IntercomConversationModel,
   IntercomTeamModel,
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
+import {
+  deleteSchedule,
+  scheduleExists,
+} from "@connectors/lib/temporal_schedules";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -42,6 +38,10 @@ import type {
   IntercomGetConversationsSlidingWindowResponseType,
   IntercomRestartSchedulesResponseType,
   IntercomSearchConversationsResponseType,
+} from "@connectors/types";
+import {
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
 } from "@connectors/types";
 
 type IntercomResponse =
