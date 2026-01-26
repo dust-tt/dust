@@ -80,6 +80,12 @@ KeyModel.init(
       { unique: true, fields: ["secret"] },
       { fields: ["userId"] },
       { fields: ["workspaceId"] },
+      // Partial unique index: names must be unique per workspace for non-system keys.
+      {
+        unique: true,
+        fields: ["workspaceId", "name"],
+        where: { isSystem: false },
+      },
     ],
   }
 );

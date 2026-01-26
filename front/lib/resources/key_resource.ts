@@ -26,6 +26,7 @@ export interface KeyAuthType {
 }
 
 export const SECRET_KEY_PREFIX = "sk-";
+export const DEFAULT_SYSTEM_KEY_NAME = "DustSystem";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface KeyResource extends ReadonlyAttributesType<KeyModel> {}
@@ -110,11 +111,13 @@ export class KeyResource extends BaseResource<KeyModel> {
     return key;
   }
 
+  // Only checks non-system keys to match the partial unique index on (workspaceId, name).
   static async fetchByName(auth: Authenticator, { name }: { name: string }) {
     const key = await this.model.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         name: name,
+        isSystem: false,
       },
     });
 

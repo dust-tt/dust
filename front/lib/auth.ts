@@ -17,6 +17,7 @@ import { FeatureFlagResource } from "@app/lib/resources/feature_flag_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { KeyAuthType } from "@app/lib/resources/key_resource";
 import {
+  DEFAULT_SYSTEM_KEY_NAME,
   KeyResource,
   SECRET_KEY_PREFIX,
 } from "@app/lib/resources/key_resource";
@@ -1131,6 +1132,7 @@ export async function getOrCreateSystemApiKey(
         isSystem: true,
         status: "active",
         role: "admin",
+        name: DEFAULT_SYSTEM_KEY_NAME,
       },
       group
     );
