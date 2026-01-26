@@ -293,8 +293,7 @@ export function CapabilitiesPicker({
   const showToolsSection = filter === "all" || filter === "tools";
 
   const hasVisibleSkills =
-    showSkillsSection &&
-    filteredSkillsUnselected.length > 0;
+    showSkillsSection && filteredSkillsUnselected.length > 0;
   const hasVisibleTools =
     showToolsSection &&
     (filteredServerViewsUnselected.length > 0 ||

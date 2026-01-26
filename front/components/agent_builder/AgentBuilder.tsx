@@ -51,6 +51,7 @@ import { useAgentTriggers } from "@app/lib/swr/agent_triggers";
 import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray } from "@app/lib/swr/swr";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import datadogLogger from "@app/logger/datadogLogger";
 import type { LightAgentConfigurationType } from "@app/types";
@@ -487,7 +488,6 @@ export default function AgentBuilder({
           saveLabel={saveLabel}
           handleSave={handleSave}
           isSaveDisabled={isSaveDisabled}
-          isActionsLoading={isActionsLoading}
           isTriggersLoading={isTriggersLoading}
           dialogProps={dialogProps}
           isCreatedDialogOpen={isCreatedDialogOpen}
@@ -509,7 +509,6 @@ interface AgentBuilderContentProps {
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
-  isActionsLoading: boolean;
   isTriggersLoading: boolean;
   dialogProps: {
     mcpServerViewsWithPersonalConnections: ReturnType<
@@ -531,7 +530,6 @@ function AgentBuilderContent({
   saveLabel,
   handleSave,
   isSaveDisabled,
-  isActionsLoading,
   isTriggersLoading,
   dialogProps,
   isCreatedDialogOpen,
@@ -580,7 +578,6 @@ function AgentBuilderContent({
             }}
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
-            isActionsLoading={isActionsLoading}
             isTriggersLoading={isTriggersLoading}
           />
         }
