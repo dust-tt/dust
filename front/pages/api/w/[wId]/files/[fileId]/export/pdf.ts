@@ -130,14 +130,15 @@ async function handler(
     workspaceId: owner.sId,
   });
 
-  // Build viz URL.
-  const vizUrl = config.getVizInternalUrl();
+  // Build viz URL. Use public URL since Gotenberg routes through egress proxy
+  // which blocks internal K8s IPs.
+  const vizUrl = config.getVizPublicUrl();
   if (!vizUrl) {
     return apiError(req, res, {
       status_code: 501,
       api_error: {
         type: "internal_server_error",
-        message: "VIZ_URL is not configured.",
+        message: "VIZ_PUBLIC_URL is not configured.",
       },
     });
   }
