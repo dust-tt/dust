@@ -12,14 +12,19 @@ import type {
 import { Err, Ok } from "@app/types";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
+// Log heartbeat status periodically to track long-waiting LLM calls.
+const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
-  stream: AsyncIterator<T>
+  stream: AsyncIterator<T>,
+  logContext?: { conversationId: string; step: number }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
+  let heartbeatCount = 0;
+  const startTimeMs = Date.now();
 
   while (!streamExhausted) {
     const result = await Promise.race([
@@ -40,9 +45,35 @@ async function* withPeriodicHeartbeat<T>(
     heartbeat();
 
     if (result.type === "heartbeat") {
+      heartbeatCount++;
+      // Log every minute to track long-waiting LLM calls.
+      if (heartbeatCount % HEARTBEAT_LOG_INTERVAL === 0) {
+        const elapsedMs = Date.now() - startTimeMs;
+        logger.info(
+          {
+            ...logContext,
+            heartbeatCount,
+            elapsedMs,
+          },
+          "[AGENT_LOOP_DEBUG] LLM stream heartbeat - still waiting for first event"
+        );
+      }
       // Heartbeat won the race, but nextPromise is still pending
       // Continue racing with the same nextPromise
       continue;
+    }
+
+    // Log if we waited a significant time for first event.
+    if (heartbeatCount > 0) {
+      const elapsedMs = Date.now() - startTimeMs;
+      logger.info(
+        {
+          ...logContext,
+          heartbeatCount,
+          elapsedMs,
+        },
+        "[AGENT_LOOP_DEBUG] LLM stream received first event after waiting"
+      );
     }
 
     // Stream value arrived
@@ -55,6 +86,8 @@ async function* withPeriodicHeartbeat<T>(
 
     yield streamResult.value;
     nextPromise = stream.next();
+    // Reset for next event
+    heartbeatCount = 0;
   }
 }
 
@@ -89,7 +122,9 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  for await (const event of withPeriodicHeartbeat(events)) {
+  const logContext = { conversationId: conversation.sId, step };
+
+  for await (const event of withPeriodicHeartbeat(events, logContext)) {
     timeToFirstEvent = Date.now() - start;
     if (event.type === "error") {
       await flushParserTokens();
