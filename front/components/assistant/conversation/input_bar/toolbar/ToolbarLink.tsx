@@ -1,37 +1,46 @@
-import {
-  Dialog,
-  DialogContainer,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  Input,
-  LinkMIcon,
-} from "@dust-tt/sparkle";
+import { ToolbarLink as SparkleToolbarLink } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { useEffect, useRef, useState } from "react";
 
 import { calculateLinkTextAndPosition } from "@app/components/assistant/conversation/input_bar/toolbar/helpers";
-import { ToolbarIcon } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarIcon";
+import { useKeyboardShortcutLabel } from "@app/hooks/useKeyboardShortcutLabel";
+import { useIsMobile } from "@app/lib/swr/useIsMobile";
 
 interface ToolbarLinkProps {
   editor: Editor;
 }
 
+interface LinkPosition {
+  from: number;
+  to: number;
+}
+
+/** @deprecated Use @dust-tt/sparkle ToolbarLink with explicit state props. */
 export function ToolbarLink({ editor }: ToolbarLinkProps) {
+  const isMobile = useIsMobile();
+  const buttonSize = isMobile ? "xs" : "mini";
+  const linkShortcutLabel = useKeyboardShortcutLabel("Mod+K");
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkText, setLinkText] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
-  const [linkPos, setLinkPos] = useState({ from: 0, to: 0 });
+  const [linkPos, setLinkPos] = useState<LinkPosition>({ from: 0, to: 0 });
   const editorRef = useRef(editor);
 
-  // Keep editor ref up to date
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
 
-  const openLinkDialog = (editorInstance: Editor) => {
+  function getTooltipText(label: string, shortcutLabel: string): string {
+    if (isMobile) {
+      return "";
+    }
+    if (shortcutLabel) {
+      return `${label} (${shortcutLabel})`;
+    }
+    return label;
+  }
+
+  function openLinkDialog(editorInstance: Editor): void {
     const { linkUrl, linkText, linkPos } = calculateLinkTextAndPosition({
       editor: editorInstance,
     });
@@ -39,21 +48,19 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
     setLinkText(linkText);
     setLinkPos(linkPos);
     setIsLinkDialogOpen(true);
-  };
+  }
 
-  const handleLinkDialogOpen = () => {
+  function handleLinkDialogOpen(): void {
     openLinkDialog(editor);
-  };
+  }
 
-  // Listen for keyboard shortcut event from the editor
   useEffect(() => {
-    const handleOpenDialog = (e: Event) => {
+    function handleOpenDialog(event: Event): void {
       // Prevent other toolbar instances from handling the same event.
-      // This is necessary because there are two toolbar components (one for mobile and one for desktop)
-      e.stopImmediatePropagation();
+      event.stopImmediatePropagation();
 
       openLinkDialog(editorRef.current);
-    };
+    }
 
     window.addEventListener("dust:openLinkDialog", handleOpenDialog);
     return () => {
@@ -61,7 +68,7 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
     };
   }, []);
 
-  const handleLinkSubmit = () => {
+  function handleLinkSubmit(): void {
     let finalText = linkText;
     const urlWithProtocol =
       linkUrl.startsWith("http://") || linkUrl.startsWith("https://")
@@ -69,7 +76,6 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
         : `https://${linkUrl}`;
 
     if (!finalText) {
-      // If no text is provided, insert the link URL as the text
       finalText = linkUrl;
     }
 
@@ -94,61 +100,28 @@ export function ToolbarLink({ editor }: ToolbarLinkProps) {
     setLinkText("");
     setLinkUrl("");
     setIsLinkDialogOpen(false);
-  };
+  }
 
-  const onClose = (open: boolean) => {
+  function handleLinkDialogOpenChange(open: boolean): void {
     if (!open) {
       editor.chain().focus().run();
     }
     setIsLinkDialogOpen(open);
-  };
+  }
 
   return (
-    <Dialog open={isLinkDialogOpen} onOpenChange={onClose}>
-      <ToolbarIcon
-        icon={LinkMIcon}
-        onClick={handleLinkDialogOpen}
-        active={editor.isActive("link")}
-        tooltip="Link"
-        shortcut="Mod+K"
-      />
-      <DialogContent onClick={(e) => e.stopPropagation()}>
-        <DialogHeader>
-          <DialogTitle>Insert Link</DialogTitle>
-          <DialogDescription>
-            Add a link to your message with custom text.
-          </DialogDescription>
-        </DialogHeader>
-        <DialogContainer>
-          <Input
-            id="link-text"
-            label="Text"
-            placeholder="Text"
-            value={linkText}
-            onChange={(e) => setLinkText(e.target.value)}
-          />
-          <Input
-            id="link-url"
-            label="Link"
-            placeholder="Link"
-            value={linkUrl}
-            autoFocus
-            onChange={(e) => setLinkUrl(e.target.value)}
-          />
-        </DialogContainer>
-        <DialogFooter
-          leftButtonProps={{
-            label: "Cancel",
-            variant: "outline",
-            onClick: () => onClose(false),
-          }}
-          rightButtonProps={{
-            label: "Save",
-            variant: "highlight",
-            onClick: handleLinkSubmit,
-          }}
-        />
-      </DialogContent>
-    </Dialog>
+    <SparkleToolbarLink
+      isOpen={isLinkDialogOpen}
+      onOpenChange={handleLinkDialogOpenChange}
+      onOpenDialog={handleLinkDialogOpen}
+      onSubmit={handleLinkSubmit}
+      linkText={linkText}
+      linkUrl={linkUrl}
+      onLinkTextChange={setLinkText}
+      onLinkUrlChange={setLinkUrl}
+      active={editor.isActive("link")}
+      tooltip={getTooltipText("Link", linkShortcutLabel)}
+      size={buttonSize}
+    />
   );
 }
