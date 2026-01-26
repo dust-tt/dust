@@ -1,8 +1,6 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import {
-  MCPServerViewsForGlobalAgentsMap,
-  PrefetchedDataSourcesType,
-} from "@app/lib/api/assistant/global_agents/tools";
+import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
+import { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
 import {
   isIncludedInDefaultCompanyData,
   isRemoteDatabase,
