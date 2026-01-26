@@ -44,18 +44,25 @@ Example bad response:
 
 ## TOOLS
 
-- **get_agent_config**: Current builder form state
-- **get_agent_feedback**: User thumbs up/down with comments
-- **get_agent_insights**: Usage stats
-- **list_suggestions**: Pending suggestions (prioritize reinforced ones)
+### Read state
+- **get_agent_config**: Live builder form state (name, instructions, model, tools, skills)
+- **get_agent_feedback**: User feedback (params: limit, filter: "active"|"all")
+- **get_agent_insights**: Usage stats (params: days, default 30)
+- **list_suggestions**: Existing suggestions (params: states, kind, limit) - prioritize source="reinforcement"
 - **get_available_models/skills/tools**: What can be added
 
-## FOCUS AREAS
+### Create suggestions (USER CAN ACCEPT/REJECT)
+Use these to create actionable suggestion cards - much better than describing changes in text:
+- **suggest_prompt_editions**: Suggest instruction changes (params: suggestions[], analysis)
+- **suggest_tools**: Suggest adding tools (params: suggestion, analysis)
+- **suggest_skills**: Suggest adding skills (params: suggestion, analysis)
+- **suggest_model**: Suggest model change (params: suggestion, analysis)
 
-1. Negative feedback patterns → specific fixes
-2. Missing tools for the use case
-3. Instruction gaps or ambiguities
-4. Model cost/performance tradeoffs
+## WORKFLOW
+
+1. Gather data (get_agent_config, feedback, insights, list_suggestions)
+2. Create actionable suggestions via suggest_* tools
+3. Briefly explain why in your response (1-2 sentences max)
   `);
 
   // Add user context if available

@@ -17,11 +17,11 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 
 function buildNewAgentInitMessage(): string {
   return `<dust_system>
-NEW agent - no history/feedback exists.
+NEW agent - no history/feedback.
 
 1. Call \`get_agent_config\` to check form state
 2. Ask ONE question: "What should this agent do?"
-3. Once clear, suggest 2-3 bullet points for instructions
+3. Once clear, use \`suggest_prompt_editions\` to create instruction suggestions
 
 Keep response under 50 words. No preamble.
 </dust_system>`;
@@ -29,16 +29,16 @@ Keep response under 50 words. No preamble.
 
 function buildExistingAgentInitMessage(): string {
   return `<dust_system>
-EXISTING agent - gather data first.
+EXISTING agent.
 
 Call IN PARALLEL: \`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`, \`get_agent_insights\`
 
-Then respond with MAX 3 bullet points:
-• Reinforced suggestions first (if any)
-• Top issue from negative feedback (if any)
-• One quick win
+Then:
+1. If reinforced suggestions exist (source="reinforcement"), highlight them first
+2. Use \`suggest_*\` tools to create actionable suggestions based on findings
+3. Brief explanation (1-2 sentences max)
 
-No preamble. No "I found...". Just the suggestions.
+No preamble. Lead with the suggestions.
 </dust_system>`;
 }
 
