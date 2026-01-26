@@ -1,4 +1,3 @@
-import { AGENT_COPILOT_AGENT_STATE_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_TOOL_NAME } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
 import {
@@ -156,7 +155,6 @@ function getGlobalAgent({
   availableToolsets: MCPServerViewResource[];
   copilotMCPServerViews: {
     context: MCPServerViewResource;
-    agentState: MCPServerViewResource;
   } | null;
   copilotUserMetadata: CopilotUserMetadata | null;
 }): AgentConfigurationType | null {
@@ -721,26 +719,21 @@ export async function getGlobalAgents(
 
   let copilotMCPServerViews: {
     context: MCPServerViewResource;
-    agentState: MCPServerViewResource;
   } | null = null;
   let copilotUserMetadata: CopilotUserMetadata | null = null;
   if (
     variant === "full" &&
     agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT)
   ) {
-    const [context, agentState, userMetadata] = await Promise.all([
+    const [context, userMetadata] = await Promise.all([
       MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
         AGENT_COPILOT_CONTEXT_TOOL_NAME
       ),
-      MCPServerViewResource.getMCPServerViewForAutoInternalTool(
-        auth,
-        AGENT_COPILOT_AGENT_STATE_TOOL_NAME
-      ),
       fetchCopilotUserMetadata(auth),
     ]);
-    if (context && agentState) {
-      copilotMCPServerViews = { context, agentState };
+    if (context) {
+      copilotMCPServerViews = { context };
     }
     copilotUserMetadata = userMetadata;
   }

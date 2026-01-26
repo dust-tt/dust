@@ -494,6 +494,7 @@ export default function AgentBuilder({
           dialogProps={dialogProps}
           isCreatedDialogOpen={isCreatedDialogOpen}
           setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+          isNewAgent={!!duplicateAgentId || !agentConfiguration}
         />
       </FormProvider>
     </AgentBuilderFormContext.Provider>
@@ -523,6 +524,7 @@ interface AgentBuilderContentProps {
   };
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
+  isNewAgent: boolean;
 }
 
 function AgentBuilderContent({
@@ -538,6 +540,7 @@ function AgentBuilderContent({
   dialogProps,
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
+  isNewAgent,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -595,6 +598,7 @@ function AgentBuilderContent({
             clientSideMCPServerIds={
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
+            isNewAgent={isNewAgent}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel

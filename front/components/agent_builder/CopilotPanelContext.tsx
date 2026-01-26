@@ -15,18 +15,38 @@ import { useUser } from "@app/lib/swr/user";
 import type { ConversationType } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
-function buildCopilotInitializationMessagePrompt(): string {
+function buildNewAgentInitMessage(): string {
   return `<dust_system>
-## YOUR FIRST MESSAGE
+## CONTEXT
+The user is creating a NEW agent from scratch. There is no existing configuration, feedback, or usage data.
 
-**Immediately use your tools** to analyze the agent. Start with:
-1. Call \`get_agent_config\` to see what the user is currently editing (unsaved changes)
-2. Call \`get_agent_feedback\` to see what users are saying
-3. Call \`get_agent_insights\` to understand usage patterns
+## YOUR TASK
+Help the user create their agent by:
+1. Call \`get_agent_config\` to see if they've started filling in the form
+2. Based on their job function and platform preferences (in your instructions), suggest 2-3 specific agent use cases that would be valuable for them
+3. Ask what problem they want this agent to solve
+4. Once you understand the goal, help draft initial instructions
 
-Then provide a concise analysis with:
-- A brief summary of what the agent does
-- 2-3 specific improvement suggestions based on your findings
+Focus on understanding their needs before suggesting specifics.
+</dust_system>`;
+}
+
+function buildExistingAgentInitMessage(): string {
+  return `<dust_system>
+## CONTEXT
+The user is editing an EXISTING agent with history.
+
+## YOUR TASK
+**Immediately gather context using these tools IN PARALLEL:**
+1. \`list_suggestions\` - Get pending suggestions (prioritize showing reinforcement-source suggestions first)
+2. \`get_agent_config\` - See current state
+3. \`get_agent_feedback\` - See user feedback
+4. \`get_agent_insights\` - Understand usage patterns
+
+Then provide:
+- If there are pending reinforced suggestions: Present them first with context on why they were suggested
+- If there's negative feedback: Highlight patterns and suggest fixes
+- 2-3 specific, actionable improvement suggestions based on your findings
 - Ask if the user wants to dive deeper into any area
 </dust_system>`;
 }
@@ -59,6 +79,7 @@ interface CopilotPanelProviderProps {
   targetAgentConfigurationId: string | null;
   targetAgentConfigurationVersion: number;
   clientSideMCPServerIds: string[];
+  isNewAgent: boolean;
 }
 
 export const CopilotPanelProvider = ({
@@ -66,6 +87,7 @@ export const CopilotPanelProvider = ({
   targetAgentConfigurationId,
   targetAgentConfigurationVersion,
   clientSideMCPServerIds,
+  isNewAgent,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -91,7 +113,9 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(true);
 
-    const firstMessagePrompt = buildCopilotInitializationMessagePrompt();
+    const firstMessagePrompt = isNewAgent
+      ? buildNewAgentInitMessage()
+      : buildExistingAgentInitMessage();
 
     const result = await createConversationWithMessage({
       messageData: {
@@ -125,6 +149,7 @@ export const CopilotPanelProvider = ({
   }, [
     clientSideMCPServerIds,
     createConversationWithMessage,
+    isNewAgent,
     sendNotification,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,

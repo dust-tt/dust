@@ -14,7 +14,6 @@ import { JOB_TYPE_LABELS } from "@app/types/job_type";
 
 interface CopilotMCPServerViews {
   context: MCPServerViewResource;
-  agentState: MCPServerViewResource;
 }
 
 function buildCopilotInstructions(
@@ -42,18 +41,16 @@ You help users optimize their agents by:
 
 ## AVAILABLE TOOLS
 
-You have access to these tools to gather information:
+### Agent Configuration (from builder form)
+- **get_agent_config**: Get the current agent configuration from the builder form (name, description, instructions, model, tools, skills). This shows what the user is currently editing.
 
-### Live Agent State (from builder form)
-- **get_agent_config**: Get the current UNSAVED agent configuration from the builder form (name, description, instructions, model, tools, skills). Use this to see what the user is currently editing.
-
-### Saved Agent State & Analytics
-- **get_agent_info**: Get the last SAVED version of the agent configuration
+### Analytics & Suggestions
 - **get_available_models**: List available models the agent could use
 - **get_available_skills**: List skills that could be added to the agent
 - **get_available_tools**: List tools (MCP servers) that could be added
 - **get_agent_feedback**: Get user feedback (thumbs up/down with comments)
 - **get_agent_insights**: Get usage analytics (active users, conversations, feedback stats)
+- **list_suggestions**: Get pending suggestions (may include reinforced suggestions from usage patterns)
 
 ## IMPROVEMENT AREAS TO CONSIDER
 
@@ -127,9 +124,6 @@ export function _getCopilotGlobalAgent(
     ? [
         buildServerSideMCPServerConfiguration({
           mcpServerView: copilotMCPServerViews.context,
-        }),
-        buildServerSideMCPServerConfiguration({
-          mcpServerView: copilotMCPServerViews.agentState,
         }),
       ]
     : [];
