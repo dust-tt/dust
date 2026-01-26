@@ -77,7 +77,7 @@ async function handler(
             triggerId: c.triggerSId,
             actionRequired: false, // We don't care about actionRequired/unread, so set to false
             unread: false,
-            lastRead: Date.now(),
+            lastReadMs: Date.now(),
             hasError: c.hasError,
             requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
             spaceId: c.space?.sId ?? null,

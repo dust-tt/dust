@@ -132,7 +132,7 @@ describe("renderAllMessages", () => {
       created: Date.now(),
       updated: Date.now(),
       unread: false,
-      lastRead: Date.now(),
+      lastReadMs: Date.now(),
       actionRequired: false,
       hasError: false,
       sId: "conv_1",

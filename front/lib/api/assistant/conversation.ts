@@ -160,7 +160,7 @@ export async function createConversation(
     title: conversation.title,
     depth: conversation.depth,
     content: [],
-    lastRead: Date.now(),
+    lastReadMs: Date.now(),
     unread: false,
     actionRequired: false,
     hasError: false,

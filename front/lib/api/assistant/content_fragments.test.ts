@@ -113,7 +113,7 @@ function createMockConversation(
     depth: 0,
     visibility: "unlisted",
     unread: false,
-    lastRead: Date.now(),
+    lastReadMs: Date.now(),
     actionRequired: false,
     hasError: false,
     requestedSpaceIds: [],
