@@ -16,7 +16,8 @@ import logger from "@app/logger/logger";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
-const { DUST_CLIENT_FACING_URL = "" } = process.env;
+const { DUST_CLIENT_FACING_URL = "", PRODUCTION_DUST_WORKSPACE_ID = "" } =
+  process.env;
 
 /**
  * Reconstructs a minimal InboundEmail from the stored context.
@@ -61,6 +62,32 @@ export async function emailReplyOnCompletionActivity(
       logger.info(
         { agentMessageId: agentLoopArgs.agentMessageId },
         "[email] No email reply context found, skipping reply"
+      );
+      return;
+    }
+
+    // Security gating: only allow replies to dust.tt emails in the Dust workspace.
+    // This mirrors the checks in the webhook handler.
+    if (!context.fromEmail.endsWith("@dust.tt")) {
+      logger.warn(
+        {
+          agentMessageId: agentLoopArgs.agentMessageId,
+          fromEmail: context.fromEmail,
+        },
+        "[email] Sender email not in @dust.tt domain, skipping reply"
+      );
+      return;
+    }
+    if (
+      PRODUCTION_DUST_WORKSPACE_ID &&
+      context.workspaceSId !== PRODUCTION_DUST_WORKSPACE_ID
+    ) {
+      logger.warn(
+        {
+          agentMessageId: agentLoopArgs.agentMessageId,
+          workspaceSId: context.workspaceSId,
+        },
+        "[email] Workspace not gated for email replies, skipping reply"
       );
       return;
     }
