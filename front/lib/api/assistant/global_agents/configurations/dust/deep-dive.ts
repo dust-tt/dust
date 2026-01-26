@@ -39,7 +39,6 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
-import If from "ajv/lib/vocabularies/applicator/if";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
