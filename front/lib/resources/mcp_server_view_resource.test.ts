@@ -135,7 +135,7 @@ describe("MCPServerViewResource", () => {
       // Create feature flag to enable MCP actions
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-      // Mock the INTERNAL_MCP_SERVERS config.
+      // Mock the INTERNAL_MCP_SERVERS config
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -226,7 +226,7 @@ describe("MCPServerViewResource", () => {
       // Create feature flag to enable MCP actions
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-      // Mock the INTERNAL_MCP_SERVERS config.
+      // Mock the INTERNAL_MCP_SERVERS config
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
@@ -294,7 +294,7 @@ describe("MCPServerViewResource", () => {
       // Create feature flag to enable MCP actions
       await FeatureFlagFactory.basic("dev_mcp_actions", workspace);
 
-      // Mock the INTERNAL_MCP_SERVERS config.
+      // Mock the INTERNAL_MCP_SERVERS config
       const originalConfig = INTERNAL_MCP_SERVERS["primitive_types_debugger"];
       Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
         value: {
