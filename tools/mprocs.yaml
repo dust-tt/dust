@@ -31,6 +31,12 @@ procs:
       set -euo pipefail
       source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh
 
+  sparkle:
+    cwd: "<CONFIG_DIR>/../sparkle"
+    shell: |
+      set -euo pipefail
+      source ~/.nvm/nvm.sh && nvm install && npm install && npm run watch
+
   front:
     cwd: "<CONFIG_DIR>/../front"
     shell: |
@@ -62,7 +68,7 @@ procs:
       echo "sdks-js ready. Starting connectors."
       source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh
 
-  sparkle:
+  sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run storybook"
     autostart: false
