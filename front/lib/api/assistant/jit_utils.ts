@@ -15,7 +15,7 @@ import {
   isAgentMessageType,
   isContentFragmentType,
   isInteractiveContentFileContentType,
-  isSupportedImageContentType,
+  isLLMVisionSupportedImageContentType,
 } from "@app/types";
 
 export function listAttachments(
@@ -25,8 +25,8 @@ export function listAttachments(
   for (const versions of conversation.content) {
     const m = versions[versions.length - 1];
     if (isContentFragmentType(m)) {
-      // We don't list images.
-      if (isSupportedImageContentType(m.contentType)) {
+      // Skip images handled by vision APIs; SVG is text-based so we list it.
+      if (isLLMVisionSupportedImageContentType(m.contentType)) {
         continue;
       }
 
