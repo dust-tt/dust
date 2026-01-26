@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
+import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
@@ -316,5 +317,32 @@ export function useWorkspaceSeatsCount({
     isSeatsCountLoading: !error && !data && !disabled,
     isSeatsCountError: error,
     mutateSeatsCount: mutate,
+  };
+}
+
+export function useWorkspaceAuthContext({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const authContextFetcher: Fetcher<GetWorkspaceAuthContextResponseType> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/auth-context`,
+    authContextFetcher,
+    { disabled }
+  );
+
+  return {
+    owner: data?.workspace ?? null,
+    subscription: data?.subscription ?? null,
+    user: data?.user ?? null,
+    isAdmin: data?.isAdmin ?? false,
+    isBuilder: data?.isBuilder ?? false,
+    isAuthContextLoading: !error && !data && !disabled,
+    isAuthContextError: error,
   };
 }

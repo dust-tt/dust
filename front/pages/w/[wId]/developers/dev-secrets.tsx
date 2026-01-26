@@ -12,10 +12,10 @@ import {
   Input,
   Page,
   PlusIcon,
+  Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
-import type { InferGetServerSidePropsType } from "next";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -25,43 +25,29 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useAppRouter } from "@app/lib/platform";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  DustAppSecretType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
+import {
+  useFeatureFlags,
+  useWorkspaceAuthContext,
+} from "@app/lib/swr/workspaces";
+import Custom404 from "@app/pages/404";
+import type { DustAppSecretType } from "@app/types";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isAdmin: boolean;
-}>(async (_, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.getNonNullableSubscription();
+export default function SecretsPage() {
+  const router = useAppRouter();
+  const { wId } = router.query;
+  const workspaceId = isString(wId) ? wId : "";
+  const {
+    owner,
+    subscription,
+    isAdmin,
+    isBuilder,
+    isAuthContextLoading,
+    isAuthContextError,
+  } = useWorkspaceAuthContext({ workspaceId, disabled: !workspaceId });
 
-  if (!auth.isBuilder()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-      isAdmin: auth.isAdmin(),
-    },
-  };
-});
-
-export default function SecretsPage({
-  owner,
-  subscription,
-  isAdmin,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
   const defaultSecret = { name: "", value: "" };
   const [newDustAppSecret, setNewDustAppSecret] =
@@ -72,12 +58,18 @@ export default function SecretsPage({
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner?.sId ?? "",
+    disabled: !owner,
+  });
 
   const { secrets } = useDustAppSecrets(owner);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
+      if (!owner) {
+        return;
+      }
       const r = await clientFetch(`/api/w/${owner.sId}/dust_app_secrets`, {
         method: "POST",
         headers: {
@@ -106,6 +98,9 @@ export default function SecretsPage({
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (secret: DustAppSecretType) => {
+      if (!owner) {
+        return;
+      }
       await clientFetch(
         `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/destroy`,
         {
@@ -134,6 +129,18 @@ export default function SecretsPage({
     setIsNewSecretPromptOpen(true);
     setIsInputNameDisabled(true);
   };
+
+  if (!wId || isAuthContextLoading) {
+    return (
+      <div className="flex h-dvh items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isAuthContextError || !owner || !subscription || !isBuilder) {
+    return <Custom404 />;
+  }
 
   return (
     <>
