@@ -37,7 +37,7 @@ export const WORKOS_METADATA_KEY_PREFIX = "workos:";
 // Syncs custom attributes to user metadata.
 // Stores attributes with workspace scope and "workos:" prefix.
 // Removes attributes that are no longer present.
-async function syncCustomAttributesToUserMetadata(
+export async function syncCustomAttributesToUserMetadata(
   user: UserResource,
   workspace: LightWorkspaceType,
   attributes: Record<string, string | null>
