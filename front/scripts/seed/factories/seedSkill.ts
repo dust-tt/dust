@@ -6,7 +6,7 @@ import type { SeedContext, SkillAsset } from "./types";
 export async function seedSkill(
   ctx: SeedContext,
   skillAsset: SkillAsset
-): Promise<void> {
+): Promise<SkillResource | null> {
   const { auth, execute, logger } = ctx;
 
   const existingSkills = await SkillResource.listByWorkspace(auth, {
@@ -19,7 +19,7 @@ export async function seedSkill(
       { sId: existingSkill.sId, name: skillAsset.name },
       "Skill already exists, skipping"
     );
-    return;
+    return existingSkill;
   }
 
   if (execute) {
@@ -31,5 +31,8 @@ export async function seedSkill(
       status: "active",
     });
     logger.info({ sId: skill.sId }, "Skill created");
+    return skill;
   }
+
+  return null;
 }
