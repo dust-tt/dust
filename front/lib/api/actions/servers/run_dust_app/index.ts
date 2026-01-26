@@ -14,21 +14,20 @@ import {
   isLightServerSideMCPToolConfiguration,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
-import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
-import { sanitizeJSONOutput } from "@app/lib/utils";
-import logger from "@app/logger/logger";
-import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
-
 import {
   containsFileOutput,
   convertDatasetSchemaToZodRawShape,
   prepareAppContext,
   prepareParamsWithHistory,
   processDustFileOutput,
-} from "./helpers";
-import { RUN_DUST_APP_TOOL_NAME } from "./metadata";
+} from "@app/lib/api/actions/servers/run_dust_app/helpers";
+import { RUN_DUST_APP_TOOL_NAME } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import config from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
+import { prodAPICredentialsForOwner } from "@app/lib/auth";
+import { sanitizeJSONOutput } from "@app/lib/utils";
+import logger from "@app/logger/logger";
+import { Err, getHeaderFromGroupIds, getHeaderFromRole, Ok } from "@app/types";
 
 /**
  * Creates the run_dust_app MCP server.
