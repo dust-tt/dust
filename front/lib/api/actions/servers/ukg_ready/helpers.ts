@@ -1,8 +1,10 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import type {
   UkgReadyAccrualBalance,
   UkgReadyEmployee,
@@ -12,7 +14,7 @@ import type {
   UkgReadyPTORequestNote,
   UkgReadyPTORequestObject,
   UkgReadySchedule,
-} from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready/types";
+} from "@app/lib/api/actions/servers/ukg_ready/types";
 import {
   UkgReadyAccrualBalancesResponseSchema,
   UkgReadyEmployeeSchema,
@@ -21,11 +23,52 @@ import {
   UkgReadyPTORequestNotesResponseSchema,
   UkgReadyPTORequestsResponseSchema,
   UkgReadySchedulesResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready/types";
+} from "@app/lib/api/actions/servers/ukg_ready/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+interface UkgReadyAuthContext {
+  accessToken: string;
+  instanceUrl: string;
+  companyId: string;
+}
+
+// withAuth pattern - extracts token and provides consistent error handling
+export async function withAuth(
+  extra: ToolHandlerExtra,
+  action: (ctx: UkgReadyAuthContext) => Promise<ToolHandlerResult>
+): Promise<ToolHandlerResult> {
+  const accessToken = extra.authInfo?.token;
+  if (!accessToken) {
+    return new Err(
+      new MCPError(
+        "No access token found. Please connect your UKG Ready account."
+      )
+    );
+  }
+
+  const instanceUrl = extra.authInfo?.extra?.instance_url;
+  if (!instanceUrl || typeof instanceUrl !== "string") {
+    return new Err(
+      new MCPError(
+        "No UKG Ready instance URL found. Please reconnect your account."
+      )
+    );
+  }
+
+  const companyId = extra.authInfo?.extra?.ukg_ready_company_id;
+  if (!companyId || typeof companyId !== "string") {
+    return new Err(
+      new MCPError(
+        "No UKG Ready company ID found. Please reconnect your account."
+      )
+    );
+  }
+
+  return action({ accessToken, instanceUrl, companyId });
+}
 
 // Generic wrapper for UKG Ready API calls with validation
 async function ukgReadyApiCall<T extends z.ZodTypeAny>(
@@ -89,56 +132,18 @@ async function ukgReadyApiCall<T extends z.ZodTypeAny>(
   }
 }
 
-export async function withAuth({
-  authInfo,
-  action,
-}: {
-  authInfo?: AuthInfo;
-  action: (
-    accessToken: string,
-    instanceUrl: string,
-    companyId: string
-  ) => Promise<Result<CallToolResult["content"], MCPError>>;
-}): Promise<Result<CallToolResult["content"], MCPError>> {
-  const accessToken = authInfo?.token;
-  if (!accessToken) {
-    return new Err(
-      new MCPError(
-        "No access token found. Please connect your UKG Ready account."
-      )
-    );
-  }
-
-  const instanceUrl = authInfo?.extra?.instance_url;
-  if (!instanceUrl || typeof instanceUrl !== "string") {
-    return new Err(
-      new MCPError(
-        "No UKG Ready instance URL found. Please reconnect your account."
-      )
-    );
-  }
-
-  const companyId = authInfo?.extra?.ukg_ready_company_id;
-  if (!companyId || typeof companyId !== "string") {
-    return new Err(
-      new MCPError(
-        "No UKG Ready company ID found. Please reconnect your account."
-      )
-    );
-  }
-
-  return action(accessToken, instanceUrl, companyId);
-}
-
 export async function getCurrentEmployee(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string
+  ctx: UkgReadyAuthContext
 ): Promise<Result<UkgReadyEmployee, UkgReadyErrorResult>> {
   const endpoint = `/employees/me`;
 
   const result = await ukgReadyApiCall(
-    { endpoint, accessToken, instanceUrl, companyId },
+    {
+      endpoint,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
+    },
     UkgReadyEmployeeSchema
   );
 
@@ -150,9 +155,7 @@ export async function getCurrentEmployee(
 }
 
 export async function getAllPTORequests(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string,
+  ctx: UkgReadyAuthContext,
   filters?: {
     fromDate?: string;
     toDate?: string;
@@ -179,7 +182,12 @@ export async function getAllPTORequests(
   const endpoint = `/employee/ptorequest${queryString ? `?${queryString}` : ""}`;
 
   const result = await ukgReadyApiCall(
-    { endpoint, accessToken, instanceUrl, companyId },
+    {
+      endpoint,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
+    },
     UkgReadyPTORequestsResponseSchema
   );
 
@@ -191,9 +199,7 @@ export async function getAllPTORequests(
 }
 
 export async function getAccrualBalances(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string,
+  ctx: UkgReadyAuthContext,
   filters?: {
     accountId?: string;
     asOfDate?: string;
@@ -205,11 +211,7 @@ export async function getAccrualBalances(
   if (filters?.accountId) {
     accountId = filters.accountId;
   } else {
-    const currentEmployeeResult = await getCurrentEmployee(
-      accessToken,
-      instanceUrl,
-      companyId
-    );
+    const currentEmployeeResult = await getCurrentEmployee(ctx);
 
     if (currentEmployeeResult.isErr()) {
       return currentEmployeeResult;
@@ -231,7 +233,12 @@ export async function getAccrualBalances(
   const endpoint = `/employees/${accountId}/accrual/1/balances${queryString ? `?${queryString}` : ""}`;
 
   const result = await ukgReadyApiCall(
-    { endpoint, accessToken, instanceUrl, companyId },
+    {
+      endpoint,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
+    },
     UkgReadyAccrualBalancesResponseSchema
   );
 
@@ -243,9 +250,7 @@ export async function getAccrualBalances(
 }
 
 export async function getPTORequestNotes(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string,
+  ctx: UkgReadyAuthContext,
   noteThreadId: string
 ): Promise<Result<UkgReadyPTORequestNote[], UkgReadyErrorResult>> {
   const params = new URLSearchParams();
@@ -255,7 +260,12 @@ export async function getPTORequestNotes(
   const endpoint = `/employee/ptorequest/notes${queryString ? `?${queryString}` : ""}`;
 
   const result = await ukgReadyApiCall(
-    { endpoint, accessToken, instanceUrl, companyId },
+    {
+      endpoint,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
+    },
     UkgReadyPTORequestNotesResponseSchema
   );
 
@@ -267,9 +277,7 @@ export async function getPTORequestNotes(
 }
 
 export async function createPTORequest(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string,
+  ctx: UkgReadyAuthContext,
   requestData: {
     pto_request: UkgReadyPTORequestObject;
   }
@@ -277,9 +285,9 @@ export async function createPTORequest(
   const result = await ukgReadyApiCall(
     {
       endpoint: "/employee/ptorequest",
-      accessToken,
-      instanceUrl,
-      companyId,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
       method: "POST",
       body: requestData,
     },
@@ -294,9 +302,7 @@ export async function createPTORequest(
 }
 
 export async function deletePTORequest(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string,
+  ctx: UkgReadyAuthContext,
   requestIds: string[],
   comment?: string
 ): Promise<Result<void, UkgReadyErrorResult>> {
@@ -311,12 +317,12 @@ export async function deletePTORequest(
   const endpoint = `/employee/ptorequest${queryString ? `?${queryString}` : ""}`;
 
   try {
-    const url = `${instanceUrl}/ta/rest/v2/companies/!${companyId}${endpoint}`;
+    const url = `${ctx.instanceUrl}/ta/rest/v2/companies/!${ctx.companyId}${endpoint}`;
 
     const response = await untrustedFetch(url, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${ctx.accessToken}`,
         "Content-Type": "application/json",
         Accept: "application/json",
       },
@@ -338,9 +344,7 @@ export async function deletePTORequest(
 }
 
 export async function getSchedules(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string,
+  ctx: UkgReadyAuthContext,
   filters?: {
     username?: string;
     fromDate?: string;
@@ -363,7 +367,12 @@ export async function getSchedules(
   const endpoint = `/employee/schedules${queryString ? `?${queryString}` : ""}`;
 
   const result = await ukgReadyApiCall(
-    { endpoint, accessToken, instanceUrl, companyId },
+    {
+      endpoint,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
+    },
     UkgReadySchedulesResponseSchema
   );
 
@@ -375,9 +384,7 @@ export async function getSchedules(
 }
 
 export async function getEmployees(
-  accessToken: string,
-  instanceUrl: string,
-  companyId: string
+  ctx: UkgReadyAuthContext
 ): Promise<Result<UkgReadyEmployee[], UkgReadyErrorResult>> {
   const params = new URLSearchParams();
 
@@ -387,7 +394,12 @@ export async function getEmployees(
   const endpoint = `/employees${queryString ? `?${queryString}` : ""}`;
 
   const result = await ukgReadyApiCall(
-    { endpoint, accessToken, instanceUrl, companyId },
+    {
+      endpoint,
+      accessToken: ctx.accessToken,
+      instanceUrl: ctx.instanceUrl,
+      companyId: ctx.companyId,
+    },
     UkgReadyEmployeesResponseSchema
   );
 
