@@ -18,6 +18,7 @@ import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
+import { default as gongServer } from "@app/lib/actions/mcp_internal_actions/servers/gong";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
 import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
@@ -171,6 +172,8 @@ export async function getInternalMCPServer(
       return snowflakeServer(auth, agentLoopContext);
     case "gmail":
       return gmailServer(auth, agentLoopContext);
+    case "gong":
+      return gongServer(auth, agentLoopContext);
     case "google_calendar":
       return calendarServer(auth, agentLoopContext);
     case "google_drive":

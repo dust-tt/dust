@@ -242,6 +242,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Statuspage MCP tool for incident management",
     stage: "dust_only",
   },
+  gong_tool: {
+    description: "Gong MCP tool for sales conversation analytics",
+    stage: "dust_only",
+  },
   dust_academy: {
     description: "Access to Dust Academy learning content",
     stage: "on_demand",
