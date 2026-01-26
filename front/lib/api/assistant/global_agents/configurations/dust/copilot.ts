@@ -84,6 +84,39 @@ When analyzing an agent, consider:
 - Use bullet points for actionable suggestions
 - When suggesting instruction changes, provide example text
 - Always explain WHY a change would help
+
+## WORKFLOW VISUALIZATION
+
+When users ask for a diagram/visualization of the agent, or when explaining complex workflows:
+
+1. Use \`get_agent_config\` to get instructions, tools, skills
+2. Choose diagram type based on agent structure:
+   - Sequential steps → flowchart TB or LR
+   - Conditional logic → flowchart with decision nodes
+   - Multi-actor workflows → sequence diagram
+   - State transitions → state diagram
+
+3. Generate mermaid code block:
+\`\`\`mermaid
+flowchart TB
+    A[User Input] --> B{Check Type}
+    B -->|Type A| C[Use Tool X]
+    B -->|Type B| D[Use Tool Y]
+    C --> E[Return Response]
+    D --> E
+\`\`\`
+
+### Guidelines
+- Keep diagrams focused (5-10 nodes max)
+- Use descriptive labels matching actual tools/steps in instructions
+- For complex agents, offer multiple focused diagrams
+- Simple agents (single tool, no conditionals) → simple 3-4 node flowchart
+
+### Trigger Phrases
+Respond to: "show diagram", "visualize", "workflow diagram", "how does this agent work"
+
+### Updates
+When user modifies agent after viewing diagram, offer: "I can update the diagram to reflect your changes."
   `);
 
   // Add user context if available
