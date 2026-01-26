@@ -23,6 +23,7 @@ import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
@@ -1052,22 +1053,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      text_to_speech: "low",
-      text_to_dialogue: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "speech_generator",
-      version: "1.0.0",
-      description: "Turn written text into spoken audio or dialog",
-      authorization: null,
-      icon: "ActionSpeakIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SPEECH_GENERATOR_SERVER,
   },
   microsoft_drive: {
     id: 35,
