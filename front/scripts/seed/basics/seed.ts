@@ -8,18 +8,34 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import type {
+  AgentAsset,
+  ConversationAsset,
+  CreatedAgent,
+  SeedContext,
+  SkillAsset,
+  SuggestedSkillAsset,
+} from "@app/scripts/seed/factories";
+import {
+  seedAgent,
+  seedConversations,
+  seedMCPTools,
+  seedSkill,
+  seedSpace,
+  seedSuggestedSkills,
+} from "@app/scripts/seed/factories";
 import type { WhitelistableFeature } from "@app/types";
-
-import { seedAgent } from "./seedAgent";
-import { seedConversations } from "./seedConversations";
-import { seedMCPTools } from "./seedMCPTools";
-import { seedSkill } from "./seedSkill";
-import { seedSpace } from "./seedSpace";
-import { seedSuggestedSkills } from "./seedSuggestedSkills";
-import type { Assets, SeedContext } from "./types";
+import { GLOBAL_AGENTS_SID } from "@app/types";
 
 // The workspace sId created by dust-hive seed
 const WORKSPACE_SID = "DevWkSpace";
+
+export interface Assets {
+  agent: AgentAsset;
+  skill: SkillAsset;
+  conversations: ConversationAsset[];
+  suggestedSkills: SuggestedSkillAsset[];
+}
 
 // Load assets from JSON files
 function loadAssets(): Assets {
@@ -115,10 +131,28 @@ makeScript({}, async ({ execute }, logger) => {
     }
   }
 
-  await seedSkill(ctx, skillAsset);
+  const createdSkill = await seedSkill(ctx, skillAsset);
   await seedSuggestedSkills(ctx, suggestedSkillsAsset);
-  const customAgentSId = await seedAgent(ctx, agentAsset);
-  await seedConversations(ctx, conversationsAsset, customAgentSId);
+  const skillsToLink = createdSkill ? [createdSkill] : [];
+  const customAgent = await seedAgent(ctx, agentAsset, {
+    skills: skillsToLink,
+  });
+
+  // Build agents map for conversations
+  const agents = new Map<string, CreatedAgent>();
+  if (customAgent) {
+    agents.set(agentAsset.name, customAgent);
+  }
+  // Add Dust global agent for dust conversations
+  agents.set("Dust", { sId: GLOBAL_AGENTS_SID.DUST, name: "Dust" });
+
+  await seedConversations(ctx, conversationsAsset, {
+    agents,
+    placeholders: {
+      __CUSTOM_AGENT_SID__: customAgent?.sId ?? "",
+    },
+  });
+
   const restrictedSpace = await seedSpace(ctx);
   await seedMCPTools(ctx, restrictedSpace);
 
