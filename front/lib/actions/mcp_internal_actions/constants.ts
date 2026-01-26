@@ -25,6 +25,7 @@ import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_cale
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
@@ -1821,20 +1822,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "project_context_management",
-      version: "1.0.0",
-      description:
-        "Manage files in the project context. Add, update, delete, and list project files.",
-      icon: "ActionDocumentTextIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Project context files are shared across all conversations in this project. " +
-        "Only text-based files are supported for adding/updating. " +
-        "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-        "Requires write permissions on the project space.",
-    },
+    metadata: PROJECT_CONTEXT_MANAGEMENT_SERVER,
   },
   agent_copilot_context: {
     id: 1022,
