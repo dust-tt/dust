@@ -1,6 +1,0 @@
-{
-  "buildCommand": "cd playground && npm run build",
-  "outputDirectory": "playground/dist",
-  "installCommand": "npm install && cd playground && npm install",
-  "ignoreCommand": "bash -lc 'echo \"Branch: $VERCEL_GIT_COMMIT_REF\"; case \"$VERCEL_GIT_COMMIT_REF\" in *play*) exit 1 ;; *) exit 0 ;; esac'"
-}
