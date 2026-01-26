@@ -4,6 +4,7 @@ import { Stripe } from "stripe";
 import config from "@app/lib/api/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
+import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
   isEnterpriseReportUsage,
@@ -199,17 +200,21 @@ export const createProPlanCheckoutSession = async ({
     );
   }
 
-  // Only allow a subscription to have a trial if the workspace never had a
-  // subscription before.
-  // The exception is that if they were under the grandfathered free plan,
-  // we do allow them to have a trial again.
-  let trialAllowed = true;
-  const existingSubscription = await SubscriptionModel.findOne({
-    where: { workspaceId: owner.id },
-    include: [PlanModel],
-  });
-  if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
-    trialAllowed = false;
+  // Determine if Stripe trial is allowed.
+  // When phone trial is enabled, we don't offer Stripe trials (users get phone trial instead).
+  // When phone trial is disabled, we allow Stripe trial only if the workspace never had a
+  // subscription before (except for the grandfathered old free plan).
+  let stripeTrialDays: number | undefined = undefined;
+  if (!PHONE_TRIAL_ENABLED && plan.trialPeriodDays) {
+    const existingSubscription = await SubscriptionModel.findOne({
+      where: { workspaceId: owner.id },
+      include: [PlanModel],
+    });
+    const trialAllowed =
+      !existingSubscription || isOldFreePlan(existingSubscription.plan.code);
+    if (trialAllowed) {
+      stripeTrialDays = plan.trialPeriodDays;
+    }
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -222,9 +227,7 @@ export const createProPlanCheckoutSession = async ({
         planCode: planCode,
         workspaceId: owner.sId,
       },
-      // If trialPeriodDays is 0, we send "undefined" to Stripe.
-      trial_period_days:
-        trialAllowed && plan.trialPeriodDays ? plan.trialPeriodDays : undefined,
+      trial_period_days: stripeTrialDays,
     },
     metadata: {
       planCode: planCode,
