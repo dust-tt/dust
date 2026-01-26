@@ -30,6 +30,7 @@ import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/m
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_NAME,
@@ -1418,32 +1419,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("ukg_ready_mcp");
     },
     isPreview: false,
-    tools_stakes: {
-      get_my_info: "never_ask",
-      get_pto_requests: "never_ask",
-      get_accrual_balances: "never_ask",
-      get_pto_request_notes: "never_ask",
-      create_pto_request: "low",
-      delete_pto_request: "low",
-      get_schedules: "never_ask",
-      get_employees: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "ukg_ready",
-      version: "1.0.0",
-      description:
-        "Manage employee time-off requests, schedules, and accrual balances in UKG Ready.",
-      authorization: {
-        provider: "ukg_ready" as const,
-        supported_use_cases: ["personal_actions"] as const,
-      },
-      icon: "UkgLogo",
-      documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
-      instructions: null,
-    },
+    metadata: UKG_READY_SERVER,
   },
   statuspage: {
     id: 49,

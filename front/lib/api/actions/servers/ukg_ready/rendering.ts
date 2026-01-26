@@ -5,7 +5,7 @@ import type {
   UkgReadyPTORequest,
   UkgReadyPTORequestNote,
   UkgReadySchedule,
-} from "@app/lib/actions/mcp_internal_actions/servers/ukg_ready/types";
+} from "@app/lib/api/actions/servers/ukg_ready/types";
 
 export function renderCurrentEmployee(employee: UkgReadyEmployee): string {
   const name = `${employee.first_name} ${employee.last_name}`;
