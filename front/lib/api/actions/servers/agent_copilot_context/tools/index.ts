@@ -627,7 +627,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         auth,
         agentConfigurationId,
         {
-          states: params.statuses,
+          states: params.states,
           kind: params.kind,
           limit: params.limit,
         }
