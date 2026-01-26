@@ -46,7 +46,7 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
     return configs.map((c) => new this(this.model, c.get()));
   }
 
-  static async fetchBySIds(
+  static async fetchByIds(
     auth: Authenticator,
     sIds: string[]
   ): Promise<AgentMCPServerConfigurationResource[]> {

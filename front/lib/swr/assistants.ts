@@ -1146,9 +1146,10 @@ export function useAgentDatasourceRetrievalDocuments({
     params.set("version", version);
   }
   if (mcpServerConfigIds) {
-    for (const mcpServerConfigId of new Set(mcpServerConfigIds)) {
-      params.append("mcpServerConfigId", mcpServerConfigId);
-    }
+    params.set(
+      "mcpServerConfigIds",
+      [...new Set(mcpServerConfigIds)].join(",")
+    );
   }
   if (dataSourceId) {
     params.set("dataSourceId", dataSourceId);
