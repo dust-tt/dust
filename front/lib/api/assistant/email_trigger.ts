@@ -8,8 +8,10 @@ import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configurat
 import {
   createConversation,
   postNewContentFragment,
+  postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { storeEmailReplyContext } from "@app/lib/api/assistant/email_reply_context";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
@@ -534,6 +536,274 @@ export async function triggerFromEmail({
   );
 
   return new Ok({ conversation, answers });
+}
+
+/**
+ * Async version of triggerFromEmail that doesn't wait for agent completion.
+ * Instead, it stores email context in Redis and the reply is sent by the
+ * agent loop finalization activity when the message completes.
+ */
+export async function triggerFromEmailAsync({
+  auth,
+  agentConfigurations,
+  email,
+}: {
+  auth: Authenticator;
+  agentConfigurations: LightAgentConfigurationType[];
+  email: InboundEmail;
+}): Promise<
+  Result<
+    {
+      conversation: ConversationType;
+    },
+    EmailTriggerError
+  >
+> {
+  const localLogger = logger.child({});
+  const user = auth.user();
+  const workspace = auth.workspace();
+  if (!user || !workspace) {
+    return new Err({
+      type: "unexpected_error",
+      message:
+        "An unexpected error occurred. Please try again or contact us at support@dust.tt.",
+    });
+  }
+
+  const { userMessage, restOfThread, conversationId } =
+    await splitThreadContent(email.text);
+
+  let conversation;
+  if (conversationId) {
+    const conversationRes = await getConversation(auth, conversationId);
+    if (conversationRes.isErr()) {
+      return new Err({
+        type: "unexpected_error",
+        message: "Failed to find conversation with given id.",
+      });
+    }
+    conversation = conversationRes.value;
+  } else {
+    conversation = await createConversation(auth, {
+      title: `Email: ${email.subject}`,
+      visibility: "unlisted",
+      spaceId: null,
+    });
+  }
+
+  if (restOfThread.length > 0) {
+    const cfRes = await toFileContentFragment(auth, {
+      contentFragment: {
+        title: `Email thread: ${email.subject}`,
+        content: restOfThread,
+        contentType: "text/plain",
+        url: null,
+      },
+      fileName: `email-thread.txt`,
+    });
+    if (cfRes.isErr()) {
+      return new Err({
+        type: "message_creation_error",
+        message:
+          `Error creating file for content fragment: ` + cfRes.error.message,
+      });
+    }
+
+    const contentFragmentRes = await postNewContentFragment(
+      auth,
+      conversation,
+      cfRes.value,
+      {
+        username: user.username,
+        fullName: user.fullName(),
+        email: user.email,
+        profilePictureUrl: user.imageUrl,
+      }
+    );
+    if (contentFragmentRes.isErr()) {
+      return new Err({
+        type: "message_creation_error",
+        message:
+          `Error creating file for content fragment: ` +
+          contentFragmentRes.error.message,
+      });
+    }
+
+    const updatedConversationRes = await getConversation(
+      auth,
+      conversation.sId
+    );
+    if (updatedConversationRes.isErr()) {
+      if (updatedConversationRes.error.type !== "conversation_not_found") {
+        return new Err({
+          type: "unexpected_error",
+          message: "Failed to update conversation with email thread.",
+        });
+      }
+    } else {
+      conversation = updatedConversationRes.value;
+    }
+  }
+
+  // Process email attachments as content fragments.
+  for (const attachment of email.attachments) {
+    try {
+      const file = await FileResource.makeNew({
+        contentType: attachment.contentType as SupportedFileContentType,
+        fileName: attachment.filename,
+        fileSize: attachment.size,
+        userId: user.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        useCase: "conversation",
+        useCaseMetadata: null,
+      });
+
+      const fileStream = fs.createReadStream(attachment.filepath);
+      const processRes = await processAndStoreFile(auth, {
+        file,
+        content: {
+          type: "readable",
+          value: Readable.from(fileStream),
+        },
+      });
+
+      if (processRes.isErr()) {
+        localLogger.warn(
+          {
+            filename: attachment.filename,
+            contentType: attachment.contentType,
+            error: processRes.error.message,
+          },
+          "[email] Failed to process attachment, skipping."
+        );
+        continue;
+      }
+
+      const contentFragmentRes = await postNewContentFragment(
+        auth,
+        conversation,
+        {
+          title: attachment.filename,
+          fileId: file.sId,
+        },
+        {
+          username: user.username,
+          fullName: user.fullName(),
+          email: user.email,
+          profilePictureUrl: user.imageUrl,
+        }
+      );
+
+      if (contentFragmentRes.isErr()) {
+        localLogger.warn(
+          {
+            filename: attachment.filename,
+            error: contentFragmentRes.error.message,
+          },
+          "[email] Failed to create content fragment for attachment, skipping."
+        );
+        continue;
+      }
+
+      localLogger.info(
+        { filename: attachment.filename },
+        "[email] Added attachment as content fragment."
+      );
+    } catch (err) {
+      localLogger.warn(
+        {
+          filename: attachment.filename,
+          error: err instanceof Error ? err.message : "Unknown error",
+        },
+        "[email] Error processing attachment, skipping."
+      );
+    }
+  }
+
+  // Refresh conversation after adding attachments.
+  if (email.attachments.length > 0) {
+    const updatedConversationRes = await getConversation(
+      auth,
+      conversation.sId
+    );
+    if (updatedConversationRes.isOk()) {
+      conversation = updatedConversationRes.value;
+    }
+  }
+
+  const content =
+    agentConfigurations
+      .map((agent) => {
+        return serializeMention(agent);
+      })
+      .join(" ") +
+    " " +
+    userMessage;
+
+  const mentions = agentConfigurations.map((agent) => {
+    return { configurationId: agent.sId };
+  });
+
+  // Post message WITHOUT waiting for completion - the reply will be sent
+  // by the agent loop finalization activity.
+  const messageRes = await postUserMessage(auth, {
+    conversation,
+    content,
+    mentions,
+    context: {
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
+      username: user.username,
+      fullName: user.fullName(),
+      email: user.email,
+      profilePictureUrl: user.imageUrl,
+      origin: "email",
+    },
+    // When running an agent from an email we have no chance of validating tools so we skip all of
+    // them and run the tools by default. This is in tension with the admin settings and could be
+    // revisited if needed.
+    skipToolsValidation: true,
+  });
+
+  if (messageRes.isErr()) {
+    return new Err({
+      type: "message_creation_error",
+      message:
+        `Error interacting with agent: ` + messageRes.error.api_error.message,
+    });
+  }
+
+  const { agentMessages } = messageRes.value;
+
+  // Store email reply context in Redis for each agent message.
+  // The finalization activity will use this to send the reply.
+  for (const agentMessage of agentMessages) {
+    const agentConfig = agentConfigurations.find(
+      (ac) => ac.sId === agentMessage.configuration.sId
+    );
+    if (agentConfig) {
+      await storeEmailReplyContext(agentMessage.sId, {
+        subject: email.subject,
+        originalText: email.text,
+        fromEmail: email.envelope.from,
+        fromFull: email.envelope.full,
+        agentConfigurationSId: agentConfig.sId,
+        workspaceSId: workspace.sId,
+        conversationSId: conversation.sId,
+      });
+    }
+  }
+
+  localLogger.info(
+    {
+      conversation: {
+        sId: conversation.sId,
+      },
+      agentMessageCount: agentMessages.length,
+    },
+    "[email] Created conversation and posted message (async mode)."
+  );
+
+  return new Ok({ conversation });
 }
 
 export async function replyToEmail({

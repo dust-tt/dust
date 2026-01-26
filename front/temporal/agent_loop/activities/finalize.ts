@@ -4,6 +4,10 @@ import {
   finalizeCancellation,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
+import {
+  cleanupEmailReplyContextActivity,
+  emailReplyOnCompletionActivity,
+} from "@app/temporal/agent_loop/activities/email_reply";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
@@ -20,6 +24,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
+    emailReplyOnCompletionActivity(authType, agentLoopArgs),
   ]);
 }
 
@@ -33,6 +38,7 @@ export async function finalizeCancelledAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    cleanupEmailReplyContextActivity(agentLoopArgs),
   ]);
 }
 
@@ -47,5 +53,6 @@ export async function finalizeErroredAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
+    cleanupEmailReplyContextActivity(agentLoopArgs),
   ]);
 }

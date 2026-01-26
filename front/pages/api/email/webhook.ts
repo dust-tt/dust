@@ -11,17 +11,16 @@ import {
   emailAssistantMatcher,
   getTargetEmailsForWorkspace,
   replyToEmail,
-  triggerFromEmail,
+  triggerFromEmailAsync,
   userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import { Authenticator } from "@app/lib/auth";
-import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { Err, isSupportedFileContentType, Ok, removeNulls } from "@app/types";
 
-const { DUST_CLIENT_FACING_URL = "", EMAIL_WEBHOOK_SECRET = "" } = process.env;
+const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -267,28 +266,26 @@ async function handler(
           return;
         }
 
-        const answerRes = await triggerFromEmail({
+        // Trigger async processing - reply will be sent by finalization activity.
+        const triggerRes = await triggerFromEmailAsync({
           auth,
           agentConfigurations,
           email,
         });
 
-        if (answerRes.isErr()) {
-          await replyToError(email, answerRes.error);
+        if (triggerRes.isErr()) {
+          await replyToError(email, triggerRes.error);
           return;
         }
 
-        const { conversation, answers } = answerRes.value;
-
-        answers.forEach(async (answer) => {
-          void replyToEmail({
-            email,
-            agentConfiguration: answer.agentConfiguration,
-            htmlContent: `<div><div>${
-              answer.html
-            }</div><br/><a href="${getConversationRoute(workspace.sId, conversation.sId, undefined, DUST_CLIENT_FACING_URL)}">Open in Dust</a></div>`,
-          });
-        });
+        logger.info(
+          {
+            conversationId: triggerRes.value.conversation.sId,
+            workspaceId: workspace.sId,
+            agentCount: agentConfigurations.length,
+          },
+          "[email] Triggered async email processing"
+        );
       }
       return;
 
