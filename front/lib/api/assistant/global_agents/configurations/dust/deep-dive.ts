@@ -39,6 +39,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import If from "ajv/lib/vocabularies/applicator/if";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -174,7 +175,12 @@ When using sub-agents for data analytics tasks or querying data warehouses, do n
 </sub_agent_guidelines>
 `;
 
-const toolsPrompt = `<company_data_guidelines>
+function getToolsPrompt({
+  includeToolsetsPrompt,
+}: {
+  includeToolsetsPrompt: boolean;
+}) {
+  return `<company_data_guidelines>
 You can use the Company Data tools to explore and search through the user's internal, unstructured, textual Company Data.
 
 This data can come from various sources, such as internal messaging systems, emails, knowledge bases code repositories, project management systems, support tickets etc...
@@ -208,7 +214,8 @@ Tables are identified by ids in the format 'table-<dataSourceId>-<nodeId>'.
 The dataSourceId can typically be found by exploring the warehouse, each warehouse is identified by an id in the format 'warehouse-<dataSourceId>'.
 A dataSourceId typically starts with the prefix "dts_".
 </data_warehouses_guidelines>
-
+` + includeToolsetsPrompt
+    ? `
 <additional_tools>
 If you need a capability that is not available in your current tools, first use the \`toolsets\` tool to list available toolsets on the platform.
 
@@ -216,7 +223,9 @@ You may then either:
 - Enable the required toolset on yourself using \`toolsets__enable\` with the provided toolsetId
 - Spawn a sub-agent and pass the required toolset(s) via \`toolsetsToAdd\` so the sub-agent starts with them pre-enabled.
 </additional_tools>
-`;
+`
+    : "";
+}
 
 const offloadedBrowsingPrompt = `<web_browsing_guidelines>
 You can use the web tools to search the web and browse web pages.
@@ -266,9 +275,15 @@ Heavily bias against using the interactive_content tool for what could be writte
 Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
-export const deepDiveInstructions = `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
+export function getDeepDiveInstructions({
+  includeToolsetsPrompt,
+}: {
+  includeToolsetsPrompt: boolean;
+}) {
+  return `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${getToolsPrompt({ includeToolsetsPrompt })}\n${outputPrompt}`;
+}
 
-const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}
+const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${getToolsPrompt({ includeToolsetsPrompt: true })}
 <output_format>
 Your output will be consumed by another AI agent, not a human. As a result, do not focus on formatting, avoid making verbose sentences and focus on producing concise but information-dense output.
 Make sure to include all information and details that are relevant to the request, without any noise or redundancy.
@@ -303,7 +318,7 @@ Any task that requires gathering substantial amounts of context, such as browsin
 The research agent you are planning for has the following instructions:
 
 <research_agent_instructions>
-${deepDiveInstructions}
+${getDeepDiveInstructions({ includeToolsetsPrompt: true })}
 </research_agent_instructions>
 
 These instructions are NOT your own instructions, but you may use them to understand the research agent's capabilities and constraints.
@@ -458,7 +473,7 @@ export function _getDeepDiveGlobalAgent(
     versionAuthorId: null,
     name: DEEP_DIVE_NAME,
     description: DEEP_DIVE_DESC,
-    instructions: deepDiveInstructions,
+    instructions: getDeepDiveInstructions({ includeToolsetsPrompt: true }),
     pictureUrl,
     scope: "global" as const,
     userFavorite: false,
