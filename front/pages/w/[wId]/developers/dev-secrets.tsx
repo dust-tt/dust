@@ -12,41 +12,32 @@ import {
   Input,
   Page,
   PlusIcon,
-  Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
+import type { ReactElement } from "react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AppPageWithLayout } from "@app/lib/app/serverSideProps";
+import { appGetServerSidePropsForBuilders } from "@app/lib/app/serverSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
-import {
-  useFeatureFlags,
-  useWorkspaceAuthContext,
-} from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { DustAppSecretType } from "@app/types";
-import { isString } from "@app/types";
 
-export default function SecretsPage() {
-  const router = useAppRouter();
-  const { wId } = router.query;
-  const workspaceId = isString(wId) ? wId : "";
-  const {
-    owner,
-    subscription,
-    isAdmin,
-    isBuilder,
-    isAuthContextLoading,
-    isAuthContextError,
-  } = useWorkspaceAuthContext({ workspaceId, disabled: !workspaceId });
+export const getServerSideProps = appGetServerSidePropsForBuilders;
+
+function SecretsPage() {
+  const owner = useWorkspace();
+  const { subscription, isAdmin } = useAuth();
 
   const { mutate } = useSWRConfig();
   const defaultSecret = { name: "", value: "" };
@@ -59,17 +50,13 @@ export default function SecretsPage() {
   const sendNotification = useSendNotification();
 
   const { featureFlags } = useFeatureFlags({
-    workspaceId: owner?.sId ?? "",
-    disabled: !owner,
+    workspaceId: owner.sId,
   });
 
   const { secrets } = useDustAppSecrets(owner);
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(async (secret: DustAppSecretType) => {
-      if (!owner) {
-        return;
-      }
       const r = await clientFetch(`/api/w/${owner.sId}/dust_app_secrets`, {
         method: "POST",
         headers: {
@@ -98,9 +85,6 @@ export default function SecretsPage() {
 
   const { submit: handleRevoke, isSubmitting: isRevoking } = useSubmitFunction(
     async (secret: DustAppSecretType) => {
-      if (!owner) {
-        return;
-      }
       await clientFetch(
         `/api/w/${owner.sId}/dust_app_secrets/${secret.name}/destroy`,
         {
@@ -129,18 +113,6 @@ export default function SecretsPage() {
     setIsNewSecretPromptOpen(true);
     setIsInputNameDisabled(true);
   };
-
-  if (!wId || isAuthContextLoading) {
-    return (
-      <div className="flex h-dvh items-center justify-center">
-        <Spinner />
-      </div>
-    );
-  }
-
-  if (isAuthContextError || !owner || !subscription || !isBuilder) {
-    return <Custom404 />;
-  }
 
   return (
     <>
@@ -236,7 +208,7 @@ export default function SecretsPage() {
       </Dialog>
 
       <AppCenteredLayout
-        subscription={subscription}
+        subscription={subscription!}
         owner={owner}
         subNavigation={subNavigationAdmin({
           owner,
@@ -343,6 +315,15 @@ export default function SecretsPage() {
   );
 }
 
-SecretsPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = SecretsPage as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
