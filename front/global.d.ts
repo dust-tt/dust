@@ -1,3 +1,12 @@
+type ContactFormTrackingData = {
+  utm_source: string | undefined;
+  utm_medium: string | undefined;
+  utm_campaign: string | undefined;
+  utm_content: string | undefined;
+  utm_term: string | undefined;
+  gclid: string | undefined;
+};
+
 type ContactFormEventData = {
   user_email: string | undefined;
   user_phone: string | undefined;
@@ -7,7 +16,7 @@ type ContactFormEventData = {
   user_headquarters_region: string | undefined;
   user_company_headcount: string;
   consent_marketing: boolean;
-};
+} & ContactFormTrackingData;
 
 type DataLayer =
   | {

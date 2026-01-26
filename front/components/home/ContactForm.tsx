@@ -117,6 +117,12 @@ function useContactFormSubmit() {
           user_headquarters_region: data.headquarters_region,
           user_company_headcount: data.company_headcount_form,
           consent_marketing: consentMarketing,
+          utm_source: tracking.utm_source,
+          utm_medium: tracking.utm_medium,
+          utm_campaign: tracking.utm_campaign,
+          utm_content: tracking.utm_content,
+          utm_term: tracking.utm_term,
+          gclid: tracking.gclid,
         });
       }
 

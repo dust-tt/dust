@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
 import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 
 // Default.com configuration
@@ -66,6 +67,21 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
   const howToUseDust = formValues.landing_use_cases ?? "";
   const consentMarketing = formValues.consent_marketing ?? false;
 
+  // Get tracking params from sessionStorage
+  const storedParams = getStoredUTMParams();
+  const trackingParams = {
+    utm_source: storedParams.utm_source,
+    utm_medium: storedParams.utm_medium,
+    utm_campaign: storedParams.utm_campaign,
+    utm_content: storedParams.utm_content,
+    utm_term: storedParams.utm_term,
+    gclid:
+      storedParams.gclid ??
+      (typeof window !== "undefined"
+        ? (sessionStorage.getItem("gclid") ?? undefined)
+        : undefined),
+  };
+
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
 
@@ -93,6 +109,12 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
           user_headquarters_region: headquartersRegion,
           user_company_headcount: companyHeadcount,
           consent_marketing: consentMarketing,
+          utm_source: trackingParams.utm_source,
+          utm_medium: trackingParams.utm_medium,
+          utm_campaign: trackingParams.utm_campaign,
+          utm_content: trackingParams.utm_content,
+          utm_term: trackingParams.utm_term,
+          gclid: trackingParams.gclid,
         });
       }
     }
