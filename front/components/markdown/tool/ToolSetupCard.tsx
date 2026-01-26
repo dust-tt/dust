@@ -11,7 +11,7 @@ import React, { useMemo, useState } from "react";
 import { CreateMCPServerDialog } from "@app/components/actions/mcp/create/CreateMCPServerDialog";
 import { getIcon } from "@app/components/resources/resources_icons";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
   useAddMCPServerToSpace,
   useAvailableMCPServers,
@@ -24,7 +24,7 @@ import {
   TRACKING_AREAS,
 } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
-import { asDisplayToolName } from "@app/types";
+import { asDisplayToolName, GLOBAL_SPACE_NAME } from "@app/types";
 
 interface ToolSetupCardProps {
   toolName: string;
@@ -45,6 +45,7 @@ export function ToolSetupCard({
 
   const { spaces: spacesAsUser } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular"],
     disabled: isAdmin,
   });
   const { spaces: spacesAsAdmin } = useSpacesAsAdmin({
@@ -68,16 +69,16 @@ export function ToolSetupCard({
     owner,
   });
 
-  // Find the macthing MCP server for the tool we want to activate.
+  // Find the matching MCP server for the tool we want to activate.
   const matchingMCPServer = useMemo(() => {
     const installedServer = mcpServers.find((s) =>
-      isInternalMCPServerOfName(s.sId, toolId)
+      matchesInternalMCPServerName(s.sId, toolId)
     );
     if (installedServer) {
       return installedServer;
     }
     return availableMCPServers.find((server) =>
-      isInternalMCPServerOfName(server.sId, toolId)
+      matchesInternalMCPServerName(server.sId, toolId)
     );
   }, [mcpServers, availableMCPServers, toolId]);
 
@@ -117,7 +118,7 @@ export function ToolSetupCard({
       return "Configured";
     }
     if (isToolActivatedInSystemSpace) {
-      return "Add to Company Data";
+      return `Add to ${GLOBAL_SPACE_NAME}`;
     }
     return "Configure";
   };

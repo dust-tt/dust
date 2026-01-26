@@ -8,6 +8,7 @@ import {
   getAgentConfigurations,
 } from "@app/lib/api/assistant/configuration/agent";
 import { getRelatedContentFragments } from "@app/lib/api/assistant/content_fragments";
+import { runAgentLoopWorkflow } from "@app/lib/api/assistant/conversation/agent_loop";
 import { getContentFragmentBlob } from "@app/lib/api/assistant/conversation/content_fragment";
 import {
   createAgentMessages,
@@ -44,6 +45,7 @@ import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -65,6 +67,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentType,
+  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -108,12 +111,14 @@ export async function createConversation(
     depth = 0,
     triggerId,
     spaceId,
+    metadata,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
+    metadata?: ConversationMetadata;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -139,6 +144,7 @@ export async function createConversation(
       triggerId,
       spaceId,
       requestedSpaceIds: [],
+      metadata: metadata ?? {},
     },
     space
   );
@@ -159,6 +165,7 @@ export async function createConversation(
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
+    metadata: conversation.metadata,
   };
 }
 
@@ -479,6 +486,7 @@ export function isUserMessageContextValid(
     case "triggered":
     case "triggered_programmatic":
     case "onboarding_conversation":
+    case "agent_copilot":
     case "web":
       return false;
     default:
@@ -711,6 +719,16 @@ export async function postUserMessage(
     agentMessages,
   });
 
+  // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  if (agentMessages.length > 0) {
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages,
+      conversation,
+      userMessage,
+    });
+  }
+
   await Promise.all([
     publishMessageEventsOnMessagePostOrEdit(
       conversation,
@@ -750,6 +768,7 @@ function canAccessAgent(
     case "disabled_missing_datasource":
     case "disabled_by_admin":
     case "archived":
+    case "pending":
       return false;
     default:
       assertNever(agentConfiguration.status);
@@ -1015,6 +1034,16 @@ export async function editUserMessage(
     } else {
       throw e;
     }
+  }
+
+  // Run agent loop workflows after the transaction commits, to ensure messages are persisted.
+  if (agentMessages.length > 0) {
+    await runAgentLoopWorkflow({
+      auth,
+      agentMessages,
+      conversation,
+      userMessage,
+    });
   }
 
   // TODO(DURABLE-AGENTS 2025-07-17): Publish message events to all open tabs to maintain
@@ -1283,6 +1312,27 @@ export async function postNewContentFragment(
     throw new Error("Invalid auth for conversation.");
   }
 
+  // Project conversations only allow content fragments from the project space or the global space.
+  if (conversation.spaceId && isContentFragmentInputWithContentNode(cf)) {
+    const dsView = await DataSourceViewResource.fetchById(
+      auth,
+      cf.nodeDataSourceViewId
+    );
+    if (!dsView) {
+      return new Err(new Error("Data source view not found"));
+    }
+    if (
+      dsView.space.sId !== conversation.spaceId &&
+      dsView.space.kind !== "global"
+    ) {
+      return new Err(
+        new Error(
+          "Only content fragments from the project space or the global space are allowed in a project conversation"
+        )
+      );
+    }
+  }
+
   const upsertAttachmentRes = await maybeUpsertFileAttachment(auth, {
     contentFragments: [cf],
     conversation,
@@ -1373,8 +1423,8 @@ export async function postNewContentFragment(
 
     return { contentFragment, messageRow };
   });
-  const render = await contentFragment.renderFromMessage({
-    auth,
+
+  const render = await contentFragment.renderFromMessage(auth, {
     conversationId: conversation.sId,
     message: messageRow,
   });

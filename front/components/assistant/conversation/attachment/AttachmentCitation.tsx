@@ -5,6 +5,7 @@ import {
   CitationIcons,
   CitationImage,
   CitationTitle,
+  cn,
   Icon,
   Tooltip,
 } from "@dust-tt/sparkle";
@@ -81,7 +82,7 @@ export function AttachmentCitation({
           <Citation
             {...dialogOrDownloadProps}
             isLoading={isLoading}
-            containerClassName="s-h-full"
+            containerClassName={cn("s-h-full", isImage && "s-aspect-square")}
             action={
               !isImage &&
               attachmentCitation.onRemove && (
@@ -96,7 +97,7 @@ export function AttachmentCitation({
           >
             {isImage ? (
               <CitationImage
-                imgSrc={`${attachmentCitation.sourceUrl}?action=view`}
+                imgSrc={`${attachmentCitation.sourceUrl}?action=view&version=processed`}
                 title={attachmentCitation.title}
                 downloadUrl={attachmentCitation.sourceUrl ?? undefined}
                 onClose={attachmentCitation.onRemove}

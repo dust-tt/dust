@@ -9,7 +9,7 @@ export const framesSkill = {
   agentFacingDescription:
     "Create interactive visualizations, charts, dashboards, and presentations as executable React components.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
-  internalMCPServerNames: ["interactive_content"],
+  mcpServers: [{ name: "interactive_content" }],
   version: 1,
   icon: "ActionFrameIcon",
 } as const satisfies GlobalSkillDefinition;

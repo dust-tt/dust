@@ -17,6 +17,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 import { AGENT_GROUP_PREFIX } from "@app/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -126,10 +127,9 @@ async function backfillAgentEditorsGroup(
   );
 
   if (execute && editorGroup) {
-    const result = await editorGroup.setMembers(
-      auth,
-      usersToAdd.map((user) => user.toJSON())
-    );
+    const result = await editorGroup.setMembers(auth, {
+      users: usersToAdd.map((user) => user.toJSON()),
+    });
 
     if (result.isErr()) {
       throw result.error;
@@ -197,7 +197,7 @@ makeScript(
     logger.info("Starting agent editors group backfill");
 
     if (wId) {
-      const ws = await WorkspaceModel.findOne({ where: { sId: wId } });
+      const ws = await WorkspaceResource.fetchById(wId);
       if (!ws) {
         throw new Error(`Workspace not found: ${wId}`);
       }

@@ -8,12 +8,12 @@ import {
   Hoverable,
   Page,
 } from "@dust-tt/sparkle";
-import type { NextRouter } from "next/router";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { FairUsageModal } from "@app/components/FairUsageModal";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
+import type { AppRouter } from "@app/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types";
 
@@ -24,7 +24,7 @@ export type WorkspaceLimit =
   | "message_limit";
 
 function getLimitPromptForCode(
-  router: NextRouter,
+  router: AppRouter,
   owner: WorkspaceType,
   code: WorkspaceLimit,
   subscription: SubscriptionType,
@@ -192,7 +192,7 @@ export function ReachedLimitPopup({
 }) {
   const [isFairUsageModalOpened, setIsFairUsageModalOpened] = useState(false);
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { title, children, validateLabel, onValidate } = getLimitPromptForCode(
     router,
     owner,

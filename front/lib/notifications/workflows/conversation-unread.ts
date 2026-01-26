@@ -59,6 +59,7 @@ export const shouldSendNotificationForAgentAnswer = (
     case "cli_programmatic":
       return true;
     case "onboarding_conversation":
+    case "agent_copilot":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":

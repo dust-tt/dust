@@ -15,7 +15,6 @@ import type {
 } from "@app/types";
 import {
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
-  ConversationError,
   Err,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
   getSmallWhitelistedModel,
@@ -24,7 +23,10 @@ import {
   Ok,
 } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 
 export async function ensureConversationTitleFromAgentLoop(
   authType: AuthenticatorType,
@@ -32,13 +34,16 @@ export async function ensureConversationTitleFromAgentLoop(
 ): Promise<string | null> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
-    if (
-      runAgentDataRes.error instanceof ConversationError &&
-      runAgentDataRes.error.type === "conversation_not_found"
-    ) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
       return null;
     }
-
     throw runAgentDataRes.error;
   }
 

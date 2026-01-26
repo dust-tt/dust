@@ -8,6 +8,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef } from "react";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
@@ -49,6 +50,12 @@ export function buildSkillInstructionsExtensions(
         HTMLAttributes: {
           class: markdownStyles.paragraph(),
         },
+      },
+    }),
+    HeadingExtension.configure({
+      levels: [1, 2, 3],
+      HTMLAttributes: {
+        class: "mt-4 mb-3",
       },
     }),
     KnowledgeNode,

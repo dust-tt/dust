@@ -587,11 +587,10 @@ export const OAuthProviderSchema = FlexibleEnumSchema<
   | "hubspot"
   | "mcp"
   | "mcp_static"
+  | "ukg_ready"
   | "vanta"
   | "productboard"
 >();
-
-// Internal tool output.
 
 export const AuthRequiredOutputResourceSchema = z.object({
   mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT),

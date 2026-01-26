@@ -85,6 +85,7 @@
     "sequelize": "^6.31.0",
     "slackify-markdown": "^4.4.0",
     "snowflake-sdk": "^2.0.2",
+    "stream-json": "^1.9.1",
     "talisman": "^1.1.4",
     "tar-stream": "^3.1.7",
     "turndown": "^7.1.2",
@@ -101,12 +102,14 @@
     "@types/lodash": "^4.17.7",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.19.2",
+    "@types/stream-json": "^1.7.8",
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^8.48.0",
     "@typescript-eslint/parser": "^8.48.0",
     "@typescript/native-preview": "7.0.0-dev.20260105.1",
+    "danger": "^13.0.4",
     "esbuild": "^0.27.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^9.1.0",
@@ -114,20 +117,11 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "knip": "^5.80.0",
-    "lint-staged": "^16.1.6",
     "prettier": "^3.7.4",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0",
     "vitest": "^4.0.16"
-  },
-  "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
-      "prettier --check"
-    ],
-    "**/*.{js,jsx,ts,tsx}": [
-      "eslint"
-    ]
   }
 }

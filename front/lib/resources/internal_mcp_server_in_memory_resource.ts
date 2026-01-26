@@ -17,7 +17,7 @@ import {
   getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
   isAutoInternalMCPServerName,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
@@ -140,7 +140,7 @@ export class InternalMCPServerInMemoryResource {
 
       if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
         const alreadyExistsForSameName = alreadyUsedIds.some((r) => {
-          return isInternalMCPServerOfName(r.internalMCPServerId, name);
+          return matchesInternalMCPServerName(r.internalMCPServerId, name);
         });
 
         if (alreadyExistsForSameName) {

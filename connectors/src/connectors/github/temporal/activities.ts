@@ -441,9 +441,13 @@ async function renderDiscussion(
             prefix: `>> ${childComment.author?.login || "Unknown author"}:\n`,
             content: null,
             sections: [
-              await renderMarkdownSection(dataSourceConfig, childComment.bodyText, {
-                flavor: "gfm",
-              }),
+              await renderMarkdownSection(
+                dataSourceConfig,
+                childComment.bodyText,
+                {
+                  flavor: "gfm",
+                }
+              ),
             ],
           };
           c.sections.push(cc);

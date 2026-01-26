@@ -39,12 +39,12 @@ async function handler(
         });
       }
 
-      const restored = await restoreAgentConfiguration(
+      const restoredResult = await restoreAgentConfiguration(
         auth,
         agentConfiguration.sId
       );
 
-      if (!restored) {
+      if (!restoredResult.isOk() || !restoredResult.value.restored) {
         return apiError(req, res, {
           status_code: 500,
           api_error: {

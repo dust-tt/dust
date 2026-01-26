@@ -768,7 +768,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
           kind: "public",
           workspaceId: workspace.id,
         },
-        [globalGroup]
+        { members: [globalGroup] }
       );
 
       await expect(async () => {

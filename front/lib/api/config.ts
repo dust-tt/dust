@@ -3,6 +3,12 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
+// Body parser limit for document upsert endpoints. This must accommodate the largest allowed
+// document text content (MAX_LARGE_DOCUMENT_TXT_LEN = 5MB in connectors) plus JSON serialization
+// overhead. JSON encoding can expand content significantly due to escaping of special characters
+// (newlines, quotes, backslashes, Unicode). We use 16MB to handle worst-case ~3x expansion.
+export const DOCUMENT_UPSERT_BODY_PARSER_LIMIT = "16mb";
+
 const config = {
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
@@ -14,9 +20,12 @@ const config = {
     if (override) {
       return override;
     }
-    return EnvironmentConfig.getEnvVariable(
-      "NEXT_PUBLIC_DUST_CLIENT_FACING_URL"
-    );
+
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL) {
+      throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
+    }
+    return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
@@ -137,14 +146,6 @@ const config = {
       apiKey: EnvironmentConfig.getOptionalEnvVariable("OAUTH_API_KEY") ?? null,
     };
   },
-  getDustAppsWorkspaceId: (): string => {
-    return EnvironmentConfig.getEnvVariable("DUST_APPS_WORKSPACE_ID");
-  },
-  getDustAppsHelperDatasourceViewId: (): string => {
-    return EnvironmentConfig.getEnvVariable(
-      "DUST_APPS_HELPER_DATASOURCE_VIEW_ID"
-    );
-  },
   getRegionResolverSecret: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("REGION_RESOLVER_SECRET");
   },
@@ -244,6 +245,13 @@ const config = {
   // Text extraction.
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
+  },
+  getDocumentRendererUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
+  },
+  // Public viz URL (used by Gotenberg which routes through egress proxy).
+  getVizPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VIZ_PUBLIC_URL");
   },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
@@ -352,8 +360,24 @@ const config = {
 
     return isEnabled;
   },
+  getLangfuseClientConfig: (): {
+    publicKey: string;
+    secretKey: string;
+    baseUrl: string | undefined;
+  } => {
+    return {
+      publicKey: EnvironmentConfig.getEnvVariable("LANGFUSE_PUBLIC_KEY"),
+      secretKey: EnvironmentConfig.getEnvVariable("LANGFUSE_SECRET_KEY"),
+      baseUrl: EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_BASE_URL"),
+    };
+  },
   getLangfuseUiBaseUrl: () => {
     return EnvironmentConfig.getOptionalEnvVariable("LANGFUSE_UI_BASE_URL");
+  },
+  getTemporalConnectorsNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable(
+      "TEMPORAL_CONNECTORS_NAMESPACE"
+    );
   },
 };
 

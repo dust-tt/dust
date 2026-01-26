@@ -147,4 +147,8 @@ export const USER_MESSAGE_ORIGIN_LABELS: Record<
     label: "Onboarding",
     color: "info-muted dark:info-muted-night",
   },
+  agent_copilot: {
+    label: "Copilot",
+    color: "text-info-muted dark:text-info-muted-night",
+  },
 };

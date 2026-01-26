@@ -3,7 +3,6 @@ import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import {
   DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
   DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
   DEFAULT_WEBSEARCH_ACTION_NAME,
   RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } from "@app/lib/actions/constants";
@@ -17,7 +16,16 @@ import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
+import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
+import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -75,6 +83,7 @@ export const TOOLSETS_LIST_TOOL_NAME = "list";
 export const SKILL_MANAGEMENT_SERVER_NAME = "skill_management";
 
 export const GENERATE_IMAGE_TOOL_NAME = "generate_image";
+// Kept for backward compatibility with existing actions in conversations.
 export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
@@ -92,6 +101,8 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   // Names should reflect the purpose of the server but not directly the tools it contains.
   // We'll prefix all tools with the server name to avoid conflicts.
   // It's okay to change the name of the server as we don't refer to it directly.
+  "agent_copilot_agent_state",
+  "agent_copilot_context",
   "agent_management",
   AGENT_MEMORY_SERVER_NAME,
   "agent_router",
@@ -140,7 +151,9 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "snowflake",
   "sound_studio",
   "speech_generator",
+  "statuspage",
   "toolsets",
+  "ukg_ready",
   "val_town",
   "vanta",
   "front",
@@ -178,32 +191,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      create_issue: "low",
-      comment_on_issue: "low",
-      add_issue_to_project: "low",
-      get_pull_request: "never_ask",
-      list_organization_projects: "never_ask",
-      list_issues: "never_ask",
-      list_pull_requests: "never_ask",
-      search_advanced: "never_ask",
-      get_issue: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "github",
-      version: "1.0.0",
-      description: "Manage issues and pull requests.",
-      authorization: {
-        provider: "github" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "GithubLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: GITHUB_SERVER,
   },
   image_generation: {
     id: 2,
@@ -211,20 +202,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "image_generation",
-      version: "1.0.0",
-      description:
-        "Create or edit visual content from text descriptions and images.",
-      icon: "ActionImageIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: IMAGE_GENERATION_SERVER,
   },
   file_generation: {
     id: 3,
@@ -232,19 +213,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "file_generation",
-      version: "1.0.0",
-      description: "Generate and convert documents.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: FILE_GENERATION_SERVER,
   },
   [DEFAULT_WEBSEARCH_ACTION_NAME]: {
     id: 5,
@@ -252,19 +224,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      version: "1.0.0",
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-      icon: "ActionGlobeAltIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: WEB_SEARCH_BROWSE_SERVER,
   },
   hubspot: {
     id: 7,
@@ -354,20 +317,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "include_data",
-      version: "1.0.0",
-      description:
-        "Load complete content for full context up to memory limits.",
-      icon: "ActionTimeIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: INCLUDE_DATA_SERVER,
   },
   run_dust_app: {
     id: 10,
@@ -397,44 +350,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      search: "never_ask",
-      retrieve_page: "never_ask",
-      retrieve_database_schema: "never_ask",
-      retrieve_database_content: "never_ask",
-      query_database: "never_ask",
-      retrieve_block: "never_ask",
-      retrieve_block_children: "never_ask",
-      fetch_comments: "never_ask",
-      list_users: "never_ask",
-      get_about_user: "never_ask",
-
-      create_page: "low",
-      insert_row_into_database: "low",
-      create_database: "low",
-      update_page: "low",
-      add_page_content: "low",
-      create_comment: "low",
-      delete_block: "low",
-      delete_page: "low",
-      update_row_database: "low",
-      update_schema_database: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "notion",
-      version: "1.0.0",
-      description: "Access workspace pages and databases.",
-      authorization: {
-        provider: "notion" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "NotionLogo",
-      documentationUrl: "https://docs.dust.tt/docs/notion-mcp",
-      instructions: null,
-    },
+    metadata: NOTION_SERVER,
   },
   extract_data: {
     id: 12,
@@ -1444,6 +1363,147 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
+  databricks: {
+    id: 45,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("databricks_tool");
+    },
+    isPreview: true,
+    tools_stakes: {
+      list_warehouses: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "databricks",
+      version: "1.0.0",
+      description:
+        "Execute SQL queries and manage databases in Databricks SQL.",
+      authorization: {
+        provider: "databricks" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ActionTableIcon",
+      documentationUrl: "https://docs.dust.tt/docs/databricks",
+      instructions: null,
+    },
+  },
+  productboard: {
+    id: 46,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: undefined,
+    isPreview: false,
+    tools_stakes: {
+      get_note: "never_ask",
+      query_notes: "never_ask",
+      create_note: "low",
+      update_note: "low",
+      query_entities: "never_ask",
+      get_relationships: "never_ask",
+      create_entity: "low",
+      update_entity: "low",
+      get_configuration: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "productboard",
+      version: "1.0.0",
+      description: "Manage productboard entities and notes.",
+      authorization: {
+        provider: "productboard" as const,
+        supported_use_cases: ["platform_actions", "personal_actions"] as const,
+      },
+      icon: "ProductboardLogo",
+      documentationUrl: "https://docs.dust.tt/docs/productboard",
+      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
+    },
+  },
+  snowflake: {
+    id: 47,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("snowflake_tool");
+    },
+    isPreview: false,
+    tools_stakes: {
+      list_databases: "never_ask",
+      list_schemas: "never_ask",
+      list_tables: "never_ask",
+      describe_table: "never_ask",
+      query: "low",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "snowflake",
+      version: "1.0.0",
+      description:
+        "Execute read-only SQL queries and browse schema in Snowflake.",
+      authorization: {
+        provider: "snowflake" as const,
+        supported_use_cases: ["personal_actions", "platform_actions"] as const,
+      },
+      icon: "SnowflakeLogo",
+      documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
+      instructions: null,
+    },
+  },
+  ukg_ready: {
+    id: 48,
+    availability: "manual",
+    allowMultipleInstances: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("ukg_ready_mcp");
+    },
+    isPreview: false,
+    tools_stakes: {
+      get_my_info: "never_ask",
+      get_pto_requests: "never_ask",
+      get_accrual_balances: "never_ask",
+      get_pto_request_notes: "never_ask",
+      create_pto_request: "low",
+      delete_pto_request: "low",
+      get_schedules: "never_ask",
+      get_employees: "never_ask",
+    },
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    serverInfo: {
+      name: "ukg_ready",
+      version: "1.0.0",
+      description:
+        "Manage employee time-off requests, schedules, and accrual balances in UKG Ready.",
+      authorization: {
+        provider: "ukg_ready" as const,
+        supported_use_cases: ["personal_actions"] as const,
+      },
+      icon: "UkgLogo",
+      documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
+      instructions: null,
+    },
+  },
+  statuspage: {
+    id: 49,
+    availability: "manual",
+    allowMultipleInstances: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("statuspage_tool");
+    },
+    isPreview: true,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: STATUSPAGE_SERVER,
+  },
   primitive_types_debugger: {
     id: 1004,
     availability: "manual",
@@ -1822,98 +1882,31 @@ export const INTERNAL_MCP_SERVERS = {
         "Requires write permissions on the project space.",
     },
   },
-  databricks: {
-    id: 45,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("databricks_tool");
-    },
-    isPreview: true,
-    tools_stakes: {
-      list_warehouses: "never_ask",
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "databricks",
-      version: "1.0.0",
-      description:
-        "Execute SQL queries and manage databases in Databricks SQL.",
-      authorization: {
-        provider: "databricks" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ActionTableIcon",
-      documentationUrl: "https://docs.dust.tt/docs/databricks",
-      instructions: null,
-    },
-  },
-  productboard: {
-    id: 46,
-    availability: "manual",
-    allowMultipleInstances: true,
-    isRestricted: undefined,
+  agent_copilot_context: {
+    id: 1022,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
     isPreview: false,
-    tools_stakes: {
-      get_note: "never_ask",
-      query_notes: "never_ask",
-      create_note: "low",
-      update_note: "low",
-      query_entities: "never_ask",
-      get_relationships: "never_ask",
-      create_entity: "low",
-      update_entity: "low",
-      get_configuration: "never_ask",
-    },
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "productboard",
-      version: "1.0.0",
-      description: "Manage productboard entities and notes.",
-      authorization: {
-        provider: "productboard" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ProductboardLogo",
-      documentationUrl: "https://docs.dust.tt/docs/productboard",
-      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
-    },
-  },
-  snowflake: {
-    id: 47,
-    availability: "manual",
-    allowMultipleInstances: true,
     isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("snowflake_tool");
+      return !featureFlags.includes("agent_builder_copilot");
     },
-    isPreview: false,
-    tools_stakes: {
-      list_databases: "never_ask",
-      list_schemas: "never_ask",
-      list_tables: "never_ask",
-      describe_table: "never_ask",
-      query: "low",
-    },
+    metadata: AGENT_COPILOT_CONTEXT_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "snowflake",
-      version: "1.0.0",
-      description:
-        "Execute read-only SQL queries and browse schema in Snowflake.",
-      authorization: {
-        provider: "snowflake" as const,
-        supported_use_cases: ["personal_actions"] as const,
-      },
-      icon: "SnowflakeLogo",
-      documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
-      instructions: null,
+  },
+  agent_copilot_agent_state: {
+    id: 1023,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("agent_builder_copilot");
     },
+    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
@@ -1963,12 +1956,6 @@ type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
 type InternalMCPServerEntry =
   InternalMCPServerEntryBase<InternalMCPServerNameType>;
 
-const isServerWithMetadata = (
-  server: InternalMCPServerEntry
-): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> => {
-  return server.metadata !== undefined;
-};
-
 export type InternalMCPServerNameType =
   (typeof AVAILABLE_INTERNAL_MCP_SERVER_NAMES)[number];
 
@@ -1982,56 +1969,60 @@ export type AutoInternalMCPServerNameType = AutoServerKeys<
   typeof INTERNAL_MCP_SERVERS
 >;
 
-export const isAutoInternalMCPServerName = (
+function isServerWithMetadata(
+  server: InternalMCPServerEntry
+): server is InternalMCPServerEntryWithMetadata<InternalMCPServerNameType> {
+  return server.metadata !== undefined;
+}
+
+export function isAutoInternalMCPServerName(
   name: InternalMCPServerNameType
-): name is AutoInternalMCPServerNameType => {
+): name is AutoInternalMCPServerNameType {
   return (
     INTERNAL_MCP_SERVERS[name].availability === "auto" ||
     INTERNAL_MCP_SERVERS[name].availability === "auto_hidden_builder"
   );
-};
+}
 
-export const getAvailabilityOfInternalMCPServerByName = (
+export function getAvailabilityOfInternalMCPServerByName(
   name: InternalMCPServerNameType
-): MCPServerAvailability => {
+): MCPServerAvailability {
   return INTERNAL_MCP_SERVERS[name].availability;
-};
+}
 
-export const getAvailabilityOfInternalMCPServerById = (
+export function getAvailabilityOfInternalMCPServerById(
   sId: string
-): MCPServerAvailability => {
+): MCPServerAvailability {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isErr()) {
     return "manual";
   }
   return getAvailabilityOfInternalMCPServerByName(r.value.name);
-};
+}
 
-export const allowsMultipleInstancesOfInternalMCPServerByName = (
+export function allowsMultipleInstancesOfInternalMCPServerByName(
   name: InternalMCPServerNameType
-): boolean => {
+): boolean {
   return INTERNAL_MCP_SERVERS[name].allowMultipleInstances;
-};
+}
 
-export const allowsMultipleInstancesOfInternalMCPServerById = (
+export function allowsMultipleInstancesOfInternalMCPServerById(
   sId: string
-): boolean => {
+): boolean {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isErr()) {
     return false;
   }
   return !!INTERNAL_MCP_SERVERS[r.value.name].allowMultipleInstances;
-};
+}
 
-export const getInternalMCPServerNameAndWorkspaceId = (
-  sId: string
-): Result<
+export function getInternalMCPServerNameAndWorkspaceId(sId: string): Result<
   {
     name: InternalMCPServerNameType;
     workspaceModelId: ModelId;
   },
   Error
-> => {
+> {
   const sIdParts = getResourceNameAndIdFromSId(sId);
 
   if (!sIdParts) {
@@ -2071,11 +2062,11 @@ export const getInternalMCPServerNameAndWorkspaceId = (
     name,
     workspaceModelId: sIdParts.workspaceModelId,
   });
-};
+}
 
-export const getInternalMCPServerNameFromSId = (
+export function getInternalMCPServerNameFromSId(
   sId: string | null
-): InternalMCPServerNameType | null => {
+): InternalMCPServerNameType | null {
   if (sId === null) {
     return null;
   }
@@ -2086,61 +2077,62 @@ export const getInternalMCPServerNameFromSId = (
   }
 
   return null;
-};
+}
 
-export const getInternalMCPServerIconByName = (
+export function getInternalMCPServerIconByName(
   name: InternalMCPServerNameType
-): InternalAllowedIconType => {
+): InternalAllowedIconType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata.serverInfo.icon;
   }
   return server.serverInfo.icon;
-};
+}
 
-export const getInternalMCPServerToolStakes = (
+export function getInternalMCPServerToolStakes(
   name: InternalMCPServerNameType
-): Record<string, MCPToolStakeLevelType> | undefined => {
+): Record<string, MCPToolStakeLevelType> | undefined {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata.tools_stakes;
   }
   return server.tools_stakes;
-};
+}
 
-export const getInternalMCPServerInfo = (
+export function getInternalMCPServerInfo(
   name: InternalMCPServerNameType
-): InternalMCPServerDefinitionType => {
+): InternalMCPServerDefinitionType {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata.serverInfo;
   }
   return server.serverInfo;
-};
+}
 
-export const isInternalMCPServerName = (
+export function isInternalMCPServerName(
   name: string
-): name is InternalMCPServerNameType =>
-  AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
+): name is InternalMCPServerNameType {
+  return AVAILABLE_INTERNAL_MCP_SERVER_NAMES.includes(
     name as InternalMCPServerNameType
   );
+}
 
-export const isValidInternalMCPServerId = (
+export function isValidInternalMCPServerId(
   workspaceModelId: ModelId,
   sId: string
-): boolean => {
+): boolean {
   const r = getInternalMCPServerNameAndWorkspaceId(sId);
   if (r.isOk()) {
     return r.value.workspaceModelId === workspaceModelId;
   }
 
   return false;
-};
+}
 
-export const isInternalMCPServerOfName = (
+export function matchesInternalMCPServerName(
   sId: string | null,
   name: InternalMCPServerNameType
-): boolean => {
+): boolean {
   if (sId === null) {
     return false;
   }
@@ -2151,14 +2143,14 @@ export const isInternalMCPServerOfName = (
   }
 
   return false;
-};
+}
 
-export const getInternalMCPServerMetadata = (
+export function getInternalMCPServerMetadata(
   name: InternalMCPServerNameType
-): ServerMetadata | undefined => {
+): ServerMetadata | undefined {
   const server: InternalMCPServerEntry = INTERNAL_MCP_SERVERS[name];
   if (isServerWithMetadata(server)) {
     return server.metadata;
   }
   return undefined;
-};
+}

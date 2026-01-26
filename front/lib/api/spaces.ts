@@ -30,7 +30,13 @@ import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
-import { Err, Ok, removeNulls, SPACE_GROUP_PREFIX } from "@app/types";
+import {
+  Err,
+  Ok,
+  PROJECT_GROUP_PREFIX,
+  removeNulls,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
@@ -151,19 +157,34 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       const agentIds = uniq(
         usages.flatMap((u) => u.agents).map((agent) => agent.sId)
       );
+      const agentConfigurations = await getAgentConfigurations(auth, {
+        agentIds,
+        variant: "full",
+      });
+      const agentConfigurationsById = new Map(
+        agentConfigurations.map((config) => [config.sId, config])
+      );
+
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
+
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
-          const agentConfigs = await getAgentConfigurations(auth, {
-            agentIds: [agentId],
-            variant: "full",
-          });
-          const [agentConfig] = agentConfigs;
+          const agentConfig = agentConfigurationsById.get(agentId);
+          if (!agentConfig) {
+            logger.error(
+              {
+                agentId,
+                workspaceId: auth.getNonNullableWorkspace().sId,
+              },
+              "Agent configuration not found for space soft delete"
+            );
+            return;
+          }
 
           let skills: SkillResource[] = [];
-          const featureFlags = await getFeatureFlags(
-            auth.getNonNullableWorkspace()
-          );
           if (featureFlags.includes("skills")) {
             skills = await SkillResource.listByAgentConfiguration(
               auth,
@@ -354,7 +375,7 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const group = await GroupResource.makeNew(
+    const membersGroup = await GroupResource.makeNew(
       {
         name: `${SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
@@ -367,10 +388,25 @@ export async function createSpaceAndGroup(
       ? null
       : await GroupResource.fetchWorkspaceGlobalGroup(auth);
 
-    const groups = removeNulls([
-      group,
+    const memberGroups = removeNulls([
+      membersGroup,
       globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
     ]);
+
+    // Create the editor group for projects and add the creator
+    const editorGroups: GroupResource[] = [];
+    if (spaceKind === "project") {
+      const creator = auth.getNonNullableUser();
+      const editorGroup = await GroupResource.makeNew(
+        {
+          name: `${PROJECT_GROUP_PREFIX} ${name}`,
+          workspaceId: owner.id,
+          kind: "space_editors",
+        },
+        { transaction: t, memberIds: [creator.id] }
+      );
+      editorGroups.push(editorGroup);
+    }
 
     const space = await SpaceResource.makeNew(
       {
@@ -379,7 +415,7 @@ export async function createSpaceAndGroup(
         managementMode,
         workspaceId: owner.id,
       },
-      groups,
+      { members: memberGroups, editors: editorGroups },
       t
     );
 
@@ -388,7 +424,8 @@ export async function createSpaceAndGroup(
       const users = (await UserResource.fetchByIds(params.memberIds)).map(
         (user) => user.toJSON()
       );
-      const groupsResult = await group.addMembers(auth, users, {
+      const groupsResult = await membersGroup.addMembers(auth, {
+        users,
         transaction: t,
       });
       if (groupsResult.isErr()) {
@@ -443,11 +480,7 @@ export async function createSpaceAndGroup(
       await ProjectMetadataResource.makeNew(
         auth,
         space,
-        {
-          description: null,
-          urls: [],
-          tags: [],
-        },
+        { description: null, urls: [] },
         t
       );
     }

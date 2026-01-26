@@ -2,6 +2,7 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -12,7 +13,8 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { isString } from "@app/types";
+import type { Result } from "@app/types";
+import { isString, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
@@ -77,18 +79,18 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
       workspaceId: string;
       userId: string;
     }
-  ): Promise<RelatedCredential | undefined> {
+  ): Promise<Result<RelatedCredential, OAuthError> | undefined> {
     const { client_id, client_secret } = extraConfig;
     if (!client_id || !client_secret) {
       return undefined;
     }
-    return {
+    return new Ok({
       content: {
         client_id,
         client_secret,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
-    };
+    });
   }
 
   async getUpdatedExtraConfig(

@@ -1,7 +1,23 @@
-import { Button, ContentMessage, Input, Label } from "@dust-tt/sparkle";
+import {
+  ActionExternalLinkIcon,
+  ActionTrashIcon,
+  Button,
+  ContentMessage,
+  IconButton,
+  Input,
+  TextArea,
+} from "@dust-tt/sparkle";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  FormProvider,
+  useFieldArray,
+  useForm,
+  useFormContext,
+} from "react-hook-form";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import {
@@ -15,6 +31,140 @@ import type {
   SpaceType,
   UserType,
 } from "@app/types";
+import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
+import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
+
+interface ProjectUrlsSectionProps {
+  disabled?: boolean;
+}
+
+function ProjectUrlsSection({ disabled }: ProjectUrlsSectionProps) {
+  const { control } = useFormContext<PatchProjectMetadataBodyType>();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "urls",
+  });
+
+  const [newUrlName, setNewUrlName] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+
+  const handleAddUrl = useCallback(() => {
+    if (!newUrlName.trim() || !newUrl.trim()) {
+      return;
+    }
+    append({ name: newUrlName.trim(), url: newUrl.trim() });
+    setNewUrlName("");
+    setNewUrl("");
+  }, [newUrlName, newUrl, append]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleAddUrl();
+      }
+    },
+    [handleAddUrl]
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+          URLs
+        </h3>
+        <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+          Add relevant links for this project
+        </p>
+      </div>
+
+      {fields.length > 0 && (
+        <div className="flex flex-col gap-y-2">
+          {fields.map((field, index) => (
+            <div key={field.id} className="flex items-start gap-2">
+              <BaseFormFieldSection fieldName={`urls.${index}.name`}>
+                {({ registerRef, registerProps, onChange, errorMessage }) => (
+                  <Input
+                    ref={registerRef}
+                    placeholder="URL name"
+                    disabled={disabled}
+                    className="w-48"
+                    message={errorMessage}
+                    messageStatus={errorMessage ? "error" : "default"}
+                    onChange={onChange}
+                    {...registerProps}
+                  />
+                )}
+              </BaseFormFieldSection>
+
+              <BaseFormFieldSection fieldName={`urls.${index}.url`}>
+                {({ registerRef, registerProps, onChange, errorMessage }) => (
+                  <Input
+                    ref={registerRef}
+                    type="url"
+                    placeholder="URL"
+                    disabled={disabled}
+                    className="flex-1"
+                    message={errorMessage}
+                    messageStatus={errorMessage ? "error" : "default"}
+                    onChange={onChange}
+                    {...registerProps}
+                  />
+                )}
+              </BaseFormFieldSection>
+
+              <IconButton
+                icon={ActionExternalLinkIcon}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  window.open(field.url, "_blank", "noopener noreferrer");
+                }}
+                disabled={disabled ?? !field.url.trim()}
+                tooltip="Open URL"
+              />
+
+              <IconButton
+                icon={ActionTrashIcon}
+                variant="outline"
+                size="sm"
+                onClick={() => remove(index)}
+                disabled={disabled}
+                tooltip="Remove URL"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="flex items-start gap-2">
+        <Input
+          placeholder="URL name (e.g. Documentation)"
+          value={newUrlName}
+          onChange={(e) => setNewUrlName(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          className="w-48"
+        />
+        <Input
+          placeholder="URL (e.g. example.com)"
+          value={newUrl}
+          onChange={(e) => setNewUrl(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={disabled}
+          className="flex-1"
+        />
+        <Button
+          variant="outline"
+          size="sm"
+          label="Add"
+          onClick={handleAddUrl}
+          disabled={!newUrlName.trim() || !newUrl.trim() || disabled}
+        />
+      </div>
+    </div>
+  );
+}
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
@@ -46,9 +196,8 @@ export function SpaceAboutTab({
 
   const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
 
-  // Project metadata state
-  const [description, setDescription] = useState("");
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
+  // Project metadata form
+  const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const { projectMetadata, isProjectMetadataLoading } = useProjectMetadata({
     workspaceId: owner.sId,
     spaceId: space.sId,
@@ -58,12 +207,23 @@ export function SpaceAboutTab({
     spaceId: space.sId,
   });
 
-  // Sync description state with loaded metadata
+  const form = useForm<PatchProjectMetadataBodyType>({
+    resolver: zodResolver(PatchProjectMetadataBodySchema),
+    defaultValues: {
+      description: "",
+      urls: [],
+    },
+  });
+
+  // Sync form with loaded metadata
   useEffect(() => {
-    if (projectMetadata?.description) {
-      setDescription(projectMetadata.description);
+    if (projectMetadata) {
+      form.reset({
+        description: projectMetadata.description ?? "",
+        urls: projectMetadata.urls ?? [],
+      });
     }
-  }, [projectMetadata?.description]);
+  }, [projectMetadata, form]);
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
@@ -113,18 +273,11 @@ export function SpaceAboutTab({
     return true;
   }, [hasChanges, managementType, selectedMembers, selectedGroups]);
 
-  const hasDescriptionChanges = useMemo(() => {
-    return description !== (projectMetadata?.description ?? "");
-  }, [description, projectMetadata?.description]);
-
-  const onSaveDescription = useCallback(async () => {
-    if (!hasDescriptionChanges) {
-      return;
-    }
-    setIsSavingDescription(true);
-    await doUpdateMetadata({ description: description || null });
-    setIsSavingDescription(false);
-  }, [hasDescriptionChanges, doUpdateMetadata, description]);
+  const onSaveMetadata = form.handleSubmit(async (data) => {
+    setIsSavingMetadata(true);
+    await doUpdateMetadata(data);
+    setIsSavingMetadata(false);
+  });
 
   const onSave = useCallback(async () => {
     if (!canSave) {
@@ -163,32 +316,47 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-y-4 overflow-y-scroll p-8">
-      <div className="flex flex-col gap-y-2">
-        <Label>Description</Label>
-        <Input
-          placeholder={
-            isProjectMetadataLoading
-              ? "Loading..."
-              : "Describe what this project is about..."
-          }
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          disabled={isProjectMetadataLoading}
-        />
-        <div className="flex justify-end">
-          <Button
-            variant="primary"
-            size="sm"
-            label={isSavingDescription ? "Saving..." : "Save description"}
-            onClick={onSaveDescription}
-            disabled={
-              !hasDescriptionChanges ||
-              isSavingDescription ||
-              isProjectMetadataLoading
-            }
-          />
-        </div>
-      </div>
+      <FormProvider {...form}>
+        <form onSubmit={onSaveMetadata} className="flex flex-col gap-y-4">
+          <BaseFormFieldSection
+            fieldName="description"
+            title="Description"
+            helpText="Describe what this project is about"
+          >
+            {({ registerRef, registerProps, onChange, errorMessage }) => (
+              <TextArea
+                ref={registerRef}
+                placeholder={
+                  isProjectMetadataLoading
+                    ? "Loading..."
+                    : "Describe what this project is about..."
+                }
+                disabled={isProjectMetadataLoading}
+                error={errorMessage}
+                onChange={onChange}
+                rows={3}
+                {...registerProps}
+              />
+            )}
+          </BaseFormFieldSection>
+
+          <ProjectUrlsSection disabled={isProjectMetadataLoading} />
+
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              size="sm"
+              label={isSavingMetadata ? "Saving..." : "Save changes"}
+              type="submit"
+              disabled={
+                isSavingMetadata ||
+                isProjectMetadataLoading ||
+                !form.formState.isDirty
+              }
+            />
+          </div>
+        </form>
+      </FormProvider>
 
       <div className="border-t pt-4" />
 

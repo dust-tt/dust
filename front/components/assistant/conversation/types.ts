@@ -69,13 +69,15 @@ export type VirtuosoMessageListContext = {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  conversation: ConversationWithoutContentType | null;
-  enableReactions: boolean;
+  draftKey: string;
+  enableExtendedActions: boolean;
+  conversation?: ConversationWithoutContentType;
   agentBuilderContext?: {
     draftAgent?: LightAgentConfigurationType;
-    isSavingDraftAgent: boolean;
+    isSubmitting: boolean;
     actionsToShow: InputBarContainerProps["actions"];
     resetConversation: () => void;
+    clientSideMCPServerIds?: string[];
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
 };
@@ -91,7 +93,8 @@ export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
 export const isHiddenMessage = (message: VirtuosoMessage): boolean => {
   return (
     (isUserMessage(message) &&
-      message.context.origin === "onboarding_conversation") ||
+      (message.context.origin === "onboarding_conversation" ||
+        message.context.origin === "agent_copilot")) ||
     isHandoverUserMessage(message)
   );
 };
@@ -110,6 +113,10 @@ export const isMessageTemporayState = (
 
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
+
+export const isProjectConversation = (
+  conversation: ConversationWithoutContentType
+): boolean => !!conversation.spaceId;
 
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType

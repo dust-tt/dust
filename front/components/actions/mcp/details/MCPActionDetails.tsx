@@ -36,10 +36,7 @@ import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/deta
 import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
-import {
-  MCPImageEditingActionDetails,
-  MCPImageGenerationActionDetails,
-} from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
+import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
@@ -62,7 +59,6 @@ import {
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
-  EDIT_IMAGE_TOOL_NAME,
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
@@ -261,13 +257,11 @@ export function MCPActionDetails({
     return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (internalMCPServerName === "image_generation") {
-    switch (toolName) {
-      case GENERATE_IMAGE_TOOL_NAME:
-        return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
-      case EDIT_IMAGE_TOOL_NAME:
-        return <MCPImageEditingActionDetails {...toolOutputDetailsProps} />;
-    }
+  if (
+    internalMCPServerName === "image_generation" &&
+    toolName === GENERATE_IMAGE_TOOL_NAME
+  ) {
+    return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "run_agent") {
@@ -432,15 +426,18 @@ export function GenericActionDetails({
           {action.generatedFiles.filter((f) => !f.hidden).length > 0 && (
             <>
               <span className="heading-base">Generated Files</span>
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-wrap gap-2">
                 {action.generatedFiles
                   .filter((file) => !file.hidden)
                   .map((file) => {
                     if (isSupportedImageContentType(file.contentType)) {
                       return (
-                        <div key={file.fileId} className="mr-5">
+                        <div
+                          key={file.fileId}
+                          className="h-24 w-24 flex-shrink-0"
+                        >
                           <img
-                            className="rounded-xl"
+                            className="h-full w-full rounded-xl object-cover"
                             src={`/api/w/${owner.sId}/files/${file.fileId}`}
                             alt={`${file.title}`}
                           />

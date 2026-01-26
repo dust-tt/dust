@@ -1,88 +1,24 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
-import { InvitationsDataTable } from "@app/components/poke/invitations/table";
-import { MembersDataTable } from "@app/components/poke/members/table";
+import { MembershipsPage } from "@app/components/poke/pages/MembershipsPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { getMembershipInvitationUrl } from "@app/lib/api/invitation";
-import { getMembers } from "@app/lib/api/workspace";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
-import type {
-  MembershipInvitationTypeWithLink,
-  UserTypeWithWorkspaces,
-  WorkspaceType,
-} from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSideProps } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  members: UserTypeWithWorkspaces[];
-  pendingInvitations: MembershipInvitationTypeWithLink[];
-  owner: WorkspaceType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const user = auth.user();
+export const getServerSideProps = pokeGetServerSideProps;
 
-  if (!owner || !user) {
-    return {
-      notFound: true,
-    };
-  }
+const Page = MembershipsPage as PageWithLayout;
 
-  const [{ members }, pendingInvitations] = await Promise.all([
-    getMembers(auth),
-    MembershipInvitationResource.getPendingInvitations(auth, {
-      includeExpired: true,
-    }),
-  ]);
-
-  return {
-    props: {
-      members,
-      pendingInvitations: pendingInvitations.map((invite) => {
-        const i = invite.toJSON();
-        return {
-          ...i,
-          inviteLink: getMembershipInvitationUrl(owner, i),
-        };
-      }),
-      owner,
-    },
-  };
-});
-
-const MembershipsPage = ({
-  members,
-  pendingInvitations,
-  owner,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) => {
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
   return (
-    <>
-      <h3 className="text-xl font-bold">
-        Members of workspace{" "}
-        <a href={`/poke/${owner.sId}`} className="text-highlight-500">
-          {owner.name}
-        </a>
-      </h3>
-      <div className="flex-grow p-6">
-        <div className="flex justify-center">
-          <MembersDataTable members={members} owner={owner} />
-        </div>
-        <div className="flex justify-center">
-          <InvitationsDataTable
-            invitations={pendingInvitations}
-            owner={owner}
-          />
-        </div>
-      </div>
-    </>
+    <PokeLayout
+      title={`${pageProps.workspace?.name ?? "Workspace"} - Memberships`}
+      authContext={pageProps}
+    >
+      {page}
+    </PokeLayout>
   );
 };
 
-MembershipsPage.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: WorkspaceType }
-) => {
-  return <PokeLayout title={`${owner.name} - Memberships`}>{page}</PokeLayout>;
-};
-
-export default MembershipsPage;
+export default Page;

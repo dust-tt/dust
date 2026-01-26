@@ -611,7 +611,7 @@ describe("DELETE /api/w/[wId]/skills/[sId]", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData()).toEqual({ success: true });
 
-    // Verify the skill is now archived
+    // Verify the skill is now archived.
     const archivedSkill = await SkillResource.fetchById(
       requestUserAuth,
       suggestedSkill.sId

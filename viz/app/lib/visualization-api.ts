@@ -41,5 +41,6 @@ export interface VisualizationConfig {
   identifier: string;
   allowedOrigins: string[];
   isFullHeight?: boolean;
+  isPdfMode?: boolean;
   dataAPI: VisualizationDataAPI;
 }

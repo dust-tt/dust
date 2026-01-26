@@ -9,6 +9,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 import type { Readable, Writable } from "stream";
 import { validate } from "uuid";
 
@@ -121,20 +122,32 @@ export class FileResource extends BaseResource<FileModel> {
     );
   }
 
-  static async fetchByModelIdWithAuth(
+  static async fetchByModelIdsWithAuth(
     auth: Authenticator,
-    id: ModelId,
+    ids: ModelId[],
     transaction?: Transaction
-  ): Promise<FileResource | null> {
-    const file = await this.model.findOne({
+  ): Promise<FileResource[]> {
+    const files = await this.model.findAll({
       where: {
-        id,
+        id: {
+          [Op.in]: ids,
+        },
         workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
 
-    return file ? new this(this.model, file.get()) : null;
+    return files.map((f) => new this(this.model, f.get()));
+  }
+
+  static async fetchByModelIdWithAuth(
+    auth: Authenticator,
+    id: ModelId,
+    transaction?: Transaction
+  ): Promise<FileResource | null> {
+    const [file] = await this.fetchByModelIdsWithAuth(auth, [id], transaction);
+
+    return file ?? null;
   }
 
   static async fetchByShareTokenWithContent(token: string): Promise<{
@@ -473,7 +486,7 @@ export class FileResource extends BaseResource<FileModel> {
       this.getCloudStoragePath(auth, version),
       {
         // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 10 * 1000,
+        expirationDelay: 30 * 1000,
         promptSaveAs: this.fileName ?? `dust_${this.sId}`,
       }
     );
@@ -942,7 +955,8 @@ export class FileResource extends BaseResource<FileModel> {
       });
 
       // Use processAndStoreFile to handle the content processing and storage.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } =
+        await import("@app/lib/api/files/processing");
       const result = await processAndStoreFile(auth, {
         file: newFile,
         content: {

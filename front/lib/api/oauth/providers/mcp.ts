@@ -2,6 +2,7 @@ import type { ParsedUrlQuery } from "querystring";
 import { z } from "zod";
 
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -15,7 +16,8 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { getPKCEConfig } from "@app/lib/utils/pkce";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { OAuthAPI } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, OAuthAPI, Ok } from "@app/types";
 import type {
   OAuthConnectionType,
   OAuthProvider,
@@ -34,6 +36,7 @@ const BaseMCPMetadataSchema = z.object({
 const MCPOAuthConnectionMetadataSchema = BaseMCPMetadataSchema.extend({
   client_secret: z.string().optional(),
   scope: z.string().optional(),
+  resource: z.string().optional(),
 });
 
 const MCPMetadataSchema = BaseMCPMetadataSchema.extend({
@@ -60,6 +63,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
     const client_id = connection.metadata.client_id;
     const authorization_endpoint = connection.metadata.authorization_endpoint;
     const scope = connection.metadata.scope;
+    const resource = connection.metadata.resource;
 
     if (!code_challenge) {
       throw new Error("Missing code challenge");
@@ -88,6 +92,10 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
 
     if (scope) {
       authUrl.searchParams.set("scope", scope);
+    }
+
+    if (resource) {
+      authUrl.searchParams.set("resource", resource);
     }
 
     return authUrl.toString();
@@ -129,7 +137,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ): Promise<RelatedCredential> {
+  ): Promise<Result<RelatedCredential, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it.
@@ -143,10 +151,12 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "credential_retrieval_failed",
+            message:
+              "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message,
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -154,19 +164,23 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "credential_retrieval_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+            oAuthAPIError: connectionRes.error,
+          });
         }
         const connection = connectionRes.value.connection;
         const connectionId = connection.connection_id;
 
-        return {
+        return new Ok({
           content: {
             from_connection_id: connectionId,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
-        };
+        });
       }
     } else if (useCase === "platform_actions") {
       const { client_secret } = extraConfig;
@@ -180,12 +194,15 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
         content.client_secret = client_secret;
       }
 
-      return {
+      return new Ok({
         content,
         metadata: { workspace_id: workspaceId, user_id: userId },
-      };
+      });
     }
-    throw new Error("MCP oauth provider does not support use case: " + useCase);
+    return new Err({
+      code: "credential_retrieval_failed",
+      message: "MCP oauth provider does not support use case: " + useCase,
+    });
   }
 
   async getUpdatedExtraConfig(
@@ -235,6 +252,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           token_endpoint: connection.metadata.token_endpoint,
           authorization_endpoint: connection.metadata.authorization_endpoint,
           scope: connection.metadata.scope,
+          resource: connection.metadata.resource,
           code_verifier,
           code_challenge,
           ...restConfig,

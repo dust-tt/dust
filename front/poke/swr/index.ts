@@ -10,6 +10,10 @@ import type { PullTemplatesResponseBody } from "@app/pages/api/poke/templates/pu
 import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/documents";
 import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
+
+interface PokeAssistantTemplatesResponse extends FetchAssistantTemplatesResponse {
+  dustRegionSyncEnabled: boolean;
+}
 import type {
   ConversationType,
   DataSourceType,
@@ -46,11 +50,10 @@ export function usePokePullTemplates() {
 }
 
 export function usePokeAssistantTemplates() {
-  const assistantTemplatesFetcher: Fetcher<FetchAssistantTemplatesResponse> =
+  const assistantTemplatesFetcher: Fetcher<PokeAssistantTemplatesResponse> =
     fetcher;
 
   // Templates are shared across workspaces, not specific to a single one.
-  // Use the same endpoint as the front-end to fetch templates.
   const { data, error, mutate } = useSWR(
     "/api/poke/templates",
     assistantTemplatesFetcher
@@ -58,6 +61,7 @@ export function usePokeAssistantTemplates() {
 
   return {
     assistantTemplates: data?.templates ?? emptyArray(),
+    dustRegionSyncEnabled: data?.dustRegionSyncEnabled ?? false,
     isAssistantTemplatesLoading: !error && !data,
     isAssistantTemplatesError: error,
     mutateAssistantTemplates: mutate,

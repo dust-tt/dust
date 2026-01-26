@@ -1,4 +1,12 @@
-import { ArrowUpIcon, Button, Chip, cn, TextIcon } from "@dust-tt/sparkle";
+import {
+  ArrowUpIcon,
+  Button,
+  Chip,
+  cn,
+  TextIcon,
+  Toolbar,
+  VoicePicker,
+} from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { EditorContent } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
@@ -12,16 +20,14 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
-import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
-import { VoicePicker } from "@app/components/assistant/VoicePicker";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -39,10 +45,12 @@ import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
 import type {
+  ConversationWithoutContentType,
   DataSourceViewContentNode,
   LightAgentConfigurationType,
   RichAgentMention,
   RichMention,
+  SpaceType,
   WorkspaceType,
 } from "@app/types";
 import {
@@ -54,7 +62,7 @@ import {
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const INPUT_BAR_ACTIONS = [
-  "tools",
+  "capabilities",
   "attachment",
   "agents-list",
   "agents-list-with-actions",
@@ -68,7 +76,8 @@ export interface InputBarContainerProps {
   actions: InputBarAction[];
   allAgents: LightAgentConfigurationType[];
   attachedNodes: DataSourceViewContentNode[];
-  conversationId?: string | null;
+  conversation?: ConversationWithoutContentType;
+  space?: SpaceType;
   disableAutoFocus: boolean;
   disableInput: boolean;
   fileUploaderService: FileUploaderService;
@@ -93,7 +102,8 @@ const InputBarContainer = ({
   allAgents,
   onEnterKeyDown,
   owner,
-  conversationId,
+  conversation,
+  space,
   selectedAgent,
   stickyMentions,
   actions,
@@ -101,6 +111,7 @@ const InputBarContainer = ({
   isSubmitting,
   disableInput,
   fileUploaderService,
+  getDraft,
   onNodeSelect,
   onNodeUnselect,
   attachedNodes,
@@ -111,7 +122,6 @@ const InputBarContainer = ({
   onSkillDeselect,
   selectedSkills,
   saveDraft,
-  getDraft,
 }: InputBarContainerProps) => {
   const isMobile = useIsMobile();
   const [nodeOrUrlCandidate, setNodeOrUrlCandidate] = useState<
@@ -281,7 +291,7 @@ const InputBarContainer = ({
     disableAutoFocus,
     onUrlDetected: handleUrlDetected,
     owner,
-    conversationId,
+    conversationId: conversation?.sId,
     onInlineText: handleInlineText,
     onLongTextPaste: async ({ text, from, to }) => {
       let filename = "";
@@ -417,8 +427,21 @@ const InputBarContainer = ({
 
   const { spaces, isSpacesLoading } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: !nodeOrUrlCandidate,
   });
+
+  const spaceIds = useMemo(() => {
+    // We are having a conversation within a specific space, so we only allow datasources/tools from that space and the global space.
+    // This is a project v1 limitation.
+    if (space) {
+      return spaces
+        .filter((s) => s.sId === space.sId || s.kind === "global")
+        .map((s) => s.sId);
+    } else {
+      return spaces.map((s) => s.sId);
+    }
+  }, [spaces, space]);
 
   const spacesMap = useMemo(
     () => Object.fromEntries(spaces?.map((space) => [space.sId, space]) || []),
@@ -434,7 +457,7 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
           prioritizeSpaceAccess: true,
         }
       : {
@@ -445,7 +468,7 @@ const InputBarContainer = ({
           owner,
           viewType: "all",
           disabled: isSpacesLoading || !nodeOrUrlCandidate,
-          spaceIds: spaces.map((s) => s.sId),
+          spaceIds,
           prioritizeSpaceAccess: true,
         }
   );
@@ -515,7 +538,12 @@ const InputBarContainer = ({
 
   // Restore draft when switching conversations (including new conversations).
   useEffect(() => {
-    if (!editor) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !editor.isEditable ||
+      !editor.isInitialized
+    ) {
       return;
     }
 
@@ -524,7 +552,7 @@ const InputBarContainer = ({
     if (draft && editorService.isEmpty()) {
       editorService.setContent(draft.text);
     }
-  }, [conversationId, editor, editorService, getDraft]);
+  }, [conversation, editor, editorService, getDraft]);
 
   useHandleMentions(
     editorService,
@@ -573,7 +601,11 @@ const InputBarContainer = ({
           )}
         />
         <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
-          <Toolbar editor={editor} className="hidden sm:inline-flex" />
+          {editor && (
+            <Toolbar className="hidden sm:inline-flex">
+              <ToolBarContent editor={editor} />
+            </Toolbar>
+          )}
         </BubbleMenu>
         <div className="flex w-full flex-col py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center px-2">
@@ -639,9 +671,9 @@ const InputBarContainer = ({
             ))}
           </div>
           <div className="relative flex w-full items-center justify-between">
-            {!isRecording && (
-              <MobileToolbar
-                editor={editor}
+            {!isRecording && editor && (
+              <Toolbar
+                variant="overlay"
                 className={cn(
                   "sm:hidden",
                   isToolbarOpen
@@ -652,7 +684,9 @@ const InputBarContainer = ({
                   e.stopPropagation();
                   setIsToolbarOpen(false);
                 }}
-              />
+              >
+                <ToolBarContent editor={editor} />
+              </Toolbar>
             )}
             <div
               className={cn(
@@ -694,12 +728,13 @@ const InputBarContainer = ({
                         attachedNodes={attachedNodes}
                         disabled={disableTextInput}
                         buttonSize={buttonSize}
-                        conversationId={conversationId}
+                        conversation={conversation}
+                        space={space}
                       />
                     </>
                   )}
-                  {actions.includes("tools") && (
-                    <ToolsPicker
+                  {actions.includes("capabilities") && (
+                    <CapabilitiesPicker
                       owner={owner}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}
@@ -734,9 +769,14 @@ const InputBarContainer = ({
                 {owner.metadata?.allowVoiceTranscription !== false &&
                   actions.includes("voice") && (
                     <VoicePicker
-                      voiceTranscriberService={voiceTranscriberService}
+                      status={voiceTranscriberService.status}
+                      level={voiceTranscriberService.level}
+                      elapsedSeconds={voiceTranscriberService.elapsedSeconds}
+                      onRecordStart={voiceTranscriberService.startRecording}
+                      onRecordStop={voiceTranscriberService.stopRecording}
                       disabled={disableTextInput}
-                      buttonSize={buttonSize}
+                      size={buttonSize}
+                      showStopLabel={!isMobile}
                     />
                   )}
                 <Button

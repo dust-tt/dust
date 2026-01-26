@@ -13,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useCallback, useState } from "react";
 
 import { CreateConnectionOAuthModal } from "@app/components/data_source/CreateConnectionOAuthModal";
@@ -31,6 +30,7 @@ import {
   getConnectorProviderLogoWithFallback,
 } from "@app/lib/connector_providers_ui";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useSystemSpace } from "@app/lib/swr/spaces";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
@@ -132,7 +132,7 @@ export const AddConnectionMenu = ({
     integration: null,
   });
 
-  const router = useRouter();
+  const router = useAppRouter();
   const { isDark } = useTheme();
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { systemSpace } = useSystemSpace({ workspaceId: owner.sId });

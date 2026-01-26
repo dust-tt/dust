@@ -1,44 +1,21 @@
-import config from "@app/lib/api/config";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import logger from "@app/logger/logger";
-import type { ConnectorType } from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import type { ReactElement } from "react";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async (context) => {
-    const connectorId = context.params?.connectorId;
+import { ConnectorRedirectPage } from "@app/components/poke/pages/ConnectorRedirectPage";
+import PokeLayout from "@app/components/poke/PokeLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
 
-    if (!connectorId || typeof connectorId !== "string") {
-      return {
-        notFound: true,
-      };
-    }
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const cRes = await connectorsAPI.getConnector(connectorId);
-    if (cRes.isErr()) {
-      return {
-        notFound: true,
-      };
-    }
+const Page = ConnectorRedirectPage as PageWithLayout;
 
-    const connector: ConnectorType = {
-      ...cRes.value,
-      connectionId: null,
-    };
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <PokeLayout title="Connector Redirect" authContext={pageProps}>
+      {page}
+    </PokeLayout>
+  );
+};
 
-    return {
-      redirect: {
-        destination: `/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
-        permanent: false,
-      },
-    };
-  }
-);
-
-export default function Redirect() {
-  return <></>;
-}
+export default Page;

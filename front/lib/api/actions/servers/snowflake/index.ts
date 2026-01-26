@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { registerTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
+import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { SNOWFLAKE_TOOL_NAME } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { TOOLS } from "@app/lib/api/actions/servers/snowflake/tools";
@@ -14,7 +14,9 @@ function createServer(
   const server = makeInternalMCPServer("snowflake");
 
   for (const tool of TOOLS) {
-    registerTool(auth, server, agentLoopContext, SNOWFLAKE_TOOL_NAME, tool);
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: SNOWFLAKE_TOOL_NAME,
+    });
   }
 
   return server;

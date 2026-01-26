@@ -191,14 +191,11 @@ describe("GET /api/w/[wId]/skills", () => {
     // Create a restricted space without adding user to it
     const restrictedSpace = await SpaceFactory.regular(workspace);
 
-    // Create a skill and manually set its requestedSpaceIds to the restricted space
-    const restrictedSkill = await SkillFactory.create(authenticator, {
+    // Create a skill with requestedSpaceIds set to the restricted space
+    await SkillFactory.create(authenticator, {
       name: "Restricted Skill",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: restrictedSkill.id } }
-    );
 
     req.query = { ...req.query, wId: workspace.sId };
 
@@ -223,14 +220,11 @@ describe("GET /api/w/[wId]/skills", () => {
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
 
-    // Create a skill and set its requestedSpaceIds to the restricted space
-    const skill = await SkillFactory.create(authenticator, {
+    // Create a skill with requestedSpaceIds set to the restricted space
+    await SkillFactory.create(authenticator, {
       name: "Skill In Restricted Space",
+      requestedSpaceIds: [restrictedSpace.id],
     });
-    await SkillConfigurationModel.update(
-      { requestedSpaceIds: [restrictedSpace.id] },
-      { where: { id: skill.id } }
-    );
 
     req.query = { ...req.query, wId: workspace.sId };
 

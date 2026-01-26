@@ -188,7 +188,7 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   },
   snowflake_tool: {
     description: "Snowflake MCP tool for read-only SQL queries",
-    stage: "dust_only",
+    stage: "on_demand",
   },
   slack_message_splitting: {
     description:
@@ -234,9 +234,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Phone verification during trial sign-up",
     stage: "dust_only",
   },
-  sidebar_v2: {
-    description: "New sidebar layout with help menu in user menu",
+  ukg_ready_mcp: {
+    description: "UKG Ready MCP tool for workforce management",
     stage: "dust_only",
+  },
+  statuspage_tool: {
+    description: "Statuspage MCP tool for incident management",
+    stage: "dust_only",
+  },
+  dust_academy: {
+    description: "Access to Dust Academy learning content",
+    stage: "on_demand",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

@@ -93,9 +93,10 @@ export type UserMessageOrigin =
   | "web"
   | "zapier"
   | "zendesk"
-  // TODO onboarding_conversation isn't a message origin. It has been used so as a hack
-  // but should be removed and most likely handled as message metadata (to be created).
-  | "onboarding_conversation";
+  // TODO onboarding_conversation and agent_copilot aren't message origins. They have been used
+  // as a hack but should be removed and most likely handled as message metadata (to be created).
+  | "onboarding_conversation"
+  | "agent_copilot";
 
 export type UserMessageContext = {
   username: string;
@@ -277,6 +278,8 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
+export type ConversationMetadata = Record<string, unknown>;
+
 /**
  * A lighter version of Conversation without the content (for menu display).
  */
@@ -292,6 +295,7 @@ export type ConversationWithoutContentType = {
   spaceId: string | null;
   triggerId: string | null;
   depth: number;
+  metadata: ConversationMetadata;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];

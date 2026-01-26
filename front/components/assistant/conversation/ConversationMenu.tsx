@@ -4,7 +4,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuPortal,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -16,7 +15,6 @@ import {
   TrashIcon,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -27,13 +25,13 @@ import { LeaveConversationDialog } from "@app/components/assistant/conversation/
 import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { useAppRouter } from "@app/lib/platform";
 import {
   useConversationParticipants,
   useConversationParticipationOptions,
   useJoinConversation,
 } from "@app/lib/swr/conversations";
 import { useUser } from "@app/lib/swr/user";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute, setQueryParam } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 
@@ -116,7 +114,7 @@ export function ConversationMenu({
   triggerPosition,
 }: {
   activeConversationId: string | null;
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType;
   trigger: ReactElement;
   isConversationDisplayed: boolean;
@@ -125,7 +123,7 @@ export function ConversationMenu({
   triggerPosition?: { x: number; y: number };
 }) {
   const { user } = useUser();
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
 
   const { onOpenChange: onOpenChangeAgentModal } = useURLSheet("agentDetails");
@@ -156,10 +154,6 @@ export function ConversationMenu({
       disabled: shouldWaitBeforeFetching,
     },
   });
-  const { hasFeature } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
-  const isSidebarV2 = hasFeature("sidebar_v2");
   const joinConversation = useJoinConversation({
     ownerId: owner.sId,
     conversationId: activeConversationId,
@@ -256,189 +250,85 @@ export function ConversationMenu({
           <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         )}
         <DropdownMenuContent>
-          {isSidebarV2 ? (
-            <>
-              <DropdownMenuItem
-                label="Rename"
-                onClick={() => setShowRenameDialog(true)}
-                icon={PencilSquareIcon}
-              />
-              {conversationParticipants !== undefined &&
-                (conversationParticipants.users.length > 0 ||
-                  conversationParticipants.agents.length > 0) && (
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger
-                      icon={ContactsUserIcon}
-                      label="Participant list"
-                    />
-                    <DropdownMenuPortal>
-                      <DropdownMenuSubContent>
-                        {conversationParticipants.agents.map((agent) => (
-                          <DropdownMenuItem
-                            key={agent.configurationId}
-                            label={agent.name}
-                            onClick={() =>
-                              handleSeeAgentDetails(agent.configurationId)
-                            }
-                            icon={
-                              <Avatar
-                                size="xs"
-                                visual={agent.pictureUrl}
-                                name={agent.name}
-                              />
-                            }
+          <DropdownMenuItem
+            label="Rename"
+            onClick={() => setShowRenameDialog(true)}
+            icon={PencilSquareIcon}
+          />
+          {conversationParticipants !== undefined &&
+            (conversationParticipants.users.length > 0 ||
+              conversationParticipants.agents.length > 0) && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger
+                  icon={ContactsUserIcon}
+                  label="Participant list"
+                />
+                <DropdownMenuPortal>
+                  <DropdownMenuSubContent>
+                    {conversationParticipants.agents.map((agent) => (
+                      <DropdownMenuItem
+                        key={agent.configurationId}
+                        label={agent.name}
+                        onClick={() =>
+                          handleSeeAgentDetails(agent.configurationId)
+                        }
+                        icon={
+                          <Avatar
+                            size="xs"
+                            visual={agent.pictureUrl}
+                            name={agent.name}
                           />
-                        ))}
-                        {conversationParticipants.users.map((user) => (
-                          <DropdownMenuItem
-                            key={user.sId}
-                            label={user.fullName ?? user.username}
-                            onClick={() => handleSeeUserDetails(user.sId)}
-                            icon={
-                              <Avatar
-                                size="xs"
-                                visual={user.pictureUrl}
-                                name={user.fullName ?? user.username}
-                                isRounded
-                              />
-                            }
-                            className="!text-foreground dark:!text-foreground-night"
+                        }
+                      />
+                    ))}
+                    {conversationParticipants.users.map((user) => (
+                      <DropdownMenuItem
+                        key={user.sId}
+                        label={user.fullName ?? user.username}
+                        onClick={() => handleSeeUserDetails(user.sId)}
+                        icon={
+                          <Avatar
+                            size="xs"
+                            visual={user.pictureUrl}
+                            name={user.fullName ?? user.username}
+                            isRounded
                           />
-                        ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuPortal>
-                  </DropdownMenuSub>
-                )}
-              {shareLink && (
-                <DropdownMenuItem
-                  label="Copy the link"
-                  onClick={copyConversationLink}
-                  icon={LinkIcon}
-                />
-              )}
-              {canJoin && (
-                <DropdownMenuItem
-                  label="Join"
-                  onClick={joinConversation}
-                  icon={PlusCircleIcon}
-                />
-              )}
-              {canLeave && (
-                <DropdownMenuItem
-                  label="Leave"
-                  onClick={() => setShowLeaveDialog(true)}
-                  icon={XMarkIcon}
-                />
-              )}
-              {canDelete && (
-                <DropdownMenuItem
-                  label="Delete"
-                  onClick={() => setShowDeleteDialog(true)}
-                  icon={TrashIcon}
-                  variant="warning"
-                />
-              )}
-            </>
-          ) : (
-            <>
-              <DropdownMenuLabel>Conversation</DropdownMenuLabel>
-              <DropdownMenuItem
-                label="Rename"
-                onClick={() => setShowRenameDialog(true)}
-                icon={PencilSquareIcon}
-              />
-              {conversationParticipationOptions.map(
-                (conversationParticipationOption) => {
-                  switch (conversationParticipationOption) {
-                    case "delete":
-                      return (
-                        <DropdownMenuItem
-                          key="delete"
-                          label="Delete"
-                          onClick={() => setShowDeleteDialog(true)}
-                          icon={TrashIcon}
-                        />
-                      );
-                    case "leave":
-                      return (
-                        <DropdownMenuItem
-                          key="leave"
-                          label="Leave"
-                          onClick={() => setShowLeaveDialog(true)}
-                          icon={XMarkIcon}
-                        />
-                      );
-                    case "join":
-                      return (
-                        <DropdownMenuItem
-                          key="join"
-                          label="Join"
-                          onClick={joinConversation}
-                          icon={PlusCircleIcon}
-                        />
-                      );
-                    default:
-                      return null;
-                  }
-                }
-              )}
-              {shareLink && (
-                <>
-                  <DropdownMenuLabel>Share the conversation</DropdownMenuLabel>
-                  <DropdownMenuItem
-                    label="Copy the link"
-                    onClick={copyConversationLink}
-                    icon={LinkIcon}
-                  />
-                </>
-              )}
-              {conversationParticipants === undefined ? null : (
-                <>
-                  {conversationParticipants.users.length > 0 && (
-                    <>
-                      <DropdownMenuLabel>Participants</DropdownMenuLabel>
-                      {conversationParticipants.users.map((user) => (
-                        <DropdownMenuItem
-                          key={user.sId}
-                          label={user.fullName ?? user.username}
-                          onClick={() => handleSeeUserDetails(user.sId)}
-                          icon={
-                            <Avatar
-                              size="xs"
-                              visual={user.pictureUrl}
-                              name={user.fullName ?? user.username}
-                              isRounded
-                            />
-                          }
-                          className="!text-foreground dark:!text-foreground-night"
-                        />
-                      ))}
-                    </>
-                  )}
-                  {conversationParticipants.agents.length > 0 && (
-                    <>
-                      <DropdownMenuLabel>Agents</DropdownMenuLabel>
-                      {conversationParticipants.agents.map((agent) => (
-                        <DropdownMenuItem
-                          key={agent.configurationId}
-                          label={agent.name}
-                          onClick={() =>
-                            handleSeeAgentDetails(agent.configurationId)
-                          }
-                          icon={
-                            <Avatar
-                              size="xs"
-                              visual={agent.pictureUrl}
-                              name={agent.name}
-                            />
-                          }
-                        />
-                      ))}
-                    </>
-                  )}
-                </>
-              )}
-            </>
+                        }
+                        className="!text-foreground dark:!text-foreground-night"
+                      />
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuPortal>
+              </DropdownMenuSub>
+            )}
+          {shareLink && (
+            <DropdownMenuItem
+              label="Copy the link"
+              onClick={copyConversationLink}
+              icon={LinkIcon}
+            />
+          )}
+          {canJoin && (
+            <DropdownMenuItem
+              label="Join"
+              onClick={joinConversation}
+              icon={PlusCircleIcon}
+            />
+          )}
+          {canLeave && (
+            <DropdownMenuItem
+              label="Leave"
+              onClick={() => setShowLeaveDialog(true)}
+              icon={XMarkIcon}
+            />
+          )}
+          {canDelete && (
+            <DropdownMenuItem
+              label="Delete"
+              onClick={() => setShowDeleteDialog(true)}
+              icon={TrashIcon}
+              variant="warning"
+            />
           )}
         </DropdownMenuContent>
       </DropdownMenu>

@@ -48,6 +48,7 @@ export const OAUTH_PROVIDERS = [
   "zendesk",
   "salesforce",
   "hubspot",
+  "ukg_ready",
   "mcp", // MCP is a special provider for MCP servers.
   "mcp_static", // MCP static is a special provider for MCP servers requiring static OAuth credentials.
   "snowflake", // Snowflake OAuth for MCP server integration.
@@ -78,6 +79,7 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   zendesk: "Zendesk",
   salesforce: "Salesforce",
   hubspot: "Hubspot",
+  ukg_ready: "UKG Ready",
   mcp: "MCP",
   mcp_static: "MCP",
   snowflake: "Snowflake",
@@ -91,6 +93,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "code_verifier",
   "code_challenge",
   "scope",
+  "resource",
   "token_endpoint",
   "authorization_endpoint",
   "freshservice_domain",
@@ -100,6 +103,7 @@ const SUPPORTED_OAUTH_CREDENTIALS = [
   "snowflake_account",
   "snowflake_role",
   "snowflake_warehouse",
+  "ukg_ready_company_id",
 ] as const;
 
 export type SupportedOAuthCredentials =
@@ -269,6 +273,33 @@ export function getProviderRequiredOAuthCredentialInputs({
         return result;
       }
       return null;
+    case "ukg_ready":
+      if (useCase === "personal_actions") {
+        // UKG Ready uses PKCE authorization code flow (no client_secret needed)
+        const result: OAuthCredentialInputs = {
+          instance_url: {
+            label: "UKG Ready Instance URL",
+            value: undefined,
+            helpMessage:
+              "Your UKG Ready instance URL (e.g., https://secure0.saashr.com)",
+            validator: isValidUrl,
+          },
+          ukg_ready_company_id: {
+            label: "Company ID",
+            value: undefined,
+            helpMessage: "Your UKG Ready company identifier",
+            validator: isValidClientIdOrSecret,
+          },
+          client_id: {
+            label: "OAuth Client ID",
+            value: undefined,
+            helpMessage: "The client ID from your UKG Ready OAuth app",
+            validator: isValidClientIdOrSecret,
+          },
+        };
+        return result;
+      }
+      return null;
     case "hubspot":
     case "slack":
     case "slack_tools":
@@ -372,7 +403,9 @@ export function getProviderRequiredOAuthCredentialInputs({
             label: "Default Snowflake Role",
             value: undefined,
             helpMessage:
-              "The default role for users (e.g., ANALYST). Users can override this during their personal authentication.",
+              useCase === "platform_actions"
+                ? "The Snowflake role for all users (e.g., ANALYST)."
+                : "The default Snowflake role (e.g., ANALYST). Users can override this during their personal authentication.",
             validator: isValidSnowflakeRole,
             overridableAtPersonalAuth: true,
             personalAuthLabel: "Snowflake Role",

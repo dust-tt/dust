@@ -5,6 +5,7 @@ import type {
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
+import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -80,10 +81,14 @@ export function buildServerSideMCPServerConfiguration({
   mcpServerView,
   dataSources = null,
   serverNameOverride,
+  childAgentId = null,
+  additionalConfiguration = {},
 }: {
   mcpServerView: MCPServerViewResource;
   dataSources?: DataSourceConfiguration[] | null;
   serverNameOverride?: string;
+  childAgentId?: string | null;
+  additionalConfiguration?: AdditionalConfigurationType;
 }): ServerSideMCPServerConfigurationType {
   const { server } = mcpServerView.toJSON();
 
@@ -98,8 +103,8 @@ export function buildServerSideMCPServerConfiguration({
     internalMCPServerId: mcpServerView.internalMCPServerId,
     dataSources,
     tables: null,
-    childAgentId: null,
-    additionalConfiguration: {},
+    childAgentId,
+    additionalConfiguration,
     timeFrame: null,
     dustAppConfiguration: null,
     jsonSchema: null,

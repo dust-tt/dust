@@ -33,7 +33,8 @@ import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemo
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
-import { isMCPConfigurationForAgentMemory } from "@app/lib/actions/types/guards";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationScope,
@@ -116,17 +117,18 @@ export function AgentDetails({
   const showEditorsTabs = agentId != null && !isGlobalAgent;
   const showTriggersTabs =
     agentId != null && agentId === GLOBAL_AGENTS_SID.DUST;
-  const showAgentMemory = !!agentConfiguration?.actions.find(
-    isMCPConfigurationForAgentMemory
+  const showAgentMemory = !!agentConfiguration?.actions.find((arg) =>
+    isServerSideMCPServerConfigurationWithName(arg, AGENT_MEMORY_SERVER_NAME)
   );
 
   const showPerformanceTabs =
-    (agentConfiguration?.canEdit ?? isAdmin(owner)) &&
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    (agentConfiguration?.canEdit || isAdmin(owner)) &&
     agentId != null &&
     !isGlobalAgent;
 
   const showInsightsTabs =
-    agentId != null && (isBuilder(owner) ?? agentConfiguration?.canEdit);
+    agentId != null && (isBuilder(owner) || agentConfiguration?.canEdit);
 
   const DescriptionSection = () => {
     const lastAuthor = agentConfiguration?.lastAuthors?.[0];
@@ -240,7 +242,8 @@ export function AgentDetails({
               {showEditorsTabs ||
               showPerformanceTabs ||
               showAgentMemory ||
-              showInsightsTabs ? (
+              showInsightsTabs ||
+              showTriggersTabs ? (
                 <Tabs value={selectedTab}>
                   <TabsList border={false}>
                     <TabsTrigger

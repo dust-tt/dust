@@ -11,8 +11,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Icon,
+  LinkIcon,
   MoreIcon,
   PencilSquareIcon,
+  Toolbar,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -24,7 +26,7 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -41,7 +43,9 @@ import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { useSendNotification } from "@app/hooks/useNotification";
+import config from "@app/lib/api/config";
+import { getConversationRoute } from "@app/lib/utils/router";
 import { formatTimestring } from "@app/lib/utils/timestamps";
 import type {
   UserMessageType,
@@ -85,7 +89,11 @@ function UserMessageEditor({
       />
 
       <BubbleMenu editor={editor} className="hidden sm:flex">
-        <Toolbar editor={editor} className="hidden sm:inline-flex" />
+        {editor && (
+          <Toolbar className="hidden sm:inline-flex">
+            <ToolBarContent editor={editor} />
+          </Toolbar>
+        )}
       </BubbleMenu>
 
       <div className="flex justify-end gap-2">
@@ -110,7 +118,7 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
-  enableReactions: boolean;
+  enableExtendedActions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -121,7 +129,7 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
-  enableReactions,
+  enableExtendedActions,
   currentUserId,
   isLastMessage,
   message,
@@ -141,10 +149,6 @@ export function UserMessage({
     conversationId,
   });
   const confirm = useContext(ConfirmContext);
-
-  const featureFlags = useFeatureFlags({ workspaceId: owner.sId });
-  const reactionsEnabled =
-    featureFlags.hasFeature("projects") && enableReactions;
 
   const handleSave = async () => {
     const { markdown, mentions } = editorService.getMarkdownAndMentions();
@@ -324,11 +328,13 @@ export function UserMessage({
             isUserMessageHovered={isUserMessageHovered}
             message={message}
             onReactionToggle={onReactionToggle}
-            reactionsEnabled={reactionsEnabled}
+            enableExtendedActions={enableExtendedActions}
             handleEditMessage={handleEditMessage}
             handleDeleteMessage={handleDeleteMessage}
             canDelete={canDelete}
             canEdit={canEdit}
+            conversationId={conversationId}
+            owner={owner}
           />
         </ConversationMessageContainer>
       )}
@@ -390,7 +396,7 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
 
 function ActionMenu({
   isDeleted,
-  reactionsEnabled,
+  enableExtendedActions,
   showActions,
   canEdit,
   canDelete,
@@ -399,9 +405,11 @@ function ActionMenu({
   message,
   onReactionToggle,
   isUserMessageHovered,
+  conversationId,
+  owner,
 }: {
   isDeleted: boolean;
-  reactionsEnabled: boolean;
+  enableExtendedActions: boolean;
   showActions: boolean;
   canEdit: boolean;
   canDelete: boolean;
@@ -410,11 +418,37 @@ function ActionMenu({
   message: UserMessageTypeWithContentFragments;
   onReactionToggle: (emoji: string) => void;
   isUserMessageHovered: boolean;
+  conversationId: string;
+  owner: WorkspaceType;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const sendNotification = useSendNotification();
+
+  const handleCopyMessageLink = () => {
+    const messageUrl = `${getConversationRoute(
+      owner.sId,
+      conversationId,
+      undefined,
+      config.getClientFacingUrl()
+    )}#${message.sId}`;
+    void navigator.clipboard.writeText(messageUrl);
+    sendNotification({
+      type: "success",
+      title: "Message link copied to clipboard",
+    });
+  };
 
   const actions = showActions
     ? [
+        ...(enableExtendedActions
+          ? [
+              {
+                icon: LinkIcon,
+                label: "Copy message link",
+                onClick: handleCopyMessageLink,
+              },
+            ]
+          : []),
         ...(canEdit
           ? [
               {
@@ -438,7 +472,7 @@ function ActionMenu({
 
   return (
     <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
-      {!isDeleted && reactionsEnabled && (
+      {!isDeleted && enableExtendedActions && (
         <>
           <MessageReactions
             reactions={message.reactions ?? []}

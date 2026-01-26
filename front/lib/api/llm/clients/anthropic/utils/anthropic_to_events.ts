@@ -247,7 +247,7 @@ function* handleStopReason(
         {
           type: "stop_error",
           message: `Stop reason: ${stopReason}`,
-          isRetryable: false,
+          isRetryable: true,
         },
         metadata
       );
@@ -256,7 +256,7 @@ function* handleStopReason(
     case "refusal":
       yield new EventError(
         {
-          type: "stop_error",
+          type: "refusal_error",
           message:
             "Claude enhanced safety filters prevented this response. This can happen with " +
             "certain images, document IDs, or in longer conversations. Try starting a new " +

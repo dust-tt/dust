@@ -1,4 +1,4 @@
-import { Button, DustLogo } from "@dust-tt/sparkle";
+import { ArrowRightIcon, Button, DustLogo } from "@dust-tt/sparkle";
 import { cva } from "class-variance-authority";
 import Head from "next/head";
 import Link from "next/link";
@@ -15,7 +15,9 @@ import UTMButton from "@app/components/UTMButton";
 import UTMHandler from "@app/components/UTMHandler";
 import {
   DUST_COOKIES_ACCEPTED,
+  DUST_HAS_SESSION,
   hasCookiesAccepted,
+  hasSessionIndicator,
   shouldCheckGeolocation,
 } from "@app/lib/cookies";
 import { useGeolocation } from "@app/lib/swr/geo";
@@ -42,14 +44,23 @@ export default function LandingLayout({
     utmParams,
   } = pageProps;
 
-  const [cookies, setCookie] = useCookies([DUST_COOKIES_ACCEPTED], {
-    doNotParse: true,
-  });
+  const [cookies, setCookie] = useCookies(
+    [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
+    {
+      doNotParse: true,
+    }
+  );
   const [showCookieBanner, setShowCookieBanner] = useState<boolean>(false);
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const [hasAcceptedCookies, setHasAcceptedCookies] = useState<boolean>(
     hasCookiesAccepted(cookieValue, null)
   );
+
+  // Check session cookie only on client to avoid hydration mismatch.
+  const [hasSession, setHasSession] = useState(false);
+  useEffect(() => {
+    setHasSession(hasSessionIndicator(cookies[DUST_HAS_SESSION]));
+  }, [cookies]);
 
   const shouldCheckGeo = shouldCheckGeolocation(cookieValue);
 
@@ -115,33 +126,53 @@ export default function LandingLayout({
           </div>
           <MobileNavigation />
           <div className="block xl:hidden">
-            <Link href="/">
-              <DustLogo className="h-[24px] w-[96px]" />
-            </Link>
+            <PublicWebsiteLogo />
           </div>
           <MainNavigation />
           <div className="flex flex-grow justify-end gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              label="Sign in"
-              onClick={withTracking(
-                TRACKING_AREAS.NAVIGATION,
-                "sign_in",
-                () => {
-                  // eslint-disable-next-line react-hooks/immutability
-                  window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
-                }
-              )}
-            />
-            <UTMButton
-              href="/home/contact"
-              className="hidden xs:inline-flex"
-              variant="highlight"
-              size="sm"
-              label="Contact sales"
-              onClick={withTracking(TRACKING_AREAS.NAVIGATION, "contact_sales")}
-            />
+            {hasSession ? (
+              <Button
+                variant="highlight"
+                size="sm"
+                label="Open Dust"
+                icon={ArrowRightIcon}
+                onClick={withTracking(
+                  TRACKING_AREAS.NAVIGATION,
+                  "go_to_app",
+                  () => {
+                    // eslint-disable-next-line react-hooks/immutability
+                    window.location.href = "/api/login";
+                  }
+                )}
+              />
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Sign in"
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "sign_in",
+                    () => {
+                      // eslint-disable-next-line react-hooks/immutability
+                      window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                    }
+                  )}
+                />
+                <UTMButton
+                  href="/home/contact"
+                  className="hidden xs:inline-flex"
+                  variant="highlight"
+                  size="sm"
+                  label="Contact sales"
+                  onClick={withTracking(
+                    TRACKING_AREAS.NAVIGATION,
+                    "contact_sales"
+                  )}
+                />
+              </>
+            )}
           </div>
         </div>
       </ScrollingHeader>
@@ -373,7 +404,7 @@ export const PublicWebsiteLogo = ({
   const className = logoVariants({ size });
 
   return (
-    <Link href={`/${utmParam ? `?${utmParam}` : ""}`}>
+    <Link href={`/home${utmParam ? `?${utmParam}` : ""}`}>
       <DustLogo className={className} />
     </Link>
   );

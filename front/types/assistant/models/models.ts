@@ -41,7 +41,6 @@ import {
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
 } from "./fireworks";
 import {
-  GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
   GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -50,6 +49,7 @@ import {
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_ID,
+  GEMINI_3_PRO_IMAGE_MODEL_ID,
   GEMINI_3_PRO_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_ID,
 } from "./google_ai_studio";
@@ -195,7 +195,7 @@ export const isModelId = (modelId: string): modelId is ModelIdType =>
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
 // Image generation model IDs (internal-only, not user-selectable)
-export const IMAGE_MODEL_IDS = [GEMINI_2_5_FLASH_IMAGE_MODEL_ID] as const;
+export const IMAGE_MODEL_IDS = [GEMINI_3_PRO_IMAGE_MODEL_ID] as const;
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [

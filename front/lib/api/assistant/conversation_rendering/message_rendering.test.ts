@@ -146,6 +146,7 @@ describe("renderAllMessages", () => {
       visibility: "unlisted",
       content: content as ConversationType["content"],
       triggerId: null,
+      metadata: {},
     } as ConversationType;
   }
 

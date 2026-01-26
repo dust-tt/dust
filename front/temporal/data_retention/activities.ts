@@ -1,11 +1,9 @@
 import { heartbeat } from "@temporalio/activity";
-import { Op } from "sequelize";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
 import { Authenticator } from "@app/lib/auth";
 import { AgentDataRetentionModel } from "@app/lib/models/agent/agent_data_retention";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -19,15 +17,7 @@ const HEARTBEAT_RATE = 100;
 export async function getWorkspacesWithConversationsRetentionActivity(): Promise<
   number[]
 > {
-  const workspaces = await WorkspaceModel.findAll({
-    attributes: ["id"],
-    where: {
-      conversationsRetentionDays: {
-        [Op.not]: null,
-      },
-    },
-  });
-  return workspaces.map((w) => w.id);
+  return WorkspaceResource.listModelIdsWithConversationsRetention();
 }
 
 /**

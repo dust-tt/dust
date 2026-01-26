@@ -160,6 +160,7 @@ function KnowledgeSearchComponent({
   // Get spaces for location display.
   const { spaces } = useSpaces({
     workspaceId: owner.sId,
+    kinds: ["global", "regular", "project"],
     disabled: false,
   });
 
@@ -179,8 +180,9 @@ function KnowledgeSearchComponent({
       // Tables can't be attached to a skill.
       viewType: "document",
       includeDataSources: false,
-      searchSourceUrls: false,
+      searchSourceUrls: true,
       includeTools: false,
+      prioritizeSpaceAccess: true,
     }
   );
 
@@ -309,12 +311,12 @@ function KnowledgeSearchComponent({
 
   // Delete empty node helper.
   const deleteIfEmpty = useCallback(
-    (delay: number = 50) => {
+    (delayMs: number = 50) => {
       setTimeout(() => {
         if (!searchQuery.trim()) {
           onCancel();
         }
-      }, delay);
+      }, delayMs);
     },
     [searchQuery, onCancel]
   );

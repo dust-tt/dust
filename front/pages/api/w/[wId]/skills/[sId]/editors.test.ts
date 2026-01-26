@@ -20,7 +20,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -54,7 +54,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -86,7 +86,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -117,7 +117,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -153,7 +153,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",
@@ -182,7 +182,7 @@ describe("PATCH /api/w/[wId]/skills/[sId]/editors", () => {
     const auth = new Authenticator({
       user,
       role: "admin",
-      groups: [],
+      groupModelIds: [],
       workspace: workspaceResource,
       subscription: null,
       authMethod: "internal",

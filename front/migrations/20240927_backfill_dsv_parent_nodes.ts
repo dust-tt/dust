@@ -7,6 +7,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { DataSourceViewModel } from "@app/lib/resources/storage/models/data_source_view";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 makeScript({}, async ({ execute }, logger) => {
   let revertScript = "";
@@ -22,9 +23,9 @@ makeScript({}, async ({ execute }, logger) => {
   logger.info(`Found ${dataSourceViews.length} data source views to process`);
 
   for (const dataSourceView of dataSourceViews) {
-    const workspace = await WorkspaceModel.findOne({
-      where: { id: dataSourceView.workspaceId },
-    });
+    const workspace = await WorkspaceResource.fetchByModelId(
+      dataSourceView.workspaceId
+    );
 
     if (!workspace) {
       logger.warn(`Couldn't find workspace ${dataSourceView.workspaceId}`);

@@ -8,7 +8,6 @@ import {
 } from "@dust-tt/sparkle";
 import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 
 import { clientFetch } from "@app/lib/egress/client";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
@@ -156,17 +155,18 @@ export function makeColumnsForAssistants(
                     ));
               }}
             />
-            <Link
+            <a
               href={`/api/poke/workspaces/${owner.sId}/agent_configurations/${assistant.sId}/export`}
               download={`${assistant.name}.json`}
               target="_blank"
+              rel="noopener noreferrer"
             >
               <IconButton
                 icon={ArrowDownOnSquareIcon}
                 size="xs"
                 variant="outline"
               />
-            </Link>
+            </a>
           </>
         );
       },

@@ -1,6 +1,4 @@
 import { cn } from "@dust-tt/sparkle";
-import Head from "next/head";
-import type { NextRouter } from "next/router";
 import React from "react";
 
 import type { SidebarNavigation } from "@app/components/navigation/config";
@@ -10,6 +8,8 @@ import { SubscriptionEndBanner } from "@app/components/navigation/TrialBanner";
 import { AppLayoutTitle } from "@app/components/sparkle/AppLayoutTitle";
 import { NavigationLoadingOverlay } from "@app/components/sparkle/NavigationLoadingOverlay";
 import { useAppKeyboardShortcuts } from "@app/hooks/useAppKeyboardShortcuts";
+import type { AppRouter } from "@app/lib/platform";
+import { Head } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { SubscriptionType, WorkspaceType } from "@app/types";
 import { isAdmin } from "@app/types";
@@ -18,7 +18,7 @@ import { isAdmin } from "@app/types";
 // fallback to the landing if we linked directly to that modal.
 export const appLayoutBack = async (
   owner: WorkspaceType,
-  router: NextRouter
+  router: AppRouter
 ) => {
   // TODO(2024-02-08 flav) Remove once internal router is in better shape. Opening a new tab/window
   // counts the default page as an entry in the history stack, leading to a history length of 2.

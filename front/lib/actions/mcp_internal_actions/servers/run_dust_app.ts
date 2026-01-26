@@ -16,6 +16,7 @@ import type {
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
@@ -24,8 +25,8 @@ import type {
   AgentLoopRunContextType,
 } from "@app/lib/actions/types";
 import {
-  isMCPConfigurationForDustAppRun,
-  isMCPInternalDustAppRun,
+  isLightServerSideMCPToolConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import config from "@app/lib/api/config";
@@ -127,7 +128,7 @@ async function prepareAppContext(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
-        groupIds: auth.groups().map((g) => g.sId),
+        groupIds: auth.groupIds(),
         actionConfig,
         dustAppConfiguration: actionConfig.dustAppConfiguration,
         appId: actionConfig.dustAppConfiguration?.appId,
@@ -148,7 +149,7 @@ async function prepareAppContext(
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         userId: auth.user()?.sId || "no_user",
         role: auth.role(),
-        groupIds: auth.groups().map((g) => g.sId),
+        groupIds: auth.groupIds(),
         appId: actionConfig.dustAppConfiguration.appId,
         actionConfig,
       },
@@ -252,7 +253,7 @@ async function processDustFileOutput(
     delete sanitizedOutput.__dust_file;
   } else if (containsValidDocumentOutput(sanitizedOutput)) {
     let fileTitle = "";
-    let file: FileResource | null = null;
+    let file: FileResource;
 
     const jsonOutputRes = safeParseJSON(
       sanitizedOutput.__dust_file?.content ?? ""
@@ -347,10 +348,12 @@ export default async function createServer(
   const server = makeInternalMCPServer("run_dust_app");
   const owner = auth.getNonNullableWorkspace();
 
-  if (agentLoopContext && agentLoopContext.listToolsContext) {
+  if (agentLoopContext?.listToolsContext) {
+    const { agentActionConfiguration } = agentLoopContext.listToolsContext;
     if (
-      !isMCPConfigurationForDustAppRun(
-        agentLoopContext.listToolsContext.agentActionConfiguration
+      !isServerSideMCPServerConfigurationWithName(
+        agentActionConfiguration,
+        "run_dust_app"
       )
     ) {
       throw new Error("Invalid Dust app run agent configuration");
@@ -358,7 +361,7 @@ export default async function createServer(
 
     const { app, schema } = await prepareAppContext(
       auth,
-      agentLoopContext.listToolsContext.agentActionConfiguration
+      agentActionConfiguration
     );
 
     if (!app.description) {
@@ -382,16 +385,21 @@ export default async function createServer(
         }
       )
     );
-  } else if (agentLoopContext && agentLoopContext.runContext) {
+  } else if (agentLoopContext?.runContext) {
+    const { toolConfiguration } = agentLoopContext.runContext;
     if (
-      !isMCPInternalDustAppRun(agentLoopContext.runContext.toolConfiguration)
+      !isLightServerSideMCPToolConfiguration(toolConfiguration) ||
+      !matchesInternalMCPServerName(
+        toolConfiguration.internalMCPServerId,
+        "run_dust_app"
+      )
     ) {
       throw new Error("Invalid Dust app run tool configuration");
     }
 
     const { app, schema, appConfig } = await prepareAppContext(
       auth,
-      agentLoopContext.runContext.toolConfiguration
+      toolConfiguration
     );
 
     if (!app.description) {
@@ -418,7 +426,7 @@ export default async function createServer(
             auth
           );
 
-          const requestedGroupIds = auth.groups().map((g) => g.sId);
+          const requestedGroupIds = auth.groupIds();
 
           const prodCredentials = await prodAPICredentialsForOwner(owner);
           const apiConfig = config.getDustAPIConfig();

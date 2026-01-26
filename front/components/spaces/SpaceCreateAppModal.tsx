@@ -10,11 +10,11 @@ import {
   SheetTitle,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter } from "@app/lib/platform";
 import { useApps } from "@app/lib/swr/apps";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { PostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
@@ -34,7 +34,7 @@ export const SpaceCreateAppModal = ({
   setIsOpen,
   space,
 }: SpaceCreateAppModalProps) => {
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
 
   const [name, setName] = useState<string>("");

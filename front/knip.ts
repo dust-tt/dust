@@ -21,7 +21,6 @@ const config: KnipConfig = {
   },
   ignoreDependencies: [
     "@vitest/coverage-v8",
-    "lint-staged",
     "nodemon", // used for development only for workers
     "yalc",
     "pino-pretty",
@@ -29,6 +28,7 @@ const config: KnipConfig = {
     "eslint-plugin-dust",
     "sqlite3", // used during the build process by sequelize
     "@dust-tt/client",
+    "lefthook", // used as pre-commit hook
   ],
   ignoreBinaries: ["sleep"],
   paths: {

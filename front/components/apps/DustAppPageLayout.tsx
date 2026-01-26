@@ -1,10 +1,10 @@
 import { Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
+import { useAppRouter } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import type { AppType, SubscriptionType, WorkspaceType } from "@app/types";
 
@@ -25,7 +25,7 @@ export function DustAppPageLayout({
   currentTab,
   children,
 }: DustAppPageLayoutProps) {
-  const router = useRouter();
+  const router = useAppRouter();
 
   return (
     <AppCenteredLayout

@@ -181,6 +181,10 @@ export const ConversationViewer = ({
     VirtuosoMessage[] | undefined
   >(undefined);
 
+  const [messageIdToScrollTo, setMessageIdToScrollTo] = useState<number | null>(
+    null
+  );
+
   // Setup the initial list data when the conversation is loaded.
   useEffect(() => {
     // We also wait in case of revalidation because otherwise we might use stale data from the swr cache.
@@ -194,6 +198,28 @@ export const ConversationViewer = ({
       const messagesToRender = convertLightMessageTypeToVirtuosoMessages(raw);
 
       setInitialListData(messagesToRender);
+
+      // Fetch the message to scroll to from the URL hash.
+      const hash = window.location.hash;
+      if (!hash || !hash.startsWith("#")) {
+        return;
+      }
+
+      const messageId = hash.substring(1); // Remove the '#' prefix.
+      if (!messageId) {
+        return;
+      }
+
+      // Find the message index in the current data.
+      const messageIndex = messagesToRender.findIndex(
+        (m) => m.sId === messageId
+      );
+
+      if (messageIndex === -1) {
+        // nothing found to scroll to.
+        return;
+      }
+      setMessageIdToScrollTo(messageIndex);
     }
   }, [initialListData, messages, setInitialListData, isValidating]);
 
@@ -320,9 +346,8 @@ export const ConversationViewer = ({
                   },
                   { revalidate: false }
                 );
-
-                void debouncedMarkAsRead(conversationId, false);
               }
+              void debouncedMarkAsRead(conversationId, false);
             }
             break;
           case "agent_message_new":
@@ -461,6 +486,7 @@ export const ConversationViewer = ({
         input,
         mentions: mentions.map(toMentionType),
         contentFragments,
+        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
       };
 
       const lastMessageRank = Math.max(
@@ -583,12 +609,13 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
-      submitMessage,
-      user,
+      agentBuilderContext?.clientSideMCPServerIds,
       conversationId,
+      mutateConversations,
       sendNotification,
       setPlanLimitReached,
-      mutateConversations,
+      submitMessage,
+      user,
     ]
   );
 
@@ -649,7 +676,8 @@ export const ConversationViewer = ({
       owner,
       handleSubmit,
       conversation,
-      enableReactions: !!conversation?.spaceId,
+      draftKey: `conversation-${conversationId}`,
+      enableExtendedActions: !!conversation?.spaceId,
       agentBuilderContext,
       feedbacksByMessageId,
     };
@@ -658,6 +686,7 @@ export const ConversationViewer = ({
     owner,
     handleSubmit,
     conversation,
+    conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
   ]);
@@ -678,17 +707,12 @@ export const ConversationViewer = ({
             scrollModifier: {
               type: "item-location",
               location: {
-                index: "LAST",
-                align: "end",
+                index: messageIdToScrollTo ?? "LAST",
+                align: messageIdToScrollTo ? "start" : "end",
                 behavior: "instant",
               },
               purgeItemSizes: true,
             },
-          }}
-          initialLocation={{
-            index: "LAST",
-            align: "end",
-            behavior: "instant",
           }}
           ref={ref}
           ItemContent={MessageItem}

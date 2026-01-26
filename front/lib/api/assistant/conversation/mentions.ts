@@ -1,5 +1,6 @@
 import assert from "assert";
 import uniq from "lodash/uniq";
+import uniqBy from "lodash/uniqBy";
 import type { Transaction } from "sequelize";
 import { Op } from "sequelize";
 
@@ -70,7 +71,6 @@ import {
   toMentionType,
 } from "@app/types";
 
-import { runAgentLoopWorkflow } from "./agent_loop";
 import { getConversation } from "./fetch";
 
 /**
@@ -119,12 +119,16 @@ async function isUserMemberOfSpace(
     return false;
   }
 
-  const user = await UserResource.fetchById(userId);
-  if (!user) {
+  const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+    userId,
+    auth.getNonNullableWorkspace().sId
+  );
+
+  if (!userAuth) {
     return false;
   }
 
-  return space.isMember(user);
+  return space.isMember(userAuth);
 }
 
 export const createUserMentions = async (
@@ -142,92 +146,94 @@ export const createUserMentions = async (
   }
 ): Promise<RichMentionWithStatus[]> => {
   const usersById = new Map<ModelId, UserType>();
+
+  // Deduplicate mentions before processing
+  const uniqueMentions = uniqBy(
+    mentions.filter(isUserMention),
+    (mention) => mention.userId
+  );
+
   // Store user mentions in the database
   const mentionModels = await Promise.all(
-    mentions.map(async (mention) => {
-      if (isUserMention(mention)) {
-        // check if the user exists in the workspace before creating the mention
-        const user = await getUserForWorkspace(auth, {
-          userId: mention.userId,
-        });
-        if (user) {
-          usersById.set(user.id, user.toJSON());
+    uniqueMentions.map(async (mention) => {
+      // check if the user exists in the workspace before creating the mention
+      const user = await getUserForWorkspace(auth, {
+        userId: mention.userId,
+      });
+      if (user) {
+        usersById.set(user.id, user.toJSON());
 
-          const isParticipant =
-            await ConversationResource.isConversationParticipant(auth, {
-              conversation,
-              user: user.toJSON(),
-            });
-
-          const canAccess = await canUserAccessConversation(auth, {
-            userId: user.sId,
-            conversationId: conversation.sId,
+        const isParticipant =
+          await ConversationResource.isConversationParticipant(auth, {
+            conversation,
+            user: user.toJSON(),
           });
 
-          // Always auto approve mentions for existing participants.
-          let autoApprove = isParticipant;
-          // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
-          if (
-            !autoApprove &&
-            conversation.triggerId &&
-            message.type === "agent_message" &&
+        const canAccess = await canUserAccessConversation(auth, {
+          userId: user.sId,
+          conversationId: conversation.sId,
+        });
+
+        // Always auto approve mentions for existing participants.
+        let autoApprove = isParticipant;
+        // In case of agent message on triggered conversation, we want to auto approve mentions only if the users are mentioned in the prompt.
+        if (
+          !autoApprove &&
+          conversation.triggerId &&
+          message.type === "agent_message" &&
+          message.configuration.instructions
+        ) {
+          const isUserMentionedInInstructions = extractFromString(
             message.configuration.instructions
-          ) {
-            const isUserMentionedInInstructions = extractFromString(
-              message.configuration.instructions
-            )
-              .filter(isUserMention)
-              .some((mention) => mention.userId === user.sId);
+          )
+            .filter(isUserMention)
+            .some((mention) => mention.userId === user.sId);
 
-            if (isUserMentionedInInstructions) {
-              autoApprove = true;
-            }
+          if (isUserMentionedInInstructions) {
+            autoApprove = true;
           }
+        }
 
-          // Auto approve mentions for users who are members of the conversation's project space.
-          if (!autoApprove && conversation.spaceId) {
-            autoApprove = await isUserMemberOfSpace(auth, {
-              userId: user.sId,
-              spaceId: conversation.spaceId,
+        // Auto approve mentions for users who are members of the conversation's project space.
+        if (!autoApprove && conversation.spaceId) {
+          autoApprove = await isUserMemberOfSpace(auth, {
+            userId: user.sId,
+            spaceId: conversation.spaceId,
+          });
+        }
+
+        const status: MentionStatusType = !canAccess
+          ? "user_restricted_by_conversation_access"
+          : autoApprove
+            ? "approved"
+            : "pending";
+
+        const mentionModel = await MentionModel.create(
+          {
+            messageId: message.id,
+            userId: user.id,
+            workspaceId: auth.getNonNullableWorkspace().id,
+            status,
+          },
+          { transaction }
+        );
+
+        if (!isParticipant && status === "approved") {
+          const status = await ConversationResource.upsertParticipation(auth, {
+            conversation,
+            action: "subscribed",
+            user: user.toJSON(),
+            transaction,
+          });
+
+          if (status === "added") {
+            await triggerConversationAddedAsParticipantNotification(auth, {
+              conversation,
+              addedUserId: user.sId,
             });
           }
-
-          const status: MentionStatusType = !canAccess
-            ? "user_restricted_by_conversation_access"
-            : autoApprove
-              ? "approved"
-              : "pending";
-
-          const mentionModel = await MentionModel.create(
-            {
-              messageId: message.id,
-              userId: user.id,
-              workspaceId: auth.getNonNullableWorkspace().id,
-              status,
-            },
-            { transaction }
-          );
-
-          if (!isParticipant && status === "approved") {
-            const status = await ConversationResource.upsertParticipation(
-              auth,
-              {
-                conversation,
-                action: "subscribed",
-                user: user.toJSON(),
-                transaction,
-              }
-            );
-
-            if (status === "added") {
-              await triggerConversationAddedAsParticipantNotification(auth, {
-                conversation,
-                addedUserId: user.sId,
-              });
-            }
-          }
-          return mentionModel;
         }
+        return mentionModel;
       }
     })
   );
@@ -639,8 +645,14 @@ export const createAgentMessages = async (
 
     case "create":
       {
-        await concurrentExecutor(
+        // Deduplicate agent mentions before processing
+        const uniqueAgentMentions = uniqBy(
           metadata.mentions.filter(isAgentMention),
+          (mention) => mention.configurationId
+        );
+
+        await concurrentExecutor(
+          uniqueAgentMentions,
           async (mention) => {
             const configuration = metadata.agentConfigurations.find(
               (ac) => ac.sId === mention.configurationId
@@ -826,17 +838,6 @@ export const createAgentMessages = async (
     t: transaction,
   });
 
-  if (metadata.type === "create") {
-    if (agentMessages.length > 0) {
-      await runAgentLoopWorkflow({
-        auth,
-        agentMessages,
-        conversation,
-        userMessage: metadata.userMessage,
-      });
-    }
-  }
-
   return { agentMessages, richMentions };
 };
 
@@ -922,6 +923,58 @@ export async function validateUserMention(
   }
 
   const conversation = conversationRes.value;
+  const isApproval = approvalState === "approved";
+
+  // For project conversations, add user to project space first when approving.
+  if (conversation.spaceId && isApproval) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Project space not found",
+        },
+      });
+    }
+
+    const currentUser = auth.user();
+    if (!currentUser) {
+      return new Err({
+        status_code: 401,
+        api_error: {
+          type: "not_authenticated",
+          message: "User not authenticated",
+        },
+      });
+    }
+
+    // TODO(projects): isEditor will check editor permissions once project roles PR is merged.
+    const canEdit = space.isEditor(auth);
+    if (!canEdit) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "invalid_request_error",
+          message: "Only project editors can add members to the project",
+        },
+      });
+    }
+
+    const addResult = await space.addMembers(auth, { userIds: [userId] });
+    if (addResult.isErr()) {
+      const error = addResult.error;
+      return new Err({
+        status_code: error.code === "unauthorized" ? 403 : 400,
+        api_error: {
+          type: "invalid_request_error",
+          message: error.message,
+        },
+      });
+    }
+  }
+
+  const mentionStatus: "approved" | "rejected" = approvalState;
 
   // Verify the message exists
   const message = conversation.content.flat().find((m) => m.sId === messageId);
@@ -935,7 +988,10 @@ export async function validateUserMention(
       },
     });
   }
-  if (approvalState === "approved") {
+  if (isApproval) {
+    const auditMessage = conversation.spaceId
+      ? "User approved a mention and added user to project"
+      : "User approved a mention";
     auditLog(
       {
         author: auth.getNonNullableUser().toJSON(),
@@ -945,7 +1001,7 @@ export async function validateUserMention(
         userId,
         approvalState,
       },
-      "User approved a mention"
+      auditMessage
     );
   }
 
@@ -1029,12 +1085,12 @@ export async function validateUserMention(
       if (!mentionModel) {
         continue;
       }
-      await mentionModel.update({ status: approvalState });
+      await mentionModel.update({ status: mentionStatus });
       const newRichMentions = latestMessage.richMentions.map((m) =>
         isRichUserMention(m) && m.id === userId
           ? {
               ...m,
-              status: approvalState,
+              status: mentionStatus,
             }
           : m
       );
@@ -1079,7 +1135,7 @@ export async function validateUserMention(
     }
   );
 
-  if (!isParticipant && approvalState === "approved") {
+  if (!isParticipant && isApproval) {
     const status = await ConversationResource.upsertParticipation(auth, {
       conversation,
       action: "subscribed",

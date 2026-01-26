@@ -50,7 +50,7 @@ export function useConversation({
   workspaceId: string;
   options?: { disabled: boolean };
 }): {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   isConversationLoading: boolean;
   conversationError: ConversationError;
   mutateConversation: ReturnType<
@@ -68,7 +68,7 @@ export function useConversation({
   );
 
   return {
-    conversation: data ? data.conversation : null,
+    conversation: data ? data.conversation : undefined,
     isConversationLoading: !error && !data,
     conversationError: error,
     mutateConversation: mutate,
@@ -783,7 +783,7 @@ export function useConversationMarkAsRead({
   conversation,
   workspaceId,
 }: {
-  conversation: ConversationWithoutContentType | null;
+  conversation?: ConversationWithoutContentType;
   workspaceId: string;
 }) {
   const { mutateConversations } = useConversations({
@@ -844,7 +844,7 @@ export function useConversationMarkAsRead({
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
-    if (conversation?.sId && conversation.unread) {
+    if (conversation?.sId) {
       timeout = setTimeout(
         () => markAsRead(conversation.sId, true),
         DELAY_BEFORE_MARKING_AS_READ
@@ -856,7 +856,7 @@ export function useConversationMarkAsRead({
         clearTimeout(timeout);
       }
     };
-  }, [conversation?.sId, conversation?.unread, markAsRead]);
+  }, [conversation?.sId, markAsRead]);
 
   return {
     markAsRead,

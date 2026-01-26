@@ -264,7 +264,7 @@ export function MCPServerDetails({
 
           sendNotification({
             type: "success",
-            title: `${getMcpServerDisplayName(mcpServerView.server)} updated`,
+            title: `${diff.serverView?.name ?? getMcpServerDisplayName(mcpServerView.server)} updated`,
             description: "Your changes have been saved.",
           });
 

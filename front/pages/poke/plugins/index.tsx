@@ -1,29 +1,21 @@
 import type { ReactElement } from "react";
 
-import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { PluginsPage } from "@app/components/poke/pages/PluginsPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
-    return {
-      props: {},
-    };
-  }
-);
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-export default function ListPokePlugins() {
+const Page = PluginsPage as PageWithLayout;
+
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
   return (
-    <div className="h-full flex-grow flex-col items-center justify-center p-8 pt-8">
-      <PluginList
-        pluginResourceTarget={{
-          resourceType: "global",
-        }}
-      />
-    </div>
+    <PokeLayout title="Plugins" authContext={pageProps}>
+      {page}
+    </PokeLayout>
   );
-}
-
-ListPokePlugins.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Plugins">{page}</PokeLayout>;
 };
+
+export default Page;

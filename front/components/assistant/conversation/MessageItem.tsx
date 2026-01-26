@@ -151,7 +151,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             <UserMessage
               citations={citations}
               conversationId={context.conversation.sId}
-              enableReactions={context.enableReactions}
+              enableExtendedActions={context.enableExtendedActions}
               currentUserId={context.user.sId}
               isLastMessage={!nextData}
               message={data}
@@ -169,24 +169,27 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               messageFeedback={messageFeedbackWithSubmit}
               owner={context.owner}
               handleSubmit={context.handleSubmit}
+              enableExtendedActions={context.enableExtendedActions}
             />
           )}
           {data.visibility !== "deleted" &&
-            data.richMentions.map((mention) => {
+            data.richMentions.map((mention, index) => {
               // To please the type checker
               if (!context.conversation) {
                 return null;
               }
 
+              // :warning: make sure to use the index in the key, as the mention.id is the userId
+
               if (mention.status === "pending") {
                 return (
                   <MentionValidationRequired
-                    key={mention.id}
+                    key={index}
                     mention={mention}
                     message={data}
                     owner={context.owner}
                     triggeringUser={triggeringUser}
-                    conversationId={context.conversation.sId}
+                    conversation={context.conversation}
                   />
                 );
               } else if (
@@ -195,7 +198,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               ) {
                 return (
                   <MentionInvalid
-                    key={mention.id}
+                    key={index}
                     mention={mention}
                     message={data}
                     owner={context.owner}

@@ -1,5 +1,4 @@
 import { Page } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import { useCallback, useContext, useEffect, useState } from "react";
 
 import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
@@ -14,6 +13,7 @@ import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversati
 import { useSendNotification } from "@app/hooks/useNotification";
 import { getRandomGreetingForName } from "@app/lib/client/greetings";
 import type { DustError } from "@app/lib/error";
+import { useAppRouter } from "@app/lib/platform";
 import { useConversations } from "@app/lib/swr/conversations";
 import { classNames } from "@app/lib/utils";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -49,7 +49,7 @@ export function ConversationContainerVirtuoso({
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
-  const router = useRouter();
+  const router = useAppRouter();
 
   const sendNotification = useSendNotification();
 
@@ -187,7 +187,7 @@ export function ConversationContainerVirtuoso({
               owner={owner}
               user={user}
               onSubmit={handleConversationCreation}
-              conversation={null}
+              draftKey="home-new-conversation"
               disableAutoFocus={false}
             />
           </div>

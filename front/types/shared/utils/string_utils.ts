@@ -1,3 +1,8 @@
+import removeMarkdown from "remove-markdown";
+
+import { replaceContentNodeMarkdownWithQuotedTitle } from "@app/lib/content_nodes";
+import { replaceMentionsWithAt } from "@app/lib/mentions/format";
+
 import type { Result } from "../result";
 import { Err, Ok } from "../result";
 
@@ -45,6 +50,12 @@ function isTrailingLoneSurrogate(code: number): boolean {
 
 export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
+}
+
+export function stripMarkdown(text: string): string {
+  return removeMarkdown(
+    replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
+  );
 }
 
 // Conjugates a verb based on a count, assuming it only comes down to adding an

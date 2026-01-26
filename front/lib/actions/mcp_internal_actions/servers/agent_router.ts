@@ -42,7 +42,7 @@ function createServer(
       },
       async () => {
         const owner = auth.getNonNullableWorkspace();
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
+        const requestedGroupIds = auth.groupIds();
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
         const api = new DustAPI(
@@ -107,7 +107,7 @@ function createServer(
       },
       async ({ userMessage }) => {
         const owner = auth.getNonNullableWorkspace();
-        const requestedGroupIds = auth.groups().map((g) => g.sId);
+        const requestedGroupIds = auth.groupIds();
 
         const prodCredentials = await prodAPICredentialsForOwner(owner);
         const api = new DustAPI(

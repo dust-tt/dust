@@ -1,12 +1,12 @@
 import { assert, describe, expect, it } from "vitest";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   getToolExtraFields,
   listToolsForServerSideMCPServer,
-  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";

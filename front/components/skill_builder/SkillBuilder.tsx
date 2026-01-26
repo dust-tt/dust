@@ -8,7 +8,6 @@ import {
   ScrollArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/router";
 import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 
@@ -33,6 +32,7 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { FormProvider } from "@app/components/sparkle/FormProvider";
 import { useNavigationLock } from "@app/hooks/useNavigationLock";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useAppRouter } from "@app/lib/platform";
 import { useSkillEditors } from "@app/lib/swr/skill_editors";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -46,7 +46,7 @@ export default function SkillBuilder({
   extendedSkill,
 }: SkillBuilderProps) {
   const { owner, user } = useSkillBuilderContext();
-  const router = useRouter();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -174,7 +174,7 @@ export default function SkillBuilder({
                     size="lg"
                   >
                     This skill was automatically generated based on your
-                    workspace's agent configurations. We recommend reviewing and
+                    workspace's configuration. We recommend reviewing and
                     editing it to match your specific needs before saving.
                   </ContentMessage>
                 )}

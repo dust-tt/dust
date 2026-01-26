@@ -1,33 +1,21 @@
 import type { ReactElement } from "react";
 
+import { TemplatesListPage } from "@app/components/poke/pages/TemplatesListPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { TemplatesDataTable } from "@app/components/poke/templates/TemplatesDataTable";
-import { config } from "@app/lib/api/regions/config";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
-    const dustRegionSyncEnabled = config.getDustRegionSyncEnabled();
-    return {
-      props: {
-        dustRegionSyncEnabled,
-      },
-    };
-  }
-);
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-export default function ListTemplates({
-  dustRegionSyncEnabled,
-}: {
-  dustRegionSyncEnabled: boolean;
-}) {
+const Page = TemplatesListPage as PageWithLayout;
+
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
   return (
-    <div className="mx-auto h-full w-full max-w-7xl flex-grow flex-col items-center justify-center p-8 pt-8">
-      <TemplatesDataTable dustRegionSyncEnabled={dustRegionSyncEnabled} />
-    </div>
+    <PokeLayout title="Templates" authContext={pageProps}>
+      {page}
+    </PokeLayout>
   );
-}
-
-ListTemplates.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Templates">{page}</PokeLayout>;
 };
+
+export default Page;

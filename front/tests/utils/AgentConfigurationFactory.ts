@@ -56,4 +56,46 @@ export class AgentConfigurationFactory {
 
     return result.value;
   }
+
+  /**
+   * Updates an existing agent configuration, creating a new version.
+   * Pass the sId of the existing agent to update it.
+   */
+  static async updateTestAgent(
+    auth: Authenticator,
+    agentSId: string,
+    overrides: Partial<{
+      name: string;
+      description: string;
+      instructions: string;
+    }> = {}
+  ): Promise<LightAgentConfigurationType> {
+    const user = auth.user();
+    assert(user, "User is required");
+
+    const result = await createAgentConfiguration(auth, {
+      name: overrides.name ?? "Test Agent",
+      description: overrides.description ?? "Test Agent Description",
+      instructions: overrides.instructions ?? "Updated Test Instructions",
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "visible",
+      model: {
+        providerId: "openai",
+        modelId: "gpt-4-turbo",
+        temperature: 0.7,
+      },
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+      agentConfigurationId: agentSId,
+    });
+
+    if (result.isErr()) {
+      throw result.error;
+    }
+
+    return result.value;
+  }
 }

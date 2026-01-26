@@ -9,7 +9,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
@@ -18,6 +18,7 @@ import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -29,6 +30,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import logger from "@app/logger/logger";
 import type {
   AgentConfigurationType,
+  CombinedResourcePermissions,
   GroupKind,
   GroupType,
   LightAgentConfigurationType,
@@ -36,12 +38,12 @@ import type {
   ModelId,
   ResourcePermission,
   Result,
-  RolePermission,
   UserType,
 } from "@app/types";
 import {
   AGENT_GROUP_PREFIX,
   Err,
+  GROUP_KINDS,
   normalizeError,
   Ok,
   removeNulls,
@@ -67,9 +69,26 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   static async makeNew(
     blob: CreationAttributes<GroupModel>,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      memberIds,
+      transaction,
+    }: { memberIds?: ModelId[]; transaction?: Transaction } = {}
   ) {
     const group = await GroupModel.create(blob, { transaction });
+
+    // If memberIds are provided, create memberships
+    if (memberIds && memberIds.length > 0) {
+      await GroupMembershipModel.bulkCreate(
+        memberIds.map((userId) => ({
+          groupId: group.id,
+          userId,
+          workspaceId: blob.workspaceId,
+          startAt: new Date(),
+          status: "active" as const,
+        })),
+        { transaction }
+      );
+    }
 
     return new this(GroupModel, group.get());
   }
@@ -100,22 +119,7 @@ export class GroupResource extends BaseResource<GroupModel> {
         name: `${AGENT_GROUP_PREFIX} ${agent.name} (${agent.sId})`,
         kind: "agent_editors",
       },
-      { transaction }
-    );
-
-    // Add user to the newly created group. For the specific purpose of
-    // agent_editors group creation, we don't use addMembers, since admins or
-    // existing members of the group can add/remove members this way. We create
-    // the relation directly.
-    await GroupMembershipModel.create(
-      {
-        groupId: defaultGroup.id,
-        userId: user.id,
-        workspaceId: workspace.id,
-        startAt: new Date(),
-        status: "active" as const,
-      },
-      { transaction }
+      { transaction, memberIds: [user.id] }
     );
 
     // Associate the group with the agent configuration.
@@ -564,7 +568,7 @@ export class GroupResource extends BaseResource<GroupModel> {
           workspaceId: auth.getNonNullableWorkspace().sId,
           unreadableGroupIds: unreadableGroups.map((g) => g.sId),
           authRole: auth.role(),
-          authGroupIds: auth.groups().map((g) => g.sId),
+          authGroupIds: auth.groupIds(),
         },
         "[GroupResource.fetchByIds] User cannot read some groups"
       );
@@ -806,24 +810,17 @@ export class GroupResource extends BaseResource<GroupModel> {
     return groups.filter((group) => group.canRead(auth));
   }
 
-  static async listUserGroupsInWorkspace({
+  static async listUserGroupModelIdsInWorkspace({
     user,
     workspace,
-    groupKinds = [
-      "global",
-      "regular",
-      "space_editors",
-      "provisioned",
-      "agent_editors",
-      "skill_editors",
-    ],
+    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
     transaction,
   }: {
     user: UserResource;
     workspace: LightWorkspaceType;
     groupKinds?: Omit<GroupKind, "system">[];
     transaction?: Transaction;
-  }): Promise<GroupResource[]> {
+  }): Promise<ModelId[]> {
     // First we need to check if the user is a member of the workspace.
     const workspaceMembership =
       await MembershipResource.getActiveMembershipOfUserInWorkspace({
@@ -837,9 +834,11 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     // If yes, we can fetch the groups the user is a member of.
     // First the global group which has no db entries and is always present.
-    let globalGroup = null;
+    let globalGroup: GroupModel | null = null;
+
     if (groupKinds.includes("global")) {
       globalGroup = await this.model.findOne({
+        attributes: ["id"],
         where: {
           workspaceId: workspace.id,
           kind: "global",
@@ -852,32 +851,71 @@ export class GroupResource extends BaseResource<GroupModel> {
       }
     }
 
-    const userGroups = await GroupModel.findAll({
-      include: [
-        {
-          model: GroupMembershipModel,
-          where: {
-            userId: user.id,
-            workspaceId: workspace.id,
-            startAt: { [Op.lte]: new Date() },
-            [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-            status: "active",
-          },
-          required: true,
+    // eslint-disable-next-line dust/no-raw-sql -- We are using a raw query to optimize memory usage as people may have a lot of groups.
+    const userGroupModelIds = await frontSequelize.query<{ id: ModelId }>(
+      `
+      SELECT id FROM groups
+      WHERE "workspaceId" = :workspaceId
+      AND kind IN (:kind)
+      AND id IN (
+        SELECT "groupId" FROM group_memberships
+        WHERE "userId" = :userId
+        AND "workspaceId" = :workspaceId
+        AND "startAt" <= :now
+        AND ("endAt" IS NULL OR "endAt" > :now)
+        AND status = 'active'
+      )
+    `,
+      {
+        replacements: {
+          workspaceId: workspace.id,
+          kind: groupKinds.filter((k) => k !== "global") as GroupKind[],
+          userId: user.id,
+          now: new Date(),
         },
-      ],
-      where: {
-        workspaceId: workspace.id,
-        kind: {
-          // The 'as' clause is tautological but required by TS who does not
-          // understand that groupKinds.filter() returns a GroupKind[]
-          [Op.in]: groupKinds.filter((k) => k !== "global") as GroupKind[],
-        },
-      },
+        type: QueryTypes.SELECT,
+        transaction,
+        raw: true,
+      }
+    );
+
+    const groups = [
+      ...(globalGroup ? [globalGroup] : []),
+      ...userGroupModelIds,
+    ];
+
+    return groups.map((group) => group.id);
+  }
+
+  // Warning, this function can be very memory hungry if there are a lot of groups (such as a workspace with a lot of agents and editors groups).
+  // If you can, just use the listUserGroupModelIdsInWorkspace instead that returns only the ids of the groups.
+  static async listUserGroupsInWorkspace({
+    user,
+    workspace,
+    groupKinds = GROUP_KINDS.filter((k) => k !== "system"),
+    transaction,
+  }: {
+    user: UserResource;
+    workspace: LightWorkspaceType;
+    groupKinds?: Omit<GroupKind, "system">[];
+    transaction?: Transaction;
+  }): Promise<GroupResource[]> {
+    const groupIds = await this.listUserGroupModelIdsInWorkspace({
+      user,
+      workspace,
+      groupKinds,
       transaction,
     });
 
-    const groups = [...(globalGroup ? [globalGroup] : []), ...userGroups];
+    const groups = await GroupModel.findAll({
+      where: {
+        id: {
+          [Op.in]: groupIds,
+        },
+        workspaceId: workspace.id,
+      },
+      transaction,
+    });
 
     return groups.map((group) => new this(GroupModel, group.get()));
   }
@@ -1034,8 +1072,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1048,7 +1093,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1159,8 +1210,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async addMember(
     auth: Authenticator,
-    user: UserType,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      user,
+      requestedPermissions,
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1173,13 +1231,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(auth, [user], { transaction });
+    return this.addMembers(auth, {
+      users: [user],
+      requestedPermissions,
+      transaction,
+    });
   }
 
   async removeMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1191,7 +1260,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1285,8 +1360,15 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   async removeMember(
     auth: Authenticator,
-    user: UserType,
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      user,
+      requestedPermissions,
+      transaction,
+    }: {
+      user: UserType;
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1298,13 +1380,24 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(auth, [user], { transaction });
+    return this.removeMembers(auth, {
+      users: [user],
+      requestedPermissions,
+      transaction,
+    });
   }
 
   async setMembers(
     auth: Authenticator,
-    users: UserType[],
-    { transaction }: { transaction?: Transaction } = {}
+    {
+      users,
+      requestedPermissions,
+      transaction,
+    }: {
+      users: UserType[];
+      requestedPermissions?: CombinedResourcePermissions;
+      transaction?: Transaction;
+    }
   ): Promise<
     Result<
       undefined,
@@ -1318,7 +1411,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!this.canWrite(auth)) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1336,7 +1435,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, usersToAdd, {
+      const addResult = await this.addMembers(auth, {
+        users: usersToAdd,
+        requestedPermissions,
         transaction,
       });
       if (addResult.isErr()) {
@@ -1349,7 +1450,9 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, usersToRemove, {
+      const removeResult = await this.removeMembers(auth, {
+        users: usersToRemove,
+        requestedPermissions,
         transaction,
       });
       if (removeResult.isErr()) {
@@ -1450,32 +1553,55 @@ export class GroupResource extends BaseResource<GroupModel> {
    * configuration
    */
   requestedPermissions(): ResourcePermission[] {
-    const userReadPermissions: RolePermission[] = [
-      {
-        role: "user",
-        permissions: ["read"],
-      },
-      {
-        role: "builder",
-        permissions: ["read"],
-      },
-    ];
+    if (this.kind === "agent_editors" || this.kind === "skill_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["read", "write"],
+            },
+          ],
+          roles: [
+            { role: "admin", permissions: ["read", "write", "admin"] },
+            {
+              role: "user",
+              permissions: ["read"],
+            },
+            {
+              role: "builder",
+              permissions: ["read"],
+            },
+          ],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
 
-    const isEditorGroup =
-      this.kind === "agent_editors" || this.kind === "skill_editors";
+    if (this.kind === "space_editors") {
+      return [
+        {
+          groups: [
+            {
+              id: this.id,
+              permissions: ["admin", "read", "write"],
+            },
+          ],
+          roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
+          workspaceId: this.workspaceId,
+        },
+      ];
+    }
 
     return [
       {
         groups: [
           {
             id: this.id,
-            permissions: isEditorGroup ? ["read", "write"] : ["read"],
+            permissions: ["read"],
           },
         ],
-        roles: [
-          { role: "admin", permissions: ["read", "write", "admin"] },
-          ...(isEditorGroup ? userReadPermissions : []),
-        ],
+        roles: [{ role: "admin", permissions: ["read", "write", "admin"] }],
         workspaceId: this.workspaceId,
       },
     ];

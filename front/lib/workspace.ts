@@ -34,7 +34,7 @@ export function renderLightWorkspaceType({
 
 // TODO: This belong to the WorkspaceResource.
 export async function getWorkspaceFirstAdmin(
-  workspace: WorkspaceModel
+  workspace: WorkspaceModel | WorkspaceResource
 ): Promise<UserType | undefined> {
   const user = await UserResource.getWorkspaceFirstAdmin(workspace.id);
   return user?.toJSON();

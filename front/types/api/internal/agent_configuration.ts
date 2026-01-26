@@ -192,6 +192,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         t.literal("active"),
         t.literal("archived"),
         t.literal("draft"),
+        t.literal("pending"),
       ]),
       scope: t.union([t.literal("hidden"), t.literal("visible")]),
       model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),

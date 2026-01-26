@@ -30,7 +30,7 @@ vi.mock("@app/pages/api/w/[wId]/files/[fileId]", () => ({
   }),
 }));
 
-vi.mock("@app/lib/api/files/upload", () => ({
+vi.mock("@app/lib/api/files/processing", () => ({
   processAndStoreFile: vi.fn().mockResolvedValue({ isErr: () => false }),
 }));
 

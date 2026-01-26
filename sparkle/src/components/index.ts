@@ -213,6 +213,15 @@ export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";
+export type {
+  ToolbarContentGroup,
+  ToolbarContentProps,
+  ToolbarIconProps,
+  ToolbarLinkProps,
+  ToolbarProps,
+  ToolbarVariant,
+} from "./Toolbar";
+export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink } from "./Toolbar";
 export {
   Tooltip,
   TooltipContent,
@@ -224,3 +233,5 @@ export {
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
 export { ValueCard } from "./ValueCard";
+export type { VoicePickerProps, VoicePickerStatus } from "./VoicePicker";
+export { VoicePicker } from "./VoicePicker";

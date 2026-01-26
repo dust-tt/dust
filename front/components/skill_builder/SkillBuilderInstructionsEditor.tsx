@@ -1,4 +1,3 @@
-import { AttachmentIcon, Button } from "@dust-tt/sparkle";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
 import { cva } from "class-variance-authority";
@@ -52,11 +51,13 @@ const editorVariants = cva(
 interface SkillBuilderInstructionsEditorProps {
   compareVersion?: SkillType | null;
   isInstructionDiffMode?: boolean;
+  onAddKnowledge?: (addKnowledge: () => void) => void;
 }
 
 export function SkillBuilderInstructionsEditor({
   compareVersion,
   isInstructionDiffMode = false,
+  onAddKnowledge,
 }: SkillBuilderInstructionsEditorProps) {
   const { field: instructionsField, fieldState: instructionsFieldState } =
     useController<SkillBuilderFormData, typeof INSTRUCTIONS_FIELD_NAME>({
@@ -150,10 +151,39 @@ export function SkillBuilderInstructionsEditor({
   });
 
   const handleAddKnowledge = useCallback(() => {
-    if (editor) {
-      editor.chain().focus().insertKnowledgeNode().run();
+    if (!editor) {
+      return;
     }
+
+    // Check if there's already an empty knowledge node (in search mode).
+    // If so, do nothing - clicking the button already dismissed it via handleInteractOutside.
+    const { doc } = editor.state;
+    let hasEmptyKnowledgeNode = false;
+    doc.descendants((node) => {
+      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
+        const selectedItems = node.attrs?.selectedItems as
+          | KnowledgeItem[]
+          | undefined;
+        if (!selectedItems || selectedItems.length === 0) {
+          hasEmptyKnowledgeNode = true;
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (hasEmptyKnowledgeNode) {
+      return;
+    }
+
+    editor.chain().focus().insertKnowledgeNode().run();
   }, [editor]);
+
+  useEffect(() => {
+    if (editor && onAddKnowledge) {
+      onAddKnowledge(handleAddKnowledge);
+    }
+  }, [editor, handleAddKnowledge, onAddKnowledge]);
 
   useEffect(() => {
     return () => {
@@ -220,20 +250,7 @@ export function SkillBuilderInstructionsEditor({
 
   return (
     <div className="space-y-1 p-px">
-      <div className="relative">
-        <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
-
-        {/* Floating Add Knowledge Button */}
-        <Button
-          size="xs"
-          variant="ghost"
-          icon={AttachmentIcon}
-          onClick={handleAddKnowledge}
-          className="absolute bottom-2 left-2"
-          tooltip="Add knowledge"
-          disabled={!editor}
-        />
-      </div>
+      <SkillInstructionsEditorContent editor={editor} isReadOnly={false} />
 
       {instructionsFieldState.error && (
         <div className="dark:text-warning-night ml-2 text-xs text-warning">

@@ -612,10 +612,6 @@ export async function googleDriveFullSyncV2({
   }
 }
 
-export function googleDriveFullSyncV2WorkflowId(connectorId: ModelId): string {
-  return `googleDrive-fullSyncV2-${connectorId}`;
-}
-
 /**
  * Child workflow that handles incremental sync for a single drive.
  * Processes all changes for the drive with pagination, and launches folder sync for new folders.
@@ -653,22 +649,36 @@ export async function googleDriveIncrementalSyncPerDrive({
         await concurrentExecutor(
           newFolders,
           async (folderId) => {
-            const handle = await startChild(googleDriveFolderSync, {
-              workflowId: googleDriveFolderSyncWorkflowId(
-                connectorId,
-                folderId
-              ),
-              searchAttributes: { connectorId: [connectorId] },
-              args: [
-                {
-                  connectorId,
-                  rootFolderId: folderId,
-                  startSyncTs,
-                },
-              ],
-              memo: workflowInfo().memo,
-            });
-            await handle.result();
+            const workflowId = googleDriveFolderSyncWorkflowId(
+              connectorId,
+              folderId
+            );
+
+            try {
+              const handle = await startChild(googleDriveFolderSync, {
+                workflowId,
+                searchAttributes: { connectorId: [connectorId] },
+                args: [
+                  {
+                    connectorId,
+                    rootFolderId: folderId,
+                    startSyncTs,
+                  },
+                ],
+                memo: workflowInfo().memo,
+              });
+              await handle.result();
+            } catch (err) {
+              if (
+                err instanceof Error &&
+                err.name === "WorkflowExecutionAlreadyStartedError"
+              ) {
+                // Workflow already running, folder will be synced by that execution
+                return;
+              } else {
+                throw err;
+              }
+            }
           },
           { concurrency: GDRIVE_MAX_CONCURRENT_FOLDER_SYNCS }
         );
@@ -770,10 +780,4 @@ export async function googleDriveIncrementalSyncV2(
   // Sleep and continue
   await sleep("5 minutes");
   await continueAsNew<typeof googleDriveIncrementalSyncV2>(connectorId);
-}
-
-export function googleDriveIncrementalSyncV2WorkflowId(
-  connectorId: ModelId
-): string {
-  return `googleDrive-incrementalSyncV2-${connectorId}`;
 }

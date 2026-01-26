@@ -1,5 +1,4 @@
-import { Button, cn } from "@dust-tt/sparkle";
-import Link from "next/link";
+import { Button, cn, LinkWrapper } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
 import { AGENT_MESSAGE_COMPLETED_EVENT } from "@app/lib/notifications/events";
@@ -82,32 +81,14 @@ export function TrialMessageUsage({
       </div>
       {isAtLimit && isAdmin && (
         <div className="mt-3">
-          <Link
+          <LinkWrapper
             href={`/w/${workspaceId}/subscription`}
             className="no-underline"
           >
             <Button label="Subscribe to Dust" variant="primary" />
-          </Link>
+          </LinkWrapper>
         </div>
       )}
     </div>
   );
-}
-
-/**
- * Hook to check if the workspace is on a trial plan with message limits.
- * Returns true if the workspace has a message limit (trial plan), false otherwise.
- */
-export function useIsTrialPlanWithMessageLimit(workspaceId: string): {
-  isTrialPlan: boolean;
-  isLoading: boolean;
-} {
-  const { messageUsage, isMessageUsageLoading } = useTrialMessageUsage({
-    workspaceId,
-  });
-
-  return {
-    isTrialPlan: !!messageUsage && messageUsage.limit !== -1,
-    isLoading: isMessageUsageLoading,
-  };
 }

@@ -36,19 +36,18 @@ export async function createAgentActionConfiguration(
 
   assert(isServerSideMCPServerConfiguration(action));
 
+  const mcpServerView = await MCPServerViewResource.fetchById(
+    auth,
+    action.mcpServerViewId
+  );
+  if (!mcpServerView) {
+    return new Err(new Error("MCP server view not found"));
+  }
+  const {
+    server: { name: serverName, description: serverDescription },
+  } = mcpServerView.toJSON();
+
   return withTransaction(async (t) => {
-    const mcpServerView = await MCPServerViewResource.fetchById(
-      auth,
-      action.mcpServerViewId
-    );
-    if (!mcpServerView) {
-      return new Err(new Error("MCP server view not found"));
-    }
-
-    const {
-      server: { name: serverName, description: serverDescription },
-    } = mcpServerView.toJSON();
-
     const mcpConfig = await AgentMCPServerConfigurationModel.create(
       {
         sId: generateRandomModelSId(),
@@ -143,8 +142,14 @@ async function createAgentDataSourcesConfiguration(
     dataSourceConfigurations.every((dsc) => dsc.workspaceId === owner.sId)
   );
 
-  // DataSourceViewResource.listByWorkspace() applies the permissions check.
-  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const allDataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    dataSourceConfigurations.map((dsc) => dsc.dataSourceViewId)
+  );
+  const dataSourceViews = allDataSourceViews.filter((dsv) =>
+    dsv.canReadOrAdministrate(auth)
+  );
+
   const dataSourceViewsMap = dataSourceViews.reduce(
     (acc, dsv) => {
       acc[dsv.sId] = dsv;
@@ -186,8 +191,7 @@ async function createAgentDataSourcesConfiguration(
         parentsIn: dsConfig.filter.parents?.in,
         parentsNotIn: dsConfig.filter.parents?.not,
         dataSourceViewId: dataSourceView.id,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        mcpServerConfigurationId: mcpServerConfiguration?.id || null,
+        mcpServerConfigurationId: mcpServerConfiguration?.id ?? null,
         tagsMode,
         tagsIn,
         tagsNotIn,
@@ -221,8 +225,14 @@ async function createTableDataSourceConfiguration(
   // This allows us to use the current authenticator to fetch resources.
   assert(tableConfigurations.every((tc) => tc.workspaceId === owner.sId));
 
-  // DataSourceViewResource.listByWorkspace() applies the permissions check.
-  const dataSourceViews = await DataSourceViewResource.listByWorkspace(auth);
+  const allDataSourceViews = await DataSourceViewResource.fetchByIds(
+    auth,
+    tableConfigurations.map((tc) => tc.dataSourceViewId)
+  );
+  const dataSourceViews = allDataSourceViews.filter((dsv) =>
+    dsv.canReadOrAdministrate(auth)
+  );
+
   const dataSourceViewsMap = dataSourceViews.reduce(
     (acc, dsv) => {
       acc[dsv.sId] = dsv;
