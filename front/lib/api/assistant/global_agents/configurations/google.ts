@@ -56,11 +56,11 @@ export function _getGeminiProGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,

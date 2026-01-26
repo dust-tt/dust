@@ -68,11 +68,11 @@ export function _getGPT35TurboGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -127,11 +127,11 @@ export function _getGPT4GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -192,11 +192,11 @@ export function _getGPT5GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -259,11 +259,11 @@ export function _getGPT5ThinkingGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -322,11 +322,11 @@ export function _getGPT5MiniGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -384,11 +384,11 @@ export function _getGPT5NanoGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -444,11 +444,11 @@ export function _getO3MiniGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -499,11 +499,11 @@ export function _getO1GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -599,11 +599,11 @@ export function _getO1HighReasoningGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -654,11 +654,11 @@ export function _getO3GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,

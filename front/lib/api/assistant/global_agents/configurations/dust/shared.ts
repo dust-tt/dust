@@ -1,5 +1,8 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { PrefetchedDataSourcesType } from "@app/lib/api/assistant/global_agents/tools";
+import {
+  MCPServerViewsForGlobalAgentsMap,
+  PrefetchedDataSourcesType,
+} from "@app/lib/api/assistant/global_agents/tools";
 import {
   isIncludedInDefaultCompanyData,
   isRemoteDatabase,
@@ -9,9 +12,12 @@ import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 
 export function getCompanyDataAction(
   preFetchedDataSources: PrefetchedDataSourcesType | null,
-  dataSourcesFileSystemMCPServerView: MCPServerViewResource | null
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap
 ): MCPServerConfigurationType | null {
-  if (!preFetchedDataSources) {
+  const { data_sources_file_system: dataSourcesFileSystemMCPServerView } =
+    mcpServerViews;
+
+  if (!preFetchedDataSources || !dataSourcesFileSystemMCPServerView) {
     return null;
   }
 
@@ -20,7 +26,7 @@ export function getCompanyDataAction(
       dsView.isInGlobalSpace &&
       isIncludedInDefaultCompanyData(dsView.dataSource)
   );
-  if (dataSourceViews.length === 0 || !dataSourcesFileSystemMCPServerView) {
+  if (dataSourceViews.length === 0) {
     return null;
   }
 
@@ -55,9 +61,11 @@ export function getCompanyDataAction(
 
 export function getCompanyDataWarehousesAction(
   preFetchedDataSources: PrefetchedDataSourcesType | null,
-  dataWarehousesMCPServerView: MCPServerViewResource | null
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap
 ): MCPServerConfigurationType | null {
-  if (!preFetchedDataSources) {
+  const { data_warehouses: dataWarehousesMCPServerView } = mcpServerViews;
+
+  if (!preFetchedDataSources || !dataWarehousesMCPServerView) {
     return null;
   }
 
@@ -65,7 +73,7 @@ export function getCompanyDataWarehousesAction(
     (dsView) => dsView.isInGlobalSpace && isRemoteDatabase(dsView.dataSource)
   );
 
-  if (globalWarehouses.length === 0 || !dataWarehousesMCPServerView) {
+  if (globalWarehouses.length === 0) {
     return null;
   }
 

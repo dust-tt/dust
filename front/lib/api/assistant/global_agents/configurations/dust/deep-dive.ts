@@ -447,7 +447,7 @@ export function _getDeepDiveGlobalAgent(
     mcpServerViews: MCPServerViewsForGlobalAgentsMap;
   }
 ): AgentConfigurationType | null {
-  const runAgentMCPServerView = mcpServerViews.run_agent;
+  const { run_agent: runAgentMCPServerView } = mcpServerViews;
   const owner = auth.getNonNullableWorkspace();
   const pictureUrl = DUST_AVATAR_URL;
   const modelConfig = getModelConfig(owner, "anthropic");
@@ -498,7 +498,7 @@ export function _getDeepDiveGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    mcpServerViews.data_sources_file_system
+    mcpServerViews
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
@@ -507,25 +507,27 @@ export function _getDeepDiveGlobalAgent(
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: GLOBAL_AGENTS_SID.DEEP_DIVE,
-      webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+      mcpServerViews,
     }),
     ..._getToolsetsToolsConfiguration({
       agentId: GLOBAL_AGENTS_SID.DUST_TASK,
-      toolsetsMcpServerView: mcpServerViews.toolsets,
+      mcpServerViews,
     })
   );
 
   // Add data warehouses tool with all warehouses in global space (all remote DBs)
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    mcpServerViews.data_warehouses
+    mcpServerViews
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);
   }
 
   // Add Interactive Content tool.
-  const interactiveContentMCPServerView = mcpServerViews.interactive_content;
+  const { interactive_content: interactiveContentMCPServerView } =
+    mcpServerViews;
+
   if (interactiveContentMCPServerView) {
     actions.push({
       id: -1,
@@ -586,7 +588,7 @@ export function _getDeepDiveGlobalAgent(
   }
 
   // Add Slideshow tool.
-  const slideshowMCPServerView = mcpServerViews.slideshow;
+  const { slideshow: slideshowMCPServerView } = mcpServerViews;
   if (slideshowMCPServerView) {
     actions.push({
       id: -1,
@@ -692,13 +694,14 @@ export function _getDustTaskGlobalAgent(
 
   const companyDataAction = getCompanyDataAction(
     preFetchedDataSources,
-    mcpServerViews.data_sources_file_system
+    mcpServerViews
   );
   if (companyDataAction) {
     actions.push(companyDataAction);
   }
 
-  const webSearchBrowseMCPServerView = mcpServerViews["web_search_&_browse"];
+  const { "web_search_&_browse": webSearchBrowseMCPServerView } =
+    mcpServerViews;
   if (webSearchBrowseMCPServerView) {
     actions.push({
       id: -1,
@@ -723,7 +726,7 @@ export function _getDustTaskGlobalAgent(
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    mcpServerViews.data_warehouses
+    mcpServerViews
   );
   if (dataWarehousesAction) {
     actions.push(dataWarehousesAction);

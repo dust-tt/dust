@@ -66,11 +66,11 @@ export function _getMistralLargeGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -122,11 +122,11 @@ export function _getMistralMediumGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -173,11 +173,11 @@ export function _getMistralSmallGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,

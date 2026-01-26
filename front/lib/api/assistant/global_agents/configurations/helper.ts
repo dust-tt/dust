@@ -1,5 +1,4 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import { getGlobalAgentMetadata } from "@app/lib/api/assistant/global_agents/global_agent_metadata";
 import { globalAgentGuidelines } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
@@ -81,31 +80,21 @@ The user you're interacting with is granted with the role ${role}. Their name is
 
   const actions: MCPServerConfigurationType[] = [];
 
-  actions.push(
-    ..._getDefaultWebActionsForGlobalAgent({
-      agentId: GLOBAL_AGENTS_SID.HELPER,
-      webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
-    })
-  );
-
-  actions.push(
-    ..._getAgentRouterToolsConfiguration(
-      GLOBAL_AGENTS_SID.HELPER,
-      mcpServerViews.agent_router,
-      autoInternalMCPServerNameToSId({
-        name: "agent_router",
-        workspaceId: owner.id,
-      })
-    )
-  );
-
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
 
   actions.push(
+    ..._getDefaultWebActionsForGlobalAgent({
+      agentId: sId,
+      mcpServerViews,
+    }),
+    ..._getAgentRouterToolsConfiguration({
+      agentId: sId,
+      mcpServerViews,
+    }),
     ..._getInteractiveContentToolConfiguration({
       agentId: sId,
-      interactiveContentMCPServerView: mcpServerViews.interactive_content,
+      mcpServerViews,
     })
   );
 

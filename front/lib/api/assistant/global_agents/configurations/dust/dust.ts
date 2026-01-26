@@ -3,7 +3,6 @@ import {
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
-import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
@@ -309,13 +308,13 @@ function _getDustLikeGlobalAgent(
     preferredReasoningEffort?: ReasoningEffort;
   }
 ): AgentConfigurationType | null {
-  const webSearchBrowseMCPServerView = mcpServerViews["web_search_&_browse"];
-  const dataSourcesFileSystemMCPServerView =
-    mcpServerViews.data_sources_file_system;
-  const toolsetsMCPServerView = mcpServerViews.toolsets;
-  const deepDiveMCPServerView = mcpServerViews.deep_dive;
-  const agentMemoryMCPServerView = mcpServerViews.agent_memory;
   const owner = auth.getNonNullableWorkspace();
+  const {
+    data_sources_file_system: dataSourcesFileSystemMCPServerView,
+    toolsets: toolsetsMCPServerView,
+    deep_dive: deepDiveMCPServerView,
+    agent_memory: agentMemoryMCPServerView,
+  } = mcpServerViews;
 
   const description = `Dust is your general purpose agent. It has access to all of your company data and tools available in the Company space. Dust can help you:
 - Find and analyze data across your company knowledge
@@ -358,7 +357,6 @@ function _getDustLikeGlobalAgent(
   }
 
   const hasFilesystemTools = dataSourcesFileSystemMCPServerView !== null;
-
   const hasAgentMemory = agentMemoryMCPServerView !== null;
   const hasToolsets = toolsetsMCPServerView !== null;
 
@@ -373,7 +371,7 @@ function _getDustLikeGlobalAgent(
 
   const dataWarehousesAction = getCompanyDataWarehousesAction(
     preFetchedDataSources,
-    mcpServerViews.data_warehouses
+    mcpServerViews
   );
 
   const instructions = buildInstructions({
@@ -417,7 +415,7 @@ function _getDustLikeGlobalAgent(
       actions: [
         ..._getDefaultWebActionsForGlobalAgent({
           agentId,
-          webSearchBrowseMCPServerView,
+          mcpServerViews,
         }),
       ],
       maxStepsPerRun: 0,
@@ -440,7 +438,7 @@ function _getDustLikeGlobalAgent(
   if (hasFilesystemTools) {
     const companyDataAction = getCompanyDataAction(
       preFetchedDataSources,
-      dataSourcesFileSystemMCPServerView
+      mcpServerViews
     );
     if (companyDataAction) {
       actions.push(companyDataAction);
@@ -454,20 +452,16 @@ function _getDustLikeGlobalAgent(
   actions.push(
     ..._getDefaultWebActionsForGlobalAgent({
       agentId,
-      webSearchBrowseMCPServerView,
+      mcpServerViews,
     }),
     ..._getToolsetsToolsConfiguration({
       agentId,
-      toolsetsMcpServerView: toolsetsMCPServerView,
+      mcpServerViews,
     }),
-    ..._getAgentRouterToolsConfiguration(
+    ..._getAgentRouterToolsConfiguration({
       agentId,
-      mcpServerViews.agent_router,
-      autoInternalMCPServerNameToSId({
-        name: "agent_router",
-        workspaceId: owner.id,
-      })
-    )
+      mcpServerViews,
+    })
   );
 
   if (deepDiveMCPServerView) {
@@ -513,7 +507,7 @@ function _getDustLikeGlobalAgent(
   actions.push(
     ..._getInteractiveContentToolConfiguration({
       agentId,
-      interactiveContentMCPServerView: mcpServerViews.interactive_content,
+      mcpServerViews,
     })
   );
 

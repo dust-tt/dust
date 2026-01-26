@@ -66,11 +66,11 @@ export function _getClaude3HaikuGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -123,11 +123,11 @@ export function _getClaude3OpusGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -180,11 +180,11 @@ export function _getClaude3GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -237,11 +237,11 @@ export function _getClaude4SonnetGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -294,11 +294,11 @@ export function _getClaude3_7GlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -351,11 +351,11 @@ export function _getClaude4_5SonnetGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -409,11 +409,11 @@ export function _getClaude4_5HaikuGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView: mcpServerViews["web_search_&_browse"],
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView: mcpServerViews.interactive_content,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
