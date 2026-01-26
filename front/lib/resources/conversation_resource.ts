@@ -582,8 +582,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return new Err(new ConversationError("conversation_not_found"));
     }
 
-    const { actionRequired, unread } =
-      await ConversationResource.getActionRequiredAndUnreadForUser(
+    const { actionRequired, lastReadAt } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
         auth,
         conversation.id
       );
@@ -596,7 +596,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       title: conversation.title,
       triggerId: conversation.triggerSId,
       actionRequired,
-      unread,
+      unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
       hasError: conversation.hasError,
       requestedGroupIds: [],
       requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
@@ -756,8 +756,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return Promise.all(
       conversations.map(async (c) => {
-        const { actionRequired, unread } =
-          await ConversationResource.getActionRequiredAndUnreadForUser(
+        const { actionRequired, lastReadAt } =
+          await ConversationResource.getActionRequiredAndLastReadAtForUser(
             auth,
             c.id
           );
@@ -770,7 +770,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           title: c.title,
           triggerId: triggerId,
           actionRequired,
-          unread,
+          unread: lastReadAt === null || c.updatedAt > lastReadAt,
           hasError: c.hasError,
           requestedGroupIds: [],
           requestedSpaceIds: c.getRequestedSpaceIdsFromModel(),
@@ -857,7 +857,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated[0]);
   }
 
-  static async markAsRead(
+  static async markAsReadForAuthUser(
     auth: Authenticator,
     {
       conversation,
@@ -887,14 +887,14 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return new Ok(updated);
   }
 
-  static async getActionRequiredAndUnreadForUser(
+  static async getActionRequiredAndLastReadAtForUser(
     auth: Authenticator,
     id: number
   ) {
     if (!auth.user()) {
       return {
         actionRequired: false,
-        unread: false,
+        lastReadAt: null,
       };
     }
 
@@ -904,21 +904,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: auth.getNonNullableWorkspace().id,
         userId: auth.getNonNullableUser().id,
       },
-      include: [
-        {
-          model: ConversationModel,
-          as: "conversation",
-          attributes: ["updatedAt"],
-        },
-      ],
     });
 
     return {
       actionRequired: participant?.actionRequired ?? false,
-      unread:
-        participant?.lastReadAt === null ||
-        (!!participant?.conversation?.updatedAt &&
-          participant.conversation?.updatedAt > participant.lastReadAt),
+      lastReadAt: participant?.lastReadAt ?? null,
     };
   }
 
@@ -1488,43 +1478,18 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   }
 
   async listParticipants(
-    auth: Authenticator,
-    unreadOnly: boolean = false
-  ): Promise<(UserType & { unread: boolean })[]> {
+    auth: Authenticator
+  ): Promise<(UserType & { lastReadAt: Date | null })[]> {
     const participants = await ConversationParticipantModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         conversationId: this.id,
-        ...(unreadOnly
-          ? {
-              [Op.or]: [
-                { lastReadAt: null },
-                {
-                  "$conversation.updatedAt$": {
-                    [Op.gt]: col("lastReadAt"),
-                  },
-                },
-              ],
-            }
-          : {}),
       },
-      include: [
-        {
-          model: ConversationModel,
-          as: "conversation",
-          attributes: ["updatedAt"],
-        },
-      ],
     });
 
-    const unreadMap = new Map<number, boolean>();
+    const lastReadAtMap = new Map<number, Date | null>();
     for (const participant of participants) {
-      const unRead =
-        participant.lastReadAt === null ||
-        (!!participant.conversation?.updatedAt &&
-          participant.conversation?.updatedAt > participant.lastReadAt);
-
-      unreadMap.set(participant.userId, unRead);
+      lastReadAtMap.set(participant.userId, participant.lastReadAt);
     }
 
     const userResources = await UserResource.fetchByModelIds(
@@ -1533,7 +1498,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     return userResources.map((userResource) => ({
       ...userResource.toJSON(),
-      unread: unreadMap.get(userResource.id) ?? false,
+      lastReadAt: lastReadAtMap.get(userResource.id) ?? null,
     }));
   }
 

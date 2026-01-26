@@ -133,7 +133,7 @@ async function handler(
             conversationId: conversation.sId,
             title: bodyValidation.right.title,
           });
-          await ConversationResource.markAsRead(auth, {
+          await ConversationResource.markAsReadForAuthUser(auth, {
             conversation,
           });
 
@@ -142,7 +142,7 @@ async function handler(
           }
           return res.status(200).json({ success: true });
         } else if ("read" in bodyValidation.right) {
-          await ConversationResource.markAsRead(auth, {
+          await ConversationResource.markAsReadForAuthUser(auth, {
             conversation,
           });
 

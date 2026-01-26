@@ -687,7 +687,7 @@ export async function postUserMessage(
     await ConversationResource.markAsUpdated(auth, { conversation, t });
 
     // Mark the conversation as read for the current user.
-    await ConversationResource.markAsRead(auth, {
+    await ConversationResource.markAsReadForAuthUser(auth, {
       conversation,
       transaction: t,
     });
@@ -997,6 +997,12 @@ export async function editUserMessage(
           agentMessages,
         };
       }
+
+      // Mark the conversation as read for the current user.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        transaction: t,
+      });
 
       const userMessage = {
         ...userMessageWithoutMentions,
