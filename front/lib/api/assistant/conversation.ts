@@ -19,6 +19,7 @@ import {
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
+  makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
@@ -27,6 +28,7 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { getRemainingKeyCapMicroUsd } from "@app/lib/api/key_cap_tracking";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -1618,6 +1620,109 @@ async function checkMessagesLimit(
   return new Ok(undefined);
 }
 
+// For programmatic usage, apply credit-based rate limiting.
+// This prevents close-to-0 credit attacks where many messages are sent simultaneously
+// before token usage is computed. Rate limit is based on total credit amount in dollars.
+async function checkProgrammaticUsageRateLimit(
+  auth: Authenticator
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const activeCredits = await CreditResource.listActive(auth);
+
+  // Calculate total remaining credits in dollars (micro USD / 1,000,000).
+  const totalRemainingCreditsDollars =
+    activeCredits.reduce(
+      (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
+      0
+    ) / 1_000_000;
+
+  // Minimum of 1 to allow at least some messages even with very low credits.
+  const maxMessagesPerMinute = Math.max(
+    1,
+    Math.floor(
+      totalRemainingCreditsDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
+    )
+  );
+
+  const remainingMessages = await rateLimiter({
+    key: makeProgrammaticUsageRateLimitKeyForWorkspace(owner),
+    maxPerTimeframe: maxMessagesPerMinute,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remainingMessages <= 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        totalRemainingCreditsDollars,
+      },
+      "Pre-emptive rate limit triggered for programmatic usage."
+    );
+
+    statsDClient.increment(
+      "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
+      1,
+      { workspace_id: owner.sId }
+    );
+
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  // Per-key rate limiting for keys with a cap.
+  // Prevents close-to-0 cap attacks where many messages are sent simultaneously.
+  const remainingCapMicroUsd = await getRemainingKeyCapMicroUsd(auth);
+  if (remainingCapMicroUsd !== null) {
+    const keyAuth = auth.key();
+    if (keyAuth) {
+      const remainingCapDollars = remainingCapMicroUsd / 1_000_000;
+      const keyMaxMessagesPerMinute = Math.max(
+        1,
+        Math.floor(
+          remainingCapDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
+        )
+      );
+
+      const keyRemainingMessages = await rateLimiter({
+        key: makeKeyCapRateLimitKey(keyAuth.id),
+        maxPerTimeframe: keyMaxMessagesPerMinute,
+        timeframeSeconds: 60,
+        logger,
+      });
+
+      if (keyRemainingMessages <= 0) {
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            keyId: keyAuth.id,
+            remainingCapDollars,
+          },
+          "Pre-emptive rate limit triggered for key cap."
+        );
+
+        statsDClient.increment(
+          "assistant.rate_limiter.key_cap.credit_based_limit_triggered",
+          1,
+          { workspace_id: owner.sId }
+        );
+
+        return {
+          isLimitReached: true,
+          limitType: "rate_limit_error",
+        };
+      }
+    }
+  }
+
+  return {
+    isLimitReached: false,
+    limitType: null,
+  };
+}
+
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
@@ -1631,60 +1736,8 @@ async function isMessagesLimitReached(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
-  // For programmatic usage, apply credit-based rate limiting.
-  // This prevents close-to-0 credit attacks where many messages are sent simultaneously
-  // before token usage is computed. Rate limit is based on total credit amount in dollars.
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    const activeCredits = await CreditResource.listActive(auth);
-
-    // Calculate total remaining credits in dollars (micro USD / 1,000,000).
-    const totalRemainingCreditsDollars =
-      activeCredits.reduce(
-        (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
-        0
-      ) / 1_000_000;
-
-    // Minimum of 1 to allow at least some messages even with very low credits.
-    const maxMessagesPerMinute = Math.max(
-      1,
-      Math.floor(
-        totalRemainingCreditsDollars /
-          PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
-      )
-    );
-
-    const remainingMessages = await rateLimiter({
-      key: makeProgrammaticUsageRateLimitKeyForWorkspace(owner),
-      maxPerTimeframe: maxMessagesPerMinute,
-      timeframeSeconds: 60,
-      logger,
-    });
-
-    if (remainingMessages <= 0) {
-      logger.info(
-        {
-          workspaceId: owner.sId,
-          totalRemainingCreditsDollars,
-        },
-        "Pre-emptive rate limit triggered for programmatic usage."
-      );
-
-      statsDClient.increment(
-        "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
-        1,
-        { workspace_id: owner.sId }
-      );
-
-      return {
-        isLimitReached: true,
-        limitType: "rate_limit_error",
-      };
-    }
-
-    return {
-      isLimitReached: false,
-      limitType: null,
-    };
+    return checkProgrammaticUsageRateLimit(auth);
   }
 
   // Checking rate limit
