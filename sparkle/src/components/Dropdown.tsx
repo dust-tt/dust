@@ -7,7 +7,10 @@ import { useRef } from "react";
 import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
-import { KeyboardShortcut } from "@sparkle/components/KeyboardShortcut";
+import {
+  KeyboardShortcut,
+  KeyboardShortcutProps,
+} from "@sparkle/components/KeyboardShortcut";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
@@ -591,7 +594,7 @@ const DropdownMenuSeparator = React.forwardRef<
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
 type DropdownMenuShortcutProps = React.HTMLAttributes<HTMLSpanElement> & {
-  shortcut?: string;
+  shortcut?: KeyboardShortcutProps["shortcut"];
 };
 
 const DropdownMenuShortcut = ({
@@ -600,8 +603,7 @@ const DropdownMenuShortcut = ({
   children,
   ...props
 }: DropdownMenuShortcutProps) => {
-  const resolvedShortcut =
-    shortcut ?? (typeof children === "string" ? children : "");
+  const resolvedShortcut = shortcut ?? "";
 
   if (!resolvedShortcut && children) {
     return (
