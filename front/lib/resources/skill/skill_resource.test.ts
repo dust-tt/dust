@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { SkillDataSourceConfigurationModel } from "@app/lib/models/skill";
+import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SkillAttachedKnowledge } from "@app/lib/resources/skill/skill_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -634,6 +636,159 @@ describe("SkillResource", () => {
       // sharedSpace kept because skill2 still requires it.
       expect(spaceIds).toContain(sharedSpace.id);
       expect(spaceIds).toContain(skill1OnlySpace.id);
+    });
+  });
+
+  describe("delete", () => {
+    it("should delete the skill and its associated editor group", async () => {
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Skill To Delete" }
+      );
+
+      // Verify the skill and its editor group exist.
+      const groupSkillBefore = await GroupSkillModel.findOne({
+        where: {
+          skillConfigurationId: skillResource.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(groupSkillBefore).not.toBeNull();
+
+      const editorGroupId = groupSkillBefore!.groupId;
+      const [editorGroupBefore] = await GroupResource.fetchByModelIds(
+        testContext.authenticator,
+        [editorGroupId]
+      );
+      expect(editorGroupBefore).not.toBeNull();
+      expect(editorGroupBefore!.kind).toBe("skill_editors");
+
+      // Delete the skill.
+      const result = await skillResource.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      // Verify the skill is deleted.
+      const skillAfter = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skillResource.id
+      );
+      expect(skillAfter).toBeNull();
+
+      // Verify the GroupSkillModel entry is deleted.
+      const groupSkillAfter = await GroupSkillModel.findOne({
+        where: {
+          skillConfigurationId: skillResource.id,
+          workspaceId: testContext.workspace.id,
+        },
+      });
+      expect(groupSkillAfter).toBeNull();
+
+      // Verify the editor group is deleted.
+      const editorGroupsAfter = await GroupResource.fetchByModelIds(
+        testContext.authenticator,
+        [editorGroupId]
+      );
+      expect(editorGroupsAfter).toHaveLength(0);
+    });
+  });
+
+  describe("deleteAllForWorkspace", () => {
+    it("should only delete skills from the authenticated workspace", async () => {
+      // Create a skill in workspace1.
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill In Workspace 1",
+      });
+
+      // Create a second workspace with its own skill.
+      const testContext2 = await createResourceTest({ role: "admin" });
+      const skill2 = await SkillFactory.create(testContext2.authenticator, {
+        name: "Skill In Workspace 2",
+      });
+
+      // Verify both skills exist.
+      const fetched1 = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill1.id
+      );
+      const fetched2 = await SkillResource.fetchByModelIdWithAuth(
+        testContext2.authenticator,
+        skill2.id
+      );
+      expect(fetched1).not.toBeNull();
+      expect(fetched2).not.toBeNull();
+
+      // Delete all skills for workspace1.
+      await SkillResource.deleteAllForWorkspace(testContext.authenticator);
+
+      // Verify workspace1 skill is deleted.
+      const deletedSkill1 = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill1.id
+      );
+      expect(deletedSkill1).toBeNull();
+
+      // Verify workspace2 skill still exists.
+      const stillExistsSkill2 = await SkillResource.fetchByModelIdWithAuth(
+        testContext2.authenticator,
+        skill2.id
+      );
+      expect(stillExistsSkill2).not.toBeNull();
+      expect(stillExistsSkill2?.id).toBe(skill2.id);
+    });
+
+    it("should delete all skills and their associated editor groups", async () => {
+      // Create multiple skills.
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 1 For Bulk Delete",
+      });
+      const skill2 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill 2 For Bulk Delete",
+      });
+
+      // Get the editor group IDs before deletion.
+      const groupSkills = await GroupSkillModel.findAll({
+        where: { workspaceId: testContext.workspace.id },
+      });
+      const editorGroupIds = groupSkills.map((gs) => gs.groupId);
+      expect(editorGroupIds.length).toBeGreaterThanOrEqual(2);
+
+      // Verify editor groups exist.
+      const editorGroupsBefore = await GroupResource.fetchByModelIds(
+        testContext.authenticator,
+        editorGroupIds
+      );
+      expect(editorGroupsBefore.length).toBe(editorGroupIds.length);
+      expect(editorGroupsBefore.every((g) => g.kind === "skill_editors")).toBe(
+        true
+      );
+
+      // Delete all skills for the workspace.
+      await SkillResource.deleteAllForWorkspace(testContext.authenticator);
+
+      // Verify skills are deleted.
+      const skill1After = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill1.id
+      );
+      const skill2After = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill2.id
+      );
+      expect(skill1After).toBeNull();
+      expect(skill2After).toBeNull();
+
+      // Verify GroupSkillModel entries are deleted.
+      const groupSkillsAfter = await GroupSkillModel.findAll({
+        where: { workspaceId: testContext.workspace.id },
+      });
+      expect(groupSkillsAfter).toHaveLength(0);
+
+      // Verify editor groups are deleted.
+      const editorGroupsAfter = await GroupResource.fetchByModelIds(
+        testContext.authenticator,
+        editorGroupIds
+      );
+      expect(editorGroupsAfter).toHaveLength(0);
     });
   });
 });

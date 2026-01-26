@@ -1531,6 +1531,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
         transaction,
       });
 
+      // Delete the GroupSkillModel entry and the associated editor group.
+      await GroupSkillModel.destroy({
+        where: {
+          skillConfigurationId: this.id,
+          workspaceId: workspace.id,
+        },
+        transaction,
+      });
+
+      if (this.editorGroup) {
+        await this.editorGroup.delete(auth, { transaction });
+      }
+
       const affectedCount = await this.model.destroy({
         where: {
           id: this.id,
@@ -1664,9 +1677,22 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       where: { workspaceId },
     });
 
+    // Delete editor groups associated with skills.
+    const groupSkills = await GroupSkillModel.findAll({
+      where: { workspaceId },
+    });
+    const editorGroups = await GroupResource.fetchByModelIds(
+      auth,
+      groupSkills.map((gs) => gs.groupId)
+    );
+
     await GroupSkillModel.destroy({
       where: { workspaceId },
     });
+
+    for (const editorGroup of editorGroups) {
+      await editorGroup.delete(auth);
+    }
 
     await SkillDataSourceConfigurationModel.destroy({
       where: { workspaceId },
