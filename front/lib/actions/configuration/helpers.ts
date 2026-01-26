@@ -81,11 +81,13 @@ export function buildServerSideMCPServerConfiguration({
   mcpServerView,
   dataSources = null,
   serverNameOverride,
+  childAgentId = null,
   additionalConfiguration = {},
 }: {
   mcpServerView: MCPServerViewResource;
   dataSources?: DataSourceConfiguration[] | null;
   serverNameOverride?: string;
+  childAgentId?: string | null;
   additionalConfiguration?: AdditionalConfigurationType;
 }): ServerSideMCPServerConfigurationType {
   const { server } = mcpServerView.toJSON();
@@ -101,7 +103,7 @@ export function buildServerSideMCPServerConfiguration({
     internalMCPServerId: mcpServerView.internalMCPServerId,
     dataSources,
     tables: null,
-    childAgentId: null,
+    childAgentId,
     additionalConfiguration,
     timeFrame: null,
     dustAppConfiguration: null,

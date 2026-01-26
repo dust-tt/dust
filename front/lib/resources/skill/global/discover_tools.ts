@@ -31,7 +31,7 @@ export const discoverToolsSkill = {
 
     return buildDiscoverToolsInstructions(availableToolsets);
   },
-  internalMCPServerNames: ["toolsets"],
+  mcpServers: [{ name: "toolsets" }],
   version: 1,
   icon: "ToolsIcon",
   isAutoEnabled: true,
