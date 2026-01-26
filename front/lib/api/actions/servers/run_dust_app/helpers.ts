@@ -1,6 +1,5 @@
-import { DustAPI, INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { TextContent } from "@modelcontextprotocol/sdk/types.js";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { ZodRawShape } from "zod";
 import { z } from "zod";
 
@@ -15,28 +14,14 @@ import type {
   LightServerSideMCPToolConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
-import { MCPError } from "@app/lib/actions/mcp_errors";
-import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
-import type {
-  AgentLoopContextType,
-  AgentLoopRunContextType,
-} from "@app/lib/actions/types";
-import {
-  isLightServerSideMCPToolConfiguration,
-  isServerSideMCPServerConfigurationWithName,
-} from "@app/lib/actions/types/guards";
+import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
-import config from "@app/lib/api/config";
 import { getDatasetSchema } from "@app/lib/api/datasets";
 import type { Authenticator } from "@app/lib/auth";
-import { prodAPICredentialsForOwner } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
-import { sanitizeJSONOutput } from "@app/lib/utils";
 import logger from "@app/logger/logger";
 import type {
   BlockRunConfig,
@@ -46,20 +31,14 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
-  Err,
   extensionsForContentType,
-  getHeaderFromGroupIds,
-  getHeaderFromRole,
-  Ok,
   safeParseJSON,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 
-import { ConfigurableToolInputSchemas } from "../input_schemas";
-
 const MIN_GENERATION_TOKENS = 2048;
 
-interface DustFileOutput {
+export interface DustFileOutput {
   __dust_file?: {
     type: string;
     content: unknown;
@@ -67,7 +46,7 @@ interface DustFileOutput {
   [key: string]: unknown;
 }
 
-function getDustAppRunResultsFileTitle({
+export function getDustAppRunResultsFileTitle({
   appName,
   resultsFileContentType,
 }: {
@@ -82,7 +61,7 @@ function getDustAppRunResultsFileTitle({
   return title;
 }
 
-function convertDatasetSchemaToZodRawShape(
+export function convertDatasetSchemaToZodRawShape(
   datasetSchema: DatasetSchema | null
 ): ZodRawShape {
   const shape: ZodRawShape = {};
@@ -111,7 +90,7 @@ function convertDatasetSchemaToZodRawShape(
   return shape;
 }
 
-async function prepareAppContext(
+export async function prepareAppContext(
   auth: Authenticator,
   actionConfig:
     | ServerSideMCPServerConfigurationType
@@ -179,7 +158,7 @@ async function prepareAppContext(
   return { app, schema, appConfig };
 }
 
-async function processDustFileOutput(
+export async function processDustFileOutput(
   auth: Authenticator,
   sanitizedOutput: DustFileOutput,
   conversation: ConversationWithoutContentType,
@@ -272,7 +251,7 @@ async function processDustFileOutput(
       file = jsonFile;
     } else {
       // If the output is not a valid json object, generate a text file.
-      const fileTitle = getDustAppRunResultsFileTitle({
+      fileTitle = getDustAppRunResultsFileTitle({
         appName,
         resultsFileContentType: "text/plain",
       });
@@ -303,12 +282,12 @@ async function processDustFileOutput(
   return content;
 }
 
-async function prepareParamsWithHistory(
-  params: { [p: string]: any },
+export async function prepareParamsWithHistory(
+  params: { [p: string]: unknown },
   schema: DatasetSchema | null,
   agentLoopRunContext: AgentLoopRunContextType,
   auth: Authenticator
-) {
+): Promise<{ [p: string]: unknown }> {
   if (
     schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
   ) {
@@ -341,204 +320,14 @@ async function prepareParamsWithHistory(
   return params;
 }
 
-export default async function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
-  const server = makeInternalMCPServer("run_dust_app");
-  const owner = auth.getNonNullableWorkspace();
-
-  if (agentLoopContext?.listToolsContext) {
-    const { agentActionConfiguration } = agentLoopContext.listToolsContext;
-    if (
-      !isServerSideMCPServerConfigurationWithName(
-        agentActionConfiguration,
-        "run_dust_app"
-      )
-    ) {
-      throw new Error("Invalid Dust app run agent configuration");
-    }
-
-    const { app, schema } = await prepareAppContext(
-      auth,
-      agentActionConfiguration
-    );
-
-    if (!app.description) {
-      throw new Error("Missing app description");
-    }
-
-    server.tool(
-      app.name,
-      app.description,
-      convertDatasetSchemaToZodRawShape(schema),
-      withToolLogging(
-        auth,
-        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
-        async () => {
-          return new Ok([
-            {
-              type: "text",
-              text: "Successfully list Dust App configuration",
-            },
-          ]);
-        }
-      )
-    );
-  } else if (agentLoopContext?.runContext) {
-    const { toolConfiguration } = agentLoopContext.runContext;
-    if (
-      !isLightServerSideMCPToolConfiguration(toolConfiguration) ||
-      !matchesInternalMCPServerName(
-        toolConfiguration.internalMCPServerId,
-        "run_dust_app"
-      )
-    ) {
-      throw new Error("Invalid Dust app run tool configuration");
-    }
-
-    const { app, schema, appConfig } = await prepareAppContext(
-      auth,
-      toolConfiguration
-    );
-
-    if (!app.description) {
-      throw new Error("Missing app description");
-    }
-
-    server.tool(
-      app.name,
-      app.description,
-      convertDatasetSchemaToZodRawShape(schema),
-      withToolLogging(
-        auth,
-        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
-        async (params) => {
-          const content: (
-            | TextContent
-            | { type: "resource"; resource: ToolGeneratedFileType }
-          )[] = [];
-
-          params = await prepareParamsWithHistory(
-            params,
-            schema,
-            agentLoopContext.runContext,
-            auth
-          );
-
-          const requestedGroupIds = auth.groupIds();
-
-          const prodCredentials = await prodAPICredentialsForOwner(owner);
-          const apiConfig = config.getDustAPIConfig();
-          const api = new DustAPI(
-            apiConfig,
-            {
-              ...prodCredentials,
-              extraHeaders: {
-                ...getHeaderFromGroupIds(requestedGroupIds),
-                ...getHeaderFromRole(auth.role()), // Keep the user's role for api.runApp call only
-              },
-            },
-            logger,
-            apiConfig.nodeEnv === "development" ? "http://localhost:3000" : null
-          );
-
-          const runRes = await api.runAppStreamed(
-            {
-              workspaceId: owner.sId,
-              appId: app.sId,
-              appSpaceId: app.space.sId,
-              appHash: "latest",
-            },
-            appConfig,
-            [params],
-            { useWorkspaceCredentials: true }
-          );
-
-          if (runRes.isErr()) {
-            return new Err(
-              new MCPError(`Error running Dust app: ${runRes.error.message}`)
-            );
-          }
-
-          const { eventStream } = runRes.value;
-          let lastBlockOutput = null;
-
-          for await (const event of eventStream) {
-            if (event.type === "error") {
-              return new Err(
-                new MCPError(`Error running Dust app: ${event.content.message}`)
-              );
-            }
-
-            if (event.type === "block_execution") {
-              const e = event.content.execution[0][0];
-              if (e.error) {
-                return new Err(
-                  new MCPError(`Error in block execution: ${e.error}`)
-                );
-              }
-              lastBlockOutput = e.value;
-            }
-          }
-
-          const sanitizedOutput = sanitizeJSONOutput(lastBlockOutput);
-
-          const containsFileOutput = (
-            output: unknown
-          ): output is DustFileOutput =>
-            typeof output === "object" &&
-            output !== null &&
-            "__dust_file" in output &&
-            typeof output.__dust_file === "object" &&
-            output.__dust_file !== null &&
-            "type" in output.__dust_file &&
-            "content" in output.__dust_file;
-
-          if (
-            containsFileOutput(sanitizedOutput) &&
-            agentLoopContext.runContext?.conversation
-          ) {
-            const fileContent = await processDustFileOutput(
-              auth,
-              sanitizedOutput,
-              agentLoopContext.runContext.conversation,
-              app.name
-            );
-            content.push(...fileContent);
-          }
-
-          content.push({
-            type: "text",
-            text: JSON.stringify(sanitizedOutput, null, 2),
-          });
-
-          return new Ok(content);
-        }
-      )
-    );
-  } else {
-    server.tool(
-      "run_dust_app",
-      "Run a Dust App with specified parameters.",
-      {
-        dustApp:
-          ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
-      },
-      withToolLogging(
-        auth,
-        { toolNameForMonitoring: "run_dust_app", agentLoopContext },
-        async () => {
-          return new Ok([
-            {
-              type: "text",
-              text: "Successfully saved Dust App configuration",
-            },
-          ]);
-        }
-      )
-    );
-  }
-
-  return server;
+export function containsFileOutput(output: unknown): output is DustFileOutput {
+  return (
+    typeof output === "object" &&
+    output !== null &&
+    "__dust_file" in output &&
+    typeof output.__dust_file === "object" &&
+    output.__dust_file !== null &&
+    "type" in output.__dust_file &&
+    "content" in output.__dust_file
+  );
 }

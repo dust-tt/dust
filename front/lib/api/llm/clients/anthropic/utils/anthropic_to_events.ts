@@ -22,6 +22,7 @@ import type {
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import { parseToolArguments } from "@app/lib/api/llm/utils/tool_arguments";
+import logger from "@app/logger/logger";
 import { assertNever } from "@app/types";
 
 export async function* streamLLMEvents(
@@ -32,11 +33,32 @@ export async function* streamLLMEvents(
   // Aggregate output items to build a SuccessCompletionEvent at the end of a turn.
   const aggregate = new SuccessAggregate();
 
+  logger.info(
+    { modelId: metadata.modelId },
+    "[AGENT_LOOP_DEBUG] streamLLMEvents starting iteration over Anthropic SDK stream"
+  );
+
+  let isFirstEvent = true;
+  const iterationStartMs = Date.now();
+
   // There is an issue in Anthropic SDK showcasing that stream events get mutated after they are yielded.
   // https://github.com/anthropics/anthropic-sdk-typescript/issues/777
   // They say it has been fixed in the version we are using but in practice we still see it happening.
   // To work around this, we clone each event before processing it.
   for await (const mutableMessageStreamEvent of messageStreamEvents) {
+    if (isFirstEvent) {
+      const elapsedMs = Date.now() - iterationStartMs;
+      logger.info(
+        {
+          modelId: metadata.modelId,
+          elapsedMs,
+          eventType: mutableMessageStreamEvent.type,
+        },
+        "[AGENT_LOOP_DEBUG] streamLLMEvents received first event from Anthropic API"
+      );
+      isFirstEvent = false;
+    }
+
     const messageStreamEvent = cloneDeep(mutableMessageStreamEvent);
 
     for (const ev of handleMessageStreamEvent(
@@ -48,6 +70,11 @@ export async function* streamLLMEvents(
       yield ev;
     }
   }
+
+  logger.info(
+    { modelId: metadata.modelId },
+    "[AGENT_LOOP_DEBUG] streamLLMEvents completed iteration"
+  );
 
   yield {
     type: "success",

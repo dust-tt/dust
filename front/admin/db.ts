@@ -85,6 +85,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
+import { ProjectJournalEntryModel } from "@app/lib/resources/storage/models/project_journal_entry";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   RunModel,
@@ -211,6 +212,8 @@ async function main() {
   await WorkspaceVerificationAttemptModel.sync({ alter: true });
 
   await AgentSuggestionModel.sync({ alter: true });
+
+  await ProjectJournalEntryModel.sync({ alter: true });
 
   process.exit(0);
 }

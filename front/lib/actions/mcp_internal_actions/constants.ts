@@ -18,12 +18,17 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
+import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
+import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
@@ -321,19 +326,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("legacy_dust_apps");
     },
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "run_dust_app",
-      version: "1.0.0",
-      description: "Run Dust Apps with specified parameters.",
-      icon: "CommandLineIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: RUN_DUST_APP_SERVER,
   },
   notion: {
     id: 11,
@@ -352,19 +348,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "extract_data",
-      version: "1.0.0",
-      description: "Parse documents to create structured datasets.",
-      icon: "ActionScanIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: EXTRACT_DATA_SERVER,
   },
   missing_action_catcher: {
     id: 13,
@@ -1034,22 +1021,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      text_to_speech: "low",
-      text_to_dialogue: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "speech_generator",
-      version: "1.0.0",
-      description: "Turn written text into spoken audio or dialog",
-      authorization: null,
-      icon: "ActionSpeakIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SPEECH_GENERATOR_SERVER,
   },
   microsoft_drive: {
     id: 35,
@@ -1123,22 +1098,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      generate_music: "low",
-      generate_sound_effects: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "sound_studio",
-      version: "1.0.0",
-      description: "Create music tracks and sound effects",
-      authorization: null,
-      icon: "ActionNoiseIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SOUND_STUDIO_SERVER,
   },
   microsoft_excel: {
     id: 38,
@@ -1854,24 +1817,12 @@ export const INTERNAL_MCP_SERVERS = {
       add_project_file: "high",
       update_project_file: "high",
       delete_project_file: "high",
+      read_project_journal_entry: "never_ask",
     },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "project_context_management",
-      version: "1.0.0",
-      description:
-        "Manage files in the project context. Add, update, delete, and list project files.",
-      icon: "ActionDocumentTextIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Project context files are shared across all conversations in this project. " +
-        "Only text-based files are supported for adding/updating. " +
-        "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-        "Requires write permissions on the project space.",
-    },
+    metadata: PROJECT_CONTEXT_MANAGEMENT_SERVER,
   },
   agent_copilot_context: {
     id: 1022,

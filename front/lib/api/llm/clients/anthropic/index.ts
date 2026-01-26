@@ -24,6 +24,7 @@ import type {
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { dustManagedCredentials } from "@app/types";
 
 export class AnthropicLLM extends LLM {
@@ -58,6 +59,17 @@ export class AnthropicLLM extends LLM {
         toMessage(msg, { isLast: index === array.length - 1 })
       );
 
+      logger.info(
+        {
+          modelId: this.modelId,
+          messageCount: messages.length,
+          toolCount: specifications.length,
+          conversationId: this.context?.conversationId,
+          traceId: this.traceId,
+        },
+        "[AGENT_LOOP_DEBUG] Anthropic internalStream creating stream"
+      );
+
       const events = this.client.beta.messages.stream({
         model: this.modelId,
         thinking: toThinkingConfig(
@@ -85,8 +97,27 @@ export class AnthropicLLM extends LLM {
         output_format: toOutputFormatParam(this.responseFormat),
       });
 
+      logger.info(
+        {
+          modelId: this.modelId,
+          conversationId: this.context?.conversationId,
+          traceId: this.traceId,
+        },
+        "[AGENT_LOOP_DEBUG] Anthropic stream object created, starting iteration"
+      );
+
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {
+      logger.error(
+        {
+          modelId: this.modelId,
+          error: err instanceof Error ? err.message : String(err),
+          errorName: err instanceof Error ? err.name : "unknown",
+          conversationId: this.context?.conversationId,
+          traceId: this.traceId,
+        },
+        "[AGENT_LOOP_DEBUG] Anthropic internalStream caught error"
+      );
       if (err instanceof APIError) {
         yield handleError(err, this.metadata);
       } else {

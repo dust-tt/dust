@@ -76,7 +76,7 @@ const ScrollArea = React.forwardRef<
           ref={viewportRef || localViewportRef}
           onScroll={handleScroll}
           className={cn(
-            "s-h-full s-w-full s-rounded-[inherit]",
+            "s-scrollarea-viewport s-h-full s-w-full s-rounded-[inherit]",
             viewportClassName
           )}
         >

@@ -108,3 +108,7 @@ jobs:
       - name: Format Check
         run: |
           npm -w front run format:check
+      - name: Knip
+        uses: ./.github/actions/knip
+        with:
+          workspace: front
