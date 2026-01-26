@@ -13,7 +13,10 @@
 #   LEFTHOOK_EXCLUDE=ggshield-scan,package-lock-check git commit -m "message"
 #
 # Skip only linting/type-checking (front and connectors):
-#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,connectors-lint-test-filenames,connectors-typecheck,lint-staged git commit -m "message"
+#   LEFTHOOK_EXCLUDE=front-lint-test-filenames,front-typecheck,front-circular,front-docs-check,front-prettier,front-eslint,connectors-lint-test-filenames,connectors-typecheck,connectors-prettier,connectors-eslint git commit -m "message"
+#
+# Skip only a project:
+#   LEFTHOOK_EXCLUDE=front git commit -m "message"
 #
 # Interactive mode (choose which commands to run):
 #   lefthook run pre-commit --interactive
@@ -49,8 +52,7 @@ pre-commit:
     # Optional: package-lock.json sync check (skip with LEFTHOOK_EXCLUDE=package-lock-check)
     package-lock-check:
       run: |
-        root_path=$(git rev-parse --show-toplevel)
-        if ! "$root_path"/scripts/check-package-lock-sync.sh; then
+        if ! scripts/check-package-lock-sync.sh; then
           echo "Error: package.json and package-lock.json are out of sync. Please run 'npm install' in the affected directory."
           exit 1
         fi
@@ -58,43 +60,64 @@ pre-commit:
 
     # Front directory checks
     front-lint-test-filenames:
-      glob: "front/**/*"
-      run: |
-        root_path=$(git rev-parse --show-toplevel)
-        npm run lint:test-filenames --if-present --prefix "$root_path"/front
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front/
+      run: npm run lint:test-filenames
 
     front-typecheck:
-      glob: "front/**/*"
-      run: |
-        root_path=$(git rev-parse --show-toplevel)
-        npm run tsgo --if-present --prefix "$root_path"/front
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front/
+      run: npm run tsgo
 
     front-circular:
-      glob: "front/**/*"
-      run: |
-        root_path=$(git rev-parse --show-toplevel)
-        npm run lint:circular --if-present --prefix "$root_path"/front
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front/
+      run: npm run lint:circular
 
     front-docs-check:
+      tags: front
       glob: "front/pages/api/v1/**/*"
-      run: |
-        root_path=$(git rev-parse --show-toplevel)
-        npm run docs:check --if-present --prefix "$root_path"/front
+      root: front/
+      run: npm run docs:check
 
     # Connectors directory checks
-    connectors-lint-test-filenames:
-      glob: "connectors/**/*"
-      run: |
-        root_path=$(git rev-parse --show-toplevel)
-        npm run lint:test-filenames --if-present --prefix "$root_path"/connectors
-
     connectors-typecheck:
-      glob: "connectors/**/*"
-      run: |
-        root_path=$(git rev-parse --show-toplevel)
-        npm run tsgo --if-present --prefix "$root_path"/connectors
+      tags: connectors
+      glob: "*.{js,jsx,ts,tsx}"
+      root: connectors/
+      run: npm run tsgo
 
-    # Lint-staged for formatting checks
-    lint-staged:
-      glob: "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
-      run: npx lint-staged
+    # Front prettier check
+    front-prettier:
+      tags: front
+      glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
+      root: front/
+      run: npm run format -- {staged_files}
+      stage_fixed: true
+
+    # Front eslint check
+    front-eslint:
+      tags: front
+      glob: "*.{js,jsx,ts,tsx}"
+      root: front
+      run: npm run lint -- {staged_files}
+      stage_fixed: true
+
+    # Connectors prettier check
+    connectors-prettier:
+      tags: connectors
+      glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
+      root: connectors/
+      run: npm run format -- {staged_files}
+      stage_fixed: true
+
+    # Connectors eslint check
+    connectors-eslint:
+      tags: connectors
+      glob: "*.{js,jsx,ts,tsx}"
+      root: connectors/
+      run: npm run lint -- {staged_files}
+      stage_fixed: true
