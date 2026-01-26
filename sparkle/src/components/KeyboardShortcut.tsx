@@ -23,7 +23,15 @@ type KeySymbolKey =
   | "del"
   | "space";
 
-type ArrowKey = "arrowup" | "up" | "arrowdown" | "down" | "arrowleft" | "left" | "arrowright" | "right";
+type ArrowKey =
+  | "arrowup"
+  | "up"
+  | "arrowdown"
+  | "down"
+  | "arrowleft"
+  | "left"
+  | "arrowright"
+  | "right";
 
 const KEY_SYMBOLS: Record<KeySymbolKey, string> = {
   cmd: "⌘",

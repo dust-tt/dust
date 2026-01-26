@@ -31,11 +31,7 @@ type DiffBlockProps = {
   className?: string;
 };
 
-export function DiffBlock({
-  content,
-  onApply,
-  className,
-}: DiffBlockProps) {
+export function DiffBlock({ content, onApply, className }: DiffBlockProps) {
   const lines = content.split(DIFF_LINE_SPLIT_REGEX);
 
   return (
