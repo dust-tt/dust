@@ -71,6 +71,50 @@ import {
   isGlobalAgentId,
   isProviderWhitelisted,
 } from "@app/types";
+import type { FavoritePlatform } from "@app/types/favorite_platforms";
+import { isFavoritePlatform } from "@app/types/favorite_platforms";
+import type { JobType } from "@app/types/job_type";
+import { isJobType } from "@app/types/job_type";
+import { isStringArray } from "@app/types/shared/utils/general";
+import { safeParseJSON } from "@app/types/shared/utils/string_utils";
+
+export interface CopilotUserMetadata {
+  jobType: JobType | null;
+  favoritePlatforms: FavoritePlatform[];
+}
+
+async function fetchCopilotUserMetadata(
+  auth: Authenticator
+): Promise<CopilotUserMetadata | null> {
+  const user = auth.user();
+  if (!user) {
+    return null;
+  }
+
+  const owner = auth.getNonNullableWorkspace();
+
+  const [jobTypeMeta, platformsMeta] = await Promise.all([
+    // Job type is user-scoped (not workspace-specific).
+    user.getMetadata("job_type"),
+    user.getMetadata("favorite_platforms", owner.id),
+  ]);
+
+  let favoritePlatforms: FavoritePlatform[] = [];
+  if (platformsMeta?.value) {
+    const parsed = safeParseJSON(platformsMeta.value);
+    if (
+      parsed.isOk() &&
+      isStringArray(parsed.value) &&
+      parsed.value.every(isFavoritePlatform)
+    ) {
+      favoritePlatforms = parsed.value;
+    }
+  }
+
+  const jobType = isJobType(jobTypeMeta?.value) ? jobTypeMeta.value : null;
+
+  return { jobType, favoritePlatforms };
+}
 
 function getGlobalAgent({
   auth,
@@ -91,6 +135,7 @@ function getGlobalAgent({
   memories,
   availableToolsets,
   copilotMCPServerViews,
+  copilotUserMetadata,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -113,6 +158,7 @@ function getGlobalAgent({
     context: MCPServerViewResource;
     agentState: MCPServerViewResource;
   } | null;
+  copilotUserMetadata: CopilotUserMetadata | null;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -431,7 +477,10 @@ function getGlobalAgent({
       });
       break;
     case GLOBAL_AGENTS_SID.COPILOT:
-      agentConfiguration = _getCopilotGlobalAgent(auth, copilotMCPServerViews);
+      agentConfiguration = _getCopilotGlobalAgent(auth, {
+        copilotMCPServerViews,
+        copilotUserMetadata,
+      });
       break;
     case GLOBAL_AGENTS_SID.NOOP:
       // we want only to have it in development
@@ -674,11 +723,12 @@ export async function getGlobalAgents(
     context: MCPServerViewResource;
     agentState: MCPServerViewResource;
   } | null = null;
+  let copilotUserMetadata: CopilotUserMetadata | null = null;
   if (
     variant === "full" &&
     agentsIdsToFetch.includes(GLOBAL_AGENTS_SID.COPILOT)
   ) {
-    const [context, agentState] = await Promise.all([
+    const [context, agentState, userMetadata] = await Promise.all([
       MCPServerViewResource.getMCPServerViewForAutoInternalTool(
         auth,
         AGENT_COPILOT_CONTEXT_TOOL_NAME
@@ -687,10 +737,12 @@ export async function getGlobalAgents(
         auth,
         AGENT_COPILOT_AGENT_STATE_TOOL_NAME
       ),
+      fetchCopilotUserMetadata(auth),
     ]);
     if (context && agentState) {
       copilotMCPServerViews = { context, agentState };
     }
+    copilotUserMetadata = userMetadata;
   }
 
   // For now we retrieve them all
@@ -715,6 +767,7 @@ export async function getGlobalAgents(
       memories,
       availableToolsets,
       copilotMCPServerViews,
+      copilotUserMetadata,
     })
   );
 
