@@ -19,16 +19,33 @@ export const startCommand = withEnvironment("start", async (env) => {
   logger.info(`Starting environment '${env.name}'...`);
   console.log();
 
-  // Start SDK watch using registry
-  if (!(await isServiceRunning(env.name, "sdk"))) {
-    await startService(env, "sdk");
-    await waitForServiceReady(env, "sdk");
+  // Start build watchers (sparkle and SDK) using registry
+  const sparkleRunning = await isServiceRunning(env.name, "sparkle");
+  const sdkRunning = await isServiceRunning(env.name, "sdk");
+
+  const startPromises: Promise<void>[] = [];
+  if (!sparkleRunning) {
+    startPromises.push(startService(env, "sparkle"));
+  } else {
+    logger.info("Sparkle watch already running");
+  }
+  if (!sdkRunning) {
+    startPromises.push(startService(env, "sdk"));
   } else {
     logger.info("SDK watch already running");
   }
 
+  if (startPromises.length > 0) {
+    await Promise.all(startPromises);
+    // Wait for both to be ready
+    const readyPromises: Promise<void>[] = [];
+    if (!sparkleRunning) readyPromises.push(waitForServiceReady(env, "sparkle"));
+    if (!sdkRunning) readyPromises.push(waitForServiceReady(env, "sdk"));
+    await Promise.all(readyPromises);
+  }
+
   console.log();
-  logger.success(`Environment '${env.name}' is now cold (SDK running)`);
+  logger.success(`Environment '${env.name}' is now cold (sparkle and SDK running)`);
   console.log();
   console.log("Next steps:");
   console.log(`  dust-hive warm ${env.name}    # Start all services`);

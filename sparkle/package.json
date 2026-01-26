@@ -11,7 +11,17 @@
     "build-storybook": "storybook build",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "watch": "npm-watch"
+  },
+  "watch": {
+    "build": {
+      "patterns": [
+        "src"
+      ],
+      "extensions": "ts,tsx,css",
+      "ignore": ""
+    }
   },
   "main": "dist/cjs/index.js",
   "types": "dist/esm/index.d.ts",
@@ -82,6 +92,7 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-storybook": "^0.8.0",
+    "npm-watch": "^0.11.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "prettier": "^3.7.4",
     "prettier-plugin-tailwindcss": "^0.7.2",
