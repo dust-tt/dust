@@ -266,7 +266,7 @@ Heavily bias against using the interactive_content tool for what could be writte
 Never use the slideshow tool unless explicitly requested by the user.
 </output_guidelines>`;
 
-const deepDiveInstructions = `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
+export const deepDiveInstructions = `${deepDivePrimaryGoal}\n${requestComplexityPrompt}\n${toolsPrompt}\n${outputPrompt}`;
 
 const subAgentInstructions = `${subAgentPrimaryGoal}\n${offloadedBrowsingPrompt}\n${toolsPrompt}
 <output_format>
