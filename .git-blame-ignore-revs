@@ -1,0 +1,5 @@
+# Git blame ignore file - contains commits that made formatting-only changes
+# Configure git to use this file: git config blame.ignoreRevsFile .git-blame-ignore-revs
+
+# refactor: migrate connectors to Biome formatting
+39796e781c0a993df6c83710b8f7a7d84c06c59c
