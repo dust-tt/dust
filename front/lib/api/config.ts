@@ -249,9 +249,9 @@ const config = {
   getDocumentRendererUrl: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
   },
-  // Internal viz service URL (K8s service in production).
-  getVizInternalUrl: (): string | undefined => {
-    return EnvironmentConfig.getOptionalEnvVariable("VIZ_INTERNAL_URL");
+  // Public viz URL (used by Gotenberg which routes through egress proxy).
+  getVizPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VIZ_PUBLIC_URL");
   },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
