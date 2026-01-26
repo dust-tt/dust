@@ -11,7 +11,9 @@ import { JsonViewer } from "@textea/json-viewer";
 import { ViewAppTable } from "@app/components/poke/apps/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAppDetails } from "@app/poke/swr/app_details";
@@ -21,13 +23,10 @@ import type {
   SpecificationType,
 } from "@app/types";
 
-interface AppPageProps {
-  owner: LightWorkspaceType;
-  appId: string;
-  hash: string | null;
-}
-
-export function AppPage({ owner, appId, hash }: AppPageProps) {
+export function AppPage() {
+  const owner = useWorkspace();
+  const appId = useRequiredPathParam("appId");
+  const hash = useSearchParam("hash");
   const {
     data: appDetails,
     isLoading,

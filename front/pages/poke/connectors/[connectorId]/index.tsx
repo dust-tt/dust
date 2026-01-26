@@ -1,64 +1,21 @@
-import { Spinner } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
-import { useEffect } from "react";
-import useSWR from "swr";
 
+import { ConnectorRedirectPage } from "@app/components/poke/pages/ConnectorRedirectPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import { fetcher } from "@app/lib/swr/swr";
-import { isString } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  connectorId: string;
-}>(async (context) => {
-  const { connectorId } = context.params ?? {};
-  if (!isString(connectorId)) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-  return {
-    props: {
-      connectorId,
-    },
-  };
-});
+const Page = ConnectorRedirectPage as PageWithLayout;
 
-// eslint-disable-next-line dust/nextjs-page-component-naming -- Special redirect page, no Page component
-export default function ConnectorRedirectNextJS({
-  connectorId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
-
-  const { data, error } = useSWR<{ redirectUrl: string }>(
-    `/api/poke/connectors/${connectorId}/redirect`,
-    fetcher
-  );
-
-  useEffect(() => {
-    if (data?.redirectUrl) {
-      void router.replace(data.redirectUrl);
-    }
-  }, [data, router]);
-
-  if (error) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <p>Connector not found.</p>
-      </div>
-    );
-  }
-
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
   return (
-    <div className="flex h-64 items-center justify-center">
-      <Spinner />
-    </div>
+    <PokeLayout title="Connector Redirect" authContext={pageProps}>
+      {page}
+    </PokeLayout>
   );
-}
-
-ConnectorRedirectNextJS.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Connector Redirect">{page}</PokeLayout>;
 };
+
+export default Page;

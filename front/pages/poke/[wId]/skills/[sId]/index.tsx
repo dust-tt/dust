@@ -1,41 +1,24 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { SkillDetailsPage } from "@app/components/poke/pages/SkillDetailsPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { WorkspaceType } from "@app/types";
-import { isString } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/poke/common";
+import { pokeGetServerSideProps } from "@app/lib/poke/common";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
-  sId: string;
-}>(async (context, auth) => {
-  const { wId, sId } = context.params ?? {};
-  if (!isString(wId) || !isString(sId)) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = pokeGetServerSideProps;
 
-  return {
-    props: {
-      owner: auth.getNonNullableWorkspace(),
-      sId,
-    },
-  };
-});
+const Page = SkillDetailsPage as PageWithLayout;
 
-export default function SkillDetailsPageNextJS({
-  owner,
-  sId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <SkillDetailsPage owner={owner} sId={sId} />;
-}
-
-SkillDetailsPageNextJS.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: WorkspaceType }
-) => {
-  return <PokeLayout title={`${owner.name} - Skill`}>{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <PokeLayout
+      title={`${pageProps.workspace?.name ?? "Workspace"} - Skill`}
+      authContext={pageProps}
+    >
+      {page}
+    </PokeLayout>
+  );
 };
+
+export default Page;
