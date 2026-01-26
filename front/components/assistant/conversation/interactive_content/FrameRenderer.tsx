@@ -172,12 +172,8 @@ function ExportContentDropdown({
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuItem onClick={exportAsPng}>
-          PNG
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadAsCode}>
-          Template
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportAsPng}>PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadAsCode}>Template</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
