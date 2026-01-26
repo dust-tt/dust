@@ -19,6 +19,7 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
@@ -27,7 +28,6 @@ import {
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
 import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
 import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
-import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -62,7 +62,7 @@ import {
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const INPUT_BAR_ACTIONS = [
-  "tools",
+  "capabilities",
   "attachment",
   "agents-list",
   "agents-list-with-actions",
@@ -727,8 +727,8 @@ const InputBarContainer = ({
                       />
                     </>
                   )}
-                  {actions.includes("tools") && (
-                    <ToolsPicker
+                  {actions.includes("capabilities") && (
+                    <CapabilitiesPicker
                       owner={owner}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}
