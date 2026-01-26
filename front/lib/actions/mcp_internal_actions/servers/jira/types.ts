@@ -13,6 +13,7 @@ export type SortDirection = (typeof SORT_DIRECTIONS)[number];
 export const FIELD_MAPPINGS = {
   assignee: { jqlField: "assignee" },
   created: { jqlField: "created", supportsOperators: true },
+  creator: { jqlField: "creator" },
   dueDate: { jqlField: "dueDate", supportsOperators: true },
   fixVersion: { jqlField: "fixVersion" },
   issueType: { jqlField: "issueType" },
@@ -24,6 +25,9 @@ export const FIELD_MAPPINGS = {
   resolved: { jqlField: "resolved", supportsOperators: true },
   status: { jqlField: "status" },
   summary: { jqlField: "summary", supportsFuzzy: true },
+  updated: { jqlField: "updated", supportsOperators: true },
+  votes: { jqlField: "votes", supportsOperators: true },
+  watchers: { jqlField: "watchers", supportsOperators: true },
   customField: {
     jqlField: "customField",
     isCustomField: true,
