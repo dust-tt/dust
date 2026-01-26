@@ -34,7 +34,6 @@ import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_acti
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/actions/mcp_internal_actions/servers/primitive_types_debugger";
-import { default as extractDataServer } from "@app/lib/actions/mcp_internal_actions/servers/process";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as projectContextManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/project_context_management";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
@@ -62,6 +61,7 @@ import {
 import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
+import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
