@@ -24,8 +24,7 @@ COPY package.json package-lock.json ./
 COPY connectors/package.json ./connectors/
 COPY sdks/js/package.json ./sdks/js/
 
-RUN --mount=type=cache,target=/root/.npm \
-  npm ci -w sdks/js -w connectors
+RUN npm ci -w sdks/js -w connectors
 
 # Build SDK
 WORKDIR /app/sdks/js
