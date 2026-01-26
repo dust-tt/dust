@@ -7,7 +7,6 @@ import { handleSearch, SearchRequestBody } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -18,8 +17,6 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { isString } from "@app/types";
-
-const MAX_UNIFIED_SEARCH_PER_USER_PER_FIVE_SECONDS = 30;
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -202,24 +199,6 @@ async function handler(
   res: NextApiResponse<WithAPIErrorResponse<PostWorkspaceSearchResponseBody>>,
   auth: Authenticator
 ): Promise<void> {
-  const rateLimitKey = `unified_search:${auth.getNonNullableUser().sId}`;
-  const remaining = await rateLimiter({
-    key: rateLimitKey,
-    maxPerTimeframe: MAX_UNIFIED_SEARCH_PER_USER_PER_FIVE_SECONDS,
-    timeframeSeconds: 5,
-    logger,
-  });
-
-  if (remaining === 0) {
-    return apiError(req, res, {
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_UNIFIED_SEARCH_PER_USER_PER_FIVE_SECONDS} unified searches over 5 seconds.`,
-      },
-    });
-  }
-
   // Support both GET (streaming) and POST (legacy) methods
   if (req.method === "GET") {
     return handleStreamingSearch(req, res, auth);
