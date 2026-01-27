@@ -268,7 +268,8 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
 
     // Check if schedules exist (they may be missing after workspace relocation).
     const helpCenterScheduleId = makeIntercomHelpCenterScheduleId(connector);
-    const conversationScheduleId = makeIntercomConversationScheduleId(connector);
+    const conversationScheduleId =
+      makeIntercomConversationScheduleId(connector);
 
     const [helpCenterExists, conversationExists] = await Promise.all([
       scheduleExists({ scheduleId: helpCenterScheduleId }),
