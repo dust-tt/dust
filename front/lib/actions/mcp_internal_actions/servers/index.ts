@@ -63,6 +63,7 @@ import { default as openaiUsageServer } from "@app/lib/api/actions/servers/opena
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
+import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
@@ -241,6 +242,8 @@ export async function getInternalMCPServer(
       return ukgReadyServer(auth, agentLoopContext);
     case "statuspage":
       return statuspageServer(auth, agentLoopContext);
+    case "sandbox":
+      return sandboxServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
