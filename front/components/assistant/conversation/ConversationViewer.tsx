@@ -374,7 +374,7 @@ export const ConversationViewer = ({
                   { revalidate: false }
                 );
               }
-              void debouncedMarkAsRead(conversationId, false, false);
+              void debouncedMarkAsRead(conversationId);
             }
             break;
           case "agent_message_new":
@@ -413,7 +413,7 @@ export const ConversationViewer = ({
             break;
 
           case "conversation_title":
-            void debouncedMarkAsRead(conversationId, false, false);
+            void debouncedMarkAsRead(conversationId);
             void mutateConversation(
               (current) => {
                 if (current) {
@@ -450,7 +450,7 @@ export const ConversationViewer = ({
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
-            void debouncedMarkAsRead(event.conversationId, false, false);
+            void debouncedMarkAsRead(event.conversationId);
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(

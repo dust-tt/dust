@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
+import logger from "@app/logger/logger";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   GetConversationResponseBody,
@@ -802,24 +803,21 @@ export function useConversationMarkAsRead({
 
   const markAsRead = useCallback(
     /**
+     * Marks a conversation as read with optional mutation control.
+     *
+     * This is useful to avoid unnecessary network requests when marking a conversation as read.
+     *
      * @param conversationId - The ID of the conversation to mark as read.
-     * @param mutateList - Whether to mutate the list of conversations in the sidebar.
-     * @param mutateSpaceConversationsSummary - Whether to mutate the space conversations summary.
-     *
-     * If mutateList is true, the list of conversations in the sidebar will be mutated to update the unread status of the conversation.
-     * If mutateList is false, the list of conversations in the sidebar will not be mutated to update the unread status of the conversation.
-     *
-     * If mutateSpaceConversationsSummary is true, the space conversations summary will be mutated to update the unread counts.
-     * If mutateSpaceConversationsSummary is false, the space conversations summary will not be mutated to update the unread counts.
-     *
-     * This is useful to avoid any network request when marking a conversation as read.
-     * @param conversationId
-     * @param mutateList
+     * @param options - Options to control mutation behavior.
+     * @param options.mutateList - Whether to mutate the list of conversations in the sidebar to update the unread status. Defaults to false.
+     * @param options.mutateSpaceConversationsSummary - Whether to mutate the space conversations summary to update the unread counts. Defaults to false.
      */
     async (
       conversationId: string,
-      mutateList: boolean,
-      mutateSpaceConversationsSummary: boolean
+      options?: {
+        mutateList?: boolean;
+        mutateSpaceConversationsSummary?: boolean;
+      }
     ): Promise<void> => {
       try {
         const response = await clientFetch(
@@ -838,7 +836,7 @@ export function useConversationMarkAsRead({
         if (!response.ok) {
           throw new Error("Failed to mark conversation as read");
         }
-        if (mutateList) {
+        if (options?.mutateList) {
           void mutateConversations(
             (prevState) => ({
               ...prevState,
@@ -850,7 +848,7 @@ export function useConversationMarkAsRead({
             { revalidate: false }
           );
         }
-        if (mutateSpaceConversationsSummary) {
+        if (options?.mutateSpaceConversationsSummary) {
           void mutateSpaceSummary((prevState) => {
             if (!prevState) {
               return prevState;
@@ -881,7 +879,7 @@ export function useConversationMarkAsRead({
           });
         }
       } catch (error) {
-        console.error("Error marking conversation as read:", error);
+        logger.error({ err: error }, "Error marking conversation as read:");
       }
     },
     [
@@ -899,11 +897,10 @@ export function useConversationMarkAsRead({
 
       timeout = setTimeout(
         () =>
-          markAsRead(
-            conversation.sId,
-            !isProjectConversation,
-            isProjectConversation
-          ),
+          markAsRead(conversation.sId, {
+            mutateList: !isProjectConversation,
+            mutateSpaceConversationsSummary: isProjectConversation,
+          }),
         DELAY_BEFORE_MARKING_AS_READ
       );
     }
