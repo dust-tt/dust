@@ -111,11 +111,11 @@ export function ActionCardBlock({
   children,
 }: ActionCardBlockProps) {
   const resolvedDescription = description ?? "";
-  const applyVariant = cardVariant === "warning" ? "warning" : "highlight";
+  const applyVariant = cardVariant === "warning" ? "warning" : "primary";
 
   return (
     <Card
-      variant={cardVariant ?? "primary"}
+      variant={"primary"}
       size="sm"
       className="s-my-2 s-flex s-max-w-md s-flex-col s-gap-3"
     >
