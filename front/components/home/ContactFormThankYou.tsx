@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
 import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 
 // Default.com configuration
@@ -64,7 +65,16 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
   const headquartersRegion = formValues.headquarters_region ?? "";
   const companyHeadcount = formValues.company_headcount_form ?? "";
   const howToUseDust = formValues.landing_use_cases ?? "";
-  const consentMarketing = formValues.consent_marketing ?? false;
+
+  // Get tracking params from sessionStorage for dataLayer
+  const storedParams = getStoredUTMParams();
+  const gclid =
+    storedParams.gclid ?? sessionStorage.getItem("gclid") ?? undefined;
+  const utmSource = storedParams.utm_source;
+  const utmMedium = storedParams.utm_medium;
+  const utmCampaign = storedParams.utm_campaign;
+  const utmContent = storedParams.utm_content;
+  const utmTerm = storedParams.utm_term;
 
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
@@ -80,19 +90,23 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
         action: "qualified_lead",
       });
 
-      // Only include PII if user has consented to marketing
       if (typeof window !== "undefined") {
         window.dataLayer = window.dataLayer ?? [];
         window.dataLayer.push({
           event: "contact_form_qualified_lead",
-          user_email: consentMarketing ? email : undefined,
-          user_phone: consentMarketing ? phone : undefined,
-          user_first_name: consentMarketing ? firstName : undefined,
-          user_last_name: consentMarketing ? lastName : undefined,
+          user_email: email,
+          user_phone: phone,
+          user_first_name: firstName,
+          user_last_name: lastName,
           user_language: language,
           user_headquarters_region: headquartersRegion,
           user_company_headcount: companyHeadcount,
-          consent_marketing: consentMarketing,
+          gclid,
+          utm_source: utmSource,
+          utm_medium: utmMedium,
+          utm_campaign: utmCampaign,
+          utm_content: utmContent,
+          utm_term: utmTerm,
         });
       }
     }
@@ -105,7 +119,12 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
     language,
     headquartersRegion,
     companyHeadcount,
-    consentMarketing,
+    gclid,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    utmTerm,
   ]);
 
   // Load Default.com SDK and submit form data for all leads

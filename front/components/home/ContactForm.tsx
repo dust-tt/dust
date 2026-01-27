@@ -1,6 +1,5 @@
 import {
   Button,
-  Checkbox,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -11,7 +10,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useController, useForm } from "react-hook-form";
 
 import { ContactFormThankYou } from "@app/components/home/ContactFormThankYou";
@@ -28,7 +27,6 @@ import {
   LANGUAGE_OPTIONS,
 } from "@app/lib/api/hubspot/contactFormSchema";
 import { clientFetch } from "@app/lib/egress/client";
-import { useGeolocation } from "@app/lib/swr/geo";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
 import { normalizeError } from "@app/types";
@@ -101,22 +99,25 @@ function useContactFormSubmit() {
         action: "submit_success",
       });
 
-      // Push GTM event with actual qualification status and form details
-      // Only include PII if user has consented to marketing
+      // Push GTM event with qualification status, form details, and tracking params
       if (typeof window !== "undefined") {
         window.dataLayer = window.dataLayer ?? [];
-        const consentMarketing = data.consent_marketing ?? false;
         window.dataLayer.push({
           event: "contact_form_submitted",
           is_qualified: result.isQualified,
-          user_email: consentMarketing ? data.email : undefined,
-          user_phone: consentMarketing ? data.mobilephone : undefined,
-          user_first_name: consentMarketing ? data.firstname : undefined,
-          user_last_name: consentMarketing ? data.lastname : undefined,
+          user_email: data.email,
+          user_phone: data.mobilephone,
+          user_first_name: data.firstname,
+          user_last_name: data.lastname,
           user_language: data.language,
           user_headquarters_region: data.headquarters_region,
           user_company_headcount: data.company_headcount_form,
-          consent_marketing: consentMarketing,
+          gclid: tracking.gclid,
+          utm_source: tracking.utm_source,
+          utm_medium: tracking.utm_medium,
+          utm_campaign: tracking.utm_campaign,
+          utm_content: tracking.utm_content,
+          utm_term: tracking.utm_term,
         });
       }
 
@@ -139,30 +140,6 @@ interface DropdownFieldProps {
   options: readonly { value: string; label: string }[];
   placeholder: string;
   required?: boolean;
-}
-
-function MarketingConsentCheckbox() {
-  const { field } = useController<ContactFormData>({
-    name: "consent_marketing",
-  });
-
-  return (
-    <div className="flex items-start gap-2">
-      <Checkbox
-        id="consent_marketing"
-        checked={field.value === true}
-        onCheckedChange={(checked) => field.onChange(checked === true)}
-        className="mt-0.5"
-      />
-      <Label
-        htmlFor="consent_marketing"
-        className="cursor-pointer text-sm font-normal leading-tight"
-      >
-        I consent to receive marketing communications from Dust about products,
-        services, and events.
-      </Label>
-    </div>
-  );
 }
 
 function DropdownField({
@@ -216,7 +193,6 @@ export function ContactForm({
   prefillRegion,
 }: ContactFormProps) {
   const { submitResult, submitError, handleSubmit } = useContactFormSubmit();
-  const { geoData, isGeoDataLoading } = useGeolocation();
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(ContactFormSchema),
@@ -229,22 +205,9 @@ export function ContactForm({
       headquarters_region: prefillRegion ?? "",
       company_headcount_form: prefillHeadcount ?? "",
       landing_use_cases: "",
-      consent_marketing: false,
     },
     mode: "onBlur",
   });
-
-  // Update marketing consent default when geolocation data is loaded
-  // Non-GDPR countries: checked by default, GDPR countries: unchecked by default
-  useEffect(() => {
-    if (!isGeoDataLoading && geoData) {
-      const shouldDefault = !geoData.isGDPR;
-      // Only set if the user hasn't interacted with the checkbox yet
-      if (!form.formState.dirtyFields.consent_marketing) {
-        form.setValue("consent_marketing", shouldDefault);
-      }
-    }
-  }, [geoData, isGeoDataLoading, form]);
 
   const { isSubmitting, errors } = form.formState;
 
@@ -333,9 +296,6 @@ export function ContactForm({
             />
           </div>
 
-          {/* Marketing Consent Checkbox */}
-          <MarketingConsentCheckbox />
-
           {/* Disclaimer */}
           <div className="text-xs text-muted-foreground">
             <p className="mb-2">
@@ -344,7 +304,7 @@ export function ContactForm({
               contact information to communicate with you about our products and
               services. You may unsubscribe at any time. Please review our{" "}
               <a
-                href="https://dust.tt/privacy"
+                href="https://dust.tt/home/platform-privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-foreground"

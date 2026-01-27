@@ -6,7 +6,12 @@ type ContactFormEventData = {
   user_language: string;
   user_headquarters_region: string | undefined;
   user_company_headcount: string;
-  consent_marketing: boolean;
+  gclid: string | undefined;
+  utm_source: string | undefined;
+  utm_medium: string | undefined;
+  utm_campaign: string | undefined;
+  utm_content: string | undefined;
+  utm_term: string | undefined;
 };
 
 type DataLayer =
