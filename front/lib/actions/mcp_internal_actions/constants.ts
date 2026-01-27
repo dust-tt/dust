@@ -12,11 +12,10 @@ import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/se
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import {
-  AGENT_ROUTER_SERVER,
-  AGENT_ROUTER_SERVER_NAME,
-} from "@app/lib/api/actions/servers/agent_router/metadata";
+import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
@@ -1244,21 +1243,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_management_tool");
     },
-    tools_stakes: {
-      create_agent: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "agent_management",
-      version: "1.0.0",
-      description: "Tools for managing agent configurations.",
-      authorization: null,
-      icon: "ActionRobotIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: AGENT_MANAGEMENT_SERVER,
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
