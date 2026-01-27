@@ -391,6 +391,10 @@ export async function getUserUsageData(
               userId: {
                 [Op.not]: null,
               },
+              // Filter out "fake" user messages created by the system (new system that replaced the "origin" field for detection of agent messages)
+              agenticMessageType: {
+                [Op.is]: null,
+              },
             },
           },
           {
