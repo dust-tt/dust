@@ -4,8 +4,9 @@ import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/copilot/tools/getAgentConfig";
-import { registerSetAgentInstructionsTool } from "@app/components/agent_builder/copilot/tools/setAgentInstructions";
+import { registerSuggestInstructionChangesTool } from "@app/components/agent_builder/copilot/tools/suggestInstructionChanges";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 
 // Server name used for MCP registration. This is a client-side MCP server
@@ -32,6 +33,7 @@ export function useCopilotMCPServer({
 }: UseCopilotMCPServerOptions): UseCopilotMCPServerResult {
   const { owner } = useAgentBuilderContext();
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const suggestionsContext = useCopilotSuggestions();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
@@ -42,6 +44,14 @@ export function useCopilotMCPServer({
   // to ensure cleanup happens correctly and to avoid re-creating on every render.
   const mcpServerRef = useRef<McpServer | null>(null);
   const transportRef = useRef<BrowserMCPTransport | null>(null);
+
+  // Store context in a ref for use in callbacks.
+  const suggestionsContextRef = useRef(suggestionsContext);
+
+  // Update ref in effect to avoid updating during render.
+  useEffect(() => {
+    suggestionsContextRef.current = suggestionsContext;
+  }, [suggestionsContext]);
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.
@@ -82,8 +92,22 @@ export function useCopilotMCPServer({
         });
 
         // Register tools.
-        registerGetAgentConfigTool(mcpServer, getFormValues);
-        registerSetAgentInstructionsTool(mcpServer, setInstructions);
+        registerGetAgentConfigTool(mcpServer, {
+          getFormValues,
+          getPendingSuggestions: suggestionsContextRef.current
+            ? () => suggestionsContextRef.current!.getPendingSuggestions()
+            : undefined,
+          getCommittedInstructions: suggestionsContextRef.current
+            ? () => suggestionsContextRef.current!.getCommittedInstructions()
+            : undefined,
+        });
+
+        // Register suggestion tool if context is provided.
+        if (suggestionsContextRef.current) {
+          registerSuggestInstructionChangesTool(mcpServer, {
+            addSuggestion: suggestionsContextRef.current!.addSuggestion,
+          });
+        }
 
         // Create the browser transport.
         const transport = new BrowserMCPTransport(

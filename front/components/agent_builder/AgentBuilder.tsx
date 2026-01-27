@@ -16,6 +16,7 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import { CopilotSuggestionsProvider } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
@@ -480,20 +481,22 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <AgentBuilderContent
-          agentConfiguration={agentConfiguration}
-          pendingAgentId={pendingAgentId}
-          title={title}
-          handleCancel={handleCancel}
-          saveLabel={saveLabel}
-          handleSave={handleSave}
-          isSaveDisabled={isSaveDisabled}
-          isTriggersLoading={isTriggersLoading}
-          dialogProps={dialogProps}
-          isCreatedDialogOpen={isCreatedDialogOpen}
-          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-          isNewAgent={!!duplicateAgentId || !agentConfiguration}
-        />
+        <CopilotSuggestionsProvider>
+          <AgentBuilderContent
+            agentConfiguration={agentConfiguration}
+            pendingAgentId={pendingAgentId}
+            title={title}
+            handleCancel={handleCancel}
+            saveLabel={saveLabel}
+            handleSave={handleSave}
+            isSaveDisabled={isSaveDisabled}
+            isTriggersLoading={isTriggersLoading}
+            dialogProps={dialogProps}
+            isCreatedDialogOpen={isCreatedDialogOpen}
+            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+            isNewAgent={!!duplicateAgentId || !agentConfiguration}
+          />
+        </CopilotSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
   );
