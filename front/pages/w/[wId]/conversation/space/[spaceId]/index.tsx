@@ -12,14 +12,12 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React, { useCallback, useState } from "react";
 
-import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
 import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -131,7 +129,6 @@ export default function SpaceConversations({
     user,
   });
   const router = useRouter();
-  const activeConversationId = useActiveConversationId();
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
   const { spaceInfo } = useSpaceInfo({
@@ -282,16 +279,6 @@ export default function SpaceConversations({
       createConversationWithMessage,
     ]
   );
-
-  if (activeConversationId) {
-    return (
-      <ConversationContainerVirtuoso
-        owner={owner}
-        subscription={subscription}
-        user={user}
-      />
-    );
-  }
 
   return (
     <div className="flex h-full w-full flex-col">
