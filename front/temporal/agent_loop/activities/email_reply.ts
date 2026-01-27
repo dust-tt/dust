@@ -2,13 +2,11 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { EmailReplyContext } from "@app/lib/api/assistant/email_reply_context";
+import type { EmailReplyContext, InboundEmail } from "@app/lib/api/assistant/email_trigger";
 import {
-  deleteEmailReplyContext,
+  ASSISTANT_EMAIL_SUBDOMAIN,
   getAndDeleteEmailReplyContext,
-} from "@app/lib/api/assistant/email_reply_context";
-import type { InboundEmail } from "@app/lib/api/assistant/email_trigger";
-import { ASSISTANT_EMAIL_SUBDOMAIN } from "@app/lib/api/assistant/email_trigger";
+} from "@app/lib/api/assistant/email_trigger";
 import { sendEmail } from "@app/lib/api/email";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -40,6 +38,36 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
 }
 
 /**
+ * Check security gating for email replies.
+ * Returns true if the reply should be sent, false otherwise.
+ */
+function checkEmailReplyGating(
+  context: EmailReplyContext,
+  agentMessageId: string
+): boolean {
+  // Security gating: only allow replies to dust.tt emails in the Dust workspace.
+  // This mirrors the checks in the webhook handler.
+  if (!context.fromEmail.endsWith("@dust.tt")) {
+    logger.warn(
+      { agentMessageId, fromEmail: context.fromEmail },
+      "[email] Sender email not in @dust.tt domain, skipping reply"
+    );
+    return false;
+  }
+  if (
+    PRODUCTION_DUST_WORKSPACE_ID &&
+    context.workspaceSId !== PRODUCTION_DUST_WORKSPACE_ID
+  ) {
+    logger.warn(
+      { agentMessageId, workspaceSId: context.workspaceSId },
+      "[email] Workspace not gated for email replies, skipping reply"
+    );
+    return false;
+  }
+  return true;
+}
+
+/**
  * Send an email reply after agent message completion.
  * This is a fire-and-forget operation: failures are logged but don't fail the workflow.
  */
@@ -66,29 +94,7 @@ export async function emailReplyOnCompletionActivity(
       return;
     }
 
-    // Security gating: only allow replies to dust.tt emails in the Dust workspace.
-    // This mirrors the checks in the webhook handler.
-    if (!context.fromEmail.endsWith("@dust.tt")) {
-      logger.warn(
-        {
-          agentMessageId: agentLoopArgs.agentMessageId,
-          fromEmail: context.fromEmail,
-        },
-        "[email] Sender email not in @dust.tt domain, skipping reply"
-      );
-      return;
-    }
-    if (
-      PRODUCTION_DUST_WORKSPACE_ID &&
-      context.workspaceSId !== PRODUCTION_DUST_WORKSPACE_ID
-    ) {
-      logger.warn(
-        {
-          agentMessageId: agentLoopArgs.agentMessageId,
-          workspaceSId: context.workspaceSId,
-        },
-        "[email] Workspace not gated for email replies, skipping reply"
-      );
+    if (!checkEmailReplyGating(context, agentLoopArgs.agentMessageId)) {
       return;
     }
 
@@ -217,23 +223,51 @@ async function replyToEmailInternal({
 }
 
 /**
- * Clean up email reply context on error/cancellation.
- * This ensures we don't leave stale context in Redis.
+ * Send an error email on agent error/cancellation.
+ * This mirrors the prior behavior where errors were reported back to the sender.
  * Fire-and-forget: failures are logged but don't fail the workflow.
  */
-export async function cleanupEmailReplyContextActivity(
-  agentLoopArgs: AgentLoopArgs
+export async function emailReplyOnErrorActivity(
+  agentLoopArgs: AgentLoopArgs,
+  errorMessage: string
 ): Promise<void> {
   try {
     if (agentLoopArgs.userMessageOrigin !== "email") {
       return;
     }
 
-    await deleteEmailReplyContext(agentLoopArgs.agentMessageId);
+    const context = await getAndDeleteEmailReplyContext(
+      agentLoopArgs.agentMessageId
+    );
+    if (!context) {
+      logger.info(
+        { agentMessageId: agentLoopArgs.agentMessageId },
+        "[email] No email reply context found for error reply, skipping"
+      );
+      return;
+    }
+
+    if (!checkEmailReplyGating(context, agentLoopArgs.agentMessageId)) {
+      return;
+    }
+
+    const email = reconstructEmailFromContext(context);
+    const htmlContent =
+      `<p>Error running agent:</p>\n` + `<p>${errorMessage}</p>\n`;
+
+    await replyToEmailInternal({
+      email,
+      agentConfiguration: null,
+      htmlContent,
+    });
 
     logger.info(
-      { agentMessageId: agentLoopArgs.agentMessageId },
-      "[email] Cleaned up email reply context on error/cancellation"
+      {
+        agentMessageId: agentLoopArgs.agentMessageId,
+        to: context.fromEmail,
+        errorMessage,
+      },
+      "[email] Sent error email reply"
     );
   } catch (err) {
     logger.warn(
@@ -241,7 +275,7 @@ export async function cleanupEmailReplyContextActivity(
         err,
         agentMessageId: agentLoopArgs.agentMessageId,
       },
-      "[email] Failed to clean up email reply context, skipping"
+      "[email] Failed to send error email reply, skipping"
     );
   }
 }
