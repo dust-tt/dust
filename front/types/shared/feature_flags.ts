@@ -230,10 +230,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  ukg_ready_mcp: {
-    description: "UKG Ready MCP tool for workforce management",
-    stage: "dust_only",
-  },
   statuspage_tool: {
     description: "Statuspage MCP tool for incident management",
     stage: "dust_only",
