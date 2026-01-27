@@ -21,6 +21,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
+import { removeNulls } from "@app/types";
 import {
   Err,
   isModelProviderId,
@@ -126,15 +127,13 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           name: space.name,
           kind: space.kind,
           categories: categoriesData,
-        } as KnowledgeSpace;
+        } satisfies KnowledgeSpace;
       },
       { concurrency: 8 }
     );
 
     // Filter out null results (spaces with no data sources).
-    const knowledgeSpaces = spaceResults.filter(
-      (result): result is KnowledgeSpace => result !== null
-    );
+    const knowledgeSpaces = removeNulls(spaceResults);
 
     // Calculate totals.
     let totalDataSources = 0;
