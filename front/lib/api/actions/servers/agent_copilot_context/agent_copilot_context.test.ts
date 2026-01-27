@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -831,7 +831,7 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("update_suggestions_state");
       const result = await tool.handler(
         {
-          suggestions: [{ suggestionId: "non-existent-id", state: "approved" }],
+          suggestions: [{ suggestionId: "non-existent-id", state: "rejected" }],
         },
         createTestExtra(authenticator)
       );
@@ -849,11 +849,7 @@ describe("agent_copilot_context tools", () => {
       }
     });
 
-    it.each([
-      { state: "approved" as const },
-      { state: "rejected" as const },
-      { state: "outdated" as const },
-    ])(
+    it.each([{ state: "rejected" as const }, { state: "outdated" as const }])(
       "updates suggestion state to $state and returns all fields",
       async ({ state }) => {
         const { authenticator } = await createResourceTest({ role: "admin" });

@@ -866,5 +866,4 @@ function getCategoryDisplayName(category: DataSourceViewCategory): string {
   }
 }
 
-
 export const TOOLS = buildTools(AGENT_COPILOT_CONTEXT_TOOLS_METADATA, handlers);

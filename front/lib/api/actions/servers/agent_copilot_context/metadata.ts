@@ -231,7 +231,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   update_suggestions_state: {
     description:
-      "Update the state of one or more suggestions. Use this to approve, reject, or mark suggestions as outdated.",
+      "Update the state of one or more suggestions. Use this to reject or mark suggestions as outdated.",
     schema: {
       suggestions: z
         .array(
@@ -240,9 +240,9 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
               .string()
               .describe("The sId of the suggestion to update"),
             state: z
-              .enum(["approved", "rejected", "outdated"])
+              .enum(["rejected", "outdated"])
               .describe(
-                "The new state for the suggestion. Cannot be set to 'pending'."
+                "The new state for the suggestion: 'rejected' or 'outdated'."
               ),
           })
         )
