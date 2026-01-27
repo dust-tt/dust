@@ -18,7 +18,6 @@ import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actio
 import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_excel";
 import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
-import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
@@ -53,6 +52,7 @@ import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
+import { default as mondayServer } from "@app/lib/api/actions/servers/monday";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
