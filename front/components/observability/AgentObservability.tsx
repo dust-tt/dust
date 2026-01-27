@@ -12,6 +12,13 @@ import {
 import dynamic from "next/dynamic";
 
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
+import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
+import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
+import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
+import {
+  useAgentAnalytics,
+  useAgentObservabilitySummary,
+} from "@app/lib/swr/assistants";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 const DatasourceRetrievalTreemapChart = dynamic(
@@ -49,14 +56,6 @@ const UsageMetricsChart = dynamic(
     ),
   { ssr: false }
 );
-import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
-import {
-  useAgentAnalytics,
-  useAgentObservabilitySummary,
-} from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AgentObservabilityProps {
   workspaceId: string;
@@ -70,7 +69,6 @@ export function AgentObservability({
   isCustomAgent,
 }: AgentObservabilityProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
-  const { featureFlags } = useFeatureFlags({ workspaceId });
 
   const isTimeRangeMode = mode === "timeRange";
 
@@ -231,16 +229,12 @@ export function AgentObservability({
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
-        {featureFlags.includes("agent_tool_outputs_analytics") && (
-          <>
-            <Separator />
-            <DatasourceRetrievalTreemapChart
-              workspaceId={workspaceId}
-              agentConfigurationId={agentConfigurationId}
-              isCustomAgent={isCustomAgent}
-            />
-          </>
-        )}
+        <Separator />
+        <DatasourceRetrievalTreemapChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
+        />
         <Separator />
         <ToolUsageChart
           workspaceId={workspaceId}
