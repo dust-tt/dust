@@ -51,6 +51,7 @@ import {
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
+  ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
@@ -1813,6 +1814,28 @@ export function getInternalMCPServerToolStakes(
     return server.metadata.tools_stakes;
   }
   return server.tools_stakes;
+}
+
+export function getInternalMCPServerToolDisplayLabels(
+  name: InternalMCPServerNameType
+): Record<string, ToolDisplayLabels> | null {
+  const server = INTERNAL_MCP_SERVERS[name];
+  if (!isServerWithMetadata(server)) {
+    return null;
+  }
+
+  const entries = server.metadata.tools
+    .filter(
+      (tool): tool is typeof tool & { displayLabels: ToolDisplayLabels } =>
+        tool.displayLabels !== undefined
+    )
+    .map((tool) => [tool.name, tool.displayLabels] as const);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return Object.fromEntries(entries);
 }
 
 export function getInternalMCPServerInfo(

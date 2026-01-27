@@ -41,10 +41,16 @@ export function getRetryPolicyFromToolConfiguration(
       DEFAULT_MCP_TOOL_RETRY_POLICY;
 }
 
+export type ToolDisplayLabels = {
+  running: string; // e.g. "Searching data"
+  done: string; // e.g. "Search data"
+};
+
 export type MCPToolType = {
   name: string;
   description: string;
   inputSchema?: JSONSchema;
+  displayLabels?: ToolDisplayLabels;
 };
 
 export type MCPToolWithAvailabilityType = MCPToolType & {

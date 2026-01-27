@@ -105,6 +105,24 @@ export interface MCPActionDetailsProps {
   viewType: "conversation" | "sidebar";
 }
 
+function getActionLabel(
+  action: AgentMCPActionWithOutputType,
+  viewType: "conversation" | "sidebar"
+): string {
+  if (action.displayLabels) {
+    return viewType === "conversation"
+      ? action.displayLabels.running
+      : action.displayLabels.done;
+  }
+
+  return (
+    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "")
+  );
+}
+
 export function MCPActionDetails({
   action,
   viewType,
@@ -357,12 +375,6 @@ export function GenericActionDetails({
       ? JSON.stringify(action.params, undefined, 2)
       : null;
 
-  const actionName =
-    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
-    (action.functionCallName
-      ? `: ${asDisplayName(action.functionCallName)}`
-      : "");
-
   const actionIcon =
     action.internalMCPServerName &&
     InternalActionIcons[
@@ -372,7 +384,7 @@ export function GenericActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={actionName}
+      actionName={getActionLabel(action, viewType)}
       visual={actionIcon ?? MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (
