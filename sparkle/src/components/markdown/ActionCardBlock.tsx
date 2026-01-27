@@ -117,10 +117,10 @@ export function ActionCardBlock({
     <Card
       variant={cardVariant ?? "primary"}
       size="sm"
-      className="s-flex s-flex-col s-gap-3 s-max-w-md s-my-2"
+      className="s-my-2 s-flex s-max-w-md s-flex-col s-gap-3"
     >
       {(visual || title) && (
-        <div className="s-flex s-items-center s-gap-2 s-h-8">
+        <div className="s-flex s-h-8 s-items-center s-gap-2">
           {visual && visual}
           {title && (
             <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
@@ -171,8 +171,10 @@ export function actionCardDirective() {
     visit(tree, "containerDirective", (node) => {
       const directiveNode = node as ActionCardDirectiveNode;
       if (directiveNode.name === "action_card") {
-        const attributes = (directiveNode.attributes ??
-          {}) as Record<string, unknown>;
+        const attributes = (directiveNode.attributes ?? {}) as Record<
+          string,
+          unknown
+        >;
         const visual = buildAvatarVisual(attributes);
         const data = directiveNode.data ?? (directiveNode.data = {});
         const description = getPlainTextFromChildren(directiveNode);
