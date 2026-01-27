@@ -78,12 +78,10 @@ The user you're interacting with is granted with the role ${role}. Their name is
     : dummyModelConfiguration;
   const status = modelConfiguration ? "active" : "disabled_by_admin";
 
-  const actions: MCPServerConfigurationType[] = [];
-
   const sId = GLOBAL_AGENTS_SID.HELPER;
   const metadata = getGlobalAgentMetadata(sId);
 
-  actions.push(
+  const actions: MCPServerConfigurationType[] = [
     ..._getDefaultWebActionsForGlobalAgent({
       agentId: sId,
       mcpServerViews,
@@ -95,8 +93,8 @@ The user you're interacting with is granted with the role ${role}. Their name is
     ..._getInteractiveContentToolConfiguration({
       agentId: sId,
       mcpServerViews,
-    })
-  );
+    }),
+  ];
 
   return {
     id: -1,
