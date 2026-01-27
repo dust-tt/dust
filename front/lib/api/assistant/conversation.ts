@@ -662,13 +662,6 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    // Mark the conversation as unread for all participants except the user.
-    await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-      conversation,
-      excludedUser: user?.toJSON(),
-      transaction: t,
-    });
-
     const { agentMessages, richMentions: agentRichMentions } =
       await createAgentMessages(auth, {
         conversation,
@@ -692,6 +685,12 @@ export async function postUserMessage(
     };
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+    // Mark the conversation as read for the current user.
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+      transaction: t,
+    });
 
     return {
       userMessage,
@@ -932,13 +931,6 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      // Mark the conversation as unread for all participants except the user.
-      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-        conversation,
-        excludedUser: user?.toJSON(),
-        transaction: t,
-      });
-
       const richMentions = await createUserMentions(auth, {
         mentions,
         message: userMessageWithoutMentions,
@@ -1005,6 +997,12 @@ export async function editUserMessage(
           agentMessages,
         };
       }
+
+      // Mark the conversation as read for the current user.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        transaction: t,
+      });
 
       const userMessage = {
         ...userMessageWithoutMentions,

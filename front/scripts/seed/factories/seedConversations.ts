@@ -102,7 +102,7 @@ export async function seedConversations(
         conversation: conversation.toJSON(),
         action: "posted",
         user: conversationUser.toJSON(),
-        unread: false,
+        lastReadAt: new Date(),
       });
 
       // Create user message and agent message for each exchange

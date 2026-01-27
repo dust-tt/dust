@@ -320,11 +320,13 @@ const shouldSkipConversation = async ({
       return true;
     }
 
-    const { actionRequired, unread } =
-      await ConversationResource.getActionRequiredAndUnreadForUser(
+    const { actionRequired, lastReadAt } =
+      await ConversationResource.getActionRequiredAndLastReadAtForUser(
         auth,
         conversation.id
       );
+
+    const unread = lastReadAt === null || conversation.updatedAt > lastReadAt;
 
     if (!actionRequired && !unread) {
       return true;
@@ -540,10 +542,10 @@ const filterParticipantsByNotifyCondition = async ({
   mentionedUserIds,
   totalParticipantCount,
 }: {
-  participants: (UserType & { unread: boolean })[];
+  participants: (UserType & { lastReadAt: Date | null })[];
   mentionedUserIds: Set<string>;
   totalParticipantCount: number;
-}): Promise<(UserType & { unread: boolean })[]> => {
+}): Promise<(UserType & { lastReadAt: Date | null })[]> => {
   const userModelIds = participants.map((p) => p.id);
 
   // Bulk query for all preferences.
@@ -599,8 +601,10 @@ export const triggerConversationUnreadNotifications = async (
   }
 
   // Get all participants to determine total count (for single-participant exception).
-  const totalParticipants = await conversation.listParticipants(auth, false);
-  const allParticipants = totalParticipants.filter((p) => p.unread);
+  const totalParticipants = await conversation.listParticipants(auth);
+  const allParticipants = totalParticipants.filter(
+    (p) => p.lastReadAt === null || conversation.updatedAt > p.lastReadAt
+  );
 
   if (allParticipants.length === 0) {
     return new Ok(undefined);

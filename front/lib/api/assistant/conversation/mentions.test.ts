@@ -3413,7 +3413,7 @@ describe("validateUserMention", () => {
     });
   });
 
-  it("should add a participant with unread=true when approving a user mention", async () => {
+  it("should add a participant with lastReadAt=null when approving a user mention", async () => {
     // Create a second user who will be mentioned
     const mentionedUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, mentionedUser, {
@@ -3469,7 +3469,7 @@ describe("validateUserMention", () => {
 
     expect(result.isOk()).toBe(true);
 
-    // Verify the mentioned user is now a participant with unread=true
+    // Verify the mentioned user is now a participant with lastReadAt=null
     const participant = await ConversationParticipantModel.findOne({
       where: {
         workspaceId: workspace.id,
@@ -3479,7 +3479,7 @@ describe("validateUserMention", () => {
     });
 
     expect(participant).not.toBeNull();
-    expect(participant?.unread).toBe(true);
+    expect(participant?.lastReadAt).toBeNull();
     expect(participant?.action).toBe("subscribed");
   });
 
