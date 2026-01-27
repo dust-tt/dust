@@ -28,9 +28,42 @@ export interface PatchSuggestionResponseBody {
   suggestion: AgentSuggestionType;
 }
 
+const GetSuggestionsQuerySchema = t.intersection([
+  t.type({
+    agentId: t.string,
+  }),
+  t.partial({
+    states: t.array(
+      t.union([
+        t.literal("pending"),
+        t.literal("approved"),
+        t.literal("rejected"),
+        t.literal("outdated"),
+      ])
+    ),
+    kind: t.union([
+      t.literal("instructions"),
+      t.literal("tools"),
+      t.literal("skills"),
+      t.literal("model"),
+    ]),
+    limit: t.string,
+  }),
+]);
+
+export type GetSuggestionsQuery = t.TypeOf<typeof GetSuggestionsQuerySchema>;
+
+export interface GetSuggestionsResponseBody {
+  suggestions: AgentSuggestionType[];
+}
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PatchSuggestionResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PatchSuggestionResponseBody | GetSuggestionsResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
   const owner = auth.getNonNullableWorkspace();
@@ -46,6 +79,48 @@ async function handler(
   }
 
   switch (req.method) {
+    case "GET": {
+      const queryValidation = GetSuggestionsQuerySchema.decode(req.query);
+      if (isLeft(queryValidation)) {
+        const pathError = reporter.formatValidationErrors(queryValidation.left);
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: `Invalid query parameters: ${pathError}`,
+          },
+        });
+      }
+
+      const { agentId, states, kind, limit } = queryValidation.right;
+
+      const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+      if (parsedLimit !== undefined && isNaN(parsedLimit)) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "Invalid limit parameter: must be a number",
+          },
+        });
+      }
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          auth,
+          agentId,
+          {
+            states,
+            kind,
+            limit: parsedLimit,
+          }
+        );
+
+      return res
+        .status(200)
+        .json({ suggestions: suggestions.map((s) => s.toJSON()) });
+    }
+
     case "PATCH": {
       const bodyValidation = PatchSuggestionRequestBodySchema.decode(req.body);
       if (isLeft(bodyValidation)) {
@@ -96,7 +171,8 @@ async function handler(
         status_code: 405,
         api_error: {
           type: "method_not_supported_error",
-          message: "The method passed is not supported, PATCH is expected.",
+          message:
+            "The method passed is not supported, GET or PATCH is expected.",
         },
       });
   }
