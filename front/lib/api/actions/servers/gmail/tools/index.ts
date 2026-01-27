@@ -536,6 +536,69 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       },
     ]);
   },
+
+  send_mail: async (
+    { to, cc, bcc, subject, contentType, body },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const encodedSubject = encodeSubject(subject);
+
+    const messageLines = [
+      `To: ${to.join(", ")}`,
+      cc?.length ? `Cc: ${cc.join(", ")}` : null,
+      bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
+      `Subject: ${encodedSubject}`,
+      `Content-Type: ${contentType}; charset=UTF-8`,
+      "MIME-Version: 1.0",
+      "",
+      body,
+    ].filter((line): line is string => line !== null);
+
+    const message = messageLines.join("\r\n");
+    const encodedMessage = encodeMessageForGmail(message);
+
+    const response = await fetchFromGmail(
+      "/gmail/v1/users/me/messages/send",
+      accessToken,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          raw: encodedMessage,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(new MCPError(`Failed to send email: ${errorText}`));
+    }
+
+    const result = await response.json();
+
+    return new Ok([
+      { type: "text" as const, text: "Email sent successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            messageId: result.id,
+            threadId: result.threadId,
+            labelIds: result.labelIds,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
 };
 
 export const TOOLS = buildTools(GMAIL_TOOLS_METADATA, handlers);
