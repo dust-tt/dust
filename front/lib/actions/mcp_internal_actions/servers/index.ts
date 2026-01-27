@@ -40,7 +40,6 @@ import { default as schedulesManagementServer } from "@app/lib/actions/mcp_inter
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
-import { default as slackBotServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_bot";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
@@ -67,6 +66,7 @@ import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
+import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";

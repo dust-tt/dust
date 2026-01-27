@@ -29,6 +29,7 @@ import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
@@ -915,38 +916,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("slack_bot_mcp");
     },
     isPreview: true,
-    tools_stakes: {
-      list_public_channels: "never_ask" as const,
-      list_users: "never_ask" as const,
-      get_user: "never_ask" as const,
-      read_channel_history: "never_ask" as const,
-      read_thread_messages: "never_ask" as const,
-
-      post_message: "low" as const,
-      add_reaction: "low" as const,
-      remove_reaction: "low" as const,
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slack_bot",
-      version: "1.0.0",
-      description:
-        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
-      authorization: {
-        provider: "slack" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "SlackLogo",
-      documentationUrl: null,
-      instructions:
-        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
-        "Direct messages and search operations are not supported. " +
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
-        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
-    },
+    metadata: SLACK_BOT_SERVER,
   },
   openai_usage: {
     id: 32,

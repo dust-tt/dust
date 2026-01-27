@@ -1,0 +1,184 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+
+export const SLACK_BOT_TOOL_NAME = "slack_bot" as const;
+
+export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
+  post_message: {
+    description:
+      "Post a message to a Slack channel. The slack bot must be added to the channel before it can post messages. Direct messages are not supported. You MUST ONLY post to channels that were explicitly specified by the user in their request. NEVER post to alternative channels if the requested channel is not found. If you cannot find the exact channel requested by the user, you MUST ask the user for clarification instead of choosing a different channel.",
+    schema: {
+      to: z
+        .string()
+        .describe(
+          "The channel to post the message to. Accepted values are the channel name or the channel id."
+        ),
+      message: z
+        .string()
+        .describe(
+          "The message to post, must follow the Slack message formatting rules."
+        ),
+      threadTs: z
+        .string()
+        .optional()
+        .describe(
+          "The thread ts of the message to reply to. If you don't provide a thread ts, the message will be posted as a top-level message."
+        ),
+      fileId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional file id (sId) of a file in Dust to attach to the Slack message."
+        ),
+    },
+    stake: "low",
+  },
+  list_users: {
+    description: "List all users in the workspace",
+    schema: {
+      nameFilter: z
+        .string()
+        .optional()
+        .describe("The name of the user to filter by (optional)"),
+    },
+    stake: "never_ask",
+  },
+  get_user: {
+    description:
+      "Get user information given a Slack user ID. Use this to retrieve details about a user when you have their user ID.",
+    schema: {
+      userId: z
+        .string()
+        .describe("The Slack user ID to look up (for example: U0123456789)."),
+    },
+    stake: "never_ask",
+  },
+  list_public_channels: {
+    description: "List all public channels in the workspace",
+    schema: {
+      nameFilter: z
+        .string()
+        .optional()
+        .describe("The name of the channel to filter by (optional)"),
+    },
+    stake: "never_ask",
+  },
+  read_channel_history: {
+    description:
+      "Read messages from a specific channel with pagination support. The slack bot must be added to the channel before it can read messages.",
+    schema: {
+      channel: z.string().describe("Channel name or ID"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Number of messages to retrieve (default: 20, max: 200)"),
+      cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Pagination cursor from previous call to get next page of messages"
+        ),
+      oldest: z
+        .string()
+        .optional()
+        .describe("Only messages after this timestamp (Unix timestamp)"),
+      latest: z
+        .string()
+        .optional()
+        .describe("Only messages before this timestamp (Unix timestamp)"),
+    },
+    stake: "never_ask",
+  },
+  read_thread_messages: {
+    description:
+      "Read all messages in a specific thread with pagination support",
+    schema: {
+      channel: z.string().describe("Channel name or ID"),
+      threadTs: z
+        .string()
+        .describe("Thread timestamp (ts of the parent message)"),
+      limit: z
+        .number()
+        .optional()
+        .describe("Number of messages to retrieve (default: 20, max: 200)"),
+      cursor: z
+        .string()
+        .optional()
+        .describe(
+          "Pagination cursor from previous call to get next page of thread messages"
+        ),
+      oldest: z
+        .string()
+        .optional()
+        .describe("Only messages after this timestamp (Unix timestamp)"),
+      latest: z
+        .string()
+        .optional()
+        .describe("Only messages before this timestamp (Unix timestamp)"),
+    },
+    stake: "never_ask",
+  },
+  add_reaction: {
+    description: "Add a reaction emoji to a message",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to react to"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction (without colons, e.g., 'thumbsup', 'heart')"
+        ),
+    },
+    stake: "low",
+  },
+  remove_reaction: {
+    description: "Remove a reaction emoji from a message",
+    schema: {
+      channel: z.string().describe("The channel where the message is located"),
+      timestamp: z
+        .string()
+        .describe("The timestamp of the message to remove reaction from"),
+      name: z
+        .string()
+        .describe(
+          "The name of the emoji reaction to remove (without colons, e.g., 'thumbsup', 'heart')"
+        ),
+    },
+    stake: "low",
+  },
+});
+
+export const SLACK_BOT_SERVER = {
+  serverInfo: {
+    name: "slack_bot",
+    version: "1.0.0",
+    description:
+      "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
+    authorization: {
+      provider: "slack" as const,
+      supported_use_cases: ["platform_actions"] as const,
+    },
+    icon: "SlackLogo",
+    documentationUrl: null,
+    instructions:
+      "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
+      "Direct messages and search operations are not supported. " +
+      "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
+      "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
+      "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
+  },
+  tools: Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+  })),
+  tools_stakes: Object.fromEntries(
+    Object.values(SLACK_BOT_TOOLS_METADATA).map((t) => [t.name, t.stake])
+  ),
+} as const satisfies ServerMetadata;
