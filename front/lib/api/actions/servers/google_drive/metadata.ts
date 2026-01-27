@@ -4,10 +4,18 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import {
-  MAX_CONTENT_SIZE,
-  SUPPORTED_MIMETYPES,
-} from "@app/lib/providers/google_drive/utils";
+
+export const SUPPORTED_MIMETYPES = [
+  "application/vnd.google-apps.document",
+  "application/vnd.google-apps.presentation",
+  "application/vnd.google-apps.spreadsheet",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+];
+
+export const MAX_CONTENT_SIZE = 32000; // Max characters to return for file content
+export const MAX_FILE_SIZE = 64 * 1024 * 1024; // 64 MB max original file size
 
 export const GOOGLE_DRIVE_TOOL_NAME = "google_drive" as const;
 
