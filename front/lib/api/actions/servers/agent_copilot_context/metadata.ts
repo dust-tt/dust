@@ -88,6 +88,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available knowledge",
+      done: "List available knowledge",
+    },
   },
   get_available_models: {
     description:
@@ -101,18 +105,30 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available models",
+      done: "List available models",
+    },
   },
   get_available_skills: {
     description:
       "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available skills",
+      done: "List available skills",
+    },
   },
   get_available_tools: {
     description:
       "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available tools",
+      done: "List available tools",
+    },
   },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
@@ -131,6 +147,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent feedback",
+      done: "List agent feedback",
+    },
   },
   get_agent_insights: {
     description:
@@ -144,6 +164,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Number of days to include in the analysis (default: 30)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent insights",
+      done: "List agent insights",
+    },
   },
   // Suggestion tools
   suggest_prompt_editions: {
@@ -159,6 +183,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestions"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting prompt editions",
+      done: "Suggest prompt editions",
+    },
   },
   suggest_tools: {
     description:
@@ -173,6 +201,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestion"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting tools",
+      done: "Suggest tools",
+    },
   },
   suggest_skills: {
     description:
@@ -187,6 +219,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestion"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skills",
+      done: "Suggest skills",
+    },
   },
   suggest_model: {
     description: "Suggest changing the agent's LLM model configuration.",
@@ -200,6 +236,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestion"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting model",
+      done: "Suggest model",
+    },
   },
   list_suggestions: {
     description:
@@ -228,6 +268,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing suggestions",
+      done: "List suggestions",
+    },
   },
   update_suggestions_state: {
     description:
@@ -249,6 +293,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Array of suggestions to update with their new states"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Updating suggestion state",
+      done: "Update suggestion state",
+    },
   },
 });
 
@@ -267,6 +315,7 @@ export const AGENT_COPILOT_CONTEXT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_COPILOT_CONTEXT_TOOLS_METADATA).map((t) => [

@@ -56,6 +56,10 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Generating image",
+      done: "Generate image",
+    },
   },
 });
 
@@ -98,6 +102,7 @@ export const IMAGE_GENERATION_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])
