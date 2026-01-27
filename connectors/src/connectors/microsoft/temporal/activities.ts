@@ -601,131 +601,151 @@ export async function syncFiles({
   );
   const client = await getMicrosoftClient(connector.connectionId);
 
-  // TODO(pr): handle pagination
-  const childrenResult = await getFilesAndFolders(
-    logger,
-    client,
-    parent.internalId,
-    nextPageLink
-  );
-
-  const children = childrenResult.results;
-
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
-  });
-  const filesToSync = children.filter(
-    (item) =>
-      item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
-  );
-
-  const concurrency = getAdaptiveConcurrency(
-    filesToSync,
-    MAX_FILE_SIZE_TO_DOWNLOAD,
-    FILES_SYNC_CONCURRENCY
-  );
-
-  // sync files
-  const results = await concurrentExecutor(
-    filesToSync,
-    async (child) =>
-      syncOneFile({
-        connectorId,
-        dataSourceConfig,
-        providerConfig,
-        file: child,
-        parentInternalId,
-        startSyncTs,
-        heartbeat,
-      }),
-    { concurrency }
-  );
-
-  const count = results.filter((r) => r).length;
-
-  logger.info(
-    {
-      connectorId,
-      dataSourceId: dataSourceConfig.dataSourceId,
-      parent,
-      count,
-    },
-    `[SyncFiles] Successful sync.`
-  );
-
-  // do not update folders that were already seen
-  const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
-    connectorId,
-    children
-      .filter((item) => item.folder)
-      .map((item) => getDriveItemInternalId(item))
-  );
-
-  // compute folders that were already seen
-  const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
-  folderResources.forEach((f) => {
-    if (
-      isAlreadySeenItem({
-        driveItemResource: f,
-        startSyncTs,
-      })
-    ) {
-      alreadySeenResourcesById[f.internalId] = f;
-    }
-  });
-
-  const alreadySeenResources = Object.values(alreadySeenResourcesById);
-
-  const createdOrUpdatedResources =
-    await MicrosoftNodeResource.batchUpdateOrCreate(
-      connectorId,
-      children
-        .filter(
-          (item) =>
-            item.folder &&
-            // only create/update if resource unseen
-            !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
-        )
-        .map(
-          (item): MicrosoftNode => ({
-            ...itemToMicrosoftNode("folder", item),
-            // add parent information to new node resources
-            parentInternalId,
-          })
-        )
+  try {
+    // TODO(pr): handle pagination
+    const childrenResult = await getFilesAndFolders(
+      logger,
+      client,
+      parent.internalId,
+      nextPageLink
     );
 
-  const parentsOfParent = await getParents({
-    connectorId: parent.connectorId,
-    internalId: parent.internalId,
-    startSyncTs,
-  });
+    const children = childrenResult.results;
 
-  await concurrentExecutor(
-    createdOrUpdatedResources,
-    async (createdOrUpdatedResource) =>
-      upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: createdOrUpdatedResource.internalId,
-        parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
-        parentId: parentsOfParent[0],
-        title: createdOrUpdatedResource.name ?? "Untitled Folder",
-        mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
-        sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
-      }),
-    { concurrency: 5 }
-  );
+    const mimeTypesToSync = await getMimeTypesToSync({
+      pdfEnabled: providerConfig.pdfEnabled || false,
+      csvEnabled: providerConfig.csvEnabled || false,
+    });
+    const filesToSync = children.filter(
+      (item) =>
+        item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
+    );
 
-  return {
-    count,
-    // still visit children of already seen nodes; an already seen node does not
-    // mean all its children are already seen too
-    childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
-      (r) => r.internalId
-    ),
-    nextLink: childrenResult.nextLink,
-  };
+    const concurrency = getAdaptiveConcurrency(
+      filesToSync,
+      MAX_FILE_SIZE_TO_DOWNLOAD,
+      FILES_SYNC_CONCURRENCY
+    );
+
+    // sync files
+    const results = await concurrentExecutor(
+      filesToSync,
+      async (child) =>
+        syncOneFile({
+          connectorId,
+          dataSourceConfig,
+          providerConfig,
+          file: child,
+          parentInternalId,
+          startSyncTs,
+          heartbeat,
+        }),
+      { concurrency }
+    );
+
+    const count = results.filter((r) => r).length;
+
+    logger.info(
+      {
+        connectorId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        parent,
+        count,
+      },
+      `[SyncFiles] Successful sync.`
+    );
+
+    // do not update folders that were already seen
+    const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
+      connectorId,
+      children
+        .filter((item) => item.folder)
+        .map((item) => getDriveItemInternalId(item))
+    );
+
+    // compute folders that were already seen
+    const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
+    folderResources.forEach((f) => {
+      if (
+        isAlreadySeenItem({
+          driveItemResource: f,
+          startSyncTs,
+        })
+      ) {
+        alreadySeenResourcesById[f.internalId] = f;
+      }
+    });
+
+    const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
+    const createdOrUpdatedResources =
+      await MicrosoftNodeResource.batchUpdateOrCreate(
+        connectorId,
+        children
+          .filter(
+            (item) =>
+              item.folder &&
+              // only create/update if resource unseen
+              !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
+          )
+          .map(
+            (item): MicrosoftNode => ({
+              ...itemToMicrosoftNode("folder", item),
+              // add parent information to new node resources
+              parentInternalId,
+            })
+          )
+      );
+
+    const parentsOfParent = await getParents({
+      connectorId: parent.connectorId,
+      internalId: parent.internalId,
+      startSyncTs,
+    });
+
+    await concurrentExecutor(
+      createdOrUpdatedResources,
+      async (createdOrUpdatedResource) =>
+        upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: createdOrUpdatedResource.internalId,
+          parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
+          parentId: parentsOfParent[0],
+          title: createdOrUpdatedResource.name ?? "Untitled Folder",
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
+        }),
+      { concurrency: 5 }
+    );
+
+    return {
+      count,
+      // still visit children of already seen nodes; an already seen node does not
+      // mean all its children are already seen too
+      childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
+        (r) => r.internalId
+      ),
+      nextLink: childrenResult.nextLink,
+    };
+  } catch (e) {
+    if (isGeneralExceptionError(e)) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+        },
+        "Skipping syncFiles due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+
+    throw e;
+  }
 }
 
 // Legacy activity, only for compatibilty.
