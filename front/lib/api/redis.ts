@@ -13,6 +13,7 @@ export type RedisUsageTagsType =
   | "cancel_message_generation"
   | "conversation_events"
   | "daily_usage_tracking"
+  | "email_context"
   | "key_usage_tracking"
   | "lock"
   | "mcp_client_side_request"

@@ -1,6 +1,4 @@
 import fs from "fs";
-import { marked } from "marked";
-import sanitizeHtml from "sanitize-html";
 import { Op } from "sequelize";
 import { Readable } from "stream";
 
@@ -11,7 +9,6 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
 import type { RedisUsageTagsType } from "@app/lib/api/redis";
@@ -26,18 +23,88 @@ import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import type {
-  AgentMessageType,
   ConversationType,
   LightAgentConfigurationType,
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
 } from "@app/types";
-import { Err, isAgentMessageType, isDevelopment, Ok } from "@app/types";
+import { Err, isDevelopment, Ok } from "@app/types";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 
 const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
+
+// Redis configuration for email reply context storage.
+const REDIS_ORIGIN: RedisUsageTagsType = "email_context";
+const EMAIL_REPLY_CONTEXT_PREFIX = "email-reply-context";
+const EMAIL_REPLY_CONTEXT_TTL_SECONDS = 3 * 60 * 60; // 3 hours
+
+/**
+ * Data needed to reply to an email after agent message completion.
+ */
+export type EmailReplyContext = {
+  subject: string;
+  originalText: string;
+  fromEmail: string;
+  fromFull: string;
+  agentConfigurationSId: string;
+  workspaceSId: string;
+  conversationSId: string;
+};
+
+function makeEmailReplyContextKey(agentMessageSId: string): string {
+  return `${EMAIL_REPLY_CONTEXT_PREFIX}:${agentMessageSId}`;
+}
+
+/**
+ * Store email reply context in Redis for later use when agent message completes.
+ */
+export async function storeEmailReplyContext(
+  agentMessageSId: string,
+  context: EmailReplyContext
+): Promise<void> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(agentMessageSId);
+
+  await redis.set(key, JSON.stringify(context), {
+    EX: EMAIL_REPLY_CONTEXT_TTL_SECONDS,
+  });
+
+  logger.info(
+    { agentMessageSId, key },
+    "[email] Stored email reply context in Redis"
+  );
+}
+
+/**
+ * Retrieve and delete email reply context from Redis.
+ * Returns null if not found (expired or never stored).
+ */
+export async function getAndDeleteEmailReplyContext(
+  agentMessageSId: string
+): Promise<EmailReplyContext | null> {
+  const redis = await getRedisClient({ origin: REDIS_ORIGIN });
+  const key = makeEmailReplyContextKey(agentMessageSId);
+
+  const value = await redis.get(key);
+  if (!value) {
+    return null;
+  }
+
+  // Delete after retrieval to ensure we only reply once.
+  await redis.del(key);
+
+  try {
+    return JSON.parse(value) as EmailReplyContext;
+  } catch {
+    logger.warn(
+      { agentMessageSId, key },
+      "[email] Failed to parse email reply context from Redis"
+    );
+    return null;
+  }
+}
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
   ? "run.dust.help"
@@ -253,298 +320,12 @@ export async function splitThreadContent(content: string) {
   return { userMessage: newMessage, restOfThread: thread, conversationId };
 }
 
-export async function triggerFromEmail({
-  auth,
-  agentConfigurations,
-  email,
-}: {
-  auth: Authenticator;
-  agentConfigurations: LightAgentConfigurationType[];
-  email: InboundEmail;
-}): Promise<
-  Result<
-    {
-      conversation: ConversationType;
-      answers: {
-        agentConfiguration: LightAgentConfigurationType;
-        agentMessage: AgentMessageType;
-        html: string;
-      }[];
-    },
-    EmailTriggerError
-  >
-> {
-  const localLogger = logger.child({});
-  const user = auth.user();
-  if (!user) {
-    return new Err({
-      type: "unexpected_error",
-      message:
-        "An unexpected error occurred. Please try again or contact us at support@dust.tt.",
-    });
-  }
-
-  const { userMessage, restOfThread, conversationId } =
-    await splitThreadContent(email.text);
-
-  let conversation;
-  if (conversationId) {
-    const conversationRes = await getConversation(auth, conversationId);
-    if (conversationRes.isErr()) {
-      return new Err({
-        type: "unexpected_error",
-        message: "Failed to find conversation with given id.",
-      });
-    }
-    conversation = conversationRes.value;
-  } else {
-    conversation = await createConversation(auth, {
-      title: `Email: ${email.subject}`,
-      visibility: "unlisted",
-      spaceId: null,
-    });
-  }
-
-  if (restOfThread.length > 0) {
-    const cfRes = await toFileContentFragment(auth, {
-      contentFragment: {
-        title: `Email thread: ${email.subject}`,
-        content: restOfThread,
-        contentType: "text/plain",
-        url: null,
-      },
-      fileName: `email-thread.txt`,
-    });
-    if (cfRes.isErr()) {
-      return new Err({
-        type: "message_creation_error",
-        message:
-          `Error creating file for content fragment: ` + cfRes.error.message,
-      });
-    }
-
-    const contentFragmentRes = await postNewContentFragment(
-      auth,
-      conversation,
-      cfRes.value,
-      {
-        username: user.username,
-        fullName: user.fullName(),
-        email: user.email,
-        profilePictureUrl: user.imageUrl,
-      }
-    );
-    if (contentFragmentRes.isErr()) {
-      return new Err({
-        type: "message_creation_error",
-        message:
-          `Error creating file for content fragment: ` +
-          contentFragmentRes.error.message,
-      });
-    }
-
-    const updatedConversationRes = await getConversation(
-      auth,
-      conversation.sId
-    );
-    if (updatedConversationRes.isErr()) {
-      // if no conversation found, we just keep the conversation as is but do
-      // not err
-      if (updatedConversationRes.error.type !== "conversation_not_found") {
-        return new Err({
-          type: "unexpected_error",
-          message: "Failed to update conversation with email thread.",
-        });
-      }
-    } else {
-      conversation = updatedConversationRes.value;
-    }
-  }
-
-  // Process email attachments as content fragments.
-  for (const attachment of email.attachments) {
-    try {
-      const file = await FileResource.makeNew({
-        contentType: attachment.contentType as SupportedFileContentType,
-        fileName: attachment.filename,
-        fileSize: attachment.size,
-        userId: user.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        useCase: "conversation",
-        useCaseMetadata: null,
-      });
-
-      const fileStream = fs.createReadStream(attachment.filepath);
-      const processRes = await processAndStoreFile(auth, {
-        file,
-        content: {
-          type: "readable",
-          value: Readable.from(fileStream),
-        },
-      });
-
-      if (processRes.isErr()) {
-        localLogger.warn(
-          {
-            filename: attachment.filename,
-            contentType: attachment.contentType,
-            error: processRes.error.message,
-          },
-          "[email] Failed to process attachment, skipping."
-        );
-        continue;
-      }
-
-      const contentFragmentRes = await postNewContentFragment(
-        auth,
-        conversation,
-        {
-          title: attachment.filename,
-          fileId: file.sId,
-        },
-        {
-          username: user.username,
-          fullName: user.fullName(),
-          email: user.email,
-          profilePictureUrl: user.imageUrl,
-        }
-      );
-
-      if (contentFragmentRes.isErr()) {
-        localLogger.warn(
-          {
-            filename: attachment.filename,
-            error: contentFragmentRes.error.message,
-          },
-          "[email] Failed to create content fragment for attachment, skipping."
-        );
-        continue;
-      }
-
-      localLogger.info(
-        { filename: attachment.filename },
-        "[email] Added attachment as content fragment."
-      );
-    } catch (err) {
-      localLogger.warn(
-        {
-          filename: attachment.filename,
-          error: err instanceof Error ? err.message : "Unknown error",
-        },
-        "[email] Error processing attachment, skipping."
-      );
-    }
-  }
-
-  // Refresh conversation after adding attachments.
-  if (email.attachments.length > 0) {
-    const updatedConversationRes = await getConversation(
-      auth,
-      conversation.sId
-    );
-    if (updatedConversationRes.isOk()) {
-      conversation = updatedConversationRes.value;
-    }
-  }
-
-  const content =
-    agentConfigurations
-      .map((agent) => {
-        return serializeMention(agent);
-      })
-      .join(" ") +
-    " " +
-    userMessage;
-
-  const mentions = agentConfigurations.map((agent) => {
-    return { configurationId: agent.sId };
-  });
-
-  const messageRes = await postUserMessageAndWaitForCompletion(auth, {
-    conversation,
-    content,
-    mentions,
-    context: {
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone ?? "UTC",
-      username: user.username,
-      fullName: user.fullName(),
-      email: user.email,
-      profilePictureUrl: user.imageUrl,
-      origin: "email",
-    },
-    // When running an agent from an email we have no chance of validating tools so we skip all of
-    // them and run the tools by default. This is in tension with the admin settings and could be
-    // revisited if needed.
-    skipToolsValidation: true,
-  });
-
-  if (messageRes.isErr()) {
-    return new Err({
-      type: "message_creation_error",
-      message:
-        `Error interacting with agent: ` + messageRes.error.api_error.message,
-    });
-  }
-
-  const updatedConversationRes = await getConversation(auth, conversation.sId);
-
-  if (updatedConversationRes.isErr()) {
-    if (updatedConversationRes.error.type !== "conversation_not_found") {
-      return new Err({
-        type: "unexpected_error",
-        message: "Failed to update conversation with user message.",
-      });
-    }
-  } else {
-    conversation = updatedConversationRes.value;
-  }
-
-  localLogger.info(
-    {
-      conversation: {
-        sId: conversation.sId,
-      },
-    },
-    "[email] Created conversation."
-  );
-
-  // console.log(conversation.content);
-
-  // Last versions of each agent messages.
-  const agentMessages = agentConfigurations.map((ac) => {
-    const agentMessages = conversation.content.find((versions) => {
-      const item = versions[versions.length - 1];
-      return (
-        item && isAgentMessageType(item) && item.configuration.sId === ac.sId
-      );
-    }) as AgentMessageType[];
-    const last = agentMessages[agentMessages.length - 1];
-    return { agentConfiguration: ac, agentMessage: last };
-  });
-
-  const answers = await Promise.all(
-    agentMessages.map(async ({ agentConfiguration, agentMessage }) => {
-      return {
-        agentConfiguration,
-        agentMessage,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        html: sanitizeHtml(await marked.parse(agentMessage.content || ""), {
-          // Allow images on top of all defaults from https://www.npmjs.com/package/sanitize-html
-          allowedTags: sanitizeHtml.defaults.allowedTags.concat(["img"]),
-        }),
-      };
-    })
-  );
-
-  return new Ok({ conversation, answers });
-}
-
 /**
- * Async version of triggerFromEmail that doesn't wait for agent completion.
- * Instead, it stores email context in Redis and the reply is sent by the
- * agent loop finalization activity when the message completes.
+ * Trigger an email-based conversation without waiting for agent completion.
+ * Stores email context in Redis and the reply is sent by the agent loop
+ * finalization activity when the message completes.
  */
-export async function triggerFromEmailAsync({
+export async function triggerFromEmail({
   auth,
   agentConfigurations,
   email,

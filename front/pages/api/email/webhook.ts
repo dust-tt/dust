@@ -11,7 +11,7 @@ import {
   emailAssistantMatcher,
   getTargetEmailsForWorkspace,
   replyToEmail,
-  triggerFromEmailAsync,
+  triggerFromEmail,
   userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import { Authenticator } from "@app/lib/auth";
@@ -267,7 +267,7 @@ async function handler(
         }
 
         // Trigger async processing - reply will be sent by finalization activity.
-        const triggerRes = await triggerFromEmailAsync({
+        const triggerRes = await triggerFromEmail({
           auth,
           agentConfigurations,
           email,
