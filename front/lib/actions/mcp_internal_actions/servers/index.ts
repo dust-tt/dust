@@ -38,7 +38,6 @@ import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/ser
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
-import { default as toolsetsServer } from "@app/lib/actions/mcp_internal_actions/servers/toolsets";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
@@ -71,6 +70,7 @@ import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowfla
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
+import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import type { Authenticator } from "@app/lib/auth";
