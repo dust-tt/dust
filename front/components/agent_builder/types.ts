@@ -12,6 +12,7 @@ import { mcpServerConfigurationSchema } from "@app/components/shared/tools_picke
 import { getMcpServerViewDescription } from "@app/lib/actions/mcp_helper";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import { validateConfiguredJsonSchema } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
 import type {
@@ -169,6 +170,7 @@ export type AgentBuilderMCPServerConfiguration = {
   timeFrame: TimeFrame | null;
   additionalConfiguration: AdditionalConfigurationType;
   dustAppConfiguration: DustAppRunConfigurationType | null;
+  dustProject: ProjectConfiguration | null;
   jsonSchema: JSONSchema | null;
   _jsonSchemaString: string | null;
   secretName: string | null;
@@ -200,6 +202,7 @@ export function getDefaultMCPServerActionConfiguration(
       timeFrame: null,
       additionalConfiguration: {},
       dustAppConfiguration: null,
+      dustProject: null,
       jsonSchema: null,
       _jsonSchemaString: null,
       secretName: null,

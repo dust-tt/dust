@@ -971,6 +971,7 @@ describe("validateAction", () => {
       mcpServerViewId: "test-server-view",
       dustAppConfiguration: null,
       secretName: null,
+      dustProject: null,
       internalMCPServerId: null,
       availability: "auto",
       permission: "low",

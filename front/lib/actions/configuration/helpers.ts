@@ -2,13 +2,16 @@ import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp"
 import type {
   DataSourceConfiguration,
   DataSourceFilter,
+  ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import type { AdditionalConfigurationType } from "@app/lib/models/agent/actions/mcp";
+import type { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import type { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { makeSId } from "@app/lib/resources/string_ids";
 
 export type RetrievalTimeframe =
@@ -77,6 +80,20 @@ export function renderTableConfiguration(
   };
 }
 
+export function renderProjectConfiguration(
+  project: AgentProjectConfigurationModel
+): ProjectConfiguration {
+  const { project: space } = project;
+
+  return {
+    workspaceId: project.workspace.sId,
+    projectId: SpaceResource.modelIdToSId({
+      id: space.id,
+      workspaceId: space.workspaceId,
+    }),
+  };
+}
+
 export function buildServerSideMCPServerConfiguration({
   mcpServerView,
   dataSources = null,
@@ -109,5 +126,6 @@ export function buildServerSideMCPServerConfiguration({
     dustAppConfiguration: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
   };
 }

@@ -76,6 +76,7 @@ async function setupTest() {
     dustAppConfiguration: null,
     internalMCPServerId: internalMCPServer.id,
     secretName: null,
+    dustProject: null,
   };
 
   return {
@@ -196,6 +197,7 @@ describe("getPrefixedToolName", () => {
     dustAppConfiguration: null,
     internalMCPServerId: null,
     secretName: null,
+    dustProject: null,
   };
 
   it("should correctly prefix and slugify tool names", () => {

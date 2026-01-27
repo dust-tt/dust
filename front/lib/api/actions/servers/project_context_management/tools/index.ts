@@ -78,14 +78,20 @@ export function createProjectContextManagementTools(
   const handlers: ToolHandlers<
     typeof PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA
   > = {
-    list_project_files: async () => {
+    list_project_files: async ({ dustProject }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, agentLoopContext);
+        const contextRes = await getProjectSpace(
+          auth,
+          agentLoopContext,
+          dustProject
+        );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // TODO(projects) Use the first space. In the future, this could be extended to list files from all spaces.
+        const space = spaces[0];
 
         const files = await FileResource.listByProject(auth, {
           projectId: space.sId,
@@ -136,13 +142,16 @@ export function createProjectContextManagementTools(
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(
           auth,
-          agentLoopContext
+          agentLoopContext,
+          params.dustProject
         );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // Use the first space for write operations.
+        const space = spaces[0];
         const { fileName, content, sourceFileId, contentType } = params;
         const owner = auth.getNonNullableWorkspace();
         const user = auth.getNonNullableUser();
@@ -252,13 +261,16 @@ export function createProjectContextManagementTools(
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(
           auth,
-          agentLoopContext
+          agentLoopContext,
+          params.dustProject
         );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // Use the first space for write operations.
+        const space = spaces[0];
         const { fileId, content, sourceFileId } = params;
 
         // Fetch file.
@@ -348,13 +360,16 @@ export function createProjectContextManagementTools(
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(
           auth,
-          agentLoopContext
+          agentLoopContext,
+          params.dustProject
         );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // Use the first space for write operations.
+        const space = spaces[0];
         const { description } = params;
 
         // Fetch or create project metadata.
@@ -396,13 +411,16 @@ export function createProjectContextManagementTools(
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(
           auth,
-          agentLoopContext
+          agentLoopContext,
+          params.dustProject
         );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // Use the first space for write operations.
+        const space = spaces[0];
         const { name, url } = params;
 
         // Fetch or create project metadata.
@@ -442,13 +460,16 @@ export function createProjectContextManagementTools(
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(
           auth,
-          agentLoopContext
+          agentLoopContext,
+          params.dustProject
         );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // Use the first space for write operations.
+        const space = spaces[0];
         const { currentName, newName, newUrl } = params;
 
         // Validate at least one field is being updated.
@@ -522,12 +543,18 @@ export function createProjectContextManagementTools(
 
     read_project_journal_entry: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, agentLoopContext);
+        const contextRes = await getProjectSpace(
+          auth,
+          agentLoopContext,
+          params.dustProject
+        );
         if (contextRes.isErr()) {
           return contextRes;
         }
 
-        const { space } = contextRes.value;
+        const { spaces } = contextRes.value;
+        // TODO(projects) Use the first space. In the future, this could be extended to list files from all spaces.
+        const space = spaces[0];
         const { limit = 10 } = params;
 
         const entries = await ProjectJournalEntryResource.fetchBySpace(

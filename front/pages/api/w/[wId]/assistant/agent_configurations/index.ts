@@ -396,8 +396,7 @@ export async function createOrUpgradeAgentConfiguration({
         name: action.name,
         description: action.description ?? DEFAULT_MCP_ACTION_DESCRIPTION,
         mcpServerViewId: action.mcpServerViewId,
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        dataSources: action.dataSources || null,
+        dataSources: action.dataSources ?? null,
         tables: action.tables,
         childAgentId: action.childAgentId,
         additionalConfiguration: action.additionalConfiguration,
@@ -405,6 +404,7 @@ export async function createOrUpgradeAgentConfiguration({
         secretName: action.secretName,
         timeFrame: action.timeFrame,
         jsonSchema: action.jsonSchema,
+        dustProject: action.dustProject,
       } as ServerSideMCPServerConfigurationType,
       agentConfigurationRes.value
     );

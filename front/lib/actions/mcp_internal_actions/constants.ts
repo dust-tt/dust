@@ -1284,7 +1284,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   project_context_management: {
     id: 1021,
-    availability: "auto_hidden_builder",
+    availability: "auto",
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: ({ featureFlags }) => {

@@ -1,4 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DustProjectConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -19,17 +21,60 @@ const DISALLOWED_USE_CASES: FileUseCase[] = [
  * Context returned by getProjectSpace.
  */
 export interface ProjectSpaceContext {
-  space: SpaceResource;
+  spaces: SpaceResource[];
 }
 
 /**
- * Gets the space from the agent loop context.
- * The conversation must be in a project (space).
+ * Gets the spaces from the agent loop context or from the provided dustProject parameter.
+ * If dustProject is provided, uses that to fetch all spaces. Otherwise, gets from conversation.
+ * The conversation must be in a project (space) if dustProject is not provided.
  */
 export async function getProjectSpace(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType,
+  dustProject?: DustProjectConfigurationType
 ): Promise<Result<ProjectSpaceContext, MCPError>> {
+  // If dustProject is provided, iterate through all projects and fetch their spaces.
+  if (dustProject) {
+    const spaces: SpaceResource[] = [];
+    const authWorkspaceId = auth.getNonNullableWorkspace().sId;
+
+    // Parse the project URI to extract workspaceId and projectId.
+    const parseResult = parseProjectConfigurationURI(dustProject.uri);
+    if (parseResult.isErr()) {
+      return new Err(
+        new MCPError(`Invalid project URI: ${parseResult.error.message}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const { workspaceId, projectId } = parseResult.value;
+
+    // Validate that the workspace ID matches the authenticated workspace.
+    if (workspaceId !== authWorkspaceId) {
+      return new Err(
+        new MCPError(
+          `Workspace mismatch: project belongs to workspace ${workspaceId} but authenticated workspace is ${authWorkspaceId}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch the space by projectId.
+    const space = await SpaceResource.fetchById(auth, projectId);
+    if (!space) {
+      return new Err(
+        new MCPError(`Project not found: ${projectId}`, { tracked: false })
+      );
+    }
+
+    spaces.push(space);
+
+    return new Ok({ spaces });
+  }
+
+  // Otherwise, use the existing logic to get space from conversation context.
   if (!agentLoopContext?.runContext?.conversation) {
     return new Err(
       new MCPError("No conversation context available", { tracked: false })
@@ -66,7 +111,7 @@ export async function getProjectSpace(
     return new Err(new MCPError("Project not found", { tracked: false }));
   }
 
-  return new Ok({ space });
+  return new Ok({ spaces: [space] });
 }
 
 /**
@@ -88,22 +133,27 @@ export function checkWritePermission(
 }
 
 /**
- * Gets the space context and verifies write permissions.
+ * Gets the space context and verifies write permissions for all spaces.
  * This is a convenience function that combines getProjectSpace and checkWritePermission.
  */
 export async function getWritableProjectContext(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  agentLoopContext?: AgentLoopContextType,
+  dustProject?: DustProjectConfigurationType
 ): Promise<Result<ProjectSpaceContext, MCPError>> {
-  const contextRes = await getProjectSpace(auth, agentLoopContext);
+  const contextRes = await getProjectSpace(auth, agentLoopContext, dustProject);
   if (contextRes.isErr()) {
     return contextRes;
   }
 
-  const { space } = contextRes.value;
-  const permissionRes = checkWritePermission(auth, space);
-  if (permissionRes.isErr()) {
-    return permissionRes;
+  const { spaces } = contextRes.value;
+
+  // Check write permissions for all spaces.
+  for (const space of spaces) {
+    const permissionRes = checkWritePermission(auth, space);
+    if (permissionRes.isErr()) {
+      return permissionRes;
+    }
   }
 
   return contextRes;

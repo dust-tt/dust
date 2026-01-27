@@ -5,6 +5,7 @@ import {
   childAgentIdSchema,
   dataSourceConfigurationSchema,
   dustAppConfigurationSchema,
+  dustProjectSchema,
   jsonSchemaFieldSchema,
   jsonSchemaStringSchema,
   mcpServerViewIdSchema,
@@ -64,6 +65,11 @@ export function createDynamicConfigurationFields(
           message: VALIDATION_MESSAGES.dustApp.required,
         })
       : z.null(),
+    dustProject: requirements.requiresDustProjectConfiguration
+      ? dustProjectSchema.refine((val) => val !== null, {
+          message: VALIDATION_MESSAGES.dustProject.required,
+        })
+      : dustProjectSchema,
     secretName: requirements.developerSecretSelection
       ? requirements.developerSecretSelection === "required"
         ? secretNameSchema.refine((val) => val !== null, {
@@ -169,6 +175,7 @@ export function createDefaultConfigurationSchema() {
     ...createBaseConfigurationFields(),
     childAgentId: childAgentIdSchema,
     dustAppConfiguration: dustAppConfigurationSchema,
+    dustProject: dustProjectSchema,
     additionalConfiguration: z.object({}),
   });
 }

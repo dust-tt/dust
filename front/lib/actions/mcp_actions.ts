@@ -198,8 +198,7 @@ function makeServerSideMCPToolConfigurations(
     retryPolicy: tool.retryPolicy,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    dataSources: config.dataSources || [], // Ensure dataSources is always an array
+    dataSources: config.dataSources ?? [], // Ensure dataSources is always an array
     tables: config.tables,
     availability: tool.availability,
     childAgentId: config.childAgentId,
@@ -212,6 +211,7 @@ function makeServerSideMCPToolConfigurations(
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
     secretName: config.secretName,
+    dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
