@@ -17,8 +17,8 @@ import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCr
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
-import type { AppPageWithLayout } from "@app/lib/app/serverSideProps";
-import { appGetServerSidePropsForAdmin } from "@app/lib/app/serverSideProps";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";

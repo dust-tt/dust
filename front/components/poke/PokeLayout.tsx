@@ -3,8 +3,11 @@ import React, { createContext, useContext } from "react";
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
-import { AuthContext } from "@app/lib/auth/AuthContext";
+import type {
+  AuthContextNoWorkspaceValue,
+  AuthContextValue,
+} from "@app/lib/auth/AuthContext";
+import { AuthContext, AuthContextNoWorkspace } from "@app/lib/auth/AuthContext";
 import { Head } from "@app/lib/platform";
 import { usePokeRegion } from "@app/lib/swr/poke";
 
@@ -18,6 +21,7 @@ export function usePokePageTitle() {
   return useContext(PokePageTitleContext);
 }
 
+// Layout for workspace-scoped poke pages (uses AuthContext).
 export default function PokeLayout({
   children,
   title,
@@ -38,6 +42,30 @@ export default function PokeLayout({
         </PokePageTitleContext.Provider>
       </ThemeProvider>
     </AuthContext.Provider>
+  );
+}
+
+// Layout for global poke pages without workspace (uses AuthContextNoWorkspace).
+export function PokeLayoutNoWorkspace({
+  children,
+  title,
+  authContext,
+}: {
+  children: React.ReactNode;
+  title: string;
+  authContext: AuthContextNoWorkspaceValue;
+}) {
+  return (
+    <AuthContextNoWorkspace.Provider value={authContext}>
+      <ThemeProvider>
+        <PokePageTitleContext.Provider value={title}>
+          <Head>
+            <title>{"Poke - " + title}</title>
+          </Head>
+          <PokeLayoutContent>{children}</PokeLayoutContent>
+        </PokePageTitleContext.Provider>
+      </ThemeProvider>
+    </AuthContextNoWorkspace.Provider>
   );
 }
 

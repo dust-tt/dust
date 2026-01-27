@@ -17,8 +17,8 @@ import {
 } from "@app/components/providers/ProviderSetup";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import type { AppPageWithLayout } from "@app/lib/app/serverSideProps";
-import { appGetServerSidePropsForAdmin } from "@app/lib/app/serverSideProps";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {

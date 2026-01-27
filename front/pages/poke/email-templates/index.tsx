@@ -1,20 +1,23 @@
 import type { ReactElement } from "react";
 
 import { EmailTemplatesPage } from "@app/components/poke/pages/EmailTemplatesPage";
-import PokeLayout from "@app/components/poke/PokeLayout";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
-import type { PageWithLayout } from "@app/lib/poke/common";
-import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
+import { PokeLayoutNoWorkspace } from "@app/components/poke/PokeLayout";
+import type { AuthContextNoWorkspaceValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayoutNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
 
 export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-const Page = EmailTemplatesPage as PageWithLayout;
+const Page = EmailTemplatesPage as PageWithLayoutNoWorkspace;
 
-Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+Page.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextNoWorkspaceValue
+) => {
   return (
-    <PokeLayout title="Email Templates" authContext={pageProps}>
+    <PokeLayoutNoWorkspace title="Email Templates" authContext={pageProps}>
       {page}
-    </PokeLayout>
+    </PokeLayoutNoWorkspace>
   );
 };
 

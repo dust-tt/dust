@@ -1,20 +1,23 @@
 import type { ReactElement } from "react";
 
 import { ConnectorRedirectPage } from "@app/components/poke/pages/ConnectorRedirectPage";
-import PokeLayout from "@app/components/poke/PokeLayout";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
-import type { PageWithLayout } from "@app/lib/poke/common";
-import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
+import { PokeLayoutNoWorkspace } from "@app/components/poke/PokeLayout";
+import type { AuthContextNoWorkspaceValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayoutNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
 
 export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-const Page = ConnectorRedirectPage as PageWithLayout;
+const Page = ConnectorRedirectPage as PageWithLayoutNoWorkspace;
 
-Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+Page.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextNoWorkspaceValue
+) => {
   return (
-    <PokeLayout title="Connector Redirect" authContext={pageProps}>
+    <PokeLayoutNoWorkspace title="Connector Redirect" authContext={pageProps}>
       {page}
-    </PokeLayout>
+    </PokeLayoutNoWorkspace>
   );
 };
 
