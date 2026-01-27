@@ -1,17 +1,13 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { SEARCH_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  extractDataSourceIdFromNodeId,
-  isDataSourceNodeId,
-} from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
@@ -28,6 +24,11 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { FILESYSTEM_SEARCH_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  extractDataSourceIdFromNodeId,
+  isDataSourceNodeId,
+} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -74,7 +75,7 @@ export function registerSearchTool(
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          toolNameForMonitoring: FILESYSTEM_SEARCH_TOOL_NAME,
           agentLoopContext,
           enableAlerting: true,
         },
@@ -89,7 +90,7 @@ export function registerSearchTool(
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: SEARCH_TOOL_NAME,
+          toolNameForMonitoring: FILESYSTEM_SEARCH_TOOL_NAME,
           agentLoopContext,
           enableAlerting: true,
         },

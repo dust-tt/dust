@@ -54,10 +54,6 @@ import {
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GENERATE_IMAGE_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
@@ -92,6 +88,13 @@ import {
   AGENT_MEMORY_RETRIEVE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FILESYSTEM_SEARCH_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
@@ -180,6 +183,7 @@ export function MCPActionDetails({
   ) {
     switch (toolName) {
       case SEARCH_TOOL_NAME:
+      case FILESYSTEM_SEARCH_TOOL_NAME:
         return (
           <SearchResultDetails
             displayContext={displayContext}
