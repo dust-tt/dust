@@ -8,8 +8,8 @@ import type {
 import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ExtensionConfigurationType, ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
