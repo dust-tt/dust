@@ -797,49 +797,46 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       success: boolean;
       suggestionId: string;
       error?: string;
-    }[] = [];
+    }[] = await concurrentExecutor(
+      suggestionUpdates,
+      async ({
+        suggestionId,
+        state,
+      }): Promise<{
+        success: boolean;
+        suggestionId: string;
+        error?: string;
+      }> => {
+        // Fetch the suggestion by ID.
+        const suggestion = await AgentSuggestionResource.fetchById(
+          auth,
+          suggestionId
+        );
 
-    for (const { suggestionId, state } of suggestionUpdates) {
-      // Fetch the suggestion by ID.
-      const suggestion = await AgentSuggestionResource.fetchById(
-        auth,
-        suggestionId
-      );
+        if (!suggestion) {
+          return {
+            success: false,
+            suggestionId,
+            error: `Suggestion not found: ${suggestionId}`,
+          };
+        }
 
-      if (!suggestion) {
-        results.push({
-          success: false,
-          suggestionId,
-          error: `Suggestion not found: ${suggestionId}`,
-        });
-        continue;
-      }
-
-      // Check write permission.
-      if (!suggestion.canWrite(auth)) {
-        results.push({
-          success: false,
-          suggestionId,
-          error:
-            "You don't have permission to update this suggestion. Only workspace admins or members of the agent's editors group can modify suggestions.",
-        });
-        continue;
-      }
-
-      try {
-        await suggestion.updateState(auth, state);
-        results.push({
-          success: true,
-          suggestionId,
-        });
-      } catch (error) {
-        results.push({
-          success: false,
-          suggestionId,
-          error: `Failed to update suggestion state: ${normalizeError(error).message}`,
-        });
-      }
-    }
+        try {
+          await suggestion.updateState(auth, state);
+          return {
+            success: true,
+            suggestionId,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            suggestionId,
+            error: `Failed to update suggestion state: ${normalizeError(error).message}`,
+          };
+        }
+      },
+      { concurrency: 4 }
+    );
 
     return new Ok([
       {
