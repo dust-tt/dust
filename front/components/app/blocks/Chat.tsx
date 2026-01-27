@@ -9,8 +9,7 @@ import {
   Label,
   XMarkIcon,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -27,10 +26,17 @@ import type {
 
 import Block from "./Block";
 
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
+const CodeEditor = lazy(() =>
+  import("@uiw/react-textarea-code-editor").then((mod) => ({
+    default: mod.default,
+  }))
 );
+
+function CodeEditorFallback() {
+  return (
+    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
+  );
+}
 
 export default function Chat({
   owner,
@@ -395,47 +401,49 @@ export default function Chat({
                     <Label>Structured Response Format</Label>
                     <div className="flex w-full font-normal">
                       <div className="w-full leading-5">
-                        <CodeEditor
-                          data-color-mode={isDark ? "dark" : "light"}
-                          readOnly={readOnly}
-                          value={responseFormatText}
-                          language="json"
-                          placeholder={
-                            "{\n" +
-                            '  "type": "json_schema",\n' +
-                            '  "json_schema": {\n' +
-                            '    "name": "YourSchemaName",\n' +
-                            '    "strict": true,\n' +
-                            '    "schema": {\n' +
-                            '      "type": "object",\n' +
-                            '      "properties": {\n' +
-                            '        "property1":\n' +
-                            '          { "type":"string" }\n' +
-                            "      },\n" +
-                            '      "required": ["property1"],\n' +
-                            '      "additionalProperties": false\n' +
-                            "    }\n" +
-                            "  }\n" +
-                            "}"
-                          }
-                          onChange={(e) =>
-                            handleResponseFormatChange(e.target.value)
-                          }
-                          padding={3}
-                          className={classNames(
-                            "rounded-lg",
-                            isResponseFormatJsonValid
-                              ? "bg-muted-background dark:bg-muted-background-night"
-                              : "border-2 border-red-500 bg-muted-background dark:bg-muted-background-night"
-                          )}
-                          style={{
-                            fontSize: 13,
-                            fontFamily:
-                              "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                            overflowY: "auto",
-                            height: "400px",
-                          }}
-                        />
+                        <Suspense fallback={<CodeEditorFallback />}>
+                          <CodeEditor
+                            data-color-mode={isDark ? "dark" : "light"}
+                            readOnly={readOnly}
+                            value={responseFormatText}
+                            language="json"
+                            placeholder={
+                              "{\n" +
+                              '  "type": "json_schema",\n' +
+                              '  "json_schema": {\n' +
+                              '    "name": "YourSchemaName",\n' +
+                              '    "strict": true,\n' +
+                              '    "schema": {\n' +
+                              '      "type": "object",\n' +
+                              '      "properties": {\n' +
+                              '        "property1":\n' +
+                              '          { "type":"string" }\n' +
+                              "      },\n" +
+                              '      "required": ["property1"],\n' +
+                              '      "additionalProperties": false\n' +
+                              "    }\n" +
+                              "  }\n" +
+                              "}"
+                            }
+                            onChange={(e) =>
+                              handleResponseFormatChange(e.target.value)
+                            }
+                            padding={3}
+                            className={classNames(
+                              "rounded-lg",
+                              isResponseFormatJsonValid
+                                ? "bg-muted-background dark:bg-muted-background-night"
+                                : "border-2 border-red-500 bg-muted-background dark:bg-muted-background-night"
+                            )}
+                            style={{
+                              fontSize: 13,
+                              fontFamily:
+                                "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                              overflowY: "auto",
+                              height: "400px",
+                            }}
+                          />
+                        </Suspense>
                       </div>
                     </div>
                   </div>
@@ -449,22 +457,24 @@ export default function Chat({
           <Label>Instructions</Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={readOnly}
-                value={block.spec.instructions}
-                language="jinja2"
-                placeholder=""
-                onChange={(e) => handleInstructionsChange(e.target.value)}
-                padding={3}
-                minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                style={{
-                  fontSize: 13,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                }}
-              />
+              <Suspense fallback={<CodeEditorFallback />}>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  readOnly={readOnly}
+                  value={block.spec.instructions}
+                  language="jinja2"
+                  placeholder=""
+                  onChange={(e) => handleInstructionsChange(e.target.value)}
+                  padding={3}
+                  minHeight={80}
+                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                  style={{
+                    fontSize: 13,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  }}
+                />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -473,22 +483,24 @@ export default function Chat({
           <Label>Messages</Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={readOnly}
-                value={block.spec.messages_code}
-                language="js"
-                placeholder=""
-                onChange={(e) => handleMessagesCodeChange(e.target.value)}
-                padding={15}
-                minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                style={{
-                  fontSize: 12,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                }}
-              />
+              <Suspense fallback={<CodeEditorFallback />}>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  readOnly={readOnly}
+                  value={block.spec.messages_code}
+                  language="js"
+                  placeholder=""
+                  onChange={(e) => handleMessagesCodeChange(e.target.value)}
+                  padding={15}
+                  minHeight={80}
+                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                  style={{
+                    fontSize: 12,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  }}
+                />
+              </Suspense>
             </div>
           </div>
         </div>
@@ -499,24 +511,26 @@ export default function Chat({
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex w-full font-normal">
                   <div className="w-full leading-4">
-                    <CodeEditor
-                      data-color-mode={isDark ? "dark" : "light"}
-                      readOnly={readOnly}
-                      value={block.spec.functions_code}
-                      language="js"
-                      placeholder=""
-                      onChange={(e) =>
-                        handleFunctionsCodeChange(e.target.value)
-                      }
-                      padding={15}
-                      minHeight={80}
-                      className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                      style={{
-                        fontSize: 12,
-                        fontFamily:
-                          "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                      }}
-                    />
+                    <Suspense fallback={<CodeEditorFallback />}>
+                      <CodeEditor
+                        data-color-mode={isDark ? "dark" : "light"}
+                        readOnly={readOnly}
+                        value={block.spec.functions_code}
+                        language="js"
+                        placeholder=""
+                        onChange={(e) =>
+                          handleFunctionsCodeChange(e.target.value)
+                        }
+                        padding={15}
+                        minHeight={80}
+                        className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                        style={{
+                          fontSize: 12,
+                          fontFamily:
+                            "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                        }}
+                      />
+                    </Suspense>
                   </div>
                 </div>
                 <div className="flex flex-row items-center gap-2 text-sm">

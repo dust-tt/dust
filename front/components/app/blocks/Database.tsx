@@ -2,8 +2,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
-import dynamic from "next/dynamic";
-import { useCallback, useEffect } from "react";
+import { lazy, Suspense, useCallback, useEffect } from "react";
 
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -18,10 +17,18 @@ import type {
 import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
+
+const CodeEditor = lazy(() =>
+  import("@uiw/react-textarea-code-editor").then((mod) => ({
+    default: mod.default,
+  }))
 );
+
+function CodeEditorFallback() {
+  return (
+    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
+  );
+}
 
 export interface TableConfig {
   workspace_id: string;
@@ -249,26 +256,28 @@ export default function Database({
         <div>
           <Label>Query</Label>
           <div className="w-full font-normal">
-            <CodeEditor
-              data-color-mode={isDark ? "dark" : "light"}
-              readOnly={readOnly}
-              value={block.spec.query}
-              language="jinja2"
-              placeholder=""
-              onChange={(e) => {
-                const b = shallowBlockClone(block);
-                b.spec.query = e.target.value;
-                onBlockUpdate(b);
-              }}
-              padding={3}
-              minHeight={80}
-              className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-              style={{
-                fontSize: 13,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-              }}
-            />
+            <Suspense fallback={<CodeEditorFallback />}>
+              <CodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.query}
+                language="jinja2"
+                placeholder=""
+                onChange={(e) => {
+                  const b = shallowBlockClone(block);
+                  b.spec.query = e.target.value;
+                  onBlockUpdate(b);
+                }}
+                padding={3}
+                minHeight={80}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
+            </Suspense>
           </div>
         </div>
       </div>

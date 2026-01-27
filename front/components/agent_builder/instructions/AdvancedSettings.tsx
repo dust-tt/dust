@@ -14,8 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
@@ -27,10 +26,17 @@ import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types";
 
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
+const CodeEditor = lazy(() =>
+  import("@uiw/react-textarea-code-editor").then((mod) => ({
+    default: mod.default,
+  }))
 );
+
+function CodeEditorFallback() {
+  return (
+    <div className="h-[450px] animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
+  );
+}
 
 const RESPONSE_FORMAT_PLACEHOLDER =
   "Example:\n\n" +
@@ -119,28 +125,30 @@ export function AdvancedSettings() {
             </DialogDescription>
           </DialogHeader>
           <DialogContainer>
-            <CodeEditor
-              data-color-mode={isDark ? "dark" : "light"}
-              value={tempResponseFormat ?? responseFormatField.value ?? ""}
-              placeholder={RESPONSE_FORMAT_PLACEHOLDER}
-              name="responseFormat"
-              onChange={(e) => setTempResponseFormat(e.target.value)}
-              minHeight={450}
-              className={cn(
-                "rounded-lg bg-slate-100 dark:bg-slate-100-night",
-                isInvalidJson(
-                  tempResponseFormat ?? responseFormatField.value
-                ) &&
-                  "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
-              )}
-              style={{
-                fontSize: 13,
-                fontFamily:
-                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                overflowY: "auto",
-              }}
-              language="json"
-            />
+            <Suspense fallback={<CodeEditorFallback />}>
+              <CodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                value={tempResponseFormat ?? responseFormatField.value ?? ""}
+                placeholder={RESPONSE_FORMAT_PLACEHOLDER}
+                name="responseFormat"
+                onChange={(e) => setTempResponseFormat(e.target.value)}
+                minHeight={450}
+                className={cn(
+                  "rounded-lg bg-slate-100 dark:bg-slate-100-night",
+                  isInvalidJson(
+                    tempResponseFormat ?? responseFormatField.value
+                  ) &&
+                    "border-2 border-red-500 bg-slate-100 dark:bg-slate-100-night"
+                )}
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  overflowY: "auto",
+                }}
+                language="json"
+              />
+            </Suspense>
           </DialogContainer>
           <DialogFooter
             className="pt-2"
