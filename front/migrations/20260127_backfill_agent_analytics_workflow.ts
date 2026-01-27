@@ -32,7 +32,7 @@ async function backfillAgentAnalyticsWorkflow(
   const authType = auth.toJSON();
 
   // Get all agent messages from the last 90 days for this workspace
-  const ninetyDaysAgo = subDays(new Date(), 90);
+  const ninetyDaysAgo = subDays(new Date(), 30);
 
   logger.info(
     {
