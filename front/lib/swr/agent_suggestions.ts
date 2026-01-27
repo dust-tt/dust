@@ -5,22 +5,32 @@ import {
   fetcher,
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
-import type { GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
+import type { GetSuggestionsQuery, GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
 
 export function useAgentSuggestions({
-  workspaceId,
   agentConfigurationId,
   disabled,
+  state,
+  workspaceId,
 }: {
-  workspaceId: string;
   agentConfigurationId: string | null;
   disabled?: boolean;
+  state?: GetSuggestionsQuery["states"];
+  workspaceId: string;
 }) {
   const suggestionsFetcher: Fetcher<GetSuggestionsResponseBody> = fetcher;
 
+  const urlParams = new URLSearchParams();
+  if (state) {
+    state.forEach((s) => urlParams.append("states[]", s));
+  }
+  urlParams.append("kind", "instructions");
+
+  const queryString = urlParams.toString();
+
   const { data, error, mutate, isValidating } = useSWRWithDefaults(
     agentConfigurationId
-      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions?states[]=pending&kind=instructions`
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions?${queryString}`
       : null,
     suggestionsFetcher,
     { disabled }

@@ -87,8 +87,9 @@ export const CopilotSuggestionsProvider = ({
   // Fetch pending suggestions from the backend.
   const { suggestions: backendSuggestions, isSuggestionsLoading } =
     useAgentSuggestions({
-      workspaceId: owner.sId,
       agentConfigurationId,
+      state: ["pending"],
+      workspaceId: owner.sId,
     });
 
   const registerEditor = useCallback((editor: Editor) => {
