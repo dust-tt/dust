@@ -68,7 +68,7 @@ export function InputBar({
       onClick={handleFocus}
       className={cn(
         "s-relative s-w-full s-max-w-4xl",
-        "s-rounded-3xl s-border s-bg-primary-50 s-transition-all",
+        "s-rounded-3xl s-border s-bg-primary-50/70 s-backdrop-blur-md s-transition-all",
         isFocused
           ? "s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
           : "s-border-border",

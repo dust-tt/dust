@@ -1,6 +1,7 @@
 export * from "./CodeBlock";
 export * from "./CodeBlockWithExtendedSupport";
 export * from "./ContentBlockWrapper";
+export * from "./ActionCardBlock";
 export * from "./Markdown";
 export * from "./MarkdownContentContext";
 export * from "./PrettyJsonViewer";

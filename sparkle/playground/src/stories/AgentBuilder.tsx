@@ -38,6 +38,8 @@ import {
   ListItemSection,
   ListOrdered2Icon,
   DiffBlock,
+  ActionCardBlock,
+  actionCardDirective,
   Markdown,
   QuoteTextIcon,
   Separator,
@@ -73,6 +75,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Components } from "react-markdown";
 
 import { customColors } from "@sparkle/lib/colors";
 
@@ -130,6 +133,13 @@ export default function AgentBuilder() {
   const [agentDescription, setAgentDescription] = useState(
     agent?.description || ""
   );
+  const actionCardComponents: Components = useMemo(
+    () => ({
+      action_card: ActionCardBlock,
+    }),
+    []
+  );
+  const actionCardPlugins = useMemo(() => [actionCardDirective], []);
   const nameSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
     return getRandomAgents(count).map((suggestedAgent) => suggestedAgent.name);
@@ -996,7 +1006,13 @@ export default function AgentBuilder() {
                               timestamp={item.timestamp}
                             >
                               {item.type === "agent" ? (
-                                <Markdown content={item.content} />
+                                <Markdown
+                                  content={item.content}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
                               ) : (
                                 item.content
                               )}
@@ -1018,11 +1034,23 @@ export default function AgentBuilder() {
                           >
                             <div className="s-flex s-flex-col s-gap-3">
                               {trimmedBefore ? (
-                                <Markdown content={trimmedBefore} />
+                                <Markdown
+                                  content={trimmedBefore}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
                               ) : null}
                               <DiffBlock content={diffContent.trim()} />
                               {trimmedAfter ? (
-                                <Markdown content={trimmedAfter} />
+                                <Markdown
+                                  content={trimmedAfter}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
                               ) : null}
                             </div>
                           </ConversationMessage>
