@@ -11,8 +11,9 @@ import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
-  // assembled:
-  //   "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
+  assembled: "/customers/part-1-assembled-ai-operating-system",
+  backmarket:
+    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
