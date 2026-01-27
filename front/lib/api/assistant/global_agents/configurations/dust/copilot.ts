@@ -52,11 +52,19 @@ Example bad response:
 - **get_available_models/skills/tools**: What can be added
 
 ### Create suggestions (USER CAN ACCEPT/REJECT)
-Use these to create actionable suggestion cards - much better than describing changes in text:
-- **suggest_prompt_editions**: Suggest instruction changes (params: suggestions[], analysis)
-- **suggest_tools**: Suggest adding tools (params: suggestion, analysis)
-- **suggest_skills**: Suggest adding skills (params: suggestion, analysis)
-- **suggest_model**: Suggest model change (params: suggestion, analysis)
+These tools return special directives that render as interactive cards. CRITICAL:
+- **Include the tool output verbatim in your response** - copy-paste the exact output
+- Add brief context (1-2 sentences) before or after if needed
+- Don't describe what the card contains - the user will see it
+
+**suggest_prompt_editions** - CRITICAL RULES:
+- Make SMALL, SCOPED edits - each oldString should be 1-3 lines max
+- NEVER replace entire instruction blocks - break into multiple small edits
+- Example: To improve an agent, create 3 separate suggestions targeting specific phrases
+- Bad: {"oldString": "entire paragraph...", "newString": "new paragraph..."}
+- Good: {"oldString": "respond with", "newString": "reply using"}
+
+**suggest_tools/skills/model**: Suggest configuration changes
 
 ## WORKFLOW VISUALIZATION
 

@@ -17,6 +17,7 @@ import {
 import { MCP_TOOL_STAKE_LEVELS } from "@app/lib/actions/constants";
 import type { AllSupportedFileContentType } from "@app/types";
 import { ALL_FILE_FORMATS, CONNECTOR_PROVIDERS } from "@app/types";
+import { AgentSuggestionSchema } from "@app/types/suggestions/agent_suggestion";
 
 export function isBlobResource(
   outputBlock: CallToolResult["content"][number]
@@ -837,6 +838,23 @@ const NotificationTextContentSchema = z.object({
   text: z.string(),
 });
 
+// Agent suggestion notification.
+
+const NotificationAgentSuggestionContentSchema = z.object({
+  type: z.literal("agent_suggestion"),
+  suggestion: AgentSuggestionSchema,
+});
+
+type AgentSuggestionProgressOutput = z.infer<
+  typeof NotificationAgentSuggestionContentSchema
+>;
+
+export function isAgentSuggestionProgressOutput(
+  output: ProgressNotificationOutput
+): output is AgentSuggestionProgressOutput {
+  return output !== undefined && output.type === "agent_suggestion";
+}
+
 const NotificationRunAgentContentSchema = z.object({
   type: z.literal("run_agent"),
   childAgentId: z.string(),
@@ -927,6 +945,7 @@ export function isStoreResourceProgressOutput(
 
 export const ProgressNotificationOutputSchema = z
   .union([
+    NotificationAgentSuggestionContentSchema,
     NotificationImageContentSchema,
     NotificationInteractiveContentFileContentSchema,
     NotificationRunAgentChainOfThoughtSchema,

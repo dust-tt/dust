@@ -13,6 +13,10 @@ import {
   preprocessInstructionBlocks,
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
+import {
+  agentMessageSuggestionDirective,
+  getAgentMessageSuggestionPlugin,
+} from "@app/components/markdown/suggestion/AgentMessageSuggestionDirective";
 import { toolDirective } from "@app/components/markdown/tool/tool";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
 import {
@@ -59,6 +63,7 @@ export const AgentMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       instruction_block: InstructionBlock,
+      agentMessageSuggestion: getAgentMessageSuggestionPlugin(),
       ...additionalMarkdownComponents,
     }),
     [owner, additionalMarkdownComponents]
@@ -73,6 +78,7 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
+      agentMessageSuggestionDirective,
     ];
 
     return isInstructions

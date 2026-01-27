@@ -3,6 +3,7 @@ import {
   getMcpServerViewDescription,
   getMcpServerViewDisplayName,
 } from "@app/lib/actions/mcp_helper";
+import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_CONTEXT_TOOLS_METADATA } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
@@ -455,7 +456,10 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_editions: async (params, extra) => {
+  suggest_prompt_editions: async (
+    params,
+    { sendNotification, _meta, ...extra }
+  ) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -489,6 +493,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     const createdSuggestions: { sId: string }[] = [];
+    const directives: string[] = [];
 
     for (const suggestion of params.suggestions) {
       try {
@@ -505,6 +510,28 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         );
 
         createdSuggestions.push({ sId: created.sId });
+
+        // Send notification with full suggestion data for frontend context.
+        if (_meta?.progressToken) {
+          const notification: MCPProgressNotificationType = {
+            method: "notifications/progress",
+            params: {
+              progress: createdSuggestions.length,
+              total: params.suggestions.length,
+              progressToken: _meta.progressToken,
+              data: {
+                label: "Instructions suggestion created",
+                output: {
+                  type: "agent_suggestion",
+                  suggestion: created.toJSON(),
+                },
+              },
+            },
+          };
+          await sendNotification(notification);
+        }
+
+        directives.push(`:agentMessageSuggestion[]{sId=${created.sId}}`);
       } catch (error) {
         return new Err(
           new MCPError(
@@ -518,19 +545,12 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            success: true,
-            suggestions: createdSuggestions,
-          },
-          null,
-          2
-        ),
+        text: directives.join("\n\n"),
       },
     ]);
   },
 
-  suggest_tools: async (params, extra) => {
+  suggest_tools: async (params, { sendNotification, _meta, ...extra }) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -576,17 +596,30 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         }
       );
 
+      // Send notification with full suggestion data for frontend context.
+      if (_meta?.progressToken) {
+        const notification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 1,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: "Tools suggestion created",
+              output: {
+                type: "agent_suggestion",
+                suggestion: suggestion.toJSON(),
+              },
+            },
+          },
+        };
+        await sendNotification(notification);
+      }
+
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agentMessageSuggestion[]{sId=${suggestion.sId}}`,
         },
       ]);
     } catch (error) {
@@ -599,7 +632,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_skills: async (params, extra) => {
+  suggest_skills: async (params, { sendNotification, _meta, ...extra }) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -645,17 +678,30 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         }
       );
 
+      // Send notification with full suggestion data for frontend context.
+      if (_meta?.progressToken) {
+        const notification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 1,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: "Skills suggestion created",
+              output: {
+                type: "agent_suggestion",
+                suggestion: suggestion.toJSON(),
+              },
+            },
+          },
+        };
+        await sendNotification(notification);
+      }
+
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agentMessageSuggestion[]{sId=${suggestion.sId}}`,
         },
       ]);
     } catch (error) {
@@ -668,7 +714,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
   },
 
-  suggest_model: async (params, extra) => {
+  suggest_model: async (params, { sendNotification, _meta, ...extra }) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -714,17 +760,30 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         }
       );
 
+      // Send notification with full suggestion data for frontend context.
+      if (_meta?.progressToken) {
+        const notification: MCPProgressNotificationType = {
+          method: "notifications/progress",
+          params: {
+            progress: 1,
+            total: 1,
+            progressToken: _meta.progressToken,
+            data: {
+              label: "Model suggestion created",
+              output: {
+                type: "agent_suggestion",
+                suggestion: suggestion.toJSON(),
+              },
+            },
+          },
+        };
+        await sendNotification(notification);
+      }
+
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agentMessageSuggestion[]{sId=${suggestion.sId}}`,
         },
       ]);
     } catch (error) {

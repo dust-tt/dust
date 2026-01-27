@@ -56,6 +56,7 @@ import {
 } from "@app/components/markdown/CiteBlock";
 import type { MCPReferenceCitation } from "@app/components/markdown/MCPReferenceCitation";
 import { getQuickReplyPlugin } from "@app/components/markdown/QuickReplyBlock";
+import { AgentMessageSuggestionsProvider } from "@app/components/markdown/suggestion/AgentMessageSuggestionsContext";
 import { getToolSetupPlugin } from "@app/components/markdown/tool/tool";
 import {
   getVisualizationPlugin,
@@ -1013,20 +1014,24 @@ function AgentMessageContent({
 
       {agentMessage.content !== null && (
         <div>
-          <CitationsContext.Provider
-            value={{
-              references,
-              updateActiveReferences,
-            }}
+          <AgentMessageSuggestionsProvider
+            actionProgress={agentMessage.streaming.actionProgress}
           >
-            <AgentMessageMarkdown
-              content={sanitizeVisualizationContent(agentMessage.content)}
-              owner={owner}
-              isStreaming={streaming && lastTokenClassification === "tokens"}
-              isLastMessage={isLastMessage}
-              additionalMarkdownComponents={additionalMarkdownComponents}
-            />
-          </CitationsContext.Provider>
+            <CitationsContext.Provider
+              value={{
+                references,
+                updateActiveReferences,
+              }}
+            >
+              <AgentMessageMarkdown
+                content={sanitizeVisualizationContent(agentMessage.content)}
+                owner={owner}
+                isStreaming={streaming && lastTokenClassification === "tokens"}
+                isLastMessage={isLastMessage}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+              />
+            </CitationsContext.Provider>
+          </AgentMessageSuggestionsProvider>
         </div>
       )}
       {generatedFiles.length > 0 && (
