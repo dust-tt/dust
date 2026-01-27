@@ -25,6 +25,7 @@ makeScript({}, async ({ execute }, logger) => {
   // Finding all internal MCP server connections created before deployment.
 
   // WORKSPACE_ISOLATION_BYPASS: Migration script needs to operate across all workspaces to disable send_mail for existing Gmail instances.
+  // @ts-expect-error -- Migration script that operates across all workspaces
   const allConnections = await MCPServerConnectionModel.findAll({
     where: {
       serverType: "internal",
