@@ -111,7 +111,10 @@ export class NorthflankSandboxClient {
       parameters: { projectId: this.config.projectId },
       data: {
         name: serviceName,
-        tags: this.config.spotTag ? [this.config.spotTag] : undefined,
+        tags: [
+          "dust-sandbox-pool",
+          ...(this.config.spotTag ? [this.config.spotTag] : []),
+        ],
         billing: {
           deploymentPlan: this.config.deploymentPlan,
         },
@@ -207,7 +210,7 @@ export class NorthflankSandboxClient {
    */
   async exec(
     command: string,
-    options?: { workingDirectory?: string; timeoutMs?: number }
+    _options?: { workingDirectory?: string; timeoutMs?: number }
   ): Promise<CommandResult> {
     await this.ensureReady();
 
@@ -416,6 +419,41 @@ export class NorthflankSandboxClient {
       projectId: this.config.projectId,
       createdAt: this.createdAt,
     };
+  }
+
+  // --------------------------------------------------------------------------
+  // Pool Operations
+  // --------------------------------------------------------------------------
+
+  /**
+   * List all sandboxes in the pool from Northflank.
+   * Uses the "dust-sandbox-pool" tag to identify pool sandboxes.
+   */
+  async listPoolSandboxes(): Promise<SandboxInfo[]> {
+    await this.ensureReady();
+
+    const response = await this.api.list.services({
+      parameters: { projectId: this.config.projectId },
+    });
+
+    if (response.error) {
+      logger.error(
+        { error: response.error },
+        "[sandbox] Failed to list pool sandboxes"
+      );
+      return [];
+    }
+
+    return response.data.services
+      .filter((s) => s.tags?.includes("dust-sandbox-pool") ?? false)
+      .map((s) => ({
+        serviceId: s.id,
+        projectId: this.config.projectId,
+        // Use deployment transition time if available, otherwise current date
+        createdAt: s.status?.deployment?.lastTransitionTime
+          ? new Date(s.status.deployment.lastTransitionTime)
+          : new Date(),
+      }));
   }
 }
 

@@ -1,20 +1,24 @@
 /**
  * Sandbox Pool Manager
  *
- * Redis-based pool management for Northflank sandboxes.
- * Designed for stateless front replicas with distributed coordination.
+ * Simplified Redis-based pool management for Northflank sandboxes.
+ * Uses Northflank as the source of truth for sandbox existence and metadata.
  *
  * Redis Keys:
- * - sandbox:pool:available - List of available sandbox service IDs
- * - sandbox:session:{sessionId} - Hash with sandbox info for a session
- * - sandbox:info:{serviceId} - Hash with sandbox metadata
+ * - sandbox:sessions (Hash): sessionId → {serviceId, claimedAt}
+ *
+ * Source of Truth:
+ * - Redis: Which sessions have claimed which sandboxes
+ * - Northflank: What sandboxes exist, their metadata, their state
  */
 
-import { getRedisClient, runOnRedis } from "@app/lib/api/redis";
+import type { RedisClientType } from "redis";
+import { createClient } from "redis";
+
+import config from "@app/lib/api/config";
 import {
   getNorthflankApiToken,
   NorthflankSandboxClient,
-  type SandboxInfo,
 } from "@app/lib/api/sandbox/client";
 import { executeWithLock } from "@app/lib/lock";
 import logger from "@app/logger/logger";
@@ -38,13 +42,40 @@ const DEFAULT_POOL_CONFIG: PoolConfig = {
   acquireTimeoutMs: 120000, // 2 minutes (for cold start)
 };
 
-// Redis key prefixes
+// Redis key - single hash for all session → sandbox mappings
 const REDIS_KEYS = {
-  availablePool: "sandbox:pool:available",
-  sessionPrefix: "sandbox:session:",
-  infoPrefix: "sandbox:info:",
+  sessions: "sandbox:sessions",
   replenishLock: "sandbox:pool:replenish",
 } as const;
+
+// Session claim stored in Redis
+interface SessionClaim {
+  serviceId: string;
+  claimedAt: string; // ISO timestamp
+}
+
+// ============================================================================
+// REDIS CLIENT
+// ============================================================================
+
+let poolRedisClient: RedisClientType | null = null;
+
+async function getPoolRedis(): Promise<RedisClientType> {
+  if (!poolRedisClient) {
+    const uri = config.getSandboxPoolRedisUri();
+    poolRedisClient = createClient({ url: uri }) as RedisClientType;
+
+    poolRedisClient.on("error", (err) =>
+      logger.info({ err }, "[sandbox-pool] Redis Client Error")
+    );
+    poolRedisClient.on("ready", () =>
+      logger.info({}, "[sandbox-pool] Redis Client Ready")
+    );
+
+    await poolRedisClient.connect();
+  }
+  return poolRedisClient;
+}
 
 // ============================================================================
 // POOL MANAGER
@@ -52,9 +83,11 @@ const REDIS_KEYS = {
 
 export class SandboxPoolManager {
   private config: PoolConfig;
+  private client: NorthflankSandboxClient;
 
   constructor(configOverrides?: Partial<PoolConfig>) {
     this.config = { ...DEFAULT_POOL_CONFIG, ...configOverrides };
+    this.client = new NorthflankSandboxClient(getNorthflankApiToken());
   }
 
   /**
@@ -64,48 +97,56 @@ export class SandboxPoolManager {
   async acquire(sessionId: string): Promise<NorthflankSandboxClient> {
     logger.info({ sessionId }, "[sandbox-pool] Acquiring sandbox");
 
-    // Check if session already has a sandbox
-    const existingInfo = await this.getSessionSandbox(sessionId);
-    if (existingInfo) {
+    // 1. Check if session already has a sandbox
+    const existingServiceId = await this.getSessionSandbox(sessionId);
+    if (existingServiceId) {
       logger.info(
-        { sessionId, serviceId: existingInfo.serviceId },
+        { sessionId, serviceId: existingServiceId },
         "[sandbox-pool] Reusing existing session sandbox"
       );
-      const client = new NorthflankSandboxClient(getNorthflankApiToken());
-      client.attach(existingInfo);
-      return client;
+      return this.attachToSandbox(existingServiceId);
     }
 
-    // Try to get a sandbox from the pool
-    const pooledInfo = await this.popFromPool();
-    if (pooledInfo) {
-      // Assign to session
-      await this.assignToSession(sessionId, pooledInfo);
+    // 2. List all sandboxes from Northflank
+    const allSandboxes = await this.client.listPoolSandboxes();
 
+    // 3. Get all claimed sandbox IDs from Redis (with stale session cleanup)
+    const claimedIds = await this.getClaimedSandboxIds();
+
+    // 4. Find an available one
+    const available = allSandboxes.find((s) => !claimedIds.has(s.serviceId));
+
+    if (available) {
+      // 5. Atomically claim it (HSETNX returns true if set, false if already exists)
+      const claimed = await this.claimSandbox(sessionId, available.serviceId);
+      if (claimed) {
+        logger.info(
+          { sessionId, serviceId: available.serviceId },
+          "[sandbox-pool] Acquired from pool (instant)"
+        );
+
+        // Trigger replenishment in background
+        void this.triggerReplenish();
+
+        return this.attachToSandbox(available.serviceId);
+      }
+      // Someone else claimed it, retry
       logger.info(
-        { sessionId, serviceId: pooledInfo.serviceId },
-        "[sandbox-pool] Acquired from pool (instant)"
+        { sessionId, serviceId: available.serviceId },
+        "[sandbox-pool] Sandbox claimed by another session, retrying"
       );
-
-      // Trigger replenishment in background (don't await)
-      void this.triggerReplenish();
-
-      const client = new NorthflankSandboxClient(getNorthflankApiToken());
-      client.attach(pooledInfo);
-      return client;
+      return this.acquire(sessionId);
     }
 
-    // No sandbox available - create on demand (cold start)
+    // 6. No available sandbox - create new one (cold start)
     logger.info(
       { sessionId },
       "[sandbox-pool] Pool empty, cold start required"
     );
 
-    const client = new NorthflankSandboxClient(getNorthflankApiToken());
-    const info = await client.create();
-
-    // Assign to session
-    await this.assignToSession(sessionId, info);
+    const newClient = new NorthflankSandboxClient(getNorthflankApiToken());
+    const info = await newClient.create();
+    await this.claimSandbox(sessionId, info.serviceId);
 
     logger.info(
       { sessionId, serviceId: info.serviceId },
@@ -115,7 +156,7 @@ export class SandboxPoolManager {
     // Trigger replenishment in background
     void this.triggerReplenish();
 
-    return client;
+    return newClient;
   }
 
   /**
@@ -125,31 +166,27 @@ export class SandboxPoolManager {
   async release(sessionId: string): Promise<void> {
     logger.info({ sessionId }, "[sandbox-pool] Releasing sandbox");
 
-    const info = await this.getSessionSandbox(sessionId);
-    if (!info) {
+    const serviceId = await this.getSessionSandbox(sessionId);
+    if (!serviceId) {
       logger.warn({ sessionId }, "[sandbox-pool] No sandbox to release");
       return;
     }
 
-    // Remove from session
-    await this.removeFromSession(sessionId);
+    // Remove from Redis
+    await this.removeSessionClaim(sessionId);
 
-    // Destroy the sandbox (don't reuse for security)
+    // Destroy the sandbox
     try {
-      const client = new NorthflankSandboxClient(getNorthflankApiToken());
-      client.attach(info);
+      const client = this.attachToSandbox(serviceId);
       await client.destroy();
 
-      // Remove info from Redis
-      await this.removeSandboxInfo(info.serviceId);
-
       logger.info(
-        { sessionId, serviceId: info.serviceId },
+        { sessionId, serviceId },
         "[sandbox-pool] Sandbox released and destroyed"
       );
     } catch (err) {
       logger.error(
-        { sessionId, serviceId: info.serviceId, err },
+        { sessionId, serviceId, err },
         "[sandbox-pool] Failed to destroy sandbox"
       );
     }
@@ -164,14 +201,11 @@ export class SandboxPoolManager {
   async getForSession(
     sessionId: string
   ): Promise<NorthflankSandboxClient | null> {
-    const info = await this.getSessionSandbox(sessionId);
-    if (!info) {
+    const serviceId = await this.getSessionSandbox(sessionId);
+    if (!serviceId) {
       return null;
     }
-
-    const client = new NorthflankSandboxClient(getNorthflankApiToken());
-    client.attach(info);
-    return client;
+    return this.attachToSandbox(serviceId);
   }
 
   /**
@@ -184,12 +218,12 @@ export class SandboxPoolManager {
       "[sandbox-pool] Warming up pool"
     );
 
-    const currentSize = await this.getPoolSize();
-    const needed = this.config.targetPoolSize - currentSize;
+    const status = await this.getStatus();
+    const needed = this.config.targetPoolSize - status.availableCount;
 
     if (needed <= 0) {
       logger.info(
-        { currentSize },
+        { currentSize: status.availableCount },
         "[sandbox-pool] Pool already at target size"
       );
       return;
@@ -198,9 +232,11 @@ export class SandboxPoolManager {
     logger.info({ needed }, "[sandbox-pool] Creating sandboxes for warmup");
 
     // Create sandboxes in parallel
-    const promises = Array.from({ length: needed }, () =>
-      this.createAndAddToPool()
-    );
+    const promises = Array.from({ length: needed }, async () => {
+      const client = new NorthflankSandboxClient(getNorthflankApiToken());
+      await client.create();
+      return client.getServiceId();
+    });
 
     const results = await Promise.allSettled(promises);
     const succeeded = results.filter((r) => r.status === "fulfilled").length;
@@ -217,11 +253,21 @@ export class SandboxPoolManager {
   async getStatus(): Promise<{
     availableCount: number;
     targetSize: number;
+    totalPoolSandboxes: number;
+    claimedCount: number;
   }> {
-    const availableCount = await this.getPoolSize();
+    const allSandboxes = await this.client.listPoolSandboxes();
+    const claimedIds = await this.getClaimedSandboxIds();
+
+    const availableCount = allSandboxes.filter(
+      (s) => !claimedIds.has(s.serviceId)
+    ).length;
+
     return {
       availableCount,
       targetSize: this.config.targetPoolSize,
+      totalPoolSandboxes: allSandboxes.length,
+      claimedCount: claimedIds.size,
     };
   }
 
@@ -231,25 +277,27 @@ export class SandboxPoolManager {
   async shutdown(): Promise<void> {
     logger.info({}, "[sandbox-pool] Shutting down");
 
-    // Get all available sandboxes
-    const serviceIds = await this.drainPool();
+    // Get all pool sandboxes from Northflank
+    const allSandboxes = await this.client.listPoolSandboxes();
 
     // Destroy them all
     await Promise.allSettled(
-      serviceIds.map(async (serviceId) => {
+      allSandboxes.map(async (info) => {
         try {
-          const info = await this.getSandboxInfo(serviceId);
-          if (info) {
-            const client = new NorthflankSandboxClient(getNorthflankApiToken());
-            client.attach(info);
-            await client.destroy();
-            await this.removeSandboxInfo(serviceId);
-          }
+          const client = this.attachToSandbox(info.serviceId);
+          await client.destroy();
         } catch (err) {
-          logger.warn({ serviceId, err }, "[sandbox-pool] Failed to destroy");
+          logger.warn(
+            { serviceId: info.serviceId, err },
+            "[sandbox-pool] Failed to destroy"
+          );
         }
       })
     );
+
+    // Clear all sessions from Redis
+    const redis = await getPoolRedis();
+    await redis.del(REDIS_KEYS.sessions);
 
     logger.info({}, "[sandbox-pool] Shutdown complete");
   }
@@ -258,128 +306,117 @@ export class SandboxPoolManager {
   // Private: Redis Operations
   // --------------------------------------------------------------------------
 
-  private async popFromPool(): Promise<SandboxInfo | null> {
-    return runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      // Pop from the available pool
-      const serviceId = await client.lPop(REDIS_KEYS.availablePool);
-      if (!serviceId) {
+  private async getSessionSandbox(sessionId: string): Promise<string | null> {
+    const redis = await getPoolRedis();
+    const claimJson = await redis.hGet(REDIS_KEYS.sessions, sessionId);
+
+    if (!claimJson) {
+      return null;
+    }
+
+    try {
+      const claim = JSON.parse(claimJson) as SessionClaim;
+
+      // Check if the claim is stale
+      const claimedAt = new Date(claim.claimedAt).getTime();
+      if (Date.now() - claimedAt > this.config.maxSessionDurationMs) {
+        // Stale claim - clean it up
+        logger.info(
+          { sessionId, serviceId: claim.serviceId },
+          "[sandbox-pool] Cleaning up stale session claim"
+        );
+        await this.removeSessionClaim(sessionId);
         return null;
       }
 
-      // Get sandbox info
-      const info = await this.getSandboxInfo(serviceId);
-      if (!info) {
-        logger.warn({ serviceId }, "[sandbox-pool] Sandbox info not found");
-        return null;
+      return claim.serviceId;
+    } catch {
+      // Invalid JSON, clean up
+      await redis.hDel(REDIS_KEYS.sessions, sessionId);
+      return null;
+    }
+  }
+
+  private async getClaimedSandboxIds(): Promise<Set<string>> {
+    const redis = await getPoolRedis();
+    const allClaims = await redis.hGetAll(REDIS_KEYS.sessions);
+
+    const now = Date.now();
+    const validServiceIds = new Set<string>();
+    const staleSessions: string[] = [];
+
+    for (const [sessionId, claimJson] of Object.entries(allClaims)) {
+      try {
+        const claim = JSON.parse(claimJson) as SessionClaim;
+        const claimedAt = new Date(claim.claimedAt).getTime();
+
+        if (now - claimedAt > this.config.maxSessionDurationMs) {
+          // Stale claim
+          staleSessions.push(sessionId);
+        } else {
+          validServiceIds.add(claim.serviceId);
+        }
+      } catch {
+        // Invalid JSON, mark for cleanup
+        staleSessions.push(sessionId);
       }
+    }
 
-      return info;
-    });
-  }
-
-  private async addToPool(info: SandboxInfo): Promise<void> {
-    await runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      // Store sandbox info
-      await client.hSet(REDIS_KEYS.infoPrefix + info.serviceId, {
-        serviceId: info.serviceId,
-        projectId: info.projectId,
-        createdAt: info.createdAt.toISOString(),
-      });
-
-      // Add to available pool
-      await client.rPush(REDIS_KEYS.availablePool, info.serviceId);
-    });
-  }
-
-  private async getPoolSize(): Promise<number> {
-    return runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      return client.lLen(REDIS_KEYS.availablePool);
-    });
-  }
-
-  private async drainPool(): Promise<string[]> {
-    return runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      const serviceIds: string[] = [];
-      let serviceId: string | null;
-      while ((serviceId = await client.lPop(REDIS_KEYS.availablePool))) {
-        serviceIds.push(serviceId);
-      }
-      return serviceIds;
-    });
-  }
-
-  private async getSandboxInfo(serviceId: string): Promise<SandboxInfo | null> {
-    return runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      const data = await client.hGetAll(REDIS_KEYS.infoPrefix + serviceId);
-      if (!data.serviceId) {
-        return null;
-      }
-      return {
-        serviceId: data.serviceId,
-        projectId: data.projectId,
-        createdAt: new Date(data.createdAt),
-      };
-    });
-  }
-
-  private async removeSandboxInfo(serviceId: string): Promise<void> {
-    await runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      await client.del(REDIS_KEYS.infoPrefix + serviceId);
-    });
-  }
-
-  private async assignToSession(
-    sessionId: string,
-    info: SandboxInfo
-  ): Promise<void> {
-    await runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      await client.hSet(REDIS_KEYS.sessionPrefix + sessionId, {
-        serviceId: info.serviceId,
-        projectId: info.projectId,
-        createdAt: info.createdAt.toISOString(),
-        assignedAt: new Date().toISOString(),
-      });
-
-      // Set TTL for auto-cleanup
-      await client.expire(
-        REDIS_KEYS.sessionPrefix + sessionId,
-        Math.floor(this.config.maxSessionDurationMs / 1000)
+    // Clean up stale sessions
+    if (staleSessions.length > 0) {
+      logger.info(
+        { count: staleSessions.length },
+        "[sandbox-pool] Cleaning up stale session claims"
       );
-    });
+      await redis.hDel(REDIS_KEYS.sessions, staleSessions);
+    }
+
+    return validServiceIds;
   }
 
-  private async getSessionSandbox(
-    sessionId: string
-  ): Promise<SandboxInfo | null> {
-    return runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      const data = await client.hGetAll(REDIS_KEYS.sessionPrefix + sessionId);
-      if (!data.serviceId) {
-        return null;
-      }
-      return {
-        serviceId: data.serviceId,
-        projectId: data.projectId,
-        createdAt: new Date(data.createdAt),
-      };
-    });
+  private async claimSandbox(
+    sessionId: string,
+    serviceId: string
+  ): Promise<boolean> {
+    const redis = await getPoolRedis();
+
+    const claim: SessionClaim = {
+      serviceId,
+      claimedAt: new Date().toISOString(),
+    };
+
+    // HSETNX is atomic - returns true if set, false if key already existed
+    const result = await redis.hSetNX(
+      REDIS_KEYS.sessions,
+      sessionId,
+      JSON.stringify(claim)
+    );
+
+    return result;
   }
 
-  private async removeFromSession(sessionId: string): Promise<void> {
-    await runOnRedis({ origin: "sandbox_pool" }, async (client) => {
-      await client.del(REDIS_KEYS.sessionPrefix + sessionId);
+  private async removeSessionClaim(sessionId: string): Promise<void> {
+    const redis = await getPoolRedis();
+    await redis.hDel(REDIS_KEYS.sessions, sessionId);
+  }
+
+  // --------------------------------------------------------------------------
+  // Private: Helpers
+  // --------------------------------------------------------------------------
+
+  private attachToSandbox(serviceId: string): NorthflankSandboxClient {
+    const client = new NorthflankSandboxClient(getNorthflankApiToken());
+    client.attach({
+      serviceId,
+      projectId: config.getNorthflankProjectId() ?? "dust-sandbox-dev",
+      createdAt: new Date(), // We don't have the exact time, but it's not critical
     });
+    return client;
   }
 
   // --------------------------------------------------------------------------
   // Private: Pool Replenishment
   // --------------------------------------------------------------------------
-
-  private async createAndAddToPool(): Promise<void> {
-    const client = new NorthflankSandboxClient(getNorthflankApiToken());
-    const info = await client.create();
-    await this.addToPool(info);
-    logger.info({ serviceId: info.serviceId }, "[sandbox-pool] Added to pool");
-  }
 
   private async triggerReplenish(): Promise<void> {
     // Use distributed lock to ensure only one replica replenishes at a time
@@ -387,8 +424,8 @@ export class SandboxPoolManager {
       await executeWithLock(
         REDIS_KEYS.replenishLock,
         async () => {
-          const currentSize = await this.getPoolSize();
-          const needed = this.config.targetPoolSize - currentSize;
+          const status = await this.getStatus();
+          const needed = this.config.targetPoolSize - status.availableCount;
 
           if (needed <= 0) {
             return;
@@ -399,7 +436,14 @@ export class SandboxPoolManager {
           // Create sandboxes one at a time to avoid overwhelming the API
           for (let i = 0; i < needed; i++) {
             try {
-              await this.createAndAddToPool();
+              const client = new NorthflankSandboxClient(
+                getNorthflankApiToken()
+              );
+              await client.create();
+              logger.info(
+                { serviceId: client.getServiceId() },
+                "[sandbox-pool] Added to pool"
+              );
             } catch (err) {
               logger.error(
                 { err, iteration: i + 1, needed },
@@ -428,8 +472,6 @@ export class SandboxPoolManager {
 let poolManager: SandboxPoolManager | null = null;
 
 export function getSandboxPoolManager(): SandboxPoolManager {
-  if (!poolManager) {
-    poolManager = new SandboxPoolManager();
-  }
+  poolManager ??= new SandboxPoolManager();
   return poolManager;
 }

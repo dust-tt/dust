@@ -386,6 +386,20 @@ const config = {
   getNorthflankProjectId: (): string | undefined => {
     return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
   },
+  getSandboxPoolRedisUri: (): string => {
+    // Allow override for shared pool Redis, falls back to REDIS_URI
+    const override = EnvironmentConfig.getOptionalEnvVariable(
+      "SANDBOX_POOL_REDIS_URI"
+    );
+    if (override) {
+      return override;
+    }
+    const redisUri = EnvironmentConfig.getOptionalEnvVariable("REDIS_URI");
+    if (!redisUri) {
+      throw new Error("REDIS_URI is not configured");
+    }
+    return redisUri;
+  },
 };
 
 export default config;
