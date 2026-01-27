@@ -2,7 +2,10 @@ import { marked } from "marked";
 import sanitizeHtml from "sanitize-html";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import type { EmailReplyContext, InboundEmail } from "@app/lib/api/assistant/email_trigger";
+import type {
+  EmailReplyContext,
+  InboundEmail,
+} from "@app/lib/api/assistant/email_trigger";
 import {
   ASSISTANT_EMAIL_SUBDOMAIN,
   getAndDeleteEmailReplyContext,
