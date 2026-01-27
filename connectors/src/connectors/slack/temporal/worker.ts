@@ -28,8 +28,8 @@ export async function runSlackWorker() {
         (ctx: Context) => ({
           inbound: new ActivityInboundLogInterceptor(ctx, logger, "slack"),
         }),
-        () => ({
-          inbound: new SlackCastKnownErrorsInterceptor(),
+        (ctx: Context) => ({
+          inbound: new SlackCastKnownErrorsInterceptor(ctx),
         }),
       ],
     },
