@@ -55,7 +55,7 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
           "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Generating image",
       done: "Generate image",

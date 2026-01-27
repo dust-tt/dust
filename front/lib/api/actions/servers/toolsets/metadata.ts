@@ -19,7 +19,7 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
     schema: {
       toolsetId: z.string().describe("The ID of the toolset to enable."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
 });
 
