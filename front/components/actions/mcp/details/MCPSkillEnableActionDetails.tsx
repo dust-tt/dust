@@ -4,7 +4,7 @@ import { isSkillEnableInputType } from "@app/lib/actions/mcp_internal_actions/ty
 import { SKILL_ICON } from "@app/lib/skill";
 
 export function MCPSkillEnableActionDetails({
-  viewType,
+  displayContext,
   toolParams,
 }: ToolExecutionDetailsProps) {
   const skillName = isSkillEnableInputType(toolParams)
@@ -12,12 +12,12 @@ export function MCPSkillEnableActionDetails({
     : null;
 
   const actionName =
-    (viewType === "conversation" ? "Enabling skill" : "Enable skill") +
+    (displayContext === "conversation" ? "Enabling skill" : "Enable skill") +
     (skillName ? `: ${skillName}` : "");
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={actionName}
       visual={SKILL_ICON}
     />

@@ -80,7 +80,7 @@ export function PanelAgentStep({
         return (
           <div key={`action-${entry.action.id}`}>
             <MCPActionDetails
-              viewType="sidebar"
+              displayContext="sidebar"
               action={entry.action}
               lastNotification={streamProgress ?? null}
               owner={owner}
@@ -102,7 +102,7 @@ export function PanelAgentStep({
             return (
               <div key={`streaming-action-${action.id}`} className="mb-4">
                 <MCPActionDetails
-                  viewType="sidebar"
+                  displayContext="sidebar"
                   action={action}
                   lastNotification={lastNotification}
                   owner={owner}

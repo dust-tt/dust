@@ -24,7 +24,7 @@ import { formatDataSourceDisplayName } from "@app/types";
 
 export function DataSourceNodeContentDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const dataSourceNodeContent = toolOutput
     ?.filter(isDataSourceNodeContentType)
@@ -37,9 +37,9 @@ export function DataSourceNodeContentDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Retrieving file content"
           : "Retrieve file content"
       }
@@ -63,7 +63,7 @@ export function DataSourceNodeContentDetails({
           )}
         </div>
 
-        {viewType === "sidebar" && sourceUrl && text && (
+        {displayContext === "sidebar" && sourceUrl && text && (
           <Markdown
             content={text}
             isStreaming={false}
@@ -78,7 +78,7 @@ export function DataSourceNodeContentDetails({
 
 export function FilesystemPathDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const filesystemPath = toolOutput
     ?.filter(isFilesystemPathType)
@@ -115,8 +115,10 @@ export function FilesystemPathDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
-      actionName={viewType === "conversation" ? "Locating item" : "Locate item"}
+      displayContext={displayContext}
+      actionName={
+        displayContext === "conversation" ? "Locating item" : "Locate item"
+      }
       visual={ActionPinDistanceIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
