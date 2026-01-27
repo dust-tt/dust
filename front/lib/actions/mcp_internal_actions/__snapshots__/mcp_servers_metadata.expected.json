@@ -16719,7 +16719,7 @@
               "type": "boolean"
             },
             "includeMetrics": {
-              "description": "Whether2 to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false.",
+              "description": "Whether to include ticket metrics (resolution times, wait times, reopens, replies, etc.). Defaults to false.",
               "type": "boolean"
             },
             "ticketId": {
