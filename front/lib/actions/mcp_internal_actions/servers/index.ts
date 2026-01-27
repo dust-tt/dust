@@ -7,7 +7,6 @@ import {
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
-import { default as agentRouterServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_router";
 import { default as ashbyServer } from "@app/lib/actions/mcp_internal_actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
@@ -64,10 +63,10 @@ import { default as imageGenerationServer } from "@app/lib/api/actions/servers/i
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
-import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
+import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
