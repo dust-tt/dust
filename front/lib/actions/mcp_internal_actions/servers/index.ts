@@ -1,12 +1,8 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import {
-  ADVANCED_SEARCH_SWITCH,
-  AGENT_MEMORY_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
-import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_memory";
 import { default as ashbyServer } from "@app/lib/actions/mcp_internal_actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
@@ -45,6 +41,7 @@ import {
 } from "@app/lib/actions/types/guards";
 import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
+import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
@@ -197,7 +194,7 @@ export async function getInternalMCPServer(
       return slackServer(auth, mcpServerId, agentLoopContext);
     case "slack_bot":
       return slackBotServer(auth, mcpServerId, agentLoopContext);
-    case AGENT_MEMORY_SERVER_NAME:
+    case "agent_memory":
       return agentMemoryServer(auth, agentLoopContext);
     case "confluence":
       return confluenceServer(auth, agentLoopContext);
