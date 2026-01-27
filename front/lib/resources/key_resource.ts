@@ -111,13 +111,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     return key;
   }
 
-  // Only checks non-system keys to match the partial unique index on (workspaceId, name).
   static async fetchByName(auth: Authenticator, { name }: { name: string }) {
     const key = await this.model.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         name: name,
-        isSystem: false,
       },
     });
 

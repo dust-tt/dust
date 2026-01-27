@@ -1,5 +1,6 @@
 import { DEFAULT_SYSTEM_KEY_NAME } from "@app/lib/resources/key_resource";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
+import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { makeScript } from "@app/scripts/helpers";
 
 makeScript({}, async ({ execute }, logger) => {
@@ -14,7 +15,7 @@ makeScript({}, async ({ execute }, logger) => {
   for (const key of keysWithNullName) {
     const newName = key.isSystem
       ? DEFAULT_SYSTEM_KEY_NAME
-      : `API Key ${key.secret.slice(-4)}`;
+      : `API Key ${generateRandomModelSId()}`;
     logger.info(
       { keyId: key.id, isSystem: key.isSystem, newName },
       execute ? "Updating key name" : "Would update key name"
