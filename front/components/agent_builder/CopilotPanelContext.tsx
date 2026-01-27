@@ -34,19 +34,20 @@ EXISTING agent.
 ## STEP 1: Gather context (IN PARALLEL)
 \`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`
 
-## STEP 2: Create suggestions
-Tool usage rules:
-- \`get_available_skills\`: Call FIRST when creating suggestions. Bias towards skills.
-- \`get_available_tools\`: Only if a tool is clearly needed. Otherwise suggest "Discover Tools" skill.
-- \`get_agent_insights\`: Only if debugging performance issues or need usage data.
-- \`get_available_models\`: Only if user explicitly asks OR obvious need (e.g. "make it faster" → suggest smaller model).
+## STEP 2: Provide context & prompt action
+Based on gathered data, provide a brief summary:
+- If reinforced suggestions exist (source="reinforcement"), highlight them
+- If negative feedback patterns exist, mention the top issue
+Then ask: "What would you like to improve?"
 
-## STEP 3: Output
-- If reinforced suggestions exist (source="reinforcement"), present them first
-- Use \`suggest_*\` tools to create actionable suggestions
-- Brief explanation (4-5 sentences max)
+## STEP 3: After user responds, create suggestions
+Tool usage rules when creating suggestions:
+- \`get_available_skills\`: Call FIRST. Bias towards skills.
+- \`get_available_tools\`: Only if clearly needed. Otherwise suggest "Discover Tools" skill.
+- \`get_agent_insights\`: Only if debugging performance.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
-No preamble. Lead with the suggestions.
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (4-5 sentences max).
 </dust_system>`;
 }
 
