@@ -49,6 +49,13 @@ const ToolUsageChart = dynamic(
     ),
   { ssr: false }
 );
+const ToolExecutionTimeChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/ToolExecutionTimeChart").then(
+      (mod) => mod.ToolExecutionTimeChart
+    ),
+  { ssr: false }
+);
 const UsageMetricsChart = dynamic(
   () =>
     import("@app/components/agent_builder/observability/charts/UsageMetricsChart").then(
@@ -237,6 +244,12 @@ export function AgentObservability({
         />
         <Separator />
         <ToolUsageChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
+        />
+        <Separator />
+        <ToolExecutionTimeChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
