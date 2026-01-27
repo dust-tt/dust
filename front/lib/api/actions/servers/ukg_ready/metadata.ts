@@ -13,6 +13,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
       "Get your own employee information from UKG Ready, including your employee ID, name, and username.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting employee info",
+      done: "Get employee info",
+    },
   },
   get_pto_requests: {
     description:
@@ -32,6 +36,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
         .describe("List of usernames to filter by"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting PTO requests",
+      done: "Get PTO requests",
+    },
   },
   get_accrual_balances: {
     description: "Get accrual balances for yourself or a specific employee.",
@@ -50,6 +58,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting accrual balances",
+      done: "Get accrual balances",
+    },
   },
   get_pto_request_notes: {
     description: "Get notes/comments for a specific PTO request.",
@@ -61,6 +73,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting PTO notes",
+      done: "Get PTO notes",
+    },
   },
   create_pto_request: {
     description:
@@ -114,6 +130,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
         .describe("Optional comment/note for the PTO request"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating PTO request",
+      done: "Create PTO request",
+    },
   },
   delete_pto_request: {
     description: "Delete one or more PTO/time-off requests.",
@@ -127,6 +147,10 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
         .describe("Optional comment explaining the deletion"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Deleting PTO request",
+      done: "Delete PTO request",
+    },
   },
   get_schedules: {
     description: "Get work schedules for yourself or a specific employee.",
@@ -147,11 +171,19 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
         .describe("Filter schedules to this date (YYYY-MM-DD)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting schedules",
+      done: "Get schedules",
+    },
   },
   get_employees: {
     description: "Get a list of active employees.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting employees",
+      done: "Get employees",
+    },
   },
 });
 
@@ -173,6 +205,7 @@ export const UKG_READY_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(UKG_READY_TOOLS_METADATA).map((t) => [t.name, t.stake])

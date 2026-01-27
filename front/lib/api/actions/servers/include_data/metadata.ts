@@ -22,6 +22,10 @@ export const INCLUDE_DATA_BASE_TOOLS_METADATA = createToolsRecord({
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
     schema: IncludeInputSchema.shape,
     stake: "never_ask",
+    displayLabels: {
+      running: "Including data",
+      done: "Include data",
+    },
   },
 });
 
@@ -37,6 +41,10 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
       "Fetch the most recent documents in reverse chronological order up to a pre-allocated size. This tool retrieves content that is already pre-configured by the user, ensuring the latest information is included.",
     schema: includeWithTagsSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Including data",
+      done: "Include data",
+    },
   },
   find_tags: {
     description:
@@ -44,6 +52,10 @@ export const INCLUDE_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
       " This tool is meant to be used before the retrieve_recent_documents tool.",
     schema: findTagsSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Finding tags",
+      done: "Find tags",
+    },
   },
 });
 
@@ -62,6 +74,7 @@ export const INCLUDE_DATA_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(INCLUDE_DATA_BASE_TOOLS_METADATA).map((t) => [

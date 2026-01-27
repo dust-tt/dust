@@ -14,6 +14,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       "List all files in the project context. Returns file metadata including names, IDs, and content types.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing project files",
+      done: "List project files",
+    },
   },
   add_project_file: {
     description:
@@ -41,6 +45,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Adding project file",
+      done: "Add project file",
+    },
   },
   update_project_file: {
     description:
@@ -62,6 +70,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating project file",
+      done: "Update project file",
+    },
   },
   edit_project_description: {
     description:
@@ -72,6 +84,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe("New project description (free-form text)."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Editing project description",
+      done: "Edit project description",
+    },
   },
   add_project_url: {
     description:
@@ -83,6 +99,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       url: z.string().describe("The URL to add"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding project URL",
+      done: "Add project URL",
+    },
   },
   edit_project_url: {
     description:
@@ -100,6 +120,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe("New URL value (leave empty to keep current)"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Editing project URL",
+      done: "Edit project URL",
+    },
   },
   read_project_journal_entry: {
     description:
@@ -111,6 +135,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of journal entries to return (default: 1)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading journal entries",
+      done: "Read journal entries",
+    },
   },
 });
 
@@ -135,6 +163,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA).map((t) => [

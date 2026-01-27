@@ -19,6 +19,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of calendars to return (max 250)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing calendars",
+      done: "List calendars",
+    },
   },
   list_events: {
     description:
@@ -47,6 +51,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing events",
+      done: "List events",
+    },
   },
   get_event: {
     description: "Get a single event from a Google Calendar by event ID.",
@@ -58,6 +66,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       eventId: z.string().describe("The ID of the event to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting event",
+      done: "Get event",
+    },
   },
   create_event: {
     description: "Create a new event in a Google Calendar.",
@@ -88,6 +100,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Creating event",
+      done: "Create event",
+    },
   },
   update_event: {
     description: "Update an existing event in a Google Calendar.",
@@ -121,6 +137,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Updating event",
+      done: "Update event",
+    },
   },
   delete_event: {
     description: "Delete an event from a Google Calendar.",
@@ -132,6 +152,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
       eventId: z.string().describe("The ID of the event to delete."),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Deleting event",
+      done: "Delete event",
+    },
   },
   check_availability: {
     description:
@@ -195,6 +219,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Checking availability",
+      done: "Check availability",
+    },
   },
   get_user_timezones: {
     description:
@@ -206,6 +234,10 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
         .describe("Array of email addresses to get timezone information for"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting user timezones",
+      done: "Get user timezones",
+    },
   },
 });
 
@@ -229,6 +261,7 @@ export const GOOGLE_CALENDAR_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GOOGLE_CALENDAR_TOOLS_METADATA).map((t) => [t.name, t.stake])

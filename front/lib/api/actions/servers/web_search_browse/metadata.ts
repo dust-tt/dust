@@ -25,6 +25,10 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching the web",
+      done: "Web search",
+    },
   },
   webbrowser: {
     description:
@@ -47,6 +51,10 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
         .describe("If true, also retrieve outgoing links from the page."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Browsing web page",
+      done: "Browse web page",
+    },
   },
 });
 
@@ -64,6 +72,7 @@ export const WEB_SEARCH_BROWSE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(WEB_SEARCH_BROWSE_TOOLS_METADATA).map((t) => [
