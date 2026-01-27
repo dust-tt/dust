@@ -144,6 +144,29 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
   },
+  send_mail: {
+    description: `Send an email directly via Gmail.
+- The email will be sent immediately without creating a draft.
+- Use this to send emails when you have all the required information.
+- The email will include proper headers and formatting.`,
+    schema: {
+      to: z
+        .array(z.string())
+        .min(1)
+        .describe("The email addresses of the recipients"),
+      cc: z.array(z.string()).optional().describe("The email addresses to CC"),
+      bcc: z
+        .array(z.string())
+        .optional()
+        .describe("The email addresses to BCC"),
+      subject: z.string().describe("The subject line of the email"),
+      contentType: z
+        .enum(["text/plain", "text/html"])
+        .describe("The content type of the email (text/plain or text/html)."),
+      body: z.string().describe("The body of the email"),
+    },
+    stake: "high",
+  },
 });
 
 export const GMAIL_SERVER = {
