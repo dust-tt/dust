@@ -15,7 +15,7 @@ import apiConfig from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
-import { Err, Ok, Result } from "@app/types";
+import { Err, normalizeError, Ok, Result } from "@app/types";
 
 interface SandboxConfig {
   // Docker image for the sandbox container.
@@ -98,9 +98,12 @@ export class Sandbox {
     this.info = info;
   }
 
+  private get serviceParams() {
+    return { projectId: this.config.projectId, serviceId: this.info.serviceId };
+  }
+
   async pause(): Promise<void> {
-    const status = await this.getServiceStatus();
-    if (status === "paused") {
+    if (await this.isServicePaused()) {
       logger.info({ serviceId: this.info.serviceId }, "[sandbox] Already paused");
       return;
     }
@@ -108,12 +111,12 @@ export class Sandbox {
     logger.info({ serviceId: this.info.serviceId }, "[sandbox] Pausing");
 
     const response = await this.api.pause.service({
-      parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      parameters: this.serviceParams,
     });
 
     if (response.error) {
       throw new Error(
-        `Failed to pause sandbox: ${response.error.message ?? "Unknown error"}`
+        `Failed to pause sandbox: ${normalizeError(response.error).message}`
       );
     }
 
@@ -126,8 +129,7 @@ export class Sandbox {
    * Returns Err for readiness timeout. Throws for infrastructure failures.
    */
   async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
-    const status = await this.getServiceStatus();
-    if (status === "running") {
+    if (!(await this.isServicePaused())) {
       logger.info({ serviceId: this.info.serviceId }, "[sandbox] Already running");
       return new Ok(undefined);
     }
@@ -135,13 +137,13 @@ export class Sandbox {
     logger.info({ serviceId: this.info.serviceId }, "[sandbox] Resuming");
 
     const response = await this.api.resume.service({
-      parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      parameters: this.serviceParams,
       data: { instances: 1 },
     });
 
     if (response.error) {
       throw new Error(
-        `Failed to resume sandbox: ${response.error.message ?? "Unknown error"}`
+        `Failed to resume sandbox: ${normalizeError(response.error).message}`
       );
     }
 
@@ -151,10 +153,10 @@ export class Sandbox {
   async exec(command: string): Promise<CommandResult> {
     logger.info({ serviceId: this.info.serviceId, command }, "[sandbox] Executing command");
 
-    const result = await this.api.exec.execServiceCommand(
-      { projectId: this.config.projectId, serviceId: this.info.serviceId },
-      { command: ["bash", "-c", command], shell: "none" }
-    );
+    const result = await this.api.exec.execServiceCommand(this.serviceParams, {
+      command: ["bash", "-c", command],
+      shell: "none",
+    });
 
     return {
       exitCode: result.commandResult.exitCode,
@@ -173,17 +175,17 @@ export class Sandbox {
       await this.exec(`mkdir -p "${dir}"`);
     }
 
-    await this.api.fileCopy.uploadServiceFileStream(
-      { projectId: this.config.projectId, serviceId: this.info.serviceId },
-      { source: buffer, remotePath }
-    );
+    await this.api.fileCopy.uploadServiceFileStream(this.serviceParams, {
+      source: buffer,
+      remotePath,
+    });
   }
 
   async readFile(remotePath: string): Promise<Buffer> {
     logger.info({ serviceId: this.info.serviceId, remotePath }, "[sandbox] Reading file");
 
     const { fileStream } = await this.api.fileCopy.downloadServiceFileStream(
-      { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      this.serviceParams,
       { remotePath }
     );
 
@@ -203,10 +205,10 @@ export class Sandbox {
       parameters: { projectId: this.config.projectId, serviceId },
     });
 
-    // Treat 404 as success (already deleted)
+    // Treat 404 as success (already deleted).
     if (serviceResponse.error && serviceResponse.error.status !== 404) {
       throw new Error(
-        `Failed to delete service: ${serviceResponse.error.message ?? "Unknown error"}`
+        `Failed to delete service: ${normalizeError(serviceResponse.error).message}`
       );
     }
 
@@ -214,28 +216,28 @@ export class Sandbox {
       parameters: { projectId: this.config.projectId, volumeId },
     });
 
-    // Treat 404 as success (already deleted)
+    // Treat 404 as success (already deleted).
     if (volumeResponse.error && volumeResponse.error.status !== 404) {
       throw new Error(
-        `Failed to delete volume: ${volumeResponse.error.message ?? "Unknown error"}`
+        `Failed to delete volume: ${normalizeError(volumeResponse.error).message}`
       );
     }
 
     logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
   }
 
-  private async getServiceStatus(): Promise<string | undefined> {
+  private async isServicePaused(): Promise<boolean> {
     const response = await this.api.get.service({
-      parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      parameters: this.serviceParams,
     });
 
     if (response.error) {
       throw new Error(
-        `Failed to get service status: ${response.error.message ?? "Unknown error"}`
+        `Failed to get service status: ${normalizeError(response.error).message}`
       );
     }
 
-    return response.data.status?.deployment?.status?.toLowerCase();
+    return response.data.servicePaused;
   }
 
   /** @internal Used by factory during creation and by resume(). */
@@ -245,12 +247,12 @@ export class Sandbox {
     const startTimeMs = Date.now();
     while (Date.now() - startTimeMs < this.config.serviceReadyTimeoutMs) {
       const response = await this.api.get.service({
-        parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+        parameters: this.serviceParams,
       });
 
       if (response.error) {
         throw new Error(
-          `Failed to poll service status: ${response.error.message ?? "Unknown error"}`
+          `Failed to poll service status: ${normalizeError(response.error).message}`
         );
       }
 
@@ -340,7 +342,7 @@ export class NorthflankSandboxClient {
         return new Err(new ServiceAlreadyExistsError(serviceName));
       }
       throw new Error(
-        `Failed to create sandbox: ${serviceResponse.error.message ?? "Unknown error"}`
+        `Failed to create sandbox: ${normalizeError(serviceResponse.error).message}`
       );
     }
 
@@ -371,7 +373,7 @@ export class NorthflankSandboxClient {
         parameters: { projectId: this.config.projectId, serviceId },
       });
       throw new Error(
-        `Failed to create volume: ${volumeResponse.error.message ?? "Unknown error"}`
+        `Failed to create volume: ${normalizeError(volumeResponse.error).message}`
       );
     }
 
