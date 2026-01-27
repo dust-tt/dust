@@ -43,7 +43,10 @@ import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import type {
+  ActionDetailsDisplayContext,
+  ToolExecutionDetailsProps,
+} from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import {
   DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
@@ -104,7 +107,7 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
-  displayContext: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
 }
 
 function getActionLabel({
@@ -112,7 +115,7 @@ function getActionLabel({
   displayContext,
 }: {
   action: AgentMCPActionWithOutputType;
-  displayContext: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
 }): string {
   if (action.displayLabels) {
     return displayContext === "conversation"

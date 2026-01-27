@@ -1,10 +1,11 @@
 import { cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
+import { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 
 interface ActionDetailsWrapperProps {
   actionName: string;
   children?: React.ReactNode;
-  displayContext: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
   visual: ComponentType<{ className?: string }>;
 }
 

@@ -18,7 +18,6 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type {
-  ReasoningSuccessOutputType,
   SqlQueryOutputType,
   ThinkingOutputType,
   ToolGeneratedFileType,
@@ -34,6 +33,7 @@ import {
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import type { LightWorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
+import { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;
@@ -57,28 +57,6 @@ export function ThinkingBlock({ resource }: ThinkingBlockProps) {
             isLastMessage={false}
           />
         </ContentMessage>
-      </div>
-    )
-  );
-}
-
-interface ReasoningSuccessBlockProps {
-  resource: ReasoningSuccessOutputType;
-}
-
-export function ReasoningSuccessBlock({
-  resource,
-}: ReasoningSuccessBlockProps) {
-  return (
-    resource.text && (
-      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-        <Markdown
-          content={resource.text}
-          textColor="text-muted-foreground dark:text-muted-foreground-night"
-          isStreaming={false}
-          forcedTextSize="md"
-          isLastMessage={false}
-        />
       </div>
     )
   );
@@ -129,7 +107,7 @@ interface SearchResultProps {
   actionName: string;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
-  displayContext: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
   query: string | null;
 }
 

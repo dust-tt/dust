@@ -98,7 +98,7 @@ export function AgentMessageActions({
         <Card variant="secondary" className="max-w-xl">
           {imageGenerationActions.length > 1 ? (
             <MCPImageGenerationGroupedDetails
-              viewType="conversation"
+              displayContext="conversation"
               actions={imageGenerationActions}
               owner={owner}
             />

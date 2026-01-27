@@ -2,7 +2,10 @@ import { ActionImageIcon, Chip, cn, Separator } from "@dust-tt/sparkle";
 import React from "react";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import type {
+  ActionDetailsDisplayContext,
+  ToolExecutionDetailsProps,
+} from "@app/components/actions/mcp/details/types";
 import { isGenerateImageInputType } from "@app/lib/actions/mcp_internal_actions/types";
 import { useFileMetadata } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types";
@@ -108,7 +111,7 @@ export function MCPImageGenerationActionDetails({
 }
 
 interface MCPImageGenerationGroupedDetailsProps {
-  displayContext: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
   actions: AgentMCPActionWithOutputType[];
   owner: LightWorkspaceType;
 }
