@@ -284,7 +284,10 @@ describe("MCP Servers Metadata Snapshot", () => {
     }
 
     // Compare
-    expect(currentMetadata).toEqual(expectedMetadata);
+    expect(
+      currentMetadata,
+      "If the diff is expected, run: 'UPDATE_MCP_METADATA_SNAPSHOT=1 NODE_ENV=test npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts' to update the snapshot."
+    ).toEqual(expectedMetadata);
   });
 
   it("should have all servers accounted for", async () => {
