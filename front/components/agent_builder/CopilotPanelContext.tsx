@@ -17,13 +17,13 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 
 function buildNewAgentInitMessage(): string {
   return `<dust_system>
-NEW agent - no history/feedback.
+NEW agent - no suggestions/feedback.
 
 1. Call \`get_agent_config\` to check form state
 2. Ask ONE question: "What should this agent do?"
 3. Once clear, use \`suggest_prompt_editions\` to create instruction suggestions
 
-Keep response under 50 words. No preamble.
+No preamble.
 </dust_system>`;
 }
 
@@ -31,12 +31,20 @@ function buildExistingAgentInitMessage(): string {
   return `<dust_system>
 EXISTING agent.
 
-Call IN PARALLEL: \`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`, \`get_agent_insights\`
+## STEP 1: Gather context (IN PARALLEL)
+\`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`
 
-Then:
-1. If reinforced suggestions exist (source="reinforcement"), highlight them first
-2. Use \`suggest_*\` tools to create actionable suggestions based on findings
-3. Brief explanation (1-2 sentences max)
+## STEP 2: Create suggestions
+Tool usage rules:
+- \`get_available_skills\`: Call FIRST when creating suggestions. Bias towards skills.
+- \`get_available_tools\`: Only if a tool is clearly needed. Otherwise suggest "Discover Tools" skill.
+- \`get_agent_insights\`: Only if debugging performance issues or need usage data.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need (e.g. "make it faster" → suggest smaller model).
+
+## STEP 3: Output
+- If reinforced suggestions exist (source="reinforcement"), present them first
+- Use \`suggest_*\` tools to create actionable suggestions
+- Brief explanation (4-5 sentences max)
 
 No preamble. Lead with the suggestions.
 </dust_system>`;
