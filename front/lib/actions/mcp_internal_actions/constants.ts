@@ -22,6 +22,7 @@ import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/m
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
@@ -841,29 +842,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_drives: "never_ask",
-      search_files: "never_ask",
-      get_file_content: "never_ask",
-      get_spreadsheet: "never_ask",
-      get_worksheet: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_drive",
-      version: "1.0.0",
-      description: "Search and read files (Docs, Sheets, Presentations).",
-      authorization: {
-        provider: "google_drive" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope: "https://www.googleapis.com/auth/drive.readonly" as const,
-      },
-      icon: "DriveLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-drive",
-      instructions: null,
-    },
+    metadata: GOOGLE_DRIVE_SERVER,
   },
   slideshow: {
     id: 28,
