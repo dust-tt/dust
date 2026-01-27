@@ -1,7 +1,7 @@
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type { z } from "zod";
 
-import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makePersonalAuthenticationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import type {
   ConfluenceCreatePageRequest,
   ConfluenceCurrentUser,
@@ -12,8 +12,7 @@ import type {
   ConfluenceUpdatePageRequest,
   ConfluenceV1SearchResult,
   UpdatePagePayload,
-  WithAuthParams,
-} from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
+} from "@app/lib/api/actions/servers/confluence/types";
 import {
   AtlassianResourceSchema,
   ConfluenceCurrentUserSchema,
@@ -21,12 +20,11 @@ import {
   ConfluencePageSchema,
   ConfluenceV1SearchResultSchema,
   CreatePagePayloadSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/confluence/types";
+} from "@app/lib/api/actions/servers/confluence/types";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-// Generic wrapper for Confluence API calls
 async function confluenceApiCall<T extends z.ZodTypeAny>(
   {
     endpoint,
@@ -89,32 +87,47 @@ async function confluenceApiCall<T extends z.ZodTypeAny>(
   }
 }
 
-export async function withAuth({
-  authInfo,
-  action,
-}: WithAuthParams): Promise<Result<CallToolResult["content"], MCPError>> {
-  const accessToken = authInfo?.token;
-
+export async function withAuth<T>(
+  accessToken: string | undefined,
+  action: (baseUrl: string, accessToken: string) => Promise<T>
+): Promise<
+  | { success: true; result: T }
+  | { success: false; error: CallToolResult["content"] }
+> {
   if (!accessToken) {
-    return new Err(new MCPError("No access token found"));
+    return {
+      success: false,
+      error: makePersonalAuthenticationError("confluence_tools").content,
+    };
   }
 
   try {
     const baseUrl = await getConfluenceBaseUrl(accessToken);
     if (!baseUrl) {
-      return new Err(
-        new MCPError(
-          "Failed to determine Confluence instance URL. Please check your connection."
-        )
-      );
+      return {
+        success: false,
+        error: [
+          {
+            type: "text" as const,
+            text: "Failed to determine Confluence instance URL. Please check your connection.",
+          },
+        ],
+      };
     }
 
-    return await action(baseUrl, accessToken);
+    const result = await action(baseUrl, accessToken);
+    return { success: true, result };
   } catch (error) {
     logger.error("Error in withAuth", { error });
-    return new Err(
-      new MCPError(`Authentication error: ${normalizeError(error).message}`)
-    );
+    return {
+      success: false,
+      error: [
+        {
+          type: "text" as const,
+          text: `Authentication error: ${normalizeError(error).message}`,
+        },
+      ],
+    };
   }
 }
 
@@ -128,7 +141,6 @@ async function getConfluenceBaseUrl(
   return null;
 }
 
-// Get Confluence resource information using the access token
 async function getConfluenceResourceInfo(
   accessToken: string
 ): Promise<{ id: string; name: string; url: string } | null> {
@@ -199,7 +211,6 @@ export async function listPages(
   accessToken: string,
   params: ConfluenceSearchRequest
 ): Promise<Result<ConfluenceV1SearchResult, string>> {
-  // Validate limit with clear error messages
   const limit = params.limit ?? 25;
   if (limit < 1) {
     return new Err("Limit must be at least 1");
@@ -216,9 +227,6 @@ export async function listPages(
     searchParams.append("cursor", params.cursor);
   }
 
-  // Use v1 search endpoint for CQL queries
-  // CQL queries require v1 API endpoint since v2 doesn't support CQL
-  // See: https://developer.atlassian.com/cloud/confluence/rest/v2/api-group-page/
   const endpoint = `/rest/api/content/search?${searchParams.toString()}`;
 
   const result = await confluenceApiCall(
@@ -329,7 +337,6 @@ export async function updatePage(
   const currentPage = currentPageResult.value;
   const endpoint = `/wiki/api/v2/pages/${updateData.id}`;
 
-  // Helper function to construct update payload
   const buildUpdatePagePayload = (
     updateData: ConfluenceUpdatePageRequest,
     currentPage: ConfluencePage

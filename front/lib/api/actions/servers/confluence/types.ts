@@ -1,20 +1,7 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
-import type { MCPError } from "@app/lib/actions/mcp_errors";
-import type { Result } from "@app/types";
-
 export type ConfluenceErrorResult = string;
-export type WithAuthParams = {
-  authInfo?: AuthInfo;
-  action: (
-    baseUrl: string,
-    accessToken: string
-  ) => Promise<Result<CallToolResult["content"], MCPError>>;
-};
 
-// Schema for Atlassian resource information
 export const AtlassianResourceSchema = z.array(
   z.object({
     id: z.string(),
@@ -93,7 +80,6 @@ export const ConfluencePageSchema = z
 
 export type ConfluencePage = z.infer<typeof ConfluencePageSchema>;
 
-// Schema for v1 API search response (used for CQL queries)
 export const ConfluenceV1SearchPageSchema = z
   .object({
     id: z.string(),
@@ -179,7 +165,6 @@ export type ConfluenceCreatePageRequest = z.infer<
   typeof ConfluenceCreatePageRequestSchema
 >;
 
-// Schema for page creation payload
 export const CreatePagePayloadSchema = z.object({
   spaceId: z.string(),
   title: z.string(),
