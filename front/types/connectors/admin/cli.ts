@@ -283,7 +283,6 @@ export const IntercomCommandSchema = t.type({
     t.literal("check-teams"),
     t.literal("get-conversations-sliding-window"),
     t.literal("set-conversations-sliding-window"),
-    t.literal("restart-schedules"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -292,7 +291,6 @@ export const IntercomCommandSchema = t.type({
     day: t.union([t.string, t.undefined]),
     helpCenterId: t.union([t.number, t.undefined]),
     conversationsSlidingWindow: t.union([t.number, t.undefined]),
-    forceDeleteExisting: t.union([t.literal("true"), t.undefined]),
   }),
 });
 export type IntercomCommandType = t.TypeOf<typeof IntercomCommandSchema>;
@@ -360,14 +358,6 @@ export const IntercomGetConversationsSlidingWindowResponseSchema = t.type({
 });
 export type IntercomGetConversationsSlidingWindowResponseType = t.TypeOf<
   typeof IntercomGetConversationsSlidingWindowResponseSchema
->;
-
-export const IntercomRestartSchedulesResponseSchema = t.type({
-  helpCenterScheduleId: t.string,
-  conversationScheduleId: t.string,
-});
-export type IntercomRestartSchedulesResponseType = t.TypeOf<
-  typeof IntercomRestartSchedulesResponseSchema
 >;
 /**
  * </ Intercom>
@@ -858,7 +848,6 @@ export const AdminResponseSchema = t.union([
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
   IntercomGetConversationsSlidingWindowResponseSchema,
-  IntercomRestartSchedulesResponseSchema,
   NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,
   NotionDeleteUrlResponseSchema,

@@ -97,10 +97,6 @@ const whitelistedCommands = [
     majorCommand: "intercom",
     command: "set-conversations-sliding-window",
   },
-  {
-    majorCommand: "intercom",
-    command: "restart-schedules",
-  },
 ];
 
 const _adminAPIHandler = async (

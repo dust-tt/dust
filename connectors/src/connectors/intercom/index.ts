@@ -45,6 +45,7 @@ import {
   IntercomTeamModel,
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
+import { scheduleExists } from "@connectors/lib/temporal_schedules";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -52,6 +53,10 @@ import type {
   ContentNode,
   ContentNodesViewType,
   DataSourceConfig,
+} from "@connectors/types";
+import {
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
 } from "@connectors/types";
 
 const logger = mainLogger.child(
@@ -261,9 +266,36 @@ export class IntercomConnectorManager extends BaseConnectorManager<null> {
       return new Err(new Error("Connector not found"));
     }
 
-    const schedulesRes = await unpauseIntercomSchedules(connector);
-    if (schedulesRes.isErr()) {
-      return schedulesRes;
+    // Check if schedules exist (they may be missing after workspace relocation).
+    const helpCenterScheduleId = makeIntercomHelpCenterScheduleId(connector);
+    const conversationScheduleId = makeIntercomConversationScheduleId(connector);
+
+    const [helpCenterExists, conversationExists] = await Promise.all([
+      scheduleExists({ scheduleId: helpCenterScheduleId }),
+      scheduleExists({ scheduleId: conversationScheduleId }),
+    ]);
+
+    if (!helpCenterExists || !conversationExists) {
+      // Schedules are missing - recreate them (e.g., after workspace relocation).
+      logger.warn(
+        {
+          connectorId: this.connectorId,
+          helpCenterScheduleExists: helpCenterExists,
+          conversationScheduleExists: conversationExists,
+        },
+        "Intercom schedules missing during resume, recreating them."
+      );
+
+      const launchRes = await launchIntercomSchedules(connector);
+      if (launchRes.isErr()) {
+        return launchRes;
+      }
+    } else {
+      // Schedules exist - just unpause them.
+      const schedulesRes = await unpauseIntercomSchedules(connector);
+      if (schedulesRes.isErr()) {
+        return schedulesRes;
+      }
     }
 
     const teamsIds = await IntercomTeamModel.findAll({
