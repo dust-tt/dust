@@ -2,6 +2,7 @@ import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
@@ -20,7 +21,6 @@ import {
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
 } from "@app/lib/api/actions/servers/ashby/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
