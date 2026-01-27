@@ -16,6 +16,10 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import {
+  CopilotSuggestionsProvider,
+  useCopilotSuggestionsOptional,
+} from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
@@ -481,20 +485,22 @@ export default function AgentBuilder({
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <AgentBuilderContent
-          agentConfiguration={agentConfiguration}
-          pendingAgentId={pendingAgentId}
-          title={title}
-          handleCancel={handleCancel}
-          saveLabel={saveLabel}
-          handleSave={handleSave}
-          isSaveDisabled={isSaveDisabled}
-          isActionsLoading={isActionsLoading}
-          isTriggersLoading={isTriggersLoading}
-          dialogProps={dialogProps}
-          isCreatedDialogOpen={isCreatedDialogOpen}
-          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-        />
+        <CopilotSuggestionsProvider>
+          <AgentBuilderContent
+            agentConfiguration={agentConfiguration}
+            pendingAgentId={pendingAgentId}
+            title={title}
+            handleCancel={handleCancel}
+            saveLabel={saveLabel}
+            handleSave={handleSave}
+            isSaveDisabled={isSaveDisabled}
+            isActionsLoading={isActionsLoading}
+            isTriggersLoading={isTriggersLoading}
+            dialogProps={dialogProps}
+            isCreatedDialogOpen={isCreatedDialogOpen}
+            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+          />
+        </CopilotSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
   );
@@ -546,6 +552,7 @@ function AgentBuilderContent({
   // Only enabled when the agent_builder_copilot feature flag is active.
   const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
     enabled: hasFeature("agent_builder_copilot"),
+    suggestionsContext: useCopilotSuggestionsOptional(),
   });
 
   return (
