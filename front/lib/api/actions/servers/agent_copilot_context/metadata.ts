@@ -88,6 +88,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available knowledge",
+      done: "List available knowledge",
+    },
   },
   get_available_models: {
     description:
@@ -289,6 +293,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Array of suggestions to update with their new states"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Updating suggestion state",
+      done: "Update suggestion state",
+    },
   },
 });
 
