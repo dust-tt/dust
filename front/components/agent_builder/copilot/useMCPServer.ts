@@ -4,7 +4,7 @@ import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { CopilotSuggestionsContextType } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/copilot/tools/getAgentConfig";
 import { registerSuggestInstructionChangesTool } from "@app/components/agent_builder/copilot/tools/suggestInstructionChanges";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
@@ -22,7 +22,6 @@ export interface UseCopilotMCPServerResult {
 
 interface UseCopilotMCPServerOptions {
   enabled: boolean;
-  suggestionsContext?: CopilotSuggestionsContextType;
 }
 
 /**
@@ -31,10 +30,10 @@ interface UseCopilotMCPServerOptions {
  */
 export function useCopilotMCPServer({
   enabled,
-  suggestionsContext,
 }: UseCopilotMCPServerOptions): UseCopilotMCPServerResult {
   const { owner } = useAgentBuilderContext();
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const suggestionsContext = useCopilotSuggestions();
 
   const [serverId, setServerId] = useState<string | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
@@ -46,10 +45,8 @@ export function useCopilotMCPServer({
   const mcpServerRef = useRef<McpServer | null>(null);
   const transportRef = useRef<BrowserMCPTransport | null>(null);
 
-  // Store context in a ref to avoid re-creating the MCP server.
-  const suggestionsContextRef = useRef<
-    CopilotSuggestionsContextType | undefined
-  >(suggestionsContext);
+  // Store context in a ref for use in callbacks.
+  const suggestionsContextRef = useRef(suggestionsContext);
 
   // Update ref in effect to avoid updating during render.
   useEffect(() => {
@@ -108,11 +105,7 @@ export function useCopilotMCPServer({
         // Register suggestion tool if context is provided.
         if (suggestionsContextRef.current) {
           registerSuggestInstructionChangesTool(mcpServer, {
-            addSuggestion: (suggestion, expectedCount) =>
-              suggestionsContextRef.current!.addSuggestion(
-                suggestion,
-                expectedCount
-              ),
+            addSuggestion: suggestionsContextRef.current!.addSuggestion,
           });
         }
 
