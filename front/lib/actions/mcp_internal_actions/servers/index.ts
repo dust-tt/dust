@@ -28,8 +28,6 @@ import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_a
 import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as openaiUsageServer } from "@app/lib/actions/mcp_internal_actions/servers/openai_usage";
-import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
-import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
@@ -64,6 +62,8 @@ import { default as imageGenerationServer } from "@app/lib/api/actions/servers/i
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
+import { default as outlookServer } from "@app/lib/api/actions/servers/outlook";
+import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook_calendar";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
