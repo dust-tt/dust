@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -42,6 +43,144 @@ function createTestExtra(auth: Authenticator, agentLoopContext?: unknown) {
 }
 
 describe("agent_copilot_context tools", () => {
+  describe("get_available_knowledge", () => {
+    it("returns knowledge organized by spaces and categories", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a folder data source view in the global space.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.count.spaces).toBeGreaterThanOrEqual(1);
+          expect(parsed.count.dataSources).toBeGreaterThanOrEqual(1);
+          expect(parsed.spaces).toBeDefined();
+          expect(Array.isArray(parsed.spaces)).toBe(true);
+
+          // Find the global space.
+          const foundSpace = parsed.spaces.find(
+            (s: { sId: string }) => s.sId === globalSpace.sId
+          );
+          expect(foundSpace).toBeDefined();
+          expect(foundSpace.categories).toBeDefined();
+          expect(Array.isArray(foundSpace.categories)).toBe(true);
+        }
+      }
+    });
+
+    it("filters by spaceId when provided", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create another space.
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      // Create folder data sources in both spaces.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+      await DataSourceViewFactory.folder(workspace, regularSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+
+      // Filter to global space only.
+      const result = await tool.handler(
+        { spaceId: globalSpace.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count.spaces).toBe(1);
+          expect(parsed.spaces[0].sId).toBe(globalSpace.sId);
+        }
+      }
+    });
+
+    it("filters by category when provided", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a folder data source.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+
+      // Filter to folder category only.
+      const result = await tool.handler(
+        { category: "folder" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // All categories should be "folder".
+          for (const space of parsed.spaces) {
+            for (const cat of space.categories) {
+              expect(cat.category).toBe("folder");
+            }
+          }
+        }
+      }
+    });
+
+    it("returns error for invalid spaceId", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler(
+        { spaceId: "non-existent-space-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("does not return knowledge from spaces the user cannot access", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+
+      // Create a restricted space (user won't be a member).
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create a folder in the restricted space.
+      await DataSourceViewFactory.folder(workspace, restrictedSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // The restricted space should not be in the results.
+          const foundRestrictedSpace = parsed.spaces.find(
+            (s: { sId: string }) => s.sId === restrictedSpace.sId
+          );
+          expect(foundRestrictedSpace).toBeUndefined();
+        }
+      }
+    });
+  });
+
   describe("get_available_models", () => {
     it("filters out models from non-whitelisted providers", async () => {
       // Create workspace with only anthropic provider whitelisted.

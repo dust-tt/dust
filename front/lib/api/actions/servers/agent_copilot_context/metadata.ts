@@ -13,6 +13,9 @@ import {
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
+// Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
+const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
+
 // Suggestion tool schemas
 
 const InstructionsSuggestionSchema = z.object({
@@ -65,6 +68,27 @@ const ModelSuggestionSchema = z.object({
 });
 
 export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
+  get_available_knowledge: {
+    description:
+      "Get the list of available knowledge sources that can be added to an agent. " +
+      "Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. " +
+      "Only includes sources accessible to the current user.",
+    schema: {
+      spaceId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional space ID to filter results to a specific space. If not provided, returns knowledge from all accessible spaces."
+        ),
+      category: z
+        .enum(KNOWLEDGE_CATEGORIES)
+        .optional()
+        .describe(
+          "Optional category to filter results. Options: 'managed' (connected data sources like Notion, Slack), 'folder' (custom folders), 'website' (crawled websites). If not provided, returns all categories."
+        ),
+    },
+    stake: "never_ask",
+  },
   get_available_models: {
     description:
       "Get the list of available models. Can optionally filter by provider.",
