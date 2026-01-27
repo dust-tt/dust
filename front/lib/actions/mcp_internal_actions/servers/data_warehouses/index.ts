@@ -16,7 +16,6 @@ import {
   makeBrowseResource,
   validateTables,
 } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses/helpers";
-import { executeQuery } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import {
   getDatabaseExampleRowsContent,
   getQueryWritingInstructionsContent,
@@ -27,6 +26,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { executeQuery } from "@app/lib/api/actions/servers/query_tables_v2/helpers";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";

@@ -1,11 +1,11 @@
 import { computeTextByteSize } from "@app/lib/actions/action_output_limits";
-import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
-  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  CONVERSATION_CAT_FILE_ACTION_NAME,
+  CONVERSATION_LIST_FILES_ACTION_NAME,
+} from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { CONVERSATION_FILES_TOOLS_METADATA } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
   conversationAttachmentId,
@@ -36,7 +36,7 @@ import {
 const MAX_FILE_SIZE_FOR_GREP = 20 * 1024 * 1024; // 20MB.
 
 const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
-  [DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME]: async (_, extra) => {
+  [CONVERSATION_LIST_FILES_ACTION_NAME]: async (_, extra) => {
     if (!extra.agentLoopContext?.runContext) {
       return new Err(new MCPError("No conversation context available"));
     }
@@ -69,7 +69,7 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     ]);
   },
 
-  [DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME]: async (
+  [CONVERSATION_CAT_FILE_ACTION_NAME]: async (
     { fileId, offset, limit, grep },
     extra
   ) => {

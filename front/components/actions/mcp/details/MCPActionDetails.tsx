@@ -45,29 +45,23 @@ import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPTool
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
-import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
-  ENABLE_SKILL_TOOL_NAME,
-} from "@app/lib/actions/constants";
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import {
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
-  EXECUTE_DATABASE_QUERY_TOOL_NAME,
   FILESYSTEM_CAT_TOOL_NAME,
   FILESYSTEM_FIND_TOOL_NAME,
   FILESYSTEM_LIST_TOOL_NAME,
   FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GENERATE_IMAGE_TOOL_NAME,
-  GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
   INTERNAL_SERVERS_WITH_WEBSEARCH,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
   TOOLSETS_ENABLE_TOOL_NAME,
   TOOLSETS_LIST_TOOL_NAME,
   WEBBROWSER_TOOL_NAME,
@@ -94,6 +88,12 @@ import {
   AGENT_MEMORY_RECORD_TOOL_NAME,
   AGENT_MEMORY_RETRIEVE_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
+} from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isSupportedImageContentType } from "@app/types";
@@ -351,7 +351,7 @@ export function MCPActionDetails({
 
   if (
     internalMCPServerName === "conversation_files" &&
-    toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME
+    toolName === CONVERSATION_CAT_FILE_ACTION_NAME
   ) {
     return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
   }

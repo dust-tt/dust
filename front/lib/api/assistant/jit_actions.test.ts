@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   DEFAULT_PROJECT_SEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
+import { CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import type { Authenticator } from "@app/lib/auth";
@@ -380,7 +380,7 @@ describe("getJITServers", () => {
         `'queryable' conversation files`
       );
       expect(queryTablesServer?.description).toContain(
-        DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME
+        CONVERSATION_LIST_FILES_ACTION_NAME
       );
       expect(queryTablesServer?.tables).toBeDefined();
       // Note: tables array may be empty if conversation datasource view is not set up,

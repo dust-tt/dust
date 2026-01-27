@@ -1,10 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import {
-  DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-  RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-} from "@app/lib/actions/constants";
+import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
   DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   FRESHSERVICE_SERVER_INSTRUCTIONS,
@@ -18,7 +14,10 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_ROUTER_SERVER,
+  AGENT_ROUTER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
@@ -35,6 +34,10 @@ import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
+import {
+  QUERY_TABLES_V2_SERVER,
+  TABLE_QUERY_V2_SERVER_NAME,
+} from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
@@ -44,7 +47,10 @@ import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_gen
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
-import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import {
+  WEB_SEARCH_BROWSE_SERVER,
+  WEB_SEARCH_BROWSE_SERVER_NAME,
+} from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -73,11 +79,6 @@ export const PROCESS_TOOL_NAME = "extract_information_from_documents";
 export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
 
-export const QUERY_TABLES_TOOL_NAME = "query_tables";
-
-export const GET_DATABASE_SCHEMA_TOOL_NAME = "get_database_schema";
-export const EXECUTE_DATABASE_QUERY_TOOL_NAME = "execute_database_query";
-
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
 
 export const FIND_TAGS_TOOL_NAME = "find_tags";
@@ -102,7 +103,6 @@ export const EDIT_IMAGE_TOOL_NAME = "edit_image";
 
 export const SEARCH_SERVER_NAME = "search";
 
-export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
 
 // IDs of internal MCP servers that are no longer present.
@@ -231,7 +231,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: FILE_GENERATION_SERVER,
   },
-  [DEFAULT_WEBSEARCH_ACTION_NAME]: {
+  [WEB_SEARCH_BROWSE_SERVER_NAME]: {
     id: 5,
     availability: "auto",
     allowMultipleInstances: false,
@@ -253,7 +253,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: HUBSPOT_SERVER,
   },
-  [DEFAULT_AGENT_ROUTER_ACTION_NAME]: {
+  [AGENT_ROUTER_SERVER_NAME]: {
     id: 8,
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
@@ -1312,16 +1312,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "query_tables_v2",
-      version: "1.0.0",
-      description:
-        "Query structured data like a spreadsheet or database for data analyses.",
-      icon: "ActionTableIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: QUERY_TABLES_V2_SERVER,
   },
   data_sources_file_system: {
     id: 1010,
