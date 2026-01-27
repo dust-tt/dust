@@ -17,7 +17,7 @@ async function selectService(): Promise<ServiceName | null> {
     return null;
   }
 
-  return result as ServiceName;
+  return result;
 }
 
 export async function restartCommand(
