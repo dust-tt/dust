@@ -83,7 +83,9 @@ export function MCPAgentManagementActionDetails({
   return (
     <ActionDetailsWrapper
       displayContext={displayContext}
-      actionName="Create Agent"
+      actionName={
+        displayContext === "conversation" ? "Creating agent" : "Create Agent"
+      }
       visual={ActionRobotIcon}
     >
       <div className="flex flex-col gap-6 pl-6 pt-4">
