@@ -82,8 +82,7 @@ function Timeline({
 }
 
 export interface TimelineItemProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof markerVariants> {
   title?: string;
   description?: React.ReactNode;

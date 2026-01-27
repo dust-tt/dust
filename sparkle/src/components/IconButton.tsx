@@ -69,10 +69,11 @@ const iconButtonVariants = cva(
   }
 );
 
-export interface IconButtonProps extends Omit<
-  React.ComponentPropsWithoutRef<typeof Button>,
-  "label" | "variant"
-> {
+export interface IconButtonProps
+  extends Omit<
+    React.ComponentPropsWithoutRef<typeof Button>,
+    "label" | "variant"
+  > {
   variant?: IconButtonVariantType;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   tooltip?: string;
