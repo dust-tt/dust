@@ -40,12 +40,12 @@ interface SandboxConfig {
 
 const DEFAULT_CONFIG: SandboxConfig = {
   baseImage: "ubuntu:22.04",
-  deploymentPlan: "nf-compute-20", // Smallest plan (0.2 vCPU). Scale up if needed.
+  deploymentPlan: "nf-compute-20",
   projectId: apiConfig.getNorthflankProjectId() ?? "dust-sandbox-dev",
   spotTag: "spot-workload",
-  serviceReadyTimeoutMs: 120_000, // 2 minutes. Account for cold image pulls.
+  serviceReadyTimeoutMs: 120_000,
   pollIntervalMs: 500,
-  volumeSizeMb: 4096, // 4GB minimum
+  volumeSizeMb: 4096,
   volumeMountPath: "/workspace",
 };
 
@@ -86,20 +86,16 @@ export type SandboxError = ServiceAlreadyExistsError | SandboxReadyTimeoutError;
 
 export class NorthflankSandboxClient {
   private readonly api: ApiClient;
-  private readonly sandboxConfig: SandboxConfig;
+  private readonly config: SandboxConfig;
   private serviceId: string | null = null;
   private volumeId: string | null = null;
   private createdAt: Date | null = null;
 
   private constructor(api: ApiClient, config: SandboxConfig) {
     this.api = api;
-    this.sandboxConfig = config;
+    this.config = config;
   }
 
-  /**
-   * Ensure the sandbox has been created or attached before operations.
-   * @throws Error if serviceId is null
-   */
   private requireServiceId(): string {
     if (!this.serviceId) {
       throw new Error("Sandbox not created or attached");
@@ -107,69 +103,49 @@ export class NorthflankSandboxClient {
     return this.serviceId;
   }
 
-  /**
-   * Create a new NorthflankSandboxClient instance.
-   */
+  private resetState(): void {
+    this.serviceId = null;
+    this.volumeId = null;
+    this.createdAt = null;
+  }
+
   static async create(
     apiToken: string,
     configOverrides?: Partial<SandboxConfig>
   ): Promise<NorthflankSandboxClient> {
     const config = { ...DEFAULT_CONFIG, ...configOverrides };
     const contextProvider = new ApiClientInMemoryContextProvider();
-    await contextProvider.addContext({
-      name: "default",
-      token: apiToken,
-    });
-    const api = new ApiClient(contextProvider);
-    return new NorthflankSandboxClient(api, config);
+    await contextProvider.addContext({ name: "default", token: apiToken });
+    return new NorthflankSandboxClient(new ApiClient(contextProvider), config);
   }
 
-  /**
-   * Create a new sandbox VM.
-   * @param serviceName Unique name for the service (e.g., based on conversationId)
-   * @param metadata Optional metadata tags for tracking
-   * @returns Result with SandboxInfo on success, or SandboxError on failure
-   */
   async createSandbox(
     serviceName: string,
     metadata?: SandboxMetadata
   ): Promise<Result<SandboxInfo, SandboxError>> {
-    const tags = [
-      this.sandboxConfig.spotTag,
-      metadata?.workspaceId && `workspace:${metadata.workspaceId}`,
-      metadata?.conversationId && `conversation:${metadata.conversationId}`,
-      metadata?.agentConfigurationId && `agent:${metadata.agentConfigurationId}`,
-    ].filter((tag): tag is string => Boolean(tag));
+    const tags = this.buildTags(metadata);
 
     logger.info(
-      { serviceName, image: this.sandboxConfig.baseImage, tags },
+      { serviceName, image: this.config.baseImage, tags },
       "[sandbox] Creating service"
     );
 
     const serviceResponse = await this.api.create.service.deployment({
-      parameters: { projectId: this.sandboxConfig.projectId },
+      parameters: { projectId: this.config.projectId },
       data: {
         name: serviceName,
         tags,
-        billing: {
-          deploymentPlan: this.sandboxConfig.deploymentPlan,
-        },
+        billing: { deploymentPlan: this.config.deploymentPlan },
         deployment: {
           instances: 1,
-          external: {
-            imagePath: this.sandboxConfig.baseImage,
-          },
-          docker: {
-            configType: "customCommand",
-            customCommand: "sleep infinity",
-          },
+          external: { imagePath: this.config.baseImage },
+          docker: { configType: "customCommand", customCommand: "sleep infinity" },
         },
         runtimeEnvironment: {},
       },
     });
 
     if (serviceResponse.error) {
-      // Northflank returns 400 "Service already exists" for duplicate names
       if (
         serviceResponse.error.status === 400 &&
         serviceResponse.error.message === "Service already exists"
@@ -189,34 +165,26 @@ export class NorthflankSandboxClient {
 
     logger.info({ serviceId }, "[sandbox] Service created");
 
-    // Create and attach persistent volume
     const volumeName = `${serviceName}-vol`;
     logger.info(
-      { volumeName, sizeMb: this.sandboxConfig.volumeSizeMb },
+      { volumeName, sizeMb: this.config.volumeSizeMb },
       "[sandbox] Creating volume"
     );
 
     const volumeResponse = await this.api.create.volume({
-      parameters: { projectId: this.sandboxConfig.projectId },
+      parameters: { projectId: this.config.projectId },
       data: {
         name: volumeName,
         tags,
-        mounts: [{ containerMountPath: this.sandboxConfig.volumeMountPath }],
-        spec: {
-          accessMode: "ReadWriteOnce",
-          storageSize: this.sandboxConfig.volumeSizeMb,
-        },
+        mounts: [{ containerMountPath: this.config.volumeMountPath }],
+        spec: { accessMode: "ReadWriteOnce", storageSize: this.config.volumeSizeMb },
         attachedObjects: [{ id: serviceId, type: "service" }],
       },
     });
 
     if (volumeResponse.error) {
-      // Clean up the service if volume creation fails
       await this.api.delete.service({
-        parameters: {
-          projectId: this.sandboxConfig.projectId,
-          serviceId,
-        },
+        parameters: { projectId: this.config.projectId, serviceId },
       });
       throw new Error(
         `Failed to create volume: ${volumeResponse.error.message ?? "Unknown error"}`
@@ -230,42 +198,48 @@ export class NorthflankSandboxClient {
 
     const readyResult = await this.waitForReady();
     if (readyResult.isErr()) {
-      // Clean up resources on timeout to avoid orphaned services/volumes
       await this.cleanupResources(serviceId, volumeId);
-      this.serviceId = null;
-      this.volumeId = null;
-      this.createdAt = null;
+      this.resetState();
       return readyResult;
     }
 
     return new Ok({
       serviceId,
       volumeId,
-      projectId: this.sandboxConfig.projectId,
+      projectId: this.config.projectId,
       createdAt,
     });
   }
 
-  /**
-   * Attach to an existing sandbox.
-   * Note: projectId from info is not used - the client uses its configured projectId.
-   */
+  private buildTags(metadata?: SandboxMetadata): string[] {
+    const tags: string[] = [];
+    if (this.config.spotTag) {
+      tags.push(this.config.spotTag);
+    }
+    if (metadata?.workspaceId) {
+      tags.push(`workspace:${metadata.workspaceId}`);
+    }
+    if (metadata?.conversationId) {
+      tags.push(`conversation:${metadata.conversationId}`);
+    }
+    if (metadata?.agentConfigurationId) {
+      tags.push(`agent:${metadata.agentConfigurationId}`);
+    }
+    return tags;
+  }
+
   attach(info: SandboxInfo): void {
     this.serviceId = info.serviceId;
     this.volumeId = info.volumeId;
     this.createdAt = info.createdAt;
   }
 
-  /**
-   * Pause the sandbox. Scales to 0 instances but keeps volume intact.
-   */
   async pause(): Promise<void> {
     const serviceId = this.requireServiceId();
-
     logger.info({ serviceId }, "[sandbox] Pausing");
 
     const response = await this.api.pause.service({
-      parameters: { projectId: this.sandboxConfig.projectId, serviceId },
+      parameters: { projectId: this.config.projectId, serviceId },
     });
 
     if (response.error) {
@@ -277,16 +251,12 @@ export class NorthflankSandboxClient {
     logger.info({ serviceId }, "[sandbox] Paused");
   }
 
-  /**
-   * Resume a paused sandbox. Scales back to 1 instance and waits for ready.
-   */
   async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
     const serviceId = this.requireServiceId();
-
     logger.info({ serviceId }, "[sandbox] Resuming");
 
     const response = await this.api.resume.service({
-      parameters: { projectId: this.sandboxConfig.projectId, serviceId },
+      parameters: { projectId: this.config.projectId, serviceId },
       data: { instances: 1 },
     });
 
@@ -299,18 +269,14 @@ export class NorthflankSandboxClient {
     return this.waitForReady();
   }
 
-  /**
-   * Wait for the service to be ready.
-   */
   private async waitForReady(): Promise<Result<void, SandboxReadyTimeoutError>> {
     const serviceId = this.requireServiceId();
-
     logger.info({ serviceId }, "[sandbox] Waiting for ready");
 
     const startTimeMs = Date.now();
-    while (Date.now() - startTimeMs < this.sandboxConfig.serviceReadyTimeoutMs) {
+    while (Date.now() - startTimeMs < this.config.serviceReadyTimeoutMs) {
       const response = await this.api.get.service({
-        parameters: { projectId: this.sandboxConfig.projectId, serviceId },
+        parameters: { projectId: this.config.projectId, serviceId },
       });
 
       if (response.error) {
@@ -319,7 +285,7 @@ export class NorthflankSandboxClient {
         );
       }
 
-      const status = response.data.status;
+      const { status } = response.data;
       const deploymentStatus = status?.deployment?.status;
 
       if (deploymentStatus === "COMPLETED") {
@@ -334,20 +300,14 @@ export class NorthflankSandboxClient {
         );
       }
 
-      await setTimeoutAsync(this.sandboxConfig.pollIntervalMs);
+      await setTimeoutAsync(this.config.pollIntervalMs);
     }
 
     return new Err(
-      new SandboxReadyTimeoutError(
-        serviceId,
-        this.sandboxConfig.serviceReadyTimeoutMs
-      )
+      new SandboxReadyTimeoutError(serviceId, this.config.serviceReadyTimeoutMs)
     );
   }
 
-  /**
-   * Best-effort cleanup of service and volume. Used when creation fails partway through.
-   */
   private async cleanupResources(
     serviceId: string,
     volumeId: string
@@ -356,10 +316,7 @@ export class NorthflankSandboxClient {
 
     try {
       await this.api.delete.service({
-        parameters: {
-          projectId: this.sandboxConfig.projectId,
-          serviceId,
-        },
+        parameters: { projectId: this.config.projectId, serviceId },
       });
     } catch (err) {
       logger.error({ serviceId, err }, "[sandbox] Failed to delete service during cleanup");
@@ -367,26 +324,19 @@ export class NorthflankSandboxClient {
 
     try {
       await this.api.delete.volume({
-        parameters: {
-          projectId: this.sandboxConfig.projectId,
-          volumeId,
-        },
+        parameters: { projectId: this.config.projectId, volumeId },
       });
     } catch (err) {
       logger.error({ volumeId, err }, "[sandbox] Failed to delete volume during cleanup");
     }
   }
 
-  /**
-   * Execute a command and return the result.
-   */
   async exec(command: string): Promise<CommandResult> {
     const serviceId = this.requireServiceId();
-
     logger.info({ serviceId, command }, "[sandbox] Executing command");
 
     const result = await this.api.exec.execServiceCommand(
-      { projectId: this.sandboxConfig.projectId, serviceId },
+      { projectId: this.config.projectId, serviceId },
       { command: ["bash", "-c", command], shell: "none" }
     );
 
@@ -397,38 +347,29 @@ export class NorthflankSandboxClient {
     };
   }
 
-  /**
-   * Write content to a file in the sandbox.
-   */
   async writeFile(remotePath: string, content: string | Buffer): Promise<void> {
     const serviceId = this.requireServiceId();
-
     logger.info({ serviceId, remotePath }, "[sandbox] Writing file");
 
     const buffer = typeof content === "string" ? Buffer.from(content) : content;
 
-    // Create parent directories if needed (skip for root or current directory).
     const dir = path.posix.dirname(remotePath);
     if (dir && dir !== "." && dir !== "/") {
       await this.exec(`mkdir -p "${dir}"`);
     }
 
     await this.api.fileCopy.uploadServiceFileStream(
-      { projectId: this.sandboxConfig.projectId, serviceId },
+      { projectId: this.config.projectId, serviceId },
       { source: buffer, remotePath }
     );
   }
 
-  /**
-   * Read a file from the sandbox.
-   */
   async readFile(remotePath: string): Promise<Buffer> {
     const serviceId = this.requireServiceId();
-
     logger.info({ serviceId, remotePath }, "[sandbox] Reading file");
 
     const { fileStream } = await this.api.fileCopy.downloadServiceFileStream(
-      { projectId: this.sandboxConfig.projectId, serviceId },
+      { projectId: this.config.projectId, serviceId },
       { remotePath }
     );
 
@@ -439,9 +380,6 @@ export class NorthflankSandboxClient {
     return result.value;
   }
 
-  /**
-   * Destroy the sandbox and its volume
-   */
   async destroy(): Promise<void> {
     if (!this.serviceId) {
       return;
@@ -452,12 +390,8 @@ export class NorthflankSandboxClient {
 
     logger.info({ serviceId, volumeId }, "[sandbox] Destroying");
 
-    // Delete service first (detaches the volume)
     const serviceResponse = await this.api.delete.service({
-      parameters: {
-        projectId: this.sandboxConfig.projectId,
-        serviceId,
-      },
+      parameters: { projectId: this.config.projectId, serviceId },
     });
 
     if (serviceResponse.error) {
@@ -466,13 +400,9 @@ export class NorthflankSandboxClient {
       );
     }
 
-    // Delete the volume
     if (volumeId) {
       const volumeResponse = await this.api.delete.volume({
-        parameters: {
-          projectId: this.sandboxConfig.projectId,
-          volumeId,
-        },
+        parameters: { projectId: this.config.projectId, volumeId },
       });
 
       if (volumeResponse.error) {
@@ -483,10 +413,7 @@ export class NorthflankSandboxClient {
     }
 
     logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
-
-    this.serviceId = null;
-    this.volumeId = null;
-    this.createdAt = null;
+    this.resetState();
   }
 
   getServiceId(): string | null {
@@ -500,7 +427,7 @@ export class NorthflankSandboxClient {
     return {
       serviceId: this.serviceId,
       volumeId: this.volumeId,
-      projectId: this.sandboxConfig.projectId,
+      projectId: this.config.projectId,
       createdAt: this.createdAt,
     };
   }
