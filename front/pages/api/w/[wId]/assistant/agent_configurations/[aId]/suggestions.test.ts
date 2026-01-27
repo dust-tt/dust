@@ -26,21 +26,28 @@ async function setupTest(
       method,
     });
 
-  req.query = { wId: workspace.sId };
-
   await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
 
-  return { req, res, workspace, authenticator };
+  // Create a test agent for the user
+  const agent = await AgentConfigurationFactory.createTestAgent(authenticator);
+
+  req.query = { wId: workspace.sId, aId: agent.sId };
+
+  return { req, res, workspace, authenticator, agent };
 }
 
-describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
+describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", () => {
   it("returns 403 when agent_builder_copilot feature flag is not enabled", async () => {
-    const { req, res, workspace } = await createPrivateApiMockRequest({
-      role: "builder",
-      method: "PATCH",
-    });
+    const { req, res, workspace, authenticator } =
+      await createPrivateApiMockRequest({
+        role: "builder",
+        method: "PATCH",
+      });
 
-    req.query = { wId: workspace.sId };
+    const agent =
+      await AgentConfigurationFactory.createTestAgent(authenticator);
+
+    req.query = { wId: workspace.sId, aId: agent.sId };
     req.body = {
       suggestionId: "test-id",
       state: "approved",
@@ -50,6 +57,26 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
 
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData().error.type).toBe("app_auth_error");
+  });
+
+  it("returns 404 for non-existent agent", async () => {
+    const { req, res, workspace } = await createPrivateApiMockRequest({
+      role: "builder",
+      method: "PATCH",
+    });
+
+    await FeatureFlagFactory.basic("agent_builder_copilot", workspace);
+
+    req.query = { wId: workspace.sId, aId: "non-existent-agent" };
+    req.body = {
+      suggestionId: "test-id",
+      state: "approved",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(res._getJSONData().error.type).toBe("agent_configuration_not_found");
   });
 
   it("returns 400 for missing suggestionId", async () => {
@@ -120,6 +147,38 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
     expect(res._getJSONData().error.type).toBe("agent_suggestion_not_found");
   });
 
+  it("returns 400 when suggestion belongs to a different agent", async () => {
+    const { req, res, authenticator, agent } = await setupTest();
+
+    // Create another agent owned by the same user
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(
+      authenticator,
+      { name: "Other Agent" }
+    );
+
+    // Create a suggestion for the other agent
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      authenticator,
+      otherAgent,
+      { state: "pending" }
+    );
+
+    // Try to update the suggestion via the first agent's endpoint
+    req.query = { ...req.query, aId: agent.sId };
+    req.body = {
+      suggestionId: suggestion.sId,
+      state: "approved",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+    expect(res._getJSONData().error.message).toContain(
+      "does not belong to the specified agent configuration"
+    );
+  });
+
   it("returns 405 for unsupported methods", async () => {
     for (const method of ["POST", "PUT", "DELETE"] as const) {
       const { req, res } = await setupTest({ method });
@@ -136,10 +195,8 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
     "rejected",
     "outdated",
   ])("updates suggestion state to %s", async (newState) => {
-    const { req, res, authenticator } = await setupTest();
+    const { req, res, authenticator, agent } = await setupTest();
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
     const suggestion = await AgentSuggestionFactory.createInstructions(
       authenticator,
       agent,
@@ -169,10 +226,8 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
   });
 
   it("returns the full suggestion object with all fields", async () => {
-    const { req, res, authenticator } = await setupTest();
+    const { req, res, authenticator, agent } = await setupTest();
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
     const suggestion = await AgentSuggestionFactory.createInstructions(
       authenticator,
       agent,
@@ -207,10 +262,10 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
   });
 
   it("admin can update suggestions in their workspace", async () => {
-    const { req, res, authenticator } = await setupTest({ role: "admin" });
+    const { req, res, authenticator, agent } = await setupTest({
+      role: "admin",
+    });
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
     const suggestion = await AgentSuggestionFactory.createInstructions(
       authenticator,
       agent,
@@ -227,21 +282,55 @@ describe("PATCH /api/w/[wId]/assistant/agents/suggestions", () => {
     expect(res._getStatusCode()).toBe(200);
     expect(res._getJSONData().suggestion.state).toBe("approved");
   });
+
+  it("returns 403 for non-editor of the agent", async () => {
+    const { req, res, workspace } = await setupTest();
+
+    // Create another user owning a different agent
+    const agentOwner = await UserFactory.basic();
+    await MembershipFactory.associate(workspace, agentOwner, {
+      role: "builder",
+    });
+    const ownerAuth = await Authenticator.fromUserIdAndWorkspaceId(
+      agentOwner.sId,
+      workspace.sId
+    );
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(
+      ownerAuth,
+      { name: "Other Agent" }
+    );
+
+    const suggestion = await AgentSuggestionFactory.createInstructions(
+      ownerAuth,
+      otherAgent,
+      { state: "pending" }
+    );
+
+    // Update request to target the other agent
+    req.query = { ...req.query, aId: otherAgent.sId };
+    req.body = {
+      suggestionId: suggestion.sId,
+      state: "approved",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error.type).toBe("agent_group_permission_error");
+  });
 });
 
-describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
+describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", () => {
   it("returns agent's suggestions", async () => {
-    const { req, res, authenticator } = await setupTest({ method: "GET" });
+    const { req, res, authenticator, agent } = await setupTest({
+      method: "GET",
+    });
 
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
     const suggestion = await AgentSuggestionFactory.createInstructions(
       authenticator,
       agent,
       { state: "pending" }
     );
-
-    req.query = { ...req.query, agentId: agent.sId };
 
     await handler(req, res);
 
@@ -252,12 +341,10 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
   });
 
   it("should not return other agent's suggestions", async () => {
-    const { req, res, authenticator } = await setupTest({ method: "GET" });
+    const { req, res, authenticator, agent } = await setupTest({
+      method: "GET",
+    });
 
-    const agent1 = await AgentConfigurationFactory.createTestAgent(
-      authenticator,
-      { name: "Test Agent 1" }
-    );
     const agent2 = await AgentConfigurationFactory.createTestAgent(
       authenticator,
       { name: "Test Agent 2" }
@@ -265,14 +352,12 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
 
     const suggestion1 = await AgentSuggestionFactory.createInstructions(
       authenticator,
-      agent1,
+      agent,
       { state: "pending" }
     );
     await AgentSuggestionFactory.createInstructions(authenticator, agent2, {
       state: "pending",
     });
-
-    req.query = { ...req.query, agentId: agent1.sId };
 
     await handler(req, res);
 
@@ -283,10 +368,9 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
   });
 
   it("filters on kind and state correctly", async () => {
-    const { req, res, authenticator } = await setupTest({ method: "GET" });
-
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const { req, res, authenticator, agent } = await setupTest({
+      method: "GET",
+    });
 
     const matchingSuggestion = await AgentSuggestionFactory.createInstructions(
       authenticator,
@@ -304,7 +388,6 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
 
     req.query = {
       ...req.query,
-      agentId: agent.sId,
       states: ["pending"],
       kind: "instructions",
     };
@@ -320,10 +403,9 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
   });
 
   it("limits the number of returned suggestions", async () => {
-    const { req, res, authenticator } = await setupTest({ method: "GET" });
-
-    const agent =
-      await AgentConfigurationFactory.createTestAgent(authenticator);
+    const { req, res, authenticator, agent } = await setupTest({
+      method: "GET",
+    });
 
     await AgentSuggestionFactory.createInstructions(authenticator, agent, {
       state: "pending",
@@ -335,7 +417,7 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
       state: "pending",
     });
 
-    req.query = { ...req.query, agentId: agent.sId, limit: "2" };
+    req.query = { ...req.query, limit: "2" };
 
     await handler(req, res);
 
@@ -344,8 +426,7 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
     expect(responseData.suggestions).toHaveLength(2);
   });
 
-  it("returns empty list for non-editor of the agent", async () => {
-    // Create workspace with user1 (who will make the request but is NOT the agent owner)
+  it("returns 403 for non-editor of the agent", async () => {
     const { req, res, workspace } = await setupTest({
       method: "GET",
     });
@@ -359,18 +440,20 @@ describe("GET /api/w/[wId]/assistant/agents/suggestions", () => {
       agentOwner.sId,
       workspace.sId
     );
-    const agent = await AgentConfigurationFactory.createTestAgent(ownerAuth);
+    const otherAgent = await AgentConfigurationFactory.createTestAgent(
+      ownerAuth,
+      { name: "Other Agent" }
+    );
 
     // Create suggestion for the agent (as owner)
-    await AgentSuggestionFactory.createInstructions(ownerAuth, agent, {
+    await AgentSuggestionFactory.createInstructions(ownerAuth, otherAgent, {
       state: "pending",
     });
 
-    // Make API request as not editor of the agent: should not see any result.
-    req.query = { ...req.query, agentId: agent.sId };
+    // Make API request as non-editor of the agent
+    req.query = { ...req.query, aId: otherAgent.sId };
     await handler(req, res);
-    expect(res._getStatusCode()).toBe(200);
-    const responseData = res._getJSONData();
-    expect(responseData.suggestions).toHaveLength(0);
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getJSONData().error.type).toBe("agent_group_permission_error");
   });
 });

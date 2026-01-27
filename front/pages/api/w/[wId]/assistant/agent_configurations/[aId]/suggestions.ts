@@ -3,12 +3,14 @@ import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
+import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 const PatchSuggestionRequestBodySchema = t.type({
@@ -28,28 +30,23 @@ export interface PatchSuggestionResponseBody {
   suggestion: AgentSuggestionType;
 }
 
-const GetSuggestionsQuerySchema = t.intersection([
-  t.type({
-    agentId: t.string,
-  }),
-  t.partial({
-    states: t.array(
-      t.union([
-        t.literal("pending"),
-        t.literal("approved"),
-        t.literal("rejected"),
-        t.literal("outdated"),
-      ])
-    ),
-    kind: t.union([
-      t.literal("instructions"),
-      t.literal("tools"),
-      t.literal("skills"),
-      t.literal("model"),
-    ]),
-    limit: t.string,
-  }),
-]);
+const GetSuggestionsQuerySchema = t.partial({
+  states: t.array(
+    t.union([
+      t.literal("pending"),
+      t.literal("approved"),
+      t.literal("rejected"),
+      t.literal("outdated"),
+    ])
+  ),
+  kind: t.union([
+    t.literal("instructions"),
+    t.literal("tools"),
+    t.literal("skills"),
+    t.literal("model"),
+  ]),
+  limit: t.string,
+});
 
 export type GetSuggestionsQuery = t.TypeOf<typeof GetSuggestionsQuerySchema>;
 
@@ -77,6 +74,41 @@ async function handler(
       },
     });
   }
+  if (!isString(req.query.aId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid agent configuration ID in path.",
+      },
+    });
+  }
+
+  const agentConfigurationId = req.query.aId;
+
+  const agent = await getAgentConfiguration(auth, {
+    agentId: agentConfigurationId,
+    variant: "light",
+  });
+  if (!agent) {
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "agent_configuration_not_found",
+        message: "The agent configuration was not found.",
+      },
+    });
+  }
+  if (!agent.canEdit) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "agent_group_permission_error",
+        message:
+          "Only editors of the agent or workspace admins can view suggestions.",
+      },
+    });
+  }
 
   switch (req.method) {
     case "GET": {
@@ -92,7 +124,7 @@ async function handler(
         });
       }
 
-      const { agentId, states, kind, limit } = queryValidation.right;
+      const { states, kind, limit } = queryValidation.right;
 
       const parsedLimit = limit ? parseInt(limit, 10) : undefined;
       if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -108,7 +140,7 @@ async function handler(
       const suggestions =
         await AgentSuggestionResource.listByAgentConfigurationId(
           auth,
-          agentId,
+          agentConfigurationId,
           {
             states,
             kind,
@@ -149,14 +181,13 @@ async function handler(
           },
         });
       }
-
-      if (!suggestion.canWrite(auth)) {
+      if (suggestion.agentConfigurationId !== agent.id) {
         return apiError(req, res, {
-          status_code: 403,
+          status_code: 400,
           api_error: {
-            type: "agent_group_permission_error",
+            type: "invalid_request_error",
             message:
-              "Only editors of the agent or workspace admins can modify suggestions.",
+              "The agent suggestion does not belong to the specified agent configuration.",
           },
         });
       }
