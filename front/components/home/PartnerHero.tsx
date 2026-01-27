@@ -15,10 +15,7 @@ import { classNames } from "@app/lib/utils";
 
 type ColorVariant = "blue" | "green" | "golden" | "rose";
 
-const BENEFIT_COLORS: Record<
-  ColorVariant,
-  { card: string; icon: string }
-> = {
+const BENEFIT_COLORS: Record<ColorVariant, { card: string; icon: string }> = {
   blue: { card: "bg-blue-50", icon: "text-blue-400" },
   green: { card: "bg-green-50", icon: "text-green-400" },
   golden: { card: "bg-golden-50", icon: "text-golden-400" },
@@ -97,10 +94,7 @@ export function PartnerSocialProof() {
   return (
     <Grid>
       <div
-        className={classNames(
-          COL_CLASSES,
-          "flex flex-col items-center gap-6"
-        )}
+        className={classNames(COL_CLASSES, "flex flex-col items-center gap-6")}
       >
         <P size="md" className="text-center text-muted-foreground">
           Join our growing network of partners helping businesses deploy AI
@@ -221,7 +215,6 @@ export function PartnerHero() {
           </div>
         </div>
       </Grid>
-
     </div>
   );
 }
