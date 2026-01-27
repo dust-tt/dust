@@ -283,7 +283,6 @@ async function executeStepIteration({
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
-    autoRetryCount: 0,
     checkForResume: currentStep === startStep, // Only run resume the first time.
     runAgentArgs: agentLoopArgs,
     runIds,

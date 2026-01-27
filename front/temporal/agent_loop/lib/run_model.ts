@@ -32,11 +32,7 @@ import {
 } from "@app/lib/api/assistant/skill_actions";
 import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
-import type { LLMErrorInfo } from "@app/lib/api/llm/types/errors";
-import {
-  getUserFacingLLMErrorMessage,
-  LLM_ERROR_TYPE_TO_CATEGORY,
-} from "@app/lib/api/llm/types/errors";
+import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
@@ -45,15 +41,12 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
-import { statsDClient } from "@app/logger/statsDClient";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
 import { assertNever, isTextContent, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
-
-const MAX_AUTO_RETRY = 3;
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
@@ -64,13 +57,11 @@ export async function runModelActivity(
     runIds,
     step,
     functionCallStepContentIds,
-    autoRetryCount = 0,
   }: {
     runAgentData: AgentLoopExecutionData;
     runIds: string[];
     step: number;
     functionCallStepContentIds: Record<string, ModelId>;
-    autoRetryCount?: number;
   }
 ): Promise<{
   actions: AgentActionsEvent["actions"];
@@ -414,52 +405,6 @@ export async function runModelActivity(
 
   const metadata = llm.getMetadata();
 
-  // Errors occurring during the multi-actions-agent dust app may be retryable.
-  // Their implicit code should be "multi_actions_error".
-  const handlePossiblyRetryableError = async (
-    errorInfo: LLMErrorInfo,
-    dustRunId?: string
-  ) => {
-    const { isRetryable, message, type } = errorInfo;
-
-    if (!isRetryable || autoRetryCount >= MAX_AUTO_RETRY) {
-      await publishAgentError(
-        {
-          code: "multi_actions_error",
-          message: getUserFacingLLMErrorMessage(type, metadata),
-          metadata: {
-            category: LLM_ERROR_TYPE_TO_CATEGORY[type],
-            retriesAttempted: autoRetryCount,
-            message: errorInfo.message,
-            retryState: isRetryable ? "max_retries_reached" : "not_retryable",
-          },
-        },
-        dustRunId
-      );
-
-      return null;
-    }
-
-    // Should retry
-    localLogger.warn(
-      {
-        error: message,
-        retryCount: autoRetryCount + 1,
-        maxRetries: MAX_AUTO_RETRY,
-      },
-      "Auto-retrying multi-actions agent due to retryable model error."
-    );
-
-    // Recursively retry with incremented count
-    return runModelActivity(auth, {
-      runAgentData,
-      runIds,
-      step,
-      functionCallStepContentIds,
-      autoRetryCount: autoRetryCount + 1,
-    });
-  };
-
   const modelInteractionStartDate = performance.now();
 
   // Heartbeat before starting the LLM stream to ensure the activity is still
@@ -501,10 +446,13 @@ export async function runModelActivity(
     const error = getOutputFromActionResponse.error;
 
     switch (error.type) {
-      case "shouldRetryMessage":
-        // Get the dustRunId from the llm object (if available)
-        const errorDustRunId = llm?.getTraceId();
-        return handlePossiblyRetryableError(error.content, errorDustRunId);
+      case "shouldRetryMessage": {
+        const { type } = error.content;
+        // Throw to let Temporal handle the retry via its retry policy.
+        throw new Error(
+          `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`
+        );
+      }
       case "shouldReturnNull":
         return null;
       default:
@@ -548,13 +496,6 @@ export async function runModelActivity(
     if (content.type === "function_call") {
       updatedFunctionCallStepContentIds[content.value.id] = stepContent.id;
     }
-  }
-
-  // Track retries that lead to completing successfully (with either function calls or generation).
-  if (autoRetryCount > 0) {
-    statsDClient.increment("successful_auto_retry.count", 1, [
-      `retryCount:${autoRetryCount}`,
-    ]);
   }
 
   // Store the contents for returning to the caller
