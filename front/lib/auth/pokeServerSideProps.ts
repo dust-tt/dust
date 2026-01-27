@@ -19,7 +19,14 @@ export type PageWithLayoutNoWorkspace<P = object> = React.FC<P> & {
 
 export const pokeGetServerSideProps =
   withSuperUserAuthRequirements<AuthContextValue>(async (_context, auth) => {
-    const workspace = auth.getNonNullableWorkspace();
+    const workspace = auth.workspace();
+
+    if (!workspace) {
+      return {
+        notFound: true,
+      };
+    }
+
     const subscription = auth.getNonNullableSubscription();
 
     return {
