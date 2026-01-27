@@ -39,12 +39,12 @@ export const HUBSPOT_OBJECT_TYPE_TO_ID: Record<string, string> = {
 
 export const HUBSPOT_ID_TO_OBJECT_TYPE = Object.entries(
   HUBSPOT_OBJECT_TYPE_TO_ID
-).reduce(
+).reduce<Record<string, string>>(
   (acc, [objectType, id]) => ({
     ...acc,
     [id]: objectType,
   }),
-  {} as Record<string, string>
+  {}
 );
 
 export const getObjectTypeId = (objectType: string): string | null => {
