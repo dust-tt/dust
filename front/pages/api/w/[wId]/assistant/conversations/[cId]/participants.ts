@@ -96,9 +96,9 @@ async function handler(
 
       await ConversationResource.upsertParticipation(auth, {
         conversation: conversationWithoutContent,
-        action: "subscribed",
         user,
-        unread: false,
+        action: "subscribed",
+        lastReadAt: new Date(),
       });
 
       res.status(201).end();

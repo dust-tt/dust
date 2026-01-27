@@ -141,7 +141,7 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
-  declare unread: boolean;
+  declare unread?: boolean;
   declare actionRequired: boolean;
   declare lastReadAt: Date | null;
 

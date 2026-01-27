@@ -1,6 +1,5 @@
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSkillModel } from "@app/lib/models/agent/agent_skill";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -20,11 +19,6 @@ export async function getSkillManagementServer(
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const owner = auth.getNonNullableWorkspace();
-  const featureFlags = await getFeatureFlags(owner);
-
-  if (!featureFlags.includes("skills")) {
-    return null;
-  }
 
   // Check if agent has any skills configured.
   const skillCount = await AgentSkillModel.count({

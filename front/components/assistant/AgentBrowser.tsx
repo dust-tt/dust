@@ -234,8 +234,6 @@ export function AgentBrowser({
     featureFlags.includes("disallow_agent_creation_to_users") &&
     !isBuilder(owner);
 
-  const hasSkills = featureFlags.includes("skills");
-
   const sortAgents = useCallback(
     (a: LightAgentConfigurationType, b: LightAgentConfigurationType) => {
       if (sortType === "popularity") {
@@ -476,7 +474,7 @@ export function AgentBrowser({
               </div>
             )}
 
-            {hasSkills && isBuilder(owner) ? (
+            {isBuilder(owner) ? (
               <ManageDropdownMenu owner={owner} />
             ) : (
               <Button

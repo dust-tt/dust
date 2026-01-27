@@ -9,7 +9,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
@@ -156,19 +155,14 @@ function ExportContentDropdown({
         <Button
           icon={ArrowDownOnSquareIcon}
           isSelect
-          label={isExportingPdf ? "Exporting..." : "Download"}
+          label={isExportingPdf ? "Exporting..." : "Export"}
           variant="ghost"
           disabled={isExportingPdf}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={exportAsPng}>
-          Download as PNG
-        </DropdownMenuItem>
         <DropdownMenuSub>
-          <DropdownMenuSubTrigger disabled={isExportingPdf}>
-            Download as PDF
-          </DropdownMenuSubTrigger>
+          <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
           <DropdownMenuSubContent>
             <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
               Portrait
@@ -178,10 +172,8 @@ function ExportContentDropdown({
             </DropdownMenuItem>
           </DropdownMenuSubContent>
         </DropdownMenuSub>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={downloadAsCode}>
-          Download as template
-        </DropdownMenuItem>
+        <DropdownMenuItem onClick={exportAsPng}>PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadAsCode}>Template</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
