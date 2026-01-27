@@ -13,6 +13,7 @@ import { useRouter as useNextRouter } from "next/router";
 import NextScript from "next/script";
 import React from "react";
 
+import { NextLinkWrapper } from "./NextLinkWrapper";
 import type {
   AppRouter,
   HeadProps,
@@ -36,6 +37,8 @@ export function useAppRouter(): AppRouter {
     beforePopState: router.beforePopState,
   };
 }
+
+export const LinkWrapper = NextLinkWrapper;
 
 export function Head({ children }: HeadProps) {
   return <NextHead>{children}</NextHead>;

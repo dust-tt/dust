@@ -13,6 +13,7 @@ export {
   Head,
   Image,
   Link,
+  LinkWrapper,
   Script,
   useAppRouter,
   usePathParams,

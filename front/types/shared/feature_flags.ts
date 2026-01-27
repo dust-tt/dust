@@ -212,11 +212,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  skills: {
-    description:
-      "Access to Skills, which are packaged sets of instructions and tools",
-    stage: "dust_only",
-  },
   skills_similar_display: {
     description:
       "Display similar skills when creating a new skill to avoid duplicates",
