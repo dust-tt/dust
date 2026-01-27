@@ -23,6 +23,7 @@ import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/m
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
@@ -466,38 +467,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("google_sheets_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_spreadsheets: "never_ask",
-      get_spreadsheet: "never_ask",
-      get_worksheet: "never_ask",
-      update_cells: "low",
-      append_data: "low",
-      clear_range: "low",
-      create_spreadsheet: "low",
-      add_worksheet: "low",
-      delete_worksheet: "low",
-      format_cells: "low",
-      copy_sheet: "low",
-      rename_worksheet: "low",
-      move_worksheet: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_sheets",
-      version: "1.0.0",
-      description: "Work with spreadsheet data and tables.",
-      authorization: {
-        provider: "gmail",
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
-      },
-      icon: "GoogleSpreadsheetLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-      instructions: null,
-    },
+    metadata: GOOGLE_SHEETS_SERVER,
   },
   monday: {
     id: 20,
