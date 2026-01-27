@@ -91,14 +91,7 @@ export interface ImageProps {
   height: number;
   src: string;
   alt: string;
+  className?: string;
   priority?: boolean | undefined;
-}
-
-export interface LinkProps extends Omit<
-  React.AnchorHTMLAttributes<HTMLAnchorElement>,
-  "href"
-> {
-  href: string | UrlObject;
-  prefetch?: boolean | null;
-  shallow?: boolean;
+  sizes?: string;
 }
