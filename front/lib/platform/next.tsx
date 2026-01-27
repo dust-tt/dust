@@ -10,7 +10,6 @@ import {
 } from "next/navigation";
 import { useRouter as useNextRouter } from "next/router";
 import NextScript from "next/script";
-import React from "react";
 
 import { NextLinkWrapper } from "./NextLinkWrapper";
 import type { AppRouter, HeadProps, ImageProps, ScriptProps } from "./types";
