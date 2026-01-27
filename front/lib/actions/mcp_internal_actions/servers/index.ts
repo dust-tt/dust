@@ -10,7 +10,6 @@ import { default as agentMemoryServer } from "@app/lib/actions/mcp_internal_acti
 import { default as ashbyServer } from "@app/lib/actions/mcp_internal_actions/servers/ashby";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
-import { default as conversationFilesServer } from "@app/lib/actions/mcp_internal_actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/actions/mcp_internal_actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
@@ -19,9 +18,7 @@ import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_act
 import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as gmailServer } from "@app/lib/actions/mcp_internal_actions/servers/gmail";
 import { default as driveServer } from "@app/lib/actions/mcp_internal_actions/servers/google_drive";
-import { default as sheetsServer } from "@app/lib/actions/mcp_internal_actions/servers/google_sheets";
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
-import { default as hubspotServer } from "@app/lib/actions/mcp_internal_actions/servers/hubspot";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
@@ -38,7 +35,6 @@ import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actio
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/actions/mcp_internal_actions/servers/search";
-import { default as skillManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/skill_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
@@ -55,10 +51,13 @@ import {
 import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
+import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
+import { default as sheetsServer } from "@app/lib/api/actions/servers/google_sheets";
+import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
@@ -66,6 +65,7 @@ import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
+import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
@@ -116,7 +116,7 @@ export async function getInternalMCPServer(
     case "ashby":
       return ashbyServer(auth, agentLoopContext);
     case "hubspot":
-      return hubspotServer();
+      return hubspotServer(auth, agentLoopContext);
     case "image_generation":
       return imageGenerationServer(auth, agentLoopContext);
     case "speech_generator":

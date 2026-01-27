@@ -13,6 +13,9 @@ import {
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
+// Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
+const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
+
 // Suggestion tool schemas
 
 const InstructionsSuggestionSchema = z.object({
@@ -65,6 +68,27 @@ const ModelSuggestionSchema = z.object({
 });
 
 export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
+  get_available_knowledge: {
+    description:
+      "Get the list of available knowledge sources that can be added to an agent. " +
+      "Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. " +
+      "Only includes sources accessible to the current user.",
+    schema: {
+      spaceId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional space ID to filter results to a specific space. If not provided, returns knowledge from all accessible spaces."
+        ),
+      category: z
+        .enum(KNOWLEDGE_CATEGORIES)
+        .optional()
+        .describe(
+          "Optional category to filter results. Options: 'managed' (connected data sources like Notion, Slack), 'folder' (custom folders), 'website' (crawled websites). If not provided, returns all categories."
+        ),
+    },
+    stake: "never_ask",
+  },
   get_available_models: {
     description:
       "Get the list of available models. Can optionally filter by provider.",
@@ -202,6 +226,27 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
         ),
+    },
+    stake: "never_ask",
+  },
+  update_suggestions_state: {
+    description:
+      "Update the state of one or more suggestions. Use this to reject or mark suggestions as outdated.",
+    schema: {
+      suggestions: z
+        .array(
+          z.object({
+            suggestionId: z
+              .string()
+              .describe("The sId of the suggestion to update"),
+            state: z
+              .enum(["rejected", "outdated"])
+              .describe(
+                "The new state for the suggestion: 'rejected' or 'outdated'."
+              ),
+          })
+        )
+        .describe("Array of suggestions to update with their new states"),
     },
     stake: "never_ask",
   },
