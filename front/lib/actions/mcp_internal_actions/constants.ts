@@ -1921,7 +1921,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   sandbox: {
     id: 1024,
-    availability: "manual",
+    availability: "auto",
     allowMultipleInstances: false,
     isPreview: true,
     isRestricted: ({ featureFlags }) => {
