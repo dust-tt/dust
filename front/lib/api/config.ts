@@ -379,6 +379,13 @@ const config = {
       "TEMPORAL_CONNECTORS_NAMESPACE"
     );
   },
+  // Northflank sandbox.
+  getNorthflankApiToken: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");
+  },
+  getNorthflankProjectId: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
+  },
 };
 
 export default config;
