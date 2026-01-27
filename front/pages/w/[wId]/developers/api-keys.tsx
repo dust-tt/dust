@@ -15,6 +15,7 @@ import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayo
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
+import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
@@ -33,6 +34,7 @@ export const getServerSideProps = appGetServerSidePropsForAdmin;
 export function APIKeys({ owner }: { owner: WorkspaceType }) {
   const { mutate } = useSWRConfig();
   const [isNewApiKeyCreatedOpen, setIsNewApiKeyCreatedOpen] = useState(false);
+  const [editCapKey, setEditCapKey] = useState<KeyType | null>(null);
 
   const { isValidating, keys } = useKeys(owner);
   const { groups, isGroupsLoading } = useGroups({ owner });
@@ -48,7 +50,15 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
 
   const { submit: handleGenerate, isSubmitting: isGenerating } =
     useSubmitFunction(
-      async ({ name, group }: { name: string; group: GroupType | null }) => {
+      async ({
+        name,
+        group,
+        monthlyCapMicroUsd,
+      }: {
+        name: string;
+        group: GroupType | null;
+        monthlyCapMicroUsd: number | null;
+      }) => {
         const globalGroup = groups.find((g) => g.kind === "global");
         const response = await clientFetch(`/api/w/${owner.sId}/keys`, {
           method: "POST",
@@ -59,6 +69,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
             name,
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             group_id: group?.sId ? group.sId : globalGroup?.sId,
+            monthly_cap_micro_usd: monthlyCapMicroUsd,
           }),
         });
         await mutate(`/api/w/${owner.sId}/keys`);
@@ -92,6 +103,37 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
       await mutate(`/api/w/${owner.sId}/keys`);
     }
   );
+
+  const { submit: handleUpdateCap, isSubmitting: isUpdatingCap } =
+    useSubmitFunction(async (monthlyCapMicroUsd: number | null) => {
+      if (!editCapKey) {
+        return;
+      }
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/keys/${editCapKey.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ monthlyCapMicroUsd }),
+        }
+      );
+      await mutate(`/api/w/${owner.sId}/keys`);
+      if (response.ok) {
+        sendNotification({
+          title: "Monthly cap updated",
+          type: "success",
+        });
+      } else {
+        const errorResponse = await response.json();
+        sendNotification({
+          title: "Error updating monthly cap",
+          description: _.get(errorResponse, "error.message", "Unknown error"),
+          type: "error",
+        });
+      }
+    });
 
   // Show a loading spinner while API keys or groups are being fetched.
   if (isValidating || isGroupsLoading) {
@@ -134,7 +176,17 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
         isRevoking={isRevoking}
         isGenerating={isGenerating}
         onRevoke={handleRevoke}
+        onEditCap={setEditCapKey}
       />
+      {editCapKey && (
+        <EditKeyCapDialog
+          keyData={editCapKey}
+          isOpen={!!editCapKey}
+          onClose={() => setEditCapKey(null)}
+          onSave={handleUpdateCap}
+          isSaving={isUpdatingCap}
+        />
+      )}
     </>
   );
 }

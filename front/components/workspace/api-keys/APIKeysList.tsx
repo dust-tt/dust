@@ -14,6 +14,7 @@ type APIKeysListProps = {
   isRevoking: boolean;
   isGenerating: boolean;
   onRevoke: (key: KeyType) => Promise<void>;
+  onEditCap: (key: KeyType) => void;
 };
 
 const getKeySpaces = (
@@ -39,6 +40,7 @@ export const APIKeysList = ({
   isRevoking,
   isGenerating,
   onRevoke,
+  onEditCap,
 }: APIKeysListProps) => {
   return (
     <div className="space-y-4 divide-y divide-gray-200 dark:divide-gray-200-night">
@@ -92,6 +94,19 @@ export const APIKeysList = ({
                           {getKeySpaces(key, groupsById).join(", ")}
                         </strong>
                       </p>
+                      <p
+                        className={classNames(
+                          "truncate font-mono text-sm",
+                          "text-muted-foreground dark:text-muted-foreground-night"
+                        )}
+                      >
+                        Monthly cap:{" "}
+                        <strong>
+                          {key.monthlyCapMicroUsd !== null
+                            ? `$${(key.monthlyCapMicroUsd / 1_000_000).toFixed(2)}`
+                            : "Unlimited"}
+                        </strong>
+                      </p>
                       <pre className="text-sm">{key.secret}</pre>
                       <p
                         className={classNames(
@@ -128,12 +143,16 @@ export const APIKeysList = ({
                 </div>
               </div>
               {key.status === "active" ? (
-                <div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    disabled={isRevoking || isGenerating}
+                    onClick={() => onEditCap(key)}
+                    label="Edit cap"
+                  />
                   <Button
                     variant="warning"
-                    disabled={
-                      key.status != "active" || isRevoking || isGenerating
-                    }
+                    disabled={isRevoking || isGenerating}
                     onClick={async () => {
                       await onRevoke(key);
                     }}
