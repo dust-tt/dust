@@ -1,7 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
-import type { Change } from "diff";
 import { diffWords } from "diff";
 
 // Mark for additions (blue background).
@@ -155,49 +154,68 @@ export const InstructionSuggestionExtension = Extension.create({
     return {
       applySuggestion:
         (options: ApplySuggestionOptions) =>
-        ({ editor }) => {
+        ({ tr, state, dispatch }) => {
           const { id, find, replacement } = options;
-          const markdown = editor.getMarkdown();
+          const { doc, schema } = state;
 
-          // Find all occurrences of the find text.
-          const matches: SuggestionMatch[] = [];
-          let searchStart = 0;
-          let index = markdown.indexOf(find, searchStart);
+          // Find the text position in the actual document.
+          let from = -1;
+          let to = -1;
 
-          while (index !== -1) {
-            matches.push({
-              start: index,
-              end: index + find.length,
-            });
-            searchStart = index + 1;
-            index = markdown.indexOf(find, searchStart);
-          }
+          doc.descendants((node, pos) => {
+            if (from !== -1) {
+              return false; // Stop searching once found.
+            }
 
-          if (matches.length === 0) {
+            if (node.isText && node.text) {
+              const index = node.text.indexOf(find);
+              if (index !== -1) {
+                from = pos + index;
+                to = pos + index + find.length;
+                return false;
+              }
+            }
+            return true;
+          });
+
+          if (from === -1) {
             return false;
           }
 
-          // Build new content with diff marks.
+          // Build diff parts.
           const diffParts = diffWords(find, replacement);
-          const diffContent = buildSuggestionDiffContent(diffParts, id);
 
-          // For now, we'll apply to the first match only.
-          // In a more complex implementation, we'd handle multiple matches.
-          const match = matches[0];
+          // Create content nodes with marks for the diff.
+          const nodes: ReturnType<typeof schema.text>[] = [];
+          for (const part of diffParts) {
+            if (part.added) {
+              const mark = schema.marks.suggestionAddition.create({
+                suggestionId: id,
+              });
+              nodes.push(schema.text(part.value, [mark]));
+            } else if (part.removed) {
+              const mark = schema.marks.suggestionDeletion.create({
+                suggestionId: id,
+              });
+              nodes.push(schema.text(part.value, [mark]));
+            } else {
+              nodes.push(schema.text(part.value));
+            }
+          }
 
-          // Get the text before and after the match.
-          const beforeText = markdown.substring(0, match.start);
-          const afterText = markdown.substring(match.end);
+          // Apply the transaction: delete old text and insert new nodes.
+          if (dispatch) {
+            tr.delete(from, to);
 
-          // Build the complete new content.
-          const newContent = buildNewContent(
-            beforeText,
-            afterText,
-            diffContent
-          );
+            // Insert nodes at the deletion position.
+            let insertPos = from;
+            for (const node of nodes) {
+              tr.insert(insertPos, node);
+              insertPos += node.nodeSize;
+            }
 
-          // Set the new content.
-          editor.commands.setContent(newContent);
+            dispatch(tr);
+          }
 
           // Track this suggestion.
           this.storage.activeSuggestionIds.push(id);
@@ -334,58 +352,3 @@ function processSuggestionMarks(
   return true;
 }
 
-// Builds diff content with suggestion marks.
-function buildSuggestionDiffContent(
-  diffParts: Change[],
-  suggestionId: string
-): JSONContent[] {
-  return diffParts.map((part) => {
-    const node: JSONContent = {
-      type: "text",
-      text: part.value,
-    };
-
-    if (part.added) {
-      node.marks = [{ type: "suggestionAddition", attrs: { suggestionId } }];
-    } else if (part.removed) {
-      node.marks = [{ type: "suggestionDeletion", attrs: { suggestionId } }];
-    }
-
-    return node;
-  });
-}
-
-// Builds new content with suggestion marks.
-function buildNewContent(
-  beforeText: string,
-  afterText: string,
-  diffContent: JSONContent[]
-): JSONContent {
-  const content: JSONContent[] = [];
-
-  if (beforeText) {
-    content.push({
-      type: "text",
-      text: beforeText,
-    });
-  }
-
-  content.push(...diffContent);
-
-  if (afterText) {
-    content.push({
-      type: "text",
-      text: afterText,
-    });
-  }
-
-  return {
-    type: "doc",
-    content: [
-      {
-        type: "paragraph",
-        content,
-      },
-    ],
-  };
-}

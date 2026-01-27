@@ -4,12 +4,15 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
 
 export type CopilotSuggestionType = "instructions"; // Future: | "tool" | "skill".
 
@@ -60,6 +63,7 @@ export const useCopilotSuggestions = () => {
 
 interface CopilotSuggestionsProviderProps {
   children: ReactNode;
+  agentConfigurationId: string | null;
 }
 
 let suggestionIdCounter = 0;
@@ -72,13 +76,80 @@ function generateSuggestionId(): string {
 
 export const CopilotSuggestionsProvider = ({
   children,
+  agentConfigurationId,
 }: CopilotSuggestionsProviderProps) => {
+  const { owner } = useAgentBuilderContext();
   const [suggestions, setSuggestions] = useState<CopilotSuggestion[]>([]);
+  const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
+  const appliedSuggestionsRef = useRef<Set<string>>(new Set());
+
+  // Fetch pending suggestions from the backend.
+  const { suggestions: backendSuggestions, isSuggestionsLoading } =
+    useAgentSuggestions({
+      workspaceId: owner.sId,
+      agentConfigurationId,
+    });
 
   const registerEditor = useCallback((editor: Editor) => {
     editorRef.current = editor;
+
+    // Wait for the editor content to be set (happens in a RAF in the editor component).
+    // Use a small delay to ensure content is fully loaded.
+    const checkEditorReady = () => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (editor && !editor.isDestroyed) {
+            setIsEditorReady(true);
+          }
+        });
+      });
+    };
+
+    checkEditorReady();
   }, []);
+
+  // Apply backend suggestions when editor is ready and suggestions are loaded.
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor || editor.isDestroyed || !isEditorReady || isSuggestionsLoading) {
+      return;
+    }
+
+    for (const backendSuggestion of backendSuggestions) {
+      if (backendSuggestion.kind !== "instructions") {
+        continue;
+      }
+      if (backendSuggestion.state !== "pending") {
+        continue;
+      }
+      if (appliedSuggestionsRef.current.has(backendSuggestion.sId)) {
+        continue;
+      }
+
+      const { oldString, newString } = backendSuggestion.suggestion;
+
+      const applied = editor.commands.applySuggestion({
+        id: backendSuggestion.sId,
+        find: oldString,
+        replacement: newString,
+      });
+
+      if (applied) {
+        appliedSuggestionsRef.current.add(backendSuggestion.sId);
+        setSuggestions((prev) => [
+          ...prev,
+          {
+            id: backendSuggestion.sId,
+            type: "instructions",
+            find: oldString,
+            replacement: newString,
+            matchPositions: [],
+          },
+        ]);
+      }
+    }
+  }, [backendSuggestions, isSuggestionsLoading, isEditorReady]);
 
   const addSuggestion = useCallback(
     (
