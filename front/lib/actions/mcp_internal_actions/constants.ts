@@ -682,7 +682,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   interactive_content: {
     id: 23,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
@@ -889,7 +889,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   deep_dive: {
     id: 29,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
     allowMultipleInstances: false,
     isPreview: false,
@@ -1720,9 +1720,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("skills");
-    },
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
