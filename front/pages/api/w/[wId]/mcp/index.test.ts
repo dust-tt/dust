@@ -206,7 +206,7 @@ describe("POST /api/w/[wId]/mcp/", () => {
     });
   });
 
-  it("should  create an internal MCP server if it already exists but multiple instances are allowed", async () => {
+  it("should create an internal MCP server if it already exists but multiple instances are allowed", async () => {
     const { req, res, authenticator } = await setupTest("admin", "POST");
 
     const originalConfig = INTERNAL_MCP_SERVERS["agent_memory"];
@@ -220,48 +220,50 @@ describe("POST /api/w/[wId]/mcp/", () => {
       configurable: true,
     });
 
-    // Make sure we can only create one instance of this internal MCP server.
-    expect(
-      allowsMultipleInstancesOfInternalMCPServerByName("agent_memory")
-    ).toBe(true);
+    try {
+      // Make sure we can only create one instance of this internal MCP server.
+      expect(
+        allowsMultipleInstancesOfInternalMCPServerByName("agent_memory")
+      ).toBe(true);
 
-    // Create the first instance.
-    const internalServer = await InternalMCPServerInMemoryResource.makeNew(
-      authenticator,
-      {
-        name: "agent_memory",
-        useCase: null,
-      }
-    );
+      // Create the first instance.
+      const internalServer = await InternalMCPServerInMemoryResource.makeNew(
+        authenticator,
+        {
+          name: "agent_memory",
+          useCase: null,
+        }
+      );
 
-    expect(internalServer).toBeDefined();
+      expect(internalServer).toBeDefined();
 
-    expect(
-      await MCPServerViewResource.listForSystemSpace(authenticator)
-    ).toHaveLength(1);
+      expect(
+        await MCPServerViewResource.listForSystemSpace(authenticator)
+      ).toHaveLength(1);
 
-    req.body = {
-      name: "agent_memory" as InternalMCPServerNameType,
-      serverType: "internal",
-      includeGlobal: true,
-    };
+      req.body = {
+        name: "agent_memory" as InternalMCPServerNameType,
+        serverType: "internal",
+        includeGlobal: true,
+      };
 
-    await handler(req, res);
+      await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(201);
-    expect(res._getJSONData()).toEqual({
-      success: true,
-      server: expect.objectContaining({
-        name: "agent_memory",
-      }),
-    });
-    expect(res._getJSONData().server.id).not.toBe(internalServer.id);
-
-    Object.defineProperty(INTERNAL_MCP_SERVERS, "agent_memory", {
-      value: originalConfig,
-      writable: true,
-      configurable: true,
-    });
+      expect(res._getStatusCode()).toBe(201);
+      expect(res._getJSONData()).toEqual({
+        success: true,
+        server: expect.objectContaining({
+          name: "agent_memory",
+        }),
+      });
+      expect(res._getJSONData().server.id).not.toBe(internalServer.id);
+    } finally {
+      Object.defineProperty(INTERNAL_MCP_SERVERS, "agent_memory", {
+        value: originalConfig,
+        writable: true,
+        configurable: true,
+      });
+    }
   });
 
   it("should create an internal MCP server with bearer token credentials", async () => {

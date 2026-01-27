@@ -1652,7 +1652,7 @@ type InternalMCPServerEntryWithoutMetadata<
   tools_stakes: Record<string, MCPToolStakeLevelType> | undefined;
 };
 
-type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
+export type InternalMCPServerEntryBase<K extends InternalMCPServerNameType> =
   | InternalMCPServerEntryWithMetadata<K>
   | InternalMCPServerEntryWithoutMetadata<K>;
 

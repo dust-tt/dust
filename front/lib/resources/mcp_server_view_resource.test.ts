@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type { InternalMCPServerEntryBase } from "@app/lib/actions/mcp_internal_actions/constants";
 import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
 import { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
@@ -16,6 +17,23 @@ import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { PlanType, WhitelistableFeature, WorkspaceType } from "@app/types";
 
 describe("MCPServerViewResource", () => {
+  // Store original config to restore after tests that modify it
+  let originalPrimitiveTypesDebuggerConfig: InternalMCPServerEntryBase<"primitive_types_debugger">;
+
+  beforeEach(() => {
+    originalPrimitiveTypesDebuggerConfig =
+      INTERNAL_MCP_SERVERS["primitive_types_debugger"];
+  });
+
+  afterEach(() => {
+    // Restore the original config after each test to prevent state leakage
+    Object.defineProperty(INTERNAL_MCP_SERVERS, "primitive_types_debugger", {
+      value: originalPrimitiveTypesDebuggerConfig,
+      writable: true,
+      configurable: true,
+    });
+  });
+
   describe("listByWorkspace", () => {
     it("should only return views for the current workspace", async () => {
       // Create two workspaces
