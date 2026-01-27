@@ -30,11 +30,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
-  agent_tool_outputs_analytics: {
-    description:
-      "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
-    stage: "dust_only",
-  },
   agent_builder_copilot: {
     description: "Enable Copilot in Agent Builder",
     stage: "dust_only",
