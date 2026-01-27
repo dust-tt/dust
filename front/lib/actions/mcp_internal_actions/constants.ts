@@ -37,6 +37,7 @@ import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadat
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
@@ -1466,19 +1467,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "toolsets",
-      version: "1.0.0",
-      description: "Browse available toolsets and functions.",
-      authorization: null,
-      icon: "ActionLightbulbIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: TOOLSETS_SERVER,
   },
   val_town: {
     id: 1014,
