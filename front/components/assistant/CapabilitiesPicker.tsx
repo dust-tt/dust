@@ -227,8 +227,9 @@ export function CapabilitiesPicker({
     disabled: !shouldFetchToolsData,
   });
 
-  const isDataReady =
-    !isServerViewsLoading && !isAvailableMCPServersLoading && !isSkillsLoading;
+  const isSkillsDataReady = !isSkillsLoading;
+  const isToolsDataReady =
+    !isServerViewsLoading && !isAvailableMCPServersLoading;
 
   const filteredSkillsUnselected = useMemo(() => {
     const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
@@ -252,7 +253,7 @@ export function CapabilitiesPicker({
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
   // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
   const filteredUninstalledServers = useMemo(() => {
-    if (!isAdmin || !isDataReady || !shouldFetchToolsData) {
+    if (!isAdmin || !isToolsDataReady || !shouldFetchToolsData) {
       return [];
     }
 
@@ -278,7 +279,7 @@ export function CapabilitiesPicker({
       .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
   }, [
     isAdmin,
-    isDataReady,
+    isToolsDataReady,
     shouldFetchToolsData,
     serverViews,
     availableMCPServers,
@@ -298,7 +299,11 @@ export function CapabilitiesPicker({
     showToolsSection &&
     (filteredServerViewsUnselected.length > 0 ||
       filteredUninstalledServers.length > 0);
-  const hasNoVisibleItems = !hasVisibleSkills && !hasVisibleTools;
+  const hasNoVisibleItems =
+    isSkillsDataReady &&
+    isToolsDataReady &&
+    !hasVisibleSkills &&
+    !hasVisibleTools;
 
   return (
     <>
@@ -381,9 +386,11 @@ export function CapabilitiesPicker({
             </>
           }
         >
-          {!isDataReady && <CapabilitiesPickerLoading />}
+          {!isSkillsDataReady && !isToolsDataReady && (
+            <CapabilitiesPickerLoading />
+          )}
 
-          {isDataReady && hasVisibleSkills && (
+          {isSkillsDataReady && hasVisibleSkills && (
             <>
               <div className="text-element-700 px-4 py-2 text-xs font-semibold">
                 Skills
@@ -414,7 +421,7 @@ export function CapabilitiesPicker({
             </>
           )}
 
-          {isDataReady &&
+          {isToolsDataReady &&
             showToolsSection &&
             filteredServerViewsUnselected.length > 0 && (
               <>
@@ -447,7 +454,7 @@ export function CapabilitiesPicker({
               </>
             )}
 
-          {isDataReady &&
+          {isToolsDataReady &&
             showToolsSection &&
             filteredUninstalledServers.length > 0 &&
             filteredUninstalledServers.map((server) => (
@@ -482,7 +489,7 @@ export function CapabilitiesPicker({
               />
             ))}
 
-          {isDataReady && hasNoVisibleItems && (
+          {hasNoVisibleItems && (
             <CapabilityItem
               id="no-selected"
               icon={() => <Icon visual={BoltIcon} size="xs" />}
