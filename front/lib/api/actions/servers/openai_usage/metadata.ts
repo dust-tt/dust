@@ -52,7 +52,9 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
           "If true, return batch jobs only. If false, return non-batch jobs only. By default, return both."
         ),
       group_by: z
-        .array(z.enum(["model", "api_key_id", "project_id", "user_id", "batch"]))
+        .array(
+          z.enum(["model", "api_key_id", "project_id", "user_id", "batch"])
+        )
         .optional()
         .describe(
           "Group the usage data by the specified fields. Support fields include project_id, user_id, api_key_id, model, batch or any combination of them."
