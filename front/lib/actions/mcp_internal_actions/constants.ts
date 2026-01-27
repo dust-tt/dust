@@ -22,6 +22,7 @@ import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversa
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
+import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
@@ -365,32 +366,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_drafts: "never_ask",
-      create_draft: "medium",
-      get_messages: "never_ask",
-      create_reply_draft: "medium",
-      get_attachment: "never_ask",
-    },
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "gmail",
-      version: "1.0.0",
-      description: "Access messages and email drafts.",
-      authorization: {
-        provider: "google_drive" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
-      },
-      icon: "GmailLogo",
-      documentationUrl: "https://docs.dust.tt/docs/gmail",
-      instructions: null,
-    },
+    metadata: GMAIL_SERVER,
   },
   google_calendar: {
     id: 16,
