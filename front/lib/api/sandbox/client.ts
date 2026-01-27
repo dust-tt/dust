@@ -84,29 +84,182 @@ export class SandboxReadyTimeoutError extends Error {
 
 export type SandboxError = ServiceAlreadyExistsError | SandboxReadyTimeoutError;
 
+/**
+ * Attached sandbox instance with all operations.
+ */
+export class Sandbox {
+  readonly info: SandboxInfo;
+  private readonly api: ApiClient;
+  private readonly config: SandboxConfig;
+
+  constructor(api: ApiClient, config: SandboxConfig, info: SandboxInfo) {
+    this.api = api;
+    this.config = config;
+    this.info = info;
+  }
+
+  async pause(): Promise<void> {
+    logger.info({ serviceId: this.info.serviceId }, "[sandbox] Pausing");
+
+    const response = await this.api.pause.service({
+      parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+    });
+
+    if (response.error) {
+      throw new Error(
+        `Failed to pause sandbox: ${response.error.message ?? "Unknown error"}`
+      );
+    }
+
+    logger.info({ serviceId: this.info.serviceId }, "[sandbox] Paused");
+  }
+
+  /**
+   * Resume a paused sandbox.
+   *
+   * Returns Err for readiness timeout. Throws for infrastructure failures.
+   */
+  async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
+    logger.info({ serviceId: this.info.serviceId }, "[sandbox] Resuming");
+
+    const response = await this.api.resume.service({
+      parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      data: { instances: 1 },
+    });
+
+    if (response.error) {
+      throw new Error(
+        `Failed to resume sandbox: ${response.error.message ?? "Unknown error"}`
+      );
+    }
+
+    return this.waitForReady();
+  }
+
+  async exec(command: string): Promise<CommandResult> {
+    logger.info({ serviceId: this.info.serviceId, command }, "[sandbox] Executing command");
+
+    const result = await this.api.exec.execServiceCommand(
+      { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      { command: ["bash", "-c", command], shell: "none" }
+    );
+
+    return {
+      exitCode: result.commandResult.exitCode,
+      stdout: result.stdOut,
+      stderr: result.stdErr,
+    };
+  }
+
+  async writeFile(remotePath: string, content: string | Buffer): Promise<void> {
+    logger.info({ serviceId: this.info.serviceId, remotePath }, "[sandbox] Writing file");
+
+    const buffer = typeof content === "string" ? Buffer.from(content) : content;
+
+    const dir = path.posix.dirname(remotePath);
+    if (dir && dir !== "." && dir !== "/") {
+      await this.exec(`mkdir -p "${dir}"`);
+    }
+
+    await this.api.fileCopy.uploadServiceFileStream(
+      { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      { source: buffer, remotePath }
+    );
+  }
+
+  async readFile(remotePath: string): Promise<Buffer> {
+    logger.info({ serviceId: this.info.serviceId, remotePath }, "[sandbox] Reading file");
+
+    const { fileStream } = await this.api.fileCopy.downloadServiceFileStream(
+      { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      { remotePath }
+    );
+
+    const result = await streamToBuffer(fileStream);
+    if (result.isErr()) {
+      throw new Error(result.error);
+    }
+    return result.value;
+  }
+
+  async destroy(): Promise<void> {
+    const { serviceId, volumeId } = this.info;
+
+    logger.info({ serviceId, volumeId }, "[sandbox] Destroying");
+
+    const serviceResponse = await this.api.delete.service({
+      parameters: { projectId: this.config.projectId, serviceId },
+    });
+
+    if (serviceResponse.error) {
+      throw new Error(
+        `Failed to delete service: ${serviceResponse.error.message ?? "Unknown error"}`
+      );
+    }
+
+    const volumeResponse = await this.api.delete.volume({
+      parameters: { projectId: this.config.projectId, volumeId },
+    });
+
+    if (volumeResponse.error) {
+      throw new Error(
+        `Failed to delete volume: ${volumeResponse.error.message ?? "Unknown error"}`
+      );
+    }
+
+    logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
+  }
+
+  /** @internal Used by factory during creation and by resume(). */
+  async waitForReady(): Promise<Result<void, SandboxReadyTimeoutError>> {
+    logger.info({ serviceId: this.info.serviceId }, "[sandbox] Waiting for ready");
+
+    const startTimeMs = Date.now();
+    while (Date.now() - startTimeMs < this.config.serviceReadyTimeoutMs) {
+      const response = await this.api.get.service({
+        parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+      });
+
+      if (response.error) {
+        throw new Error(
+          `Failed to poll service status: ${response.error.message ?? "Unknown error"}`
+        );
+      }
+
+      const { status } = response.data;
+      const deploymentStatus = status?.deployment?.status;
+
+      if (deploymentStatus === "COMPLETED") {
+        logger.info({ serviceId: this.info.serviceId }, "[sandbox] Service ready");
+        return new Ok(undefined);
+      }
+
+      if (deploymentStatus === "FAILED") {
+        logger.error({ serviceId: this.info.serviceId, status }, "[sandbox] Deployment failed");
+        throw new Error(
+          `Sandbox deployment failed (status: ${JSON.stringify(status)})`
+        );
+      }
+
+      await setTimeoutAsync(this.config.pollIntervalMs);
+    }
+
+    return new Err(
+      new SandboxReadyTimeoutError(this.info.serviceId, this.config.serviceReadyTimeoutMs)
+    );
+  }
+}
+
+/**
+ * Factory for creating and attaching to sandboxes.
+ */
 export class NorthflankSandboxClient {
   private readonly api: ApiClient;
   private readonly config: SandboxConfig;
-  private serviceId: string | null = null;
-  private volumeId: string | null = null;
-  private createdAt: Date | null = null;
 
   private constructor(api: ApiClient, config: SandboxConfig) {
     this.api = api;
     this.config = config;
-  }
-
-  private requireServiceId(): string {
-    if (!this.serviceId) {
-      throw new Error("Sandbox not created or attached");
-    }
-    return this.serviceId;
-  }
-
-  private resetState(): void {
-    this.serviceId = null;
-    this.volumeId = null;
-    this.createdAt = null;
   }
 
   static async create(
@@ -128,7 +281,7 @@ export class NorthflankSandboxClient {
   async createSandbox(
     serviceName: string,
     metadata?: SandboxMetadata
-  ): Promise<Result<SandboxInfo, SandboxError>> {
+  ): Promise<Result<Sandbox, SandboxError>> {
     const tags = this.buildTags(metadata);
 
     logger.info(
@@ -166,9 +319,6 @@ export class NorthflankSandboxClient {
     const serviceId = serviceResponse.data.id;
     const createdAt = new Date();
 
-    this.serviceId = serviceId;
-    this.createdAt = createdAt;
-
     logger.info({ serviceId }, "[sandbox] Service created");
 
     const volumeName = `${serviceName}-vol`;
@@ -198,29 +348,34 @@ export class NorthflankSandboxClient {
     }
 
     const volumeId = volumeResponse.data.id;
-    this.volumeId = volumeId;
 
     logger.info({ serviceId, volumeId }, "[sandbox] Volume created and attached");
 
-    try {
-      const readyResult = await this.waitForReady();
-      if (readyResult.isErr()) {
-        await this.cleanupResources(serviceId, volumeId);
-        this.resetState();
-        return readyResult;
-      }
-    } catch (err) {
-      await this.cleanupResources(serviceId, volumeId);
-      this.resetState();
-      throw err;
-    }
-
-    return new Ok({
+    const info: SandboxInfo = {
       serviceId,
       volumeId,
       projectId: this.config.projectId,
       createdAt,
-    });
+    };
+
+    const sandbox = new Sandbox(this.api, this.config, info);
+
+    try {
+      const readyResult = await sandbox.waitForReady();
+      if (readyResult.isErr()) {
+        await this.cleanupResources(serviceId, volumeId);
+        return readyResult;
+      }
+    } catch (err) {
+      await this.cleanupResources(serviceId, volumeId);
+      throw err;
+    }
+
+    return new Ok(sandbox);
+  }
+
+  attach(info: SandboxInfo): Sandbox {
+    return new Sandbox(this.api, this.config, info);
   }
 
   private buildTags(metadata?: SandboxMetadata): string[] {
@@ -236,91 +391,6 @@ export class NorthflankSandboxClient {
       }
     }
     return tags;
-  }
-
-  attach(info: SandboxInfo): void {
-    this.serviceId = info.serviceId;
-    this.volumeId = info.volumeId;
-    this.createdAt = info.createdAt;
-  }
-
-  async pause(): Promise<void> {
-    const serviceId = this.requireServiceId();
-    logger.info({ serviceId }, "[sandbox] Pausing");
-
-    const response = await this.api.pause.service({
-      parameters: { projectId: this.config.projectId, serviceId },
-    });
-
-    if (response.error) {
-      throw new Error(
-        `Failed to pause sandbox: ${response.error.message ?? "Unknown error"}`
-      );
-    }
-
-    logger.info({ serviceId }, "[sandbox] Paused");
-  }
-
-  /**
-   * Resume a paused sandbox.
-   *
-   * Returns Err for readiness timeout. Throws for infrastructure failures.
-   */
-  async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
-    const serviceId = this.requireServiceId();
-    logger.info({ serviceId }, "[sandbox] Resuming");
-
-    const response = await this.api.resume.service({
-      parameters: { projectId: this.config.projectId, serviceId },
-      data: { instances: 1 },
-    });
-
-    if (response.error) {
-      throw new Error(
-        `Failed to resume sandbox: ${response.error.message ?? "Unknown error"}`
-      );
-    }
-
-    return this.waitForReady();
-  }
-
-  private async waitForReady(): Promise<Result<void, SandboxReadyTimeoutError>> {
-    const serviceId = this.requireServiceId();
-    logger.info({ serviceId }, "[sandbox] Waiting for ready");
-
-    const startTimeMs = Date.now();
-    while (Date.now() - startTimeMs < this.config.serviceReadyTimeoutMs) {
-      const response = await this.api.get.service({
-        parameters: { projectId: this.config.projectId, serviceId },
-      });
-
-      if (response.error) {
-        throw new Error(
-          `Failed to poll service status: ${response.error.message ?? "Unknown error"}`
-        );
-      }
-
-      const { status } = response.data;
-      const deploymentStatus = status?.deployment?.status;
-
-      if (deploymentStatus === "COMPLETED") {
-        logger.info({ serviceId }, "[sandbox] Service ready");
-        return new Ok(undefined);
-      }
-
-      if (deploymentStatus === "FAILED") {
-        logger.error({ serviceId, status }, "[sandbox] Deployment failed");
-        throw new Error(
-          `Sandbox deployment failed (status: ${JSON.stringify(status)})`
-        );
-      }
-
-      await setTimeoutAsync(this.config.pollIntervalMs);
-    }
-
-    return new Err(
-      new SandboxReadyTimeoutError(serviceId, this.config.serviceReadyTimeoutMs)
-    );
   }
 
   private async cleanupResources(
@@ -348,106 +418,5 @@ export class NorthflankSandboxClient {
         "[sandbox] Failed to delete volume during cleanup"
       );
     }
-  }
-
-  async exec(command: string): Promise<CommandResult> {
-    const serviceId = this.requireServiceId();
-    logger.info({ serviceId, command }, "[sandbox] Executing command");
-
-    const result = await this.api.exec.execServiceCommand(
-      { projectId: this.config.projectId, serviceId },
-      { command: ["bash", "-c", command], shell: "none" }
-    );
-
-    return {
-      exitCode: result.commandResult.exitCode,
-      stdout: result.stdOut,
-      stderr: result.stdErr,
-    };
-  }
-
-  async writeFile(remotePath: string, content: string | Buffer): Promise<void> {
-    const serviceId = this.requireServiceId();
-    logger.info({ serviceId, remotePath }, "[sandbox] Writing file");
-
-    const buffer = typeof content === "string" ? Buffer.from(content) : content;
-
-    const dir = path.posix.dirname(remotePath);
-    if (dir && dir !== "." && dir !== "/") {
-      await this.exec(`mkdir -p "${dir}"`);
-    }
-
-    await this.api.fileCopy.uploadServiceFileStream(
-      { projectId: this.config.projectId, serviceId },
-      { source: buffer, remotePath }
-    );
-  }
-
-  async readFile(remotePath: string): Promise<Buffer> {
-    const serviceId = this.requireServiceId();
-    logger.info({ serviceId, remotePath }, "[sandbox] Reading file");
-
-    const { fileStream } = await this.api.fileCopy.downloadServiceFileStream(
-      { projectId: this.config.projectId, serviceId },
-      { remotePath }
-    );
-
-    const result = await streamToBuffer(fileStream);
-    if (result.isErr()) {
-      throw new Error(result.error);
-    }
-    return result.value;
-  }
-
-  async destroy(): Promise<void> {
-    if (!this.serviceId) {
-      return;
-    }
-
-    const serviceId = this.serviceId;
-    const volumeId = this.volumeId;
-
-    logger.info({ serviceId, volumeId }, "[sandbox] Destroying");
-
-    const serviceResponse = await this.api.delete.service({
-      parameters: { projectId: this.config.projectId, serviceId },
-    });
-
-    if (serviceResponse.error) {
-      throw new Error(
-        `Failed to delete service: ${serviceResponse.error.message ?? "Unknown error"}`
-      );
-    }
-
-    if (volumeId) {
-      const volumeResponse = await this.api.delete.volume({
-        parameters: { projectId: this.config.projectId, volumeId },
-      });
-
-      if (volumeResponse.error) {
-        throw new Error(
-          `Failed to delete volume: ${volumeResponse.error.message ?? "Unknown error"}`
-        );
-      }
-    }
-
-    logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
-    this.resetState();
-  }
-
-  getServiceId(): string | null {
-    return this.serviceId;
-  }
-
-  getInfo(): SandboxInfo | null {
-    if (!this.serviceId || !this.volumeId || !this.createdAt) {
-      return null;
-    }
-    return {
-      serviceId: this.serviceId,
-      volumeId: this.volumeId,
-      projectId: this.config.projectId,
-      createdAt: this.createdAt,
-    };
   }
 }
