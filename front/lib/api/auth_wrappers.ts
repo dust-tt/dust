@@ -234,9 +234,16 @@ export function withPublicAPIAuthentication<T>(
   ) => Promise<void> | void,
   opts: {
     isStreaming?: boolean;
+    /**
+     * When true, system keys bypass the isBuilder() check even if their role is downgraded
+     * via X-Dust-Role header. The key must still belong to the target workspace.
+     * Used for internal calls (e.g., run_dust_app) where the role header is passed for
+     * tracking purposes but the system key itself should still be trusted.
+     */
+    allowSystemKeyBypassBuilderCheck?: boolean;
   } = {}
 ) {
-  const { isStreaming } = opts;
+  const { isStreaming, allowSystemKeyBypassBuilderCheck } = opts;
 
   return withLogging(
     async (
@@ -386,8 +393,12 @@ export function withPublicAPIAuthentication<T>(
       }
 
       // Authenticator created from a key has the builder role if the key is associated with
-      // the workspace.
-      if (!workspaceAuth.isBuilder()) {
+      // the workspace. System keys can bypass this when allowSystemKeyBypassBuilderCheck is set.
+      const isSystemKeyAllowed =
+        allowSystemKeyBypassBuilderCheck &&
+        workspaceAuth.isSystemKey() &&
+        keyRes.value.workspaceId === owner.id;
+      if (!workspaceAuth.isBuilder() && !isSystemKeyAllowed) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
