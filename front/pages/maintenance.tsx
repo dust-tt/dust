@@ -1,10 +1,10 @@
 import { Button, DustLogoSquare, Icon, Page } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 
 import type { RegionInfo } from "@app/lib/api/regions/config";
 import { config } from "@app/lib/api/regions/config";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-import { Link } from "@app/lib/platform";
 import { isString } from "@app/types";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({

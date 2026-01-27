@@ -12,7 +12,6 @@
 export {
   Head,
   Image,
-  Link,
   LinkWrapper,
   Script,
   useAppRouter,
@@ -20,4 +19,4 @@ export {
   useRequiredPathParam,
   useSearchParam,
 } from "./next";
-export type { AppRouter, HeadProps, LinkProps, ScriptProps } from "./types";
+export type { AppRouter, HeadProps, ScriptProps } from "./types";

@@ -1,4 +1,5 @@
-import { Link } from "@app/lib/platform";
+import Link from "next/link";
+
 import { useAppRouter } from "@app/lib/platform";
 
 interface UserHandleProps {

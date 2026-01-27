@@ -1,5 +1,6 @@
 import { Button, Chip, PlusIcon, TrashIcon } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext } from "react";
 
@@ -9,7 +10,6 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { Link } from "@app/lib/platform";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";

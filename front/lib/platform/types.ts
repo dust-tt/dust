@@ -69,10 +69,16 @@ export interface AppRouter {
   ) => void;
 }
 
+/**
+ * Props for the Head component abstraction
+ */
 export interface HeadProps {
   children: ReactNode;
 }
 
+/**
+ * Props for the Script component abstraction
+ */
 export interface ScriptProps {
   id?: string;
   src?: string;
@@ -80,14 +86,11 @@ export interface ScriptProps {
   children?: string;
 }
 
-export interface ImageProps extends Omit<
-  React.ImgHTMLAttributes<HTMLImageElement>,
-  "width" | "height" | "src" | "alt"
-> {
+export interface ImageProps {
+  width: number;
+  height: number;
   src: string;
   alt: string;
-  width?: number | `${number}` | undefined;
-  height?: number | `${number}` | undefined;
   priority?: boolean | undefined;
 }
 
