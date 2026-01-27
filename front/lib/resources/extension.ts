@@ -119,6 +119,7 @@ export class ExtensionConfigurationResource extends BaseResource<ExtensionConfig
       where: {
         workspaceId: workspaceIds,
       },
+      // Exceptional case where we need to fetch the blacklistedDomains across multiple workspaces.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
