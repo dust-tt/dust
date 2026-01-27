@@ -97,4 +97,5 @@ export interface LinkProps extends Omit<
 > {
   href: string | UrlObject;
   prefetch?: boolean | null;
+  shallow?: boolean;
 }
