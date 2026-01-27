@@ -11,6 +11,7 @@
  */
 export {
   Head,
+  Image,
   Script,
   useAppRouter,
   usePathParams,

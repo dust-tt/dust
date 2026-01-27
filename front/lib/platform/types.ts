@@ -85,3 +85,13 @@ export interface ScriptProps {
   strategy?: "beforeInteractive" | "afterInteractive" | "lazyOnload";
   children?: string;
 }
+
+export interface ImageProps {
+  width: number;
+  height: number;
+  src: string;
+  alt: string;
+  className?: string;
+  sizes?: string;
+  priority?: boolean;
+}

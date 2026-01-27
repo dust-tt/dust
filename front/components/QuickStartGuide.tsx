@@ -9,9 +9,9 @@ import {
   SheetTitle,
 } from "@dust-tt/sparkle";
 import { CloudArrowLeftRightIcon } from "@dust-tt/sparkle";
-import Image from "next/image";
 
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import { Image } from "@app/lib/platform";
 
 export function QuickStartGuide() {
   const { isOpen, onOpenChange } = useURLSheet("quickGuide");
