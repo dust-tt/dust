@@ -33,6 +33,9 @@ export default async function setup() {
     LOG_LEVEL: process.env.TEST_LOG_LEVEL ?? "silent",
     VIZ_JWT_SECRET: "viz-secret-for-tests",
     REGION: "us-central1",
+
+    // Variables that modify the behavior of certain tests
+    UPDATE_MCP_METADATA_SNAPSHOT: process.env.UPDATE_MCP_METADATA_SNAPSHOT,
   };
 
   // Execute the db migration script
