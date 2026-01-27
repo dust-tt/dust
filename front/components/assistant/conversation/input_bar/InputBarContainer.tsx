@@ -57,6 +57,7 @@ import type {
 import {
   assertNever,
   getSupportedFileExtensions,
+  isBuilder,
   normalizeError,
   toRichAgentMentionType,
 } from "@app/types";
@@ -617,7 +618,11 @@ const InputBarContainer = ({
                   size="xs"
                   label={skill.name}
                   icon={getSkillIcon(skill.icon)}
-                  href={getManageSkillsRoute(owner.sId, skill.sId)}
+                  href={
+                    isBuilder(owner)
+                      ? getManageSkillsRoute(owner.sId, skill.sId)
+                      : undefined
+                  }
                   target="_blank"
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
                   onRemove={
@@ -631,7 +636,11 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   icon={getSkillIcon(skill.icon)}
-                  href={getManageSkillsRoute(owner.sId, skill.sId)}
+                  href={
+                    isBuilder(owner)
+                      ? getManageSkillsRoute(owner.sId, skill.sId)
+                      : undefined
+                  }
                   target="_blank"
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
                   onRemove={
