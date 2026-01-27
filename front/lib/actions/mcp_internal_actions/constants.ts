@@ -1816,6 +1816,8 @@ export function getInternalMCPServerToolStakes(
   return server.tools_stakes;
 }
 
+// TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
+// Goal is to tie the tool name to the server name.
 export function getInternalMCPServerToolDisplayLabels(
   name: InternalMCPServerNameType
 ): Record<string, ToolDisplayLabels> | null {
