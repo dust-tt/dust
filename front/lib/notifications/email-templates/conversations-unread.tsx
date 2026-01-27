@@ -15,6 +15,7 @@ export const ConversationsUnreadEmailTemplatePropsSchema = z.object({
     z.object({
       id: z.string(),
       title: z.string(),
+      summary: z.string().nullable(),
     })
   ),
 });
@@ -44,6 +45,7 @@ const ConversationsUnreadEmailTemplate = ({
             >
               {conversation.title}
             </a>
+            {conversation.summary && <div>{conversation.summary}</div>}
           </li>
         ))}
       </ul>
