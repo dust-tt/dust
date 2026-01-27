@@ -1,7 +1,7 @@
-import { DEFAULT_WEBSEARCH_ACTION_DESCRIPTION } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { USE_SUMMARY_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
+import { WEB_SEARCH_BROWSE_ACTION_DESCRIPTION } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_DESC,
   DEEP_DIVE_NAME,
@@ -708,7 +708,7 @@ export function _getDustTaskGlobalAgent(
       sId: GLOBAL_AGENTS_SID.DUST_TASK + "-websearch-browse-action",
       type: "mcp_server_configuration",
       name: "webtools",
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,

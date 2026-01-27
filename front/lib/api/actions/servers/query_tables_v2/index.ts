@@ -3,19 +3,19 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { TOOLS } from "@app/lib/api/actions/servers/agent_router/tools";
+import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { TOOLS } from "@app/lib/api/actions/servers/query_tables_v2/tools";
 import type { Authenticator } from "@app/lib/auth";
 
 function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): McpServer {
-  const server = makeInternalMCPServer(AGENT_ROUTER_SERVER_NAME);
+  const server = makeInternalMCPServer(TABLE_QUERY_V2_SERVER_NAME);
 
   for (const tool of TOOLS) {
     registerTool(auth, agentLoopContext, server, tool, {
-      monitoringName: AGENT_ROUTER_SERVER_NAME,
+      monitoringName: TABLE_QUERY_V2_SERVER_NAME,
     });
   }
 

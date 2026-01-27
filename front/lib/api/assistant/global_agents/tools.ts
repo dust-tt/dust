@@ -1,15 +1,14 @@
-import {
-  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
-  DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
-import type {
-  AutoInternalMCPServerNameType,
-  InternalMCPServerNameType,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import type { AutoInternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  AGENT_ROUTER_ACTION_DESCRIPTION,
+  AGENT_ROUTER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
+  WEB_SEARCH_BROWSE_SERVER_NAME,
+} from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -109,8 +108,8 @@ export function _getDefaultWebActionsForGlobalAgent({
       id: -1,
       sId: agentId + "-websearch-browse-action",
       type: "mcp_server_configuration",
-      name: DEFAULT_WEBSEARCH_ACTION_NAME satisfies InternalMCPServerNameType,
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      name: WEB_SEARCH_BROWSE_SERVER_NAME,
+      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchBrowseMCPServerView.sId,
       internalMCPServerId: webSearchBrowseMCPServerView.internalMCPServerId,
       dataSources: null,
@@ -177,8 +176,8 @@ export function _getAgentRouterToolsConfiguration({
       id: -1,
       sId: agentId + "-agent-router",
       type: "mcp_server_configuration",
-      name: DEFAULT_AGENT_ROUTER_ACTION_NAME satisfies InternalMCPServerNameType,
-      description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+      name: AGENT_ROUTER_SERVER_NAME,
+      description: AGENT_ROUTER_ACTION_DESCRIPTION,
       mcpServerViewId: agentRouterMCPServerView.sId,
       internalMCPServerId: agentRouterMCPServerView.internalMCPServerId,
       dataSources: null,

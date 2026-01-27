@@ -30,7 +30,6 @@ import { default as schedulesManagementServer } from "@app/lib/actions/mcp_inter
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
 import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
-import { default as tablesQueryServerV2 } from "@app/lib/actions/mcp_internal_actions/servers/tables_query";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
@@ -59,6 +58,7 @@ import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
+import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";

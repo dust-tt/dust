@@ -2,22 +2,20 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
-  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const CONVERSATION_FILES_TOOL_NAME = "conversation_files" as const;
+export const CONVERSATION_FILES_SERVER_NAME = "conversation_files" as const;
+export const CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
+export const CONVERSATION_CAT_FILE_ACTION_NAME = "cat_conversation_file";
 
 export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
-  [DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME]: {
+  [CONVERSATION_LIST_FILES_ACTION_NAME]: {
     description: "List all files attached to the conversation.",
     schema: {},
     stake: "never_ask",
   },
-  [DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME]: {
+  [CONVERSATION_CAT_FILE_ACTION_NAME]: {
     description:
       "Read the contents of a large file from conversation attachments with offset/limit and optional grep filtering (named after the 'cat' unix tool). " +
       "Use this when files are too large to read in full, or when you need to search for specific patterns within a file.",
@@ -54,7 +52,7 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
 
 export const CONVERSATION_FILES_SERVER = {
   serverInfo: {
-    name: "conversation_files",
+    name: CONVERSATION_FILES_SERVER_NAME,
     version: "1.0.0",
     description: "Include files from conversation attachments.",
     icon: "ActionDocumentTextIcon",

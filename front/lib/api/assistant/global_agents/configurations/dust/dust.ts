@@ -1,11 +1,11 @@
-import {
-  DEFAULT_AGENT_ROUTER_ACTION_NAME,
-  TOOL_NAME_SEPARATOR,
-} from "@app/lib/actions/constants";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
-import { SUGGEST_AGENTS_TOOL_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_ROUTER_SERVER_NAME,
+  SUGGEST_AGENTS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
 import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   getCompanyDataAction,
@@ -67,7 +67,7 @@ Keep your thinking as short as possible.
     in which case it is better to search only on the specific data source.
     It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
     If no relevant information is found but the user's question seems to be internal to the company,
-    you should use the ${DEFAULT_AGENT_ROUTER_ACTION_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
+    you should use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
     tool to suggest an agent that might be able to handle the request.
 
 2. If the user's question requires information that is recent and likely to be found on the public
@@ -108,7 +108,7 @@ Immediately delegate the request to the deep dive agent by using the \`deep_dive
     in which case it is better to search only on the specific data source.
     It's important to not pick a restrictive timeframe unless it's explicitly requested or obviously needed.
     If no relevant information is found but the user's question seems to be internal to the company,
-    you should use the ${DEFAULT_AGENT_ROUTER_ACTION_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
+    you should use the ${AGENT_ROUTER_SERVER_NAME}${TOOL_NAME_SEPARATOR}${SUGGEST_AGENTS_TOOL_NAME}
     tool to suggest an agent that might be able to handle the request.
 
 2. If the user's question requires information that is recent and likely to be found on the public
