@@ -3,13 +3,13 @@ import {
   globalAgentGuidelines,
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
+import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
 import {
   _getDefaultWebActionsForGlobalAgent,
   _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { AgentConfigurationType } from "@app/types";
 import {
   GLOBAL_AGENTS_SID,
@@ -30,13 +30,11 @@ import {
 export function _getMistralLargeGlobalAgent({
   auth,
   settings,
-  webSearchBrowseMCPServerView,
-  interactiveContentMCPServerView,
+  mcpServerViews,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettingsModel | null;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "active";
   if (!auth.isUpgraded()) {
@@ -68,11 +66,11 @@ export function _getMistralLargeGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView,
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -88,13 +86,11 @@ export function _getMistralLargeGlobalAgent({
 export function _getMistralMediumGlobalAgent({
   auth,
   settings,
-  webSearchBrowseMCPServerView,
-  interactiveContentMCPServerView,
+  mcpServerViews,
 }: {
   auth: Authenticator;
   settings: GlobalAgentSettingsModel | null;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   let status = settings?.status ?? "disabled_by_admin";
   if (!auth.isUpgraded()) {
@@ -126,11 +122,11 @@ export function _getMistralMediumGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView,
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
@@ -145,12 +141,10 @@ export function _getMistralMediumGlobalAgent({
 
 export function _getMistralSmallGlobalAgent({
   settings,
-  webSearchBrowseMCPServerView,
-  interactiveContentMCPServerView,
+  mcpServerViews,
 }: {
   settings: GlobalAgentSettingsModel | null;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): AgentConfigurationType {
   const status = settings ? settings.status : "disabled_by_admin";
 
@@ -179,11 +173,11 @@ export function _getMistralSmallGlobalAgent({
     actions: [
       ..._getDefaultWebActionsForGlobalAgent({
         agentId: sId,
-        webSearchBrowseMCPServerView,
+        mcpServerViews,
       }),
       ..._getInteractiveContentToolConfiguration({
         agentId: sId,
-        interactiveContentMCPServerView,
+        mcpServerViews,
       }),
     ],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,

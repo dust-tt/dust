@@ -5,16 +5,73 @@ import {
   DEFAULT_WEBSEARCH_ACTION_NAME,
 } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
-import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
+import { autoInternalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
+import type {
+  AutoInternalMCPServerNameType,
+  InternalMCPServerNameType,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import type { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type { DataSourceViewType, GLOBAL_AGENTS_SID } from "@app/types";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import type {
+  AgentFetchVariant,
+  DataSourceViewType,
+  GLOBAL_AGENTS_SID,
+} from "@app/types";
 
 export type PrefetchedDataSourcesType = {
   dataSourceViews: (DataSourceViewType & { isInGlobalSpace: boolean })[];
   workspaceId: string;
 };
+
+export const MCP_SERVERS_FOR_GLOBAL_AGENTS: readonly AutoInternalMCPServerNameType[] =
+  [
+    "agent_router",
+    "web_search_&_browse",
+    "search",
+    "data_sources_file_system",
+    "interactive_content",
+    "run_agent",
+    "toolsets",
+    "data_warehouses",
+    "slideshow",
+    "deep_dive",
+    "agent_memory",
+  ] as const;
+
+export type MCPServerViewsForGlobalAgentsMap = Record<
+  (typeof MCP_SERVERS_FOR_GLOBAL_AGENTS)[number],
+  MCPServerViewResource | null
+>;
+
+export async function getMCPServerViewsForGlobalAgents(
+  auth: Authenticator,
+  variant: AgentFetchVariant
+): Promise<MCPServerViewsForGlobalAgentsMap> {
+  let allMCPServerViews: MCPServerViewResource[] = [];
+  if (variant === "full") {
+    allMCPServerViews =
+      await MCPServerViewResource.getMCPServerViewsForAutoInternalTools(auth, [
+        ...MCP_SERVERS_FOR_GLOBAL_AGENTS,
+      ]);
+  }
+
+  const mcpServerViewsByServerId = new Map(
+    allMCPServerViews.map((v) => [v.internalMCPServerId, v])
+  );
+
+  return Object.fromEntries(
+    MCP_SERVERS_FOR_GLOBAL_AGENTS.map((name) => [
+      name,
+      mcpServerViewsByServerId.get(
+        autoInternalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
+      ) ?? null,
+    ])
+  ) as MCPServerViewsForGlobalAgentsMap;
+}
 
 export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
   auth: Authenticator
@@ -35,11 +92,14 @@ export async function getDataSourcesAndWorkspaceIdForGlobalAgents(
 
 export function _getDefaultWebActionsForGlobalAgent({
   agentId,
-  webSearchBrowseMCPServerView,
+  mcpServerViews,
 }: {
   agentId: GLOBAL_AGENTS_SID;
-  webSearchBrowseMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): ServerSideMCPServerConfigurationType[] {
+  const { "web_search_&_browse": webSearchBrowseMCPServerView } =
+    mcpServerViews;
+
   if (!webSearchBrowseMCPServerView) {
     return [];
   }
@@ -67,11 +127,13 @@ export function _getDefaultWebActionsForGlobalAgent({
 
 export function _getToolsetsToolsConfiguration({
   agentId,
-  toolsetsMcpServerView,
+  mcpServerViews,
 }: {
   agentId: GLOBAL_AGENTS_SID;
-  toolsetsMcpServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): ServerSideMCPServerConfigurationType[] {
+  const { toolsets: toolsetsMcpServerView } = mcpServerViews;
+
   if (!toolsetsMcpServerView) {
     return [];
   }
@@ -98,12 +160,16 @@ export function _getToolsetsToolsConfiguration({
   ];
 }
 
-export function _getAgentRouterToolsConfiguration(
-  agentId: GLOBAL_AGENTS_SID,
-  mcpServerView: MCPServerViewResource | null,
-  internalMCPServerId: string
-): ServerSideMCPServerConfigurationType[] {
-  if (!mcpServerView) {
+export function _getAgentRouterToolsConfiguration({
+  agentId,
+  mcpServerViews,
+}: {
+  agentId: GLOBAL_AGENTS_SID;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+}): ServerSideMCPServerConfigurationType[] {
+  const { agent_router: agentRouterMCPServerView } = mcpServerViews;
+
+  if (!agentRouterMCPServerView) {
     return [];
   }
   return [
@@ -113,8 +179,8 @@ export function _getAgentRouterToolsConfiguration(
       type: "mcp_server_configuration",
       name: DEFAULT_AGENT_ROUTER_ACTION_NAME satisfies InternalMCPServerNameType,
       description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
-      mcpServerViewId: mcpServerView.sId,
-      internalMCPServerId,
+      mcpServerViewId: agentRouterMCPServerView.sId,
+      internalMCPServerId: agentRouterMCPServerView.internalMCPServerId,
       dataSources: null,
       tables: null,
       childAgentId: null,
@@ -129,11 +195,14 @@ export function _getAgentRouterToolsConfiguration(
 
 export function _getInteractiveContentToolConfiguration({
   agentId,
-  interactiveContentMCPServerView,
+  mcpServerViews,
 }: {
   agentId: GLOBAL_AGENTS_SID;
-  interactiveContentMCPServerView: MCPServerViewResource | null;
+  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
 }): ServerSideMCPServerConfigurationType[] {
+  const { interactive_content: interactiveContentMCPServerView } =
+    mcpServerViews;
+
   if (!interactiveContentMCPServerView) {
     return [];
   }
