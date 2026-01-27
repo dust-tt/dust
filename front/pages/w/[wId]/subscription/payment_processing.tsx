@@ -1,52 +1,20 @@
 import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import React, { useEffect } from "react";
 
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { getStripeSubscription } from "@app/lib/plans/stripe";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { UserType, WorkspaceType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user()?.toJSON();
-  if (!owner || !auth.isAdmin() || !subscription || !user) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
-  if (subscription.stripeSubscriptionId) {
-    const stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (!stripeSubscription) {
-      return {
-        notFound: true,
-      };
-    }
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-      user,
-    },
-  };
-});
-
-export default function PaymentProcessing({
-  owner,
-  subscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function PaymentProcessing() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -84,3 +52,16 @@ export default function PaymentProcessing({
     </>
   );
 }
+
+const PageWithAuthLayout = PaymentProcessing as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default PageWithAuthLayout;
