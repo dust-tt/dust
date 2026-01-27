@@ -142,6 +142,7 @@ const FREE_PLANS_DATA: PlanAttributes[] = [
 
 /**
  * Function to call when we edit something in FREE_PLANS_DATA to update the database. It will create or update the plans.
+ * Uses atomic upsert to avoid race conditions when called concurrently (e.g., in parallel tests).
  * @param planCode - Optional plan code to upsert. If not provided, all plans are upserted.
  */
 export const upsertFreePlans = async (planCode?: string) => {
@@ -150,17 +151,8 @@ export const upsertFreePlans = async (planCode?: string) => {
     : FREE_PLANS_DATA;
 
   for (const planData of plansToUpsert) {
-    const plan = await PlanModel.findOne({
-      where: {
-        code: planData.code,
-      },
+    await PlanModel.upsert(planData, {
+      conflictFields: ["code"],
     });
-    if (plan === null) {
-      await PlanModel.create(planData);
-      console.log(`Free plan ${planData.code} created.`);
-    } else {
-      await plan.update(planData);
-      console.log(`Free plan ${planData.code} updated.`);
-    }
   }
 };
