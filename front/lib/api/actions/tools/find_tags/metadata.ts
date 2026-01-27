@@ -17,6 +17,8 @@ export const findTagsSchema = {
     ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE],
 };
 
+export const FIND_TAGS_TOOL_NAME = "find_tags";
+
 export const FIND_TAGS_BASE_DESCRIPTION =
   "Find exact matching labels (also called tags). " +
   "Restricting or excluding content succeeds only with existing labels. " +
