@@ -59,6 +59,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -955,27 +956,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_ticket: "never_ask",
-      search_tickets: "never_ask",
-      draft_reply: "low", // Low because it's a draft.
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "zendesk",
-      version: "1.0.0",
-      description:
-        "Access and manage support tickets, help center, and customer interactions.",
-      authorization: {
-        provider: "zendesk" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "ZendeskLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: ZENDESK_SERVER,
   },
   slab: {
     id: 43,

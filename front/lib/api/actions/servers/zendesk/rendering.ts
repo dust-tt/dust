@@ -4,7 +4,7 @@ import type {
   ZendeskTicketField,
   ZendeskTicketMetrics,
   ZendeskUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+} from "@app/lib/api/actions/servers/zendesk/types";
 import type { Result } from "@app/types";
 
 function apiUrlToDocumentUrl(apiUrl: string): string {
