@@ -18,6 +18,7 @@ export function useRegisterUnloadHandlers(
   });
 
   // Add handler for next.js router events that don't load a new page in the browser.
+  // TODO(front-spa) - check that it works with front-spa
   const router = useAppRouter();
   useEffect(() => {
     const confirmBrowseAway = () => {
