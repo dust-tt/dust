@@ -1,19 +1,12 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
 import * as p from "@clack/prompts";
-import { setLastActiveEnv } from "../lib/activity";
-import { getEnvironment } from "../lib/environment";
+import { requireEnvironment } from "../lib/commands";
 import { directoryExists, fileExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
-import { restoreTerminal, selectEnvironment } from "../lib/prompt";
-import {
-  CommandError,
-  Err,
-  Ok,
-  type Result,
-  envNotFoundError,
-} from "../lib/result";
+import { restoreTerminal } from "../lib/prompt";
+import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
 // Folders to ignore when scanning for scenarios
@@ -68,37 +61,24 @@ async function selectScenarios(scenarios: string[]): Promise<string[]> {
 
 export async function feedCommand(
   nameArg: string | undefined,
-  scenarioNameArg: string | undefined,
+  scenarioNameArg: string | undefined
 ): Promise<Result<void>> {
-  // Handle environment selection
-  let envName = nameArg;
-  if (!envName) {
-    const selected = await selectEnvironment({
-      message: "Select environment for feed",
-    });
+  // Skip restoreTerminal if we need interactive scenario selection after
+  const skipRestore = !scenarioNameArg;
+  const envResult = await requireEnvironment(nameArg, "feed", {
+    skipRestoreTerminal: skipRestore,
+  });
+  if (!envResult.ok) return envResult;
 
-    if (!selected) {
-      return Err(new CommandError("No environment selected"));
-    }
-
-    envName = selected;
-  }
-
-  const env = await getEnvironment(envName);
-  if (!env) {
-    return Err(envNotFoundError(envName));
-  }
-
-  // Track this environment as last-active
-  await setLastActiveEnv(env.name);
+  const env = envResult.value;
 
   // Check if environment is warm
   const stateInfo = await getStateInfo(env);
   if (stateInfo.state !== "warm") {
     return Err(
       new CommandError(
-        `Environment '${env.name}' is not warm (current state: ${stateInfo.state}). Run 'dust-hive warm ${env.name}' first.`,
-      ),
+        `Environment '${env.name}' is not warm (current state: ${stateInfo.state}). Run 'dust-hive warm ${env.name}' first.`
+      )
     );
   }
 
@@ -133,21 +113,15 @@ export async function feedCommand(
 
   // Validate all scenarios exist before running any
   for (const scenarioName of scenarioNames) {
-    const scenarioScriptPath = path.join(
-      frontPath,
-      "scripts",
-      "seed",
-      scenarioName,
-      "seed.ts",
-    );
+    const scenarioScriptPath = path.join(frontPath, "scripts", "seed", scenarioName, "seed.ts");
     const scenarioExists = await fileExists(scenarioScriptPath);
 
     if (!scenarioExists) {
       const scenarioList = availableScenarios.map((s) => `  - ${s}`).join("\n");
       return Err(
         new CommandError(
-          `Scenario '${scenarioName}' not found.\n\nAvailable scenarios:\n${scenarioList}`,
-        ),
+          `Scenario '${scenarioName}' not found.\n\nAvailable scenarios:\n${scenarioList}`
+        )
       );
     }
   }
@@ -157,23 +131,20 @@ export async function feedCommand(
     logger.info(`Running seed script for scenario '${scenarioName}'...`);
     console.log();
 
-    const proc = Bun.spawn(
-      ["npx", "tsx", `scripts/seed/${scenarioName}/seed.ts`, "--execute"],
-      {
-        cwd: frontPath,
-        stdout: "inherit",
-        stderr: "inherit",
-        stdin: "inherit",
-      },
-    );
+    const proc = Bun.spawn(["npx", "tsx", `scripts/seed/${scenarioName}/seed.ts`, "--execute"], {
+      cwd: frontPath,
+      stdout: "inherit",
+      stderr: "inherit",
+      stdin: "inherit",
+    });
 
     const exitCode = await proc.exited;
 
     if (exitCode !== 0) {
       return Err(
         new CommandError(
-          `Seed script for scenario '${scenarioName}' failed with exit code ${exitCode}`,
-        ),
+          `Seed script for scenario '${scenarioName}' failed with exit code ${exitCode}`
+        )
       );
     }
 
