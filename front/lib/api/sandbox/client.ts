@@ -119,6 +119,12 @@ export class NorthflankSandboxClient {
     return new NorthflankSandboxClient(new ApiClient(contextProvider), config);
   }
 
+  /**
+   * Create a new sandbox.
+   *
+   * Returns Err for recoverable errors (service name collision, readiness timeout).
+   * Throws for infrastructure failures (API errors, deployment failures).
+   */
   async createSandbox(
     serviceName: string,
     metadata?: SandboxMetadata
@@ -196,11 +202,17 @@ export class NorthflankSandboxClient {
 
     logger.info({ serviceId, volumeId }, "[sandbox] Volume created and attached");
 
-    const readyResult = await this.waitForReady();
-    if (readyResult.isErr()) {
+    try {
+      const readyResult = await this.waitForReady();
+      if (readyResult.isErr()) {
+        await this.cleanupResources(serviceId, volumeId);
+        this.resetState();
+        return readyResult;
+      }
+    } catch (err) {
       await this.cleanupResources(serviceId, volumeId);
       this.resetState();
-      return readyResult;
+      throw err;
     }
 
     return new Ok({
@@ -249,6 +261,11 @@ export class NorthflankSandboxClient {
     logger.info({ serviceId }, "[sandbox] Paused");
   }
 
+  /**
+   * Resume a paused sandbox.
+   *
+   * Returns Err for readiness timeout. Throws for infrastructure failures.
+   */
   async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
     const serviceId = this.requireServiceId();
     logger.info({ serviceId }, "[sandbox] Resuming");
@@ -312,20 +329,24 @@ export class NorthflankSandboxClient {
   ): Promise<void> {
     logger.info({ serviceId, volumeId }, "[sandbox] Cleaning up resources");
 
-    try {
-      await this.api.delete.service({
-        parameters: { projectId: this.config.projectId, serviceId },
-      });
-    } catch (err) {
-      logger.error({ serviceId, err }, "[sandbox] Failed to delete service during cleanup");
+    const serviceResponse = await this.api.delete.service({
+      parameters: { projectId: this.config.projectId, serviceId },
+    });
+    if (serviceResponse.error) {
+      logger.error(
+        { serviceId, error: serviceResponse.error },
+        "[sandbox] Failed to delete service during cleanup"
+      );
     }
 
-    try {
-      await this.api.delete.volume({
-        parameters: { projectId: this.config.projectId, volumeId },
-      });
-    } catch (err) {
-      logger.error({ volumeId, err }, "[sandbox] Failed to delete volume during cleanup");
+    const volumeResponse = await this.api.delete.volume({
+      parameters: { projectId: this.config.projectId, volumeId },
+    });
+    if (volumeResponse.error) {
+      logger.error(
+        { volumeId, error: volumeResponse.error },
+        "[sandbox] Failed to delete volume during cleanup"
+      );
     }
   }
 
