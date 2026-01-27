@@ -20,7 +20,7 @@ import { GLOBAL_SPACE_NAME } from "@app/types";
 export function MCPAgentManagementActionDetails({
   toolOutput,
   toolParams,
-  viewType,
+  displayContext,
   owner,
   messageStatus,
 }: ToolExecutionDetailsProps) {
@@ -56,9 +56,9 @@ export function MCPAgentManagementActionDetails({
     // Fallback to showing the raw output if no structured data
     return (
       <ActionDetailsWrapper
-        viewType={viewType}
+        displayContext={displayContext}
         actionName={
-          viewType === "conversation" ? "Creating agent" : "Create Agent"
+          displayContext === "conversation" ? "Creating agent" : "Create Agent"
         }
         visual={ActionRobotIcon}
       >
@@ -82,7 +82,7 @@ export function MCPAgentManagementActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName="Create Agent"
       visual={ActionRobotIcon}
     >

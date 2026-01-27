@@ -10,5 +10,5 @@ export interface ToolExecutionDetailsProps {
   owner: LightWorkspaceType;
   toolOutput: CallToolResult["content"] | null;
   toolParams: Record<string, unknown>;
-  viewType: "conversation" | "sidebar";
+  displayContext: "conversation" | "sidebar";
 }

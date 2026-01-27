@@ -19,7 +19,7 @@ import {
 
 export function MCPGetDatabaseSchemaActionDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   // Extract different types of outputs
   const schemaBlocks =
@@ -30,15 +30,15 @@ export function MCPGetDatabaseSchemaActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Getting database schema"
           : "Get database schema"
       }
       visual={TableIcon}
     >
-      {viewType === "sidebar" && (
+      {displayContext === "sidebar" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <>
             <DatabaseSchemaSection schemas={schemaBlocks} />

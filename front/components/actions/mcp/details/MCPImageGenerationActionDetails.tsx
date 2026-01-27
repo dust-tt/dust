@@ -39,16 +39,18 @@ function ReferenceImageChip({ fileId, owner }: ReferenceImageChipProps) {
 }
 
 export function MCPImageGenerationActionDetails({
-  viewType,
+  displayContext,
   toolParams,
   owner,
 }: ToolExecutionDetailsProps) {
   if (!isGenerateImageInputType(toolParams)) {
     return (
       <ActionDetailsWrapper
-        viewType={viewType}
+        displayContext={displayContext}
         actionName={
-          viewType === "conversation" ? "Generating image" : "Generate image"
+          displayContext === "conversation"
+            ? "Generating image"
+            : "Generate image"
         }
         visual={ActionImageIcon}
       />
@@ -60,16 +62,18 @@ export function MCPImageGenerationActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation" ? "Generating image" : "Generate image"
+        displayContext === "conversation"
+          ? "Generating image"
+          : "Generate image"
       }
       visual={ActionImageIcon}
     >
       <div
         className={cn(
           "flex flex-col gap-3",
-          viewType === "conversation" ? "pl-6" : "pt-2"
+          displayContext === "conversation" ? "pl-6" : "pt-2"
         )}
       >
         <div className="flex flex-wrap gap-1">
@@ -93,7 +97,7 @@ export function MCPImageGenerationActionDetails({
         <p
           className={cn(
             "text-sm text-muted-foreground dark:text-muted-foreground-night",
-            viewType === "conversation" ? "line-clamp-3" : ""
+            displayContext === "conversation" ? "line-clamp-3" : ""
           )}
         >
           {prompt}
@@ -104,26 +108,26 @@ export function MCPImageGenerationActionDetails({
 }
 
 interface MCPImageGenerationGroupedDetailsProps {
-  viewType: "conversation" | "sidebar";
+  displayContext: "conversation" | "sidebar";
   actions: AgentMCPActionWithOutputType[];
   owner: LightWorkspaceType;
 }
 
 export function MCPImageGenerationGroupedDetails({
-  viewType,
+  displayContext,
   actions,
   owner,
 }: MCPImageGenerationGroupedDetailsProps) {
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={`Generating ${actions.length} images`}
       visual={ActionImageIcon}
     >
       <div
         className={cn(
           "flex flex-col gap-4",
-          viewType === "conversation" ? "pl-6" : "pt-2"
+          displayContext === "conversation" ? "pl-6" : "pt-2"
         )}
       >
         {actions.map((action, index) => {
@@ -165,7 +169,7 @@ export function MCPImageGenerationGroupedDetails({
                 <p
                   className={cn(
                     "text-sm text-muted-foreground dark:text-muted-foreground-night",
-                    viewType === "conversation" ? "line-clamp-3" : ""
+                    displayContext === "conversation" ? "line-clamp-3" : ""
                   )}
                 >
                   {prompt}

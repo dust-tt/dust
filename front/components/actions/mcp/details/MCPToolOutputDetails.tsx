@@ -129,14 +129,14 @@ interface SearchResultProps {
   actionName: string;
   visual: React.ComponentType<{ className?: string }>;
   actionOutput: CallToolResult["content"] | null;
-  viewType: "conversation" | "sidebar";
+  displayContext: "conversation" | "sidebar";
   query: string | null;
 }
 
 export function SearchResultDetails({
   actionName,
   visual,
-  viewType,
+  displayContext,
   actionOutput,
   query,
 }: SearchResultProps) {
@@ -214,11 +214,11 @@ export function SearchResultDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={actionName}
       visual={visual}
     >
-      {viewType === "conversation" ? (
+      {displayContext === "conversation" ? (
         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           {displayQuery}
         </div>
@@ -238,7 +238,7 @@ export function SearchResultDetails({
               />
             )}
           </div>
-          {actionOutput && viewType === "sidebar" && (
+          {actionOutput && displayContext === "sidebar" && (
             <div>
               <Collapsible defaultOpen={false}>
                 <CollapsibleTrigger>

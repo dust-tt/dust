@@ -16,7 +16,7 @@ import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/deta
 
 export function MCPAgentMemoryRetrieveActionDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const parsedMemories = useMemo(
     () => parseMemoriesFromOutput(toolOutput),
@@ -25,7 +25,7 @@ export function MCPAgentMemoryRetrieveActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName="Retrieve Agent Memory"
       visual={ActionLightbulbIcon}
     >
@@ -45,12 +45,12 @@ export function MCPAgentMemoryRetrieveActionDetails({
 
 export function MCPAgentMemoryRecordActionDetails({
   toolParams,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const entries = Array.isArray(toolParams.entries) ? toolParams.entries : [];
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName="Record Agent Memory"
       visual={ActionLightbulbIcon}
     >
@@ -72,7 +72,7 @@ export function MCPAgentMemoryRecordActionDetails({
 
 export function MCPAgentMemoryEditActionDetails({
   toolOutput,
-  viewType,
+  displayContext,
   toolName,
 }: ToolExecutionDetailsProps & { toolName: string }) {
   const updatedMemories = useMemo(
@@ -87,7 +87,7 @@ export function MCPAgentMemoryEditActionDetails({
     toolName === "compact_memory" ? "Compacted memories" : "Edited memories";
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={toolNameText}
       visual={ActionLightbulbIcon}
     >
@@ -108,7 +108,7 @@ export function MCPAgentMemoryEditActionDetails({
 export function MCPAgentMemoryEraseActionDetails({
   toolParams,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const indexes = Array.isArray(toolParams.indexes) ? toolParams.indexes : [];
   const remainingMemories = useMemo(
@@ -117,7 +117,7 @@ export function MCPAgentMemoryEraseActionDetails({
   );
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName="Erase Agent Memory"
       visual={ActionLightbulbIcon}
     >
