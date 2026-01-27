@@ -13,6 +13,8 @@ const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
   // assembled:
   //   "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
+  backmarket:
+    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
