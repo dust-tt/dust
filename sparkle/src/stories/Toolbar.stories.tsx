@@ -19,10 +19,8 @@ import {
 
 const TOOLBAR_VARIANTS = ["inline", "overlay"] as const;
 
-interface ToolbarPreviewProps extends Pick<
-  ToolbarProps,
-  "variant" | "scroll" | "onClose"
-> {}
+interface ToolbarPreviewProps
+  extends Pick<ToolbarProps, "variant" | "scroll" | "onClose"> {}
 
 function ToolbarPreview({ variant, scroll, onClose }: ToolbarPreviewProps) {
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
