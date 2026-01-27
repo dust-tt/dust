@@ -19,11 +19,24 @@ function buildNewAgentInitMessage(): string {
   return `<dust_system>
 NEW agent - no suggestions/feedback.
 
-1. Call \`get_agent_config\` to check form state
-2. Ask ONE question: "What should this agent do?"
-3. Once clear, use \`suggest_prompt_editions\` to create instruction suggestions
+## STEP 1: Gather context
+Call \`get_agent_config\` to check if user started filling the form.
 
-No preamble.
+## STEP 2: Suggest use cases
+Based on:
+- Current form state (name, description if any)
+- User's job function and preferred platforms (from your instructions)
+
+Provide 2-3 specific agent use case suggestions as bullet points. Example:
+"Based on your role in Sales:
+• Meeting prep agent - summarizes prospect info from CRM before calls
+• Follow-up drafter - generates personalized follow-up emails
+• Competitive intel - monitors competitor news and updates"
+
+End with: "Pick one, or tell me what you have in mind."
+
+## STEP 3: After user responds, create suggestions
+Use \`suggest_prompt_editions\` to create instruction suggestions.
 </dust_system>`;
 }
 
