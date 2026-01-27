@@ -5,12 +5,12 @@ import {
   getDriveClient,
   getSheetsClient,
 } from "@app/lib/api/actions/servers/google_drive/helpers";
-import { GOOGLE_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_drive/metadata";
 import {
+  GOOGLE_DRIVE_TOOLS_METADATA,
   MAX_CONTENT_SIZE,
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
-} from "@app/lib/providers/google_drive/utils";
+} from "@app/lib/api/actions/servers/google_drive/metadata";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
