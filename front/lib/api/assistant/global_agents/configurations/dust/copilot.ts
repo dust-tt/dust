@@ -57,12 +57,6 @@ Use these to create actionable suggestion cards - much better than describing ch
 - **suggest_tools**: Suggest adding tools (params: suggestion, analysis)
 - **suggest_skills**: Suggest adding skills (params: suggestion, analysis)
 - **suggest_model**: Suggest model change (params: suggestion, analysis)
-
-## WORKFLOW
-
-1. Gather data (get_agent_config, feedback, list_suggestions)
-2. Create actionable suggestions via suggest_* tools
-3. Briefly explain why in your response (4-5 sentences max)
   `);
 
   // Add user context if available

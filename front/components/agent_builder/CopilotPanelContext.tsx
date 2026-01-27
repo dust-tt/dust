@@ -17,14 +17,14 @@ import { GLOBAL_AGENTS_SID } from "@app/types";
 
 function buildNewAgentInitMessage(): string {
   return `<dust_system>
-NEW agent - no suggestions/feedback.
+NEW agent - no suggestions/feedback/insights.
 
 ## STEP 1: Gather context
 Call \`get_agent_config\` to check if user started filling the form.
 
 ## STEP 2: Suggest use cases
 Based on:
-- Current form state (name, description if any)
+- Current form state (get_agent_config result)
 - User's job function and preferred platforms (from your instructions)
 
 Provide 2-3 specific agent use case suggestions as bullet points. Example:
@@ -36,7 +36,12 @@ Provide 2-3 specific agent use case suggestions as bullet points. Example:
 End with: "Pick one, or tell me what you have in mind."
 
 ## STEP 3: After user responds, create suggestions
-Use \`suggest_prompt_editions\` to create instruction suggestions.
+Tool usage rules when creating suggestions:
+- \`get_available_skills\`: Call FIRST. Bias towards skills.
+- \`get_available_tools\`: Only if clearly needed. Otherwise suggest "Discover Tools" skill.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need.
+
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
 </dust_system>`;
 }
 
@@ -60,7 +65,7 @@ Tool usage rules when creating suggestions:
 - \`get_agent_insights\`: Only if debugging performance.
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (4-5 sentences max).
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
 </dust_system>`;
 }
 
