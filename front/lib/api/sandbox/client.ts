@@ -99,6 +99,12 @@ export class Sandbox {
   }
 
   async pause(): Promise<void> {
+    const status = await this.getServiceStatus();
+    if (status === "paused") {
+      logger.info({ serviceId: this.info.serviceId }, "[sandbox] Already paused");
+      return;
+    }
+
     logger.info({ serviceId: this.info.serviceId }, "[sandbox] Pausing");
 
     const response = await this.api.pause.service({
@@ -120,6 +126,12 @@ export class Sandbox {
    * Returns Err for readiness timeout. Throws for infrastructure failures.
    */
   async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
+    const status = await this.getServiceStatus();
+    if (status === "running") {
+      logger.info({ serviceId: this.info.serviceId }, "[sandbox] Already running");
+      return new Ok(undefined);
+    }
+
     logger.info({ serviceId: this.info.serviceId }, "[sandbox] Resuming");
 
     const response = await this.api.resume.service({
@@ -191,7 +203,8 @@ export class Sandbox {
       parameters: { projectId: this.config.projectId, serviceId },
     });
 
-    if (serviceResponse.error) {
+    // Treat 404 as success (already deleted)
+    if (serviceResponse.error && serviceResponse.error.status !== 404) {
       throw new Error(
         `Failed to delete service: ${serviceResponse.error.message ?? "Unknown error"}`
       );
@@ -201,13 +214,28 @@ export class Sandbox {
       parameters: { projectId: this.config.projectId, volumeId },
     });
 
-    if (volumeResponse.error) {
+    // Treat 404 as success (already deleted)
+    if (volumeResponse.error && volumeResponse.error.status !== 404) {
       throw new Error(
         `Failed to delete volume: ${volumeResponse.error.message ?? "Unknown error"}`
       );
     }
 
     logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
+  }
+
+  private async getServiceStatus(): Promise<string | undefined> {
+    const response = await this.api.get.service({
+      parameters: { projectId: this.config.projectId, serviceId: this.info.serviceId },
+    });
+
+    if (response.error) {
+      throw new Error(
+        `Failed to get service status: ${response.error.message ?? "Unknown error"}`
+      );
+    }
+
+    return response.data.status?.deployment?.status?.toLowerCase();
   }
 
   /** @internal Used by factory during creation and by resume(). */
