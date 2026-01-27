@@ -15,8 +15,9 @@ COPY package.json package-lock.json ./
 COPY sdks/js/package.json ./sdks/js/
 COPY sparkle/package.json ./sparkle/
 COPY front/package.json ./front/
+COPY front-spa/package.json ./front-spa/
 
-RUN npm ci -w sdks/js -w sparkle -w front
+RUN npm ci -w sdks/js -w sparkle -w front -w front-spa
 
 # Build SDK
 WORKDIR /app/sdks/js
@@ -27,6 +28,10 @@ RUN npm run build
 WORKDIR /app/sparkle
 COPY /sparkle/ .
 RUN npm run build
+
+# Copy front source
+WORKDIR /app/front-spa
+COPY /front-spa .
 
 # Copy front source
 WORKDIR /app/front
