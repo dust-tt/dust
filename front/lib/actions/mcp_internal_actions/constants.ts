@@ -26,6 +26,7 @@ import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_gene
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
@@ -956,23 +957,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("openai_usage_mcp");
     },
-    tools_stakes: {
-      get_completions_usage: "low",
-      get_organization_costs: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "openai_usage",
-      version: "1.0.0",
-      description: "Track API consumption and costs.",
-      authorization: null,
-      icon: "OpenaiLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: OPENAI_USAGE_SERVER,
   },
   confluence: {
     id: 33,
