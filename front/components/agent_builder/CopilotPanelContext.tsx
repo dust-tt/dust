@@ -38,7 +38,7 @@ End with: "Pick one, or tell me what you have in mind."
 ## STEP 3: After user responds, create suggestions
 Tool usage rules when creating suggestions:
 - \`get_available_skills\`: Call FIRST. Bias towards skills.
-- \`get_available_tools\`: Only if clearly needed. Otherwise suggest "Discover Tools" skill.
+- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
@@ -61,7 +61,7 @@ Then ask: "What would you like to improve?"
 ## STEP 3: After user responds, create suggestions
 Tool usage rules when creating suggestions:
 - \`get_available_skills\`: Call FIRST. Bias towards skills.
-- \`get_available_tools\`: Only if clearly needed. Otherwise suggest "Discover Tools" skill.
+- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
 - \`get_agent_insights\`: Only if debugging performance.
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
