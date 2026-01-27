@@ -6,9 +6,8 @@ import {
   ExclamationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import type { ReactElement } from "react";
-import React, { useMemo, useState } from "react";
+import React, { lazy, Suspense, useMemo, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
@@ -16,18 +15,22 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
-
-const ProgrammaticCostChart = dynamic(
-  () =>
-    import("@app/components/workspace/ProgrammaticCostChart").then(
-      (mod) => mod.ProgrammaticCostChart
-    ),
-  { ssr: false }
-);
-import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+
+const ProgrammaticCostChart = lazy(() =>
+  import("@app/components/workspace/ProgrammaticCostChart").then((mod) => ({
+    default: mod.ProgrammaticCostChart,
+  }))
+);
+
+function ProgrammaticCostChartFallback() {
+  return (
+    <div className="h-96 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
+  );
+}
+
 import {
   getBillingCycle,
   getPriceAsString,
@@ -516,10 +519,12 @@ function CreditsUsagePage() {
 
         {/* Usage Graph */}
         {billingCycleStartDay && (
-          <ProgrammaticCostChart
-            workspaceId={owner.sId}
-            billingCycleStartDay={billingCycleStartDay}
-          />
+          <Suspense fallback={<ProgrammaticCostChartFallback />}>
+            <ProgrammaticCostChart
+              workspaceId={owner.sId}
+              billingCycleStartDay={billingCycleStartDay}
+            />
+          </Suspense>
         )}
       </Page.Vertical>
       <div className="h-12" />

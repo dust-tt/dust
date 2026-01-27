@@ -2,8 +2,7 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Input, Label } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import dynamic from "next/dynamic";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
@@ -19,10 +18,17 @@ import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
 
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
+const CodeEditor = lazy(() =>
+  import("@uiw/react-textarea-code-editor").then((mod) => ({
+    default: mod.default,
+  }))
 );
+
+function CodeEditorFallback() {
+  return (
+    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
+  );
+}
 
 export default function LLM({
   owner,
@@ -441,22 +447,24 @@ export default function LLM({
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={readOnly}
-                value={block.spec.prompt}
-                language="jinja2"
-                placeholder=""
-                onChange={(e) => handlePromptChange(e.target.value)}
-                padding={3}
-                minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                style={{
-                  fontSize: 13,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                }}
-              />
+              <Suspense fallback={<CodeEditorFallback />}>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  readOnly={readOnly}
+                  value={block.spec.prompt}
+                  language="jinja2"
+                  placeholder=""
+                  onChange={(e) => handlePromptChange(e.target.value)}
+                  padding={3}
+                  minHeight={80}
+                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                  style={{
+                    fontSize: 13,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  }}
+                />
+              </Suspense>
             </div>
           </div>
         </div>

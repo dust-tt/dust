@@ -1,6 +1,6 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import dynamic from "next/dynamic";
+import { lazy, Suspense } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
@@ -12,10 +12,17 @@ import type { RunType } from "@app/types";
 
 import Block from "./Block";
 
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
+const CodeEditor = lazy(() =>
+  import("@uiw/react-textarea-code-editor").then((mod) => ({
+    default: mod.default,
+  }))
 );
+
+function CodeEditorFallback() {
+  return (
+    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
+  );
+}
 
 export function While({
   owner,
@@ -105,21 +112,23 @@ export function While({
           <div className="flex flex-initial items-center">condition :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={readOnly}
-                value={block.spec.condition_code}
-                language="js"
-                placeholder=""
-                onChange={(e) => handleConditionCodeChange(e.target.value)}
-                padding={15}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                style={{
-                  fontSize: 12,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                }}
-              />
+              <Suspense fallback={<CodeEditorFallback />}>
+                <CodeEditor
+                  data-color-mode={isDark ? "dark" : "light"}
+                  readOnly={readOnly}
+                  value={block.spec.condition_code}
+                  language="js"
+                  placeholder=""
+                  onChange={(e) => handleConditionCodeChange(e.target.value)}
+                  padding={15}
+                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                  style={{
+                    fontSize: 12,
+                    fontFamily:
+                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                  }}
+                />
+              </Suspense>
             </div>
           </div>
         </div>
