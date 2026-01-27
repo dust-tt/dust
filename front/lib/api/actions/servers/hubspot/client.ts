@@ -10,11 +10,38 @@ import type { Property } from "@hubspot/api-client/lib/codegen/crm/properties/mo
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
-const localLogger = logger.child({ module: "hubspot_api_helper" });
+const localLogger = logger.child({ module: "hubspot_client" });
 
 const MAX_ENUM_OPTIONS_DISPLAYED = 50;
 export const MAX_LIMIT = 200; // Hubspot API results are capped at 200, but this limit is set lower for internal use.
 export const MAX_COUNT_LIMIT = 10000; // This is the Hubspot API limit for total count.
+
+export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
+type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
+
+const SPECIAL_OBJECTS = ["owners"] as const;
+type SpecialObjectType = (typeof SPECIAL_OBJECTS)[number];
+
+export const ALL_OBJECTS = [...SIMPLE_OBJECTS, ...SPECIAL_OBJECTS] as const;
+
+interface HubspotFilter {
+  propertyName: string;
+  operator: FilterOperatorEnum;
+  value?: string;
+  values?: string[];
+  highValue?: string;
+}
+
+type HubspotSearchRequest = {
+  filterGroups: Array<{
+    filters: HubspotFilter[];
+  }>;
+  limit: number;
+  properties: string[];
+  after?: string;
+  sorts?: string[];
+  query?: string;
+};
 
 const getPropertyTypes = async (
   hubspotClient: Client,
@@ -57,13 +84,171 @@ const isDateProperty = (
   );
 };
 
-export const SIMPLE_OBJECTS = ["contacts", "companies", "deals"] as const;
-type SimpleObjectType = (typeof SIMPLE_OBJECTS)[number];
+function buildHubspotFilters(
+  filters: Array<HubspotFilter>,
+  propertyTypes?: Record<string, string>
+) {
+  // Define supported operators for validation
+  const supportedOperators = [
+    FilterOperatorEnum.Eq,
+    FilterOperatorEnum.Neq,
+    FilterOperatorEnum.Lt,
+    FilterOperatorEnum.Lte,
+    FilterOperatorEnum.Gt,
+    FilterOperatorEnum.Gte,
+    FilterOperatorEnum.Between,
+    FilterOperatorEnum.In,
+    FilterOperatorEnum.NotIn,
+    FilterOperatorEnum.HasProperty,
+    FilterOperatorEnum.NotHasProperty,
+    FilterOperatorEnum.ContainsToken,
+    FilterOperatorEnum.NotContainsToken,
+  ];
 
-const SPECIAL_OBJECTS = ["owners"] as const;
-type SpecialObjectType = (typeof SPECIAL_OBJECTS)[number];
+  return filters.map(({ propertyName, operator, value, values }) => {
+    // Validate operator is supported
+    if (!supportedOperators.includes(operator)) {
+      throw new Error(
+        `Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(", ")}`
+      );
+    }
 
-export const ALL_OBJECTS = [...SIMPLE_OBJECTS, ...SPECIAL_OBJECTS] as const;
+    const filter: HubspotFilter = {
+      propertyName,
+      operator,
+    };
+
+    // Only include value/values if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
+    if (
+      operator !== FilterOperatorEnum.HasProperty &&
+      operator !== FilterOperatorEnum.NotHasProperty
+    ) {
+      // Handle operators that require values array
+      if (
+        operator === FilterOperatorEnum.In ||
+        operator === FilterOperatorEnum.NotIn
+      ) {
+        // For string properties, values must be lowercase, but not for date or enumeration properties
+        if (values?.length) {
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
+          const isEnumProperty = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
+
+          // Filter out any undefined/null values and ensure all values are strings
+          const cleanValues = values
+            .filter((v) => v !== undefined && v !== null)
+            .map((v) => String(v));
+          filter.values =
+            isDateProp || isEnumProperty
+              ? cleanValues
+              : cleanValues.map((v) => v.toLowerCase());
+        } else {
+          throw new Error(`Values array is required for ${operator} operator`);
+        }
+      } else if (operator === FilterOperatorEnum.Between) {
+        // Date properties need to be converted to Unix timestamps in milliseconds
+        const isDateProp = isDateProperty(propertyName, propertyTypes);
+
+        if (values?.length === 2) {
+          let cleanValues = values
+            .filter((v) => v !== undefined && v !== null)
+            .map((v) => String(v));
+
+          // Convert date strings to timestamps for date properties
+          if (isDateProp) {
+            cleanValues = cleanValues.map((dateStr) => {
+              // Check if it's already a timestamp (all digits)
+              if (/^\d+$/.test(dateStr)) {
+                return dateStr;
+              }
+              // Convert ISO date string to timestamp
+              const timestamp = new Date(dateStr).getTime();
+              if (isNaN(timestamp)) {
+                throw new Error(
+                  `Invalid date format for BETWEEN operator: ${dateStr}`
+                );
+              }
+              return String(timestamp);
+            });
+          }
+
+          filter.value = cleanValues[0];
+          filter.highValue = cleanValues[1];
+        } else if (value !== undefined && value !== null) {
+          // If single value provided, assume it's semicolon-separated
+          const parts = String(value).split(";");
+          if (parts.length === 2) {
+            let [lowValue, highValue] = parts;
+
+            // Convert date strings to timestamps for date properties
+            if (isDateProp) {
+              if (!/^\d+$/.test(lowValue)) {
+                const timestamp = new Date(lowValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${lowValue}`
+                  );
+                }
+                lowValue = String(timestamp);
+              }
+              if (!/^\d+$/.test(highValue)) {
+                const timestamp = new Date(highValue).getTime();
+                if (isNaN(timestamp)) {
+                  throw new Error(
+                    `Invalid date format for BETWEEN operator: ${highValue}`
+                  );
+                }
+                highValue = String(timestamp);
+              }
+            }
+
+            filter.value = lowValue;
+            filter.highValue = highValue;
+          } else {
+            throw new Error(
+              `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
+            );
+          }
+        } else {
+          throw new Error(
+            `BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`
+          );
+        }
+      } else {
+        // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
+        if (value !== undefined && value !== null) {
+          // Check if this is a date or enumeration property that should preserve case
+          const isDateProp = isDateProperty(propertyName, propertyTypes);
+          const isEnumProperty = isEnumerationProperty(
+            propertyName,
+            propertyTypes
+          );
+
+          const stringValue = String(value);
+          // For string comparison operators, lowercase non-date, non-enumeration values for consistency
+          if (
+            !isDateProp &&
+            !isEnumProperty &&
+            (operator === FilterOperatorEnum.Eq ||
+              operator === FilterOperatorEnum.Neq ||
+              operator === FilterOperatorEnum.ContainsToken ||
+              operator === FilterOperatorEnum.NotContainsToken)
+          ) {
+            filter.value = stringValue.toLowerCase();
+          } else {
+            filter.value = stringValue;
+          }
+        } else {
+          throw new Error(`Value is required for ${operator} operator`);
+        }
+      }
+    }
+    return filter;
+  });
+}
 
 export const getObjectProperties = async ({
   accessToken,
@@ -267,180 +452,6 @@ export const searchOwners = async (
   }));
 };
 
-interface HubspotFilter {
-  propertyName: string;
-  operator: FilterOperatorEnum;
-  value?: string;
-  values?: string[];
-  highValue?: string;
-}
-
-function buildHubspotFilters(
-  filters: Array<HubspotFilter>,
-  propertyTypes?: Record<string, string>
-) {
-  // Define supported operators for validation
-  const supportedOperators = [
-    FilterOperatorEnum.Eq,
-    FilterOperatorEnum.Neq,
-    FilterOperatorEnum.Lt,
-    FilterOperatorEnum.Lte,
-    FilterOperatorEnum.Gt,
-    FilterOperatorEnum.Gte,
-    FilterOperatorEnum.Between,
-    FilterOperatorEnum.In,
-    FilterOperatorEnum.NotIn,
-    FilterOperatorEnum.HasProperty,
-    FilterOperatorEnum.NotHasProperty,
-    FilterOperatorEnum.ContainsToken,
-    FilterOperatorEnum.NotContainsToken,
-  ];
-
-  return filters.map(({ propertyName, operator, value, values }) => {
-    // Validate operator is supported
-    if (!supportedOperators.includes(operator)) {
-      throw new Error(
-        `Unsupported filter operator: ${operator}. Supported operators: ${supportedOperators.join(", ")}`
-      );
-    }
-
-    const filter: HubspotFilter = {
-      propertyName,
-      operator,
-    };
-
-    // Only include value/values if it's not a HAS_PROPERTY or NOT_HAS_PROPERTY operator
-    if (
-      operator !== FilterOperatorEnum.HasProperty &&
-      operator !== FilterOperatorEnum.NotHasProperty
-    ) {
-      // Handle operators that require values array
-      if (
-        operator === FilterOperatorEnum.In ||
-        operator === FilterOperatorEnum.NotIn
-      ) {
-        // For string properties, values must be lowercase, but not for date or enumeration properties
-        if (values?.length) {
-          // Check if this is a date or enumeration property that should preserve case
-          const isDateProp = isDateProperty(propertyName, propertyTypes);
-          const isEnumProperty = isEnumerationProperty(
-            propertyName,
-            propertyTypes
-          );
-
-          // Filter out any undefined/null values and ensure all values are strings
-          const cleanValues = values
-            .filter((v) => v !== undefined && v !== null)
-            .map((v) => String(v));
-          filter.values =
-            isDateProp || isEnumProperty
-              ? cleanValues
-              : cleanValues.map((v) => v.toLowerCase());
-        } else {
-          throw new Error(`Values array is required for ${operator} operator`);
-        }
-      } else if (operator === FilterOperatorEnum.Between) {
-        // Date properties need to be converted to Unix timestamps in milliseconds
-        const isDateProp = isDateProperty(propertyName, propertyTypes);
-
-        if (values?.length === 2) {
-          let cleanValues = values
-            .filter((v) => v !== undefined && v !== null)
-            .map((v) => String(v));
-
-          // Convert date strings to timestamps for date properties
-          if (isDateProp) {
-            cleanValues = cleanValues.map((dateStr) => {
-              // Check if it's already a timestamp (all digits)
-              if (/^\d+$/.test(dateStr)) {
-                return dateStr;
-              }
-              // Convert ISO date string to timestamp
-              const timestamp = new Date(dateStr).getTime();
-              if (isNaN(timestamp)) {
-                throw new Error(
-                  `Invalid date format for BETWEEN operator: ${dateStr}`
-                );
-              }
-              return String(timestamp);
-            });
-          }
-
-          filter.value = cleanValues[0];
-          filter.highValue = cleanValues[1];
-        } else if (value !== undefined && value !== null) {
-          // If single value provided, assume it's semicolon-separated
-          const parts = String(value).split(";");
-          if (parts.length === 2) {
-            let [lowValue, highValue] = parts;
-
-            // Convert date strings to timestamps for date properties
-            if (isDateProp) {
-              if (!/^\d+$/.test(lowValue)) {
-                const timestamp = new Date(lowValue).getTime();
-                if (isNaN(timestamp)) {
-                  throw new Error(
-                    `Invalid date format for BETWEEN operator: ${lowValue}`
-                  );
-                }
-                lowValue = String(timestamp);
-              }
-              if (!/^\d+$/.test(highValue)) {
-                const timestamp = new Date(highValue).getTime();
-                if (isNaN(timestamp)) {
-                  throw new Error(
-                    `Invalid date format for BETWEEN operator: ${highValue}`
-                  );
-                }
-                highValue = String(timestamp);
-              }
-            }
-
-            filter.value = lowValue;
-            filter.highValue = highValue;
-          } else {
-            throw new Error(
-              `BETWEEN operator with single value requires semicolon-separated format (e.g., "100;200")`
-            );
-          }
-        } else {
-          throw new Error(
-            `BETWEEN operator requires either a values array with 2 elements or a semicolon-separated value string`
-          );
-        }
-      } else {
-        // Handle all single-value operators: EQ, NEQ, LT, LTE, GT, GTE, CONTAINS_TOKEN, NOT_CONTAINS_TOKEN
-        if (value !== undefined && value !== null) {
-          // Check if this is a date or enumeration property that should preserve case
-          const isDateProp = isDateProperty(propertyName, propertyTypes);
-          const isEnumProperty = isEnumerationProperty(
-            propertyName,
-            propertyTypes
-          );
-
-          const stringValue = String(value);
-          // For string comparison operators, lowercase non-date, non-enumeration values for consistency
-          if (
-            !isDateProp &&
-            !isEnumProperty &&
-            (operator === FilterOperatorEnum.Eq ||
-              operator === FilterOperatorEnum.Neq ||
-              operator === FilterOperatorEnum.ContainsToken ||
-              operator === FilterOperatorEnum.NotContainsToken)
-          ) {
-            filter.value = stringValue.toLowerCase();
-          } else {
-            filter.value = stringValue;
-          }
-        } else {
-          throw new Error(`Value is required for ${operator} operator`);
-        }
-      }
-    }
-    return filter;
-  });
-}
-
 export const countObjectsByProperties = async (
   accessToken: string,
   objectType: SimpleObjectType,
@@ -561,6 +572,43 @@ export const getLatestObjects = async (
   return allResults.slice(0, limit);
 };
 
+const getAssociationTypeId = async (
+  accessToken: string,
+  fromObjectType: string,
+  toObjectType: string
+): Promise<number> => {
+  // eslint-disable-next-line no-restricted-globals
+  const response = await fetch(
+    `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const e = new Error(
+      `Failed to fetch association types for ${fromObjectType} to ${toObjectType}: ${response.status} ${response.statusText}`
+    );
+    throw normalizeError(e);
+  }
+
+  const data = await response.json();
+
+  if (!data.results || data.results.length === 0) {
+    const e = new Error(
+      `No association types found for ${fromObjectType} to ${toObjectType}`
+    );
+    throw normalizeError(e);
+  }
+
+  // Assuming the first result is the one needed for standard associations.
+  return data.results[0].typeId;
+};
+
 export const createContact = async ({
   accessToken,
   properties,
@@ -570,7 +618,7 @@ export const createContact = async ({
   properties: Record<string, string>;
   associations?: Array<{
     toObjectId: string;
-    toObjectType: string; // e.g., "companies", "deals"
+    toObjectType: string;
   }>;
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -582,21 +630,19 @@ export const createContact = async ({
     for (const assoc of associations) {
       const associationTypeId = await getAssociationTypeId(
         accessToken,
-        "contacts", // fromObjectType is always "contacts" for createContact
+        "contacts",
         assoc.toObjectType
       );
-      if (builtAssociations) {
-        builtAssociations.push({
-          to: { id: assoc.toObjectId },
-          types: [
-            {
-              associationCategory:
-                AssociationSpecAssociationCategoryEnum.HubspotDefined,
-              associationTypeId: associationTypeId,
-            },
-          ],
-        });
-      }
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId: associationTypeId,
+          },
+        ],
+      });
     }
   }
 
@@ -617,7 +663,7 @@ export const createCompany = async ({
   properties: Record<string, string>;
   associations?: Array<{
     toObjectId: string;
-    toObjectType: string; // e.g., "contacts", "deals"
+    toObjectType: string;
   }>;
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -629,21 +675,19 @@ export const createCompany = async ({
     for (const assoc of associations) {
       const associationTypeId = await getAssociationTypeId(
         accessToken,
-        "companies", // fromObjectType is always "companies" for createCompany
+        "companies",
         assoc.toObjectType
       );
-      if (builtAssociations) {
-        builtAssociations.push({
-          to: { id: assoc.toObjectId },
-          types: [
-            {
-              associationCategory:
-                AssociationSpecAssociationCategoryEnum.HubspotDefined,
-              associationTypeId: associationTypeId,
-            },
-          ],
-        });
-      }
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId: associationTypeId,
+          },
+        ],
+      });
     }
   }
 
@@ -664,7 +708,7 @@ export const createDeal = async ({
   properties: Record<string, string>;
   associations?: Array<{
     toObjectId: string;
-    toObjectType: string; // e.g., "contacts", "companies"
+    toObjectType: string;
   }>;
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -676,21 +720,19 @@ export const createDeal = async ({
     for (const assoc of associations) {
       const associationTypeId = await getAssociationTypeId(
         accessToken,
-        "deals", // fromObjectType is always "deals" for createDeal
+        "deals",
         assoc.toObjectType
       );
-      if (builtAssociations) {
-        builtAssociations.push({
-          to: { id: assoc.toObjectId },
-          types: [
-            {
-              associationCategory:
-                AssociationSpecAssociationCategoryEnum.HubspotDefined,
-              associationTypeId: associationTypeId,
-            },
-          ],
-        });
-      }
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId: associationTypeId,
+          },
+        ],
+      });
     }
   }
 
@@ -734,9 +776,6 @@ export const createNote = async ({
   if (!propertiesForApi.hs_timestamp) {
     propertiesForApi.hs_timestamp = new Date().toISOString();
   }
-  // hs_engagement_type should not be part of propertiesForApi for the "notes" endpoint
-  // If it was passed, it won't cause issues here, but it's not used by the notes API directly.
-  // Consider explicitly deleting it if it could be problematic: delete propertiesForApi.hs_engagement_type;
 
   const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
     [];
@@ -753,22 +792,20 @@ export const createNote = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "notes", // fromObjectType is "notes"
+          "notes",
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
-          if (builtAssociations) {
-            builtAssociations.push({
-              to: { id: id },
-              types: [
-                {
-                  associationCategory:
-                    AssociationSpecAssociationCategoryEnum.HubspotDefined,
-                  associationTypeId: associationTypeId,
-                },
-              ],
-            });
-          }
+          builtAssociations.push({
+            to: { id: id },
+            types: [
+              {
+                associationCategory:
+                  AssociationSpecAssociationCategoryEnum.HubspotDefined,
+                associationTypeId: associationTypeId,
+              },
+            ],
+          });
         }
       }
     }
@@ -803,7 +840,7 @@ export const createLead = async ({
   properties: Record<string, string>;
   associations?: Array<{
     toObjectId: string;
-    toObjectType: string; // e.g., "contacts", "companies"
+    toObjectType: string;
   }>;
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
@@ -813,29 +850,24 @@ export const createLead = async ({
 
   if (associations && associations.length > 0) {
     for (const assoc of associations) {
-      // Since leads are created as deals, the fromObjectType for association is "deals"
       const associationTypeId = await getAssociationTypeId(
         accessToken,
         "deals",
         assoc.toObjectType
       );
-      if (builtAssociations) {
-        builtAssociations.push({
-          to: { id: assoc.toObjectId },
-          types: [
-            {
-              associationCategory:
-                AssociationSpecAssociationCategoryEnum.HubspotDefined,
-              associationTypeId: associationTypeId,
-            },
-          ],
-        });
-      }
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId: associationTypeId,
+          },
+        ],
+      });
     }
   }
 
-  // Creating a Deal, as Leads are often a type of Deal in HubSpot.
-  // The `properties` should contain fields that mark this deal as a lead.
   const leadData: SimplePublicObjectInputForCreate = {
     properties,
     associations: builtAssociations,
@@ -866,18 +898,16 @@ export const createTask = async ({
         "tasks",
         assoc.toObjectType
       );
-      if (builtAssociations) {
-        builtAssociations.push({
-          to: { id: assoc.toObjectId },
-          types: [
-            {
-              associationCategory:
-                AssociationSpecAssociationCategoryEnum.HubspotDefined,
-              associationTypeId,
-            },
-          ],
-        });
-      }
+      builtAssociations.push({
+        to: { id: assoc.toObjectId },
+        types: [
+          {
+            associationCategory:
+              AssociationSpecAssociationCategoryEnum.HubspotDefined,
+            associationTypeId,
+          },
+        ],
+      });
     }
   }
   const taskData: SimplePublicObjectInputForCreate = {
@@ -889,11 +919,11 @@ export const createTask = async ({
 
 export const createCommunication = async ({
   accessToken,
-  properties, // Must include hs_engagement_type (e.g. 'COMMUNICATION'), hs_communication_channel_type, hs_communication_body
+  properties,
   associations,
 }: {
   accessToken: string;
-  properties: Record<string, any>; // Changed to any to accommodate hs_engagement_type which might not always be string
+  properties: Record<string, any>;
   associations?: {
     contactIds?: string[];
     companyIds?: string[];
@@ -902,11 +932,11 @@ export const createCommunication = async ({
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  const finalProperties = { ...properties }; // Create a copy
+  const finalProperties = { ...properties };
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
-    finalProperties.hs_engagement_type = "COMMUNICATION"; // Default if not provided, mutate the copy
+    finalProperties.hs_engagement_type = "COMMUNICATION";
   }
   if (!finalProperties.hs_communication_channel_type) {
     throw normalizeError(
@@ -928,22 +958,20 @@ export const createCommunication = async ({
       if (mapping.ids && mapping.ids.length > 0) {
         const associationTypeId = await getAssociationTypeId(
           accessToken,
-          "engagements", // Communications are a type of engagement.
+          "engagements",
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
-          if (builtAssociations) {
-            builtAssociations.push({
-              to: { id: id },
-              types: [
-                {
-                  associationCategory:
-                    AssociationSpecAssociationCategoryEnum.HubspotDefined,
-                  associationTypeId,
-                },
-              ],
-            });
-          }
+          builtAssociations.push({
+            to: { id: id },
+            types: [
+              {
+                associationCategory:
+                  AssociationSpecAssociationCategoryEnum.HubspotDefined,
+                associationTypeId,
+              },
+            ],
+          });
         }
       }
     }
@@ -971,8 +999,8 @@ export const createCommunication = async ({
 
 export const createMeeting = async ({
   accessToken,
-  properties, // Must include hs_engagement_type="MEETING" and meeting details (e.g. hs_meeting_title, hs_meeting_start_time etc).
-  associations, // Direct association IDs, e.g., { contactIds: ["123"], dealIds: ["456"] }
+  properties,
+  associations,
 }: {
   accessToken: string;
   properties: Record<string, any>;
@@ -984,14 +1012,12 @@ export const createMeeting = async ({
 }): Promise<SimplePublicObject> => {
   const hubspotClient = new Client({ accessToken });
 
-  const finalProperties = { ...properties }; // Create a copy
+  const finalProperties = { ...properties };
 
-  // Ensure hs_engagement_type is set for meetings
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   if (!finalProperties.hs_engagement_type) {
-    finalProperties.hs_engagement_type = "MEETING"; // Mutate the copy
+    finalProperties.hs_engagement_type = "MEETING";
   }
-  // Add checks for essential meeting properties like start_time, title if needed
 
   const builtAssociations: SimplePublicObjectInputForCreate["associations"] =
     [];
@@ -1009,18 +1035,16 @@ export const createMeeting = async ({
           mapping.toObjectType
         );
         for (const id of mapping.ids) {
-          if (builtAssociations) {
-            builtAssociations.push({
-              to: { id: id },
-              types: [
-                {
-                  associationCategory:
-                    AssociationSpecAssociationCategoryEnum.HubspotDefined,
-                  associationTypeId,
-                },
-              ],
-            });
-          }
+          builtAssociations.push({
+            to: { id: id },
+            types: [
+              {
+                associationCategory:
+                  AssociationSpecAssociationCategoryEnum.HubspotDefined,
+                associationTypeId,
+              },
+            ],
+          });
         }
       }
     }
@@ -1046,61 +1070,17 @@ export const createMeeting = async ({
   }
 };
 
-const getAssociationTypeId = async (
-  accessToken: string,
-  fromObjectType: string,
-  toObjectType: string
-): Promise<number> => {
-  // eslint-disable-next-line no-restricted-globals
-  const response = await fetch(
-    `https://api.hubapi.com/crm/v4/associations/${fromObjectType}/${toObjectType}/labels`,
-    {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  if (!response.ok) {
-    const e = new Error(
-      `Failed to fetch association types for ${fromObjectType} to ${toObjectType}: ${response.status} ${response.statusText}`
-    );
-    throw normalizeError(e);
-  }
-
-  const data = await response.json();
-
-  if (!data.results || data.results.length === 0) {
-    const e = new Error(
-      `No association types found for ${fromObjectType} to ${toObjectType}`
-    );
-    throw normalizeError(e);
-  }
-
-  // Assuming the first result is the one needed for standard associations.
-  // HubSpot's API may return multiple if custom association types exist between the objects.
-  // For standard object-to-object associations (e.g., contact to company), typically one primary ID is used.
-  return data.results[0].typeId;
-};
-
 export const getContact = async (
   accessToken: string,
   contactId: string
 ): Promise<SimplePublicObject | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    // The `properties` parameter is optional for getById. If not provided, default properties are returned.
-    // To fetch all properties, one would typically first get property definitions and pass all their names.
-    // For a simple get, default properties are usually sufficient.
     const contact =
       await hubspotClient.crm.contacts.basicApi.getById(contactId);
     return contact;
   } catch (error: any) {
     if (error.code === 404) {
-      // If the contact is not found, HubSpot API returns a 404.
-      // Return null in this case, as per typical "get by ID" patterns.
       return null;
     }
     localLogger.error(
@@ -1181,19 +1161,13 @@ export const getMeeting = async (
   accessToken: string,
   meetingId: string
 ): Promise<SimplePublicObject | null> => {
-  // Assuming engagements API returns SimplePublicObject or a compatible type.
   const hubspotClient = new Client({ accessToken });
   try {
-    // Meetings are engagements, so we use the engagements API if available and appropriate.
-    // If crm.engagements.basicApi.getById exists, it could be used here.
-    // If not, or if meetings are also gettable via crm.objects.basicApi, that path is used.
-    // We might need to check if this engagement is indeed a meeting, e.g., by its `hs_engagement_type` property.
-    // For now, this function returns whatever engagement is found with that ID.
     const meeting = await hubspotClient.crm.objects.basicApi.getById(
       "engagements",
       meetingId
     );
-    return meeting; // For now, return whatever engagement is found with that ID.
+    return meeting;
   } catch (error: any) {
     if (error.code === 404) {
       return null;
@@ -1212,15 +1186,8 @@ export const getFilePublicUrl = async (
 ): Promise<string | null> => {
   const hubspotClient = new Client({ accessToken });
   try {
-    // The HubSpot Node.js client has a files API.
-    // The method to get a signed URL might vary slightly based on client version.
-    // A common pattern is: client.files.filesApi.getSignedUrl(fileId, options).
-    // Let's try to get the file details first, which often include a public URL or a way to generate one.
     const file = await hubspotClient.files.filesApi.getById(fileId);
 
-    // The 'url' property on the file object is usually the public CDN URL.
-    // If a temporary signed URL is needed, the getSignedUrl(fileId) method would be used.
-    // For a general public URL (if the file is public), this direct URL property is often sufficient.
     if (file && file.url) {
       return file.url;
     } else if (file) {
@@ -1228,13 +1195,9 @@ export const getFilePublicUrl = async (
         { fileId },
         `File ${fileId} found, but it does not have a public URL property.`
       );
-      // Fallback: Attempt to get a signed URL if the direct URL isn't available or for temporary access.
-      // This part is speculative as the exact method might differ or require specific options.
       try {
         const signedUrlResponse =
-          await hubspotClient.files.filesApi.getSignedUrl(
-            fileId /*, { property: 'url', size: 'thumbnail', etc. } */
-          );
+          await hubspotClient.files.filesApi.getSignedUrl(fileId);
         if (signedUrlResponse && signedUrlResponse.url) {
           return signedUrlResponse.url;
         }
@@ -1246,7 +1209,7 @@ export const getFilePublicUrl = async (
       }
       return null;
     } else {
-      return null; // This should be caught by the 404 case below if the file is not found at all.
+      return null;
     }
   } catch (error: any) {
     if (error.code === 404) {
@@ -1268,10 +1231,9 @@ export const getAssociatedMeetings = async (
 ): Promise<SimplePublicObject[] | null> => {
   const hubspotClient = new Client({ accessToken });
   const associatedMeetingDetails: SimplePublicObject[] = [];
-  const toObjectType = "meetings"; // This is the object type to fetch associations for.
+  const toObjectType = "meetings";
 
   try {
-    // 1. Get IDs of associated meetings using the generic associations API
     const associationResults =
       await hubspotClient.crm.associations.v4.basicApi.getPage(
         fromObjectType,
@@ -1283,7 +1245,6 @@ export const getAssociatedMeetings = async (
       (assoc) => assoc.toObjectId
     );
 
-    // 2. Fetch details for each meeting ID
     for (const meetingId of meetingIds) {
       const meetingDetail = await getMeeting(accessToken, meetingId);
       if (
@@ -1301,13 +1262,11 @@ export const getAssociatedMeetings = async (
     return associatedMeetingDetails;
   } catch (error: any) {
     if (error.code === 404) {
-      // This could be because the fromObject doesn't exist, or no associations of 'meetings' type exist.
-      // The API might return 404 if the association path itself is invalid rather than just empty results.
       localLogger.warn(
         { fromObjectType, fromObjectId },
         `Error 404 when fetching associated meetings for ${fromObjectType}/${fromObjectId} to ${toObjectType}. This might mean the object does not exist or no such associations exist.`
       );
-      return []; // Return an empty array in case of 404, indicating no associated meetings found or accessible.
+      return [];
     }
     localLogger.error(
       { error, fromObjectType, fromObjectId },
@@ -1323,7 +1282,7 @@ export const searchCrmObjects = async ({
   filters,
   query,
   propertiesToReturn,
-  limit = MAX_LIMIT, // Default to our defined MAX_LIMIT
+  limit = MAX_LIMIT,
   after,
 }: {
   accessToken: string;
@@ -1337,8 +1296,8 @@ export const searchCrmObjects = async ({
     | "line_items"
     | "quotes"
     | "feedback_submissions"
-    | "products"; // Extend with other searchable standard objects as needed.
-  filters?: Array<HubspotFilter>; // Reusing HubspotFilter interface defined earlier.
+    | "products";
+  filters?: Array<HubspotFilter>;
   query?: string;
   propertiesToReturn?: string[];
   limit?: number;
@@ -1346,7 +1305,6 @@ export const searchCrmObjects = async ({
 }): Promise<{ results: SimplePublicObject[]; paging?: any } | null> => {
   const hubspotClient = new Client({ accessToken });
 
-  // Fetch property types for enumeration detection and propertiesToReturn if needed
   let propertyTypes: Record<string, string> = {};
   let finalPropertiesToReturn = propertiesToReturn;
 
@@ -1363,7 +1321,6 @@ export const searchCrmObjects = async ({
       { propError },
       `Error fetching properties for ${objectType}:`
     );
-    // Fallback to an empty array; the API will return default properties in this case.
     if (!finalPropertiesToReturn || finalPropertiesToReturn.length === 0) {
       finalPropertiesToReturn = [];
     }
@@ -1373,9 +1330,9 @@ export const searchCrmObjects = async ({
     filterGroups: filters
       ? [{ filters: buildHubspotFilters(filters, propertyTypes) }]
       : [],
-    sorts: ["-createdate"], // Default sort order.
+    sorts: ["-createdate"],
     properties: finalPropertiesToReturn,
-    limit: Math.min(limit, MAX_LIMIT), // Ensure the limit doesn't exceed MAX_LIMIT.
+    limit: Math.min(limit, MAX_LIMIT),
     after: after,
   };
 
@@ -1384,13 +1341,6 @@ export const searchCrmObjects = async ({
   }
 
   try {
-    // The search API is typically under hubspotClient.crm.{objectType}.searchApi.doSearch.
-    // However, a more generic path might exist, or a switch for objectType might be needed.
-    // For standard objects, it's usually client.crm.objects.basicApi.search, which takes objectType in the path.
-    // Let's use client.crm.objects.searchApi.doSearch if that's the modern way.
-    // The client structure: client.crm.objects.searchApi.doSearch(objectType, publicObjectSearchRequest) seems not to be available directly.
-    // The specific object clients are preferred for reliability.
-
     let searchResponse;
     switch (objectType) {
       case "contacts":
@@ -1405,7 +1355,6 @@ export const searchCrmObjects = async ({
         searchResponse =
           await hubspotClient.crm.deals.searchApi.doSearch(searchRequest);
         break;
-
       case "tasks":
         searchResponse =
           await hubspotClient.crm.objects.tasks.searchApi.doSearch(
@@ -1477,6 +1426,43 @@ export const searchCrmObjects = async ({
   }
 };
 
+function createDateRangeFilters(
+  startDate: string,
+  endDate: string,
+  dateProperty = "createdate"
+): HubspotFilter[] {
+  const startTimestamp = isNaN(Number(startDate))
+    ? new Date(startDate).getTime()
+    : Number(startDate);
+  const endTimestamp = isNaN(Number(endDate))
+    ? new Date(endDate).getTime()
+    : Number(endDate);
+
+  return [
+    {
+      propertyName: dateProperty,
+      operator: FilterOperatorEnum.Gte,
+      value: startTimestamp.toString(),
+    },
+    {
+      propertyName: dateProperty,
+      operator: FilterOperatorEnum.Lte,
+      value: endTimestamp.toString(),
+    },
+  ];
+}
+
+function createOwnerFilter(
+  ownerId: string,
+  ownerProperty = "hubspot_owner_id"
+): HubspotFilter {
+  return {
+    propertyName: ownerProperty,
+    operator: FilterOperatorEnum.Eq,
+    value: ownerId,
+  };
+}
+
 export const getUserActivity = async ({
   accessToken,
   ownerId,
@@ -1486,8 +1472,8 @@ export const getUserActivity = async ({
 }: {
   accessToken: string;
   ownerId: string;
-  startDate: string; // ISO date string or timestamp
-  endDate: string; // ISO date string or timestamp
+  startDate: string;
+  endDate: string;
   limit?: number;
 }) => {
   try {
@@ -1499,7 +1485,6 @@ export const getUserActivity = async ({
 
     for (const objectType of engagementTypes) {
       try {
-        // Different engagement types may use different owner property names
         const ownerPropertyNames = [
           "hubspot_owner_id",
           "hs_created_by",
@@ -1507,7 +1492,6 @@ export const getUserActivity = async ({
         ];
         let result = null;
 
-        // Try different owner property names until one works
         for (const ownerProperty of ownerPropertyNames) {
           try {
             const ownerFilter = createOwnerFilter(ownerId, ownerProperty);
@@ -1518,11 +1502,10 @@ export const getUserActivity = async ({
               limit,
             });
             if (result?.results && result.results.length > 0) {
-              break; // Found results with this property name
+              break;
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (propertyError) {
-            // Try next property name
             continue;
           }
         }
@@ -1536,7 +1519,6 @@ export const getUserActivity = async ({
           );
         }
       } catch (error) {
-        // Continue if this object type fails completely
         localLogger.warn(
           { error, objectType, ownerId },
           `Failed to get ${objectType} for owner ${ownerId}, continuing with other types`
@@ -1711,66 +1693,16 @@ export const getUserDetails = async (accessToken: string) => {
 
     const data = await response.json();
 
-    // Only return the specified fields
     return {
       user_id: data.user_id,
       user: data.user,
       hub_id: data.hub_id,
     };
   } catch (error) {
-    console.error("Error getting user details:", error);
+    localLogger.error({ error }, "Error getting user details:");
     throw normalizeError(error);
   }
 };
-
-// Add this interface near the other local interfaces, e.g. after HubspotFilter
-type HubspotSearchRequest = {
-  filterGroups: Array<{
-    filters: HubspotFilter[];
-  }>;
-  limit: number;
-  properties: string[];
-  after?: string;
-  sorts?: string[];
-  query?: string;
-};
-
-function createDateRangeFilters(
-  startDate: string,
-  endDate: string,
-  dateProperty = "createdate"
-): HubspotFilter[] {
-  const startTimestamp = isNaN(Number(startDate))
-    ? new Date(startDate).getTime()
-    : Number(startDate);
-  const endTimestamp = isNaN(Number(endDate))
-    ? new Date(endDate).getTime()
-    : Number(endDate);
-
-  return [
-    {
-      propertyName: dateProperty,
-      operator: FilterOperatorEnum.Gte,
-      value: startTimestamp.toString(),
-    },
-    {
-      propertyName: dateProperty,
-      operator: FilterOperatorEnum.Lte,
-      value: endTimestamp.toString(),
-    },
-  ];
-}
-
-function createOwnerFilter(
-  ownerId: string,
-  ownerProperty = "hubspot_owner_id"
-): HubspotFilter {
-  return {
-    propertyName: ownerProperty,
-    operator: FilterOperatorEnum.Eq,
-    value: ownerId,
-  };
-}
 
 export const createAssociation = async ({
   accessToken,
@@ -1797,7 +1729,7 @@ export const createAssociation = async ({
         {
           associationCategory:
             AssociationSpecAssociationCategoryEnum.HubspotDefined,
-          associationTypeId: 1, // Primary association
+          associationTypeId: 1,
         },
       ]
     );
@@ -1827,7 +1759,6 @@ export const listAssociations = async ({
     const hubspotClient = new Client({ accessToken });
 
     if (toObjectType) {
-      // Get associations to a specific object type
       const result = await hubspotClient.crm.associations.v4.basicApi.getPage(
         objectType,
         objectId,
@@ -1835,7 +1766,6 @@ export const listAssociations = async ({
       );
       return result;
     } else {
-      // Get all associations for the object
       const associationTypes = [
         "contacts",
         "companies",
@@ -1862,7 +1792,6 @@ export const listAssociations = async ({
             }
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
           } catch (error) {
-            // Continue if this association type doesn't exist
             continue;
           }
         }

@@ -96,6 +96,10 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
     );
   }
 
+  // Wait for SDK to be ready (first build complete) before starting front
+  // Front's TypeScript compiler needs SDK types from dist/
+  await waitForServiceReady(env, "sdk");
+
   // Check if already warm
   const dockerRunning = await isDockerRunning(env.name);
   if (dockerRunning) {

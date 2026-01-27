@@ -1,30 +1,15 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import assert from "assert";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  FIND_TAGS_TOOL_NAME,
-  SEARCH_SERVER_NAME,
-  SEARCH_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
 import type { DataSourcesToolConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { SearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  checkConflictingTags,
-  shouldAutoGenerateTags,
-} from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
+import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import { getCoreSearchArgs } from "@app/lib/actions/mcp_internal_actions/tools/utils";
-import {
-  SearchInputSchema,
-  TagsInputSchema,
-} from "@app/lib/actions/mcp_internal_actions/types";
-import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { registerFindTagsTool } from "@app/lib/api/actions/tools/find_tags";
 import { getRefs } from "@app/lib/api/assistant/citations";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
@@ -214,62 +199,3 @@ export async function searchFunction({
     }))
   );
 }
-
-function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): McpServer {
-  const server = makeInternalMCPServer(SEARCH_SERVER_NAME);
-
-  const areTagsDynamic = agentLoopContext
-    ? shouldAutoGenerateTags(agentLoopContext)
-    : false;
-
-  if (!areTagsDynamic) {
-    server.tool(
-      SEARCH_TOOL_NAME,
-      "Search the data sources specified by the user." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
-      SearchInputSchema.shape,
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: SEARCH_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (args) => searchFunction({ ...args, auth, agentLoopContext })
-      )
-    );
-  } else {
-    server.tool(
-      SEARCH_TOOL_NAME,
-      "Search the data sources specified by the user." +
-        " The search is based on semantic similarity between the query and chunks of information" +
-        " from the data sources.",
-      {
-        ...SearchInputSchema.shape,
-        ...TagsInputSchema.shape,
-      },
-      withToolLogging(
-        auth,
-        {
-          toolNameForMonitoring: SEARCH_TOOL_NAME,
-          agentLoopContext,
-          enableAlerting: true,
-        },
-        async (args) => searchFunction({ ...args, auth, agentLoopContext })
-      )
-    );
-
-    registerFindTagsTool(auth, server, agentLoopContext, {
-      name: FIND_TAGS_TOOL_NAME,
-      extraDescription: `This tool is meant to be used before the ${SEARCH_TOOL_NAME} tool.`,
-    });
-  }
-
-  return server;
-}
-
-export default createServer;
