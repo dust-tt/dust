@@ -447,7 +447,22 @@ export async function runModelActivity(
 
     switch (error.type) {
       case "shouldRetryMessage": {
-        const { type } = error.content;
+        const { type, isRetryable } = error.content;
+        const errorDustRunId = llm?.getTraceId();
+
+        if (!isRetryable) {
+          // Non-retryable errors (e.g., context length, auth) should not be retried.
+          await publishAgentError(
+            {
+              code: "multi_actions_error",
+              message: getUserFacingLLMErrorMessage(type, metadata),
+              metadata: null,
+            },
+            errorDustRunId
+          );
+          return null;
+        }
+
         // Throw to let Temporal handle the retry via its retry policy.
         throw new Error(
           `LLM error (${type}): ${getUserFacingLLMErrorMessage(type, metadata)}`
