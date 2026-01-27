@@ -42,6 +42,7 @@ import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/m
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
+import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
@@ -402,44 +403,13 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Read operations - never ask
-      search_messages: "never_ask",
-      semantic_search_messages: "never_ask",
-      list_users: "never_ask",
-      search_channels: "never_ask",
-      list_messages: "never_ask",
-      read_thread_messages: "never_ask",
-      get_user: "never_ask",
-
-      // Write operations - low stakes
-      post_message: "medium",
-      schedule_message: "medium",
-      add_reaction: "low",
-      remove_reaction: "low",
-    },
+    metadata: SLACK_PERSONAL_SERVER,
     tools_arguments_requiring_approval: {
       post_message: ["channel"],
       schedule_message: ["channel"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slack",
-      version: "1.0.0",
-      description:
-        "Slack tools for searching and posting messages. Works with your personal Slack account and supports all common Slack operations.",
-      authorization: {
-        provider: "slack_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-      },
-      icon: "SlackLogo",
-      documentationUrl: "https://docs.dust.tt/docs/slack-mcp",
-      instructions:
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
-        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
-    },
   },
   google_sheets: {
     id: 19,

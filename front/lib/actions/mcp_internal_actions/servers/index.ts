@@ -28,7 +28,6 @@ import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actio
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
-import { default as slackServer } from "@app/lib/actions/mcp_internal_actions/servers/slack/slack_personal";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
@@ -63,6 +62,7 @@ import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
+import { default as slackServer } from "@app/lib/api/actions/servers/slack_personal";
 import { default as snowflakeServer } from "@app/lib/api/actions/servers/snowflake";
 import { default as soundStudio } from "@app/lib/api/actions/servers/sound_studio";
 import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_generator";
