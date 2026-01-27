@@ -58,14 +58,6 @@ export const useCopilotSuggestions = () => {
   return context;
 };
 
-/**
- * Optional hook that returns the context or undefined if not in a provider.
- * Useful for components that may or may not be wrapped in the provider.
- */
-export const useCopilotSuggestionsOptional = () => {
-  return useContext(CopilotSuggestionsContext);
-};
-
 interface CopilotSuggestionsProviderProps {
   children: ReactNode;
 }

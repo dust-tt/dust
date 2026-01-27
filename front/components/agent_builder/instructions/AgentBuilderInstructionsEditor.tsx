@@ -12,7 +12,7 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { useCopilotSuggestionsOptional } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
@@ -84,8 +84,7 @@ export function AgentBuilderInstructionsEditor({
   const suggestionHandler = blockDropdown.suggestionOptions;
   const initialContentSetRef = useRef(false);
 
-  // Get the suggestions context if available.
-  const suggestionsContext = useCopilotSuggestionsOptional();
+  const suggestionsContext = useCopilotSuggestions();
 
   const extensions = useMemo(() => {
     const extensions: Extensions = [

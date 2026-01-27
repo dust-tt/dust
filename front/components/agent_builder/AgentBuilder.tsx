@@ -18,7 +18,7 @@ import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuild
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
 import {
   CopilotSuggestionsProvider,
-  useCopilotSuggestionsOptional,
+  useCopilotSuggestions,
 } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
@@ -551,7 +551,7 @@ function AgentBuilderContent({
   // Only enabled when the agent_builder_copilot feature flag is active.
   const { serverId: clientSideMCPServerId } = useCopilotMCPServer({
     enabled: hasFeature("agent_builder_copilot"),
-    suggestionsContext: useCopilotSuggestionsOptional(),
+    suggestionsContext: useCopilotSuggestions(),
   });
 
   return (

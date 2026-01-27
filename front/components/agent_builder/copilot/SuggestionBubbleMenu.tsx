@@ -2,7 +2,7 @@ import { Button, CheckIcon, HoveringBar, XMarkIcon } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 
-import { useCopilotSuggestionsOptional } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 
 interface SuggestionBubbleMenuProps {
   editor: Editor;
@@ -13,7 +13,7 @@ interface SuggestionBubbleMenuProps {
  * Provides Accept/Reject buttons for the current suggestion.
  */
 export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
-  const suggestionsContext = useCopilotSuggestionsOptional();
+  const suggestionsContext = useCopilotSuggestions();
 
   // Check if cursor is on a suggestion mark.
   const isOnSuggestion = () => {
