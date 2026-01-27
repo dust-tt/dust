@@ -45,6 +45,46 @@ function validateEmailAddresses(
   return null;
 }
 
+// Builds and encodes an email message for Gmail API.
+// Used by both create_draft and send_mail to avoid code duplication.
+function buildAndEncodeEmail(params: {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  contentType: string;
+  body: string;
+}): Err<MCPError> | Ok<string> {
+  const encodedSubject = encodeSubject(params.subject);
+
+  // Validate email addresses to prevent header injection
+  const validationError = validateEmailAddresses(
+    params.to,
+    params.cc,
+    params.bcc
+  );
+  if (validationError) {
+    return validationError;
+  }
+
+  // Create the email message with proper headers and content.
+  const messageLines = [
+    `To: ${params.to.join(", ")}`,
+    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
+    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+    `Subject: ${encodedSubject}`,
+    `Content-Type: ${params.contentType}; charset=UTF-8`,
+    "MIME-Version: 1.0",
+    "",
+    params.body,
+  ].filter((line): line is string => line !== null);
+
+  const message = messageLines.join("\r\n");
+  const encodedMessage = encodeMessageForGmail(message);
+
+  return new Ok(encodedMessage);
+}
+
 const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   get_drafts: async ({ q, pageToken }, { authInfo }) => {
     const accessToken = authInfo?.token;
@@ -115,31 +155,21 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    // Always encode subject line using RFC 2047 to handle any special characters
-    const encodedSubject = encodeSubject(subject);
+    // Build and encode the email message
+    const encodedMessageResult = buildAndEncodeEmail({
+      to,
+      cc,
+      bcc,
+      subject,
+      contentType,
+      body,
+    });
 
-    // Validate email addresses to prevent header injection
-    const validationError = validateEmailAddresses(to, cc, bcc);
-    if (validationError) {
-      return validationError;
+    if (encodedMessageResult.isErr()) {
+      return encodedMessageResult;
     }
 
-    // Create the email message with proper headers and content.
-    const message = [
-      `To: ${to.join(", ")}`,
-      cc?.length ? `Cc: ${cc.join(", ")}` : null,
-      bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
-      `Subject: ${encodedSubject}`,
-      "Content-Type: " + contentType,
-      "MIME-Version: 1.0",
-      "",
-      body,
-    ]
-      .filter((line) => line !== null)
-      .join("\n");
-
-    // Encode the message in base64 as required by the Gmail API.
-    const encodedMessage = encodeMessageForGmail(message);
+    const encodedMessage = encodedMessageResult.value;
 
     // Make the API call to create the draft in Gmail.
     const response = await fetchFromGmail(
@@ -574,27 +604,21 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    const encodedSubject = encodeSubject(subject);
+    // Build and encode the email message
+    const encodedMessageResult = buildAndEncodeEmail({
+      to,
+      cc,
+      bcc,
+      subject,
+      contentType,
+      body,
+    });
 
-    // Validate email addresses to prevent header injection
-    const validationError = validateEmailAddresses(to, cc, bcc);
-    if (validationError) {
-      return validationError;
+    if (encodedMessageResult.isErr()) {
+      return encodedMessageResult;
     }
 
-    const messageLines = [
-      `To: ${to.join(", ")}`,
-      cc?.length ? `Cc: ${cc.join(", ")}` : null,
-      bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
-      `Subject: ${encodedSubject}`,
-      `Content-Type: ${contentType}; charset=UTF-8`,
-      "MIME-Version: 1.0",
-      "",
-      body,
-    ].filter((line): line is string => line !== null);
-
-    const message = messageLines.join("\r\n");
-    const encodedMessage = encodeMessageForGmail(message);
+    const encodedMessage = encodedMessageResult.value;
 
     const response = await fetchFromGmail(
       "/gmail/v1/users/me/messages/send",
