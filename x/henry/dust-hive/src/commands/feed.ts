@@ -7,7 +7,13 @@ import { directoryExists, fileExists } from "../lib/fs";
 import { logger } from "../lib/logger";
 import { getWorktreeDir } from "../lib/paths";
 import { restoreTerminal, selectEnvironment } from "../lib/prompt";
-import { CommandError, Err, Ok, type Result, envNotFoundError } from "../lib/result";
+import {
+  CommandError,
+  Err,
+  Ok,
+  type Result,
+  envNotFoundError,
+} from "../lib/result";
 import { getStateInfo } from "../lib/state";
 
 // Folders to ignore when scanning for scenarios
@@ -18,55 +24,51 @@ const IGNORED_FOLDERS = new Set(["factories"]);
 async function getAvailableScenarios(frontPath: string): Promise<string[]> {
   const seedPath = path.join(frontPath, "scripts", "seed");
 
-  try {
-    const dirExists = await directoryExists(seedPath);
-    if (!dirExists) {
-      return [];
-    }
-
-    // Read directory entries
-    const entries = await readdir(seedPath, { withFileTypes: true });
-
-    const scenarios: string[] = [];
-    for (const entry of entries) {
-      if (entry.isDirectory() && !IGNORED_FOLDERS.has(entry.name)) {
-        // Check if seed.ts exists in this directory
-        const seedFile = path.join(seedPath, entry.name, "seed.ts");
-        const exists = await fileExists(seedFile);
-        if (exists) {
-          scenarios.push(entry.name);
-        }
-      }
-    }
-
-    return scenarios.sort();
-  } catch (_error) {
+  const dirExists = await directoryExists(seedPath);
+  if (!dirExists) {
     return [];
   }
-}
 
-// Interactively select a scenario using arrow keys
-async function selectScenario(scenarios: string[]): Promise<string | null> {
-  if (scenarios.length === 0) {
-    return null;
+  // Read directory entries
+  const entries = await readdir(seedPath, { withFileTypes: true });
+
+  const scenarios: string[] = [];
+  for (const entry of entries) {
+    if (entry.isDirectory() && !IGNORED_FOLDERS.has(entry.name)) {
+      // Check if seed.ts exists in this directory
+      const seedFile = path.join(seedPath, entry.name, "seed.ts");
+      const exists = await fileExists(seedFile);
+      if (exists) {
+        scenarios.push(entry.name);
+      }
+    }
   }
 
-  const result = await p.select({
-    message: "Select scenario to run",
-    initialValue: scenarios[0],
+  return scenarios.sort();
+}
+
+async function selectScenarios(scenarios: string[]): Promise<string[]> {
+  if (scenarios.length === 0) {
+    return [];
+  }
+
+  const result = await p.multiselect({
+    message: "Select scenarios to run (space to toggle, enter to confirm)",
+    initialValues: [],
+    required: true,
     options: scenarios.map((name) => ({ value: name, label: name })),
   });
 
   if (p.isCancel(result)) {
-    return null;
+    return [];
   }
 
-  return result as string;
+  return result as string[];
 }
 
 export async function feedCommand(
   nameArg: string | undefined,
-  scenarioNameArg: string | undefined
+  scenarioNameArg: string | undefined,
 ): Promise<Result<void>> {
   // Handle environment selection
   let envName = nameArg;
@@ -95,8 +97,8 @@ export async function feedCommand(
   if (stateInfo.state !== "warm") {
     return Err(
       new CommandError(
-        `Environment '${env.name}' is not warm (current state: ${stateInfo.state}). Run 'dust-hive warm ${env.name}' first.`
-      )
+        `Environment '${env.name}' is not warm (current state: ${stateInfo.state}). Run 'dust-hive warm ${env.name}' first.`,
+      ),
     );
   }
 
@@ -112,51 +114,77 @@ export async function feedCommand(
   }
 
   // Handle scenario selection
-  let scenarioName = scenarioNameArg;
-  if (!scenarioName) {
-    const selected = await selectScenario(availableScenarios);
-    if (!selected) {
-      return Err(new CommandError("No scenario selected"));
+  let scenarioNames: string[];
+  if (scenarioNameArg) {
+    // Single scenario provided via CLI argument
+    scenarioNames = [scenarioNameArg];
+  } else {
+    // Interactive multi-select
+    const selected = await selectScenarios(availableScenarios);
+    if (selected.length === 0) {
+      return Err(new CommandError("No scenarios selected"));
     }
-    scenarioName = selected;
+    scenarioNames = selected;
   }
 
   // Restore terminal after all interactive prompts are done
   // This is important before spawning the seed script subprocess
   restoreTerminal();
 
-  // Check if scenario exists
-  const scenarioScriptPath = path.join(frontPath, "scripts", "seed", scenarioName, "seed.ts");
-  const scenarioExists = await fileExists(scenarioScriptPath);
-
-  if (!scenarioExists) {
-    const scenarioList = availableScenarios.map((s) => `  - ${s}`).join("\n");
-    return Err(
-      new CommandError(
-        `Scenario '${scenarioName}' not found.\n\nAvailable scenarios:\n${scenarioList}`
-      )
+  // Validate all scenarios exist before running any
+  for (const scenarioName of scenarioNames) {
+    const scenarioScriptPath = path.join(
+      frontPath,
+      "scripts",
+      "seed",
+      scenarioName,
+      "seed.ts",
     );
+    const scenarioExists = await fileExists(scenarioScriptPath);
+
+    if (!scenarioExists) {
+      const scenarioList = availableScenarios.map((s) => `  - ${s}`).join("\n");
+      return Err(
+        new CommandError(
+          `Scenario '${scenarioName}' not found.\n\nAvailable scenarios:\n${scenarioList}`,
+        ),
+      );
+    }
   }
 
-  // Run the seed script
-  logger.info(`Running seed script for scenario '${scenarioName}'...`);
-  console.log();
+  // Run each scenario sequentially
+  for (const scenarioName of scenarioNames) {
+    logger.info(`Running seed script for scenario '${scenarioName}'...`);
+    console.log();
 
-  const proc = Bun.spawn(["npx", "tsx", `scripts/seed/${scenarioName}/seed.ts`, "--execute"], {
-    cwd: frontPath,
-    stdout: "inherit",
-    stderr: "inherit",
-    stdin: "inherit",
-  });
+    const proc = Bun.spawn(
+      ["npx", "tsx", `scripts/seed/${scenarioName}/seed.ts`, "--execute"],
+      {
+        cwd: frontPath,
+        stdout: "inherit",
+        stderr: "inherit",
+        stdin: "inherit",
+      },
+    );
 
-  const exitCode = await proc.exited;
+    const exitCode = await proc.exited;
 
-  if (exitCode !== 0) {
-    return Err(new CommandError(`Seed script failed with exit code ${exitCode}`));
+    if (exitCode !== 0) {
+      return Err(
+        new CommandError(
+          `Seed script for scenario '${scenarioName}' failed with exit code ${exitCode}`,
+        ),
+      );
+    }
+
+    console.log();
+    logger.success(`Scenario '${scenarioName}' seeded successfully`);
   }
 
-  console.log();
-  logger.success(`Scenario '${scenarioName}' seeded successfully`);
+  if (scenarioNames.length > 1) {
+    console.log();
+    logger.success(`All ${scenarioNames.length} scenarios seeded successfully`);
+  }
 
   return Ok(undefined);
 }
