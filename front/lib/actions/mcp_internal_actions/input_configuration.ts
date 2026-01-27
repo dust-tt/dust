@@ -270,6 +270,17 @@ function generateConfiguredInput({
       return { secretName, mimeType };
     }
 
+    case INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT: {
+      if (!actionConfiguration.dustProject) {
+        return undefined;
+      }
+      const project = actionConfiguration.dustProject;
+      return {
+        uri: `project://dust/w/${project.workspaceId}/projects/${project.projectId}`,
+        mimeType,
+      };
+    }
+
     default:
       assertNever(mimeType);
   }
@@ -488,6 +499,7 @@ export interface MCPServerRequirements {
     }
   >;
   requiresDustAppConfiguration: boolean;
+  requiresDustProjectConfiguration: boolean;
   developerSecretSelection: DeveloperSecretSelectionType | null;
   noRequirement: boolean;
 }
@@ -509,6 +521,7 @@ export function getMCPServerRequirements(
       requiredEnums: {},
       requiredLists: {},
       requiresDustAppConfiguration: false,
+      requiresDustProjectConfiguration: false,
       developerSecretSelection: null,
       noRequirement: false,
     };
@@ -737,6 +750,14 @@ export function getMCPServerRequirements(
       })
     ).length > 0;
 
+  const requiresDustProjectConfiguration =
+    Object.keys(
+      findPathsToConfiguration({
+        mcpServerView,
+        mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT,
+      })
+    ).length > 0;
+
   const developerSecretSelection =
     mcpServerView.server.developerSecretSelection ?? null;
 
@@ -753,6 +774,7 @@ export function getMCPServerRequirements(
     requiredEnums,
     requiredLists,
     requiresDustAppConfiguration,
+    requiresDustProjectConfiguration,
     developerSecretSelection,
     noRequirement:
       !requiresDataSourceConfiguration &&
@@ -767,6 +789,7 @@ export function getMCPServerRequirements(
       !Object.values(requiredEnums).some((c) => c.default === null) &&
       !Object.values(requiredLists).some((c) => c.default === null) &&
       !requiresDustAppConfiguration &&
+      !requiresDustProjectConfiguration &&
       !developerSecretSelection,
   };
 }

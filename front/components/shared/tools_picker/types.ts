@@ -62,6 +62,13 @@ export const dustAppConfigurationSchema = z
 
 export const secretNameSchema = z.string().nullable();
 
+export const dustProjectSchema = z
+  .object({
+    workspaceId: z.string(),
+    projectId: z.string(),
+  })
+  .nullable();
+
 export const jsonSchemaFieldSchema = z.custom<JSONSchema>().nullable();
 
 export const jsonSchemaStringSchema = z.string().nullable();
@@ -110,6 +117,7 @@ export const mcpServerConfigurationSchema = z.object({
   timeFrame: mcpTimeFrameSchema,
   additionalConfiguration: additionalConfigurationSchema,
   dustAppConfiguration: dustAppConfigurationSchema,
+  dustProject: dustProjectSchema,
   secretName: secretNameSchema,
   jsonSchema: jsonSchemaFieldSchema,
   _jsonSchemaString: jsonSchemaStringSchema,

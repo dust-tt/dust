@@ -61,6 +61,7 @@ export async function getSkillManagementServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: skillManagementView.sId,
     dustAppConfiguration: null,

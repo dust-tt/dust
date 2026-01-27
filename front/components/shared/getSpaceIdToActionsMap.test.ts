@@ -17,16 +17,14 @@ const createMockMCPAction = (
   name,
   description: `Description for ${name}`,
   configuration: {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    mcpServerViewId: mcpServerViewId || "",
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    dataSourceConfigurations: dataSourceConfigurations || null,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    tablesConfigurations: tablesConfigurations || null,
+    mcpServerViewId: mcpServerViewId ?? "",
+    dataSourceConfigurations: dataSourceConfigurations ?? null,
+    tablesConfigurations: tablesConfigurations ?? null,
     childAgentId: null,
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,
+    dustProject: null,
     jsonSchema: null,
     _jsonSchemaString: null,
     secretName: null,

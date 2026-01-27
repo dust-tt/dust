@@ -20,6 +20,7 @@ import type { AuthorizationInfo } from "@app/lib/actions/mcp_metadata_extraction
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import type {
   DataSourceConfiguration,
+  ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { MCPToolRetryPolicyType } from "@app/lib/api/mcp";
@@ -65,6 +66,7 @@ export type ServerSideMCPServerConfigurationType =
     mcpServerViewId: string;
     dustAppConfiguration: DustAppRunConfigurationType | null;
     secretName: string | null;
+    dustProject: ProjectConfiguration | null;
     // Out of convenience, we hold the sId of the internal server if it is an internal server.
     internalMCPServerId: string | null;
   };
