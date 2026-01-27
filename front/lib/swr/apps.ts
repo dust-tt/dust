@@ -90,16 +90,16 @@ export function useRunBlock(
   };
 }
 
-export function useDustAppSecrets(owner: LightWorkspaceType) {
+export function useDustAppSecrets(owner: LightWorkspaceType | null) {
   const keysFetcher: Fetcher<GetDustAppSecretsResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/dust_app_secrets`,
+    owner ? `/api/w/${owner.sId}/dust_app_secrets` : null,
     keysFetcher
   );
 
   return {
     secrets: data?.secrets ?? emptyArray(),
-    isSecretsLoading: !error && !data,
+    isSecretsLoading: !error && !data && !!owner,
     isSecretsError: error,
   };
 }

@@ -50,7 +50,11 @@ export function useCopilotMCPServer({
   const suggestionsContextRef = useRef<
     CopilotSuggestionsContextType | undefined
   >(suggestionsContext);
-  suggestionsContextRef.current = suggestionsContext;
+
+  // Update ref in effect to avoid updating during render.
+  useEffect(() => {
+    suggestionsContextRef.current = suggestionsContext;
+  }, [suggestionsContext]);
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.

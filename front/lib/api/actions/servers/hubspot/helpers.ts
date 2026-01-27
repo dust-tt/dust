@@ -1,8 +1,8 @@
-import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlerResult } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import logger from "@app/logger/logger";
+import { Err } from "@app/types";
 
 export const ERROR_MESSAGES = {
   NO_ACCESS_TOKEN: "No access token found",
@@ -11,7 +11,7 @@ export const ERROR_MESSAGES = {
 } as const;
 
 // HubSpot object type mappings
-export const HUBSPOT_OBJECT_TYPE_TO_ID = {
+export const HUBSPOT_OBJECT_TYPE_TO_ID: Record<string, string> = {
   appointments: "0-421",
   calls: "0-48",
   communications: "0-18",
@@ -39,7 +39,7 @@ export const HUBSPOT_OBJECT_TYPE_TO_ID = {
 
 export const HUBSPOT_ID_TO_OBJECT_TYPE = Object.entries(
   HUBSPOT_OBJECT_TYPE_TO_ID
-).reduce(
+).reduce<Record<string, string>>(
   (acc, [objectType, id]) => ({
     ...acc,
     [id]: objectType,
@@ -48,11 +48,7 @@ export const HUBSPOT_ID_TO_OBJECT_TYPE = Object.entries(
 );
 
 export const getObjectTypeId = (objectType: string): string | null => {
-  return (
-    HUBSPOT_OBJECT_TYPE_TO_ID[
-      objectType as keyof typeof HUBSPOT_OBJECT_TYPE_TO_ID
-    ] || null
-  );
+  return HUBSPOT_OBJECT_TYPE_TO_ID[objectType] ?? null;
 };
 
 export const convertObjectTypeToId = (objectTypeId: string): string => {
@@ -64,26 +60,21 @@ export const convertObjectTypeToId = (objectTypeId: string): string => {
   return convertedId || objectTypeId; // Return original if conversion fails
 };
 
-export const withAuth = async ({
-  action,
-  params,
-  authInfo,
-}: {
-  action: (accessToken: string) => Promise<CallToolResult>;
-  params?: any;
-  authInfo?: AuthInfo;
-}): Promise<CallToolResult> => {
-  const accessToken = authInfo?.token;
+/**
+ * Wrapper to handle authentication and error logging for HubSpot operations.
+ */
+export const withAuth = async (
+  extra: ToolHandlerExtra,
+  action: (accessToken: string) => Promise<ToolHandlerResult>
+): Promise<ToolHandlerResult> => {
+  const accessToken = extra.authInfo?.token;
   if (!accessToken) {
-    return {
-      isError: true,
-      content: [{ type: "text", text: ERROR_MESSAGES.NO_ACCESS_TOKEN }],
-    };
+    return new Err(new MCPError(ERROR_MESSAGES.NO_ACCESS_TOKEN));
   }
   try {
     return await action(accessToken);
-  } catch (error: any) {
-    return logAndReturnError({ error, params, message: "Operation failed" });
+  } catch (error: unknown) {
+    return logAndReturnError({ error, message: "Operation failed" });
   }
 };
 
@@ -92,10 +83,10 @@ export const logAndReturnError = ({
   params,
   message,
 }: {
-  error: any;
-  params: Record<string, any>;
+  error: unknown;
+  params?: Record<string, unknown>;
   message: string;
-}): CallToolResult => {
+}): ToolHandlerResult => {
   logger.error(
     {
       error,
@@ -103,48 +94,22 @@ export const logAndReturnError = ({
     },
     `[Hubspot MCP Server] ${message}`
   );
-  return {
-    isError: true,
-    content: [
-      {
-        type: "text",
-        text: error.response?.body?.message ?? error.message ?? message,
-      },
-    ],
+
+  const errorAny = error as {
+    response?: { body?: { message?: string } };
+    message?: string;
   };
+  const errorMessage =
+    errorAny?.response?.body?.message ?? errorAny?.message ?? message;
+
+  return new Err(new MCPError(errorMessage));
 };
 
-// HubSpot link generation tool
-const PageTypeEnum = z
-  .enum(["record", "index"])
-  .describe(
-    "The type of page to link to: 'record' for a specific object's page, 'index' for a list page"
-  );
-
-const PageRequestSchema = z.object({
-  pagetype: PageTypeEnum,
-  objectTypeId: z
-    .string()
-    .describe(
-      "The HubSpot object type ID to link to (e.g., '0-1', '0-2' for contacts, companies, or '2-x' for custom objects)"
-    ),
-  objectId: z
-    .string()
-    .optional()
-    .describe(
-      "The specific object ID to link to (required for 'record' page types)"
-    ),
-});
-
-export const GetHubspotLinkSchema = z.object({
-  portalId: z.string().describe("The HubSpot portal/account ID"),
-  uiDomain: z
-    .string()
-    .describe("The HubSpot UI domain(e.g., 'app.hubspot.com')"),
-  pageRequests: z
-    .array(PageRequestSchema)
-    .describe("Array of page link requests to generate"),
-});
+export interface PageRequest {
+  pagetype: "record" | "index";
+  objectTypeId: string;
+  objectId?: string;
+}
 
 const isValidObjectTypeId = (objectTypeId: string): boolean => {
   if (Object.keys(HUBSPOT_ID_TO_OBJECT_TYPE).includes(objectTypeId)) {
@@ -157,7 +122,9 @@ const isValidObjectTypeId = (objectTypeId: string): boolean => {
   return false;
 };
 
-export const validateRequests = (pageRequests: PageRequest[]) => {
+export const validateRequests = (
+  pageRequests: PageRequest[]
+): { errors: string[]; invalidObjectTypeIds: string[] } => {
   const errors: string[] = [];
   const invalidObjectTypeIds: string[] = [];
 
@@ -188,13 +155,16 @@ export const validateRequests = (pageRequests: PageRequest[]) => {
   return { errors, invalidObjectTypeIds };
 };
 
-export type PageRequest = z.infer<typeof PageRequestSchema>;
-
 export const generateUrls = (
   portalId: string,
   uiDomain: string,
   pageRequests: PageRequest[]
-) => {
+): Array<{
+  pagetype: "record" | "index";
+  objectTypeId: string;
+  objectId?: string;
+  url: string;
+}> => {
   return pageRequests.map((request) => {
     const { pagetype, objectTypeId, objectId } = request;
     let url = "";

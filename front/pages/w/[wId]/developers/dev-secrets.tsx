@@ -15,53 +15,30 @@ import {
   TrashIcon,
 } from "@dust-tt/sparkle";
 import { PencilIcon } from "@heroicons/react/20/solid";
-import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 import { useState } from "react";
 import { useSWRConfig } from "swr";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AppPageWithLayout } from "@app/lib/app/serverSideProps";
+import { appGetServerSidePropsForBuilders } from "@app/lib/app/serverSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useDustAppSecrets } from "@app/lib/swr/apps";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type {
-  DustAppSecretType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
+import type { DustAppSecretType } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isAdmin: boolean;
-}>(async (_, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.getNonNullableSubscription();
+export const getServerSideProps = appGetServerSidePropsForBuilders;
 
-  if (!auth.isBuilder()) {
-    return {
-      notFound: true,
-    };
-  }
+function SecretsPage() {
+  const owner = useWorkspace();
+  const { subscription, isAdmin } = useAuth();
 
-  return {
-    props: {
-      owner,
-      subscription,
-      isAdmin: auth.isAdmin(),
-    },
-  };
-});
-
-export default function SecretsPage({
-  owner,
-  subscription,
-  isAdmin,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { mutate } = useSWRConfig();
   const defaultSecret = { name: "", value: "" };
   const [newDustAppSecret, setNewDustAppSecret] =
@@ -72,7 +49,9 @@ export default function SecretsPage({
   const [isInputNameDisabled, setIsInputNameDisabled] = useState(false);
   const sendNotification = useSendNotification();
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
+  const { featureFlags } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
 
   const { secrets } = useDustAppSecrets(owner);
 
@@ -229,7 +208,7 @@ export default function SecretsPage({
       </Dialog>
 
       <AppCenteredLayout
-        subscription={subscription}
+        subscription={subscription!}
         owner={owner}
         subNavigation={subNavigationAdmin({
           owner,
@@ -336,6 +315,15 @@ export default function SecretsPage({
   );
 }
 
-SecretsPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = SecretsPage as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

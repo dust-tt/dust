@@ -1121,7 +1121,7 @@ export function useAgentDatasourceRetrievalDocuments({
   agentConfigurationId,
   days = DEFAULT_PERIOD_DAYS,
   version,
-  mcpServerConfigId,
+  mcpServerConfigIds,
   dataSourceId,
   limit = 50,
   disabled,
@@ -1130,19 +1130,26 @@ export function useAgentDatasourceRetrievalDocuments({
   agentConfigurationId: string;
   days?: number;
   version?: string;
-  mcpServerConfigId: string | null;
+  mcpServerConfigIds: string[] | null;
   dataSourceId: string | null;
   limit?: number;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
-  const isDisabled = !!disabled || !mcpServerConfigId || !dataSourceId;
+  const isDisabled =
+    !!disabled ||
+    !mcpServerConfigIds ||
+    mcpServerConfigIds.length === 0 ||
+    !dataSourceId;
   const params = new URLSearchParams({ days: days.toString() });
   if (version) {
     params.set("version", version);
   }
-  if (mcpServerConfigId) {
-    params.set("mcpServerConfigId", mcpServerConfigId);
+  if (mcpServerConfigIds) {
+    params.set(
+      "mcpServerConfigIds",
+      [...new Set(mcpServerConfigIds)].join(",")
+    );
   }
   if (dataSourceId) {
     params.set("dataSourceId", dataSourceId);

@@ -1,0 +1,53 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { Err, Ok } from "@app/types";
+
+// This server has dynamically created tools based on the agentLoopContext.
+// The tool name comes from the context at runtime.
+export function createMissingActionCatcherTools(
+  agentLoopContext?: AgentLoopContextType
+): ToolDefinition[] {
+  if (agentLoopContext) {
+    const actionName = agentLoopContext.runContext
+      ? agentLoopContext.runContext.toolConfiguration.name
+      : agentLoopContext.listToolsContext?.agentActionConfiguration.name;
+
+    if (!actionName) {
+      throw new Error("No action name found");
+    }
+
+    return [
+      {
+        name: actionName,
+        description: "",
+        schema: {},
+        stake: "never_ask",
+        handler: async () => {
+          return new Err(
+            new MCPError(
+              `Tool "${actionName}" not found. ` +
+                "This answer to the function call is a catch-all. " +
+                "Please verify that the function name is correct : " +
+                "pay attention to case sensitivity and separators between words in the name. " +
+                "It's safe to retry automatically with another name.",
+              { tracked: false }
+            )
+          );
+        },
+      },
+    ];
+  }
+
+  return [
+    {
+      name: "placeholder_tool",
+      description: "This tool is a placeholder to catch missing actions.",
+      schema: {},
+      stake: "never_ask",
+      handler: async () => {
+        return new Ok([{ type: "text", text: "No action name found" }]);
+      },
+    },
+  ];
+}

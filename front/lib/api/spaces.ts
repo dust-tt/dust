@@ -10,7 +10,6 @@ import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
@@ -165,10 +164,6 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
         agentConfigurations.map((config) => [config.sId, config])
       );
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-
       await concurrentExecutor(
         agentIds,
         async (agentId) => {
@@ -184,13 +179,10 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
             return;
           }
 
-          let skills: SkillResource[] = [];
-          if (featureFlags.includes("skills")) {
-            skills = await SkillResource.listByAgentConfiguration(
-              auth,
-              agentConfig
-            );
-          }
+          const skills = await SkillResource.listByAgentConfiguration(
+            auth,
+            agentConfig
+          );
 
           // Get the required group IDs from the agent's actions
           const requirements =

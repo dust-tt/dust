@@ -1,6 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
-import { EditorState, Transaction } from "@tiptap/pm/state";
+import type { EditorState, Transaction } from "@tiptap/pm/state";
 import type { Change } from "diff";
 import { diffWords } from "diff";
 

@@ -18,12 +18,15 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
@@ -242,61 +245,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Get operations.
-      get_object_properties: "never_ask",
-      get_object_by_email: "never_ask",
-      get_latest_objects: "never_ask",
-      get_contact: "never_ask",
-      get_company: "never_ask",
-      get_deal: "never_ask",
-      get_meeting: "never_ask",
-      get_file_public_url: "never_ask",
-      get_associated_meetings: "never_ask",
-      get_hubspot_link: "never_ask",
-      get_hubspot_portal_id: "never_ask",
-      list_owners: "never_ask",
-      search_owners: "never_ask",
-      get_current_user_id: "never_ask",
-      get_user_activity: "never_ask",
-      list_associations: "never_ask",
-
-      count_objects_by_properties: "never_ask",
-      search_crm_objects: "never_ask",
-      export_crm_objects_csv: "never_ask",
-
-      // Create operations.
-      create_contact: "high",
-      create_company: "high",
-      create_deal: "high",
-      create_lead: "high",
-      create_task: "high",
-      create_note: "high",
-      create_communication: "high",
-      create_meeting: "high",
-      create_association: "high",
-
-      // Update operations.
-      update_contact: "high",
-      update_company: "high",
-      update_deal: "high",
-      remove_association: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "hubspot",
-      version: "1.0.0",
-      description: "Access CRM contacts, deals and customer activities.",
-      authorization: {
-        provider: "hubspot" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "HubspotLogo",
-      documentationUrl: "https://docs.dust.tt/docs/hubspot",
-      instructions: null,
-    },
+    metadata: HUBSPOT_SERVER,
   },
   [DEFAULT_AGENT_ROUTER_ACTION_NAME]: {
     id: 8,
@@ -361,19 +313,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "missing_action_catcher",
-      version: "1.0.0",
-      description: "To be used to catch errors and avoid erroring.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: MISSING_ACTION_CATCHER_SERVER,
   },
   salesforce: {
     id: 14,
@@ -468,15 +411,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "conversation_files",
-      version: "1.0.0",
-      description: "Include files from conversation attachments.",
-      icon: "ActionDocumentTextIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: CONVERSATION_FILES_SERVER,
   },
   slack: {
     id: 18,
@@ -690,7 +625,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   interactive_content: {
     id: 23,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
@@ -897,7 +832,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   deep_dive: {
     id: 29,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
     allowMultipleInstances: false,
     isPreview: false,
@@ -1728,9 +1663,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("skills");
-    },
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,

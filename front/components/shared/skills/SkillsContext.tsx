@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { createContext, useContext, useMemo } from "react";
 
 import { useSkills } from "@app/lib/swr/skill_configurations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
@@ -28,13 +27,9 @@ interface SkillsProviderProps {
 }
 
 export const SkillsProvider = ({ owner, children }: SkillsProviderProps) => {
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasSkillsFeature = hasFeature("skills");
-
   const { skills, isSkillsLoading, isSkillsError } = useSkills({
     owner,
     status: "active",
-    disabled: !hasSkillsFeature,
   });
 
   const value: SkillsContextType = useMemo(() => {

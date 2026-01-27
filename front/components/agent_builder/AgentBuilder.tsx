@@ -99,7 +99,6 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -122,7 +121,7 @@ export default function AgentBuilder({
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationId: agentConfigurationIdForSkills ?? "",
-    disabled: !hasFeature("skills") || !agentConfigurationIdForSkills,
+    disabled: !agentConfigurationIdForSkills,
   });
 
   const { editors } = useEditors({
@@ -487,19 +486,19 @@ export default function AgentBuilder({
       <FormProvider form={form} asForm={false}>
         <CopilotSuggestionsProvider>
           <AgentBuilderContent
-            agentConfiguration={agentConfiguration}
-            pendingAgentId={pendingAgentId}
-            title={title}
-            handleCancel={handleCancel}
-            saveLabel={saveLabel}
-            handleSave={handleSave}
-            isSaveDisabled={isSaveDisabled}
-            isActionsLoading={isActionsLoading}
-            isTriggersLoading={isTriggersLoading}
-            dialogProps={dialogProps}
-            isCreatedDialogOpen={isCreatedDialogOpen}
-            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-          />
+          agentConfiguration={agentConfiguration}
+          pendingAgentId={pendingAgentId}
+          title={title}
+          handleCancel={handleCancel}
+          saveLabel={saveLabel}
+          handleSave={handleSave}
+          isSaveDisabled={isSaveDisabled}
+          isTriggersLoading={isTriggersLoading}
+          dialogProps={dialogProps}
+          isCreatedDialogOpen={isCreatedDialogOpen}
+          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+          isNewAgent={!!duplicateAgentId || !agentConfiguration}
+        />
         </CopilotSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
@@ -517,7 +516,6 @@ interface AgentBuilderContentProps {
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
-  isActionsLoading: boolean;
   isTriggersLoading: boolean;
   dialogProps: {
     mcpServerViewsWithPersonalConnections: ReturnType<
@@ -529,6 +527,7 @@ interface AgentBuilderContentProps {
   };
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
+  isNewAgent: boolean;
 }
 
 function AgentBuilderContent({
@@ -539,11 +538,11 @@ function AgentBuilderContent({
   saveLabel,
   handleSave,
   isSaveDisabled,
-  isActionsLoading,
   isTriggersLoading,
   dialogProps,
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
+  isNewAgent,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -589,7 +588,6 @@ function AgentBuilderContent({
             }}
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
-            isActionsLoading={isActionsLoading}
             isTriggersLoading={isTriggersLoading}
           />
         }
@@ -602,6 +600,7 @@ function AgentBuilderContent({
             clientSideMCPServerIds={
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
+            isNewAgent={isNewAgent}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel

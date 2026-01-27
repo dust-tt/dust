@@ -1140,7 +1140,7 @@ export async function validateUserMention(
       conversation,
       action: "subscribed",
       user: user.toJSON(),
-      unread: true,
+      lastReadAt: null,
     });
 
     if (status === "added") {
