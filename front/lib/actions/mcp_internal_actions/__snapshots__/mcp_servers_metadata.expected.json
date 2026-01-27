@@ -944,7 +944,15 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "generate_random_float": "never_ask",
+      "generate_random_number": "never_ask",
+      "get_current_time": "never_ask",
+      "get_mention_markdown": "never_ask",
+      "math_operation": "never_ask",
+      "search_available_users": "never_ask",
+      "wait": "never_ask"
+    }
   },
   {
     "name": "confluence",

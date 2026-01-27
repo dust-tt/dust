@@ -4,8 +4,6 @@ import {
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
@@ -17,6 +15,10 @@ import {
   areDataSourcesConfigured,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
+import {
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
