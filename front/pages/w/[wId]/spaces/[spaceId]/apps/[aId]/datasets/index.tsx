@@ -1,6 +1,5 @@
 import { Button, Chip, PlusIcon, TrashIcon } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext } from "react";
 

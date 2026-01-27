@@ -18,7 +18,6 @@ import {
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
@@ -36,6 +35,7 @@ import {
   isProPlan,
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
+import { LinkWrapper } from "@app/lib/platform/next";
 import {
   useFeatureFlags,
   usePerSeatPricing,
@@ -356,13 +356,13 @@ export default function Subscription({
             >
               <>
                 Connections will be deleted and members will be revoked. Details{" "}
-                <Link
+                <LinkWrapper
                   href="https://docs.dust.tt/docs/subscriptions#what-happens-when-we-cancel-our-dust-subscription"
                   target="_blank"
                   className="underline"
                 >
                   here
-                </Link>
+                </LinkWrapper>
                 .
               </>
             </ContentMessage>
