@@ -22,7 +22,7 @@ export function useAgentSuggestions({
 
   const urlParams = new URLSearchParams();
   if (state) {
-    state.forEach((s) => urlParams.append("states[]", s));
+    state.forEach((s) => urlParams.append("states", s));
   }
   urlParams.append("kind", "instructions");
 
