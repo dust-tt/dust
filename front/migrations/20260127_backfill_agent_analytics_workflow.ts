@@ -1,16 +1,17 @@
 import { subDays } from "date-fns";
+import type { FindOptions } from "sequelize";
 import { Op } from "sequelize";
 
 import { Authenticator } from "@app/lib/auth";
 import {
-  AgentMessageModel,
   AgentMessageFeedbackModel,
+  AgentMessageModel,
   ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -41,17 +42,19 @@ async function backfillAgentAnalyticsWorkflow(
     "Starting agent analytics workflow backfill"
   );
 
+  const baseWhere: FindOptions<MessageModel>["where"] = {
+    workspaceId: workspace.id,
+    agentMessageId: {
+      [Op.ne]: null,
+    },
+    createdAt: {
+      [Op.gte]: ninetyDaysAgo,
+    },
+  };
+
   // First, count total messages to process
   const totalCount = await MessageModel.count({
-    where: {
-      workspaceId: workspace.id,
-      agentMessageId: {
-        [Op.ne]: null,
-      },
-      createdAt: {
-        [Op.gte]: ninetyDaysAgo,
-      },
-    },
+    where: baseWhere,
     include: [
       {
         model: ConversationModel,
@@ -72,35 +75,57 @@ async function backfillAgentAnalyticsWorkflow(
     "Found agent messages to process"
   );
 
+  if (!totalCount) {
+    return;
+  }
+
   let successCount = 0;
   let errorCount = 0;
   let processedCount = 0;
 
   // Process in batches to avoid OOM
   const BATCH_SIZE = 5000;
-  let offset = 0;
+  let lastCreatedAt: Date | null = null;
+  let lastId: number | null = null;
 
-  while (offset < totalCount) {
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
     logger.info(
       {
         workspaceId: workspace.sId,
-        offset,
+        processedCount,
         totalCount,
-        progress: `${Math.round((offset / totalCount) * 100)}%`,
+        progress: `${Math.round((processedCount / totalCount) * 100)}%`,
       },
       "Processing batch"
     );
 
-    const agentMessagesBatch = await MessageModel.findAll({
-      where: {
-        workspaceId: workspace.id,
-        agentMessageId: {
-          [Op.ne]: null,
-        },
-        createdAt: {
-          [Op.gte]: ninetyDaysAgo,
-        },
-      },
+    const where: FindOptions<MessageModel>["where"] =
+      lastCreatedAt && lastId !== null
+        ? {
+            [Op.and]: [
+              baseWhere,
+              {
+                [Op.or]: [
+                  {
+                    createdAt: {
+                      [Op.gt]: lastCreatedAt,
+                    },
+                  },
+                  {
+                    createdAt: lastCreatedAt,
+                    id: {
+                      [Op.gt]: lastId,
+                    },
+                  },
+                ],
+              },
+            ],
+          }
+        : baseWhere;
+
+    const agentMessagesBatch: MessageModel[] = await MessageModel.findAll({
+      where,
       include: [
         {
           model: AgentMessageModel,
@@ -130,14 +155,20 @@ async function backfillAgentAnalyticsWorkflow(
           },
         },
       ],
-      order: [["createdAt", "ASC"]],
+      order: [
+        ["createdAt", "ASC"],
+        ["id", "ASC"],
+      ],
       limit: BATCH_SIZE,
-      offset: offset,
     });
 
     if (agentMessagesBatch.length === 0) {
       break;
     }
+
+    const lastMessage = agentMessagesBatch[agentMessagesBatch.length - 1];
+    lastCreatedAt = lastMessage.createdAt;
+    lastId = lastMessage.id;
 
     if (execute) {
       await concurrentExecutor(
@@ -250,7 +281,6 @@ async function backfillAgentAnalyticsWorkflow(
     }
 
     processedCount += agentMessagesBatch.length;
-    offset += BATCH_SIZE;
 
     logger.info(
       {
