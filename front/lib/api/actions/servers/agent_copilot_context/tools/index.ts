@@ -784,6 +784,73 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       },
     ]);
   },
+
+  update_suggestions_state: async (params, extra) => {
+    const auth = extra.auth;
+    if (!auth) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const { suggestions: suggestionUpdates } = params;
+
+    const results: {
+      success: boolean;
+      suggestionId: string;
+      error?: string;
+    }[] = await concurrentExecutor(
+      suggestionUpdates,
+      async ({
+        suggestionId,
+        state,
+      }): Promise<{
+        success: boolean;
+        suggestionId: string;
+        error?: string;
+      }> => {
+        // Fetch the suggestion by ID.
+        const suggestion = await AgentSuggestionResource.fetchById(
+          auth,
+          suggestionId
+        );
+
+        if (!suggestion) {
+          return {
+            success: false,
+            suggestionId,
+            error: `Suggestion not found: ${suggestionId}`,
+          };
+        }
+
+        try {
+          await suggestion.updateState(auth, state);
+          return {
+            success: true,
+            suggestionId,
+          };
+        } catch (error) {
+          return {
+            success: false,
+            suggestionId,
+            error: `Failed to update suggestion state: ${normalizeError(error).message}`,
+          };
+        }
+      },
+      { concurrency: 4 }
+    );
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            results,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
 };
 
 function getCategoryDisplayName(category: DataSourceViewCategory): string {
