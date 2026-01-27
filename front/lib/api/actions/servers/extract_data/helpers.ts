@@ -199,7 +199,7 @@ export async function generateProcessToolOutput({
         resource: {
           mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.EXTRACT_RESULT,
           text: extractResult,
-          uri: jsonFile.getPublicUrl(auth),
+          uri: jsonFile.getPrivateUrl(auth),
           fileId: generatedFile.fileId,
           title: generatedFile.title,
           contentType: generatedFile.contentType,
