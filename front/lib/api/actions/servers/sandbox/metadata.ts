@@ -96,6 +96,8 @@ export const SANDBOX_SERVER = {
       "The sandbox persists for the conversation duration. " +
       "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
   },
+  // Note: The `as JSONSchema` cast is standard pattern across all metadata files.
+  // zodToJsonSchema returns a compatible type but TypeScript can't verify it statically.
   tools: Object.values(SANDBOX_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
