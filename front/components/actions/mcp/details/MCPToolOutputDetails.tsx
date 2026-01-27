@@ -15,6 +15,7 @@ import {
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapper";
+import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 import { AttachmentCitation } from "@app/components/assistant/conversation/attachment/AttachmentCitation";
 import { toolGeneratedFileToAttachmentCitation } from "@app/components/assistant/conversation/attachment/utils";
 import type {
@@ -33,7 +34,6 @@ import {
 import { getDocumentIcon } from "@app/lib/content_nodes";
 import type { LightWorkspaceType } from "@app/types";
 import { removeNulls } from "@app/types";
-import { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 
 interface ThinkingBlockProps {
   resource: ThinkingOutputType;

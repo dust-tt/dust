@@ -1,6 +1,6 @@
 import { cn, Icon, Spinner } from "@dust-tt/sparkle";
 import type { ComponentType } from "react";
-import { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
+import type { ActionDetailsDisplayContext } from "@app/components/actions/mcp/details/types";
 
 interface ActionDetailsWrapperProps {
   actionName: string;
