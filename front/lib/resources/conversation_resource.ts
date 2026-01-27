@@ -922,7 +922,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       transaction,
     }: {
       conversation: ConversationWithoutContentType;
-      user: UserResource;
+      user: UserType;
       transaction?: Transaction;
     }
   ): Promise<boolean> {
@@ -948,7 +948,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     }: {
       conversation: ConversationWithoutContentType;
       action: ParticipantActionType;
-      user: UserResource | null;
+      user: UserType | null;
       transaction?: Transaction;
       lastReadAt?: Date | null;
     }

@@ -69,8 +69,8 @@ async function handler(
       break;
 
     case "POST":
-      const user = auth.user();
-      if (!user) {
+      const u = auth.user();
+      if (!u) {
         return apiError(req, res, {
           status_code: 401,
           api_error: {
@@ -79,6 +79,8 @@ async function handler(
           },
         });
       }
+
+      const user = u.toJSON();
 
       const isAlreadyParticipant =
         await ConversationResource.isConversationParticipant(auth, {
