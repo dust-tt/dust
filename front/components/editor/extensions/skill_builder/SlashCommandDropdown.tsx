@@ -28,7 +28,8 @@ export interface SlashCommand {
   tooltip?: SlashCommandTooltip;
 }
 
-export interface SlashCommandDropdownProps extends SuggestionProps<SlashCommand> {}
+export interface SlashCommandDropdownProps
+  extends SuggestionProps<SlashCommand> {}
 
 export interface SlashCommandDropdownRef {
   onKeyDown: (props: { event: KeyboardEvent }) => boolean;

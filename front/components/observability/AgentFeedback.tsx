@@ -10,9 +10,9 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 
 const FeedbackDistributionChart = dynamic(
   () =>
-    import("@app/components/agent_builder/observability/charts/FeedbackDistributionChart").then(
-      (mod) => mod.FeedbackDistributionChart
-    ),
+    import(
+      "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
+    ).then((mod) => mod.FeedbackDistributionChart),
   { ssr: false }
 );
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";

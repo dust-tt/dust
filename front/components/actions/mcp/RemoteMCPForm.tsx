@@ -105,7 +105,7 @@ export function RemoteMCPForm({ owner, mcpServer }: RemoteMCPFormProps) {
               toActionIconKey(mcpServer.icon as string) ??
               defaultKey;
             const IconComponent =
-              ActionIcons[selectedIconName] || ActionBookOpenIcon;
+              ActionIcons[selectedIconName] ?? ActionBookOpenIcon;
 
             return (
               <PopoverRoot open={isPopoverOpen}>

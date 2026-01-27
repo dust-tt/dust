@@ -371,7 +371,9 @@ export const JiraUpdateIssueRequestSchema = z
     z.union([
       z.string(),
       ADFDocumentSchema,
-      z.object({}).passthrough(), // For complex field types like assignee, priority
+      z
+        .object({})
+        .passthrough(), // For complex field types like assignee, priority
       z.array(z.string()), // For arrays like labels (most common case)
       z.null(),
     ])

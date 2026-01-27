@@ -13,7 +13,8 @@ import type { ModelId, ProjectJournalEntryType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ProjectJournalEntryResource extends ReadonlyAttributesType<ProjectJournalEntryModel> {}
+export interface ProjectJournalEntryResource
+  extends ReadonlyAttributesType<ProjectJournalEntryModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntryModel> {
