@@ -11,7 +11,6 @@ import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
-import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
@@ -49,6 +48,7 @@ import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
+import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
 import { default as microsoftTeamsServer } from "@app/lib/api/actions/servers/microsoft_teams";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
