@@ -87,7 +87,7 @@ export function RunPluginDialog({
     <Dialog open={true} onOpenChange={handleClose}>
       <DialogContent
         className={cn(
-          "w-auto",
+          "w-auto overflow-visible",
           "bg-muted-background dark:bg-muted-background-night",
           "sm:min-w-[600px] sm:max-w-[1000px]"
         )}
