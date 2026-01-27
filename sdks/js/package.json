@@ -25,8 +25,8 @@
     "build:types": "tsc",
     "build:bundle": "tsx esbuild.config.ts",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format": "biome format --write .",
+    "format:check": "biome check --formatter-enabled=true --linter-enabled=false .",
     "watch": "npm-watch",
     "tsc": "tsc"
   },
@@ -34,6 +34,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
     "@tsconfig/recommended": "^1.0.3",
     "@types/event-source-polyfill": "^1.0.5",
     "@types/node": "^20.19.2",
@@ -47,7 +48,6 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "npm-watch": "^0.11.0",
-    "prettier": "^3.7.4",
     "tslib": "^2.6.2",
     "tsx": "^4.19.1",
     "typescript": "^5.9.3",

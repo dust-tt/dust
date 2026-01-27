@@ -50,7 +50,9 @@ export function isGeneralExceptionError(err: unknown): err is GraphError {
   );
 }
 
-export class MicrosoftCastKnownErrorsInterceptor implements ActivityInboundCallsInterceptor {
+export class MicrosoftCastKnownErrorsInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   async execute(
     input: ActivityExecuteInput,
     next: Next<ActivityInboundCallsInterceptor, "execute">

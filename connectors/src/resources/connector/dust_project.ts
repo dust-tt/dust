@@ -12,7 +12,9 @@ import { DustProjectConfigurationResource } from "@connectors/resources/dust_pro
 import { DustProjectConversationResource } from "@connectors/resources/dust_project_conversation_resource";
 import type { ModelId } from "@connectors/types";
 
-export class DustProjectConnectorStrategy implements ConnectorProviderStrategy<"dust_project"> {
+export class DustProjectConnectorStrategy
+  implements ConnectorProviderStrategy<"dust_project">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<DustProjectConfigurationModel>,
