@@ -41,3 +41,23 @@ export const appGetServerSidePropsForBuilders =
       },
     };
   });
+
+export const appGetServerSidePropsForAdmin =
+  withDefaultUserAuthRequirements<AuthContextValue>(async (_context, auth) => {
+    if (!auth.isAdmin()) {
+      return {
+        notFound: true,
+      };
+    }
+
+    return {
+      props: {
+        workspace: auth.getNonNullableWorkspace(),
+        subscription: auth.getNonNullableSubscription(),
+        user: auth.user()?.toJSON() ?? null,
+        isAdmin: auth.isAdmin(),
+        isBuilder: auth.isBuilder(),
+        isSuperUser: false,
+      },
+    };
+  });
