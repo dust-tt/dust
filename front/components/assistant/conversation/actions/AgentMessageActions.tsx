@@ -104,7 +104,7 @@ export function AgentMessageActions({
             />
           ) : (
             <MCPActionDetails
-              viewType="conversation"
+              displayContext="conversation"
               action={lastAction}
               owner={owner}
               lastNotification={lastNotification}

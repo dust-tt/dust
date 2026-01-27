@@ -4,17 +4,17 @@ import type { ComponentType } from "react";
 interface ActionDetailsWrapperProps {
   actionName: string;
   children?: React.ReactNode;
-  viewType: "conversation" | "sidebar";
+  displayContext: "conversation" | "sidebar";
   visual: ComponentType<{ className?: string }>;
 }
 
 export function ActionDetailsWrapper({
   actionName,
   children,
-  viewType,
+  displayContext,
   visual,
 }: ActionDetailsWrapperProps) {
-  if (viewType === "conversation") {
+  if (displayContext === "conversation") {
     return (
       <div className="flex w-full flex-col gap-y-2">
         <div
