@@ -317,7 +317,7 @@ cli
   });
 
 cli
-  .command("feed [name] <scenario>", "Run seed script for a scenario")
+  .command("feed [name] [scenario]", "Run seed script for a scenario")
   .action(async (name: string | undefined, scenario: string | undefined) => {
     await prepareAndRun(feedCommand(name, scenario));
   });
