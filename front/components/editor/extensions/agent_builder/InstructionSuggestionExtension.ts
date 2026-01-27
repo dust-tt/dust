@@ -267,8 +267,16 @@ interface SuggestionMarkConfig {
   markToKeep: "suggestionDeletion" | "suggestionAddition";
 }
 
+interface SuggestionOperation {
+  type: "delete" | "removeMark";
+  pos: number;
+  nodeSize: number;
+}
+
 // Processes suggestion marks for accept/reject operations.
 // Deletes text with markToDelete, removes markToKeep from text while keeping the text.
+// Operations are collected first then applied in reverse order (from end to start)
+// to avoid position shifts from deletions invalidating subsequent operations.
 function processSuggestionMarks(
   state: EditorState,
   tr: Transaction,
@@ -276,8 +284,9 @@ function processSuggestionMarks(
   config: SuggestionMarkConfig
 ): boolean {
   const { doc, schema } = state;
-  let modified = false;
+  const operations: SuggestionOperation[] = [];
 
+  // First pass: collect all operations with their positions.
   doc.descendants((node, pos) => {
     if (!node.isText || node.marks.length === 0) {
       return;
@@ -296,15 +305,29 @@ function processSuggestionMarks(
 
     const markTypeName = matchingMark.type.name;
     if (markTypeName === config.markToDelete) {
-      tr.delete(pos, pos + node.nodeSize);
-      modified = true;
+      operations.push({ type: "delete", pos, nodeSize: node.nodeSize });
     } else if (markTypeName === config.markToKeep) {
-      tr.removeMark(pos, pos + node.nodeSize, schema.marks[config.markToKeep]);
-      modified = true;
+      operations.push({ type: "removeMark", pos, nodeSize: node.nodeSize });
     }
   });
 
-  return modified;
+  if (operations.length === 0) {
+    return false;
+  }
+
+  // Sort by position descending to process from end to start.
+  operations.sort((a, b) => b.pos - a.pos);
+
+  // Second pass: apply operations in reverse order.
+  for (const op of operations) {
+    if (op.type === "delete") {
+      tr.delete(op.pos, op.pos + op.nodeSize);
+    } else {
+      tr.removeMark(op.pos, op.pos + op.nodeSize, schema.marks[config.markToKeep]);
+    }
+  }
+
+  return true;
 }
 
 // Builds diff content with suggestion marks.
