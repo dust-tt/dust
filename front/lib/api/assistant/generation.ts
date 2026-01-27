@@ -27,7 +27,6 @@ import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
@@ -118,7 +117,6 @@ function constructToolsSection({
   serverToolsAndInstructions,
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
@@ -126,7 +124,6 @@ function constructToolsSection({
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -178,11 +175,8 @@ function constructToolsSection({
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
-      if (
-        featureFlags.includes("skills") &&
-        areInstructionsAlreadyIncludedInSkillSection(serverData)
-      ) {
-        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions
+      if (areInstructionsAlreadyIncludedInSkillSection(serverData)) {
+        // Prevent interactive_content and deep_dive server instructions
         // from being duplicated in the prompt if they are already included in the skills section.
         continue;
       }
@@ -233,16 +227,10 @@ function getEnabledSkillInstructions(
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
-  if (!featureFlags.includes("skills")) {
-    return "";
-  }
-
   let skillsSection =
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
@@ -453,7 +441,6 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -466,7 +453,6 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
-    featureFlags: WhitelistableFeature[];
   }
 ) {
   const owner = auth.workspace();
@@ -488,12 +474,10 @@ export function constructPromptMultiActions(
       serverToolsAndInstructions,
       enabledSkills,
       equippedSkills,
-      featureFlags,
     }),
     constructSkillsSection({
       enabledSkills,
       equippedSkills,
-      featureFlags,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),

@@ -477,6 +477,18 @@ export function isSupportedImageContentType(
   return false;
 }
 
+/**
+ * Returns true for images that can be sent to LLM vision APIs.
+ * SVG is categorized as "image" for UI display but is vector-based and not supported by vision APIs.
+ */
+export function isLLMVisionSupportedImageContentType(
+  contentType: string
+): contentType is SupportedImageContentType {
+  return (
+    isSupportedImageContentType(contentType) && contentType !== "image/svg+xml"
+  );
+}
+
 export function isSupportedDelimitedTextContentType(
   contentType: string
 ): contentType is SupportedDelimitedTextContentType {

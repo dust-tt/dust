@@ -184,7 +184,7 @@ const SheetHeader = ({
 }: SheetHeaderProps) => (
   <div
     className={cn(
-      "s-z-50 s-flex s-flex-none s-flex-col s-gap-2 s-p-5 s-text-left",
+      "s-z-50 s-flex s-flex-none s-flex-col s-p-5 s-text-left",
       "s-bg-background dark:s-bg-background-night",
       className
     )}
@@ -200,6 +200,7 @@ SheetHeader.displayName = "SheetHeader";
 
 interface SheetContainerProps extends React.HTMLAttributes<HTMLDivElement> {
   noScroll?: boolean;
+  isListSelector?: boolean;
 }
 
 const ScrollContainer = ({
@@ -220,6 +221,7 @@ const ScrollContainer = ({
 const SheetContainer = ({
   children,
   noScroll,
+  isListSelector,
   className,
 }: SheetContainerProps) => {
   return (
@@ -232,7 +234,8 @@ const SheetContainer = ({
     >
       <div
         className={cn(
-          "s-relative s-flex s-h-full s-flex-col s-gap-5 s-px-5 s-pt-3 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
+          "s-relative s-flex s-h-full s-flex-col s-gap-5 s-text-left s-text-sm s-text-foreground dark:s-text-foreground-night",
+          !isListSelector && "s-px-5 s-pt-3",
           className
         )}
       >

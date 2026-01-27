@@ -3,6 +3,7 @@ use crate::{
     oauth::{
         connection::{
             Connection, ConnectionProvider, FinalizeResult, Provider, ProviderError, RefreshResult,
+            PROVIDER_TIMEOUT_SECONDS,
         },
         credential::{Credential, CredentialProvider},
         providers::utils::execute_request,
@@ -127,15 +128,19 @@ impl Provider for UkgReadyConnectionProvider {
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from UKG Ready"))?;
 
-        let refresh_token = raw_json["refresh_token"].as_str().map(|s| s.to_string());
         let expires_in = raw_json["expires_in"].as_u64().unwrap_or(30 * 60);
+
+        // UKG Ready uses v1 refresh endpoint which only requires the access token
+        // No refresh token is needed or used
+        let access_token_expiry =
+            Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
 
         Ok(FinalizeResult {
             redirect_uri: redirect_uri.to_string(),
             code: code.to_string(),
             access_token: access_token.to_string(),
-            access_token_expiry: Some(utils::now() + expires_in * 1000),
-            refresh_token,
+            access_token_expiry,
+            refresh_token: None,
             raw_json,
             extra_metadata: None,
         })
@@ -144,50 +149,57 @@ impl Provider for UkgReadyConnectionProvider {
     async fn refresh(
         &self,
         connection: &Connection,
-        related_credentials: Option<Credential>,
+        _related_credentials: Option<Credential>,
     ) -> Result<RefreshResult, ProviderError> {
         let instance_url = Self::get_instance_url(&connection.metadata())?;
-        let company_id = Self::get_company_id(&connection.metadata())?;
-        let refresh_token = connection
-            .unseal_refresh_token()?
-            .ok_or_else(|| anyhow!("Missing `refresh_token` in UKG Ready connection"))?;
+        let current_access_token = connection
+            .unseal_access_token()?
+            .ok_or_else(|| anyhow!("Missing `access_token` in UKG Ready connection"))?;
 
-        let client_id = Self::get_client_id(related_credentials).await?;
-
-        let mut form_data = std::collections::HashMap::new();
-        form_data.insert("grant_type", "refresh_token");
-        form_data.insert("client_id", &client_id);
-        form_data.insert("refresh_token", &refresh_token);
-
-        let token_url = format!(
-            "{}/ta/rest/v2/companies/!{}/oauth2/token",
-            instance_url, company_id
-        );
+        // The UKG team has asked us to use the v1 refresh endpoint
+        let token_url = format!("{}/ta/rest/v1/refresh-token", instance_url);
 
         let req = self
             .reqwest_client()
-            .post(&token_url)
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .form(&form_data);
+            .get(&token_url)
+            .header("Authorization", format!("Bearer {}", current_access_token))
+            .header("Accept", "application/json");
 
         let raw_json = execute_request(ConnectionProvider::UkgReady, req)
             .await
             .map_err(|e| self.handle_provider_request_error(e))?;
 
-        let access_token = raw_json["access_token"]
+        let new_access_token = raw_json["token"]
             .as_str()
-            .ok_or_else(|| anyhow!("Missing `access_token` in response from UKG Ready"))?;
+            .ok_or_else(|| anyhow!("Missing `token` in refresh response from UKG Ready"))?;
 
-        let new_refresh_token = raw_json["refresh_token"]
+        // v1 returns "ttl" with a "units" field specifying the time unit
+        let ttl = raw_json["ttl"]
+            .as_u64()
+            .ok_or_else(|| anyhow!("Missing `ttl` in refresh response from UKG Ready"))?;
+
+        let units = raw_json["units"]
             .as_str()
-            .map(|s| s.to_string())
-            .or(Some(refresh_token));
-        let expires_in = raw_json["expires_in"].as_u64().unwrap_or(30 * 60);
+            .ok_or_else(|| anyhow!("Missing `units` in refresh response from UKG Ready"))?;
+
+        // Convert TTL to seconds based on the units field
+        let expires_in = match units {
+            "milliseconds" => ttl / 1000,
+            "seconds" => ttl,
+            _ => Err(anyhow!(
+                "Unknown time unit '{}' in UKG Ready refresh response",
+                units
+            ))?,
+        };
+
+        // UKG Ready refresh requires a valid access token (not a refresh token)
+        let access_token_expiry =
+            Some(utils::now() + (expires_in - PROVIDER_TIMEOUT_SECONDS) * 1000);
 
         Ok(RefreshResult {
-            access_token: access_token.to_string(),
-            access_token_expiry: Some(utils::now() + expires_in * 1000),
-            refresh_token: new_refresh_token,
+            access_token: new_access_token.to_string(),
+            access_token_expiry,
+            refresh_token: None,
             raw_json,
         })
     }
@@ -197,6 +209,7 @@ impl Provider for UkgReadyConnectionProvider {
             serde_json::Value::Object(mut map) => {
                 map.remove("access_token");
                 map.remove("refresh_token");
+                map.remove("token");
                 serde_json::Value::Object(map)
             }
             _ => Err(anyhow!("Invalid raw_json, not an object"))?,

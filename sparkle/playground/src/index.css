@@ -20,4 +20,24 @@
       font-synthesis-weight: none;
     }
   }
+  .sparkle-richtextarea p.is-editor-empty:first-child::before {
+    @apply s-italic s-text-muted-foreground;
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
+.tippy-box[data-theme~="sparkle"] {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.tippy-box[data-theme~="sparkle"] > .tippy-content {
+  padding: 0;
+}
+
+.tippy-box[data-theme~="sparkle"] > .tippy-arrow {
+  display: none;
 }

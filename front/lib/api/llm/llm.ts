@@ -213,6 +213,15 @@ export abstract class LLM {
     ];
     statsDClient.increment("llm_interaction.count", 1, metricTags);
 
+    logger.info(
+      {
+        modelId: this.modelId,
+        traceId: this.traceId,
+        conversationId: this.context.conversationId,
+      },
+      "[AGENT_LOOP_DEBUG] LLM streamWithTracing starting completeStream iteration"
+    );
+
     let currentEvent: LLMEvent | null = null;
     let timeToFirstEventMs: number | undefined = undefined;
 

@@ -34,6 +34,7 @@ import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
+import type { GetProjectJournalEntriesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_journal_entries";
 import type {
   GetProjectMetadataResponseBody,
   PatchProjectMetadataResponseBody,
@@ -950,5 +951,34 @@ export function useUpdateProjectMetadata({
 
     const response: PatchProjectMetadataResponseBody = await res.json();
     return response.projectMetadata;
+  };
+}
+
+export function useProjectJournalEntries({
+  workspaceId,
+  spaceId,
+  limit = 1,
+  disabled = false,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const journalEntriesFetcher: Fetcher<GetProjectJournalEntriesResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/project_journal_entries?limit=${limit}`,
+    journalEntriesFetcher,
+    { disabled: disabled || spaceId === null }
+  );
+
+  return {
+    journalEntries: data?.entries ?? emptyArray(),
+    latestJournalEntry: data?.entries?.[0] ?? null,
+    isJournalEntriesLoading: !error && !data && !disabled,
+    isJournalEntriesError: error,
+    mutateJournalEntries: mutate,
   };
 }

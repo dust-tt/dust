@@ -18,13 +18,21 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
+import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
+import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
+import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
   DEEP_DIVE_NAME,
@@ -321,19 +329,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("legacy_dust_apps");
     },
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "run_dust_app",
-      version: "1.0.0",
-      description: "Run Dust Apps with specified parameters.",
-      icon: "CommandLineIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: RUN_DUST_APP_SERVER,
   },
   notion: {
     id: 11,
@@ -352,19 +351,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "extract_data",
-      version: "1.0.0",
-      description: "Parse documents to create structured datasets.",
-      icon: "ActionScanIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: EXTRACT_DATA_SERVER,
   },
   missing_action_catcher: {
     id: 13,
@@ -372,19 +362,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "missing_action_catcher",
-      version: "1.0.0",
-      description: "To be used to catch errors and avoid erroring.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: MISSING_ACTION_CATCHER_SERVER,
   },
   salesforce: {
     id: 14,
@@ -701,7 +682,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   interactive_content: {
     id: 23,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
@@ -908,7 +889,7 @@ export const INTERNAL_MCP_SERVERS = {
   },
   deep_dive: {
     id: 29,
-    availability: "auto",
+    availability: "auto_hidden_builder",
     isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
     allowMultipleInstances: false,
     isPreview: false,
@@ -1034,22 +1015,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      text_to_speech: "low",
-      text_to_dialogue: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "speech_generator",
-      version: "1.0.0",
-      description: "Turn written text into spoken audio or dialog",
-      authorization: null,
-      icon: "ActionSpeakIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SPEECH_GENERATOR_SERVER,
   },
   microsoft_drive: {
     id: 35,
@@ -1123,22 +1092,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      generate_music: "low",
-      generate_sound_effects: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "sound_studio",
-      version: "1.0.0",
-      description: "Create music tracks and sound effects",
-      authorization: null,
-      icon: "ActionNoiseIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SOUND_STUDIO_SERVER,
   },
   microsoft_excel: {
     id: 38,
@@ -1455,32 +1412,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("ukg_ready_mcp");
     },
     isPreview: false,
-    tools_stakes: {
-      get_my_info: "never_ask",
-      get_pto_requests: "never_ask",
-      get_accrual_balances: "never_ask",
-      get_pto_request_notes: "never_ask",
-      create_pto_request: "low",
-      delete_pto_request: "low",
-      get_schedules: "never_ask",
-      get_employees: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "ukg_ready",
-      version: "1.0.0",
-      description:
-        "Manage employee time-off requests, schedules, and accrual balances in UKG Ready.",
-      authorization: {
-        provider: "ukg_ready" as const,
-        supported_use_cases: ["personal_actions"] as const,
-      },
-      icon: "UkgLogo",
-      documentationUrl: "https://docs.dust.tt/docs/ukg-ready",
-      instructions: null,
-    },
+    metadata: UKG_READY_SERVER,
   },
   statuspage: {
     id: 49,
@@ -1503,20 +1438,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "primitive_types_debugger",
-      version: "1.0.0",
-      description:
-        "Demo server showing a basic interaction with various configurable blocks.",
-      icon: "ActionEmotionLaughIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: PRIMITIVE_TYPES_DEBUGGER_SERVER,
   },
   [SEARCH_SERVER_NAME]: {
     id: 1006,
@@ -1795,9 +1720,7 @@ export const INTERNAL_MCP_SERVERS = {
     availability: "auto_hidden_builder",
     allowMultipleInstances: false,
     isPreview: false,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("skills");
-    },
+    isRestricted: undefined,
     tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1854,24 +1777,12 @@ export const INTERNAL_MCP_SERVERS = {
       add_project_file: "high",
       update_project_file: "high",
       delete_project_file: "high",
+      read_project_journal_entry: "never_ask",
     },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "project_context_management",
-      version: "1.0.0",
-      description:
-        "Manage files in the project context. Add, update, delete, and list project files.",
-      icon: "ActionDocumentTextIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Project context files are shared across all conversations in this project. " +
-        "Only text-based files are supported for adding/updating. " +
-        "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
-        "Requires write permissions on the project space.",
-    },
+    metadata: PROJECT_CONTEXT_MANAGEMENT_SERVER,
   },
   agent_copilot_context: {
     id: 1022,

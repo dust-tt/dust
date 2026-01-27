@@ -12,14 +12,34 @@ import type {
 import { Err, Ok } from "@app/types";
 
 const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
+// Log heartbeat status periodically to track long-waiting LLM calls.
+const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
+// Timeout for waiting on a single LLM event (first or subsequent).
+const LLM_EVENT_TIMEOUT_MINUTES = 5;
+const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
+
+class LLMStreamTimeoutError extends Error {
+  constructor(
+    public readonly elapsedMs: number,
+    public readonly context?: { conversationId: string; step: number }
+  ) {
+    super(
+      `LLM stream timeout after ${Math.round(elapsedMs / 1000)}s waiting for event`
+    );
+    this.name = "LLMStreamTimeoutError";
+  }
+}
 
 // Wraps an async iterator and ensures heartbeat() is called at regular intervals
 // even when the source is slow to yield values.
 async function* withPeriodicHeartbeat<T>(
-  stream: AsyncIterator<T>
+  stream: AsyncIterator<T>,
+  logContext?: { conversationId: string; step: number }
 ): AsyncGenerator<T> {
   let nextPromise = stream.next();
   let streamExhausted = false;
+  let heartbeatCount = 0;
+  let lastEventTimeMs = Date.now();
 
   while (!streamExhausted) {
     const result = await Promise.race([
@@ -40,9 +60,50 @@ async function* withPeriodicHeartbeat<T>(
     heartbeat();
 
     if (result.type === "heartbeat") {
+      heartbeatCount++;
+      const elapsedMs = Date.now() - lastEventTimeMs;
+
+      // Check for timeout waiting on event.
+      if (elapsedMs >= LLM_EVENT_TIMEOUT_MS) {
+        logger.error(
+          {
+            ...logContext,
+            heartbeatCount,
+            elapsedMs,
+            timeoutMinutes: LLM_EVENT_TIMEOUT_MINUTES,
+          },
+          "[AGENT_LOOP_DEBUG] LLM stream timeout - no event received"
+        );
+        throw new LLMStreamTimeoutError(elapsedMs, logContext);
+      }
+
+      // Log every minute to track long-waiting LLM calls.
+      if (heartbeatCount % HEARTBEAT_LOG_INTERVAL === 0) {
+        logger.info(
+          {
+            ...logContext,
+            heartbeatCount,
+            elapsedMs,
+          },
+          "[AGENT_LOOP_DEBUG] LLM stream heartbeat - still waiting for event"
+        );
+      }
       // Heartbeat won the race, but nextPromise is still pending
       // Continue racing with the same nextPromise
       continue;
+    }
+
+    // Log if we waited a significant time for first event.
+    if (heartbeatCount > 0) {
+      const elapsedMs = Date.now() - lastEventTimeMs;
+      logger.info(
+        {
+          ...logContext,
+          heartbeatCount,
+          elapsedMs,
+        },
+        "[AGENT_LOOP_DEBUG] LLM stream received first event after waiting"
+      );
     }
 
     // Stream value arrived
@@ -55,6 +116,9 @@ async function* withPeriodicHeartbeat<T>(
 
     yield streamResult.value;
     nextPromise = stream.next();
+    // Reset for next event.
+    heartbeatCount = 0;
+    lastEventTimeMs = Date.now();
   }
 }
 
@@ -89,147 +153,164 @@ export async function getOutputFromLLMStream(
   let generation = "";
   let nativeChainOfThought = "";
 
-  for await (const event of withPeriodicHeartbeat(events)) {
-    timeToFirstEvent = Date.now() - start;
-    if (event.type === "error") {
-      await flushParserTokens();
-      return new Err({
-        type: "shouldRetryMessage",
-        content: event.content,
-      });
-    }
+  const logContext = { conversationId: conversation.sId, step };
 
-    // Sleep allows the activity to be cancelled, e.g. on a "Stop agent" request.
-    try {
-      await sleep(1);
-    } catch (err) {
-      if (err instanceof CancelledFailure) {
-        logger.info("Activity cancelled, stopping");
-        return new Err({ type: "shouldReturnNull" });
+  try {
+    for await (const event of withPeriodicHeartbeat(events, logContext)) {
+      timeToFirstEvent = Date.now() - start;
+      if (event.type === "error") {
+        await flushParserTokens();
+        return new Err({
+          type: "shouldRetryMessage",
+          content: event.content,
+        });
       }
-      throw err;
-    }
 
-    switch (event.type) {
-      case "text_delta": {
-        for await (const tokenEvent of contentParser.emitTokens(
-          event.content.delta
-        )) {
+      // Sleep allows the activity to be cancelled, e.g. on a "Stop agent" request.
+      try {
+        await sleep(1);
+      } catch (err) {
+        if (err instanceof CancelledFailure) {
+          logger.info("Activity cancelled, stopping");
+          return new Err({ type: "shouldReturnNull" });
+        }
+        throw err;
+      }
+
+      switch (event.type) {
+        case "text_delta": {
+          for await (const tokenEvent of contentParser.emitTokens(
+            event.content.delta
+          )) {
+            await updateResourceAndPublishEvent(auth, {
+              event: tokenEvent,
+              agentMessageRow,
+              conversation,
+              step,
+            });
+          }
+          continue;
+        }
+        case "reasoning_delta": {
           await updateResourceAndPublishEvent(auth, {
-            event: tokenEvent,
+            event: {
+              type: "generation_tokens",
+              classification: "chain_of_thought",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              text: event.content.delta,
+            },
             agentMessageRow,
             conversation,
             step,
           });
+
+          nativeChainOfThought += event.content.delta;
+          continue;
         }
-        continue;
-      }
-      case "reasoning_delta": {
-        await updateResourceAndPublishEvent(auth, {
-          event: {
-            type: "generation_tokens",
-            classification: "chain_of_thought",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            text: event.content.delta,
-          },
-          agentMessageRow,
-          conversation,
-          step,
-        });
+        case "reasoning_generated": {
+          await updateResourceAndPublishEvent(auth, {
+            event: {
+              type: "generation_tokens",
+              classification: "chain_of_thought",
+              created: Date.now(),
+              configurationId: agentConfiguration.sId,
+              messageId: agentMessage.sId,
+              text: "\n\n",
+            },
+            agentMessageRow,
+            conversation,
+            step,
+          });
 
-        nativeChainOfThought += event.content.delta;
-        continue;
-      }
-      case "reasoning_generated": {
-        await updateResourceAndPublishEvent(auth, {
-          event: {
-            type: "generation_tokens",
-            classification: "chain_of_thought",
-            created: Date.now(),
-            configurationId: agentConfiguration.sId,
-            messageId: agentMessage.sId,
-            text: "\n\n",
-          },
-          agentMessageRow,
-          conversation,
-          step,
-        });
+          const currentRegion = regionsConfig.getCurrentRegion();
+          let region: "us" | "eu";
+          switch (currentRegion) {
+            case "europe-west1":
+              region = "eu";
+              break;
+            case "us-central1":
+              region = "us";
+              break;
+            default:
+              throw new Error(`Unexpected region: ${currentRegion}`);
+          }
 
-        const currentRegion = regionsConfig.getCurrentRegion();
-        let region: "us" | "eu";
-        switch (currentRegion) {
-          case "europe-west1":
-            region = "eu";
-            break;
-          case "us-central1":
-            region = "us";
-            break;
-          default:
-            throw new Error(`Unexpected region: ${currentRegion}`);
+          // Add reasoning content to contents array
+          contents.push({
+            type: "reasoning",
+            value: {
+              reasoning: event.content.text,
+              metadata: JSON.stringify(event.metadata),
+              tokens: 0, // Will be updated later from token_usage event
+              provider: model.providerId,
+              region: region,
+            },
+          });
+
+          nativeChainOfThought += "\n\n";
+          continue;
         }
-
-        // Add reasoning content to contents array
-        contents.push({
-          type: "reasoning",
-          value: {
-            reasoning: event.content.text,
-            metadata: JSON.stringify(event.metadata),
-            tokens: 0, // Will be updated later from token_usage event
-            provider: model.providerId,
-            region: region,
-          },
-        });
-
-        nativeChainOfThought += "\n\n";
-        continue;
+        default:
+          break;
       }
-      default:
-        break;
-    }
 
-    if (event.type === "tool_call") {
-      const {
-        content: { name, id, arguments: args },
-        metadata: { thoughtSignature },
-      } = event;
-      actions.push({
-        name,
-        functionCallId: id,
-      });
-      contents.push({
-        type: "function_call",
-        value: {
-          id,
+      if (event.type === "tool_call") {
+        const {
+          content: { name, id, arguments: args },
+          metadata: { thoughtSignature },
+        } = event;
+        actions.push({
           name,
-          arguments: JSON.stringify(args),
-          metadata: thoughtSignature ? { thoughtSignature } : undefined,
-        },
-      });
-    }
+          functionCallId: id,
+        });
+        contents.push({
+          type: "function_call",
+          value: {
+            id,
+            name,
+            arguments: JSON.stringify(args),
+            metadata: thoughtSignature ? { thoughtSignature } : undefined,
+          },
+        });
+      }
 
-    if (event.type === "text_generated") {
-      contents.push({
-        type: "text_content",
-        value: event.content.text,
-      });
-      generation += event.content.text;
-    }
+      if (event.type === "text_generated") {
+        contents.push({
+          type: "text_content",
+          value: event.content.text,
+        });
+        generation += event.content.text;
+      }
 
-    if (event.type === "token_usage") {
-      // Update reasoning token count on the last reasoning item
-      const reasoningTokens = event.content.reasoningTokens ?? 0;
-      if (reasoningTokens > 0) {
-        for (let i = contents.length - 1; i >= 0; i--) {
-          const content = contents[i];
-          if (content.type === "reasoning") {
-            content.value.tokens = reasoningTokens;
-            break;
+      if (event.type === "token_usage") {
+        // Update reasoning token count on the last reasoning item
+        const reasoningTokens = event.content.reasoningTokens ?? 0;
+        if (reasoningTokens > 0) {
+          for (let i = contents.length - 1; i >= 0; i--) {
+            const content = contents[i];
+            if (content.type === "reasoning") {
+              content.value.tokens = reasoningTokens;
+              break;
+            }
           }
         }
       }
     }
+  } catch (err) {
+    if (err instanceof LLMStreamTimeoutError) {
+      await flushParserTokens();
+      return new Err({
+        type: "shouldRetryMessage",
+        content: {
+          type: "rate_limit_error",
+          message: `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
+          isRetryable: true,
+        },
+      });
+    }
+    throw err;
   }
 
   await flushParserTokens();

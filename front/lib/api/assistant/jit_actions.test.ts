@@ -127,9 +127,7 @@ describe("getJITServers", () => {
   });
 
   describe("skills feature", () => {
-    it("should include skill_management server when agent has skills and feature flag is enabled", async () => {
-      // Enable skills feature flag.
-      await FeatureFlagFactory.basic("skills", workspace);
+    it("should include skill_management server when agent has skills", async () => {
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       // Create a skill and link it to the agent.
@@ -158,32 +156,7 @@ describe("getJITServers", () => {
       );
     });
 
-    it("should not include skill_management server when feature flag is disabled", async () => {
-      // Create a skill and link it to the agent.
-      const skill = await SkillFactory.create(auth, {
-        name: "Test Skill",
-      });
-      await SkillFactory.linkToAgent(auth, {
-        skillId: skill.id,
-        agentConfigurationId: agentConfig.id,
-      });
-
-      const jitServers = await getJITServers(auth, {
-        agentConfiguration: agentConfig,
-        conversation,
-        attachments: [],
-      });
-
-      const skillManagementServer = jitServers.find(
-        (server) => server.name === "skill_management"
-      );
-
-      expect(skillManagementServer).toBeUndefined();
-    });
-
     it("should not include skill_management server when agent has no skills", async () => {
-      // Enable skills feature flag.
-      await FeatureFlagFactory.basic("skills", workspace);
       await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
 
       const jitServers = await getJITServers(auth, {

@@ -11,7 +11,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { User } from "../data";
 import { getSpaceById } from "../data/spaces";
@@ -22,6 +22,9 @@ interface InviteUsersScreenProps {
   spaceId: string | null;
   onClose: () => void;
   onInvite: (selectedUserIds: string[]) => void;
+  title?: string;
+  actionLabel?: string;
+  initialSelectedUserIds?: string[];
 }
 
 export function InviteUsersScreen({
@@ -29,6 +32,9 @@ export function InviteUsersScreen({
   spaceId,
   onClose,
   onInvite,
+  title,
+  actionLabel = "Invite",
+  initialSelectedUserIds,
 }: InviteUsersScreenProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
     new Set()
@@ -37,6 +43,15 @@ export function InviteUsersScreen({
 
   const space = spaceId ? getSpaceById(spaceId) : null;
   const spaceName = space?.name || "this room";
+  const resolvedTitle = title ?? `Invite Members to ${spaceName}`;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+    const initialSelection = initialSelectedUserIds ?? [];
+    setSelectedUserIds(new Set(initialSelection));
+  }, [initialSelectedUserIds, isOpen]);
 
   // Filter users based on search text
   const filteredUsers = useMemo(() => {
@@ -89,7 +104,7 @@ export function InviteUsersScreen({
 
   const selectedCount = selectedUsers.length;
   const inviteButtonLabel =
-    selectedCount > 0 ? `Invite (${selectedCount})` : "Invite";
+    selectedCount > 0 ? `${actionLabel} (${selectedCount})` : actionLabel;
   const inviteButtonTooltip =
     selectedCount > 0
       ? selectedUsers.map((user) => user.fullName).join(", ")
@@ -99,7 +114,7 @@ export function InviteUsersScreen({
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="lg" side="right">
         <SheetHeader>
-          <SheetTitle>Invite Members to {spaceName}</SheetTitle>
+          <SheetTitle>{resolvedTitle}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <SearchInput

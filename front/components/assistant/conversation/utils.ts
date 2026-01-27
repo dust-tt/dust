@@ -3,6 +3,8 @@ import moment from "moment";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
 import type { ConversationWithoutContentType } from "@app/types";
 
+import type { VirtuosoMessage } from "./types";
+
 type GroupLabel =
   | "Today"
   | "Yesterday"
@@ -115,4 +117,19 @@ export function filterTriggeredConversations(
   return conversations.filter(
     (c) => c.triggerId === null || c.unread || c.actionRequired
   );
+}
+
+export function findFirstUnreadMessageIndex(
+  messages: VirtuosoMessage[],
+  lastReadMs: number
+): number {
+  return messages.findIndex((m) => {
+    if (m.created > lastReadMs) {
+      return true;
+    }
+    if (m.type === "agent_message" && (m.completedTs ?? 0) > lastReadMs) {
+      return true;
+    }
+    return false;
+  });
 }

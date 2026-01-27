@@ -95,7 +95,6 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
@@ -118,7 +117,7 @@ export default function AgentBuilder({
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationId: agentConfigurationIdForSkills ?? "",
-    disabled: !hasFeature("skills") || !agentConfigurationIdForSkills,
+    disabled: !agentConfigurationIdForSkills,
   });
 
   const { editors } = useEditors({
@@ -489,7 +488,6 @@ export default function AgentBuilder({
           saveLabel={saveLabel}
           handleSave={handleSave}
           isSaveDisabled={isSaveDisabled}
-          isActionsLoading={isActionsLoading}
           isTriggersLoading={isTriggersLoading}
           dialogProps={dialogProps}
           isCreatedDialogOpen={isCreatedDialogOpen}
@@ -512,7 +510,6 @@ interface AgentBuilderContentProps {
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
-  isActionsLoading: boolean;
   isTriggersLoading: boolean;
   dialogProps: {
     mcpServerViewsWithPersonalConnections: ReturnType<
@@ -535,7 +532,6 @@ function AgentBuilderContent({
   saveLabel,
   handleSave,
   isSaveDisabled,
-  isActionsLoading,
   isTriggersLoading,
   dialogProps,
   isCreatedDialogOpen,
@@ -585,7 +581,6 @@ function AgentBuilderContent({
             }}
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
-            isActionsLoading={isActionsLoading}
             isTriggersLoading={isTriggersLoading}
           />
         }

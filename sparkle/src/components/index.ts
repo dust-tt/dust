@@ -80,6 +80,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
+export { DiffBlock } from "./DiffBlock";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
@@ -116,6 +117,7 @@ export { FaviconIcon } from "./FaviconIcon";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
+export { HoveringBar } from "./HoveringBar";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export type {
@@ -132,6 +134,7 @@ export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { Input } from "./Input";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
+export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
