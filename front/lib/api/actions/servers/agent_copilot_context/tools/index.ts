@@ -22,7 +22,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
-import type { AgentSuggestionType } from "@app/types";
 import {
   Err,
   isModelProviderId,
@@ -797,7 +796,6 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     const results: {
       success: boolean;
       suggestionId: string;
-      suggestion?: AgentSuggestionType;
       error?: string;
     }[] = [];
 
@@ -833,7 +831,6 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         results.push({
           success: true,
           suggestionId,
-          suggestion: suggestion.toJSON(),
         });
       } catch (error) {
         results.push({

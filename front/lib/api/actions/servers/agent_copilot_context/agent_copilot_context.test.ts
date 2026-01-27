@@ -881,14 +881,6 @@ describe("agent_copilot_context tools", () => {
             const parsed = JSON.parse(content.text);
             expect(parsed.results).toHaveLength(1);
             expect(parsed.results[0].success).toBe(true);
-            expect(parsed.results[0].suggestion.sId).toBe(suggestion.sId);
-            expect(parsed.results[0].suggestion.kind).toBe("skills");
-            expect(parsed.results[0].suggestion.state).toBe(state);
-            expect(parsed.results[0].suggestion.analysis).toBe(
-              "Test analysis for skills"
-            );
-            expect(parsed.results[0].suggestion.createdAt).toBeDefined();
-            expect(parsed.results[0].suggestion.updatedAt).toBeDefined();
           }
         }
       }
@@ -932,11 +924,8 @@ describe("agent_copilot_context tools", () => {
 
           expect(parsed.results[0].success).toBe(true);
           expect(parsed.results[0].suggestionId).toBe(suggestion1.sId);
-          expect(parsed.results[0].suggestion.state).toBe("outdated");
-
           expect(parsed.results[1].success).toBe(true);
           expect(parsed.results[1].suggestionId).toBe(suggestion2.sId);
-          expect(parsed.results[1].suggestion.state).toBe("outdated");
         }
       }
     });
