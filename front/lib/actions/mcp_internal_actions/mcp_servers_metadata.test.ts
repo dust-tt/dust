@@ -14,8 +14,8 @@
  *
  * Usage:
  * - Run tests: `npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts`
- * - Update snapshot: Set UPDATE_MCP_METADATA_SNAPSHOT=1 environment variable
- *   Example: `UPDATE_MCP_METADATA_SNAPSHOT=1 npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts`
+ * - Update snapshot: Export UPDATE_MCP_METADATA_SNAPSHOT=1 before running
+ *   Example: `UPDATE_MCP_METADATA_SNAPSHOT=1 NODE_ENV=test npm test lib/actions/mcp_internal_actions/mcp_servers_metadata.test.ts`
  *
  * Note: This test uses a mock authenticator and does not require database access for the
  * metadata extraction itself. The auth is only used during server instantiation, not during
