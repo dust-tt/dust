@@ -4,7 +4,6 @@ import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_ac
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
-import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
@@ -39,6 +38,7 @@ import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
+import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
