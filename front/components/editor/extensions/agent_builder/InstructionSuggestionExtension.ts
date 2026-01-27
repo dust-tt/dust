@@ -323,7 +323,11 @@ function processSuggestionMarks(
     if (op.type === "delete") {
       tr.delete(op.pos, op.pos + op.nodeSize);
     } else {
-      tr.removeMark(op.pos, op.pos + op.nodeSize, schema.marks[config.markToKeep]);
+      tr.removeMark(
+        op.pos,
+        op.pos + op.nodeSize,
+        schema.marks[config.markToKeep]
+      );
     }
   }
 

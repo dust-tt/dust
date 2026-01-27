@@ -486,19 +486,19 @@ export default function AgentBuilder({
       <FormProvider form={form} asForm={false}>
         <CopilotSuggestionsProvider>
           <AgentBuilderContent
-          agentConfiguration={agentConfiguration}
-          pendingAgentId={pendingAgentId}
-          title={title}
-          handleCancel={handleCancel}
-          saveLabel={saveLabel}
-          handleSave={handleSave}
-          isSaveDisabled={isSaveDisabled}
-          isTriggersLoading={isTriggersLoading}
-          dialogProps={dialogProps}
-          isCreatedDialogOpen={isCreatedDialogOpen}
-          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-          isNewAgent={!!duplicateAgentId || !agentConfiguration}
-        />
+            agentConfiguration={agentConfiguration}
+            pendingAgentId={pendingAgentId}
+            title={title}
+            handleCancel={handleCancel}
+            saveLabel={saveLabel}
+            handleSave={handleSave}
+            isSaveDisabled={isSaveDisabled}
+            isTriggersLoading={isTriggersLoading}
+            dialogProps={dialogProps}
+            isCreatedDialogOpen={isCreatedDialogOpen}
+            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+            isNewAgent={!!duplicateAgentId || !agentConfiguration}
+          />
         </CopilotSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
