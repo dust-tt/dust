@@ -44,6 +44,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type {
   ConversationWithoutContentType,
   DataSourceViewContentNode,
@@ -616,6 +617,8 @@ const InputBarContainer = ({
                   size="xs"
                   label={skill.name}
                   icon={getSkillIcon(skill.icon)}
+                  href={getManageSkillsRoute(owner.sId, skill.sId)}
+                  target="_blank"
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
                   onRemove={
                     disableInput
@@ -628,6 +631,8 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   icon={getSkillIcon(skill.icon)}
+                  href={getManageSkillsRoute(owner.sId, skill.sId)}
+                  target="_blank"
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
                   onRemove={
                     disableInput
