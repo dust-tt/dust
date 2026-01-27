@@ -7,7 +7,6 @@ import { SkillVersionModel } from "@app/lib/models/skill";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -40,9 +39,6 @@ async function setupTest(
     role: requestUserRole,
     method: method,
   });
-
-  // Enable skills feature flag for the workspace
-  await FeatureFlagFactory.basic("skills", workspace);
 
   // Create default spaces (including system space required for PATCH operations)
   // We need an admin auth to create spaces, so create a temporary admin if needed
@@ -502,8 +498,6 @@ describe("PATCH /api/w/[wId]/skills/[sId] - Suggested skill activation", () => {
       role: "admin",
       method: "PATCH",
     });
-
-    await FeatureFlagFactory.basic("skills", workspace);
 
     const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
       requestUser.sId,

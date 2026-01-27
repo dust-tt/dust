@@ -35,7 +35,6 @@ import {
 } from "@app/lib/swr/mcp_servers";
 import { useSkills } from "@app/lib/swr/skill_configurations";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import {
   trackEvent,
   TRACKING_ACTIONS,
@@ -148,9 +147,6 @@ export function CapabilitiesPicker({
   const shouldFetchToolsData =
     isOpen || isSettingUpServer || !!pendingServerToAdd;
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const hasSkillsFeature = hasFeature("skills");
-
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
     kinds: ["global"],
@@ -228,13 +224,11 @@ export function CapabilitiesPicker({
     owner,
     status: "active",
     globalSpaceOnly: true,
-    disabled: !shouldFetchToolsData || !hasSkillsFeature,
+    disabled: !shouldFetchToolsData,
   });
 
   const isDataReady =
-    !isServerViewsLoading &&
-    !isAvailableMCPServersLoading &&
-    (!hasSkillsFeature || !isSkillsLoading);
+    !isServerViewsLoading && !isAvailableMCPServersLoading && !isSkillsLoading;
 
   const filteredSkillsUnselected = useMemo(() => {
     const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
@@ -299,9 +293,7 @@ export function CapabilitiesPicker({
   const showToolsSection = filter === "all" || filter === "tools";
 
   const hasVisibleSkills =
-    showSkillsSection &&
-    hasSkillsFeature &&
-    filteredSkillsUnselected.length > 0;
+    showSkillsSection && filteredSkillsUnselected.length > 0;
   const hasVisibleTools =
     showToolsSection &&
     (filteredServerViewsUnselected.length > 0 ||
@@ -330,7 +322,7 @@ export function CapabilitiesPicker({
             icon={ToolsIcon}
             variant="ghost-secondary"
             size={buttonSize}
-            tooltip={hasSkillsFeature ? "Capabilities" : "Tools"}
+            tooltip="Capabilities"
             disabled={disabled || isLoading}
           />
         </DropdownMenuTrigger>
@@ -378,15 +370,13 @@ export function CapabilitiesPicker({
                   }
                 }}
               />
-              {hasSkillsFeature && (
-                <div className="px-3 py-2">
-                  <CapabilityFilterButtons
-                    filter={filter}
-                    setFilter={setFilter}
-                    size="xs"
-                  />
-                </div>
-              )}
+              <div className="px-3 py-2">
+                <CapabilityFilterButtons
+                  filter={filter}
+                  setFilter={setFilter}
+                  size="xs"
+                />
+              </div>
               <DropdownMenuSeparator />
             </>
           }
@@ -501,22 +491,16 @@ export function CapabilitiesPicker({
                   ? "No result"
                   : filter !== "all"
                     ? `No more ${filter} to select`
-                    : hasSkillsFeature
-                      ? "No more skills or tools to select"
-                      : "No more tools to select"
+                    : "No more skills or tools to select"
               }
               description={
                 searchText.length > 0
                   ? filter !== "all"
                     ? `No ${filter} found matching your search.`
-                    : hasSkillsFeature
-                      ? "No skills or tools found matching your search."
-                      : "No tools found matching your search."
+                    : "No skills or tools found matching your search."
                   : filter !== "all"
                     ? `All available ${filter} are already selected.`
-                    : hasSkillsFeature
-                      ? "All available skills and tools are already selected."
-                      : "All available tools are already selected."
+                    : "All available skills and tools are already selected."
               }
               keyPrefix="capabilities-picker"
               disabled

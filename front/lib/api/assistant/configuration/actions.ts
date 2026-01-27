@@ -1,10 +1,10 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
-import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { WEB_SEARCH_BROWSE_SERVER_NAME } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import type {
   DataSourceConfiguration,
   TableDataSourceConfiguration,
@@ -62,7 +62,7 @@ export async function createAgentActionConfiguration(
         // to the action name
         name:
           serverName !== action.name &&
-          serverName !== DEFAULT_WEBSEARCH_ACTION_NAME
+          serverName !== WEB_SEARCH_BROWSE_SERVER_NAME
             ? action.name
             : null,
         singleToolDescriptionOverride:

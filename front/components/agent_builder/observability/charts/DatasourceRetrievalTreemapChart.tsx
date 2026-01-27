@@ -28,7 +28,6 @@ import {
   useAgentDatasourceRetrievalDocuments,
 } from "@app/lib/swr/assistants";
 import type { ConnectorProvider } from "@app/types";
-import { asDisplayName } from "@app/types";
 
 const LABEL_COLOR_VARIANT = 900;
 const VALUE_COLOR_VARIANT = 700;
@@ -38,7 +37,7 @@ interface TreemapNode {
   size: number;
   color: string;
   baseColor: string;
-  mcpServerConfigId?: string;
+  mcpServerConfigIds?: string[];
   mcpServerDisplayName?: string;
   mcpServerName?: string;
   dataSourceId?: string;
@@ -61,7 +60,7 @@ interface TreemapContentProps {
   index?: number;
   color?: string;
   baseColor?: string;
-  mcpServerConfigId?: string;
+  mcpServerConfigIds?: string[];
   mcpServerDisplayName?: string;
   mcpServerName?: string;
   dataSourceId?: string;
@@ -104,7 +103,7 @@ function TreemapContent({
   index,
   color = INDEXED_COLORS[0],
   baseColor = "orange",
-  mcpServerConfigId,
+  mcpServerConfigIds,
   mcpServerDisplayName,
   mcpServerName,
   dataSourceId,
@@ -172,7 +171,7 @@ function TreemapContent({
                   size: value,
                   color,
                   baseColor,
-                  mcpServerConfigId,
+                  mcpServerConfigIds,
                   mcpServerDisplayName,
                   mcpServerName,
                   dataSourceId,
@@ -254,7 +253,7 @@ interface DatasourceRetrievalTreemapChartProps {
 }
 
 type ZoomSelection = {
-  mcpServerConfigId: string;
+  mcpServerConfigIds: string[];
   mcpServerDisplayName: string;
   mcpServerName: string;
   dataSourceId: string;
@@ -292,9 +291,7 @@ export function DatasourceRetrievalTreemapChart({
       return { treemapData: null, legendItems: [] };
     }
 
-    const mcpServerConfigIds = datasourceRetrieval.map(
-      (mcp) => mcp.mcpServerConfigId
-    );
+    const toolKeys = datasourceRetrieval.map((mcp) => mcp.mcpServerDisplayName);
     const flattenedData: TreemapNode[] = [];
     const legend: Array<{
       key: string;
@@ -303,41 +300,36 @@ export function DatasourceRetrievalTreemapChart({
     }> = [];
     const seenServers = new Set<string>();
 
-    datasourceRetrieval.forEach((mcp) => {
-      const serverColor = getIndexedColor(
-        mcp.mcpServerConfigId,
-        mcpServerConfigIds
-      );
+    for (const mcp of datasourceRetrieval) {
+      const serverColor = getIndexedColor(mcp.mcpServerDisplayName, toolKeys);
       const serverBaseColor = getIndexedBaseColor(
-        mcp.mcpServerConfigId,
-        mcpServerConfigIds
+        mcp.mcpServerDisplayName,
+        toolKeys
       );
-      const serverDisplayName =
-        asDisplayName(mcp.mcpServerConfigName) || mcp.mcpServerName;
 
-      if (!seenServers.has(mcp.mcpServerConfigId)) {
+      if (!seenServers.has(mcp.mcpServerDisplayName)) {
         legend.push({
-          key: mcp.mcpServerConfigId,
-          label: serverDisplayName,
+          key: mcp.mcpServerDisplayName,
+          label: mcp.mcpServerDisplayName,
           colorClassName: serverColor,
         });
-        seenServers.add(mcp.mcpServerConfigId);
+        seenServers.add(mcp.mcpServerDisplayName);
       }
 
-      mcp.datasources.forEach((ds) => {
+      for (const datasource of mcp.datasources) {
         flattenedData.push({
-          name: ds.displayName,
-          dataSourceId: ds.dataSourceId,
-          size: ds.count,
+          name: datasource.displayName,
+          dataSourceId: datasource.dataSourceId,
+          size: datasource.count,
           color: serverColor,
           baseColor: serverBaseColor,
-          mcpServerConfigId: mcp.mcpServerConfigId,
-          mcpServerDisplayName: serverDisplayName,
+          mcpServerConfigIds: mcp.mcpServerConfigIds,
+          mcpServerDisplayName: mcp.mcpServerDisplayName,
           mcpServerName: mcp.mcpServerName,
-          connectorProvider: ds.connectorProvider,
+          connectorProvider: datasource.connectorProvider,
         });
-      });
-    });
+      }
+    }
 
     return { treemapData: flattenedData, legendItems: legend };
   }, [datasourceRetrieval]);
@@ -353,7 +345,7 @@ export function DatasourceRetrievalTreemapChart({
     agentConfigurationId,
     days: period,
     version,
-    mcpServerConfigId: zoomSelection?.mcpServerConfigId ?? null,
+    mcpServerConfigIds: zoomSelection?.mcpServerConfigIds ?? null,
     dataSourceId: zoomSelection?.dataSourceId ?? null,
     limit: DOCUMENTS_LIMIT,
     disabled: !zoomSelection,
@@ -401,7 +393,8 @@ export function DatasourceRetrievalTreemapChart({
 
   const handleDatasourceClick = useCallback((node: TreemapNode) => {
     if (
-      !node.mcpServerConfigId ||
+      !node.mcpServerConfigIds ||
+      node.mcpServerConfigIds.length === 0 ||
       !node.mcpServerDisplayName ||
       !node.mcpServerName ||
       !node.dataSourceId
@@ -410,7 +403,7 @@ export function DatasourceRetrievalTreemapChart({
     }
 
     setZoomSelection({
-      mcpServerConfigId: node.mcpServerConfigId,
+      mcpServerConfigIds: node.mcpServerConfigIds,
       mcpServerDisplayName: node.mcpServerDisplayName,
       mcpServerName: node.mcpServerName,
       dataSourceId: node.dataSourceId,

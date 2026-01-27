@@ -11,7 +11,6 @@ import { constructPromptMultiActions } from "@app/lib/api/assistant/generation";
 import type { CoreDataSourceSearchCriteria } from "@app/lib/api/assistant/process_data_sources";
 import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   AgentConfigurationType,
@@ -128,8 +127,6 @@ export async function getPromptForProcessDustApp({
   const userMessage: UserMessageType =
     lastUserMessageTuple[0] as UserMessageType;
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-
   return constructPromptMultiActions(auth, {
     userMessage,
     agentConfiguration,
@@ -141,7 +138,6 @@ export async function getPromptForProcessDustApp({
     equippedSkills: [],
     agentsList: null,
     conversation,
-    featureFlags,
   });
 }
 

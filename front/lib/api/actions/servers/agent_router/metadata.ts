@@ -2,14 +2,13 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import {
-  DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
-  DEFAULT_AGENT_ROUTER_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const AGENT_ROUTER_TOOL_NAME = "agent_router" as const;
+export const AGENT_ROUTER_SERVER_NAME = "agent_router" as const;
+export const AGENT_ROUTER_ACTION_DESCRIPTION =
+  "Tools with access to the published agents of the workspace.";
+
 export const SUGGEST_AGENTS_TOOL_NAME = "suggest_agents_for_content" as const;
 
 export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
@@ -20,6 +19,10 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing agents",
+      done: "List agents",
+    },
   },
   suggest_agents_for_content: {
     description:
@@ -33,14 +36,18 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       conversationId: z.string().describe("The conversation id."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agents",
+      done: "Suggest agents",
+    },
   },
 });
 
 export const AGENT_ROUTER_SERVER = {
   serverInfo: {
-    name: DEFAULT_AGENT_ROUTER_ACTION_NAME,
+    name: AGENT_ROUTER_SERVER_NAME,
     version: "1.0.0",
-    description: DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION,
+    description: AGENT_ROUTER_ACTION_DESCRIPTION,
     authorization: null,
     icon: "ActionRobotIcon",
     documentationUrl: null,
@@ -50,6 +57,7 @@ export const AGENT_ROUTER_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => [t.name, t.stake])

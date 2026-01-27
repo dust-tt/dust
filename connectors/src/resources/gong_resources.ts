@@ -36,7 +36,8 @@ const TRANSCRIPT_DELAY_TIME_UPPER_BOUND_MS = hoursToMs(3);
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GongConfigurationResource extends ReadonlyAttributesType<GongConfigurationModel> {}
+export interface GongConfigurationResource
+  extends ReadonlyAttributesType<GongConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GongConfigurationResource extends BaseResource<GongConfigurationModel> {
@@ -191,7 +192,8 @@ export type GongUserBlob = Omit<
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GongUserResource extends ReadonlyAttributesType<GongUserModel> {}
+export interface GongUserResource
+  extends ReadonlyAttributesType<GongUserModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GongUserResource extends BaseResource<GongUserModel> {
@@ -292,7 +294,8 @@ export class GongUserResource extends BaseResource<GongUserModel> {
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GongTranscriptResource extends ReadonlyAttributesType<GongTranscriptModel> {}
+export interface GongTranscriptResource
+  extends ReadonlyAttributesType<GongTranscriptModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {

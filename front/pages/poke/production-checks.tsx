@@ -1,20 +1,23 @@
 import type { ReactElement } from "react";
 
 import { ProductionChecksPage } from "@app/components/poke/pages/ProductionChecksPage";
-import PokeLayout from "@app/components/poke/PokeLayout";
-import type { AuthContextValue } from "@app/lib/auth/AuthContext";
-import type { PageWithLayout } from "@app/lib/poke/common";
-import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/poke/common";
+import { PokeLayoutNoWorkspace } from "@app/components/poke/PokeLayout";
+import type { AuthContextNoWorkspaceValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayoutNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
 
 export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-const Page = ProductionChecksPage as PageWithLayout;
+const Page = ProductionChecksPage as PageWithLayoutNoWorkspace;
 
-Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+Page.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextNoWorkspaceValue
+) => {
   return (
-    <PokeLayout title="Production Checks" authContext={pageProps}>
+    <PokeLayoutNoWorkspace title="Production Checks" authContext={pageProps}>
       {page}
-    </PokeLayout>
+    </PokeLayoutNoWorkspace>
   );
 };
 

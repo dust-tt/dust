@@ -11,6 +11,7 @@
  */
 export {
   Head,
+  LinkWrapper,
   Script,
   useAppRouter,
   usePathParams,

@@ -40,6 +40,10 @@ export const SOUND_STUDIO_TOOLS_METADATA = createToolsRecord({
         .describe("Base filename (without extension) for the generated audio."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Generating sound effect",
+      done: "Generate sound effect",
+    },
   },
 });
 
@@ -57,6 +61,7 @@ export const SOUND_STUDIO_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SOUND_STUDIO_TOOLS_METADATA).map((t) => [t.name, t.stake])

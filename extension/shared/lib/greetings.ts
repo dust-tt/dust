@@ -15,6 +15,7 @@ const GREETINGS = [
   "Bonjour, [Name]! 🥖",
   "Hola, [Name]! 🌮",
   "Ciao, [Name]! 🍕",
+  "Namaste, [Name]! 🪷",
   "Konnichiwa, [Name]! 🎌",
   "Aloha, [Name]! 🌺",
   "Hey there, [Name]! 💡",

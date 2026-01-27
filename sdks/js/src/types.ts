@@ -696,7 +696,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "snowflake_tool"
   | "statuspage_tool"
-  | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
 >();

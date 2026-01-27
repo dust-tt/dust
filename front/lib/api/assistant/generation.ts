@@ -1,7 +1,6 @@
 import moment from "moment-timezone";
 
 import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
@@ -18,6 +17,7 @@ import {
   areDataSourcesConfigured,
   isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
+import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -27,7 +27,6 @@ import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
@@ -118,7 +117,6 @@ function constructToolsSection({
   serverToolsAndInstructions,
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
@@ -126,7 +124,6 @@ function constructToolsSection({
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -178,11 +175,8 @@ function constructToolsSection({
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
-      if (
-        featureFlags.includes("skills") &&
-        areInstructionsAlreadyIncludedInSkillSection(serverData)
-      ) {
-        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions
+      if (areInstructionsAlreadyIncludedInSkillSection(serverData)) {
+        // Prevent interactive_content and deep_dive server instructions
         // from being duplicated in the prompt if they are already included in the skills section.
         continue;
       }
@@ -233,16 +227,10 @@ function getEnabledSkillInstructions(
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
-  if (!featureFlags.includes("skills")) {
-    return "";
-  }
-
   let skillsSection =
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
@@ -301,7 +289,7 @@ function constructAttachmentsSection(): string {
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
     " contents of this attachment will be considered in the search.\n" +
@@ -453,7 +441,6 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -466,7 +453,6 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
-    featureFlags: WhitelistableFeature[];
   }
 ) {
   const owner = auth.workspace();
@@ -488,12 +474,10 @@ export function constructPromptMultiActions(
       serverToolsAndInstructions,
       enabledSkills,
       equippedSkills,
-      featureFlags,
     }),
     constructSkillsSection({
       enabledSkills,
       equippedSkills,
-      featureFlags,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),

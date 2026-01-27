@@ -29,8 +29,8 @@ import {
   DATA_WAREHOUSE_SERVER_NAME,
   matchesInternalMCPServerName,
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 

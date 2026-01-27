@@ -13,7 +13,7 @@ import { getDocumentIcon } from "@app/lib/content_nodes";
 
 export function MCPDataWarehousesBrowseDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const browseResult = toolOutput
     ?.filter(isWarehousesBrowseType)
@@ -27,9 +27,9 @@ export function MCPDataWarehousesBrowseDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Browsing Data Warehouses"
           : "Browse Data Warehouses"
       }
@@ -42,7 +42,7 @@ export function MCPDataWarehousesBrowseDetails({
           </div>
         )}
 
-        {viewType === "sidebar" && data.length > 0 && (
+        {displayContext === "sidebar" && data.length > 0 && (
           <div className="flex flex-col gap-2">
             {data.map((node, index) => {
               const IconComponent = getDocumentIcon(node.connectorProvider);

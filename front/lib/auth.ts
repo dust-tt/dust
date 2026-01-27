@@ -994,10 +994,13 @@ export class Authenticator {
         ? await SubscriptionResource.fetchActiveByWorkspace(lightWorkspace)
         : null;
 
+    // Skip mismatch check for no-plan subscriptions: they have ephemeral random sIds
+    // that change on every fetch, so they can never match the original.
     if (
       authType.subscriptionId &&
       subscription &&
-      subscription.sId !== authType.subscriptionId
+      subscription.sId !== authType.subscriptionId &&
+      !subscription.isLegacyFreeNoPlan()
     ) {
       return new Err({ code: "subscription_mismatch" });
     }

@@ -15,19 +15,57 @@ import { useUser } from "@app/lib/swr/user";
 import type { ConversationType } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
-function buildCopilotInitializationMessagePrompt(): string {
+function buildNewAgentInitMessage(): string {
   return `<dust_system>
-## YOUR FIRST MESSAGE
+NEW agent - no suggestions/feedback/insights.
 
-**Immediately use your tools** to analyze the agent. Start with:
-1. Call \`get_agent_config\` to see what the user is currently editing (unsaved changes)
-2. Call \`get_agent_feedback\` to see what users are saying
-3. Call \`get_agent_insights\` to understand usage patterns
+## STEP 1: Gather context
+Call \`get_agent_config\` to check if user started filling the form.
 
-Then provide a concise analysis with:
-- A brief summary of what the agent does
-- 2-3 specific improvement suggestions based on your findings
-- Ask if the user wants to dive deeper into any area
+## STEP 2: Suggest use cases
+Based on:
+- Current form state (get_agent_config result)
+- User's job function and preferred platforms (from your instructions)
+
+Provide 2-3 specific agent use case suggestions as bullet points. Example:
+"Based on your role in Sales:
+• Meeting prep agent - summarizes prospect info from CRM before calls
+• Follow-up drafter - generates personalized follow-up emails
+• Competitive intel - monitors competitor news and updates"
+
+End with: "Pick one, or tell me what you have in mind."
+
+## STEP 3: After user responds, create suggestions
+Tool usage rules when creating suggestions:
+- \`get_available_skills\`: Call FIRST. Bias towards skills.
+- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need.
+
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
+</dust_system>`;
+}
+
+function buildExistingAgentInitMessage(): string {
+  return `<dust_system>
+EXISTING agent.
+
+## STEP 1: Gather context (IN PARALLEL)
+\`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`
+
+## STEP 2: Provide context & prompt action
+Based on gathered data, provide a brief summary:
+- If reinforced suggestions exist (source="reinforcement"), highlight them
+- If negative feedback patterns exist, mention the top issue
+Then ask: "What would you like to improve?"
+
+## STEP 3: After user responds, create suggestions
+Tool usage rules when creating suggestions:
+- \`get_available_skills\`: Call FIRST. Bias towards skills.
+- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
+- \`get_agent_insights\`: Only if you need additional information to improve the agent.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need.
+
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
 </dust_system>`;
 }
 
@@ -59,6 +97,7 @@ interface CopilotPanelProviderProps {
   targetAgentConfigurationId: string | null;
   targetAgentConfigurationVersion: number;
   clientSideMCPServerIds: string[];
+  isNewAgent: boolean;
 }
 
 export const CopilotPanelProvider = ({
@@ -66,6 +105,7 @@ export const CopilotPanelProvider = ({
   targetAgentConfigurationId,
   targetAgentConfigurationVersion,
   clientSideMCPServerIds,
+  isNewAgent,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -91,7 +131,9 @@ export const CopilotPanelProvider = ({
 
     setIsCreatingConversation(true);
 
-    const firstMessagePrompt = buildCopilotInitializationMessagePrompt();
+    const firstMessagePrompt = isNewAgent
+      ? buildNewAgentInitMessage()
+      : buildExistingAgentInitMessage();
 
     const result = await createConversationWithMessage({
       messageData: {
@@ -125,6 +167,7 @@ export const CopilotPanelProvider = ({
   }, [
     clientSideMCPServerIds,
     createConversationWithMessage,
+    isNewAgent,
     sendNotification,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,

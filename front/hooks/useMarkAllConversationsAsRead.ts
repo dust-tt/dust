@@ -2,7 +2,10 @@ import { useCallback, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { useConversations } from "@app/lib/swr/conversations";
+import {
+  useConversations,
+  useSpaceConversationsSummary,
+} from "@app/lib/swr/conversations";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
 
 interface useMarkAllConversationsAsReadParams {
@@ -19,6 +22,11 @@ export function useMarkAllConversationsAsRead({
     options: {
       disabled: true,
     },
+  });
+
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
   });
 
   const markAllAsRead = useCallback(
@@ -58,6 +66,7 @@ export function useMarkAllConversationsAsRead({
         }
 
         void mutateConversations();
+        void mutateSpaceSummary();
 
         sendNotification({
           type: "success",
@@ -74,7 +83,7 @@ export function useMarkAllConversationsAsRead({
         setIsMarkingAllAsRead(false);
       }
     },
-    [owner.sId, mutateConversations, sendNotification]
+    [owner.sId, mutateConversations, mutateSpaceSummary, sendNotification]
   );
 
   return {
