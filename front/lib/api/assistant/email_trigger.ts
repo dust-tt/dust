@@ -11,10 +11,11 @@ import {
   postUserMessage,
 } from "@app/lib/api/assistant/conversation";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
-import { storeEmailReplyContext } from "@app/lib/api/assistant/email_reply_context";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { sendEmail } from "@app/lib/api/email";
 import { processAndStoreFile } from "@app/lib/api/files/processing";
+import type { RedisUsageTagsType } from "@app/lib/api/redis";
+import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
