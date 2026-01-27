@@ -891,11 +891,15 @@ export async function syncDeltaForRootNodesInDrive({
     const validMicrosoftNodes = microsoftNodes.filter(
       (node): node is { id: string } => node !== null
     );
-    validMicrosoftNodes.forEach((rootNode) => {
-      sortedChangedItems.push(
-        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
-      );
-    });
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const rootNode of validMicrosoftNodes) {
+      for (const item of sortForIncrementalUpdate(
+        uniqueChangedItems,
+        rootNode.id
+      )) {
+        sortedChangedItems.push(item);
+      }
+    }
     // if only parts of the drive are selected, look for folders that may
     // have been removed from selection and scrub them
     await scrubRemovedFolders({
@@ -1238,11 +1242,15 @@ export async function fetchDeltaForRootNodesInDrive({
     const validMicrosoftNodes = microsoftNodes.filter(
       (node): node is { id: string } => node !== null
     );
-    validMicrosoftNodes.forEach((rootNode) => {
-      sortedChangedItems.push(
-        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
-      );
-    });
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const rootNode of validMicrosoftNodes) {
+      for (const item of sortForIncrementalUpdate(
+        uniqueChangedItems,
+        rootNode.id
+      )) {
+        sortedChangedItems.push(item);
+      }
+    }
 
     // if only parts of the drive are selected, look for folders that may
     // have been removed from selection and scrub them
