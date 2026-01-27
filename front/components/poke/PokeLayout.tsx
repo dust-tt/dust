@@ -1,4 +1,3 @@
-import Head from "next/head";
 import React, { createContext, useContext } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
@@ -6,6 +5,7 @@ import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { AuthContext } from "@app/lib/auth/AuthContext";
+import { Head } from "@app/lib/platform";
 import { usePokeRegion } from "@app/lib/swr/poke";
 
 export interface PokeLayoutProps {
