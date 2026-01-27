@@ -36,14 +36,12 @@ export type RunModelAndCreateActionsResult = {
  */
 export async function runModelAndCreateActionsActivity({
   authType,
-  autoRetryCount = 0,
   checkForResume = true,
   runAgentArgs,
   runIds,
   step,
 }: {
   authType: AuthenticatorType;
-  autoRetryCount?: number;
   checkForResume?: boolean;
   runAgentArgs: AgentLoopArgsWithTiming;
   runIds: string[];
@@ -100,7 +98,6 @@ export async function runModelAndCreateActionsActivity({
     runIds,
     step,
     functionCallStepContentIds,
-    autoRetryCount,
   });
 
   if (!modelResult) {
