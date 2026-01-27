@@ -31,6 +31,20 @@ import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadat
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
 
+// Validates email addresses to prevent header injection attacks.
+function validateEmailAddresses(
+  to: string[],
+  cc?: string[],
+  bcc?: string[]
+): Err<MCPError> | null {
+  for (const addr of [...to, ...(cc ?? []), ...(bcc ?? [])]) {
+    if (addr.includes("\r") || addr.includes("\n")) {
+      return new Err(new MCPError("Invalid email address"));
+    }
+  }
+  return null;
+}
+
 const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   get_drafts: async ({ q, pageToken }, { authInfo }) => {
     const accessToken = authInfo?.token;
@@ -103,6 +117,12 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
 
     // Always encode subject line using RFC 2047 to handle any special characters
     const encodedSubject = encodeSubject(subject);
+
+    // Validate email addresses to prevent header injection
+    const validationError = validateEmailAddresses(to, cc, bcc);
+    if (validationError) {
+      return validationError;
+    }
 
     // Create the email message with proper headers and content.
     const message = [
@@ -439,6 +459,14 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const originalReferences = getHeaderValue(headers, "References");
     const originalDate = getHeaderValue(headers, "Date");
 
+    // Validate user-provided email addresses to prevent header injection
+    if (to?.length || cc?.length || bcc?.length) {
+      const validationError = validateEmailAddresses(to ?? [], cc, bcc);
+      if (validationError) {
+        return validationError;
+      }
+    }
+
     // Determine recipients
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
@@ -547,6 +575,12 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     }
 
     const encodedSubject = encodeSubject(subject);
+
+    // Validate email addresses to prevent header injection
+    const validationError = validateEmailAddresses(to, cc, bcc);
+    if (validationError) {
+      return validationError;
+    }
 
     const messageLines = [
       `To: ${to.join(", ")}`,
