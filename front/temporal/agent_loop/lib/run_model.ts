@@ -1,4 +1,4 @@
-import { heartbeat } from "@temporalio/activity";
+import { Context, heartbeat } from "@temporalio/activity";
 import assert from "assert";
 import tracer from "dd-trace";
 
@@ -42,6 +42,7 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activities/common";
+import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
@@ -449,9 +450,11 @@ export async function runModelActivity(
       case "shouldRetryMessage": {
         const { type, isRetryable } = error.content;
         const errorDustRunId = llm?.getTraceId();
+        const currentAttempt = Context.current().info.attempt;
+        const isLastAttempt = currentAttempt >= RUN_MODEL_MAX_RETRIES;
 
-        if (!isRetryable) {
-          // Non-retryable errors (e.g., context length, auth) should not be retried.
+        if (!isRetryable || isLastAttempt) {
+          // Non-retryable errors or last retry attempt: surface error to user.
           await publishAgentError(
             {
               code: "multi_actions_error",
