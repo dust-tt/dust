@@ -6,9 +6,9 @@ import {
   Page,
 } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
+import { Link } from "@app/lib/platform";
 
 export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
   requireUserPrivilege: "none",

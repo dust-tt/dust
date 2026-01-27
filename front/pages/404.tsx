@@ -4,7 +4,8 @@ import {
   Icon,
   LoginIcon,
 } from "@dust-tt/sparkle";
-import Link from "next/link";
+
+import { Link } from "@app/lib/platform";
 
 export default function Custom404() {
   return (

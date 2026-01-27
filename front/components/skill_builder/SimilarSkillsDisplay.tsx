@@ -1,7 +1,7 @@
 import { ExternalLinkIcon, Icon, Spinner } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React from "react";
 
+import { Link } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";

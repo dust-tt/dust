@@ -18,7 +18,6 @@ import {
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import React, { useEffect, useState } from "react";
 
@@ -36,6 +35,7 @@ import {
   isProPlan,
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
+import { Link } from "@app/lib/platform";
 import {
   useFeatureFlags,
   usePerSeatPricing,

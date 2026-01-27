@@ -1,11 +1,11 @@
 import { Button, cn } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { Link } from "@app/lib/platform";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";

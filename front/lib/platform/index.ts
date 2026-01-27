@@ -12,10 +12,11 @@
 export {
   Head,
   Image,
+  Link,
   Script,
   useAppRouter,
   usePathParams,
   useRequiredPathParam,
   useSearchParam,
 } from "./next";
-export type { AppRouter, HeadProps, ScriptProps } from "./types";
+export type { AppRouter, HeadProps, LinkProps, ScriptProps } from "./types";
