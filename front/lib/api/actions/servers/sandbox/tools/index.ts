@@ -37,12 +37,6 @@ export function createSandboxTools(
         new MCPError("Sandbox list_files tool is not implemented yet.")
       );
     },
-
-    push_file_to_dust: async (_args) => {
-      return new Err(
-        new MCPError("Sandbox push_file_to_dust tool is not implemented yet.")
-      );
-    },
   };
 
   return buildTools(SANDBOX_TOOLS_METADATA, handlers);

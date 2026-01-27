@@ -50,11 +50,15 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
   },
   read_file: {
     description:
-      "Read the contents of a file from the sandbox. " +
-      "Returns the file content along with a snippet preview. " +
-      "For large files, use this to retrieve results of computations or generated content.",
+      "Read a file from the sandbox and make it available as a Dust file. " +
+      "Use this to retrieve results of computations, generated content, or any file " +
+      "that should be shared with the user in the conversation.",
     schema: {
       path: z.string().describe("Absolute path to the file to read."),
+      title: z
+        .string()
+        .optional()
+        .describe("Title for the file in Dust. Defaults to the filename."),
     },
     stake: "never_ask",
   },
@@ -74,19 +78,6 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
   },
-  push_file_to_dust: {
-    description:
-      "Push a file from the sandbox to Dust, making it available in the conversation. " +
-      "Use this to return generated files (CSVs, images, documents) to the user.",
-    schema: {
-      path: z.string().describe("Absolute path to the file in the sandbox."),
-      title: z
-        .string()
-        .optional()
-        .describe("Title for the file in Dust. Defaults to the filename."),
-    },
-    stake: "low",
-  },
 });
 
 export const SANDBOX_SERVER = {
@@ -100,8 +91,8 @@ export const SANDBOX_SERVER = {
     documentationUrl: null,
     instructions:
       "The sandbox provides an isolated Linux environment for running code, scripts, and shell commands. " +
-      "Use `execute` to run commands, `write_file`/`read_file` for file operations, " +
-      "and `push_file_to_dust` to return generated files. " +
+      "Use `execute` to run commands, `write_file`/`read_file` for file operations. " +
+      "Use `read_file` to retrieve generated files and make them available in the conversation. " +
       "The sandbox persists for the conversation duration. " +
       "Common tools like Python, Node.js, and standard Unix utilities are pre-installed.",
   },
