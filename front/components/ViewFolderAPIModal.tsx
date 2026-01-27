@@ -92,10 +92,20 @@ export function ViewFolderAPIModal({
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent>
+        {/*
+          Override Radix ScrollArea's inline styles to constrain width.
+          Without this, CodeEditor's content causes the sheet to expand horizontally.
+        */}
+        <style>{`
+          .s-scrollarea-viewport > div {
+            width: 100%;
+            table-layout: fixed;
+          }
+        `}</style>
         <SheetHeader>
           <SheetTitle>Data source API</SheetTitle>
         </SheetHeader>
-        <SheetContainer>
+        <SheetContainer className="pb-8">
           <div className="flex flex-col gap-6">
             <Page.P>
               <div className="rounded-lg bg-muted-background p-4 shadow-sm dark:bg-muted-background-night">
