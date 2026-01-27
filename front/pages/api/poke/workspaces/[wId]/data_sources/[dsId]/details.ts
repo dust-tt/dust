@@ -27,7 +27,6 @@ export type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;
   googleDriveLargeFilesEnabled: boolean;
-  googleDriveParallelSyncEnabled: boolean;
   microsoftPdfEnabled: boolean;
   microsoftLargeFilesEnabled: boolean;
   googleDriveCsvEnabled: boolean;
@@ -159,7 +158,6 @@ async function handler(
         slackBotEnabled: false,
         googleDrivePdfEnabled: false,
         googleDriveLargeFilesEnabled: false,
-        googleDriveParallelSyncEnabled: false,
         microsoftPdfEnabled: false,
         microsoftLargeFilesEnabled: false,
         googleDriveCsvEnabled: false,
@@ -247,17 +245,6 @@ async function handler(
             }
             features.googleDriveLargeFilesEnabled =
               gdriveLargeFilesEnabledRes.value.configValue === "true";
-
-            const gdriveParallelSyncEnabledRes =
-              await connectorsAPI.getConnectorConfig(
-                dataSource.connectorId,
-                "useParallelSync"
-              );
-            if (gdriveParallelSyncEnabledRes.isErr()) {
-              throw gdriveParallelSyncEnabledRes.error;
-            }
-            features.googleDriveParallelSyncEnabled =
-              gdriveParallelSyncEnabledRes.value.configValue === "true";
             break;
 
           case "microsoft":

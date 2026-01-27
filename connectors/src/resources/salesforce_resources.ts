@@ -20,7 +20,8 @@ import type { ModelId } from "@connectors/types";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SalesforceConfigurationResource extends ReadonlyAttributesType<SalesforceConfigurationModel> {}
+export interface SalesforceConfigurationResource
+  extends ReadonlyAttributesType<SalesforceConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SalesforceConfigurationResource extends BaseResource<SalesforceConfigurationModel> {
@@ -107,7 +108,8 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SalesforceSyncedQueryResource extends ReadonlyAttributesType<SalesforceSyncedQueryModel> {}
+export interface SalesforceSyncedQueryResource
+  extends ReadonlyAttributesType<SalesforceSyncedQueryModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSyncedQueryModel> {

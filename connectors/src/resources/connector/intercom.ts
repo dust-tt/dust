@@ -17,7 +17,9 @@ import type {
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
 import type { ModelId } from "@connectors/types";
 
-export class IntercomConnectorStrategy implements ConnectorProviderStrategy<"intercom"> {
+export class IntercomConnectorStrategy
+  implements ConnectorProviderStrategy<"intercom">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<IntercomWorkspaceModel>,

@@ -25,6 +25,10 @@ export const RUN_DUST_APP_TOOLS_METADATA = createToolsRecord({
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_APP],
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Running Dust app",
+      done: "Run Dust app",
+    },
   },
 });
 
@@ -42,6 +46,7 @@ export const RUN_DUST_APP_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(RUN_DUST_APP_TOOLS_METADATA).map((t) => [t.name, t.stake])

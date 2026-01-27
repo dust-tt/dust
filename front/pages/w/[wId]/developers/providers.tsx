@@ -6,7 +6,7 @@ import {
   Page,
   ShapesIcon,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 import React, { useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
@@ -15,9 +15,12 @@ import {
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   APP_MODEL_PROVIDER_IDS,
   modelProviders,
@@ -25,27 +28,10 @@ import {
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
+import type { WorkspaceType } from "@app/types";
 import { redactString } from "@app/types";
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
-}>(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.getNonNullableSubscription();
-  const user = auth.getNonNullableUser().toJSON();
-  if (!auth.isAdmin()) {
-    return { notFound: true };
-  }
-  return {
-    props: {
-      owner,
-      subscription,
-      user,
-    },
-  };
-});
+
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
 export function Providers({ owner }: { owner: WorkspaceType }) {
   const { providers, isProvidersLoading, isProvidersError } = useProviders({
@@ -224,10 +210,10 @@ function ProviderListItem({
   );
 }
 
-export default function ProvidersPage({
-  owner,
-  subscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function ProvidersPage() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
+
   const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   return (
@@ -254,6 +240,15 @@ export default function ProvidersPage({
   );
 }
 
-ProvidersPage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = ProvidersPage as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

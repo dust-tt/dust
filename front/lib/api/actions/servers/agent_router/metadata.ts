@@ -20,6 +20,10 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing agents",
+      done: "List agents",
+    },
   },
   suggest_agents_for_content: {
     description:
@@ -33,6 +37,10 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       conversationId: z.string().describe("The conversation id."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting agents",
+      done: "Suggest agents",
+    },
   },
 });
 
@@ -50,6 +58,7 @@ export const AGENT_ROUTER_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_ROUTER_TOOLS_METADATA).map((t) => [t.name, t.stake])

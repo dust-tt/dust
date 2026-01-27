@@ -110,6 +110,10 @@ export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
       maxResults: z.number().optional().describe("Maximum results to return."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Items",
+      done: "List items",
+    },
   },
   get_item: {
     description: "Get a single item by ID.",
@@ -117,6 +121,10 @@ export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
       itemId: z.string().describe("The ID of the item to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving item",
+      done: "Retrieve item",
+    },
   },
   create_item: {
     description: "Create a new item.",
@@ -125,6 +133,10 @@ export const YOUR_PROVIDER_TOOLS_METADATA = createToolsRecord({
       description: z.string().optional().describe("Description of the item."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating item",
+      done: "Create item",
+    },
   },
 });
 
@@ -147,6 +159,7 @@ export const YOUR_PROVIDER_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(YOUR_PROVIDER_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -17,23 +17,32 @@ import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/se
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
+import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
+import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
+import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
+import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
+import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { WEB_SEARCH_BROWSE_SERVER } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import {
@@ -43,6 +52,7 @@ import {
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
+  ToolDisplayLabels,
 } from "@app/lib/api/mcp";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import type {
@@ -81,12 +91,6 @@ export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
-export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
-export const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
-export const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
-export const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
-export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
-
 export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
 export const TOOLSETS_LIST_TOOL_NAME = "list";
 
@@ -100,7 +104,6 @@ export const SEARCH_SERVER_NAME = "search";
 
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
-export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
@@ -114,7 +117,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_copilot_agent_state",
   "agent_copilot_context",
   "agent_management",
-  AGENT_MEMORY_SERVER_NAME,
+  "agent_memory",
   "agent_router",
   "ashby",
   "confluence",
@@ -359,32 +362,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_drafts: "never_ask",
-      create_draft: "medium",
-      get_messages: "never_ask",
-      create_reply_draft: "medium",
-      get_attachment: "never_ask",
-    },
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "gmail",
-      version: "1.0.0",
-      description: "Access messages and email drafts.",
-      authorization: {
-        provider: "google_drive" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.compose" as const,
-      },
-      icon: "GmailLogo",
-      documentationUrl: "https://docs.dust.tt/docs/gmail",
-      instructions: null,
-    },
+    metadata: GMAIL_SERVER,
   },
   google_calendar: {
     id: 16,
@@ -466,38 +449,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("google_sheets_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_spreadsheets: "never_ask",
-      get_spreadsheet: "never_ask",
-      get_worksheet: "never_ask",
-      update_cells: "low",
-      append_data: "low",
-      clear_range: "low",
-      create_spreadsheet: "low",
-      add_worksheet: "low",
-      delete_worksheet: "low",
-      format_cells: "low",
-      copy_sheet: "low",
-      rename_worksheet: "low",
-      move_worksheet: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_sheets",
-      version: "1.0.0",
-      description: "Work with spreadsheet data and tables.",
-      authorization: {
-        provider: "gmail",
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-        scope:
-          "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.readonly" as const,
-      },
-      icon: "GoogleSpreadsheetLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-sheets",
-      instructions: null,
-    },
+    metadata: GOOGLE_SHEETS_SERVER,
   },
   monday: {
     id: 20,
@@ -554,7 +509,7 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  [AGENT_MEMORY_SERVER_NAME]: {
+  agent_memory: {
     id: 21,
     availability: "auto",
     allowMultipleInstances: false,
@@ -564,15 +519,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: AGENT_MEMORY_SERVER_NAME,
-      version: "1.0.0",
-      description: "User-scoped long-term memory tools for agents.",
-      authorization: null,
-      icon: "ActionLightbulbIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: AGENT_MEMORY_SERVER,
   },
   jira: {
     id: 22,
@@ -784,29 +731,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_drives: "never_ask",
-      search_files: "never_ask",
-      get_file_content: "never_ask",
-      get_spreadsheet: "never_ask",
-      get_worksheet: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "google_drive",
-      version: "1.0.0",
-      description: "Search and read files (Docs, Sheets, Presentations).",
-      authorization: {
-        provider: "google_drive" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope: "https://www.googleapis.com/auth/drive.readonly" as const,
-      },
-      icon: "DriveLogo",
-      documentationUrl: "https://docs.dust.tt/docs/google-drive",
-      instructions: null,
-    },
+    metadata: GOOGLE_DRIVE_SERVER,
   },
   slideshow: {
     id: 28,
@@ -858,38 +786,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("slack_bot_mcp");
     },
     isPreview: true,
-    tools_stakes: {
-      list_public_channels: "never_ask" as const,
-      list_users: "never_ask" as const,
-      get_user: "never_ask" as const,
-      read_channel_history: "never_ask" as const,
-      read_thread_messages: "never_ask" as const,
-
-      post_message: "low" as const,
-      add_reaction: "low" as const,
-      remove_reaction: "low" as const,
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slack_bot",
-      version: "1.0.0",
-      description:
-        "Specialized Slack bot integration for posting messages as the workspace bot. Limited to channels where the bot has been added.",
-      authorization: {
-        provider: "slack" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "SlackLogo",
-      documentationUrl: null,
-      instructions:
-        "The Slack bot must be explicitly added to a channel before it can post messages or read history. " +
-        "Direct messages and search operations are not supported. " +
-        "When posting a message on Slack, you MUST use Slack-flavored Markdown to format the message. " +
-        "IMPORTANT: if you want to mention a user, you must use <@USER_ID> where USER_ID is the id of the user you want to mention.\n" +
-        "If you want to reference a channel, you must use #CHANNEL where CHANNEL is the channel name, or <#CHANNEL_ID> where CHANNEL_ID is the channel ID.",
-    },
+    metadata: SLACK_BOT_SERVER,
   },
   openai_usage: {
     id: 32,
@@ -899,23 +799,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("openai_usage_mcp");
     },
-    tools_stakes: {
-      get_completions_usage: "low",
-      get_organization_costs: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "openai_usage",
-      version: "1.0.0",
-      description: "Track API consumption and costs.",
-      authorization: null,
-      icon: "OpenaiLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: OPENAI_USAGE_SERVER,
   },
   confluence: {
     id: 33,
@@ -1351,9 +1238,7 @@ export const INTERNAL_MCP_SERVERS = {
     id: 48,
     availability: "manual",
     allowMultipleInstances: true,
-    isRestricted: ({ featureFlags }) => {
-      return !featureFlags.includes("ukg_ready_mcp");
-    },
+    isRestricted: undefined,
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
@@ -1392,19 +1277,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: SEARCH_SERVER_NAME,
-      version: "1.0.0",
-      description: "Search content to find the most relevant information.",
-      icon: "ActionMagnifyingGlassIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SEARCH_SERVER,
   },
   run_agent: {
     id: 1008,
@@ -1519,19 +1395,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "toolsets",
-      version: "1.0.0",
-      description: "Browse available toolsets and functions.",
-      authorization: null,
-      icon: "ActionLightbulbIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: TOOLSETS_SERVER,
   },
   val_town: {
     id: 1014,
@@ -1664,19 +1531,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "skill_management",
-      version: "1.0.0",
-      description: "",
-      icon: "PuzzleIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SKILL_MANAGEMENT_SERVER,
   },
   schedules_management: {
     id: 1020,
@@ -1942,6 +1800,30 @@ export function getInternalMCPServerToolStakes(
     return server.metadata.tools_stakes;
   }
   return server.tools_stakes;
+}
+
+// TODO(2026-01-27 MCP): improve typing once all servers are migrated to the metadata pattern.
+// Goal is to tie the tool name to the server name.
+export function getInternalMCPServerToolDisplayLabels(
+  name: InternalMCPServerNameType
+): Record<string, ToolDisplayLabels> | null {
+  const server = INTERNAL_MCP_SERVERS[name];
+  if (!isServerWithMetadata(server)) {
+    return null;
+  }
+
+  const entries = server.metadata.tools
+    .filter(
+      (tool): tool is typeof tool & { displayLabels: ToolDisplayLabels } =>
+        tool.displayLabels !== undefined
+    )
+    .map((tool) => [tool.name, tool.displayLabels] as const);
+
+  if (entries.length === 0) {
+    return null;
+  }
+
+  return Object.fromEntries(entries);
 }
 
 export function getInternalMCPServerInfo(

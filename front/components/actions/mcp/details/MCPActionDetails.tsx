@@ -50,11 +50,6 @@ import {
   ENABLE_SKILL_TOOL_NAME,
 } from "@app/lib/actions/constants";
 import {
-  AGENT_MEMORY_COMPACT_TOOL_NAME,
-  AGENT_MEMORY_EDIT_TOOL_NAME,
-  AGENT_MEMORY_ERASE_TOOL_NAME,
-  AGENT_MEMORY_RECORD_TOOL_NAME,
-  AGENT_MEMORY_RETRIEVE_TOOL_NAME,
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
@@ -92,6 +87,13 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import {
+  AGENT_MEMORY_COMPACT_TOOL_NAME,
+  AGENT_MEMORY_EDIT_TOOL_NAME,
+  AGENT_MEMORY_ERASE_TOOL_NAME,
+  AGENT_MEMORY_RECORD_TOOL_NAME,
+  AGENT_MEMORY_RETRIEVE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isSupportedImageContentType } from "@app/types";
@@ -103,6 +105,24 @@ export interface MCPActionDetailsProps {
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
   viewType: "conversation" | "sidebar";
+}
+
+function getActionLabel(
+  action: AgentMCPActionWithOutputType,
+  viewType: "conversation" | "sidebar"
+): string {
+  if (action.displayLabels) {
+    return viewType === "conversation"
+      ? action.displayLabels.running
+      : action.displayLabels.done;
+  }
+
+  return (
+    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "")
+  );
 }
 
 export function MCPActionDetails({
@@ -357,12 +377,6 @@ export function GenericActionDetails({
       ? JSON.stringify(action.params, undefined, 2)
       : null;
 
-  const actionName =
-    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
-    (action.functionCallName
-      ? `: ${asDisplayName(action.functionCallName)}`
-      : "");
-
   const actionIcon =
     action.internalMCPServerName &&
     InternalActionIcons[
@@ -372,7 +386,7 @@ export function GenericActionDetails({
   return (
     <ActionDetailsWrapper
       viewType={viewType}
-      actionName={actionName}
+      actionName={getActionLabel(action, viewType)}
       visual={actionIcon ?? MCP_SPECIFICATION.cardIcon}
     >
       {viewType !== "conversation" && (

@@ -1,13 +1,11 @@
 import TurndownService from "turndown";
 
+import { SUPPORTED_MIMETYPES } from "@app/lib/api/actions/servers/google_drive/metadata";
 import {
   PROVIDER_DOWNLOAD_MAX_FILE_SIZE,
   PROVIDER_SEARCH_MAX_PAGE_SIZE,
 } from "@app/lib/providers/constants";
-import {
-  getGoogleDriveClient,
-  SUPPORTED_MIMETYPES,
-} from "@app/lib/providers/google_drive/utils";
+import { getGoogleDriveClient } from "@app/lib/providers/google_drive/utils";
 import type {
   ToolDownloadParams,
   ToolDownloadResult,

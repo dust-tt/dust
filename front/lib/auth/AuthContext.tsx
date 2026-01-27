@@ -6,10 +6,11 @@ import type {
   UserType,
 } from "@app/types";
 
+// Context for pages that have workspace (app pages, workspace-scoped poke pages).
 export interface AuthContextValue {
   user: UserType | null;
-  workspace?: LightWorkspaceType | null;
-  subscription?: SubscriptionType | null;
+  workspace: LightWorkspaceType;
+  subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
   isSuperUser: boolean;
@@ -33,4 +34,23 @@ export function useWorkspace(): LightWorkspaceType {
     );
   }
   return ctx.workspace;
+}
+
+// Context for global pages without workspace (e.g., /poke/plans, /poke/templates).
+export interface AuthContextNoWorkspaceValue {
+  user: UserType | null;
+  isSuperUser: boolean;
+}
+
+export const AuthContextNoWorkspace =
+  createContext<AuthContextNoWorkspaceValue | null>(null);
+
+export function useAuthNoWorkspace(): AuthContextNoWorkspaceValue {
+  const ctx = useContext(AuthContextNoWorkspace);
+  if (!ctx) {
+    throw new Error(
+      "useAuthNoWorkspace must be used within AuthContextNoWorkspace.Provider"
+    );
+  }
+  return ctx;
 }

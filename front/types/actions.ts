@@ -23,6 +23,10 @@ export type AgentMCPActionType = {
   status: ToolExecutionStatus;
   step: number;
   executionDurationMs: number | null;
+  displayLabels: {
+    running: string;
+    done: string;
+  } | null;
 };
 
 export type AgentMCPActionWithOutputType = AgentMCPActionType & {
