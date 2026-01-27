@@ -208,7 +208,7 @@ function SecretsPage() {
       </Dialog>
 
       <AppCenteredLayout
-        subscription={subscription!}
+        subscription={subscription}
         owner={owner}
         subNavigation={subNavigationAdmin({
           owner,

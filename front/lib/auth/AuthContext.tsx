@@ -8,8 +8,8 @@ import type {
 
 export interface AuthContextValue {
   user: UserType | null;
-  workspace?: LightWorkspaceType | null;
-  subscription?: SubscriptionType | null;
+  workspace: LightWorkspaceType;
+  subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
   isSuperUser: boolean;

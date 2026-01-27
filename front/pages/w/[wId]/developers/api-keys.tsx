@@ -147,7 +147,7 @@ function APIKeysPage() {
 
   return (
     <AppCenteredLayout
-      subscription={subscription!}
+      subscription={subscription}
       owner={owner}
       subNavigation={subNavigationAdmin({
         owner,
