@@ -68,6 +68,13 @@ export interface SandboxMetadata {
   agentConfigurationId?: string;
 }
 
+// Map metadata keys to tag prefixes. TypeScript enforces completeness.
+const METADATA_TAG_PREFIXES: Record<keyof SandboxMetadata, string> = {
+  workspaceId: "workspace",
+  conversationId: "conversation",
+  agentConfigurationId: "agent",
+};
+
 export class ServiceAlreadyExistsError extends Error {
   constructor(serviceName: string) {
     super(`Service "${serviceName}" already exists`);
@@ -216,14 +223,13 @@ export class NorthflankSandboxClient {
     if (this.config.spotTag) {
       tags.push(this.config.spotTag);
     }
-    if (metadata?.workspaceId) {
-      tags.push(`workspace:${metadata.workspaceId}`);
-    }
-    if (metadata?.conversationId) {
-      tags.push(`conversation:${metadata.conversationId}`);
-    }
-    if (metadata?.agentConfigurationId) {
-      tags.push(`agent:${metadata.agentConfigurationId}`);
+    if (metadata) {
+      for (const key of Object.keys(METADATA_TAG_PREFIXES) as (keyof SandboxMetadata)[]) {
+        const value = metadata[key];
+        if (value) {
+          tags.push(`${METADATA_TAG_PREFIXES[key]}:${value}`);
+        }
+      }
     }
     return tags;
   }
