@@ -319,13 +319,9 @@ function buildSuggestionDiffContent(
     };
 
     if (part.added) {
-      node.marks = [
-        { type: "suggestionAddition", attrs: { suggestionId } },
-      ];
+      node.marks = [{ type: "suggestionAddition", attrs: { suggestionId } }];
     } else if (part.removed) {
-      node.marks = [
-        { type: "suggestionDeletion", attrs: { suggestionId } },
-      ];
+      node.marks = [{ type: "suggestionDeletion", attrs: { suggestionId } }];
     }
 
     return node;

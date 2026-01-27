@@ -150,7 +150,10 @@ export const CopilotSuggestionsProvider = ({
       });
 
       if (!applied) {
-        return { success: false, error: "Failed to apply suggestion to editor." };
+        return {
+          success: false,
+          error: "Failed to apply suggestion to editor.",
+        };
       }
 
       setSuggestions((prev) => [...prev, newSuggestion]);
