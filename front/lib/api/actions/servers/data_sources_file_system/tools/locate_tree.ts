@@ -1,13 +1,9 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import { FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import type { FilesystemPathType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
-import {
-  extractDataSourceIdFromNodeId,
-  isDataSourceNodeId,
-} from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import { checkConflictingTags } from "@app/lib/actions/mcp_internal_actions/tools/tags/utils";
 import {
   getAgentDataSourceConfigurations,
@@ -17,6 +13,11 @@ import type { DataSourceFilesystemLocateTreeInputType } from "@app/lib/actions/m
 import { DataSourceFilesystemLocateTreeInputSchema } from "@app/lib/actions/mcp_internal_actions/types";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  extractDataSourceIdFromNodeId,
+  isDataSourceNodeId,
+} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";

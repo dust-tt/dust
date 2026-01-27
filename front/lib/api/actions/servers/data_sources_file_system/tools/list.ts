@@ -1,12 +1,9 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { isDustMimeType } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import { renderSearchResults } from "@app/lib/actions/mcp_internal_actions/rendering";
-import {
-  extractDataSourceIdFromNodeId,
-  isDataSourceNodeId,
-} from "@app/lib/actions/mcp_internal_actions/tools/data_sources_file_system/utils";
 import {
   getAgentDataSourceConfigurations,
   makeCoreSearchNodesFilters,
@@ -15,6 +12,10 @@ import { DataSourceFilesystemListInputSchema } from "@app/lib/actions/mcp_intern
 import { ensureAuthorizedDataSourceViews } from "@app/lib/actions/mcp_internal_actions/utils/data_source_views";
 import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
+import {
+  extractDataSourceIdFromNodeId,
+  isDataSourceNodeId,
+} from "@app/lib/api/actions/servers/data_sources_file_system/tools/utils";
 import config from "@app/lib/api/config";
 import { ROOT_PARENT_ID } from "@app/lib/api/data_source_view";
 import type { Authenticator } from "@app/lib/auth";

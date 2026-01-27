@@ -2,7 +2,6 @@ import type { InternalAllowedIconType } from "@app/components/resources/resource
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
-  DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
@@ -19,6 +18,7 @@ import {
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
@@ -81,12 +81,6 @@ export const WEBSEARCH_TOOL_NAME = "websearch";
 export const WEBBROWSER_TOOL_NAME = "webbrowser";
 
 export const CREATE_AGENT_TOOL_NAME = "create_agent";
-
-export const FIND_TAGS_TOOL_NAME = "find_tags";
-export const FILESYSTEM_CAT_TOOL_NAME = "cat";
-export const FILESYSTEM_FIND_TOOL_NAME = "find";
-export const FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME = "locate_in_tree";
-export const FILESYSTEM_LIST_TOOL_NAME = "list";
 
 export const DATA_WAREHOUSES_LIST_TOOL_NAME = "list";
 export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
@@ -1296,15 +1290,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "data_sources_file_system",
-      version: "1.0.0",
-      description: "Browse and search content with filesystem-like navigation.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: DATA_SOURCE_FILESYSTEM_SERVER_INSTRUCTIONS,
-    },
+    metadata: DATA_SOURCES_FILE_SYSTEM_SERVER,
   },
   agent_management: {
     id: 1011,
