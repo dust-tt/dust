@@ -513,8 +513,8 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting user info",
-      done: "Get user info",
+      running: "Retrieving user info",
+      done: "Retrieve user info",
     },
   },
 });

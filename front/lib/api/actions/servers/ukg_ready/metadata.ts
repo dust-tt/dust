@@ -14,8 +14,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting employee info",
-      done: "Get employee info",
+      running: "Retrieving employee info",
+      done: "Retrieve employee info",
     },
   },
   get_pto_requests: {
@@ -37,8 +37,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting PTO requests",
-      done: "Get PTO requests",
+      running: "Retrieving PTO requests",
+      done: "Retrieve PTO requests",
     },
   },
   get_accrual_balances: {
@@ -59,8 +59,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting accrual balances",
-      done: "Get accrual balances",
+      running: "Retrieving accrual balances",
+      done: "Retrieve accrual balances",
     },
   },
   get_pto_request_notes: {
@@ -74,8 +74,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting PTO notes",
-      done: "Get PTO notes",
+      running: "Retrieving PTO notes",
+      done: "Retrieve PTO notes",
     },
   },
   create_pto_request: {
@@ -172,8 +172,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting schedules",
-      done: "Get schedules",
+      running: "Listing schedules",
+      done: "List schedules",
     },
   },
   get_employees: {
@@ -181,8 +181,8 @@ export const UKG_READY_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting employees",
-      done: "Get employees",
+      running: "Listing employees",
+      done: "List employees",
     },
   },
 });

@@ -47,8 +47,8 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting supported formats",
-      done: "Get supported formats",
+      running: "Listing supported formats",
+      done: "List supported formats",
     },
   },
   convert_file_format: {

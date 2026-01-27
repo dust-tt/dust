@@ -67,8 +67,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting event",
-      done: "Get event",
+      running: "Retrieving event",
+      done: "Retrieve event",
     },
   },
   create_event: {
@@ -235,8 +235,8 @@ export const GOOGLE_CALENDAR_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting user timezones",
-      done: "Get user timezones",
+      running: "Checking user timezones",
+      done: "Check user timezones",
     },
   },
 });
