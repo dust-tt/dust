@@ -1,0 +1,275 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import {
+  getDriveClient,
+  getSheetsClient,
+} from "@app/lib/api/actions/servers/google_drive/helpers";
+import { GOOGLE_DRIVE_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_drive/metadata";
+import {
+  MAX_CONTENT_SIZE,
+  MAX_FILE_SIZE,
+  SUPPORTED_MIMETYPES,
+} from "@app/lib/providers/google_drive/utils";
+import { Err, Ok } from "@app/types";
+import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
+  list_drives: async ({ pageToken }, { authInfo }) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.drives.list({
+        pageToken,
+        pageSize: 100,
+        fields: "nextPageToken, drives(id, name, createdTime)",
+      });
+
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(normalizeError(err).message || "Failed to list drives")
+      );
+    }
+  },
+
+  search_files: async (
+    { q, pageToken, pageSize, driveId, includeSharedDrives, orderBy },
+    { authInfo }
+  ) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const requestParams: {
+        q?: string;
+        pageToken?: string;
+        pageSize?: number;
+        fields: string;
+        orderBy?: string;
+        driveId?: string;
+        includeItemsFromAllDrives?: boolean;
+        supportsAllDrives?: boolean;
+        corpora?: string;
+      } = {
+        q,
+        pageToken,
+        pageSize: pageSize ? Math.min(pageSize, 1000) : undefined,
+        fields:
+          "nextPageToken, files(id, name, mimeType, size, createdTime, modifiedTime, owners, parents, webViewLink, shared)",
+        orderBy,
+      };
+
+      if (driveId) {
+        // Search in a specific shared drive
+        requestParams.driveId = driveId;
+        requestParams.includeItemsFromAllDrives = true;
+        requestParams.supportsAllDrives = true;
+        requestParams.corpora = "drive";
+      } else if (includeSharedDrives) {
+        // Search across all drives (personal + shared)
+        requestParams.includeItemsFromAllDrives = true;
+        requestParams.supportsAllDrives = true;
+        requestParams.corpora = "allDrives";
+      }
+      // If neither driveId nor includeSharedDrives, search only personal drive (default behavior)
+
+      const res = await drive.files.list(requestParams);
+
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+      ]);
+    } catch (err) {
+      const error = normalizeError(err);
+      return new Err(
+        new MCPError(error.message || "Failed to search files", {
+          cause: error,
+        })
+      );
+    }
+  },
+
+  get_file_content: async (
+    { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
+    { authInfo }
+  ) => {
+    const drive = await getDriveClient(authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      // First, get file metadata to determine the mimetype
+      const fileMetadata = await drive.files.get({
+        fileId,
+        supportsAllDrives: true,
+        fields: "id, name, mimeType, size",
+      });
+      const file = fileMetadata.data;
+
+      if (!file.mimeType || !SUPPORTED_MIMETYPES.includes(file.mimeType)) {
+        return new Err(
+          new MCPError(
+            `Unsupported file type: ${file.mimeType}. Supported types: ${SUPPORTED_MIMETYPES.join(", ")}`,
+            {
+              tracked: false,
+            }
+          )
+        );
+      }
+      if (file.size && parseInt(file.size, 10) > MAX_FILE_SIZE) {
+        return new Err(
+          new MCPError(
+            `File size exceeds the maximum limit of ${MAX_FILE_SIZE / (1024 * 1024)} MB.`,
+            {
+              tracked: false,
+            }
+          )
+        );
+      }
+
+      let content: string;
+
+      switch (file.mimeType) {
+        case "application/vnd.google-apps.document":
+        case "application/vnd.google-apps.presentation": {
+          // Export Google Docs and Presentations as plain text
+          const exportRes = await drive.files.export({
+            fileId,
+            mimeType: "text/plain",
+          });
+          if (typeof exportRes.data !== "string") {
+            return new Err(
+              new MCPError("Failed to export file content as text/plain")
+            );
+          }
+          content = exportRes.data;
+          break;
+        }
+        case "text/plain":
+        case "text/markdown":
+        case "text/csv": {
+          // Download regular text files
+          const downloadRes = await drive.files.get({
+            fileId,
+            alt: "media",
+          });
+
+          if (typeof downloadRes.data !== "string") {
+            return new Err(
+              new MCPError("Failed to download file content as text")
+            );
+          }
+          content = downloadRes.data;
+          break;
+        }
+        default:
+          return new Err(
+            new MCPError(`Unsupported file type: ${file.mimeType}`, {
+              tracked: false,
+            })
+          );
+      }
+
+      // Apply offset and limit
+      const totalContentLength = content.length;
+      const startIndex = Math.max(0, offset);
+      const endIndex = Math.min(content.length, startIndex + limit);
+      const truncatedContent = content.slice(startIndex, endIndex);
+
+      const hasMore = endIndex < content.length;
+      const nextOffset = hasMore ? endIndex : undefined;
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              fileId,
+              fileName: file.name,
+              mimeType: file.mimeType,
+              content: truncatedContent,
+              returnedContentLength: truncatedContent.length,
+              totalContentLength,
+              offset: startIndex,
+              nextOffset,
+              hasMore,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to get file content"
+        )
+      );
+    }
+  },
+
+  get_spreadsheet: async ({ spreadsheetId }, { authInfo }) => {
+    const sheets = await getSheetsClient(authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+
+    try {
+      const res = await sheets.spreadsheets.get({
+        spreadsheetId,
+      });
+
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(normalizeError(err).message || "Failed to get spreadsheet")
+      );
+    }
+  },
+
+  get_worksheet: async (
+    {
+      spreadsheetId,
+      range,
+      majorDimension = "ROWS",
+      valueRenderOption = "FORMATTED_VALUE",
+    },
+    { authInfo }
+  ) => {
+    const sheets = await getSheetsClient(authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+
+    try {
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId,
+        range,
+        majorDimension,
+        valueRenderOption,
+      });
+
+      return new Ok([
+        { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
+      ]);
+    } catch (err) {
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to get worksheet data"
+        )
+      );
+    }
+  },
+};
+
+export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
