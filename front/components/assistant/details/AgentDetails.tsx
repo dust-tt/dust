@@ -33,8 +33,8 @@ import { AgentMemoryTab } from "@app/components/assistant/details/tabs/AgentMemo
 import { AgentPerformanceTab } from "@app/components/assistant/details/tabs/AgentPerformanceTab";
 import { AgentTriggersTab } from "@app/components/assistant/details/tabs/AgentTriggersTab";
 import { RestoreAgentDialog } from "@app/components/assistant/RestoreAgentDialog";
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isServerSideMCPServerConfigurationWithName } from "@app/lib/actions/types/guards";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import type {
   AgentConfigurationScope,

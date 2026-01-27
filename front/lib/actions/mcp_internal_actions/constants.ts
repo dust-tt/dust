@@ -17,6 +17,7 @@ import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/se
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
@@ -89,12 +90,6 @@ export const DATA_WAREHOUSES_FIND_TOOL_NAME = "find";
 export const DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME = "describe_tables";
 export const DATA_WAREHOUSES_QUERY_TOOL_NAME = "query";
 
-export const AGENT_MEMORY_RETRIEVE_TOOL_NAME = "retrieve";
-export const AGENT_MEMORY_RECORD_TOOL_NAME = "record_entries";
-export const AGENT_MEMORY_ERASE_TOOL_NAME = "erase_entries";
-export const AGENT_MEMORY_EDIT_TOOL_NAME = "edit_entries";
-export const AGENT_MEMORY_COMPACT_TOOL_NAME = "compact_memory";
-
 export const TOOLSETS_ENABLE_TOOL_NAME = "enable";
 export const TOOLSETS_LIST_TOOL_NAME = "list";
 
@@ -108,7 +103,6 @@ export const SEARCH_SERVER_NAME = "search";
 
 export const TABLE_QUERY_V2_SERVER_NAME = "query_tables_v2"; // Do not change the name until we fixed the extension
 export const DATA_WAREHOUSE_SERVER_NAME = "data_warehouses";
-export const AGENT_MEMORY_SERVER_NAME = "agent_memory";
 
 // IDs of internal MCP servers that are no longer present.
 // We need to keep them to avoid breaking previous output that might reference sId that mapped to these servers.
@@ -122,7 +116,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "agent_copilot_agent_state",
   "agent_copilot_context",
   "agent_management",
-  AGENT_MEMORY_SERVER_NAME,
+  "agent_memory",
   "agent_router",
   "ashby",
   "confluence",
@@ -514,7 +508,7 @@ export const INTERNAL_MCP_SERVERS = {
       instructions: null,
     },
   },
-  [AGENT_MEMORY_SERVER_NAME]: {
+  agent_memory: {
     id: 21,
     availability: "auto",
     allowMultipleInstances: false,
@@ -524,15 +518,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: AGENT_MEMORY_SERVER_NAME,
-      version: "1.0.0",
-      description: "User-scoped long-term memory tools for agents.",
-      authorization: null,
-      icon: "ActionLightbulbIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: AGENT_MEMORY_SERVER,
   },
   jira: {
     id: 22,
