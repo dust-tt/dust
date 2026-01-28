@@ -1078,7 +1078,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
+      requestedPermissions?: CombinedResourcePermissions;
       transaction?: Transaction;
     }
   ): Promise<
@@ -1093,7 +1093,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1210,7 +1216,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
+      requestedPermissions?: CombinedResourcePermissions;
       transaction?: Transaction;
     }
   ): Promise<
@@ -1240,7 +1246,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
+      requestedPermissions?: CombinedResourcePermissions;
       transaction?: Transaction;
     }
   ): Promise<
@@ -1254,7 +1260,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1354,7 +1366,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
+      requestedPermissions?: CombinedResourcePermissions;
       transaction?: Transaction;
     }
   ): Promise<
@@ -1383,7 +1395,7 @@ export class GroupResource extends BaseResource<GroupModel> {
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
+      requestedPermissions?: CombinedResourcePermissions;
       transaction?: Transaction;
     }
   ): Promise<
@@ -1399,7 +1411,13 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
+    if (
+      !auth.canWrite(
+        requestedPermissions
+          ? [requestedPermissions]
+          : this.requestedPermissions()
+      )
+    ) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -1607,10 +1625,6 @@ export class GroupResource extends BaseResource<GroupModel> {
 
   isRegular(): boolean {
     return this.kind === "regular";
-  }
-
-  isSpaceEditor(): boolean {
-    return this.kind === "space_editors";
   }
 
   isProvisioned(): boolean {

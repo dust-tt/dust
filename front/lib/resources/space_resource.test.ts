@@ -3,10 +3,6 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-} from "@app/lib/resources/group_space_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -99,7 +95,6 @@ describe("SpaceResource", () => {
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
 
         expect(result.isErr()).toBe(true);
@@ -118,7 +113,6 @@ describe("SpaceResource", () => {
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
 
         expect(result.isErr()).toBe(true);
@@ -136,7 +130,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId, user2.sId],
-          editorIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -166,7 +159,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
-          editorGroupIds: [],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -183,7 +175,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -214,7 +205,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
-          editorGroupIds: [],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -244,7 +234,6 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId, user2.sId],
-            editorIds: [],
           }
         );
         expect(manualResult.isOk()).toBe(true);
@@ -280,7 +269,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup1.sId, provisionedGroup2.sId],
-          editorGroupIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -321,7 +309,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup1.sId],
-          editorGroupIds: [],
         });
         expect(firstResult.isOk()).toBe(true);
 
@@ -339,7 +326,6 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "group",
             groupIds: [provisionedGroup2.sId],
-            editorGroupIds: [],
           }
         );
 
@@ -365,7 +351,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
         expect(manualResult.isOk()).toBe(true);
 
@@ -388,7 +373,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
-          editorGroupIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -413,7 +397,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId, user2.sId],
-          editorIds: [],
         });
 
         // Verify members are active
@@ -444,7 +427,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [provisionedGroup.sId],
-          editorGroupIds: [],
         });
         expect(result.isOk()).toBe(true);
 
@@ -468,7 +450,6 @@ describe("SpaceResource", () => {
           isRestricted: false,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
 
         expect(result.isOk()).toBe(true);
@@ -486,9 +467,11 @@ describe("SpaceResource", () => {
 
       it("should remove global group when changing from open to restricted", async () => {
         // First add global group to make it open
-        await GroupSpaceMemberResource.makeNew(adminAuth, {
-          group: globalGroup,
-          space: regularSpace,
+        await GroupSpaceModel.create({
+          groupId: globalGroup.id,
+          vaultId: regularSpace.id,
+          workspaceId: workspace.id,
+          kind: "member",
         });
 
         // Reload space to get updated groups
@@ -505,7 +488,6 @@ describe("SpaceResource", () => {
             isRestricted: true,
             managementMode: "manual",
             memberIds: [user1.sId],
-            editorIds: [],
           }
         );
 
@@ -529,7 +511,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
 
         const groupSpacesBefore = await GroupSpaceModel.findAll({
@@ -548,7 +529,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user2.sId],
-          editorIds: [],
         });
 
         const groupSpacesAfter = await GroupSpaceModel.findAll({
@@ -572,7 +552,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: ["invalid-group-id"],
-          editorGroupIds: [],
         });
 
         expect(result.isErr()).toBe(true);
@@ -589,7 +568,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: ["invalid-user-id"],
-          editorIds: [],
         });
 
         // The method should handle this gracefully
@@ -605,7 +583,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "group",
           groupIds: [],
-          editorGroupIds: [],
         });
         expect(groupResult.isOk()).toBe(true);
 
@@ -620,7 +597,6 @@ describe("SpaceResource", () => {
           isRestricted: true,
           managementMode: "manual",
           memberIds: [user1.sId],
-          editorIds: [],
         });
         expect(manualResult.isOk()).toBe(true);
 
@@ -629,326 +605,6 @@ describe("SpaceResource", () => {
           regularSpace.sId
         );
         expect(updatedSpace2?.managementMode).toBe("manual");
-      });
-    });
-
-    describe("project space editor and member permissions", () => {
-      let projectSpace: SpaceResource;
-      let projectMemberGroup: GroupResource;
-      let projectEditorGroup: GroupResource;
-      let editorUser: UserResource;
-      let memberUser: UserResource;
-      let nonMemberUser: UserResource;
-
-      beforeEach(async () => {
-        // Create users for testing
-        editorUser = await UserFactory.basic();
-        memberUser = await UserFactory.basic();
-        nonMemberUser = await UserFactory.basic();
-
-        await MembershipFactory.associate(workspace, editorUser, {
-          role: "user",
-        });
-        await MembershipFactory.associate(workspace, memberUser, {
-          role: "user",
-        });
-        await MembershipFactory.associate(workspace, nonMemberUser, {
-          role: "user",
-        });
-
-        // Create a project space with member and editor groups
-        projectMemberGroup = await GroupResource.makeNew({
-          name: "Project Members Group",
-          workspaceId: workspace.id,
-          kind: "regular",
-        });
-      });
-
-      describe("with manual groups", () => {
-        beforeEach(async () => {
-          projectEditorGroup = await GroupResource.makeNew({
-            name: "Project Editors Group",
-            workspaceId: workspace.id,
-            kind: "space_editors",
-          });
-
-          projectSpace = await SpaceResource.makeNew(
-            {
-              name: "Test Project Space",
-              kind: "project",
-              workspaceId: workspace.id,
-              managementMode: "manual",
-            },
-            { members: [projectMemberGroup] }
-          );
-
-          // Link the editor group to the project space with kind="project_editor"
-          await GroupSpaceEditorResource.makeNew(adminAuth, {
-            group: projectEditorGroup,
-            space: projectSpace,
-          });
-        });
-
-        it("should not allow simple members to update space permissions", async () => {
-          // Add user as a simple member
-          await projectMemberGroup.addMember(adminAuth, {
-            user: memberUser.toJSON(),
-          });
-
-          // Create an authenticator for the member user
-          const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            memberUser.sId,
-            workspace.sId
-          );
-
-          // Reload space to get updated groups
-          const reloadedSpace = await SpaceResource.fetchById(
-            adminAuth,
-            projectSpace.sId
-          );
-
-          // Member should NOT be able to update space permissions
-          const result = await reloadedSpace!.updatePermissions(memberAuth, {
-            name: "Test Project Space",
-            isRestricted: true,
-            managementMode: "manual",
-            memberIds: [user1.sId],
-            editorIds: [],
-          });
-
-          expect(result.isErr()).toBe(true);
-          if (result.isErr()) {
-            expect(result.error.code).toBe("unauthorized");
-          }
-        });
-
-        it("should not allow non-members to update space permissions", async () => {
-          // Create an authenticator for a non-member user
-          const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            nonMemberUser.sId,
-            workspace.sId
-          );
-
-          // Reload space to get updated groups
-          const reloadedSpace = await SpaceResource.fetchById(
-            adminAuth,
-            projectSpace.sId
-          );
-
-          // Non-member should NOT be able to update space permissions
-          const result = await reloadedSpace!.updatePermissions(nonMemberAuth, {
-            name: "Test Project Space",
-            isRestricted: true,
-            managementMode: "manual",
-            memberIds: [user1.sId],
-            editorIds: [],
-          });
-
-          expect(result.isErr()).toBe(true);
-          if (result.isErr()) {
-            expect(result.error.code).toBe("unauthorized");
-          }
-        });
-
-        it("should allow editors to manage members through updatePermissions", async () => {
-          // Add editor to the editor group
-          await projectEditorGroup.addMember(adminAuth, {
-            user: editorUser.toJSON(),
-          });
-
-          // Create an authenticator for the editor user
-          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            editorUser.sId,
-            workspace.sId
-          );
-
-          // Reload space to get updated groups
-          const reloadedSpace = await SpaceResource.fetchById(
-            editorAuth,
-            projectSpace.sId
-          );
-
-          // Editor should be able to manage members through updatePermissions
-          const result = await reloadedSpace!.updatePermissions(editorAuth, {
-            name: "Test Project Space",
-            isRestricted: true,
-            managementMode: "manual",
-            memberIds: [user1.sId, user2.sId],
-            editorIds: [editorUser.sId],
-          });
-
-          expect(result.isOk()).toBe(true);
-
-          // Verify members were added
-          const members = await projectMemberGroup.getActiveMembers(adminAuth);
-          const memberSIds = members.map((m) => m.sId);
-          expect(memberSIds).toContain(user1.sId);
-          expect(memberSIds).toContain(user2.sId);
-
-          // Verify editor is still in the editor group
-          const editors = await projectEditorGroup.getActiveMembers(adminAuth);
-          const editorSIds = editors.map((m) => m.sId);
-          expect(editorSIds).toContain(editorUser.sId);
-        });
-      });
-
-      describe("with provisioned groups", () => {
-        let provisionedMemberGroup: GroupResource;
-        let provisionedEditorGroup: GroupResource;
-
-        beforeEach(async () => {
-          // Create provisioned groups
-          provisionedMemberGroup = await GroupResource.makeNew({
-            name: "Provisioned Members Group",
-            workspaceId: workspace.id,
-            kind: "provisioned",
-          });
-
-          provisionedEditorGroup = await GroupResource.makeNew({
-            name: "Provisioned Editors Group",
-            workspaceId: workspace.id,
-            kind: "provisioned",
-          });
-
-          projectSpace = await SpaceResource.makeNew(
-            {
-              name: "Test Project Space",
-              kind: "project",
-              workspaceId: workspace.id,
-              managementMode: "group",
-            },
-            { members: [projectMemberGroup, provisionedMemberGroup] }
-          );
-
-          // Link the editor group to the project space with kind="project_editor"
-          await GroupSpaceEditorResource.makeNew(adminAuth, {
-            group: provisionedEditorGroup,
-            space: projectSpace,
-          });
-        });
-
-        it("should not allow simple members to update space permissions", async () => {
-          // Add user as a simple member to the provisioned group
-          await provisionedMemberGroup.addMember(adminAuth, {
-            user: memberUser.toJSON(),
-          });
-
-          // Create an authenticator for the member user
-          const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            memberUser.sId,
-            workspace.sId
-          );
-
-          // Reload space to get updated groups
-          const reloadedSpace = await SpaceResource.fetchById(
-            adminAuth,
-            projectSpace.sId
-          );
-
-          // Member should NOT be able to update space permissions
-          const result = await reloadedSpace!.updatePermissions(memberAuth, {
-            name: "Test Project Space",
-            isRestricted: true,
-            managementMode: "group",
-            groupIds: [provisionedMemberGroup.sId],
-            editorGroupIds: [],
-          });
-
-          expect(result.isErr()).toBe(true);
-          if (result.isErr()) {
-            expect(result.error.code).toBe("unauthorized");
-          }
-        });
-
-        it("should not allow non-members to update space permissions", async () => {
-          // Create an authenticator for a non-member user
-          const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            nonMemberUser.sId,
-            workspace.sId
-          );
-
-          // Reload space to get updated groups
-          const reloadedSpace = await SpaceResource.fetchById(
-            adminAuth,
-            projectSpace.sId
-          );
-
-          // Non-member should NOT be able to update space permissions
-          const result = await reloadedSpace!.updatePermissions(nonMemberAuth, {
-            name: "Test Project Space",
-            isRestricted: true,
-            managementMode: "group",
-            groupIds: [provisionedMemberGroup.sId],
-            editorGroupIds: [],
-          });
-
-          expect(result.isErr()).toBe(true);
-          if (result.isErr()) {
-            expect(result.error.code).toBe("unauthorized");
-          }
-        });
-
-        it("should allow editors to manage members through updatePermissions", async () => {
-          // Add editor to the provisioned editor group
-          await provisionedEditorGroup.addMember(adminAuth, {
-            user: editorUser.toJSON(),
-          });
-
-          // Create another provisioned group for the new members
-          const newProvisionedMemberGroup = await GroupResource.makeNew({
-            name: "New Provisioned Members Group",
-            workspaceId: workspace.id,
-            kind: "provisioned",
-          });
-
-          // Add members to the new provisioned group
-          await newProvisionedMemberGroup.addMembers(adminAuth, {
-            users: [user1.toJSON(), user2.toJSON(), editorUser.toJSON()],
-          });
-
-          // Create an authenticator for the editor user
-          const editorAuth = await Authenticator.fromUserIdAndWorkspaceId(
-            editorUser.sId,
-            workspace.sId
-          );
-
-          // Reload space to get updated groups
-          const reloadedSpace = await SpaceResource.fetchById(
-            editorAuth,
-            projectSpace.sId
-          );
-
-          expect(newProvisionedMemberGroup.canRead(editorAuth)).toBe(true);
-
-          // Editor should be able to manage members through updatePermissions
-          const result = await reloadedSpace!.updatePermissions(editorAuth, {
-            name: "Test Project Space",
-            isRestricted: true,
-            managementMode: "group",
-            groupIds: [newProvisionedMemberGroup.sId],
-            editorGroupIds: [provisionedEditorGroup.sId], // Keep the editor group
-          });
-
-          expect(result.isOk()).toBe(true);
-
-          // Verify the new provisioned group is associated
-          const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
-            space: projectSpace,
-          });
-          const associatedGroupIds = groupSpaces.map((gs) => gs.groupId);
-          expect(associatedGroupIds).toContain(newProvisionedMemberGroup.id);
-
-          // Verify editor group is still associated
-          const editorGroupSpaces = await GroupSpaceModel.findAll({
-            where: {
-              vaultId: projectSpace.id,
-              workspaceId: workspace.id,
-              kind: "project_editor",
-            },
-          });
-          const editorGroupIds = editorGroupSpaces.map((gs) => gs.groupId);
-          expect(editorGroupIds).toContain(provisionedEditorGroup.id);
-        });
       });
     });
   });
