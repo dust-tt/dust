@@ -291,6 +291,29 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
       create_design_from_candidate: "low",
     },
   },
+  {
+    id: 10009,
+    name: "Google BigQuery",
+    description:
+      "Google BigQuery tools for data warehouse queries and schema exploration using Google's official MCP server.",
+    url: "https://bigquery.googleapis.com/mcp",
+    icon: "ActionTableIcon",
+    documentationUrl: "https://cloud.google.com/bigquery/docs/use-bigquery-mcp",
+    connectionInstructions:
+      "Google BigQuery uses OAuth authentication. You'll be prompted to authorize access to your BigQuery projects and datasets.",
+    authMethod: "oauth-dynamic",
+    supportedOAuthUseCases: ["personal_actions", "platform_actions"],
+    scope: "https://www.googleapis.com/auth/bigquery",
+    toolStakes: {
+      // Schema exploration - read-only, safe
+      list_dataset_ids: "never_ask",
+      list_table_ids: "never_ask",
+      get_dataset_info: "never_ask",
+      get_table_info: "never_ask",
+      // SQL execution - can read data, but read-only
+      execute_sql: "never_ask",
+    },
+  },
 ];
 
 export const isDefaultRemoteMcpServerURL = (url: string | undefined) => {
