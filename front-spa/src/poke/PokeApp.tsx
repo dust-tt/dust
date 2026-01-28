@@ -17,6 +17,7 @@ import { DataSourceQueryPage } from "@dust-tt/front/components/poke/pages/DataSo
 import { DataSourceSearchPage } from "@dust-tt/front/components/poke/pages/DataSourceSearchPage";
 import { DataSourceViewPage } from "@dust-tt/front/components/poke/pages/DataSourceViewPage";
 import { EmailTemplatesPage } from "@dust-tt/front/components/poke/pages/EmailTemplatesPage";
+import { FramePage } from "@dust-tt/front/components/poke/pages/FramePage";
 import { GroupPage } from "@dust-tt/front/components/poke/pages/GroupPage";
 import { KillPage } from "@dust-tt/front/components/poke/pages/KillPage";
 import { LLMTracePage } from "@dust-tt/front/components/poke/pages/LLMTracePage";
@@ -158,6 +159,11 @@ const router = createBrowserRouter(
           path: "groups/:groupId",
           element: <GroupPage />,
           handle: { title: "Group" },
+        },
+        {
+          path: "files/:sId",
+          element: <FramePage />,
+          handle: { title: "File" },
         },
         {
           path: "skills/:sId",
