@@ -1,8 +1,7 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import dynamic from "next/dynamic";
-
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type { SpecificationBlockType, SpecificationType } from "@app/types";
@@ -11,11 +10,6 @@ import type { BlockType } from "@app/types";
 import type { RunType } from "@app/types";
 
 import Block from "./Block";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 export function While({
   owner,
@@ -105,7 +99,7 @@ export function While({
           <div className="flex flex-initial items-center">condition :</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-4">
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={readOnly}
                 value={block.spec.condition_code}
