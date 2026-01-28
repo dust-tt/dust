@@ -386,9 +386,10 @@ export function CapabilitiesPicker({
             </>
           }
         >
-          {!isSkillsDataReady && !isToolsDataReady && (
-            <CapabilitiesPickerLoading />
-          )}
+          {!(showSkillsSection && isSkillsDataReady) &&
+            !(showToolsSection && isToolsDataReady) && (
+              <CapabilitiesPickerLoading />
+            )}
 
           {isSkillsDataReady && hasVisibleSkills && (
             <>
