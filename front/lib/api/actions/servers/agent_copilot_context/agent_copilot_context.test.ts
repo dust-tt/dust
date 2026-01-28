@@ -570,7 +570,7 @@ describe("agent_copilot_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           expect(content.text).toMatch(
-            /:agentSuggestion\[\]\{sId=\S+ kind=instructions\}/
+            /:agent_suggestion\[\]\{sId=\S+ kind=instructions\}/
           );
         }
       }
@@ -629,7 +629,7 @@ describe("agent_copilot_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           expect(content.text).toMatch(
-            /:agentSuggestion\[\]\{sId=\S+ kind=tools\}/
+            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
           );
         }
       }
@@ -687,7 +687,7 @@ describe("agent_copilot_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           expect(content.text).toMatch(
-            /:agentSuggestion\[\]\{sId=\S+ kind=skills\}/
+            /:agent_suggestion\[\]\{sId=\S+ kind=skills\}/
           );
         }
       }
@@ -746,7 +746,7 @@ describe("agent_copilot_context tools", () => {
         expect(content.type).toBe("text");
         if (content.type === "text") {
           expect(content.text).toMatch(
-            /:agentSuggestion\[\]\{sId=\S+ kind=model\}/
+            /:agent_suggestion\[\]\{sId=\S+ kind=model\}/
           );
         }
       }

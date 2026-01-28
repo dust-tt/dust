@@ -507,7 +507,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
         createdSuggestions.push({ sId: created.sId });
         directives.push(
-          `:agentSuggestion[]{sId=${created.sId} kind=${created.kind}}`
+          `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
         );
       } catch (error) {
         return new Err(
@@ -576,7 +576,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `:agentSuggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -638,7 +638,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `:agentSuggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -700,7 +700,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: `:agentSuggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {

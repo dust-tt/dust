@@ -57,7 +57,7 @@ Based on gathered data, provide a brief summary:
 - If reinforced suggestions exist (source="reinforcement"), highlight them
 - If negative feedback patterns exist, mention the top issue
 - If pending suggestions exist from \`list_suggestions\`, output their directives to render them as cards:
-  For each suggestion, output: \`:agentSuggestion[]{sId=<sId> kind=<kind>}\`
+  For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 Then ask: "What would you like to improve?"
 
 ## STEP 3: After user responds, create suggestions

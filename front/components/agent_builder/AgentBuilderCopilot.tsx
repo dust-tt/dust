@@ -82,7 +82,7 @@ function CopilotContent({
   const additionalMarkdownComponents: Components = useMemo(
     () =>
       ({
-        agentSuggestion: getCopilotSuggestionPlugin(),
+        agent_suggestion: getCopilotSuggestionPlugin(),
       }) as Components, // We need to force cast here as we don't use native html tags.
     []
   );
