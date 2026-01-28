@@ -5,7 +5,7 @@ import {
   ShapesIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import _ from "lodash";
+import get from "lodash/get";
 import type { ReactElement } from "react";
 import React, { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
@@ -86,7 +86,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
         const errorResponse = await response.json();
         sendNotification({
           title: "Error creating API key",
-          description: _.get(errorResponse, "error.message", "Unknown error"),
+          description: get(errorResponse, "error.message", "Unknown error"),
           type: "error",
         });
       }
@@ -129,7 +129,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
         const errorResponse = await response.json();
         sendNotification({
           title: "Error updating monthly cap",
-          description: _.get(errorResponse, "error.message", "Unknown error"),
+          description: get(errorResponse, "error.message", "Unknown error"),
           type: "error",
         });
       }
