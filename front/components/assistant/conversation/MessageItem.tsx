@@ -170,6 +170,8 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               handleSubmit={context.handleSubmit}
               enableExtendedActions={context.enableExtendedActions}
+              additionalMarkdownComponents={context.additionalMarkdownComponents}
+              additionalMarkdownPlugins={context.additionalMarkdownPlugins}
             />
           )}
           {data.visibility !== "deleted" &&

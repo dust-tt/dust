@@ -14,6 +14,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { Components } from "react-markdown";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -70,6 +71,7 @@ import {
 import { Err, Ok } from "@app/types";
 
 import { findFirstUnreadMessageIndex } from "./utils";
+import { PluggableList } from "react-markdown/lib/react-markdown";
 
 const DEFAULT_PAGE_LIMIT = 50;
 
@@ -79,6 +81,8 @@ const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 
 interface ConversationViewerProps {
   conversationId: string;
   agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
   setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
@@ -104,6 +108,8 @@ export const ConversationViewer = ({
   user,
   conversationId,
   agentBuilderContext,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
   setPlanLimitReached,
 }: ConversationViewerProps) => {
   const ref =
@@ -708,6 +714,8 @@ export const ConversationViewer = ({
       enableExtendedActions: !!conversation?.spaceId,
       agentBuilderContext,
       feedbacksByMessageId,
+      additionalMarkdownComponents,
+      additionalMarkdownPlugins,
     };
   }, [
     user,
@@ -717,6 +725,8 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    additionalMarkdownComponents,
+    additionalMarkdownPlugins,
   ]);
 
   return (

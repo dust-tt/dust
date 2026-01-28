@@ -1,8 +1,7 @@
 import { Markdown } from "@dust-tt/sparkle";
-import React, { useContext } from "react";
+import React from "react";
 import type { Components } from "react-markdown";
 
-import { CopilotSuggestionsContext } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
   CiteBlock,
   getCiteDirective,
@@ -14,10 +13,6 @@ import {
   preprocessInstructionBlocks,
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
-import {
-  copilotSuggestionDirective,
-  getCopilotSuggestionPlugin,
-} from "@app/components/markdown/suggestion/CopilotSuggestionDirective";
 import { toolDirective } from "@app/components/markdown/tool/tool";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
 import {
@@ -27,11 +22,13 @@ import {
   userMentionDirective,
 } from "@app/lib/mentions/markdown/plugin";
 import type { WorkspaceType } from "@app/types";
+import { PluggableList } from "react-markdown/lib/react-markdown";
 
 export const AgentMessageMarkdown = ({
   owner,
   content,
   additionalMarkdownComponents = {} as Components,
+  additionalMarkdownPlugins = [] as PluggableList,
   isLastMessage = false,
   isStreaming = false,
   isInstructions = false,
@@ -46,13 +43,12 @@ export const AgentMessageMarkdown = ({
   isStreaming?: boolean;
   isInstructions?: boolean;
   additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
   textColor?: string;
   compactSpacing?: boolean;
   forcedTextSize?: string;
   canCopyQuotes?: boolean;
 }) => {
-  // Check if we're inside the copilot context to enable copilot-specific directives
-  const copilotContext = useContext(CopilotSuggestionsContext);
   // Preprocess content to handle instruction blocks
   const processedContentIfIsInstructions = React.useMemo(() => {
     return isInstructions ? preprocessInstructionBlocks(content) : content;
@@ -66,16 +62,12 @@ export const AgentMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       instruction_block: InstructionBlock,
-      // Add copilot-specific components when inside copilot context
-      ...(copilotContext
-        ? { agentSuggestion: getCopilotSuggestionPlugin() }
-        : {}),
       ...additionalMarkdownComponents,
     }),
-    [owner, additionalMarkdownComponents, copilotContext]
+    [owner, additionalMarkdownComponents]
   );
 
-  const additionalMarkdownPlugins = React.useMemo(() => {
+  const markdownPlugins = React.useMemo(() => {
     const baseDirectives = [
       agentMentionDirective,
       userMentionDirective,
@@ -84,23 +76,19 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
+      ...additionalMarkdownPlugins,
     ];
-
-    // Add copilot-specific directives when inside copilot context
-    if (copilotContext) {
-      baseDirectives.push(copilotSuggestionDirective);
-    }
 
     return isInstructions
       ? [...baseDirectives, instructionBlockDirective]
       : baseDirectives;
-  }, [isInstructions, copilotContext]);
+  }, [isInstructions]);
 
   return (
     <Markdown
       content={processedContentIfIsInstructions}
       additionalMarkdownComponents={markdownComponents}
-      additionalMarkdownPlugins={additionalMarkdownPlugins}
+      additionalMarkdownPlugins={markdownPlugins}
       isLastMessage={isLastMessage}
       isStreaming={isStreaming}
       textColor={textColor}

@@ -22,6 +22,8 @@ import type {
 } from "@app/types";
 import { isLightAgentMessageWithActionsType } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
+import { Components } from "react-markdown";
+import { PluggableList } from "react-markdown/lib/react-markdown";
 
 export type AgentStateClassification =
   | "placeholder"
@@ -80,6 +82,8 @@ export type VirtuosoMessageListContext = {
     clientSideMCPServerIds?: string[];
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
 };
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {

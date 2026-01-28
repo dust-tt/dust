@@ -97,10 +97,7 @@ export const CopilotSuggestionsProvider = ({
     });
 
   const getBackendSuggestion = useCallback(
-    (sId: string) => {
-      console.log("Searching for suggestion with ID:", sId);
-      return backendSuggestions.find((s) => s.sId === sId);
-    },
+    (sId: string) => backendSuggestions.find((s) => s.sId === sId),
     [backendSuggestions]
   );
 
