@@ -1,7 +1,8 @@
 import { Markdown } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useContext } from "react";
 import type { Components } from "react-markdown";
 
+import { CopilotSuggestionsContext } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
   CiteBlock,
   getCiteDirective,
@@ -50,6 +51,8 @@ export const AgentMessageMarkdown = ({
   forcedTextSize?: string;
   canCopyQuotes?: boolean;
 }) => {
+  // Check if we're inside the copilot context to enable copilot-specific directives
+  const copilotContext = useContext(CopilotSuggestionsContext);
   // Preprocess content to handle instruction blocks
   const processedContentIfIsInstructions = React.useMemo(() => {
     return isInstructions ? preprocessInstructionBlocks(content) : content;
@@ -63,14 +66,17 @@ export const AgentMessageMarkdown = ({
       mention_user: getUserMentionPlugin(owner),
       dustimg: getImgPlugin(owner),
       instruction_block: InstructionBlock,
-      agentMessageSuggestion: getAgentMessageSuggestionPlugin(),
+      // Add copilot-specific components when inside copilot context
+      ...(copilotContext
+        ? { agentMessageSuggestion: getAgentMessageSuggestionPlugin() }
+        : {}),
       ...additionalMarkdownComponents,
     }),
-    [owner, additionalMarkdownComponents]
+    [owner, additionalMarkdownComponents, copilotContext]
   );
 
   const additionalMarkdownPlugins = React.useMemo(() => {
-    const directives = [
+    const baseDirectives = [
       agentMentionDirective,
       userMentionDirective,
       getCiteDirective(),
@@ -78,13 +84,17 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
-      agentMessageSuggestionDirective,
     ];
 
+    // Add copilot-specific directives when inside copilot context
+    if (copilotContext) {
+      baseDirectives.push(agentMessageSuggestionDirective);
+    }
+
     return isInstructions
-      ? [...directives, instructionBlockDirective]
-      : directives;
-  }, [isInstructions]);
+      ? [...baseDirectives, instructionBlockDirective]
+      : baseDirectives;
+  }, [isInstructions, copilotContext]);
 
   return (
     <Markdown

@@ -3,6 +3,8 @@ import {
   CheckIcon,
   CommandLineIcon,
   ContentMessage,
+  ExclamationCircleIcon,
+  LoadingBlock,
   PuzzleIcon,
   SparklesIcon,
   XMarkIcon,
@@ -143,7 +145,7 @@ function ModelSuggestionContent({
   );
 }
 
-function SuggestionActions({ acceptLabel }: { acceptLabel: string }) {
+function SuggestionActions() {
   // No-op handlers for now - logic will be added in a later PR.
   const handleAccept = () => {};
   const handleReject = () => {};
@@ -161,7 +163,7 @@ function SuggestionActions({ acceptLabel }: { acceptLabel: string }) {
       <Button
         variant="primary"
         size="xs"
-        label={acceptLabel}
+        label="Accept"
         icon={CheckIcon}
         onClick={handleAccept}
         disabled
@@ -173,7 +175,7 @@ function SuggestionActions({ acceptLabel }: { acceptLabel: string }) {
 export function AgentMessageSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
-  // Instructions suggestions: no title/icon, full width, actions at bottom-right.
+  // Instructions suggestions: no title/icon, full width, no actions.
   if (agentSuggestion.kind === "instructions") {
     return (
       <div className="mb-2 w-full">
@@ -182,7 +184,6 @@ export function AgentMessageSuggestionCard({
             <InstructionsSuggestionContent
               suggestion={agentSuggestion.suggestion}
             />
-            <SuggestionActions acceptLabel="Apply" />
           </div>
         </ContentMessage>
       </div>
@@ -217,6 +218,56 @@ export function AgentMessageSuggestionCard({
           {renderContent()}
           <SuggestionActions acceptLabel="Accept" />
         </div>
+      </ContentMessage>
+    </div>
+  );
+}
+
+interface SuggestionCardSkeletonProps {
+  kind: AgentSuggestionKind;
+}
+
+export function SuggestionCardSkeleton({ kind }: SuggestionCardSkeletonProps) {
+  if (kind === "instructions") {
+    return (
+      <div className="mb-2 w-full">
+        <ContentMessage variant="primary" size="lg">
+          <LoadingBlock className="h-16 w-full rounded-md" />
+        </ContentMessage>
+      </div>
+    );
+  }
+
+  const title = getTitle(kind);
+  const icon = getIcon(kind);
+
+  return (
+    <div className="mb-2 inline-block w-full max-w-md align-top">
+      <ContentMessage title={title} icon={icon} variant="primary" size="sm">
+        <div className="flex flex-col gap-3">
+          <LoadingBlock className="h-10 w-full rounded-md" />
+          <div className="flex justify-end gap-2">
+            <LoadingBlock className="h-7 w-16 rounded-md" />
+            <LoadingBlock className="h-7 w-16 rounded-md" />
+          </div>
+        </div>
+      </ContentMessage>
+    </div>
+  );
+}
+
+export function SuggestionCardError() {
+  return (
+    <div className="mb-2 inline-block w-full max-w-md align-top">
+      <ContentMessage
+        title="Failed to load suggestion"
+        icon={ExclamationCircleIcon}
+        variant="warning"
+        size="sm"
+      >
+        <span className="text-sm">
+          The suggestion could not be loaded. Please try refreshing the page.
+        </span>
       </ContentMessage>
     </div>
   );

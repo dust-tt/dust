@@ -569,7 +569,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
+          expect(content.text).toMatch(
+            /:agentMessageSuggestion\[\]\{sId=\S+ kind=instructions\}/
+          );
         }
       }
     });
@@ -626,7 +628,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
+          expect(content.text).toMatch(
+            /:agentMessageSuggestion\[\]\{sId=\S+ kind=tools\}/
+          );
         }
       }
     });
@@ -682,7 +686,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
+          expect(content.text).toMatch(
+            /:agentMessageSuggestion\[\]\{sId=\S+ kind=skills\}/
+          );
         }
       }
     });
@@ -739,7 +745,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
+          expect(content.text).toMatch(
+            /:agentMessageSuggestion\[\]\{sId=\S+ kind=model\}/
+          );
         }
       }
     });

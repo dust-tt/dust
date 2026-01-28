@@ -13,6 +13,7 @@ import React, {
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 export type CopilotSuggestionType = "instructions"; // Future: | "tool" | "skill".
 
@@ -45,9 +46,12 @@ export interface CopilotSuggestionsContextType {
   hasPendingSuggestions: () => boolean;
   getPendingSuggestions: () => CopilotSuggestion[];
   getCommittedInstructions: () => string;
+  backendSuggestions: AgentSuggestionType[];
+  getBackendSuggestion: (sId: string) => AgentSuggestionType | undefined;
+  isSuggestionsLoading: boolean;
 }
 
-const CopilotSuggestionsContext = createContext<
+export const CopilotSuggestionsContext = createContext<
   CopilotSuggestionsContextType | undefined
 >(undefined);
 
@@ -84,13 +88,21 @@ export const CopilotSuggestionsProvider = ({
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
 
-  // Fetch pending suggestions from the backend.
+  // Fetch all pending suggestions from the backend (all kinds).
   const { suggestions: backendSuggestions, isSuggestionsLoading } =
     useAgentSuggestions({
       agentConfigurationId,
       state: ["pending"],
       workspaceId: owner.sId,
     });
+
+  const getBackendSuggestion = useCallback(
+    (sId: string) => {
+      console.log("Searching for suggestion with ID:", sId);
+      return backendSuggestions.find((s) => s.sId === sId);
+    },
+    [backendSuggestions]
+  );
 
   const registerEditor = useCallback((editor: Editor) => {
     editorRef.current = editor;
@@ -295,9 +307,12 @@ export const CopilotSuggestionsProvider = ({
       acceptAllSuggestions,
       acceptSuggestion,
       addSuggestion,
+      backendSuggestions,
+      getBackendSuggestion,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
+      isSuggestionsLoading,
       registerEditor,
       rejectAllSuggestions,
       rejectSuggestion,
@@ -307,9 +322,12 @@ export const CopilotSuggestionsProvider = ({
       acceptAllSuggestions,
       acceptSuggestion,
       addSuggestion,
+      backendSuggestions,
+      getBackendSuggestion,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
+      isSuggestionsLoading,
       registerEditor,
       rejectAllSuggestions,
       rejectSuggestion,
