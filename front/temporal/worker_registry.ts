@@ -12,6 +12,7 @@ import { runNotificationsQueueWorker } from "@app/temporal/notifications_queue/w
 import { runProductionChecksWorker } from "@app/temporal/production_checks/worker";
 import { runRelocationWorker } from "@app/temporal/relocation/worker";
 import { runRemoteToolsSyncWorker } from "@app/temporal/remote_tools/worker";
+import { runSandboxLifecycleWorker } from "@app/temporal/sandbox_lifecycle/worker";
 import { runScrubWorkspaceQueueWorker } from "@app/temporal/scrub_workspace/worker";
 import { runAgentTriggerWorker } from "@app/temporal/triggers/common/worker";
 import { runAgentTriggerWebhookWorker } from "@app/temporal/triggers/webhook/worker";
@@ -37,6 +38,7 @@ export type WorkerName =
   | "production_checks"
   | "relocation"
   | "remote_tools_sync"
+  | "sandbox_lifecycle"
   | "scrub_workspace_queue"
   | "update_workspace_usage"
   | "upsert_queue"
@@ -59,6 +61,7 @@ export const workerFunctions: Record<WorkerName, () => Promise<void>> = {
   production_checks: runProductionChecksWorker,
   relocation: runRelocationWorker,
   remote_tools_sync: runRemoteToolsSyncWorker,
+  sandbox_lifecycle: runSandboxLifecycleWorker,
   scrub_workspace_queue: runScrubWorkspaceQueueWorker,
   update_workspace_usage: runUpdateWorkspaceUsageWorker,
   upsert_queue: runUpsertQueueWorker,
