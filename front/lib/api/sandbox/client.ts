@@ -70,7 +70,6 @@ export interface SandboxStatus {
 }
 
 export interface SandboxMetadata {
-  workspaceId?: string;
   conversationId?: string;
   agentConfigurationId?: string;
 }
