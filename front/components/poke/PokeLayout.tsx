@@ -36,14 +36,12 @@ export function useSetPokePageTitle() {
 // Layout for workspace-scoped poke pages (uses AuthContext).
 export default function PokeLayout({
   children,
-  title: initialTitle,
   authContext,
 }: {
   children: React.ReactNode;
-  title?: string;
   authContext: AuthContextValue;
 }) {
-  const [title, setTitle] = useState(initialTitle ?? "Poke");
+  const [title, setTitle] = useState("Poke");
 
   const titleContextValue = useMemo(
     () => ({ title, setTitle }),
@@ -67,14 +65,12 @@ export default function PokeLayout({
 // Layout for global poke pages without workspace (uses AuthContextNoWorkspace).
 export function PokeLayoutNoWorkspace({
   children,
-  title: initialTitle,
   authContext,
 }: {
   children: React.ReactNode;
-  title?: string;
   authContext: AuthContextNoWorkspaceValue;
 }) {
-  const [title, setTitle] = useState(initialTitle ?? "Poke");
+  const [title, setTitle] = useState("Poke");
 
   const titleContextValue = useMemo(
     () => ({ title, setTitle }),
