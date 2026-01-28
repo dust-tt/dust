@@ -287,6 +287,40 @@ const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
   md: "md",
 };
 
+const loadingContainerVariants = cva("-s-mx-0.5", {
+  variants: {
+    size: {
+      "icon-xs": "s-w-5 s-px-0.5",
+      icon: "s-w-5 s-px-0.5",
+      xmini: "s-w-5 s-px-0.5",
+      mini: "s-w-5 s-px-0.5",
+      xs: "s-w-5 s-px-0.5",
+      sm: "",
+      md: "",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
+
+const selectButtonSizeVariants = cva("", {
+  variants: {
+    size: {
+      "icon-xs": "s-w-auto s-px-1.5",
+      xmini: "s-w-auto s-px-1.5",
+      mini: "s-w-auto s-px-2",
+      icon: "s-w-auto s-px-2",
+      xs: "",
+      sm: "",
+      md: "",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
+
 type CommonButtonProps = Omit<MetaButtonProps, "children"> &
   Omit<LinkWrapperProps, "children"> & {
     isSelect?: boolean;
@@ -378,10 +412,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <>
         {isLoading ? (
           <div
-            className={cn(
-              "-s-mx-0.5",
-              isSmallButtonSize(size) && "s-w-5 s-px-0.5"
-            )}
+            className={loadingContainerVariants({ size })}
           >
             <Spinner
               size={isSmallButtonSize(size) ? "xs" : iconSize}
@@ -442,8 +473,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled}
         className={cn(
           (isPulsing || isPulsingBriefly) && "s-animate-pulse",
-          isSelect && (size === "xmini" || size === "icon-xs") && "s-w-auto s-px-1.5",
-          isSelect && (size === "mini" || size === "icon") && "s-w-auto s-px-2",
+          isSelect && selectButtonSizeVariants({ size }),
           className
         )}
         aria-label={ariaLabel || tooltip || label}
