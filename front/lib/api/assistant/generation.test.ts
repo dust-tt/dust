@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/actions/constants";
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import {
   constructGuidelinesSection,
   constructProjectContextSection,

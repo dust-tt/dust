@@ -553,7 +553,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             isRestricted,
             managementMode,
             memberIds: params.memberIds,
-          }),
+            editorIds: params.editorIds,
+          } satisfies PatchSpaceMembersRequestBodyType),
         })
       );
     } else if (managementMode === "group") {
@@ -568,7 +569,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             isRestricted,
             managementMode,
             groupIds: params.groupIds,
-          }),
+            editorGroupIds: params.editorGroupIds,
+          } satisfies PatchSpaceMembersRequestBodyType),
         })
       );
     }

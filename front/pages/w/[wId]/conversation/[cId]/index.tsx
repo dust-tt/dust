@@ -1,126 +1,69 @@
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useContext, useEffect, useState } from "react";
 
 import { ConversationContainerVirtuoso } from "@app/components/assistant/conversation/ConversationContainer";
-import type { ConversationLayoutProps } from "@app/components/assistant/conversation/ConversationLayout";
 import { ConversationLayout } from "@app/components/assistant/conversation/ConversationLayout";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
-import { createOnboardingConversationIfNeeded } from "@app/lib/api/assistant/onboarding";
-import config from "@app/lib/api/config";
+import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { isString, toRichAgentMentionType } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<
-  ConversationLayoutProps & {
-    // Here, override conversationId.
-    conversationId: string | null;
-  }
->(async (context, auth) => {
-  const owner = auth.workspace();
-  const user = auth.user()?.toJSON();
-  const subscription = auth.subscription();
-  const isAdmin = auth.isAdmin();
+export const getServerSideProps =
+  withDefaultUserAuthRequirements<AuthContextValue>(async (context, auth) => {
+    // Redirect old ?assistant= query param to ?agent=
+    const { assistant, agent, wId, ...restQuery } = context.query;
+    if (isString(assistant) && !isString(agent)) {
+      const params = new URLSearchParams();
+      Object.entries(restQuery).forEach(([key, value]) => {
+        if (isString(value)) {
+          params.set(key, value);
+        }
+      });
+      params.set("agent", assistant);
 
-  // Redirect old ?assistant= query param to ?agent=
-  const { assistant, agent, wId, ...restQuery } = context.query;
-  if (isString(assistant) && !isString(agent)) {
-    const params = new URLSearchParams();
-    Object.entries(restQuery).forEach(([key, value]) => {
-      if (isString(value)) {
-        params.set(key, value);
-      }
-    });
-    params.set("agent", assistant);
+      const conversationId =
+        typeof context.params?.cId === "string" ? context.params.cId : "new";
 
-    const conversationId =
-      typeof context.params?.cId === "string" ? context.params.cId : "new";
-
-    return {
-      redirect: {
-        destination: `/w/${wId}/conversation/${conversationId}?${params.toString()}`,
-        permanent: true,
-      },
-    };
-  }
-
-  if (!owner || !user || !auth.isUser() || !subscription) {
-    const { cId } = context.query;
-
-    if (typeof cId === "string") {
       return {
         redirect: {
-          destination: `/w/${context.query.wId}/join?cId=${cId}`,
-          permanent: false,
+          destination: `/w/${wId}/conversation/${conversationId}?${params.toString()}`,
+          permanent: true,
         },
       };
     }
 
     return {
-      redirect: {
-        destination: "/",
-        permanent: false,
+      props: {
+        workspace: auth.getNonNullableWorkspace(),
+        subscription: auth.getNonNullableSubscription(),
+        user: auth.getNonNullableUser().toJSON(),
+        isAdmin: auth.isAdmin(),
+        isBuilder: auth.isBuilder(),
+        isSuperUser: false,
       },
     };
-  }
+  });
 
-  const { cId } = context.params;
-
-  // If the user is coming from the welcome flow to a "new" conversation,
-  // we may need to create the onboarding conversation on the backend,
-  // then redirect them to it if it exists.
-  if (
-    typeof cId === "string" &&
-    cId === "new" &&
-    context.query.welcome === "true"
-  ) {
-    // Extract user's preferred language from Accept-Language header.
-    const acceptLanguage = context.req.headers["accept-language"];
-    const language = acceptLanguage?.split(",")[0]?.split("-")[0] ?? null;
-
-    await createOnboardingConversationIfNeeded(auth, { language });
-
-    const userResource = auth.user();
-    const metadata = userResource
-      ? await userResource.getMetadata("onboarding:conversation", owner.id)
-      : null;
-
-    const onboardingConversationId = metadata?.value ?? null;
-    if (onboardingConversationId) {
-      return {
-        redirect: {
-          destination: `/w/${owner.sId}/conversation/${onboardingConversationId}`,
-          permanent: false,
-        },
-      };
-    }
-  }
-
-  return {
-    props: {
-      user,
-      owner,
-      isAdmin,
-      subscription,
-      baseUrl: config.getClientFacingUrl(),
-      conversationId: getValidConversationId(cId),
-    },
-  };
-});
-
-export default function AgentConversation({
-  conversationId: initialConversationId,
-  owner,
-  subscription,
-  user,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function AgentConversation() {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
-  const router = useRouter();
+  const router = useAppRouter();
+  const owner = useWorkspace();
+  const { subscription, user } = useAuth();
 
   const activeConversationId = useActiveConversationId();
+
+  // Handle onboarding conversation creation when ?welcome=true
+  useOnboardingConversation({
+    workspaceId: owner.sId,
+    conversationId: activeConversationId,
+  });
 
   const { setSelectedAgent } = useContext(InputBarContext);
 
@@ -150,7 +93,7 @@ export default function AgentConversation({
       // Force re-render by setting a new key with a random number.
       setConversationKey(`new_${Math.random() * 1000}`);
     }
-  }, [setConversationKey, initialConversationId, activeConversationId]);
+  }, [setConversationKey, activeConversationId]);
 
   return (
     <ConversationContainerVirtuoso
@@ -163,17 +106,17 @@ export default function AgentConversation({
   );
 }
 
-AgentConversation.getLayout = (
-  page: React.ReactElement,
-  pageProps: ConversationLayoutProps
+const PageWithAuthLayout = AgentConversation as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
 ) => {
   return (
-    <AppRootLayout>
+    <AppAuthContextLayout authContext={pageProps}>
       <ConversationLayout pageProps={pageProps}>{page}</ConversationLayout>
-    </AppRootLayout>
+    </AppAuthContextLayout>
   );
 };
 
-function getValidConversationId(cId: unknown) {
-  return typeof cId === "string" && cId !== "new" ? cId : null;
-}
+export default PageWithAuthLayout;

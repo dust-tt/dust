@@ -61,7 +61,7 @@ function SkillCard({ skill, onRemove, onClick }: SkillCardProps) {
       onClick={onClick}
       action={
         <CardActionButton
-          size="mini"
+          size="icon"
           icon={XMarkIcon}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             onRemove();

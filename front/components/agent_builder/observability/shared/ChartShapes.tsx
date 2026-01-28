@@ -1,56 +1,60 @@
-import type { ValuesPayload } from "@app/components/agent_builder/observability/utils";
+type StackedValuesPayload = {
+  values: Record<string, { count: number } | undefined>;
+};
 
-function getStackValue(payload: ValuesPayload, key: string): number {
-  return payload.values[key]?.count ?? 0;
+interface RoundedBarShapeProps {
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  fill?: string;
+  payload?: StackedValuesPayload;
+  seriesKey?: string;
+  stackOrderKeys?: string[];
 }
 
-export function RoundedTopBarShape({
+export function RoundedBarShape({
   x,
   y,
   width,
   height,
   fill,
   payload,
-  toolName,
-  stackOrder,
-}: {
-  x?: number;
-  y?: number;
-  width?: number;
-  height?: number;
-  fill?: string;
-  payload?: ValuesPayload;
-  toolName: string;
-  stackOrder: string[];
-}) {
+  seriesKey,
+  stackOrderKeys,
+}: RoundedBarShapeProps): JSX.Element {
   if (
     typeof x !== "number" ||
     typeof y !== "number" ||
     typeof width !== "number" ||
-    typeof height !== "number" ||
-    !payload
+    typeof height !== "number"
   ) {
     return <g />;
   }
 
-  const toolValue = getStackValue(payload, toolName);
-  if (toolValue <= 0) {
+  if (width <= 0 || height <= 0) {
     return <rect x={x} y={y} width={width} height={height} fill={fill} />;
   }
 
-  let topTool: string | undefined;
-  for (let idx = stackOrder.length - 1; idx >= 0; idx--) {
-    const candidate = stackOrder[idx];
-    const value = getStackValue(payload, candidate);
-
-    if (value > 0) {
-      topTool = candidate;
-      break;
+  if (payload && seriesKey && stackOrderKeys && stackOrderKeys.length > 0) {
+    const seriesValue = payload.values[seriesKey]?.count ?? 0;
+    if (seriesValue <= 0) {
+      return <rect x={x} y={y} width={width} height={height} fill={fill} />;
     }
-  }
 
-  if (!topTool || topTool !== toolName) {
-    return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+    let topSeriesKey: string | null = null;
+    for (let idx = stackOrderKeys.length - 1; idx >= 0; idx--) {
+      const candidate = stackOrderKeys[idx];
+      const value = payload.values[candidate]?.count ?? 0;
+      if (value > 0) {
+        topSeriesKey = candidate;
+        break;
+      }
+    }
+
+    if (topSeriesKey !== seriesKey) {
+      return <rect x={x} y={y} width={width} height={height} fill={fill} />;
+    }
   }
 
   const r = Math.max(0, Math.min(4, height, width / 2));

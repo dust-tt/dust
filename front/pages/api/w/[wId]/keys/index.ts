@@ -24,6 +24,7 @@ export type PostKeysResponseBody = {
 const CreateKeyPostBodySchema = t.type({
   name: t.string,
   group_id: t.union([t.string, t.undefined]),
+  monthly_cap_micro_usd: t.union([t.number, t.null, t.undefined]),
 });
 
 async function handler(
@@ -69,7 +70,7 @@ async function handler(
         });
       }
 
-      const { name, group_id } = bodyValidation.right;
+      const { name, group_id, monthly_cap_micro_usd } = bodyValidation.right;
       const trimmedName = name.trim();
 
       if (trimmedName.length === 0) {
@@ -78,6 +79,20 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "API key name cannot be empty.",
+          },
+        });
+      }
+
+      if (
+        monthly_cap_micro_usd !== null &&
+        monthly_cap_micro_usd !== undefined &&
+        monthly_cap_micro_usd < 0
+      ) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "monthly_cap_micro_usd must be greater than or equal to 0",
           },
         });
       }
@@ -138,6 +153,7 @@ async function handler(
           workspaceId: owner.id,
           isSystem: false,
           role: "builder",
+          monthlyCapMicroUsd: monthly_cap_micro_usd ?? null,
         },
         group.value
       );

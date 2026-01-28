@@ -29,6 +29,7 @@ import { ClientSideRedisMCPTransport } from "@app/lib/api/actions/mcp_client_sid
 import type { MCPServerType, MCPToolType } from "@app/lib/api/mcp";
 import { isHostUnderVerifiedDomain } from "@app/lib/api/workspace_has_domains";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import {
   getStaticIPProxyAgent,
   getUntrustedEgressAgent,
@@ -42,6 +43,24 @@ import type { MCPOAuthUseCase, Result } from "@app/types";
 import { assertNever, Err, normalizeError, Ok } from "@app/types";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
+
+// Helper function to get conditional scope based on feature flag
+async function getConditionalScope(
+  auth: Authenticator,
+  provider: string,
+  defaultScope?: string
+): Promise<string | undefined> {
+  const workspace = auth.getNonNullableWorkspace();
+  const featureFlags = await getFeatureFlags(workspace);
+  const hasWriteFeature = featureFlags.includes("google_drive_write_enabled");
+  const isGoogleDrive = provider === "google_drive";
+
+  if (isGoogleDrive && hasWriteFeature) {
+    return "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly";
+  }
+
+  return defaultScope;
+}
 
 interface ConnectViaMCPServerId {
   type: "mcpServerId";
@@ -220,6 +239,14 @@ export async function connectToMCPServer(
                   },
                   "Internal server requires workspace authentication but no connection found"
                 );
+
+                // Get conditional scope based on feature flag
+                const scope = await getConditionalScope(
+                  auth,
+                  metadata.authorization.provider,
+                  metadata.authorization.scope
+                );
+
                 if (params.oAuthUseCase === "personal_actions") {
                   // Check if admin connection exists for the server.
                   // We only check if the connection resource exists (not if the token is valid)
@@ -238,7 +265,7 @@ export async function connectToMCPServer(
                       new MCPServerRequiresAdminAuthenticationError(
                         params.mcpServerId,
                         metadata.authorization.provider,
-                        metadata.authorization.scope
+                        scope
                       )
                     );
                   }
@@ -246,7 +273,7 @@ export async function connectToMCPServer(
                     new MCPServerPersonalAuthenticationRequiredError(
                       params.mcpServerId,
                       metadata.authorization.provider,
-                      metadata.authorization.scope
+                      scope
                     )
                   );
                 } else if (params.oAuthUseCase === "platform_actions") {
@@ -255,7 +282,7 @@ export async function connectToMCPServer(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
                       metadata.authorization.provider,
-                      metadata.authorization.scope
+                      scope
                     )
                   );
                 } else {
@@ -313,6 +340,13 @@ export async function connectToMCPServer(
                 scope: c.value.connection.metadata.scope,
               };
             } else {
+              // Get conditional scope based on feature flag
+              const scope = await getConditionalScope(
+                auth,
+                remoteMCPServer.authorization.provider,
+                remoteMCPServer.authorization.scope
+              );
+
               if (connectionType === "personal") {
                 // Check if admin connection exists for the server.
                 const adminConnection = await getConnectionForMCPServer(auth, {
@@ -325,14 +359,15 @@ export async function connectToMCPServer(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
                       remoteMCPServer.authorization.provider,
-                      remoteMCPServer.authorization.scope
+                      scope
                     )
                   );
                 }
                 return new Err(
                   new MCPServerPersonalAuthenticationRequiredError(
                     params.mcpServerId,
-                    remoteMCPServer.authorization.provider
+                    remoteMCPServer.authorization.provider,
+                    scope
                   )
                 );
               } else if (connectionType === "workspace") {
@@ -341,7 +376,7 @@ export async function connectToMCPServer(
                   new MCPServerRequiresAdminAuthenticationError(
                     params.mcpServerId,
                     remoteMCPServer.authorization.provider,
-                    remoteMCPServer.authorization.scope
+                    scope
                   )
                 );
               } else {

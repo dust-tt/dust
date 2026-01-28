@@ -3,6 +3,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
@@ -12,6 +13,8 @@ import { defaultSelectionConfiguration } from "@app/types";
 
 export function SpaceDataSourceViewPage() {
   const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Data Source View`);
+
   const dsvId = useRequiredPathParam("dsvId");
   const {
     data: dataSourceViewDetails,

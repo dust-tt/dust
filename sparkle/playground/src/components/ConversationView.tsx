@@ -181,13 +181,13 @@ export function ConversationView({
         rightActions={
           <div className="s-flex s-gap-2">
             <Button
-              size="mini"
+              size="icon"
               variant="ghost"
               icon={FolderIcon}
               onClick={onBack}
             />
             <Button
-              size="mini"
+              size="icon"
               variant="ghost"
               icon={MoreIcon}
               onClick={onBack}

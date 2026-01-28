@@ -3,7 +3,7 @@ import React from "react";
 
 import {
   BUTTON_VARIANTS,
-  type ButtonSizeType,
+  type RegularButtonSize,
   type ButtonVariantType,
 } from "@sparkle/components/Button";
 
@@ -20,15 +20,12 @@ import {
   TrashIcon,
 } from "../index_with_tw_base";
 
-// Exclude "mini" since these items have labels (mini buttons can't have labels)
-type LabelButtonSizeType = Exclude<ButtonSizeType, "mini">;
-
 const DefaultButtons = ({
   variant = "outline",
   size = "sm",
 }: {
   variant?: ButtonVariantType;
-  size?: LabelButtonSizeType;
+  size?: RegularButtonSize;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />

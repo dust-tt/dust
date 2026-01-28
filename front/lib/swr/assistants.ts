@@ -8,6 +8,10 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type {
+  ToolLatencyRow,
+  ToolLatencyView,
+} from "@app/lib/api/assistant/observability/tool_latency";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -29,6 +33,7 @@ import type { GetAgentOverviewResponseBody } from "@app/pages/api/w/[wId]/assist
 import type { GetContextOriginResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/source";
 import type { GetAgentSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/summary";
 import type { GetToolExecutionResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-execution";
+import type { GetToolLatencyResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-latency";
 import type { GetToolStepIndexResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/tool-step-index";
 import type { GetUsageMetricsResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/usage-metrics";
 import type { GetVersionMarkersResponse } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/observability/version-markers";
@@ -1049,6 +1054,53 @@ export function useAgentToolExecution({
     isToolExecutionLoading: !error && !data && !disabled,
     isToolExecutionError: error,
     isToolExecutionValidating: isValidating,
+  };
+}
+
+type AgentToolLatencyResult = {
+  toolLatencyRows: ToolLatencyRow[];
+  isToolLatencyLoading: boolean;
+  isToolLatencyError: unknown;
+  isToolLatencyValidating: boolean;
+};
+
+export function useAgentToolLatency({
+  workspaceId,
+  agentConfigurationId,
+  days = DEFAULT_PERIOD_DAYS,
+  version,
+  view,
+  serverName,
+  disabled,
+}: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  days?: number;
+  version?: string;
+  view: ToolLatencyView;
+  serverName?: string;
+  disabled?: boolean;
+}): AgentToolLatencyResult {
+  const fetcherFn: Fetcher<GetToolLatencyResponse> = fetcher;
+  const params = new URLSearchParams({ days: days.toString(), view });
+  if (version) {
+    params.set("version", version);
+  }
+  if (serverName) {
+    params.set("serverName", serverName);
+  }
+  const key = `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/observability/tool-latency?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolLatencyRows: data?.rows ?? emptyArray(),
+    isToolLatencyLoading: !error && !data && !disabled,
+    isToolLatencyError: error,
+    isToolLatencyValidating: isValidating,
   };
 }
 

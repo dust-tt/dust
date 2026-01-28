@@ -11,64 +11,58 @@ import {
   RobotIcon,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useEffect } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getFeatureFlags } from "@app/lib/auth";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}>(async (_context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user();
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
-  if (!owner || !subscription || !user) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_mcp_actions_dashboard")) {
-    return {
-      notFound: true,
-    };
-  }
-
-  // Only admins can access the MCP Actions Dashboard
-  if (!auth.isAdmin()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-    },
-  };
-});
-
-export default function MCPActionsDashboard({
-  owner,
-  subscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function MCPActionsDashboard() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
   const router = useRouter();
+
+  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
   const { agentConfigurations, isAgentConfigurationsLoading } =
     useAgentConfigurations({
       workspaceId: owner.sId,
       agentsGetView: "list",
       includes: [],
     });
+
+  // Redirect if feature flag is not enabled.
+  useEffect(() => {
+    if (
+      !isFeatureFlagsLoading &&
+      !featureFlags.includes("labs_mcp_actions_dashboard")
+    ) {
+      void router.replace(`/w/${owner.sId}/labs`);
+    }
+  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
+
+  if (
+    isFeatureFlagsLoading ||
+    !featureFlags.includes("labs_mcp_actions_dashboard")
+  ) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   const items = [
     {
@@ -171,6 +165,15 @@ export default function MCPActionsDashboard({
   );
 }
 
-MCPActionsDashboard.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = MCPActionsDashboard as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

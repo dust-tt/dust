@@ -14,6 +14,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export type CopilotSuggestionType = "instructions"; // Future: | "tool" | "skill".
 
@@ -91,6 +92,9 @@ export const CopilotSuggestionsProvider = ({
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
 
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+
   // Fetch all pending suggestions from the backend (all kinds).
   const {
     suggestions: backendSuggestions,
@@ -98,6 +102,7 @@ export const CopilotSuggestionsProvider = ({
     mutateSuggestions,
   } = useAgentSuggestions({
     agentConfigurationId,
+    disabled: !hasCopilot,
     state: ["pending"],
     workspaceId: owner.sId,
   });

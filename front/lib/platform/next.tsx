@@ -3,6 +3,7 @@
  * Used when running in Next.js environment
  */
 import NextHead from "next/head";
+import { default as NextImage } from "next/image";
 import {
   useParams as useNextParams,
   useSearchParams as useNextSearchParams,
@@ -11,7 +12,7 @@ import { useRouter as useNextRouter } from "next/router";
 import NextScript from "next/script";
 
 import { NextLinkWrapper } from "./NextLinkWrapper";
-import type { AppRouter, HeadProps, ScriptProps } from "./types";
+import type { AppRouter, HeadProps, ImageProps, ScriptProps } from "./types";
 
 export function useAppRouter(): AppRouter {
   const router = useNextRouter();
@@ -32,11 +33,39 @@ export function useAppRouter(): AppRouter {
 export const LinkWrapper = NextLinkWrapper;
 
 export function Head({ children }: HeadProps) {
-  return NextHead({ children });
+  return <NextHead>{children}</NextHead>;
 }
 
 export function Script({ id, src, strategy, children }: ScriptProps) {
-  return NextScript({ id, src, strategy, children });
+  return (
+    <NextScript id={id} src={src} strategy={strategy}>
+      {children}
+    </NextScript>
+  );
+}
+
+export function Image({
+  width,
+  height,
+  src,
+  alt,
+  className,
+  sizes,
+  priority,
+  ...rest
+}: ImageProps) {
+  return (
+    <NextImage
+      width={width}
+      height={height}
+      src={src}
+      alt={alt}
+      className={className}
+      sizes={sizes}
+      priority={priority}
+      {...rest}
+    />
+  );
 }
 
 /**

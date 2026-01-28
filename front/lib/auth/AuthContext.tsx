@@ -7,8 +7,9 @@ import type {
 } from "@app/types";
 
 // Context for pages that have workspace (app pages, workspace-scoped poke pages).
+// User is non-nullable because withDefaultUserAuthRequirements guarantees authentication.
 export interface AuthContextValue {
-  user: UserType | null;
+  user: UserType;
   workspace: LightWorkspaceType;
   subscription: SubscriptionType;
   isAdmin: boolean;

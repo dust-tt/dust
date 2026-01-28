@@ -2,6 +2,7 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -9,6 +10,8 @@ import { usePokeMCPServerViewDetails } from "@app/poke/swr/mcp_server_view_detai
 
 export function MCPServerViewPage() {
   const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - MCP Server View`);
+
   const svId = useRequiredPathParam("svId");
   const {
     data: mcpServerViewDetails,

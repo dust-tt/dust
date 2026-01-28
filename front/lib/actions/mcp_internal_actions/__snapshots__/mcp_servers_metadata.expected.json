@@ -944,7 +944,15 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "generate_random_float": "never_ask",
+      "generate_random_number": "never_ask",
+      "get_current_time": "never_ask",
+      "get_mention_markdown": "never_ask",
+      "math_operation": "never_ask",
+      "search_available_users": "never_ask",
+      "wait": "never_ask"
+    }
   },
   {
     "name": "confluence",
@@ -4176,6 +4184,61 @@
           },
           "type": "object"
         }
+      },
+      {
+        "name": "send_mail",
+        "description": "Send an email directly via Gmail.\n- The email will be sent immediately without creating a draft.\n- Use this to send emails when you have all the required information.\n- The email will include proper headers and formatting.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "bcc": {
+              "description": "The email addresses to BCC",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "body": {
+              "description": "The body of the email",
+              "type": "string"
+            },
+            "cc": {
+              "description": "The email addresses to CC",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "contentType": {
+              "description": "The content type of the email (text/plain or text/html).",
+              "enum": [
+                "text/plain",
+                "text/html"
+              ],
+              "type": "string"
+            },
+            "subject": {
+              "description": "The subject line of the email",
+              "type": "string"
+            },
+            "to": {
+              "description": "The email addresses of the recipients",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "to",
+            "subject",
+            "contentType",
+            "body"
+          ],
+          "type": "object"
+        }
       }
     ],
     "toolsStakes": {
@@ -4184,7 +4247,8 @@
       "delete_draft": "high",
       "get_attachment": "never_ask",
       "get_drafts": "never_ask",
-      "get_messages": "never_ask"
+      "get_messages": "never_ask",
+      "send_mail": "high"
     }
   },
   {
@@ -14138,6 +14202,108 @@
     }
   },
   {
+    "name": "sandbox",
+    "tools": [
+      {
+        "name": "execute",
+        "description": "Execute a shell command in an isolated sandbox environment. The sandbox is a Linux container with common tools pre-installed. Use this for running scripts, installing packages, or executing code. The sandbox persists for the duration of the conversation.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "command": {
+              "description": "The shell command to execute. Can be a single command or a script.",
+              "type": "string"
+            },
+            "timeoutMs": {
+              "description": "Timeout in milliseconds for command execution. Defaults to 60000, max 120000.",
+              "maximum": 120000,
+              "type": "number"
+            },
+            "workingDirectory": {
+              "description": "Working directory for command execution. Defaults to /tmp.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "list_files",
+        "description": "List files and directories in the sandbox. Returns file names, sizes, and types (file/directory).",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Directory path to list. Defaults to /tmp.",
+              "type": "string"
+            },
+            "recursive": {
+              "description": "Whether to list files recursively. Defaults to false.",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
+        "name": "read_file",
+        "description": "Read a file from the sandbox and make it available as a Dust file. Use this to retrieve results of computations, generated content, or any file that should be shared with the user in the conversation.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "description": "Absolute path to the file to read.",
+              "type": "string"
+            },
+            "title": {
+              "description": "Title for the file in Dust. Defaults to the filename.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "type": "object"
+        }
+      },
+      {
+        "name": "write_file",
+        "description": "Write content to a file in the sandbox. Creates parent directories if they don't exist. Overwrites the file if it already exists.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "content": {
+              "description": "The content to write to the file.",
+              "type": "string"
+            },
+            "path": {
+              "description": "Absolute path where the file should be written in the sandbox.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "path",
+            "content"
+          ],
+          "type": "object"
+        }
+      }
+    ],
+    "toolsStakes": {
+      "execute": "low",
+      "list_files": "never_ask",
+      "read_file": "never_ask",
+      "write_file": "low"
+    }
+  },
+  {
     "name": "schedules_management",
     "tools": [
       {
@@ -14203,10 +14369,8 @@
     ],
     "toolsStakes": {
       "create_schedule": "high",
-      "delete_schedule": "high",
-      "get_schedule": "never_ask",
-      "list_schedules": "never_ask",
-      "update_schedule": "high"
+      "disable_schedule": "high",
+      "list_schedules": "never_ask"
     }
   },
   {
@@ -15109,7 +15273,7 @@
       "list_databases": "never_ask",
       "list_schemas": "never_ask",
       "list_tables": "never_ask",
-      "query": "low"
+      "query": "never_ask"
     }
   },
   {
