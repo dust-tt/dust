@@ -288,7 +288,7 @@ function FeedbackCard({
       action={
         <div className="flex gap-1">
           <CardActionButton
-            size="mini"
+            size="icon"
             icon={feedback.dismissed ? EyeIcon : EyeSlashIcon}
             onClick={() => toggleDismiss(!feedback.dismissed)}
             disabled={isDismissing}
@@ -296,7 +296,7 @@ function FeedbackCard({
           />
           {conversationUrl && (
             <CardActionButton
-              size="mini"
+              size="icon"
               icon={ExternalLinkIcon}
               href={conversationUrl ?? ""}
               disabled={!conversationUrl}

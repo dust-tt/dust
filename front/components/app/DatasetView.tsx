@@ -618,7 +618,7 @@ export default function DatasetView({
                             {datasetKeys.length > 1 ? (
                               <>
                                 <Button
-                                  size="mini"
+                                  size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={XCircleIcon}
@@ -629,7 +629,7 @@ export default function DatasetView({
                                 />
 
                                 <Button
-                                  size="mini"
+                                  size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={PlusCircleIcon}
@@ -798,7 +798,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <Button
                             icon={XCircleIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost"
                             onClick={() => {
                               handleDeleteEntry(i);
@@ -807,7 +807,7 @@ export default function DatasetView({
                         ) : null}
                         <Button
                           icon={PlusCircleIcon}
-                          size="mini"
+                          size="icon"
                           variant="ghost"
                           onClick={() => {
                             handleNewEntry(i);
