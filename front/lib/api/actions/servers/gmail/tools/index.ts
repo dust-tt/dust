@@ -31,6 +31,60 @@ import { GMAIL_TOOLS_METADATA } from "@app/lib/api/actions/servers/gmail/metadat
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { Err, Ok } from "@app/types";
 
+// Validates email addresses to prevent header injection attacks.
+function validateEmailAddresses(
+  to: string[],
+  cc?: string[],
+  bcc?: string[]
+): Err<MCPError> | null {
+  for (const addr of [...to, ...(cc ?? []), ...(bcc ?? [])]) {
+    if (addr.includes("\r") || addr.includes("\n")) {
+      return new Err(new MCPError("Invalid email address"));
+    }
+  }
+  return null;
+}
+
+// Builds and encodes an email message for Gmail API.
+// Used by both create_draft and send_mail to avoid code duplication.
+function buildAndEncodeEmail(params: {
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  subject: string;
+  contentType: string;
+  body: string;
+}): Err<MCPError> | Ok<string> {
+  const encodedSubject = encodeSubject(params.subject);
+
+  // Validate email addresses to prevent header injection
+  const validationError = validateEmailAddresses(
+    params.to,
+    params.cc,
+    params.bcc
+  );
+  if (validationError) {
+    return validationError;
+  }
+
+  // Create the email message with proper headers and content.
+  const messageLines = [
+    `To: ${params.to.join(", ")}`,
+    params.cc?.length ? `Cc: ${params.cc.join(", ")}` : null,
+    params.bcc?.length ? `Bcc: ${params.bcc.join(", ")}` : null,
+    `Subject: ${encodedSubject}`,
+    `Content-Type: ${params.contentType}; charset=UTF-8`,
+    "MIME-Version: 1.0",
+    "",
+    params.body,
+  ].filter((line): line is string => line !== null);
+
+  const message = messageLines.join("\r\n");
+  const encodedMessage = encodeMessageForGmail(message);
+
+  return new Ok(encodedMessage);
+}
+
 const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
   get_drafts: async ({ q, pageToken }, { authInfo }) => {
     const accessToken = authInfo?.token;
@@ -101,25 +155,21 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    // Always encode subject line using RFC 2047 to handle any special characters
-    const encodedSubject = encodeSubject(subject);
-
-    // Create the email message with proper headers and content.
-    const message = [
-      `To: ${to.join(", ")}`,
-      cc?.length ? `Cc: ${cc.join(", ")}` : null,
-      bcc?.length ? `Bcc: ${bcc.join(", ")}` : null,
-      `Subject: ${encodedSubject}`,
-      "Content-Type: " + contentType,
-      "MIME-Version: 1.0",
-      "",
+    // Build and encode the email message
+    const encodedMessageResult = buildAndEncodeEmail({
+      to,
+      cc,
+      bcc,
+      subject,
+      contentType,
       body,
-    ]
-      .filter((line) => line !== null)
-      .join("\n");
+    });
 
-    // Encode the message in base64 as required by the Gmail API.
-    const encodedMessage = encodeMessageForGmail(message);
+    if (encodedMessageResult.isErr()) {
+      return encodedMessageResult;
+    }
+
+    const encodedMessage = encodedMessageResult.value;
 
     // Make the API call to create the draft in Gmail.
     const response = await fetchFromGmail(
@@ -439,6 +489,14 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
     const originalReferences = getHeaderValue(headers, "References");
     const originalDate = getHeaderValue(headers, "Date");
 
+    // Validate user-provided email addresses to prevent header injection
+    if (to?.length || cc?.length || bcc?.length) {
+      const validationError = validateEmailAddresses(to ?? [], cc, bcc);
+      if (validationError) {
+        return validationError;
+      }
+    }
+
     // Determine recipients
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const replyTo = to?.length ? to.join(", ") : originalTo || originalFrom;
@@ -529,6 +587,69 @@ const handlers: ToolHandlers<typeof GMAIL_TOOLS_METADATA> = {
             originalMessageId: messageId,
             replyTo,
             subject: replySubject,
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  send_mail: async (
+    { to, cc, bcc, subject, contentType, body },
+    { authInfo }
+  ) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    // Build and encode the email message
+    const encodedMessageResult = buildAndEncodeEmail({
+      to,
+      cc,
+      bcc,
+      subject,
+      contentType,
+      body,
+    });
+
+    if (encodedMessageResult.isErr()) {
+      return encodedMessageResult;
+    }
+
+    const encodedMessage = encodedMessageResult.value;
+
+    const response = await fetchFromGmail(
+      "/gmail/v1/users/me/messages/send",
+      accessToken,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          raw: encodedMessage,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(new MCPError(`Failed to send email: ${errorText}`));
+    }
+
+    const result = await response.json();
+
+    return new Ok([
+      { type: "text" as const, text: "Email sent successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            messageId: result.id,
+            threadId: result.threadId,
+            labelIds: result.labelIds,
           },
           null,
           2
