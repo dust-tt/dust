@@ -35,6 +35,7 @@ import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import { getConversationRoute } from "@app/lib/utils/router";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
 import type { UserType, WorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
@@ -430,7 +431,7 @@ export default function Welcome({
         event: "signup_completed",
         user_email: user.email,
         company_name: owner.name,
-        gclid: sessionStorage.getItem("gclid") ?? null,
+        gclid: getStoredUTMParams().gclid ?? null,
       });
     }
 

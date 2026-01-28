@@ -12,7 +12,6 @@ import {
   PartnerIdealPartners,
   PartnerSocialProof,
 } from "@app/components/home/PartnerHero";
-import UTMPageWrapper from "@app/components/UTMPageWrapper";
 
 export const getStaticProps: GetStaticProps = async () => {
   return {
@@ -27,7 +26,7 @@ export default function Partner() {
   const router = useRouter();
 
   return (
-    <UTMPageWrapper>
+    <>
       <PageMetadata
         title="Become a Dust Partner: Join Our Partner Network"
         description="Partner with Dust to help businesses deploy AI agents. Join our network of resellers, implementation partners, and technology partners."
@@ -43,7 +42,7 @@ export default function Partner() {
         <PartnerSocialProof />
         <PartnerIdealPartners />
       </div>
-    </UTMPageWrapper>
+    </>
   );
 }
 
