@@ -12,6 +12,7 @@ import {
 import path from "path";
 
 import apiConfig from "@app/lib/api/config";
+import type { Authenticator } from "@app/lib/auth";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
@@ -361,6 +362,11 @@ export class NorthflankSandboxClient {
     return new NorthflankSandboxClient(new ApiClient(contextProvider), config);
   }
 
+  private serviceIdForSandbox(auth: Authenticator, sandboxId: string): string {
+    const workspaceSId = auth.getNonNullableWorkspace().sId;
+    return `${workspaceSId}-${sandboxId}`;
+  }
+
   /**
    * Create a new sandbox.
    *
@@ -368,9 +374,11 @@ export class NorthflankSandboxClient {
    * Throws for infrastructure failures (API errors, deployment failures).
    */
   async createSandbox(
-    serviceId: string,
+    auth: Authenticator,
+    sandboxId: string,
     metadata?: SandboxMetadata
   ): Promise<Result<Sandbox, SandboxError>> {
+    const serviceId = this.serviceIdForSandbox(auth, sandboxId);
     const tags = this.buildTags(metadata);
 
     logger.info(
@@ -480,7 +488,11 @@ export class NorthflankSandboxClient {
    * Returns the sandbox status (info + paused state) if found, null if not found.
    * Throws for API errors or if service exists but volume is missing.
    */
-  async getSandbox(serviceId: string): Promise<SandboxStatus | null> {
+  async getSandbox(
+    auth: Authenticator,
+    sandboxId: string
+  ): Promise<SandboxStatus | null> {
+    const serviceId = this.serviceIdForSandbox(auth, sandboxId);
     const serviceResponse = await this.api.get.service({
       parameters: {
         projectId: this.config.projectId,
