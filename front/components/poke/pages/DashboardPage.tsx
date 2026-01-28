@@ -10,9 +10,8 @@ import moment from "moment";
 import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
-
 import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
   PokeTableBody,

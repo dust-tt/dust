@@ -1,5 +1,5 @@
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 
 export function PluginsPage() {
   useSetPokePageTitle("Plugins");

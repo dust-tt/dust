@@ -16,9 +16,9 @@ import {
 import { JsonViewer } from "@textea/json-viewer";
 
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";

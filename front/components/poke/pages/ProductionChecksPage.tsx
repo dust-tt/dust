@@ -10,7 +10,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";

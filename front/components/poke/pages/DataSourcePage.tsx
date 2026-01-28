@@ -19,8 +19,8 @@ import { useEffect, useState } from "react";
 
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
-import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import {
   PokeAlert,
