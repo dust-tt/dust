@@ -339,7 +339,7 @@ export function CapabilitiesPicker({
         <DropdownMenuContent
           className="max-h-96 w-96"
           align="start"
-          onAnimationEnd={(e) => {
+          onAnimationEnd={() => {
             if (!isOpen) {
               setIsClosing(false);
             }
