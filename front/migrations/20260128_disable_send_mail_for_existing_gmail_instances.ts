@@ -4,8 +4,10 @@ import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_int
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
+import type { LightWorkspaceType } from "@app/types";
 
 const DEPLOYMENT_CUTOFF_DATE = new Date("2026-01-28T00:00:00Z");
 
@@ -14,14 +16,14 @@ const INTERNAL_MCP_SERVER_NAME = "gmail";
 const PERMISSION_LEVEL = "high";
 
 async function disableSendMailForWorkspace(
-  workspaceId: number,
+  workspace: LightWorkspaceType,
   execute: boolean,
   logger: any
 ): Promise<number> {
   // Finding all internal MCP server connections created before deployment for this workspace.
   const connections = await MCPServerConnectionModel.findAll({
     where: {
-      workspaceId,
+      workspaceId: workspace.id,
       serverType: "internal",
       internalMCPServerId: {
         [Op.ne]: null,
@@ -71,29 +73,27 @@ async function disableSendMailForWorkspace(
 
   logger.info(
     {
-      workspaceId,
+      workspaceId: workspace.id,
       instancesCount: existingInstances.length,
       execute,
     },
     "Found Gmail instances to disable in workspace."
   );
 
-  // Force disable send_mail for all existing instances using upsert.
+  // Force disable send_mail for all existing instances.
   let processedCount = 0;
 
   for (const instance of existingInstances) {
     if (execute) {
-      // Upsert to force enabled: false.
-      await RemoteMCPServerToolMetadataModel.upsert(
+      // Update to force enabled: false.
+      await RemoteMCPServerToolMetadataModel.update(
+        { enabled: false },
         {
-          workspaceId: instance.workspaceId,
-          internalMCPServerId: instance.internalMCPServerId,
-          toolName: TOOL_NAME,
-          permission: PERMISSION_LEVEL,
-          enabled: false,
-        },
-        {
-          conflictFields: ["workspaceId", "internalMCPServerId", "toolName"],
+          where: {
+            workspaceId: instance.workspaceId,
+            internalMCPServerId: instance.internalMCPServerId,
+            toolName: TOOL_NAME,
+          },
         }
       );
 
@@ -158,13 +158,17 @@ makeScript(
 
     if (workspaceId) {
       // Process single workspace
-      const workspace = await WorkspaceResource.fetchById(workspaceId);
-      if (!workspace) {
+      const workspaceResource = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspaceResource) {
         throw new Error(`Workspace not found: ${workspaceId}`);
       }
 
+      const workspace = renderLightWorkspaceType({
+        workspace: workspaceResource,
+      });
+
       totalProcessed = await disableSendMailForWorkspace(
-        workspace.id,
+        workspace,
         execute,
         logger
       );
@@ -173,7 +177,7 @@ makeScript(
       await runOnAllWorkspaces(
         async (workspace) => {
           const processed = await disableSendMailForWorkspace(
-            workspace.id,
+            workspace,
             execute,
             logger
           );
