@@ -13,6 +13,7 @@ import React, {
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 export type CopilotSuggestionType = "instructions"; // Future: | "tool" | "skill".
 
@@ -84,10 +85,13 @@ export const CopilotSuggestionsProvider = ({
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
 
-  // Fetch pending suggestions from the backend.
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+
   const { suggestions: backendSuggestions, isSuggestionsLoading } =
     useAgentSuggestions({
       agentConfigurationId,
+      disabled: !hasCopilot,
       state: ["pending"],
       workspaceId: owner.sId,
     });
