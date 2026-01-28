@@ -105,7 +105,10 @@ export class Sandbox {
 
   async pause(): Promise<void> {
     if (await this.isServicePaused()) {
-      logger.info({ serviceId: this.info.serviceId }, "[sandbox] Already paused");
+      logger.info(
+        { serviceId: this.info.serviceId },
+        "[sandbox] Already paused"
+      );
       return;
     }
 
@@ -131,7 +134,10 @@ export class Sandbox {
    */
   async resume(): Promise<Result<void, SandboxReadyTimeoutError>> {
     if (!(await this.isServicePaused())) {
-      logger.info({ serviceId: this.info.serviceId }, "[sandbox] Already running");
+      logger.info(
+        { serviceId: this.info.serviceId },
+        "[sandbox] Already running"
+      );
       return new Ok(undefined);
     }
 
@@ -152,7 +158,10 @@ export class Sandbox {
   }
 
   async exec(command: string): Promise<CommandResult> {
-    logger.info({ serviceId: this.info.serviceId, command }, "[sandbox] Executing command");
+    logger.info(
+      { serviceId: this.info.serviceId, command },
+      "[sandbox] Executing command"
+    );
 
     const result = await this.api.exec.execServiceCommand(this.serviceParams, {
       command: ["bash", "-c", command],
@@ -167,7 +176,10 @@ export class Sandbox {
   }
 
   async writeFile(remotePath: string, content: string | Buffer): Promise<void> {
-    logger.info({ serviceId: this.info.serviceId, remotePath }, "[sandbox] Writing file");
+    logger.info(
+      { serviceId: this.info.serviceId, remotePath },
+      "[sandbox] Writing file"
+    );
 
     const buffer = typeof content === "string" ? Buffer.from(content) : content;
 
@@ -186,12 +198,15 @@ export class Sandbox {
   }
 
   async readFile(remotePath: string): Promise<Buffer> {
-    logger.info({ serviceId: this.info.serviceId, remotePath }, "[sandbox] Reading file");
-
-    const { fileStream, completionPromise } = await this.api.fileCopy.downloadServiceFileStream(
-      this.serviceParams,
-      { remotePath }
+    logger.info(
+      { serviceId: this.info.serviceId, remotePath },
+      "[sandbox] Reading file"
     );
+
+    const { fileStream, completionPromise } =
+      await this.api.fileCopy.downloadServiceFileStream(this.serviceParams, {
+        remotePath,
+      });
 
     const [result, success] = await Promise.all([
       streamToBuffer(fileStream),
@@ -220,23 +235,33 @@ export class Sandbox {
     logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
   }
 
-  private async deleteServiceIfExists(projectId: string, serviceId: string): Promise<void> {
+  private async deleteServiceIfExists(
+    projectId: string,
+    serviceId: string
+  ): Promise<void> {
     const response = await this.api.delete.service({
       parameters: { projectId, serviceId },
     });
 
     if (response.error && response.error.status !== 404) {
-      throw new Error(`Failed to delete service: ${normalizeError(response.error).message}`);
+      throw new Error(
+        `Failed to delete service: ${normalizeError(response.error).message}`
+      );
     }
   }
 
-  private async deleteVolumeIfExists(projectId: string, volumeId: string): Promise<void> {
+  private async deleteVolumeIfExists(
+    projectId: string,
+    volumeId: string
+  ): Promise<void> {
     const response = await this.api.delete.volume({
       parameters: { projectId, volumeId },
     });
 
     if (response.error && response.error.status !== 404) {
-      throw new Error(`Failed to delete volume: ${normalizeError(response.error).message}`);
+      throw new Error(
+        `Failed to delete volume: ${normalizeError(response.error).message}`
+      );
     }
   }
 
@@ -256,7 +281,10 @@ export class Sandbox {
 
   /** @internal Used by factory during creation and by resume(). */
   async waitForReady(): Promise<Result<void, SandboxReadyTimeoutError>> {
-    logger.info({ serviceId: this.info.serviceId }, "[sandbox] Waiting for ready");
+    logger.info(
+      { serviceId: this.info.serviceId },
+      "[sandbox] Waiting for ready"
+    );
 
     const startTimeMs = Date.now();
     while (Date.now() - startTimeMs < this.config.serviceReadyTimeoutMs) {
@@ -274,12 +302,18 @@ export class Sandbox {
       const deploymentStatus = status?.deployment?.status;
 
       if (deploymentStatus === "COMPLETED" && !response.data.servicePaused) {
-        logger.info({ serviceId: this.info.serviceId }, "[sandbox] Service ready");
+        logger.info(
+          { serviceId: this.info.serviceId },
+          "[sandbox] Service ready"
+        );
         return new Ok(undefined);
       }
 
       if (deploymentStatus === "FAILED") {
-        logger.error({ serviceId: this.info.serviceId, status }, "[sandbox] Deployment failed");
+        logger.error(
+          { serviceId: this.info.serviceId, status },
+          "[sandbox] Deployment failed"
+        );
         throw new Error(
           `Sandbox deployment failed (status: ${JSON.stringify(status)})`
         );
@@ -289,7 +323,10 @@ export class Sandbox {
     }
 
     return new Err(
-      new SandboxReadyTimeoutError(this.info.serviceId, this.config.serviceReadyTimeoutMs)
+      new SandboxReadyTimeoutError(
+        this.info.serviceId,
+        this.config.serviceReadyTimeoutMs
+      )
     );
   }
 }
@@ -342,7 +379,10 @@ export class NorthflankSandboxClient {
         deployment: {
           instances: 1,
           external: { imagePath: this.config.baseImage },
-          docker: { configType: "customCommand", customCommand: "sleep infinity" },
+          docker: {
+            configType: "customCommand",
+            customCommand: "sleep infinity",
+          },
         },
         runtimeEnvironment: {},
       },
@@ -377,7 +417,10 @@ export class NorthflankSandboxClient {
         name: volumeName,
         tags,
         mounts: [{ containerMountPath: this.config.volumeMountPath }],
-        spec: { accessMode: "ReadWriteOnce", storageSize: this.config.volumeSizeMb },
+        spec: {
+          accessMode: "ReadWriteOnce",
+          storageSize: this.config.volumeSizeMb,
+        },
         attachedObjects: [{ id: serviceId, type: "service" }],
       },
     });
@@ -393,7 +436,10 @@ export class NorthflankSandboxClient {
 
     const volumeId = volumeResponse.data.id;
 
-    logger.info({ serviceId, volumeId }, "[sandbox] Volume created and attached");
+    logger.info(
+      { serviceId, volumeId },
+      "[sandbox] Volume created and attached"
+    );
 
     const info: SandboxInfo = {
       serviceId,
