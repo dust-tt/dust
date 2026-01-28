@@ -207,11 +207,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  skills_similar_display: {
-    description:
-      "Display similar skills when creating a new skill to avoid duplicates",
-    stage: "dust_only",
-  },
   projects: {
     description: "Enable use Spaces as Projects",
     stage: "dust_only",
