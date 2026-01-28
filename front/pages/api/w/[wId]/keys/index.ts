@@ -70,6 +70,32 @@ async function handler(
       }
 
       const { name, group_id } = bodyValidation.right;
+      const trimmedName = name.trim();
+
+      if (trimmedName.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "API key name cannot be empty.",
+          },
+        });
+      }
+
+      const existingKey = await KeyResource.fetchByName(auth, {
+        name: trimmedName,
+      });
+      if (existingKey) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "An API key with this name already exists in this workspace.",
+          },
+        });
+      }
+
       const group = group_id
         ? await GroupResource.fetchById(auth, group_id)
         : await GroupResource.fetchWorkspaceGlobalGroup(auth);
@@ -106,7 +132,7 @@ async function handler(
 
       const key = await KeyResource.makeNew(
         {
-          name: name,
+          name: trimmedName,
           status: "active",
           userId: user.id,
           workspaceId: owner.id,
