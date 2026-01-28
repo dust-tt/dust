@@ -80,11 +80,6 @@ KeyModel.init(
       { unique: true, fields: ["secret"] },
       { fields: ["userId"] },
       { fields: ["workspaceId"] },
-      {
-        name: "keys_workspace_name_unique_idx",
-        unique: true,
-        fields: ["workspaceId", "name"],
-      },
     ],
   }
 );
