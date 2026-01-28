@@ -2,11 +2,11 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
-import { lazy, Suspense, useCallback, useEffect } from "react";
+import { useCallback, useEffect } from "react";
 
-import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import TablePicker from "@app/components/tables/TablePicker";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
@@ -18,11 +18,6 @@ import type {
 import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-const CodeEditor = lazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
-);
 
 export interface TableConfig {
   workspace_id: string;
@@ -250,28 +245,26 @@ export default function Database({
         <div>
           <Label>Query</Label>
           <div className="w-full font-normal">
-            <Suspense fallback={<CodeEditorFallback />}>
-              <CodeEditor
-                data-color-mode={isDark ? "dark" : "light"}
-                readOnly={readOnly}
-                value={block.spec.query}
-                language="jinja2"
-                placeholder=""
-                onChange={(e) => {
-                  const b = shallowBlockClone(block);
-                  b.spec.query = e.target.value;
-                  onBlockUpdate(b);
-                }}
-                padding={3}
-                minHeight={80}
-                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                style={{
-                  fontSize: 13,
-                  fontFamily:
-                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                }}
-              />
-            </Suspense>
+            <SuspensedCodeEditor
+              data-color-mode={isDark ? "dark" : "light"}
+              readOnly={readOnly}
+              value={block.spec.query}
+              language="jinja2"
+              placeholder=""
+              onChange={(e) => {
+                const b = shallowBlockClone(block);
+                b.spec.query = e.target.value;
+                onBlockUpdate(b);
+              }}
+              padding={3}
+              minHeight={80}
+              className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+              style={{
+                fontSize: 13,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+              }}
+            />
           </div>
         </div>
       </div>

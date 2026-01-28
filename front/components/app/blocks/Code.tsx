@@ -1,10 +1,9 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Label } from "@dust-tt/sparkle";
-import { lazy, Suspense } from "react";
 
-import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type {
@@ -15,12 +14,6 @@ import type {
 import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-
-const CodeEditor = lazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
-);
 
 export default function Code({
   owner,
@@ -84,24 +77,22 @@ export default function Code({
           <Label>Code</Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
-              <Suspense fallback={<CodeEditorFallback />}>
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  readOnly={readOnly}
-                  value={block.spec.code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleCodeChange(e.target.value)}
-                  padding={15}
-                  minHeight={80}
-                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  }}
-                />
-              </Suspense>
+              <SuspensedCodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleCodeChange(e.target.value)}
+                padding={15}
+                minHeight={80}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>

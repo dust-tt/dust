@@ -9,10 +9,10 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
-import { lazy, Suspense, useEffect } from "react";
+import { useEffect } from "react";
 
-import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -24,12 +24,6 @@ import type {
 } from "@app/types";
 
 import Block from "./Block";
-
-const CodeEditor = lazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
-);
 
 export default function Curl({
   owner,
@@ -186,23 +180,21 @@ export default function Curl({
           <Label>Headers</Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
-              <Suspense fallback={<CodeEditorFallback />}>
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  readOnly={readOnly}
-                  value={block.spec.headers_code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleHeadersCodeChange(e.target.value)}
-                  padding={15}
-                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  }}
-                />
-              </Suspense>
+              <SuspensedCodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.headers_code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleHeadersCodeChange(e.target.value)}
+                padding={15}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>
@@ -210,23 +202,21 @@ export default function Curl({
           <Label>Body</Label>
           <div className="flex w-full font-normal">
             <div className="w-full">
-              <Suspense fallback={<CodeEditorFallback />}>
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  readOnly={readOnly}
-                  value={block.spec.body_code}
-                  language="js"
-                  placeholder=""
-                  onChange={(e) => handleBodyCodeChange(e.target.value)}
-                  padding={15}
-                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                  style={{
-                    fontSize: 12,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  }}
-                />
-              </Suspense>
+              <SuspensedCodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.body_code}
+                language="js"
+                placeholder=""
+                onChange={(e) => handleBodyCodeChange(e.target.value)}
+                padding={15}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 12,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>

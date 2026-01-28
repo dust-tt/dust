@@ -9,11 +9,11 @@ import {
   Input,
   Label,
 } from "@dust-tt/sparkle";
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 
-import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
   AppType,
@@ -25,12 +25,6 @@ import type {
 } from "@app/types";
 
 import Block from "./Block";
-
-const CodeEditor = lazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
-);
 
 export default function DataSource({
   owner,
@@ -273,24 +267,22 @@ export default function DataSource({
           <Label>Query</Label>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <Suspense fallback={<CodeEditorFallback />}>
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  readOnly={readOnly}
-                  value={block.spec.query}
-                  language="jinja2"
-                  placeholder=""
-                  onChange={(e) => handleQueryChange(e.target.value)}
-                  padding={3}
-                  minHeight={80}
-                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                  style={{
-                    fontSize: 13,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  }}
-                />
-              </Suspense>
+              <SuspensedCodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.query}
+                language="jinja2"
+                placeholder=""
+                onChange={(e) => handleQueryChange(e.target.value)}
+                padding={3}
+                minHeight={80}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>
@@ -301,24 +293,22 @@ export default function DataSource({
             <CollapsibleContent>
               <div className="flex w-full flex-col gap-2">
                 <div className="flex w-full flex-col gap-2">
-                  <Suspense fallback={<CodeEditorFallback />}>
-                    <CodeEditor
-                      data-color-mode={isDark ? "dark" : "light"}
-                      readOnly={readOnly}
-                      value={block.spec.filter_code}
-                      language="js"
-                      placeholder=""
-                      onChange={(e) => handleFilterCodeChange(e.target.value)}
-                      padding={15}
-                      minHeight={80}
-                      className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                      style={{
-                        fontSize: 12,
-                        fontFamily:
-                          "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                      }}
-                    />
-                  </Suspense>
+                  <SuspensedCodeEditor
+                    data-color-mode={isDark ? "dark" : "light"}
+                    readOnly={readOnly}
+                    value={block.spec.filter_code}
+                    language="js"
+                    placeholder=""
+                    onChange={(e) => handleFilterCodeChange(e.target.value)}
+                    padding={15}
+                    minHeight={80}
+                    className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                    style={{
+                      fontSize: 12,
+                      fontFamily:
+                        "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                    }}
+                  />
                 </div>
 
                 <div className="flex flex-col gap-2">
