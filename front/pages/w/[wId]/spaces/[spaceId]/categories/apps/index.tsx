@@ -1,84 +1,79 @@
-import type { InferGetServerSidePropsType } from "next";
+import { Spinner } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import type { DataSourceViewCategory, SpaceType } from "@app/types";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutPageProps & {
-    isBuilder: boolean;
-    category: DataSourceViewCategory;
-    space: SpaceType;
-  }
->(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
-  const plan = auth.getNonNullablePlan();
-  const isAdmin = auth.isAdmin();
+export const getServerSideProps = appGetServerSideProps;
 
-  const { spaceId } = context.query;
-
-  if (!subscription || typeof spaceId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !systemSpace || !space.canReadOrAdministrate(auth)) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const isBuilder = auth.isBuilder();
-  const canWriteInSpace = space.canWrite(auth);
-
-  return {
-    props: {
-      canReadInSpace: space.canRead(auth),
-      canWriteInSpace,
-      category: "apps",
-      isAdmin,
-      isBuilder,
-      owner,
-      plan,
-      space: space.toJSON(),
-      subscription,
-    },
-  };
-});
-
-export default function Space({
-  isBuilder,
-  owner,
-  space,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function Space() {
   const router = useRouter();
+  const { spaceId } = router.query;
+  const owner = useWorkspace();
+  const { subscription, isAdmin, isBuilder } = useAuth();
+  const plan = subscription.plan;
+
+  const {
+    spaceInfo: space,
+    canWriteInSpace,
+    canReadInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : null,
+  });
+
+  if (isSpaceInfoLoading || !space) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  const pageProps: SpaceLayoutPageProps = {
+    canReadInSpace,
+    canWriteInSpace,
+    category: "apps",
+    isAdmin,
+    owner,
+    plan,
+    space,
+    subscription,
+  };
 
   return (
-    <SpaceAppsList
-      owner={owner}
-      space={space}
-      isBuilder={isBuilder}
-      onSelect={(sId) => {
-        void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
-      }}
-    />
+    <SpaceLayout pageProps={pageProps}>
+      <SpaceAppsList
+        owner={owner}
+        space={space}
+        isBuilder={isBuilder}
+        onSelect={(sId) => {
+          void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
+        }}
+      />
+    </SpaceLayout>
   );
 }
 
-Space.getLayout = (page: ReactElement, pageProps: any) => {
+const PageWithAuthLayout = Space as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
   return (
-    <AppRootLayout>
-      <SpaceLayout pageProps={pageProps}>{page}</SpaceLayout>
-    </AppRootLayout>
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
   );
 };
+
+export default PageWithAuthLayout;
