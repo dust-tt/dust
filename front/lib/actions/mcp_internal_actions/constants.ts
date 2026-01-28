@@ -17,6 +17,7 @@ import {
   AGENT_ROUTER_SERVER,
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
@@ -920,26 +921,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("ashby_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      search_candidates: "never_ask",
-      get_report_data: "never_ask",
-      get_interview_feedback: "never_ask",
-      get_candidate_notes: "never_ask",
-      create_candidate_note: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "ashby",
-      version: "1.0.0",
-      description: "Access and manage Ashby ATS data.",
-      authorization: null,
-      icon: "AshbyLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: ASHBY_SERVER,
   },
   salesloft: {
     id: 41,

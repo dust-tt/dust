@@ -1,6 +1,8 @@
 import type { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { ToolHandlerExtra } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type {
   AshbyApplicationFeedbackListRequest,
   AshbyApplicationInfoRequest,
@@ -10,7 +12,7 @@ import type {
   AshbyCandidateSearchRequest,
   AshbyFeedbackSubmission,
   AshbyReportSynchronousRequest,
-} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
+} from "@app/lib/api/actions/servers/ashby/types";
 import {
   AshbyApplicationFeedbackListResponseSchema,
   AshbyApplicationInfoResponseSchema,
@@ -18,10 +20,7 @@ import {
   AshbyCandidateListNotesResponseSchema,
   AshbyCandidateSearchResponseSchema,
   AshbyReportSynchronousResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/ashby/types";
-import type { AgentLoopContextType } from "@app/lib/actions/types";
-import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
-import type { Authenticator } from "@app/lib/auth";
+} from "@app/lib/api/actions/servers/ashby/types";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -30,10 +29,19 @@ import { decrypt, Err, Ok } from "@app/types";
 const ASHBY_API_BASE_URL = "https://api.ashbyhq.com";
 
 export async function getAshbyClient(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  extra: ToolHandlerExtra
 ): Promise<Result<AshbyClient, MCPError>> {
-  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  const auth = extra.auth;
+  const toolConfig = extra.agentLoopContext?.runContext?.toolConfiguration;
+
+  if (!auth) {
+    return new Err(
+      new MCPError("Authentication context not available.", {
+        tracked: false,
+      })
+    );
+  }
+
   if (
     !toolConfig ||
     !isLightServerSideMCPToolConfiguration(toolConfig) ||
