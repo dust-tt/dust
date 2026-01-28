@@ -3,8 +3,7 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayoutWrapper } from "@app/components/spaces/SpaceLayout";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
@@ -16,7 +15,6 @@ import {
   useSpaceInfo,
   useSystemSpace,
 } from "@app/lib/swr/spaces";
-import type { DataSourceViewCategory } from "@app/types";
 import { isValidDataSourceViewCategory } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
@@ -74,37 +72,24 @@ function Space() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: validCategory,
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      <SpaceDataSourceViewContentList
-        owner={owner}
-        space={space}
-        plan={plan}
-        canWriteInSpace={canWriteInSpace}
-        canReadInSpace={canReadInSpace}
-        parentId={parentId ?? undefined}
-        dataSourceView={dataSourceView}
-        onSelect={(selectedParentId) => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${validCategory}/data_source_views/${dataSourceView.sId}?parentId=${selectedParentId}`
-          );
-        }}
-        isAdmin={isAdmin}
-        systemSpace={systemSpace}
-        connector={connector}
-      />
-    </SpaceLayout>
+    <SpaceDataSourceViewContentList
+      owner={owner}
+      space={space}
+      plan={plan}
+      canWriteInSpace={canWriteInSpace}
+      canReadInSpace={canReadInSpace}
+      parentId={parentId ?? undefined}
+      dataSourceView={dataSourceView}
+      onSelect={(selectedParentId) => {
+        void router.push(
+          `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${validCategory}/data_source_views/${dataSourceView.sId}?parentId=${selectedParentId}`
+        );
+      }}
+      isAdmin={isAdmin}
+      systemSpace={systemSpace}
+      connector={connector}
+    />
   );
 }
 
@@ -115,7 +100,9 @@ PageWithAuthLayout.getLayout = (
   pageProps: AuthContextValue
 ) => {
   return (
-    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+    <AppAuthContextLayout authContext={pageProps}>
+      <SpaceLayoutWrapper useBackendSearch>{page}</SpaceLayoutWrapper>
+    </AppAuthContextLayout>
   );
 };
 

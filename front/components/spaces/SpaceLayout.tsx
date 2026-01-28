@@ -8,6 +8,7 @@ import {
   DialogTitle,
   InformationCircleIcon,
   Page,
+  Spinner,
 } from "@dust-tt/sparkle";
 import React, { useCallback, useState } from "react";
 
@@ -15,10 +16,15 @@ import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpace
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter } from "@app/lib/platform";
+import { useAppRouter, usePathParams, useSearchParam } from "@app/lib/platform";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
-import { useSpacesAsAdmin } from "@app/lib/swr/spaces";
+import {
+  useSpaceDataSourceView,
+  useSpaceInfo,
+  useSpacesAsAdmin,
+} from "@app/lib/swr/spaces";
 import type {
   DataSourceViewCategory,
   DataSourceViewType,
@@ -27,6 +33,7 @@ import type {
   SubscriptionType,
   WorkspaceType,
 } from "@app/types";
+import { isValidDataSourceViewCategory } from "@app/types";
 
 export interface SpaceLayoutPageProps {
   canReadInSpace: boolean;
@@ -175,5 +182,80 @@ export function SpaceLayout({
         </Dialog>
       )}
     </AppWideModeLayout>
+  );
+}
+
+interface SpaceLayoutWrapperProps {
+  children: React.ReactNode;
+  useBackendSearch?: boolean;
+}
+
+/**
+ * SpaceLayoutWrapper fetches space data via hooks and renders SpaceLayout.
+ * Use this in getLayout to keep SpaceLayout persistent across page navigations.
+ */
+export function SpaceLayoutWrapper({
+  children,
+  useBackendSearch = false,
+}: SpaceLayoutWrapperProps) {
+  const params = usePathParams();
+  const spaceId = params.spaceId;
+  const category = params.category;
+  const dataSourceViewId = params.dataSourceViewId;
+  const parentId = useSearchParam("parentId");
+
+  const owner = useWorkspace();
+  const { subscription, isAdmin } = useAuth();
+  const plan = subscription.plan;
+
+  const {
+    spaceInfo: space,
+    canWriteInSpace,
+    canReadInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId ?? null,
+  });
+
+  const { dataSourceView, isDataSourceViewLoading } = useSpaceDataSourceView({
+    owner,
+    spaceId: spaceId ?? null,
+    dataSourceViewId: dataSourceViewId ?? null,
+    disabled: !dataSourceViewId,
+  });
+
+  const isLoading =
+    isSpaceInfoLoading || (dataSourceViewId && isDataSourceViewLoading);
+
+  if (isLoading || !space) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  const validCategory = isValidDataSourceViewCategory(category)
+    ? category
+    : undefined;
+
+  const pageProps: SpaceLayoutPageProps = {
+    canReadInSpace,
+    canWriteInSpace,
+    category: validCategory,
+    dataSourceView: dataSourceView ?? undefined,
+    isAdmin,
+    owner,
+    parentId: parentId ?? undefined,
+    plan,
+    space,
+    subscription,
+  };
+
+  return (
+    <SpaceLayout pageProps={pageProps} useBackendSearch={useBackendSearch}>
+      {children}
+    </SpaceLayout>
   );
 }
