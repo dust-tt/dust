@@ -172,7 +172,10 @@ export class Sandbox {
 
     const dir = path.posix.dirname(remotePath);
     if (dir && dir !== "." && dir !== "/") {
-      await this.exec(`mkdir -p "${dir}"`);
+      await this.api.exec.execServiceCommand(this.serviceParams, {
+        command: ["mkdir", "-p", dir],
+        shell: "none",
+      });
     }
 
     await this.api.fileCopy.uploadServiceFileStream(this.serviceParams, {
