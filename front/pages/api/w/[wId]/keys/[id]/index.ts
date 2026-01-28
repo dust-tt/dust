@@ -7,6 +7,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { KeyType, WithAPIErrorResponse } from "@app/types";
+import { isString } from "@app/types";
 
 export type PatchKeyResponseBody = {
   key: KeyType;
@@ -35,7 +36,7 @@ async function handler(
   }
 
   const { id } = req.query;
-  if (typeof id !== "string") {
+  if (!isString(id)) {
     return apiError(req, res, {
       status_code: 400,
       api_error: {

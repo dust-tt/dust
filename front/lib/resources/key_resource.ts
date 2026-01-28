@@ -15,7 +15,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { KeyType, ModelId, RoleType } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { formatUserFullName, redactString } from "@app/types";
+import { formatUserFullName, isString, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
@@ -98,7 +98,7 @@ export class KeyResource extends BaseResource<KeyModel> {
     workspace: LightWorkspaceType,
     id: ModelId | string
   ) {
-    const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
+    const parsedId = isString(id) ? parseInt(id, 10) : id;
 
     const key = await this.model.findOne({
       where: {

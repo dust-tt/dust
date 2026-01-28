@@ -1,6 +1,5 @@
 import {
   Input,
-  Label,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -10,16 +9,33 @@ import {
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import type { KeyType } from "@app/types";
 
 const formSchema = z.object({
-  capValueDollars: z.string(),
+  capValueDollars: z.string().refine(
+    (value) => {
+      if (value === "") {
+        return true;
+      }
+      const dollars = parseFloat(value);
+      return !isNaN(dollars) && dollars >= 0;
+    },
+    { message: "Cap must be a positive number" }
+  ),
 });
 
 type FormValues = z.infer<typeof formSchema>;
+
+function microUsdToDollarsString(microUsd: number | null): string {
+  if (microUsd === null) {
+    return "";
+  }
+  return (microUsd / 1_000_000).toString();
+}
 
 interface EditKeyCapDialogProps {
   keyData: KeyType;
@@ -36,39 +52,23 @@ export function EditKeyCapDialog({
   onSave,
   isSaving,
 }: EditKeyCapDialogProps) {
-  const { register, handleSubmit, reset, watch } = useForm<FormValues>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
-      capValueDollars:
-        keyData.monthlyCapMicroUsd !== null
-          ? (keyData.monthlyCapMicroUsd / 1_000_000).toString()
-          : "",
+      capValueDollars: microUsdToDollarsString(keyData.monthlyCapMicroUsd),
     },
   });
 
+  const { handleSubmit, reset, formState } = form;
+
   useEffect(() => {
     reset({
-      capValueDollars:
-        keyData.monthlyCapMicroUsd !== null
-          ? (keyData.monthlyCapMicroUsd / 1_000_000).toString()
-          : "",
+      capValueDollars: microUsdToDollarsString(keyData.monthlyCapMicroUsd),
     });
   }, [keyData, reset]);
 
-  const capValueDollars = watch("capValueDollars");
-
-  const isValidCap = () => {
-    if (capValueDollars === "") {
-      return true;
-    }
-    const dollars = parseFloat(capValueDollars);
-    return !isNaN(dollars) && dollars >= 0;
-  };
-
   const onSubmit = async (data: FormValues) => {
-    if (!isValidCap()) {
-      return;
-    }
     const monthlyCapMicroUsd =
       data.capValueDollars === ""
         ? null
@@ -90,16 +90,27 @@ export function EditKeyCapDialog({
           <SheetTitle>Edit Monthly Cap - {keyData.name}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
-          <div className="flex flex-col gap-2">
-            <Label>Monthly cap (USD)</Label>
-            <Input
-              {...register("capValueDollars")}
-              placeholder="Leave empty for unlimited"
-              type="number"
-              min="0"
-              step="0.01"
-            />
-          </div>
+          <FormProvider {...form}>
+            <BaseFormFieldSection
+              title="Monthly cap (USD)"
+              fieldName="capValueDollars"
+            >
+              {({ registerRef, registerProps, onChange, errorMessage }) => (
+                <Input
+                  ref={registerRef}
+                  {...registerProps}
+                  onChange={onChange}
+                  placeholder="Leave empty for unlimited"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  isError={!!errorMessage}
+                  message={errorMessage}
+                  messageStatus="error"
+                />
+              )}
+            </BaseFormFieldSection>
+          </FormProvider>
         </SheetContainer>
         <SheetFooter
           leftButtonProps={{
@@ -111,7 +122,7 @@ export function EditKeyCapDialog({
             label: "Save",
             variant: "primary",
             onClick: handleSubmit(onSubmit),
-            disabled: isSaving || !isValidCap(),
+            disabled: isSaving || !formState.isValid,
           }}
         />
       </SheetContent>

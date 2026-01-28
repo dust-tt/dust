@@ -1,8 +1,8 @@
-import { Button } from "@dust-tt/sparkle";
+import { Button, cn } from "@dust-tt/sparkle";
 import _ from "lodash";
 import React from "react";
 
-import { classNames, timeAgoFrom } from "@app/lib/utils";
+import { timeAgoFrom } from "@app/lib/utils";
 import type { GroupType, KeyType, ModelId } from "@app/types";
 import { GLOBAL_SPACE_NAME } from "@app/types";
 
@@ -53,7 +53,7 @@ export const APIKeysList = ({
                   <div className="flex flex-row">
                     <div className="my-auto mr-2 mt-0.5 flex flex-shrink-0">
                       <p
-                        className={classNames(
+                        className={cn(
                           "mb-0.5 inline-flex rounded-full px-2 text-xs font-semibold leading-5",
                           key.status === "active"
                             ? "bg-green-100 text-green-800"
@@ -65,7 +65,7 @@ export const APIKeysList = ({
                     </div>
                     <div className="dd-privacy-mask">
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -73,7 +73,7 @@ export const APIKeysList = ({
                         Name: <strong>{key.name ?? "Unnamed"}</strong>
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -84,7 +84,7 @@ export const APIKeysList = ({
                         </strong>
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -95,7 +95,7 @@ export const APIKeysList = ({
                         </strong>
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "truncate font-mono text-sm",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -109,7 +109,7 @@ export const APIKeysList = ({
                       </p>
                       <pre className="text-sm">{key.secret}</pre>
                       <p
-                        className={classNames(
+                        className={cn(
                           "front-normal text-xs",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
@@ -121,7 +121,7 @@ export const APIKeysList = ({
                         ago.
                       </p>
                       <p
-                        className={classNames(
+                        className={cn(
                           "front-normal text-xs",
                           "text-muted-foreground dark:text-muted-foreground-night"
                         )}
