@@ -1,90 +1,89 @@
-import type { InferGetServerSidePropsType } from "next";
+import { Spinner } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
+import { useMemo } from "react";
 
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayoutWrapper } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import {
-  augmentDataSourceWithConnectorDetails,
-  getDataSources,
-} from "@app/lib/api/data_sources";
-import { isManaged } from "@app/lib/data_sources";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+  useSpaceDataSourceViews,
+  useSpaceInfo,
+  useSystemSpace,
+} from "@app/lib/swr/spaces";
+import { useWorkspaceSeatsCount } from "@app/lib/swr/workspaces";
 import type {
   ConnectorProvider,
   DataSourceViewCategoryWithoutApps,
-  DataSourceWithConnectorDetailsType,
-  SpaceType,
-  UserType,
 } from "@app/types";
 import {
   CONNECTOR_PROVIDERS,
   isConnectorProvider,
   isDataSourceViewCategoryWithoutApps,
-  removeNulls,
 } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutPageProps & {
-    category: DataSourceViewCategoryWithoutApps;
-    isAdmin: boolean;
-    canWriteInSpace: boolean;
-    space: SpaceType;
-    systemSpace: SpaceType;
-    integrations: DataSourceIntegration[];
-    user: UserType;
-    activeSeats: number;
-  }
->(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
-  const plan = auth.getNonNullablePlan();
-  const isAdmin = auth.isAdmin();
-  const user = auth.getNonNullableUser();
+export const getServerSideProps = appGetServerSideProps;
 
-  const { category, setupWithSuffixConnector, setupWithSuffixSuffix, spaceId } =
-    context.query;
+function Space() {
+  const router = useRouter();
+  const spaceId = useRequiredPathParam("spaceId");
+  const category = useRequiredPathParam("category");
+  const setupWithSuffixConnector = useSearchParam("setupWithSuffixConnector");
+  const setupWithSuffixSuffix = useSearchParam("setupWithSuffixSuffix");
 
-  if (!subscription || typeof spaceId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
+  const owner = useWorkspace();
+  const { subscription, isAdmin, user } = useAuth();
+  const plan = subscription.plan;
 
-  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-  const space = await SpaceResource.fetchById(auth, spaceId);
-  if (!space || !systemSpace || !space.canReadOrAdministrate(auth)) {
-    return {
-      notFound: true,
-    };
-  }
+  const {
+    spaceInfo: space,
+    canWriteInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId,
+  });
 
-  if (!isDataSourceViewCategoryWithoutApps(category)) {
-    return {
-      notFound: true,
-    };
-  }
+  const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
+    workspaceId: owner.sId,
+  });
 
-  const isBuilder = auth.isBuilder();
-  const canWriteInSpace = space.canWrite(auth);
+  const { seatsCount, isSeatsCountLoading } = useWorkspaceSeatsCount({
+    workspaceId: owner.sId,
+    disabled: !isAdmin,
+  });
 
-  const integrations: DataSourceIntegration[] = [];
+  // For system spaces, fetch managed data source views to compute available integrations
+  const isSystemSpace = space?.kind === "system";
+  const { spaceDataSourceViews, isSpaceDataSourceViewsLoading } =
+    useSpaceDataSourceViews({
+      workspaceId: owner.sId,
+      spaceId,
+      category: "managed",
+      disabled: !isSystemSpace,
+    });
 
-  if (space.isSystem()) {
+  // Compute integrations for system spaces
+  const integrations = useMemo((): DataSourceIntegration[] => {
+    if (!isSystemSpace) {
+      return [];
+    }
+
     let setupWithSuffix: {
       connector: ConnectorProvider;
       suffix: string;
     } | null = null;
+
     if (
       setupWithSuffixConnector &&
-      isConnectorProvider(setupWithSuffixConnector as string) &&
-      setupWithSuffixSuffix &&
-      typeof setupWithSuffixSuffix === "string"
+      isConnectorProvider(setupWithSuffixConnector) &&
+      setupWithSuffixSuffix
     ) {
       setupWithSuffix = {
         connector: setupWithSuffixConnector as ConnectorProvider,
@@ -92,34 +91,20 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
       };
     }
 
-    const allDataSources = await getDataSources(auth, {
-      includeEditedBy: true,
-    });
+    const usedConnectorProviders = new Set(
+      spaceDataSourceViews
+        .map((dsv) => dsv.dataSource.connectorProvider)
+        .filter((p): p is ConnectorProvider => p !== null)
+    );
 
-    const managedDataSources: DataSourceWithConnectorDetailsType[] =
-      removeNulls(
-        await Promise.all(
-          allDataSources.map(async (managedDataSource) => {
-            const ds = managedDataSource.toJSON();
-            if (!isManaged(ds)) {
-              return null;
-            }
-            const augmentedDataSource =
-              await augmentDataSourceWithConnectorDetails(ds);
-
-            return augmentedDataSource;
-          })
-        )
-      );
+    const result: DataSourceIntegration[] = [];
     for (const connectorProvider of CONNECTOR_PROVIDERS) {
       if (
-        !managedDataSources.find(
-          (i) => i.connectorProvider === connectorProvider
-        ) ||
+        !usedConnectorProviders.has(connectorProvider) ||
         setupWithSuffix?.connector === connectorProvider
       ) {
-        integrations.push({
-          connectorProvider: connectorProvider,
+        result.push({
+          connectorProvider,
           setupWithSuffix:
             setupWithSuffix?.connector === connectorProvider
               ? setupWithSuffix.suffix
@@ -127,42 +112,32 @@ export const getServerSideProps = withDefaultUserAuthRequirements<
         });
       }
     }
+
+    return result;
+  }, [
+    isSystemSpace,
+    spaceDataSourceViews,
+    setupWithSuffixConnector,
+    setupWithSuffixSuffix,
+  ]);
+
+  const validCategory = isDataSourceViewCategoryWithoutApps(category)
+    ? (category as DataSourceViewCategoryWithoutApps)
+    : null;
+
+  const isLoading =
+    isSpaceInfoLoading ||
+    isSystemSpaceLoading ||
+    (isAdmin && isSeatsCountLoading) ||
+    (isSystemSpace && isSpaceDataSourceViewsLoading);
+
+  if (isLoading || !space || !systemSpace || !validCategory || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
-
-  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
-
-  return {
-    props: {
-      canReadInSpace: space.canRead(auth),
-      canWriteInSpace,
-      category,
-      integrations,
-      isAdmin,
-      isBuilder,
-      owner,
-      user: user.toJSON(),
-      plan,
-      space: space.toJSON(),
-      subscription,
-      systemSpace: systemSpace.toJSON(),
-      activeSeats,
-    },
-  };
-});
-
-export default function Space({
-  category,
-  isAdmin,
-  canWriteInSpace,
-  owner,
-  user,
-  plan,
-  space,
-  systemSpace,
-  integrations,
-  activeSeats,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
 
   return (
     <SpaceResourcesList
@@ -173,24 +148,29 @@ export default function Space({
       systemSpace={systemSpace}
       isAdmin={isAdmin}
       canWriteInSpace={canWriteInSpace}
-      category={category}
+      category={validCategory}
       integrations={integrations}
-      activeSeats={activeSeats}
+      activeSeats={seatsCount}
       onSelect={(sId) => {
         void router.push(
-          `/w/${owner.sId}/spaces/${space.sId}/categories/${category}/data_source_views/${sId}`
+          `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
         );
       }}
     />
   );
 }
 
-Space.getLayout = (page: ReactElement, pageProps: any) => {
+const PageWithAuthLayout = Space as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
   return (
-    <AppRootLayout>
-      <SpaceLayout pageProps={pageProps} useBackendSearch>
-        {page}
-      </SpaceLayout>
-    </AppRootLayout>
+    <AppAuthContextLayout authContext={pageProps}>
+      <SpaceLayoutWrapper useBackendSearch>{page}</SpaceLayoutWrapper>
+    </AppAuthContextLayout>
   );
 };
+
+export default PageWithAuthLayout;

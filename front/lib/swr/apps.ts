@@ -7,7 +7,9 @@ import type { GetDustAppSecretsResponseBody } from "@app/pages/api/w/[wId]/dust_
 import type { GetKeysResponseBody } from "@app/pages/api/w/[wId]/keys";
 import type { GetProvidersResponseBody } from "@app/pages/api/w/[wId]/providers";
 import type { GetAppsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps";
+import type { GetOrPostAppResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]";
 import type { GetRunsResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs";
+import type { GetRunResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]";
 import type { GetRunBlockResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/blocks/[type]/[name]";
 import type { PostRunCancelResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/cancel";
 import type { GetRunStatusResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/apps/[aId]/runs/[runId]/status";
@@ -42,6 +44,35 @@ export function useApps({
     isAppsLoading: !error && !data,
     isAppsError: !!error,
     mutateApps: mutate,
+  };
+}
+
+export function useApp({
+  workspaceId,
+  spaceId,
+  appId,
+  disabled,
+}: {
+  workspaceId: string;
+  spaceId: string;
+  appId: string;
+  disabled?: boolean;
+}) {
+  const appFetcher: Fetcher<GetOrPostAppResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/apps/${appId}`,
+    appFetcher,
+    {
+      disabled,
+    }
+  );
+
+  return {
+    app: data?.app ?? null,
+    isAppLoading: !error && !data && !disabled,
+    isAppError: !!error,
+    mutateApp: mutate,
   };
 }
 
@@ -202,4 +233,33 @@ export function useCancelRun({
   };
 
   return { doCancel };
+}
+
+export function useRunWithSpec({
+  workspaceId,
+  spaceId,
+  appId,
+  runId,
+  disabled,
+}: {
+  workspaceId: string;
+  spaceId: string;
+  appId: string;
+  runId: string;
+  disabled?: boolean;
+}) {
+  const runFetcher: Fetcher<GetRunResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/apps/${appId}/runs/${runId}`,
+    runFetcher,
+    { disabled }
+  );
+
+  return {
+    run: data?.run ?? null,
+    spec: data?.spec ?? null,
+    isRunLoading: !error && !data && !disabled,
+    isRunError: !!error,
+  };
 }

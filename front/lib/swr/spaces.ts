@@ -136,6 +136,8 @@ export function useSpaceInfo({
 
   return {
     spaceInfo: data ? data.space : null,
+    canWriteInSpace: data?.space.canWrite ?? false,
+    canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
     isSpaceInfoLoading: !error && !data && !disabled,
     isSpaceInfoError: error,
@@ -165,6 +167,7 @@ export function useSpaceDataSourceView({
 
   return {
     dataSourceView: data?.dataSourceView,
+    connector: data?.connector ?? null,
     isDataSourceViewLoading: !disabled && !error && !data,
     isDataSourceViewError: error,
     mutate,
