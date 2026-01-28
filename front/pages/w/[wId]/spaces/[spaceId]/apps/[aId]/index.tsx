@@ -129,12 +129,12 @@ function AppView() {
 
   // Initialize spec and config when app loads
   if (app && !specInitialized) {
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const initialSpec = JSON.parse(
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       app.savedSpecification || `[]`
     ) as SpecificationType;
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     const initialConfig = extractConfig(
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       JSON.parse(app.savedSpecification || `{}`)
     );
     setSpec(initialSpec);
