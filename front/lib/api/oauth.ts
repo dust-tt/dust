@@ -152,25 +152,6 @@ export async function createConnectionAndGetSetupUrl(
       }
 
       relatedCredential = credentials;
-
-      if (
-        //TODO: add the same verification for other providers with a getRelatedCredential method.
-        providerStrategy.isExtraConfigValidPostRelatedCredential &&
-        !providerStrategy.isExtraConfigValidPostRelatedCredential!(
-          extraConfig,
-          useCase
-        )
-      ) {
-        logger.error(
-          { provider, useCase, extraConfig },
-          "OAuth: Invalid extraConfig after getting related credential"
-        );
-        return new Err({
-          code: "connection_creation_failed",
-          message:
-            "Invalid OAuth connection extraConfig for provider after getting related credential",
-        });
-      }
     }
   }
 
@@ -191,6 +172,26 @@ export async function createConnectionAndGetSetupUrl(
       return extraConfigResult;
     }
     extraConfig = extraConfigResult.value;
+  }
+
+  // Validate extraConfig after update (some providers add required fields in getUpdatedExtraConfig)
+  if (
+    relatedCredential &&
+    providerStrategy.isExtraConfigValidPostRelatedCredential &&
+    !providerStrategy.isExtraConfigValidPostRelatedCredential(
+      extraConfig,
+      useCase
+    )
+  ) {
+    logger.error(
+      { provider, useCase, extraConfig },
+      "OAuth: Invalid extraConfig after getting related credential"
+    );
+    return new Err({
+      code: "connection_creation_failed",
+      message:
+        "Invalid OAuth connection extraConfig for provider after getting related credential",
+    });
   }
 
   const clientId: string | undefined = extraConfig.client_id as string;
