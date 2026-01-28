@@ -10,19 +10,23 @@ import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import {
   useSpaceDataSourceView,
   useSpaceInfo,
   useSystemSpace,
 } from "@app/lib/swr/spaces";
 import type { DataSourceViewCategory } from "@app/types";
-import { isString, isValidDataSourceViewCategory } from "@app/types";
+import { isValidDataSourceViewCategory } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function Space() {
   const router = useRouter();
-  const { spaceId, dataSourceViewId, category, parentId } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
+  const dataSourceViewId = useRequiredPathParam("dataSourceViewId");
+  const category = useRequiredPathParam("category");
+  const parentId = useSearchParam("parentId");
   const owner = useWorkspace();
   const { subscription, isAdmin, user } = useAuth();
   const plan = subscription.plan;
@@ -34,7 +38,7 @@ function Space() {
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : null,
+    spaceId,
   });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
@@ -44,12 +48,12 @@ function Space() {
   const { dataSourceView, connector, isDataSourceViewLoading } =
     useSpaceDataSourceView({
       owner,
-      spaceId: isString(spaceId) ? spaceId : null,
-      dataSourceViewId: isString(dataSourceViewId) ? dataSourceViewId : null,
+      spaceId,
+      dataSourceViewId,
     });
 
   const validCategory = isValidDataSourceViewCategory(category)
-    ? (category as DataSourceViewCategory)
+    ? category
     : null;
 
   const isLoading =
@@ -89,7 +93,7 @@ function Space() {
         plan={plan}
         canWriteInSpace={canWriteInSpace}
         canReadInSpace={canReadInSpace}
-        parentId={isString(parentId) ? parentId : undefined}
+        parentId={parentId ?? undefined}
         dataSourceView={dataSourceView}
         onSelect={(selectedParentId) => {
           void router.push(

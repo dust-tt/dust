@@ -13,11 +13,11 @@ import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
-  useActiveSeats,
   useSpaceDataSourceViews,
   useSpaceInfo,
   useSystemSpace,
 } from "@app/lib/swr/spaces";
+import { useWorkspaceSeatsCount } from "@app/lib/swr/workspaces";
 import type {
   ConnectorProvider,
   DataSourceViewCategoryWithoutApps,
@@ -53,7 +53,7 @@ function Space() {
     workspaceId: owner.sId,
   });
 
-  const { activeSeats, isActiveSeatsLoading } = useActiveSeats({
+  const { seatsCount, isSeatsCountLoading } = useWorkspaceSeatsCount({
     workspaceId: owner.sId,
     disabled: !isAdmin,
   });
@@ -121,15 +121,14 @@ function Space() {
     setupWithSuffixSuffix,
   ]);
 
-  // Validate category
   const validCategory = isDataSourceViewCategoryWithoutApps(category)
-    ? (category as DataSourceViewCategoryWithoutApps)
+    ? category
     : null;
 
   const isLoading =
     isSpaceInfoLoading ||
     isSystemSpaceLoading ||
-    (isAdmin && isActiveSeatsLoading) ||
+    (isAdmin && isSeatsCountLoading) ||
     (isSystemSpace && isSpaceDataSourceViewsLoading);
 
   if (isLoading || !space || !systemSpace || !validCategory || !user) {
@@ -163,7 +162,7 @@ function Space() {
         canWriteInSpace={canWriteInSpace}
         category={validCategory}
         integrations={integrations}
-        activeSeats={activeSeats}
+        activeSeats={seatsCount}
         onSelect={(sId) => {
           void router.push(
             `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`

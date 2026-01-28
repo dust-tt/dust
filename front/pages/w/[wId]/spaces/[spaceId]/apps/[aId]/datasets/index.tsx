@@ -12,24 +12,24 @@ import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useApp } from "@app/lib/swr/apps";
 import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
-import { isString } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function DatasetsView() {
   const router = useRouter();
-  const { spaceId, aId } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
   const { subscription, isBuilder } = useAuth();
 
   const { app, isAppLoading } = useApp({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : "",
-    appId: isString(aId) ? aId : "",
-    disabled: !isString(spaceId) || !isString(aId),
+    spaceId,
+    appId: aId,
   });
 
   const { datasets, isDatasetsLoading } = useDatasets({

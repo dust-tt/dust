@@ -9,11 +9,7 @@ import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import {
-  useGlobalSpace,
-  useSpaceInfo,
-  useSystemSpace,
-} from "@app/lib/swr/spaces";
+import { useSpaceInfo, useSpaces, useSystemSpace } from "@app/lib/swr/spaces";
 
 export const getServerSideProps = appGetServerSideProps;
 
@@ -43,10 +39,13 @@ function DefaultSpace() {
     disabled: !isAdmin,
   });
 
-  const { globalSpace, isGlobalSpaceLoading } = useGlobalSpace({
-    workspaceId: owner.sId,
-    disabled: isAdmin,
-  });
+  const { spaces: globalSpaces, isSpacesLoading: isGlobalSpaceLoading } =
+    useSpaces({
+      workspaceId: owner.sId,
+      kinds: ["global"],
+      disabled: isAdmin,
+    });
+  const globalSpace = globalSpaces[0] ?? null;
 
   useEffect(() => {
     // Wait for navigation selection to load
