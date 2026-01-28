@@ -8,6 +8,10 @@ import type {
   AgentMessageFeedbackType,
   AgentMessageFeedbackWithMetadataType,
 } from "@app/lib/api/assistant/feedback";
+import type {
+  ToolLatencyRow,
+  ToolLatencyView,
+} from "@app/lib/api/assistant/observability/tool_latency";
 import { clientFetch } from "@app/lib/egress/client";
 import {
   emptyArray,
@@ -44,10 +48,6 @@ import type {
   LightWorkspaceType,
   UserType,
 } from "@app/types";
-import type {
-  ToolLatencyRow,
-  ToolLatencyView,
-} from "@app/lib/api/assistant/observability/tool_latency";
 import { normalizeError } from "@app/types";
 
 export function useAgentMcpConfigurations({
