@@ -17,8 +17,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { UserResource } from "@app/lib/resources/user_resource";
 import { filterAndSortAgents } from "@app/lib/utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
@@ -29,29 +29,12 @@ import type {
   LightWorkspaceType,
   Result,
   SupportedFileContentType,
-  UserType,
 } from "@app/types";
 import { Err, isAgentMessageType, isDevelopment, Ok } from "@app/types";
 
 import { toFileContentFragment } from "./conversation/content_fragment";
 
 const { PRODUCTION_DUST_WORKSPACE_ID } = process.env;
-
-function renderUserType(user: UserModel): UserType {
-  return {
-    sId: user.sId,
-    id: user.id,
-    createdAt: user.createdAt.getTime(),
-    provider: user.provider,
-    username: user.username,
-    email: user.email,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    fullName: user.firstName + (user.lastName ? ` ${user.lastName}` : ""),
-    image: user.imageUrl,
-    lastLoginAt: user.lastLoginAt?.getTime() ?? null,
-  };
-}
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
   ? "run.dust.help"
@@ -115,15 +98,13 @@ export async function userAndWorkspacesFromEmail({
   Result<
     {
       workspaces: LightWorkspaceType[];
-      user: UserType;
+      user: UserResource;
       defaultWorkspace: LightWorkspaceType;
     },
     EmailTriggerError
   >
 > {
-  const user = await UserModel.findOne({
-    where: { email },
-  });
+  const user = await UserResource.fetchByEmail(email);
 
   if (!user) {
     return new Err({
@@ -194,7 +175,7 @@ export async function userAndWorkspacesFromEmail({
     workspaces: [workspace].map((workspace) =>
       renderLightWorkspaceType({ workspace })
     ),
-    user: renderUserType(user),
+    user,
     defaultWorkspace,
   });
 }

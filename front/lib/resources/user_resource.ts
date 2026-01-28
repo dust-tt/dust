@@ -352,6 +352,12 @@ export class UserResource extends BaseResource<UserModel> {
     });
   }
 
+  async setWorkOSUserId(workOSUserId: string | null) {
+    return this.update({
+      workOSUserId,
+    });
+  }
+
   async delete(
     auth: Authenticator,
     { transaction }: { transaction?: Transaction } = {}
