@@ -52,6 +52,7 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
@@ -1294,28 +1295,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      create_schedule: "high",
-      list_schedules: "never_ask",
-      get_schedule: "never_ask",
-      update_schedule: "high",
-      delete_schedule: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "schedules_management",
-      version: "1.0.0",
-      description: "Create schedules to automate recurring tasks.",
-      icon: "ActionTimeIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Schedules are user-specific: each user can only view and manage their own schedules. " +
-        "When a schedule triggers, it runs this agent with the specified prompt. " +
-        "Limit: 20 schedule creations per user per day.",
-    },
+    metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
   project_context_management: {
     id: 1021,

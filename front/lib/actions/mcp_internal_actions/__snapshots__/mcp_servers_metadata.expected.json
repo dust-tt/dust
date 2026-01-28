@@ -14369,10 +14369,8 @@
     ],
     "toolsStakes": {
       "create_schedule": "high",
-      "delete_schedule": "high",
-      "get_schedule": "never_ask",
-      "list_schedules": "never_ask",
-      "update_schedule": "high"
+      "disable_schedule": "high",
+      "list_schedules": "never_ask"
     }
   },
   {

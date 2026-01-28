@@ -13,7 +13,6 @@ import { default as productboardServer } from "@app/lib/actions/mcp_internal_act
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
-import { default as schedulesManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/schedules_management";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
@@ -59,6 +58,7 @@ import { default as projectContextManagementServer } from "@app/lib/api/actions/
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
+import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
