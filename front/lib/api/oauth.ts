@@ -153,22 +153,6 @@ export async function createConnectionAndGetSetupUrl(
 
       relatedCredential = credentials;
 
-      const extraConfigResult = await providerStrategy.getUpdatedExtraConfig!(
-        auth,
-        {
-          extraConfig,
-          useCase,
-        }
-      );
-      if (extraConfigResult.isErr()) {
-        logger.error(
-          { provider, useCase, error: extraConfigResult.error },
-          "OAuth: Failed to update extra config"
-        );
-        return extraConfigResult;
-      }
-      extraConfig = extraConfigResult.value;
-
       if (
         //TODO: add the same verification for other providers with a getRelatedCredential method.
         providerStrategy.isExtraConfigValidPostRelatedCredential &&
@@ -188,8 +172,11 @@ export async function createConnectionAndGetSetupUrl(
         });
       }
     }
-  } else if (providerStrategy.getUpdatedExtraConfig) {
-    const extraConfigResult = await providerStrategy.getUpdatedExtraConfig!(
+  }
+
+  // Update extra config if the provider has a method for it
+  if (providerStrategy.getUpdatedExtraConfig) {
+    const extraConfigResult = await providerStrategy.getUpdatedExtraConfig(
       auth,
       {
         extraConfig,
