@@ -237,6 +237,12 @@ export function AgentObservability({
           isCustomAgent={isCustomAgent}
         />
         <Separator />
+        <LatencyChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
+        />
+        <Separator />
         <DatasourceRetrievalTreemapChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
@@ -250,12 +256,6 @@ export function AgentObservability({
         />
         <Separator />
         <ToolExecutionTimeChart
-          workspaceId={workspaceId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-        <Separator />
-        <LatencyChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
