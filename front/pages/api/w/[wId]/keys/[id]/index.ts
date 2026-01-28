@@ -13,7 +13,7 @@ export type PatchKeyResponseBody = {
 };
 
 const PatchKeyBodySchema = t.type({
-  monthlyCapMicroUsd: t.union([t.number, t.null]),
+  monthly_cap_micro_usd: t.union([t.number, t.null]),
 });
 
 async function handler(
@@ -66,24 +66,24 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message:
-              "Invalid request body: monthlyCapMicroUsd must be a number or null.",
+              "Invalid request body: monthly_cap_micro_usd must be a number or null.",
           },
         });
       }
 
-      const { monthlyCapMicroUsd } = bodyValidation.right;
+      const { monthly_cap_micro_usd } = bodyValidation.right;
 
-      if (monthlyCapMicroUsd !== null && monthlyCapMicroUsd < 0) {
+      if (monthly_cap_micro_usd !== null && monthly_cap_micro_usd < 0) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "monthlyCapMicroUsd must be greater than or equal to 0.",
+            message: "monthly_cap_micro_usd must be greater than or equal to 0.",
           },
         });
       }
 
-      await key.updateMonthlyCap({ monthlyCapMicroUsd });
+      await key.updateMonthlyCap({ monthlyCapMicroUsd: monthly_cap_micro_usd });
 
       res.status(200).json({
         key: key.toJSON(),

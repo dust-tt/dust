@@ -25,7 +25,7 @@ interface EditKeyCapDialogProps {
   keyData: KeyType;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (monthlyCapMicroUsd: number | null) => Promise<void>;
+  onSave: (monthlyCapMicroUsd: number | null) => Promise<boolean>;
   isSaving: boolean;
 }
 
@@ -36,7 +36,7 @@ export function EditKeyCapDialog({
   onSave,
   isSaving,
 }: EditKeyCapDialogProps) {
-  const form = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       capValueDollars:
@@ -46,18 +46,16 @@ export function EditKeyCapDialog({
     },
   });
 
-  const { setValue } = form;
-
   useEffect(() => {
-    setValue(
-      "capValueDollars",
-      keyData.monthlyCapMicroUsd !== null
-        ? (keyData.monthlyCapMicroUsd / 1_000_000).toString()
-        : ""
-    );
-  }, [keyData, setValue]);
+    reset({
+      capValueDollars:
+        keyData.monthlyCapMicroUsd !== null
+          ? (keyData.monthlyCapMicroUsd / 1_000_000).toString()
+          : "",
+    });
+  }, [keyData, reset]);
 
-  const capValueDollars = form.watch("capValueDollars");
+  const capValueDollars = watch("capValueDollars");
 
   const isValidCap = () => {
     if (capValueDollars === "") {
@@ -67,17 +65,18 @@ export function EditKeyCapDialog({
     return !isNaN(dollars) && dollars >= 0;
   };
 
-  const handleSave = async () => {
+  const onSubmit = async (data: FormValues) => {
     if (!isValidCap()) {
       return;
     }
-    if (capValueDollars === "") {
-      await onSave(null);
-    } else {
-      const dollars = parseFloat(capValueDollars);
-      await onSave(Math.round(dollars * 1_000_000));
+    const monthlyCapMicroUsd =
+      data.capValueDollars === ""
+        ? null
+        : Math.round(parseFloat(data.capValueDollars) * 1_000_000);
+    const success = await onSave(monthlyCapMicroUsd);
+    if (success) {
+      onClose();
     }
-    onClose();
   };
 
   return (
@@ -97,7 +96,7 @@ export function EditKeyCapDialog({
           <div className="flex flex-col gap-2">
             <Label>Monthly cap (USD)</Label>
             <Input
-              {...form.register("capValueDollars")}
+              {...register("capValueDollars")}
               placeholder="Leave empty for unlimited"
               type="number"
               min="0"
@@ -114,7 +113,7 @@ export function EditKeyCapDialog({
           rightButtonProps={{
             label: "Save",
             variant: "primary",
-            onClick: handleSave,
+            onClick: handleSubmit(onSubmit),
             disabled: isSaving || !isValidCap(),
           }}
         />
