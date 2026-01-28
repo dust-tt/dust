@@ -14361,7 +14361,7 @@
     ],
     "toolsStakes": {
       "create_schedule": "high",
-      "disable_schedule": "never_ask",
+      "disable_schedule": "high",
       "list_schedules": "never_ask"
     }
   },
