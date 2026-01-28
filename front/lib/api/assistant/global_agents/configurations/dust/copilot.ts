@@ -80,6 +80,7 @@ flowchart TB
 \`\`\`
 
 ### Guidelines
+- Call get_agent_config for every message the user sends in order to get the latest agent state.
 - Keep diagrams focused (5-10 nodes max)
 - Use descriptive labels matching actual tools/steps in instructions
 - For complex agents, offer multiple focused diagrams
