@@ -97,6 +97,15 @@ async function handler(
       });
 
     case "POST":
+      if (!auth.isAdmin()) {
+        return apiError(req, res, {
+          status_code: 403,
+          api_error: {
+            type: "workspace_auth_error",
+            message: "Only users that are `admins` can administrate spaces.",
+          },
+        });
+      }
       const bodyValidation = PostSpaceRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
@@ -111,9 +120,7 @@ async function handler(
         });
       }
 
-      const requestBody = bodyValidation.right;
-
-      const spaceRes = await createSpaceAndGroup(auth, requestBody);
+      const spaceRes = await createSpaceAndGroup(auth, bodyValidation.right);
       if (spaceRes.isErr()) {
         switch (spaceRes.error.code) {
           case "limit_reached":
@@ -139,15 +146,6 @@ async function handler(
               api_error: {
                 type: "internal_server_error",
                 message: spaceRes.error.message,
-              },
-            });
-          case "unauthorized":
-            return apiError(req, res, {
-              status_code: 403,
-              api_error: {
-                type: "workspace_auth_error",
-                message:
-                  "Only users that are `admins` can create regular spaces.",
               },
             });
           default:
