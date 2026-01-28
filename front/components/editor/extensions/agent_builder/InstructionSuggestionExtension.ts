@@ -189,7 +189,11 @@ export const InstructionSuggestionExtension = Extension.create({
               const nodeEnd = currentTextOffset + node.text.length;
 
               // Check if find starts in this node.
-              if (from === -1 && textIndex >= nodeStart && textIndex < nodeEnd) {
+              if (
+                from === -1 &&
+                textIndex >= nodeStart &&
+                textIndex < nodeEnd
+              ) {
                 from = pos + (textIndex - nodeStart);
               }
 
@@ -380,4 +384,3 @@ function processSuggestionMarks(
 
   return true;
 }
-

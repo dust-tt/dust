@@ -114,7 +114,12 @@ export const CopilotSuggestionsProvider = ({
   useEffect(() => {
     const editor = editorRef.current;
 
-    if (!editor || editor.isDestroyed || !isEditorReady || isSuggestionsLoading) {
+    if (
+      !editor ||
+      editor.isDestroyed ||
+      !isEditorReady ||
+      isSuggestionsLoading
+    ) {
       return;
     }
 

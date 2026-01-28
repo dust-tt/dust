@@ -1,11 +1,10 @@
 import type { Fetcher } from "swr";
 
-import {
-  emptyArray,
-  fetcher,
-  useSWRWithDefaults,
-} from "@app/lib/swr/swr";
-import type { GetSuggestionsQuery, GetSuggestionsResponseBody } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
+import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type {
+  GetSuggestionsQuery,
+  GetSuggestionsResponseBody,
+} from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
 
 export function useAgentSuggestions({
   agentConfigurationId,
