@@ -229,7 +229,7 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -243,7 +243,11 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         );
 
         if (connectionResult.isErr()) {
-          throw new Error(connectionResult.error.message);
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "A workspace admin must first connect this tool at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection.",
+          });
         }
 
         const {
@@ -259,10 +263,12 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
           !isString(wsRole) ||
           !isString(wsWarehouse)
         ) {
-          throw new Error(
-            "Workspace connection is missing required Snowflake configuration. " +
-              "Please ask an admin to reconfigure the MCP server connection."
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "Workspace connection is missing required Snowflake configuration. " +
+              "Please ask an admin to reconfigure the MCP server connection.",
+          });
         }
 
         // Use user-provided role if specified, otherwise use the default from workspace connection.
@@ -270,27 +276,29 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
         const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
         if (trimmedUserRole) {
           if (!isValidSnowflakeRole(trimmedUserRole)) {
-            throw new Error(
-              `Invalid Snowflake role format: "${trimmedUserRole}". ` +
-                "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
-            );
+            return new Err({
+              code: "connection_creation_failed",
+              message:
+                `Invalid Snowflake role format: "${trimmedUserRole}". ` +
+                "Role must start with a letter or underscore and contain only alphanumeric characters and underscores.",
+            });
           }
           role = trimmedUserRole;
         }
 
-        return {
+        return new Ok({
           client_id: wsClientId,
           snowflake_account: wsAccount,
           snowflake_role: role,
           snowflake_warehouse: wsWarehouse,
-        };
+        });
       }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
-    return restConfig;
+    return new Ok(restConfig);
   }
 
   async checkConnectionValidPostFinalize(

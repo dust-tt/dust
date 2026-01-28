@@ -2,6 +2,7 @@ import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
@@ -11,6 +12,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
@@ -107,7 +109,7 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we fetch the team id of the admin-setup (workspace connection)
       // to enforce the team id to be the same as the admin-setup.
@@ -121,10 +123,12 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "A workspace admin must first connect the Slack tool at the workspace level before users can connect their personal Slack accounts. " +
+              "Please contact your workspace administrator to set up the Slack workspace connection.",
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -138,23 +142,26 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
               error: connectionRes.error,
             }
           );
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+          });
         }
 
         const teamId = connectionRes.value.connection.metadata.team_id;
         const teamName = connectionRes.value.connection.metadata.team_name;
 
-        return {
+        return new Ok({
           ...restConfig,
           requested_team_id: teamId,
           requested_team_name: teamName,
-        };
+        });
       }
     }
 
-    return extraConfig;
+    return new Ok(extraConfig);
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
