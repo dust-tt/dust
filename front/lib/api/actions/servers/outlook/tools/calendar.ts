@@ -43,7 +43,10 @@ const handlers: ToolHandlers<typeof OUTLOOK_CALENDAR_TOOLS_METADATA> = {
     }
   },
 
-  list_calendars: async ({ top = 250, skip = 0, userTimezone }, { authInfo }) => {
+  list_calendars: async (
+    { top = 250, skip = 0, userTimezone },
+    { authInfo }
+  ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));

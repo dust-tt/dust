@@ -4,7 +4,7 @@ import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/uti
 import { registerTool } from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { OUTLOOK_CALENDAR_TOOL_NAME } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
-import { TOOLS } from "@app/lib/api/actions/servers/outlook/calendar_tools";
+import { TOOLS } from "@app/lib/api/actions/servers/outlook/calendar";
 import type { Authenticator } from "@app/lib/auth";
 
 function createServer(

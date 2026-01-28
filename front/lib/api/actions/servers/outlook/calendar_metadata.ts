@@ -252,9 +252,7 @@ export const OUTLOOK_CALENDAR_TOOLS_METADATA = createToolsRecord({
         ),
       startTime: z
         .string()
-        .describe(
-          "The start time in ISO format (e.g., 2024-03-20T10:00:00Z)"
-        ),
+        .describe("The start time in ISO format (e.g., 2024-03-20T10:00:00Z)"),
       endTime: z
         .string()
         .describe("The end time in ISO format (e.g., 2024-03-20T11:00:00Z)"),

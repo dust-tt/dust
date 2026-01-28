@@ -52,9 +52,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
       top: z
         .number()
         .optional()
-        .describe(
-          "Maximum number of drafts to return (default: 10, max: 100)"
-        ),
+        .describe("Maximum number of drafts to return (default: 10, max: 100)"),
       skip: z
         .number()
         .optional()

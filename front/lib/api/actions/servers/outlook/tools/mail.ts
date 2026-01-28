@@ -95,7 +95,10 @@ interface OutlookContact {
 }
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
-  get_messages: async ({ search, top = 10, skip = 0, select }, { authInfo }) => {
+  get_messages: async (
+    { search, top = 10, skip = 0, select },
+    { authInfo }
+  ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
@@ -411,9 +414,7 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
 
     if (!updateDraftResponse.ok) {
       const errorText = await getErrorText(updateDraftResponse);
-      return new Err(
-        new MCPError(`Failed to update the draft: ${errorText}`)
-      );
+      return new Err(new MCPError(`Failed to update the draft: ${errorText}`));
     }
 
     return new Ok([
@@ -434,7 +435,10 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
     ]);
   },
 
-  get_contacts: async ({ search, top = 20, skip = 0, select }, { authInfo }) => {
+  get_contacts: async (
+    { search, top = 20, skip = 0, select },
+    { authInfo }
+  ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
