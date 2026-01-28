@@ -63,6 +63,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "temporal/relocation");
     case "remote_tools_sync":
       return path.join(baseDir, "temporal/remote_tools");
+    case "sandbox_lifecycle":
+      return path.join(baseDir, "temporal/sandbox_lifecycle");
     case "scrub_workspace_queue":
       return path.join(baseDir, "temporal/scrub_workspace");
     case "update_workspace_usage":
