@@ -53,13 +53,10 @@ function useContactFormSubmit() {
       utm_campaign: storedParams.utm_campaign,
       utm_content: storedParams.utm_content,
       utm_term: storedParams.utm_term,
-      gclid: storedParams.gclid ?? sessionStorage.getItem("gclid") ?? undefined,
+      gclid: storedParams.gclid,
       fbclid: storedParams.fbclid,
       msclkid: storedParams.msclkid,
-      li_fat_id:
-        storedParams.li_fat_id ??
-        sessionStorage.getItem("li_fat_id") ??
-        undefined,
+      li_fat_id: storedParams.li_fat_id,
     };
 
     // Track form submission attempt

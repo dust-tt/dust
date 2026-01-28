@@ -12,7 +12,6 @@ import { MainNavigation } from "@app/components/home/menu/MainNavigation";
 import { MobileNavigation } from "@app/components/home/menu/MobileNavigation";
 import ScrollingHeader from "@app/components/home/ScrollingHeader";
 import UTMButton from "@app/components/UTMButton";
-import UTMHandler from "@app/components/UTMHandler";
 import {
   DUST_COOKIES_ACCEPTED,
   DUST_HAS_SESSION,
@@ -23,12 +22,12 @@ import {
 import { useGeolocation } from "@app/lib/swr/geo";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
+import { extractUTMParams } from "@app/lib/utils/utm";
 
 export interface LandingLayoutProps {
   shape: number;
   postLoginReturnToUrl?: string;
   gtmTrackingId?: string;
-  utmParams?: { [key: string]: string | string[] | undefined };
 }
 
 export default function LandingLayout({
@@ -38,11 +37,7 @@ export default function LandingLayout({
   children: React.ReactNode;
   pageProps: LandingLayoutProps;
 }) {
-  const {
-    postLoginReturnToUrl = "/api/login",
-    gtmTrackingId,
-    utmParams,
-  } = pageProps;
+  const { postLoginReturnToUrl = "/api/login", gtmTrackingId } = pageProps;
 
   const [cookies, setCookie] = useCookies(
     [DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION],
@@ -93,6 +88,21 @@ export default function LandingLayout({
     document.body.classList.remove("bg-background-night");
   }, []);
 
+  // Capture UTM parameters from URL and store as JSON blob in sessionStorage.
+  useEffect(() => {
+    try {
+      const params = Object.fromEntries(
+        new URLSearchParams(window.location.search)
+      );
+      const utmData = extractUTMParams(params);
+      if (Object.keys(utmData).length > 0) {
+        sessionStorage.setItem("utm_data", JSON.stringify(utmData));
+      }
+    } catch {
+      // Ignore errors (e.g. sessionStorage unavailable).
+    }
+  }, []);
+
   useEffect(() => {
     if (cookieValue !== undefined) {
       setShowCookieBanner(false);
@@ -117,8 +127,6 @@ export default function LandingLayout({
   return (
     <>
       <Header />
-      {/* Handle UTM parameter storage */}
-      {utmParams && <UTMHandler utmParams={utmParams} />}
       <ScrollingHeader>
         <div className="flex h-full w-full items-center gap-4 px-6 xl:gap-10">
           <div className="hidden h-[24px] w-[96px] xl:block">
@@ -210,17 +218,6 @@ export default function LandingLayout({
               j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
               })(window,document,'script','dataLayer','${gtmTrackingId}');
-              (function(){
-                var utmParams = {};
-                var urlParams = new URLSearchParams(window.location.search);
-                ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'gclid', 'fbclid', 'msclkid'].forEach(function(param) {
-                  var value = urlParams.get(param);
-                  if (value) {
-                    utmParams[param] = value;
-                    sessionStorage.setItem(param, value);
-                  }
-                });
-              })();
             `}
           </Script>
         )}

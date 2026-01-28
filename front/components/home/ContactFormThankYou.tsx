@@ -68,8 +68,7 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
 
   // Get tracking params from sessionStorage for dataLayer
   const storedParams = getStoredUTMParams();
-  const gclid =
-    storedParams.gclid ?? sessionStorage.getItem("gclid") ?? undefined;
+  const gclid = storedParams.gclid;
   const utmSource = storedParams.utm_source;
   const utmMedium = storedParams.utm_medium;
   const utmCampaign = storedParams.utm_campaign;
