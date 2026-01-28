@@ -15275,7 +15275,7 @@
       "list_databases": "never_ask",
       "list_schemas": "never_ask",
       "list_tables": "never_ask",
-      "query": "low"
+      "query": "never_ask"
     }
   },
   {
