@@ -1,3 +1,6 @@
+# Import front dependencies from cache mount
+FROM dust-front-deps:latest AS front-deps-cache
+
 # Base dependencies stage (shared by front-nextjs and workers)
 FROM node:20.19.2 AS base-deps
 
@@ -16,7 +19,16 @@ COPY sdks/js/package.json ./sdks/js/
 COPY sparkle/package.json ./sparkle/
 COPY front/package.json ./front/
 
-RUN npm ci -w sdks/js -w sparkle -w front
+# Use the front-deps image as a cache mount to get node_modules
+# This way, changes to other packages won't invalidate this layer
+RUN --mount=type=bind,from=front-deps-cache,source=/app/node_modules,target=/app/node_modules \
+  --mount=type=bind,from=front-deps-cache,source=/app/sdks/js/node_modules,target=/app/sdks/js/node_modules \
+  --mount=type=bind,from=front-deps-cache,source=/app/sparkle/node_modules,target=/app/sparkle/node_modules \
+  --mount=type=bind,from=front-deps-cache,source=/app/front/node_modules,target=/app/front/node_modules \
+  cp -r /app/node_modules . && \
+  cp -r /app/sdks/js/node_modules ./sdks/js/ && \
+  cp -r /app/sparkle/node_modules ./sparkle/ && \
+  cp -r /app/front/node_modules ./front/
 
 # Build SDK
 WORKDIR /app/sdks/js

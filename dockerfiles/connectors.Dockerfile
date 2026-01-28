@@ -11,6 +11,9 @@ RUN chmod +x ./install_poppler_tools.sh
 RUN ./install_poppler_tools.sh
 # end installing poppler tools
 
+# Import connectors dependencies from cache mount
+FROM dust-connectors-deps:latest AS connectors-deps-cache
+
 FROM node:20.19.2 as connectors
 
 ENV LD_LIBRARY_PATH=/usr/local/lib
@@ -24,7 +27,14 @@ COPY package.json package-lock.json ./
 COPY connectors/package.json ./connectors/
 COPY sdks/js/package.json ./sdks/js/
 
-RUN npm ci -w sdks/js -w connectors
+# Use the connectors-deps image as a cache mount to get node_modules
+# This way, changes to other packages won't invalidate this layer
+RUN --mount=type=bind,from=connectors-deps-cache,source=/app/node_modules,target=/app/node_modules \
+  --mount=type=bind,from=connectors-deps-cache,source=/app/sdks/js/node_modules,target=/app/sdks/js/node_modules \
+  --mount=type=bind,from=connectors-deps-cache,source=/app/connectors/node_modules,target=/app/connectors/node_modules \
+  cp -r /app/node_modules . && \
+  cp -r /app/sdks/js/node_modules ./sdks/js/ && \
+  cp -r /app/connectors/node_modules ./connectors/
 
 # Build SDK
 WORKDIR /app/sdks/js

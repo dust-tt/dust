@@ -86,6 +86,40 @@ runs:
     - name: "Setup Depot"
       uses: "depot/setup-action@v1"
 
+    # Build dedicated dependency images for JS packages
+    #
+    # WHY THIS STEP EXISTS:
+    #   In a monorepo, all packages share package-lock.json. Without this step,
+    #   changes to ANY package's dependencies would invalidate Docker cache for
+    #   ALL packages, causing unnecessary rebuilds.
+    #
+    # WHAT IT DOES:
+    #   Runs scripts/build-deps.sh which:
+    #   1. Computes content hash of js dependencies for each package
+    #   2. Checks if image with that hash exists (skip if yes)
+    #   3. Builds new image only if hash changed (dependencies changed)
+    #   4. Tags images as both :<hash> and :latest
+    #
+    # CACHING:
+    #   - If dependencies unchanged, this step completes instantly
+    #   - If dependencies changed, only affected packages rebuild
+    #   - Hash-tagged images persist across CI runs for cache hits
+    #
+    # OUTPUT:
+    #   Creates local Docker images:
+    #   - dust-front-deps:latest and dust-front-deps:<hash>
+    #   - dust-connectors-deps:latest and dust-connectors-deps:<hash>
+    #   - dust-viz-deps:latest and dust-viz-deps:<hash>
+    #
+    #   These images are then used in the service Dockerfiles via bind mounts
+    #   to copy pre-installed node_modules without re-running npm ci.
+    - name: "Build Dependency Images"
+      if: ${{ contains(fromJSON('["front", "front-edge", "front-canary", "connectors", "connectors-qa", "viz"]'), inputs.component) }}
+      shell: bash
+      run: |
+        echo "🔨 Building dependency images..."
+        ./scripts/build-deps.sh
+
     - name: "Build and Push"
       shell: bash
       env:
