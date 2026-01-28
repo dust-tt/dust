@@ -93,7 +93,7 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
         .describe("File comments to leave as part of the review.")
         .optional(),
     },
-    stake: "low",
+    stake: "high",
     displayLabels: {
       running: "Creating pull request review",
       done: "Create pull request review",

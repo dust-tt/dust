@@ -37,7 +37,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("The name of the file to save the results to."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
 });
 

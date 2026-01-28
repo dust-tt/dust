@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "front",
+    "front-spa",
     "sparkle",
     "connectors",
     "cli",
