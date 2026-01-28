@@ -22,7 +22,7 @@ const formSchema = z.object({
         return true;
       }
       const dollars = parseFloat(value);
-      return !isNaN(dollars) && dollars >= 0;
+      return !/[a-zA-Z]/.test(value) && !isNaN(dollars) && dollars >= 0;
     },
     { message: "Cap must be a positive number" }
   ),
