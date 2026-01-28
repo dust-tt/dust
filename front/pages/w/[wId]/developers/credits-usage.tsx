@@ -15,6 +15,7 @@ import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";

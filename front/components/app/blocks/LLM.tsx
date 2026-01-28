@@ -2,12 +2,12 @@ import "@uiw/react-textarea-code-editor/dist.css";
 
 import { Input, Label } from "@dust-tt/sparkle";
 import { ChevronDownIcon, ChevronRightIcon } from "@heroicons/react/20/solid";
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
-import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
 import type {
@@ -18,12 +18,6 @@ import type {
 import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-
-const CodeEditor = lazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
-);
 
 export default function LLM({
   owner,
@@ -442,24 +436,22 @@ export default function LLM({
           <div className="flex flex-initial items-center">prompt:</div>
           <div className="flex w-full font-normal">
             <div className="w-full leading-5">
-              <Suspense fallback={<CodeEditorFallback />}>
-                <CodeEditor
-                  data-color-mode={isDark ? "dark" : "light"}
-                  readOnly={readOnly}
-                  value={block.spec.prompt}
-                  language="jinja2"
-                  placeholder=""
-                  onChange={(e) => handlePromptChange(e.target.value)}
-                  padding={3}
-                  minHeight={80}
-                  className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                  style={{
-                    fontSize: 13,
-                    fontFamily:
-                      "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                  }}
-                />
-              </Suspense>
+              <SuspensedCodeEditor
+                data-color-mode={isDark ? "dark" : "light"}
+                readOnly={readOnly}
+                value={block.spec.prompt}
+                language="jinja2"
+                placeholder=""
+                onChange={(e) => handlePromptChange(e.target.value)}
+                padding={3}
+                minHeight={80}
+                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                style={{
+                  fontSize: 13,
+                  fontFamily:
+                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                }}
+              />
             </div>
           </div>
         </div>

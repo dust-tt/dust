@@ -10,10 +10,10 @@ import {
   PlusIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DatasetDataType } from "@app/lib/datasets";
 import {
@@ -29,12 +29,6 @@ import type {
   DatasetType,
   DatasetViewType,
 } from "@app/types";
-
-const CodeEditor = lazy(() =>
-  import("@uiw/react-textarea-code-editor").then((mod) => ({
-    default: mod.default,
-  }))
-);
 
 const defaultData = [
   {
@@ -753,30 +747,28 @@ export default function DatasetView({
                           )}
                         >
                           {datasetTypes[datasetKeys.indexOf(k)] === "json" ? (
-                            <Suspense fallback={<CodeEditorFallback />}>
-                              <CodeEditor
-                                data-color-mode={
-                                  theme === "dark" ? "dark" : "light"
-                                }
-                                readOnly={readOnly}
-                                value={
-                                  typeof d[k] === "string"
-                                    ? d[k]
-                                    : JSON.stringify(d[k], null, 2)
-                                }
-                                language="json"
-                                onChange={(e) => {
-                                  handleValueChange(i, k, e.target.value);
-                                }}
-                                padding={4}
-                                className="rounded-lg bg-muted-background dark:bg-muted-background-night"
-                                style={{
-                                  fontSize: 13,
-                                  fontFamily:
-                                    "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
-                                }}
-                              />
-                            </Suspense>
+                            <SuspensedCodeEditor
+                              data-color-mode={
+                                theme === "dark" ? "dark" : "light"
+                              }
+                              readOnly={readOnly}
+                              value={
+                                typeof d[k] === "string"
+                                  ? d[k]
+                                  : JSON.stringify(d[k], null, 2)
+                              }
+                              language="json"
+                              onChange={(e) => {
+                                handleValueChange(i, k, e.target.value);
+                              }}
+                              padding={4}
+                              className="rounded-lg bg-muted-background dark:bg-muted-background-night"
+                              style={{
+                                fontSize: 13,
+                                fontFamily:
+                                  "ui-monospace, SFMono-Regular, SF Mono, Consolas, Liberation Mono, Menlo, monospace",
+                              }}
+                            />
                           ) : (
                             <TextareaAutosize
                               minRows={1}
