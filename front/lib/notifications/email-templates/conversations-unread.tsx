@@ -31,24 +31,31 @@ const ConversationsUnreadEmailTemplate = ({
 }: ConversationsUnreadEmailTemplateProps) => {
   return (
     <EmailLayout workspace={workspace}>
-      <h3>Hi {name},</h3>
+      <p>Hi {name},</p>
       <p>You have unread message(s) in the following conversations:</p>
-      <ul>
+      <div>
         {conversations.map((conversation) => (
-          <li key={conversation.id}>
-            <a
-              href={
-                process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
-                getConversationRoute(workspace.id, conversation.id)
-              }
-              target="_blank"
-            >
-              {conversation.title}
-            </a>
+          <div key={conversation.id}>
+            <h3>
+              <a
+                href={
+                  process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
+                  getConversationRoute(workspace.id, conversation.id)
+                }
+                target="_blank"
+                style={{
+                  textDecoration: "underline",
+                  color: "inherit",
+                  fontWeight: "bold",
+                }}
+              >
+                {conversation.title}
+              </a>
+            </h3>
             {conversation.summary && <div>{conversation.summary}</div>}
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </EmailLayout>
   );
 };

@@ -47,7 +47,12 @@ export type DustErrorCode =
   // Triggers errors
   | "webhook_source_not_found"
   // Space errors
-  | "space_already_exists";
+  | "space_already_exists"
+  // Conversation errors
+  | "conversation_not_found"
+  | "no_unread_messages_found"
+  | "no_whitelisted_model_found"
+  | "generation_failed";
 
 export class DustError<T extends DustErrorCode = DustErrorCode> extends Error {
   constructor(
