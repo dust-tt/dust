@@ -53,16 +53,23 @@ function stubModulesPlugin(): Plugin {
   };
 }
 
-// Plugin to serve the correct HTML file in dev mode
+// Plugin to serve the correct HTML file in dev mode (SPA fallback)
 function serveHtmlPlugin(htmlFile: string): Plugin {
   return {
     name: "serve-html",
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        // Rewrite root requests to the correct HTML file
-        if (req.url === "/" || req.url === "/index.html") {
-          req.url = `/${htmlFile}`;
+        // Skip requests for actual files (assets, HMR, source files, etc.)
+        if (
+          req.url?.startsWith("/@") ||
+          req.url?.startsWith("/node_modules") ||
+          req.url?.startsWith("/src") ||
+          req.url?.match(/\.\w+(\?|$)/)
+        ) {
+          return next();
         }
+        // Rewrite all other requests to the HTML file (SPA fallback)
+        req.url = `/${htmlFile}`;
         next();
       });
     },
