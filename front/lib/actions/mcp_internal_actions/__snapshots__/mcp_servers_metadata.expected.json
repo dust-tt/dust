@@ -9254,7 +9254,9 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "jit_all_optionals_and_defaults": "high"
+    }
   },
   {
     "name": "microsoft_drive",

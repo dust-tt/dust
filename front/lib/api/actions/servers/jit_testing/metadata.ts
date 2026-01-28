@@ -66,7 +66,7 @@ export const JIT_TESTING_TOOLS_METADATA = createToolsRecord({
 
       note: z.string().describe("Optional note for debugging").optional(),
     },
-    stake: "never_ask",
+    stake: "high",
   },
 });
 
