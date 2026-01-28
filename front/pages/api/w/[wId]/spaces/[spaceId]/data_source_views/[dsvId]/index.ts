@@ -16,7 +16,11 @@ import type {
   DataSourceViewType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { assertNever, ConnectorsAPI, PatchDataSourceViewSchema } from "@app/types";
+import {
+  assertNever,
+  ConnectorsAPI,
+  PatchDataSourceViewSchema,
+} from "@app/types";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
@@ -135,7 +139,8 @@ async function handler(
           config.getConnectorsAPIConfig(),
           logger
         );
-        const connectorRes = await connectorsAPI.getConnector(updatedConnectorId);
+        const connectorRes =
+          await connectorsAPI.getConnector(updatedConnectorId);
         if (connectorRes.isOk()) {
           connector = {
             ...connectorRes.value,

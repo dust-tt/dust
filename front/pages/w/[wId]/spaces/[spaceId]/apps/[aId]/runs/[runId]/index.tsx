@@ -1,90 +1,58 @@
-import { Button, CheckCircleIcon, ClockIcon } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, CheckCircleIcon, ClockIcon, Spinner } from "@dust-tt/sparkle";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useContext, useState } from "react";
 
 import CopyRun from "@app/components/app/CopyRun";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { cleanSpecificationFromCore, getRun } from "@app/lib/api/run";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import { cleanSpecificationFromCore } from "@app/lib/api/run";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { AppResource } from "@app/lib/resources/app_resource";
-import type {
-  AppType,
-  RunType,
-  SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
+import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isBuilder: boolean;
-  isAdmin: boolean;
-  app: AppType;
-  run: RunType;
-  spec: SpecificationType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
+function AppRun() {
+  const router = useRouter();
+  const { spaceId, aId, runId: runIdQuery } = router.query;
+  const owner = useWorkspace();
+  const { subscription, isAdmin, isBuilder } = useAuth();
 
-  const isBuilder = auth.isBuilder();
-  const isAdmin = auth.isAdmin();
+  const runId = isString(runIdQuery) ? runIdQuery : "";
 
-  const app = await AppResource.fetchById(auth, context.params?.aId as string);
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
+  const { app, isAppLoading } = useApp({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : "",
+    appId: isString(aId) ? aId : "",
+    disabled: !isString(spaceId) || !isString(aId),
+  });
 
-  const r = await getRun(auth, app.toJSON(), context.params?.runId as string);
-  if (!r) {
-    return {
-      notFound: true,
-    };
-  }
-  const { run, spec } = r;
+  const { run, spec, isRunLoading } = useRunWithSpec({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : "",
+    appId: isString(aId) ? aId : "",
+    runId,
+    disabled: !isString(spaceId) || !isString(aId) || !runId,
+  });
 
-  return {
-    props: {
-      owner,
-      subscription,
-      isBuilder,
-      isAdmin,
-      app: app.toJSON(),
-      spec,
-      run,
-    },
-  };
-});
-
-export default function AppRun({
-  owner,
-  subscription,
-  isBuilder,
-  isAdmin,
-  app,
-  spec,
-  run,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [savedRunId, setSavedRunId] = useState<string | null | undefined>(
-    app.savedRun
-  );
+  const [savedRunId, setSavedRunId] = useState<string | null | undefined>(null);
   const [isLoading, setIsLoading] = useState(false);
   const confirm = useContext(ConfirmContext);
 
+  // Initialize savedRunId when app loads
+  if (app && savedRunId === null) {
+    setSavedRunId(app.savedRun);
+  }
+
   const restore = async () => {
-    if (!isBuilder) {
+    if (!isBuilder || !app || !run || !spec) {
       return;
     }
 
@@ -123,6 +91,16 @@ export default function AppRun({
     setIsLoading(false);
     setSavedRunId(run.run_id);
   };
+
+  const pageIsLoading = isAppLoading || isRunLoading;
+
+  if (pageIsLoading || !app || !run || !spec) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <DustAppPageLayout
@@ -217,6 +195,15 @@ export default function AppRun({
   );
 }
 
-AppRun.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = AppRun as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

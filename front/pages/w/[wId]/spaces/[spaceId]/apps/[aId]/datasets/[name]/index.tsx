@@ -1,114 +1,80 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, Spinner, Tabs, TabsList, TabsTrigger } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { subNavigationApp } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getDatasetHash, getDatasetSchema } from "@app/lib/api/datasets";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { AppResource } from "@app/lib/resources/app_resource";
 import { dustAppsListUrl } from "@app/lib/spaces";
-import type { WorkspaceType } from "@app/types";
-import type { AppType } from "@app/types";
+import { useApp } from "@app/lib/swr/apps";
+import { useDataset } from "@app/lib/swr/datasets";
 import type { DatasetSchema, DatasetType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  app: AppType;
-  dataset: DatasetType;
-  schema: DatasetSchema | null;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const { aId } = context.params;
-  if (typeof aId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const app = await AppResource.fetchById(auth, aId);
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const dataset = await getDatasetHash(
-    auth,
-    app,
-    context.params?.name as string,
-    "latest"
-  );
-
-  if (!dataset) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const schema = await getDatasetSchema(auth, app, dataset.name);
-
-  return {
-    props: {
-      owner,
-      subscription,
-      readOnly,
-      app: app.toJSON(),
-      dataset,
-      schema,
-    },
-  };
-});
-
-export default function ViewDatasetView({
-  owner,
-  subscription,
-  readOnly,
-  app,
-  dataset,
-  schema,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function ViewDatasetView() {
   const router = useRouter();
+  const { spaceId, aId, name } = router.query;
+  const owner = useWorkspace();
+  const { subscription, isBuilder } = useAuth();
+  const readOnly = !isBuilder;
+
+  const { app, isAppLoading } = useApp({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : "",
+    appId: isString(aId) ? aId : "",
+    disabled: !isString(spaceId) || !isString(aId),
+  });
+
+  const { dataset, isDatasetLoading } = useDataset(
+    owner,
+    app!,
+    isString(name) ? name : undefined,
+    true // showData
+  );
 
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
 
   const [editorDirty, setEditorDirty] = useState(false);
   const [isFinishedEditing, setIsFinishedEditing] = useState(false);
-  const [updatedDataset, setUpdatedDataset] = useState(dataset);
-  const [updatedSchema, setUpdatedSchema] = useState<DatasetSchema | null>(
-    schema
+  const [updatedDataset, setUpdatedDataset] = useState<DatasetType | null>(
+    null
   );
+  const [updatedSchema, setUpdatedSchema] = useState<DatasetSchema | null>(
+    null
+  );
+  const [initialized, setInitialized] = useState(false);
 
   useRegisterUnloadHandlers(editorDirty);
+
+  // Initialize state when dataset loads
+  useEffect(() => {
+    if (dataset && !initialized) {
+      setUpdatedDataset(dataset);
+      setUpdatedSchema(dataset.schema ?? null);
+      setInitialized(true);
+    }
+  }, [dataset, initialized]);
 
   // This is a little wonky, but in order to redirect to the dataset's main page and not pop up the
   // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
   // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
   // this should happen.
   useEffect(() => {
-    if (isFinishedEditing) {
+    if (isFinishedEditing && app) {
       void router.push(
         `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`
       );
@@ -122,7 +88,7 @@ export default function ViewDatasetView({
     currentDatasetInEditor: DatasetType,
     schema: DatasetSchema
   ) => {
-    if (readOnly) {
+    if (readOnly || !dataset) {
       return;
     }
     setDisabled(!valid);
@@ -144,6 +110,10 @@ export default function ViewDatasetView({
   };
 
   const handleSubmit = async () => {
+    if (!app || !dataset) {
+      return;
+    }
+
     setLoading(true);
     const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${dataset.name}`,
@@ -162,6 +132,16 @@ export default function ViewDatasetView({
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };
+
+  const isLoading = isAppLoading || isDatasetLoading;
+
+  if (isLoading || !app || !dataset || !updatedDataset) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <AppCenteredLayout
@@ -205,7 +185,7 @@ export default function ViewDatasetView({
                   readOnly={readOnly}
                   datasets={[] as DatasetType[]}
                   dataset={updatedDataset}
-                  schema={schema}
+                  schema={dataset.schema ?? null}
                   onUpdate={onUpdate}
                   nameDisabled={true}
                   viewType="full"
@@ -232,6 +212,15 @@ export default function ViewDatasetView({
   );
 }
 
-ViewDatasetView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = ViewDatasetView as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
