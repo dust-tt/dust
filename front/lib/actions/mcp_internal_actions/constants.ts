@@ -14,8 +14,10 @@ import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/a
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_ROUTER_SERVER,
+  AGENT_ROUTER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
@@ -61,6 +63,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -910,27 +913,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_ticket: "never_ask",
-      search_tickets: "never_ask",
-      draft_reply: "low", // Low because it's a draft.
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "zendesk",
-      version: "1.0.0",
-      description:
-        "Access and manage support tickets, help center, and customer interactions.",
-      authorization: {
-        provider: "zendesk" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "ZendeskLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: ZENDESK_SERVER,
   },
   slab: {
     id: 43,

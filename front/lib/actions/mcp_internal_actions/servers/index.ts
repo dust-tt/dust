@@ -20,7 +20,6 @@ import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/ser
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
-import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -71,6 +70,7 @@ import { default as statuspageServer } from "@app/lib/api/actions/servers/status
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
+import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
