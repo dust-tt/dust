@@ -11,8 +11,8 @@ import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
-import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
-import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
+import { default as outlookServer } from "@app/lib/api/actions/servers/outlook";
+import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
