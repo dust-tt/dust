@@ -11,14 +11,7 @@ export const getServerSideProps = pokeGetServerSideProps;
 const Page = SkillDetailsPage as PageWithLayout;
 
 Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
-  return (
-    <PokeLayout
-      title={`${pageProps.workspace?.name ?? "Workspace"} - Skill`}
-      authContext={pageProps}
-    >
-      {page}
-    </PokeLayout>
-  );
+  return <PokeLayout authContext={pageProps}>{page}</PokeLayout>;
 };
 
 export default Page;

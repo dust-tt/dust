@@ -11,6 +11,7 @@ import type { ChangeEvent } from "react";
 import React, { useState } from "react";
 
 import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeTable,
   PokeTableBody,
@@ -104,6 +105,8 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
 );
 
 export function DashboardPage() {
+  useSetPokePageTitle("Home");
+
   const {
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,

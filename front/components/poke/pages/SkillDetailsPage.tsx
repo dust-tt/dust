@@ -1,6 +1,7 @@
 import { LinkWrapper, Spinner, TextArea } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTable";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -9,6 +10,8 @@ import { usePokeSkillDetails } from "@app/poke/swr/skill_details";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Skill`);
+
   const sId = useRequiredPathParam("sId");
   const { isDark } = useTheme();
 

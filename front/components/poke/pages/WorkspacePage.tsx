@@ -20,6 +20,7 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeAlert,
   PokeAlertDescription,
@@ -44,6 +45,8 @@ import { isString } from "@app/types";
 
 export function WorkspacePage() {
   const owner = useWorkspace();
+  useSetPokePageTitle(owner.name ?? "Workspace");
+
   const router = useAppRouter();
 
   const {
