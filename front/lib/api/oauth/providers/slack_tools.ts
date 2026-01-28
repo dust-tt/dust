@@ -7,6 +7,7 @@ import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/bas
 import {
   finalizeUriForProvider,
   getStringFromQuery,
+  missingWorkspaceConnectionError,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -123,12 +124,7 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "A workspace admin must first connect the Slack tool at the workspace level before users can connect their personal Slack accounts. " +
-              "Please contact your workspace administrator to set up the Slack workspace connection.",
-          });
+          return new Err(missingWorkspaceConnectionError("Slack"));
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);

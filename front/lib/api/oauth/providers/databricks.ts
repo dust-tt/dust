@@ -10,6 +10,7 @@ import type {
 import {
   finalizeUriForProvider,
   getStringFromQuery,
+  missingWorkspaceConnectionError,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -183,11 +184,7 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "A workspace admin must first connect this tool at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection.",
-          });
+          return new Err(missingWorkspaceConnectionError());
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
