@@ -21,6 +21,7 @@ import {
   PersonalAuthCredentialOverrides,
 } from "@app/components/oauth/PersonalAuthCredentialOverrides";
 import { getIcon } from "@app/components/resources/resources_icons";
+import { useSendNotification } from "@app/hooks/useNotification";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import {
@@ -109,6 +110,7 @@ export function PersonalConnectionRequiredDialog({
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const sendNotification = useSendNotification();
   const [isConnecting, setIsConnecting] = useState(false);
   const [overriddenCredentialsMap, setCredentialOverridesMap] = useState<
     Record<string, Record<string, string>>
@@ -232,7 +234,7 @@ export function PersonalConnectionRequiredDialog({
                                     ? "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
                                     : mcpServerView.server.authorization.scope;
 
-                                await createPersonalConnection({
+                                const result = await createPersonalConnection({
                                   mcpServerId: mcpServerView.server.sId,
                                   mcpServerDisplayName:
                                     getMcpServerViewDisplayName(mcpServerView),
@@ -245,6 +247,13 @@ export function PersonalConnectionRequiredDialog({
                                       ? serverOverrides
                                       : undefined,
                                 });
+                                if (!result.success && result.error) {
+                                  sendNotification({
+                                    type: "error",
+                                    title: "Failed to connect provider",
+                                    description: result.error,
+                                  });
+                                }
                               } finally {
                                 setIsConnecting(false);
                               }
