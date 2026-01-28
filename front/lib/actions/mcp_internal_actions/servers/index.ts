@@ -5,7 +5,6 @@ import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/co
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
-import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
@@ -41,6 +40,7 @@ import { default as httpClientServer } from "@app/lib/api/actions/servers/http_c
 import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
+import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
