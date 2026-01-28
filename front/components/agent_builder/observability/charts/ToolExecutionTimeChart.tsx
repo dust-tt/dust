@@ -22,6 +22,7 @@ import { useToolLatencyData } from "@app/components/agent_builder/observability/
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
+import { RoundedBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import type { ToolLatencyDatum } from "@app/components/agent_builder/observability/types";
 import type { ToolLatencyView } from "@app/lib/api/assistant/observability/tool_latency";
@@ -287,22 +288,25 @@ export function ToolExecutionTimeChart({
           }}
         />
         <Bar
-          dataKey="avgLatencyMs"
-          name="Average"
-          fill="currentColor"
-          className={TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs}
-        />
-        <Bar
           dataKey="p50LatencyMs"
           name="P50"
           fill="currentColor"
           className={TOOL_EXECUTION_TIME_PALETTE.p50LatencyMs}
+          shape={<RoundedBarShape />}
+        />
+        <Bar
+          dataKey="avgLatencyMs"
+          name="Average"
+          fill="currentColor"
+          className={TOOL_EXECUTION_TIME_PALETTE.avgLatencyMs}
+          shape={<RoundedBarShape />}
         />
         <Bar
           dataKey="p95LatencyMs"
           name="P95"
           fill="currentColor"
           className={TOOL_EXECUTION_TIME_PALETTE.p95LatencyMs}
+          shape={<RoundedBarShape />}
         />
       </BarChart>
     </ChartContainer>
