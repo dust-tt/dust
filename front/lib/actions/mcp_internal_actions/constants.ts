@@ -14,8 +14,10 @@ import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/a
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_ROUTER_SERVER,
+  AGENT_ROUTER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
