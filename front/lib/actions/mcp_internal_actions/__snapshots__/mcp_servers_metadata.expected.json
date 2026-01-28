@@ -14362,7 +14362,7 @@
     "toolsStakes": {
       "create_schedule": "high",
       "disable_schedule": "never_ask",
-      "list_schedules": "never_ask",
+      "list_schedules": "never_ask"
     }
   },
   {
