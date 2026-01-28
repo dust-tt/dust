@@ -13971,7 +13971,9 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "run_agent": "never_ask"
+    }
   },
   {
     "name": "run_dust_app",
