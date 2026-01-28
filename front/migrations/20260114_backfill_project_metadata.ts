@@ -9,6 +9,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 /**
  * This migration creates project_metadata records for existing project spaces
@@ -106,7 +107,7 @@ makeScript(
     logger.info("Starting project metadata backfill");
 
     if (wId) {
-      const ws = await WorkspaceModel.findOne({ where: { sId: wId } });
+      const ws = await WorkspaceResource.fetchById(wId);
       if (!ws) {
         throw new Error(`Workspace not found: ${wId}`);
       }

@@ -3,8 +3,8 @@ import * as _ from "lodash";
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -35,11 +35,7 @@ const backfillCustomerIo = async (execute: boolean) => {
       .map((m) => m.workspaceId);
     const workspaceById = _.keyBy(
       workspaceIds.length
-        ? await WorkspaceModel.findAll({
-            where: {
-              id: workspaceIds,
-            },
-          })
+        ? await WorkspaceResource.fetchByModelIds(workspaceIds)
         : [],
       (ws) => ws.id.toString()
     );

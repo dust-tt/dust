@@ -171,8 +171,12 @@ export const ToolsList = memo(
                       <b>High stake</b> tools need explicit user approval.
                     </li>
                     <li>
-                      Users can disable confirmations for <b>low stake</b>{" "}
-                      tools.
+                      <b>Medium stake</b> tools allow users to save per-agent
+                      confirmations.
+                    </li>
+                    <li>
+                      Users can completely disable confirmations for{" "}
+                      <b>low stake</b> tools.
                     </li>
                     <li>
                       <b>Never ask</b> tools run automatically.

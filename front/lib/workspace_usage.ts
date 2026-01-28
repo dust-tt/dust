@@ -12,6 +12,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -45,8 +46,6 @@ interface MessageUsageQueryResult {
   created_at: Date;
   assistant_id: string;
   assistant_name: string;
-  workspace_id: number;
-  workspace_name: string;
   conversation_id: number;
   parent_message_id: number | null;
   user_message_id: number | null;
@@ -222,9 +221,7 @@ export async function getMessageUsageData(
                WHEN ac."scope" = 'hidden' THEN 'unpublished'
                ELSE 'unknown'
                END                                                       AS "assistant_settings",
-             w."id"                                                      AS "workspace_id",
-             w."name"                                                    AS "workspace_name",
-             c."id"                                                      AS "conversation_id",
+             m."conversationId"                                          AS "conversation_id",
              m."parentId"                                                AS "parent_message_id",
              um."id"                                                     AS "user_message_id",
              um."userId"                                                 AS "user_id",
@@ -233,10 +230,6 @@ export async function getMessageUsageData(
       FROM "agent_messages" am
              JOIN
            "messages" m ON am."id" = m."agentMessageId"
-             JOIN
-           "conversations" c ON m."conversationId" = c."id"
-             JOIN
-           "workspaces" w ON c."workspaceId" = w."id"
              LEFT JOIN
            "agent_configurations" ac
            ON am."agentConfigurationId" = ac."sId" AND am."agentConfigurationVersion" = ac."version"
@@ -245,7 +238,7 @@ export async function getMessageUsageData(
              LEFT JOIN
            "user_messages" um on m2."userMessageId" = um."id"
       WHERE am."status" = 'succeeded'
-        AND w."id" = :wId
+        AND am."workspaceId" = :wId
         AND am."createdAt" BETWEEN :startDate AND :endDate
     `,
     {
@@ -397,6 +390,10 @@ export async function getUserUsageData(
             where: {
               userId: {
                 [Op.not]: null,
+              },
+              // Filter out "fake" user messages created by the system (new system that replaced the "origin" field for detection of agent messages)
+              agenticMessageType: {
+                [Op.is]: null,
               },
             },
           },
@@ -829,14 +826,10 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
-  // INFO: keep accessing the model for now to avoid circular deps warning
-  const owner = auth.getNonNullableWorkspace();
-  const hasRecentConversation = await ConversationModel.findAll({
-    where: {
-      workspaceId: owner.id,
-      updatedAt: { [Op.gte]: sevenDaysAgo },
-    },
-  });
+  const hasRecentConversation =
+    (await ConversationResource.countForWorkspace(auth, {
+      updatedSince: sevenDaysAgo.getTime(),
+    })) > 0;
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;

@@ -13,6 +13,9 @@ import {
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
+// Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
+const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
+
 // Suggestion tool schemas
 
 const InstructionsSuggestionSchema = z.object({
@@ -65,6 +68,31 @@ const ModelSuggestionSchema = z.object({
 });
 
 export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
+  get_available_knowledge: {
+    description:
+      "Get the list of available knowledge sources that can be added to an agent. " +
+      "Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. " +
+      "Only includes sources accessible to the current user.",
+    schema: {
+      spaceId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional space ID to filter results to a specific space. If not provided, returns knowledge from all accessible spaces."
+        ),
+      category: z
+        .enum(KNOWLEDGE_CATEGORIES)
+        .optional()
+        .describe(
+          "Optional category to filter results. Options: 'managed' (connected data sources like Notion, Slack), 'folder' (custom folders), 'website' (crawled websites). If not provided, returns all categories."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available knowledge",
+      done: "List available knowledge",
+    },
+  },
   get_available_models: {
     description:
       "Get the list of available models. Can optionally filter by provider.",
@@ -77,18 +105,30 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available models",
+      done: "List available models",
+    },
   },
   get_available_skills: {
     description:
       "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available skills",
+      done: "List available skills",
+    },
   },
   get_available_tools: {
     description:
       "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing available tools",
+      done: "List available tools",
+    },
   },
   get_agent_feedback: {
     description: "Get user feedback for the agent.",
@@ -107,6 +147,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent feedback",
+      done: "List agent feedback",
+    },
   },
   get_agent_insights: {
     description:
@@ -120,6 +164,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Number of days to include in the analysis (default: 30)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent insights",
+      done: "List agent insights",
+    },
   },
   // Suggestion tools
   suggest_prompt_editions: {
@@ -135,6 +183,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestions"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting prompt editions",
+      done: "Suggest prompt editions",
+    },
   },
   suggest_tools: {
     description:
@@ -149,6 +201,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestion"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting tools",
+      done: "Suggest tools",
+    },
   },
   suggest_skills: {
     description:
@@ -163,6 +219,10 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestion"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skills",
+      done: "Suggest skills",
+    },
   },
   suggest_model: {
     description: "Suggest changing the agent's LLM model configuration.",
@@ -176,17 +236,21 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe("Analysis or reasoning for the suggestion"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting model",
+      done: "Suggest model",
+    },
   },
   list_suggestions: {
     description:
       "List existing suggestions for the agent's configuration changes.",
     schema: {
-      status: z
-        .enum(AGENT_SUGGESTION_STATES)
+      states: z
+        .array(z.enum(AGENT_SUGGESTION_STATES))
         .optional()
-        .default("pending")
+        .default(["pending"])
         .describe(
-          `Filter by suggestion status (default: 'pending'). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
+          `Filter by suggestion states (default: ['pending']). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
         ),
       kind: z
         .enum(AGENT_SUGGESTION_KINDS)
@@ -194,8 +258,45 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .describe(
           `Filter by suggestion type. Options: ${AGENT_SUGGESTION_KINDS.join(", ")}. If not provided, returns all types.`
         ),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe(
+          "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
+        ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing suggestions",
+      done: "List suggestions",
+    },
+  },
+  update_suggestions_state: {
+    description:
+      "Update the state of one or more suggestions. Use this to reject or mark suggestions as outdated.",
+    schema: {
+      suggestions: z
+        .array(
+          z.object({
+            suggestionId: z
+              .string()
+              .describe("The sId of the suggestion to update"),
+            state: z
+              .enum(["rejected", "outdated"])
+              .describe(
+                "The new state for the suggestion: 'rejected' or 'outdated'."
+              ),
+          })
+        )
+        .describe("Array of suggestions to update with their new states"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Updating suggestion state",
+      done: "Update suggestion state",
+    },
   },
 });
 
@@ -214,6 +315,7 @@ export const AGENT_COPILOT_CONTEXT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_COPILOT_CONTEXT_TOOLS_METADATA).map((t) => [

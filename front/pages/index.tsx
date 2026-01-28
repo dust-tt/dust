@@ -10,7 +10,6 @@ import {
 } from "@app/lib/iam/session";
 import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
 import { UserResource } from "@app/lib/resources/user_resource";
-import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { Landing } from "@app/pages/home";
 import { isString } from "@app/types/shared/utils/general";
@@ -113,15 +112,11 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
     postLoginCallbackUrl += `?inviteToken=${inviteToken}`;
   }
 
-  // Extract UTM parameters from query string
-  const utmParams = extractUTMParams(context.query);
-
   return {
     props: {
       postLoginReturnToUrl: postLoginCallbackUrl,
       shape: 0,
       gtmTrackingId: process.env.NEXT_PUBLIC_GTM_TRACKING_ID ?? null,
-      utmParams,
     },
   };
 });

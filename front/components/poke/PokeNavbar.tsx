@@ -42,6 +42,8 @@ function getPokeItemChipColor(
       return "rose";
     case "Connector":
       return "green";
+    case "Frame":
+      return "highlight";
     default:
       return "primary";
   }
@@ -164,6 +166,12 @@ export function PokeSearchCommand() {
                 <div>
                   <span className="font-medium">Connector ID:</span>{" "}
                   <span className="font-mono">78901</span>
+                </div>
+                <div>
+                  <span className="font-medium">Frame token:</span>{" "}
+                  <span className="font-mono">
+                    a1b2c3d4-e5f6-7890-abcd-ef1234567890
+                  </span>
                 </div>
               </div>
             </div>

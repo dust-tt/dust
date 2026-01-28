@@ -114,7 +114,7 @@ export const AllColors: Story = {
   render: () => (
     <div className="s-flex s-flex-col s-gap-4">
       <div className="s-flex s-flex-wrap s-gap-2">
-        <Chip size="mini" color="primary" label="Primary" />
+        <Chip size="xs" color="primary" label="Primary" />
         <Chip size="xs" color="primary" label="Primary" />
         <Chip size="sm" color="primary" label="Primary" />
       </div>

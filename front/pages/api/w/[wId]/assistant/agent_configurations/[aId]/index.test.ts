@@ -5,7 +5,6 @@ import { createPendingAgentConfiguration } from "@app/lib/api/assistant/configur
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
@@ -39,9 +38,6 @@ async function setupTest(method: RequestMethod = "PATCH") {
 describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId] - Skills with restricted spaces", () => {
   it("should include skill's requestedSpaceIds when updating agent with skill", async () => {
     const { req, res, workspace, user, authenticator } = await setupTest();
-
-    // Enable skills feature flag
-    await FeatureFlagFactory.basic("skills", workspace);
 
     const agent =
       await AgentConfigurationFactory.createTestAgent(authenticator);

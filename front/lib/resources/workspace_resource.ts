@@ -81,7 +81,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchByIds(wIds: string[]): Promise<WorkspaceResource[]> {
-    const workspaces = await WorkspaceModel.findAll({
+    const workspaces = await this.model.findAll({
       where: {
         sId: {
           [Op.in]: wIds,
@@ -89,6 +89,18 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       },
     });
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
+  }
+
+  static async fetchModelIdsByIds(wIds: string[]): Promise<ModelId[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        sId: {
+          [Op.in]: wIds,
+        },
+      },
+    });
+    return workspaces.map((w) => w.id);
   }
 
   static async fetchByDomain(
@@ -120,9 +132,31 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async listAll(): Promise<WorkspaceResource[]> {
-    const workspaces = await this.model.findAll();
+  static async listAll(order?: "ASC" | "DESC"): Promise<WorkspaceResource[]> {
+    const workspaces = await this.model.findAll({
+      ...(order && { order: [["id", order]] }),
+    });
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
+  }
+
+  static async listAllModelIds(order?: "ASC" | "DESC"): Promise<ModelId[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id"],
+      ...(order && { order: [["id", order]] }),
+    });
+    return workspaces.map((w) => w.id);
+  }
+
+  static async listModelIdsWithConversationsRetention(): Promise<ModelId[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        conversationsRetentionDays: {
+          [Op.not]: null,
+        },
+      },
+    });
+    return workspaces.map((w) => w.id);
   }
 
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {

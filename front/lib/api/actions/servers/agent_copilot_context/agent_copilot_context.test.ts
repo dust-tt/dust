@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
@@ -42,6 +44,144 @@ function createTestExtra(auth: Authenticator, agentLoopContext?: unknown) {
 }
 
 describe("agent_copilot_context tools", () => {
+  describe("get_available_knowledge", () => {
+    it("returns knowledge organized by spaces and categories", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a folder data source view in the global space.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.count.spaces).toBeGreaterThanOrEqual(1);
+          expect(parsed.count.dataSources).toBeGreaterThanOrEqual(1);
+          expect(parsed.spaces).toBeDefined();
+          expect(Array.isArray(parsed.spaces)).toBe(true);
+
+          // Find the global space.
+          const foundSpace = parsed.spaces.find(
+            (s: { sId: string }) => s.sId === globalSpace.sId
+          );
+          expect(foundSpace).toBeDefined();
+          expect(foundSpace.categories).toBeDefined();
+          expect(Array.isArray(foundSpace.categories)).toBe(true);
+        }
+      }
+    });
+
+    it("filters by spaceId when provided", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create another space.
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      // Create folder data sources in both spaces.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+      await DataSourceViewFactory.folder(workspace, regularSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+
+      // Filter to global space only.
+      const result = await tool.handler(
+        { spaceId: globalSpace.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count.spaces).toBe(1);
+          expect(parsed.spaces[0].sId).toBe(globalSpace.sId);
+        }
+      }
+    });
+
+    it("filters by category when provided", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a folder data source.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+
+      // Filter to folder category only.
+      const result = await tool.handler(
+        { category: "folder" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // All categories should be "folder".
+          for (const space of parsed.spaces) {
+            for (const cat of space.categories) {
+              expect(cat.category).toBe("folder");
+            }
+          }
+        }
+      }
+    });
+
+    it("returns error for invalid spaceId", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler(
+        { spaceId: "non-existent-space-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("does not return knowledge from spaces the user cannot access", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+
+      // Create a restricted space (user won't be a member).
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create a folder in the restricted space.
+      await DataSourceViewFactory.folder(workspace, restrictedSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // The restricted space should not be in the results.
+          const foundRestrictedSpace = parsed.spaces.find(
+            (s: { sId: string }) => s.sId === restrictedSpace.sId
+          );
+          expect(foundRestrictedSpace).toBeUndefined();
+        }
+      }
+    });
+  });
+
   describe("get_available_models", () => {
     it("filters out models from non-whitelisted providers", async () => {
       // Create workspace with only anthropic provider whitelisted.
@@ -653,7 +793,7 @@ describe("agent_copilot_context tools", () => {
       }
     });
 
-    it("lists suggestions with specific status and kind filters", async () => {
+    it("lists suggestions with specific states and kind filters", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       const { getAgentConfigurationIdFromContext } =
@@ -665,7 +805,7 @@ describe("agent_copilot_context tools", () => {
       const tool = getToolByName("list_suggestions");
       const result = await tool.handler(
         {
-          status: "approved",
+          states: ["pending", "rejected"],
           kind: "tools",
         },
         createTestExtra(authenticator)
@@ -679,6 +819,109 @@ describe("agent_copilot_context tools", () => {
           const parsed = JSON.parse(content.text);
           expect(parsed.count).toBeDefined();
           expect(parsed.suggestions).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("update_suggestions_state", () => {
+    it("returns error in results when suggestion is not found", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        {
+          suggestions: [{ suggestionId: "non-existent-id", state: "rejected" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(1);
+          expect(parsed.results[0].success).toBe(false);
+          expect(parsed.results[0].error).toContain("Suggestion not found");
+        }
+      }
+    });
+
+    it.each([{ state: "rejected" as const }, { state: "outdated" as const }])(
+      "updates suggestion state to $state and returns all fields",
+      async ({ state }) => {
+        const { authenticator } = await createResourceTest({ role: "admin" });
+
+        // Create a real agent configuration and suggestion.
+        const agentConfiguration =
+          await AgentConfigurationFactory.createTestAgent(authenticator);
+        const suggestion = await AgentSuggestionFactory.createSkills(
+          authenticator,
+          agentConfiguration,
+          { state: "pending", analysis: "Test analysis for skills" }
+        );
+
+        const tool = getToolByName("update_suggestions_state");
+        const result = await tool.handler(
+          { suggestions: [{ suggestionId: suggestion.sId, state }] },
+          createTestExtra(authenticator)
+        );
+
+        expect(result.isOk()).toBe(true);
+        if (result.isOk()) {
+          const content = result.value[0];
+          expect(content.type).toBe("text");
+          if (content.type === "text") {
+            const parsed = JSON.parse(content.text);
+            expect(parsed.results).toHaveLength(1);
+            expect(parsed.results[0].success).toBe(true);
+          }
+        }
+      }
+    );
+
+    it("updates multiple suggestions to outdated in a single call", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration and two suggestions.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { state: "pending" }
+      );
+      const suggestion2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration,
+        { state: "pending" }
+      );
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            { suggestionId: suggestion1.sId, state: "outdated" },
+            { suggestionId: suggestion2.sId, state: "outdated" },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(2);
+
+          expect(parsed.results[0].success).toBe(true);
+          expect(parsed.results[0].suggestionId).toBe(suggestion1.sId);
+          expect(parsed.results[1].success).toBe(true);
+          expect(parsed.results[1].suggestionId).toBe(suggestion2.sId);
         }
       }
     });

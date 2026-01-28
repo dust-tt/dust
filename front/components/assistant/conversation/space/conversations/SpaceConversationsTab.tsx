@@ -9,11 +9,12 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import moment from "moment";
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
 import { InputBar } from "@app/components/assistant/conversation/input_bar/InputBar";
 import { SpaceConversationListItem } from "@app/components/assistant/conversation/space/conversations/SpaceConversationListItem";
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
+import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -23,6 +24,7 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type {
   ContentFragmentsType,
   ConversationType,
+  ConversationWithoutContentType,
   Result,
   RichMention,
   SpaceType,
@@ -96,6 +98,18 @@ export function SpaceConversationsTab({
     return conversations.filter((c) => c.unread);
   }, [conversations]);
 
+  const navigateToConversation = useCallback(
+    (conversation: ConversationWithoutContentType) => {
+      setSearchText("");
+      void router.push(
+        getConversationRoute(owner.sId, conversation.sId),
+        undefined,
+        { shallow: true }
+      );
+    },
+    [owner.sId, router, setSearchText]
+  );
+
   if (isConversationsLoading) {
     return (
       <div className="flex items-center justify-center">
@@ -153,6 +167,8 @@ export function SpaceConversationsTab({
             />
           </div>
 
+          <SpaceJournalEntry owner={owner} space={spaceInfo} />
+
           {/* Suggestions for empty rooms */}
           {!hasHistory && <SpaceConversationsActions />}
 
@@ -190,6 +206,7 @@ export function SpaceConversationsTab({
                         "cursor-pointer px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800",
                         selected && "bg-gray-100 dark:bg-gray-700"
                       )}
+                      onClick={() => navigateToConversation(conversation)}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1 truncate">
@@ -204,15 +221,7 @@ export function SpaceConversationsTab({
                     </div>
                   );
                 }}
-                onItemSelect={(conversation) => {
-                  console.log("onItemSelect", conversation);
-                  setSearchText("");
-                  void router.push(
-                    getConversationRoute(owner.sId, conversation.sId),
-                    undefined,
-                    { shallow: true }
-                  );
-                }}
+                onItemSelect={navigateToConversation}
               />
               <div className="flex flex-col">
                 <div className="flex items-center justify-end">

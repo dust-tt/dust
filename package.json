@@ -4,6 +4,7 @@
   "private": true,
   "workspaces": [
     "front",
+    "front-spa",
     "sparkle",
     "connectors",
     "cli",
@@ -14,7 +15,8 @@
   ],
   "scripts": {
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
-    "install:all": "npm install"
+    "install:all": "npm install",
+    "knip": "knip"
   },
   "engines": {
     "node": ">=20.0.0",

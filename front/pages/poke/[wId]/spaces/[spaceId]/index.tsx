@@ -1,43 +1,17 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { SpacePage } from "@app/components/poke/pages/SpacePage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { LightWorkspaceType } from "@app/types";
-import { isString } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSideProps } from "@app/lib/auth/pokeServerSideProps";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: LightWorkspaceType;
-  spaceId: string;
-}>(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
+export const getServerSideProps = pokeGetServerSideProps;
 
-  const { wId, spaceId } = context.params ?? {};
-  if (!isString(wId) || !isString(spaceId)) {
-    return {
-      notFound: true,
-    };
-  }
+const Page = SpacePage as PageWithLayout;
 
-  return {
-    props: {
-      owner,
-      spaceId,
-    },
-  };
-});
-
-export default function SpacePageNextJS({
-  owner,
-  spaceId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <SpacePage owner={owner} spaceId={spaceId} />;
-}
-
-SpacePageNextJS.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: LightWorkspaceType }
-) => {
-  return <PokeLayout title={`${owner.name} - Space`}>{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return <PokeLayout authContext={pageProps}>{page}</PokeLayout>;
 };
+
+export default Page;

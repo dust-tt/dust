@@ -42,6 +42,8 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
           return [
             // Write permissions.
             "chat:write",
+            "im:write",
+            "mpim:write",
             // Get and read chat and thread in any channels.
             "channels:history",
             "groups:history",

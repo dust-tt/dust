@@ -285,6 +285,7 @@ export const IntercomCommandSchema = t.type({
     t.literal("set-conversations-sliding-window"),
     t.literal("get-conversations-sliding-window"),
     t.literal("search-conversations"),
+    t.literal("restart-schedules"),
   ]),
   args: t.type({
     force: t.union([t.literal("true"), t.undefined]),
@@ -300,6 +301,7 @@ export const IntercomCommandSchema = t.type({
       t.undefined,
     ]),
     cursor: t.union([t.string, t.undefined]),
+    forceDeleteExisting: t.union([t.literal("true"), t.undefined]),
   }),
 });
 
@@ -392,6 +394,14 @@ export const IntercomForceResyncAllConversationsResponseSchema = t.type({
 });
 export type IntercomForceResyncAllConversationsResponseType = t.TypeOf<
   typeof IntercomForceResyncAllConversationsResponseSchema
+>;
+
+export const IntercomRestartSchedulesResponseSchema = t.type({
+  helpCenterScheduleId: t.string,
+  conversationScheduleId: t.string,
+});
+export type IntercomRestartSchedulesResponseType = t.TypeOf<
+  typeof IntercomRestartSchedulesResponseSchema
 >;
 
 /**
@@ -884,6 +894,7 @@ export const AdminResponseSchema = t.union([
   IntercomFetchConversationResponseSchema,
   IntercomForceResyncArticlesResponseSchema,
   IntercomGetConversationsSlidingWindowResponseSchema,
+  IntercomRestartSchedulesResponseSchema,
   IntercomSearchConversationsResponseSchema,
   NotionApiRequestResponseSchema,
   NotionCheckUrlResponseSchema,

@@ -19,19 +19,6 @@ export const PROCESS_ACTION_TOP_K = 768;
 // (<=> of the internal MCP server) here and use it from here in both the internal MCP server
 // and `global_agents.ts`.
 
-export const DEFAULT_WEBSEARCH_ACTION_NAME = "web_search_&_browse";
-export const DEFAULT_WEBSEARCH_ACTION_DESCRIPTION =
-  "Agent can search (Google) and retrieve information from specific websites.";
-
-export const DEFAULT_AGENT_ROUTER_ACTION_NAME = "agent_router";
-export const DEFAULT_AGENT_ROUTER_ACTION_DESCRIPTION =
-  "Tools with access to the published agents of the workspace.";
-
-export const DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME = "list_files";
-
-export const DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME =
-  "cat_conversation_file";
-
 export const DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME =
   "query_conversation_tables";
 
@@ -39,9 +26,6 @@ export const DEFAULT_CONVERSATION_SEARCH_ACTION_NAME =
   "search_conversation_files";
 
 export const DEFAULT_PROJECT_SEARCH_ACTION_NAME = "search_project_context";
-
-export const SEARCH_AVAILABLE_USERS_TOOL_NAME = "search_available_users";
-export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
 
 export const DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY =
   "__dust_conversation_history";

@@ -28,6 +28,7 @@ type NewAPIKeyDialogProps = {
   onCreate: (params: {
     name: string;
     group: GroupType | null;
+    monthlyCapMicroUsd: number | null;
   }) => Promise<void>;
 };
 
@@ -40,6 +41,7 @@ export const NewAPIKeyDialog = ({
   const [newApiKeyName, setNewApiKeyName] = useState("");
   const [newApiKeyRestrictedGroup, setNewApiKeyRestrictedGroup] =
     useState<GroupType | null>(null);
+  const [monthlyCapDollars, setMonthlyCapDollars] = useState("");
 
   const nonGlobalGroups = useMemo(
     () => groups.filter((g) => g.kind !== "global"),
@@ -49,6 +51,18 @@ export const NewAPIKeyDialog = ({
   const handleClose = () => {
     setNewApiKeyName("");
     setNewApiKeyRestrictedGroup(null);
+    setMonthlyCapDollars("");
+  };
+
+  const parseMonthlyCapMicroUsd = (): number | null => {
+    if (monthlyCapDollars === "") {
+      return null;
+    }
+    const dollars = parseFloat(monthlyCapDollars);
+    if (isNaN(dollars) || dollars < 0) {
+      return null;
+    }
+    return Math.round(dollars * 1_000_000);
   };
 
   return (
@@ -127,6 +141,18 @@ export const NewAPIKeyDialog = ({
                 </DropdownMenu>
               </div>
             </div>
+            <div className="flex flex-col gap-2">
+              <Label>Monthly cap (USD)</Label>
+              <Input
+                name="Monthly cap"
+                placeholder="Leave empty for unlimited"
+                value={monthlyCapDollars}
+                onChange={(e) => setMonthlyCapDollars(e.target.value)}
+                type="number"
+                min="0"
+                step="0.01"
+              />
+            </div>
           </div>
         </SheetContainer>
         <SheetFooter
@@ -138,10 +164,12 @@ export const NewAPIKeyDialog = ({
           rightButtonProps={{
             label: "Create",
             variant: "primary",
+            disabled: newApiKeyName.trim().length === 0,
             onClick: async () => {
               await onCreate({
                 name: newApiKeyName,
                 group: newApiKeyRestrictedGroup,
+                monthlyCapMicroUsd: parseMonthlyCapMicroUsd(),
               });
               handleClose();
             },

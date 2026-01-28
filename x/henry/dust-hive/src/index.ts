@@ -6,6 +6,7 @@ import { coolCommand } from "./commands/cool";
 import { destroyCommand } from "./commands/destroy";
 import { doctorCommand, setupCommand } from "./commands/doctor";
 import { downCommand } from "./commands/down";
+import { feedCommand } from "./commands/feed";
 import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./commands/forward";
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
@@ -143,8 +144,8 @@ cli
   });
 
 cli
-  .command("restart [name] <service>", "Restart a single service")
-  .action(async (name: string | undefined, service: string) => {
+  .command("restart [name] [service]", "Restart a single service")
+  .action(async (name: string | undefined, service: string | undefined) => {
     await prepareAndRun(restartCommand(name, service));
   });
 
@@ -313,6 +314,12 @@ cli
   )
   .action(async (postgresUri: string) => {
     await prepareAndRun(seedConfigCommand(postgresUri));
+  });
+
+cli
+  .command("feed [name] [scenario]", "Run seed script for a scenario")
+  .action(async (name: string | undefined, scenario: string | undefined) => {
+    await prepareAndRun(feedCommand(name, scenario));
   });
 
 cli.help();

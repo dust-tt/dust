@@ -1,5 +1,4 @@
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import {
   FREE_TRIAL_PHONE_PLAN_CODE,
   isOldFreePlan,
@@ -9,24 +8,29 @@ import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 const TRIAL_DURATION_DAYS = 15;
 
 /**
+ * When enabled, new workspaces without a subscription are directed to a phone
+ * verification trial flow instead of the credit card paywall.
+ * Set to `true` to enable phone trial for all new users.
+ */
+export const PHONE_TRIAL_ENABLED = true;
+
+/**
  * Checks if a workspace is eligible for the trial page.
  * A workspace is eligible if:
- * - It has the "phone_trial_paywall" feature flag enabled.
- * - It has never had another subscription before.
+ * - Phone trial is enabled via PHONE_TRIAL_ENABLED constant.
+ * - The user is an admin.
+ * - The workspace has never had another subscription before.
  */
 export async function isWorkspaceEligibleForTrial(
   auth: Authenticator
 ): Promise<boolean> {
-  const owner = auth.getNonNullableWorkspace();
+  if (!PHONE_TRIAL_ENABLED) {
+    return false;
+  }
 
   // If you're not admin it means the workspace had a subscription before.
   // so no need to check further.
   if (!auth.isAdmin()) {
-    return false;
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("phone_trial_paywall")) {
     return false;
   }
 

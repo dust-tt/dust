@@ -14,7 +14,7 @@ import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
-import type { ProcessAndStoreFileError } from "@app/lib/api/files/upload";
+import type { ProcessAndStoreFileError } from "@app/lib/api/files/processing";
 import {
   uploadBase64DataToFileStorage,
   uploadBase64ImageToFileStorage,

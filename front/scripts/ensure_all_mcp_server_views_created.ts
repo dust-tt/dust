@@ -1,6 +1,6 @@
 import { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { makeScript } from "@app/scripts/helpers";
 
@@ -19,22 +19,16 @@ makeScript(
     },
   },
   async ({ execute, workspaceId, concurrency }, parentLogger) => {
-    let workspaces: WorkspaceModel[] = [];
+    let workspaces: WorkspaceResource[] = [];
     if (workspaceId) {
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace with SID ${workspaceId} not found.`);
       }
       workspaces = [workspace];
     } else {
       // Process all workspaces
-      workspaces = await WorkspaceModel.findAll({
-        order: [["id", "ASC"]],
-      });
+      workspaces = await WorkspaceResource.listAll("ASC");
     }
 
     parentLogger.info(

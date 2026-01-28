@@ -984,7 +984,7 @@ DataTable.MoreButton = function MoreButton({
       >
         <Button
           icon={MoreIcon}
-          size="mini"
+          size="icon"
           variant="ghost-secondary"
           disabled={disabled}
           className={cn(

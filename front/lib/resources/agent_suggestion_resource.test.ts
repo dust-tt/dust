@@ -166,13 +166,13 @@ describe("AgentSuggestionResource", () => {
   });
 
   describe("updateState", () => {
-    it.each<"approved" | "declined" | "outdated">([
+    it.each<"approved" | "rejected" | "outdated">([
       "approved",
-      "declined",
+      "rejected",
       "outdated",
     ])(
       "should update a suggestion state to %s",
-      async (newState: "approved" | "declined" | "outdated") => {
+      async (newState: "approved" | "rejected" | "outdated") => {
         const suggestion = await AgentSuggestionFactory.createInstructions(
           authenticator,
           agentConfiguration,
@@ -380,7 +380,7 @@ describe("AgentSuggestionResource", () => {
         await AgentSuggestionResource.listByAgentConfigurationId(
           authenticator,
           agentConfiguration.sId,
-          { state: "pending" }
+          { states: ["pending"] }
         );
 
       expect(pendingSuggestions).toHaveLength(1);
@@ -390,11 +390,20 @@ describe("AgentSuggestionResource", () => {
         await AgentSuggestionResource.listByAgentConfigurationId(
           authenticator,
           agentConfiguration.sId,
-          { state: "approved" }
+          { states: ["approved"] }
         );
 
       expect(approvedSuggestions).toHaveLength(1);
       expect(approvedSuggestions[0].kind).toBe("instructions");
+
+      const approvedAndPendingSuggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { states: ["approved", "pending"] }
+        );
+
+      expect(approvedAndPendingSuggestions).toHaveLength(2);
     });
 
     it("should filter by kind", async () => {
@@ -454,7 +463,7 @@ describe("AgentSuggestionResource", () => {
       const results = await AgentSuggestionResource.listByAgentConfigurationId(
         authenticator,
         agentConfiguration.sId,
-        { state: "pending", kind: "instructions" }
+        { states: ["pending"], kind: "instructions" }
       );
 
       expect(results).toHaveLength(1);
@@ -470,6 +479,31 @@ describe("AgentSuggestionResource", () => {
         );
 
       expect(suggestions).toHaveLength(0);
+    });
+
+    it("should limit the number of returned suggestions and return most recent first", async () => {
+      // Create 3 pending suggestions.
+      const createdSuggestions = [];
+      for (let i = 0; i < 3; i++) {
+        const suggestion = await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration,
+          { suggestion: { oldString: `old-${i}`, newString: `new-${i}` } }
+        );
+        createdSuggestions.push(suggestion);
+      }
+
+      const suggestions =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          agentConfiguration.sId,
+          { limit: 2 }
+        );
+
+      expect(suggestions).toHaveLength(2);
+      // Verify we get the 2 most recent suggestions (created last).
+      expect(suggestions[0].sId).toBe(createdSuggestions[2].sId);
+      expect(suggestions[1].sId).toBe(createdSuggestions[1].sId);
     });
 
     it("should not return suggestions when user is not an editor of the agent", async () => {

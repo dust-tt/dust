@@ -21,7 +21,6 @@ fi
 # Track if any checks failed
 failed=0
 
-echo "Checking if package.json and package-lock.json are in sync..."
 
 for directory in "${directories[@]}"; do
     dir_path="$root_path/$directory"
@@ -65,5 +64,4 @@ if [ $failed -eq 1 ]; then
     exit 1
 fi
 
-echo "✅ All package.json and package-lock.json files are in sync"
 exit 0

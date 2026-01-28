@@ -15,16 +15,17 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { KeyType, ModelId, RoleType } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { formatUserFullName, redactString } from "@app/types";
+import { formatUserFullName, isString, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
-  name: string | null;
+  name: string;
   isSystem: boolean;
   role: RoleType;
   monthlyCapMicroUsd: number | null;
 }
 
+export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -97,17 +98,20 @@ export class KeyResource extends BaseResource<KeyModel> {
     workspace: LightWorkspaceType,
     id: ModelId | string
   ) {
-    const key = await this.fetchByModelId(id);
+    const parsedId = isString(id) ? parseInt(id, 10) : id;
+
+    const key = await this.model.findOne({
+      where: {
+        id: parsedId,
+        workspaceId: workspace.id,
+      },
+    });
 
     if (!key) {
       return null;
     }
 
-    if (key.workspaceId !== workspace.id) {
-      return null;
-    }
-
-    return key;
+    return new this(KeyResource.model, key.get());
   }
 
   static async fetchByName(auth: Authenticator, { name }: { name: string }) {

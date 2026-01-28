@@ -13,7 +13,7 @@ import { validateUrl } from "@app/types/shared/utils/url_utils";
 export function MCPBrowseActionDetails({
   toolOutput,
   toolParams,
-  viewType,
+  displayContext,
   owner,
 }: ToolExecutionDetailsProps) {
   const urls = isWebbrowseInputType(toolParams) ? toolParams.urls : null;
@@ -25,16 +25,20 @@ export function MCPBrowseActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation" ? "Browsing the web" : "Web navigation"
+        displayContext === "conversation"
+          ? "Browsing the web"
+          : "Web navigation"
       }
       visual={GlobeAltIcon}
     >
       <div className="flex flex-col gap-4 pl-6 pt-4">
         <div className="flex flex-col gap-1">
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-            {(viewType === "conversation" || browseResults.length === 0) && urls
+            {(displayContext === "conversation" ||
+              browseResults.length === 0) &&
+            urls
               ? urls.map((url, idx) => (
                   <div
                     className="group flex max-h-60 flex-row items-center gap-x-1 overflow-y-auto overflow-x-hidden pb-1"

@@ -162,7 +162,7 @@ async function handler(
       }
       const { read } = r.data;
       if (read) {
-        await ConversationResource.markAsRead(auth, {
+        await ConversationResource.markAsReadForAuthUser(auth, {
           conversation,
         });
       }

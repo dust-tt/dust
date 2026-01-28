@@ -1,32 +1,19 @@
 import { Spinner } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useEffect } from "react";
 
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import type { WorkspaceType } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
-  return {
-    props: {
-      owner,
-    },
-  };
-});
-
-export default function ManageSubscription({
-  owner,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function ManageSubscription() {
+  const owner = useWorkspace();
   const router = useRouter();
 
   useEffect(() => {
@@ -63,3 +50,16 @@ export default function ManageSubscription({
     </div>
   );
 }
+
+const PageWithAuthLayout = ManageSubscription as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default PageWithAuthLayout;

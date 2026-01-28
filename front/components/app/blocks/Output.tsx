@@ -353,7 +353,7 @@ const JsonCopyLink = ({ value }: { value: string }) => {
           onClick={handleClick}
           tooltip="Copy JSON to clipboard"
           icon={ClipboardIcon}
-          size="mini"
+          size="icon"
           variant="ghost-secondary"
         />
       )}

@@ -1,5 +1,5 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { hasReachedProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
+import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
@@ -274,12 +274,9 @@ async function checkWorkspaceRateLimit({
       errorMessage = message;
     }
   } else {
-    if (await hasReachedProgrammaticUsageLimits(auth)) {
-      errorMessage = auth.isAdmin()
-        ? "Your workspace has run out of programmatic usage credits. " +
-          "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
-        : "Your workspace has run out of programmatic usage credits. " +
-          "Please ask a Dust workspace admin to purchase more credits.";
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      errorMessage = limitsResult.error.message;
     }
   }
 

@@ -32,6 +32,16 @@ export interface ServiceConfig {
 
 // Service registry - defines how each service runs
 export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
+  sparkle: {
+    cwd: "sparkle",
+    needsNvm: true,
+    needsEnvSh: false,
+    buildCommand: () => "npm run watch",
+    readinessCheck: {
+      type: "file",
+      path: (env) => `${getWorktreeDir(env.name)}/sparkle/dist/esm/index.js`,
+    },
+  },
   sdk: {
     cwd: "sdks/js",
     needsNvm: true,
@@ -102,8 +112,10 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except SDK, which starts at spawn)
-export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter((service) => service !== "sdk");
+// Services to start during warm (all services except sparkle and SDK, which start at spawn)
+export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
+  (service) => service !== "sparkle" && service !== "sdk"
+);
 
 // Build the full shell command for a service
 // Note: For Rust services, cargo run is used with a symlinked target directory

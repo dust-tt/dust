@@ -237,8 +237,9 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     auth: Authenticator,
     agentId: string,
     filters?: {
-      state?: AgentSuggestionState;
+      states?: AgentSuggestionState[];
       kind?: AgentSuggestionKind;
+      limit?: number;
     }
   ): Promise<AgentSuggestionResource[]> {
     const owner = auth.getNonNullableWorkspace();
@@ -261,12 +262,15 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     // Build the where clause with optional filters.
     const whereClause: WhereOptions<AgentSuggestionModel> = {
       agentConfigurationId: agentConfigIds,
-      ...(filters?.state && { state: filters.state }),
+      ...(filters?.states &&
+        filters.states.length > 0 && { state: filters.states }),
       ...(filters?.kind && { kind: filters.kind }),
     };
 
     return this.baseFetch(auth, {
       where: whereClause,
+      order: [["createdAt", "DESC"]],
+      limit: filters?.limit,
     });
   }
 

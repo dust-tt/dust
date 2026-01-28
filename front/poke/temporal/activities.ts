@@ -68,6 +68,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
 import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspace_verification_attempt_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
@@ -761,9 +762,7 @@ export async function deleteWorkspaceUserMetadataActivity({
 }: {
   workspaceId: string;
 }) {
-  const workspace = await WorkspaceModel.findOne({
-    where: { sId: workspaceId },
-  });
+  const workspace = await WorkspaceResource.fetchById(workspaceId);
 
   if (!workspace) {
     logger.warn(

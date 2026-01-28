@@ -19,6 +19,10 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       "Use this to discover available page IDs before using other tools.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing status pages",
+      done: "List status pages",
+    },
   },
   list_components: {
     description:
@@ -32,6 +36,10 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing components",
+      done: "List components",
+    },
   },
   list_incidents: {
     description:
@@ -53,6 +61,10 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing incidents",
+      done: "List incidents",
+    },
   },
   get_incident: {
     description:
@@ -71,6 +83,10 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting incident",
+      done: "Get incident",
+    },
   },
   create_incident: {
     description:
@@ -105,6 +121,10 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating incident",
+      done: "Create incident",
+    },
   },
   update_incident: {
     description:
@@ -140,6 +160,10 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
       ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating incident",
+      done: "Update incident",
+    },
   },
 });
 
@@ -158,6 +182,7 @@ export const STATUSPAGE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(STATUSPAGE_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -251,8 +251,22 @@ export async function resolveChannelId({
   const searchString = channelNameOrId
     .trim()
     .replace(/^#/, "")
-    .replace(/^@/, "")
-    .replace(/^U/, "D");
+    .replace(/^@/, "");
+
+  // If searchString looks like a user ID (starts with U), open a DM with that user.
+  if (searchString.match(/^U[A-Z0-9]+$/)) {
+    try {
+      const openResp = await slackClient.conversations.open({
+        users: searchString,
+      });
+      if (openResp.ok && openResp.channel?.id) {
+        return openResp.channel.id;
+      }
+    } catch {
+      // conversations.open failed, user ID cannot be resolved.
+    }
+    return null;
+  }
 
   // If searchString looks like a Slack channel/DM ID (starts with C, G, or D), try direct lookup first.
   if (searchString.match(/^[CGD][A-Z0-9]+$/)) {

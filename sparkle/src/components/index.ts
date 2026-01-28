@@ -13,12 +13,12 @@ export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
-  MiniButtonProps,
+  IconOnlyButtonProps,
   RegularButtonProps,
 } from "./Button";
 export { Button } from "./Button";
-export type { ButtonGroupItem, ButtonGroupProps } from "./ButtonGroup";
-export { ButtonGroup } from "./ButtonGroup";
+export type { ButtonGroupProps } from "./ButtonGroup";
+export { ButtonGroup, ButtonGroupDropdown } from "./ButtonGroup";
 export { ButtonsSwitch, ButtonsSwitchList } from "./ButtonsSwitch";
 export type { CardProps } from "./Card";
 export { Card, CardActionButton, CardGrid } from "./Card";
@@ -80,6 +80,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
+export { DiffBlock } from "./DiffBlock";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,
@@ -116,6 +117,7 @@ export { FaviconIcon } from "./FaviconIcon";
 export { FilterChips } from "./FilterChips";
 export { Div3D, Hover3D } from "./Hover3D";
 export { Hoverable } from "./Hoverable";
+export { HoveringBar } from "./HoveringBar";
 export { DoubleIcon, Icon } from "./Icon";
 export { IconButton } from "./IconButton";
 export type {
@@ -132,6 +134,7 @@ export type { ImageZoomDialogProps } from "./ImageZoomDialog";
 export { downloadFile, ImageZoomDialog } from "./ImageZoomDialog";
 export { Input } from "./Input";
 export { InteractiveImageGrid } from "./InteractiveImageGrid";
+export { KeyboardShortcut } from "./KeyboardShortcut";
 export { Label } from "./Label";
 export type { LinkWrapperProps } from "./LinkWrapper";
 export { LinkWrapper } from "./LinkWrapper";
@@ -211,6 +214,15 @@ export { FlexSplitButton } from "./SplitButton";
 export { Tabs, TabsContent, TabsList, TabsTrigger } from "./Tabs";
 export { ReadOnlyTextArea, TextArea } from "./TextArea";
 export { Timeline, TimelineItem } from "./Timeline";
+export type {
+  ToolbarContentGroup,
+  ToolbarContentProps,
+  ToolbarIconProps,
+  ToolbarLinkProps,
+  ToolbarProps,
+  ToolbarVariant,
+} from "./Toolbar";
+export { Toolbar, ToolbarContent, ToolbarIcon, ToolbarLink } from "./Toolbar";
 export {
   Tooltip,
   TooltipContent,

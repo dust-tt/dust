@@ -8,7 +8,6 @@ import { handleSearch } from "@app/lib/api/search";
 import type { Authenticator } from "@app/lib/auth";
 import { streamToolFiles } from "@app/lib/search/tools/search";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
-import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -19,8 +18,6 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import { isString } from "@app/types";
-
-const MAX_UNIFIED_SEARCH_PER_USER_PER_MINUTE = 20;
 
 export type DataSourceContentNode = ContentNodeWithParent & {
   dataSource: DataSourceType;
@@ -332,24 +329,6 @@ async function handler(
   >,
   auth: Authenticator
 ): Promise<void> {
-  const rateLimitKey = `unified_search:${auth.getNonNullableUser().sId}`;
-  const remaining = await rateLimiter({
-    key: rateLimitKey,
-    maxPerTimeframe: MAX_UNIFIED_SEARCH_PER_USER_PER_MINUTE,
-    timeframeSeconds: 60, // 1 minute
-    logger,
-  });
-
-  if (remaining === 0) {
-    return apiError(req, res, {
-      status_code: 429,
-      api_error: {
-        type: "rate_limit_error",
-        message: `You have reached the limit of ${MAX_UNIFIED_SEARCH_PER_USER_PER_MINUTE} unified searches per minute.`,
-      },
-    });
-  }
-
   // Support both GET (streaming) and POST (legacy) methods
   if (req.method === "GET") {
     return handleStreamingSearch(req, res, auth);

@@ -55,7 +55,11 @@ export const IMAGE_GENERATION_TOOLS_METADATA = createToolsRecord({
           "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
+    displayLabels: {
+      running: "Generating image",
+      done: "Generate image",
+    },
   },
 });
 
@@ -63,7 +67,8 @@ const IMAGE_GENERATION_SERVER_INSTRUCTIONS =
   "Use generate_image to create images from text or transform existing images.\n\n" +
   "GENERATION FROM TEXT:\n" +
   "- Provide a detailed prompt describing the desired image\n" +
-  "- Be specific about style, composition, colors, lighting, and mood\n\n" +
+  "- Be very specific about style, composition, colors, lighting, and mood\n" +
+  "- In most usecases, medium quality is enough\n\n" +
   "REFERENCE IMAGES:\n" +
   "- For object inclusion: up to 6 images to reproduce objects with high fidelity\n" +
   "- For human consistency: up to 5 images to maintain character appearance\n" +
@@ -97,6 +102,7 @@ export const IMAGE_GENERATION_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(IMAGE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])

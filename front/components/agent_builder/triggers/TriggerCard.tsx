@@ -90,7 +90,7 @@ export const TriggerCard = ({
       action={
         (isEditor || isAdmin) && (
           <CardActionButton
-            size="mini"
+            size="icon"
             icon={XMarkIcon}
             onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
               e.stopPropagation();

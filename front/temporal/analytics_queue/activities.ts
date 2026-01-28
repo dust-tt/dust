@@ -11,7 +11,7 @@ import {
 import { addTraceToLangfuseDataset } from "@app/lib/api/instrumentation/langfuse_datasets";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -217,18 +217,15 @@ export async function storeAgentAnalytics(
 
   await storeToElasticsearch(document);
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("agent_tool_outputs_analytics")) {
-    const toolOutputs = await extractRetrievalDocuments(auth, {
-      agentMessageRow,
-      agentAgentMessageRow,
-      conversationRow,
-      actions,
-    });
+  const toolOutputs = await extractRetrievalDocuments(auth, {
+    agentMessageRow,
+    agentAgentMessageRow,
+    conversationRow,
+    actions,
+  });
 
-    if (toolOutputs.length > 0) {
-      await storeRetrievalOutputsToElasticsearch(toolOutputs);
-    }
+  if (toolOutputs.length > 0) {
+    await storeRetrievalOutputsToElasticsearch(toolOutputs);
   }
 }
 

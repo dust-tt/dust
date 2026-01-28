@@ -129,28 +129,32 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     agentId,
     days,
     version,
-    mcpServerConfigId,
+    mcpServerConfigIds,
     dataSourceId,
     limit = 50,
   }: {
     agentId: string;
     days?: number;
     version?: string;
-    mcpServerConfigId: string;
+    mcpServerConfigIds: string[];
     dataSourceId: string;
     limit?: number;
   }
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const mcpServerConfig = await AgentMCPServerConfigurationResource.fetchById(
+  const mcpServerConfigs = await AgentMCPServerConfigurationResource.fetchByIds(
     auth,
-    mcpServerConfigId
+    mcpServerConfigIds
   );
 
-  if (!mcpServerConfig) {
+  if (mcpServerConfigs.length === 0) {
     return new Ok({ documents: [], groups: [], total: 0 });
   }
+
+  const mcpServerConfigModelIds = Array.from(
+    new Set(mcpServerConfigs.map((config) => config.id))
+  );
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: workspace.sId,
@@ -164,8 +168,8 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
       filter: [
         baseQuery,
         {
-          term: {
-            mcp_server_configuration_id: mcpServerConfig.id,
+          terms: {
+            mcp_server_configuration_id: mcpServerConfigModelIds,
           },
         },
         {

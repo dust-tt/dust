@@ -3,7 +3,9 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import apiConfig from "@app/lib/api/config";
+import apiConfig, {
+  DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
+} from "@app/lib/api/config";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -22,7 +24,7 @@ import { CoreAPI, PostDataSourceDocumentRequestBodySchema } from "@app/types";
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "8mb",
+      sizeLimit: DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
     },
   },
 };

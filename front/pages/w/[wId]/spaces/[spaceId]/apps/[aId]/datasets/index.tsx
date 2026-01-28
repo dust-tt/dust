@@ -1,6 +1,5 @@
 import { Button, Chip, PlusIcon, TrashIcon } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { useContext } from "react";
 
@@ -10,6 +9,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { getDatasets } from "@app/lib/api/datasets";
 import { clientFetch } from "@app/lib/egress/client";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { LinkWrapper } from "@app/lib/platform";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { classNames } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
@@ -115,7 +115,7 @@ export default function DatasetsView({
               <ul role="list" className="flex-1 space-y-4">
                 {datasets.map((d) => {
                   return (
-                    <Link
+                    <LinkWrapper
                       key={d.name}
                       href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${d.name}`}
                       className="block"
@@ -156,7 +156,7 @@ export default function DatasetsView({
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </LinkWrapper>
                   );
                 })}
               </ul>

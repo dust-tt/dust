@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/actions/constants";
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import {
   constructGuidelinesSection,
   constructProjectContextSection,
@@ -96,6 +96,7 @@ describe("constructProjectContextSection", () => {
       created: 1234567890,
       updated: 1234567890,
       unread: false,
+      lastReadMs: 1234567890,
       actionRequired: false,
       hasError: false,
       title: "Test Conversation",
@@ -117,6 +118,7 @@ describe("constructProjectContextSection", () => {
       created: 1234567890,
       updated: 1234567890,
       unread: false,
+      lastReadMs: 1234567890,
       actionRequired: false,
       hasError: false,
       title: "Test Conversation",

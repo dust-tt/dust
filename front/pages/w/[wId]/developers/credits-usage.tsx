@@ -6,14 +6,13 @@ import {
   ExclamationCircleIcon,
   Page,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import dynamic from "next/dynamic";
+import type { ReactElement } from "react";
 import React, { useMemo, useState } from "react";
-import type Stripe from "stripe";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { BuyCreditDialog } from "@app/components/workspace/BuyCreditDialog";
 import { CreditHistorySheet } from "@app/components/workspace/CreditHistorySheet";
 import { CreditsList, isExpired } from "@app/components/workspace/CreditsList";
@@ -25,84 +24,20 @@ const ProgrammaticCostChart = dynamic(
     ),
   { ssr: false }
 );
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   getBillingCycle,
   getPriceAsString,
 } from "@app/lib/client/subscription";
-import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
-import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import {
-  getCreditPurchasePriceId,
-  getStripePricingData,
-  getStripeSubscription,
-  isEnterpriseSubscription,
-} from "@app/lib/plans/stripe";
-import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
-import { useCredits } from "@app/lib/swr/credits";
+import { useCreditPurchaseInfo, useCredits } from "@app/lib/swr/credits";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { SubscriptionType, WorkspaceType } from "@app/types";
+import type { SubscriptionType } from "@app/types";
 import type { CreditDisplayData, CreditType } from "@app/types/credits";
-import { isSupportedCurrency } from "@app/types/currency";
-import type { StripePricingData } from "@app/types/stripe/pricing";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  isEnterprise: boolean;
-  currency: string;
-  discountPercent: number;
-  creditPricing: StripePricingData | null;
-  creditPurchaseLimits: CreditPurchaseLimits | null;
-  stripeSubscription: Stripe.Subscription | null;
-}>(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.getNonNullableSubscription();
-
-  if (!auth.isAdmin()) {
-    return { notFound: true };
-  }
-
-  let isEnterprise = false;
-  let currency = "usd";
-  let creditPurchaseLimits: CreditPurchaseLimits | null = null;
-
-  let stripeSubscription: Stripe.Subscription | null = null;
-  if (subscription.stripeSubscriptionId) {
-    stripeSubscription = await getStripeSubscription(
-      subscription.stripeSubscriptionId
-    );
-    if (stripeSubscription) {
-      isEnterprise = isEnterpriseSubscription(stripeSubscription);
-      currency = isSupportedCurrency(stripeSubscription.currency)
-        ? stripeSubscription.currency
-        : "usd";
-      creditPurchaseLimits = await getCreditPurchaseLimits(
-        auth,
-        stripeSubscription
-      );
-    }
-  }
-
-  const programmaticConfig =
-    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
-  const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
-
-  const creditPricing = await getStripePricingData(getCreditPurchasePriceId());
-
-  return {
-    props: {
-      owner,
-      subscription,
-      isEnterprise,
-      currency,
-      discountPercent,
-      creditPricing,
-      creditPurchaseLimits,
-      stripeSubscription,
-    },
-  };
-});
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
 // A credit is active if it has started and has not expired.
 // This need to be consistent with logic in CreditResource.listActive().
@@ -325,16 +260,9 @@ function UsageSection({
   );
 }
 
-export default function CreditsUsagePage({
-  owner,
-  subscription,
-  isEnterprise,
-  currency,
-  discountPercent,
-  creditPricing,
-  creditPurchaseLimits,
-  stripeSubscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function CreditsUsagePage() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
   const [showBuyCreditDialog, setShowBuyCreditDialog] = useState(false);
   const { featureFlags } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -342,18 +270,17 @@ export default function CreditsUsagePage({
   const { credits, pendingCredits, isCreditsLoading } = useCredits({
     workspaceId: owner.sId,
   });
-
-  // Get the billing cycle start day from Stripe subscription, fallback to Dust subscription
-  const getBillingCycleStartDay = (): number | null => {
-    if (stripeSubscription?.current_period_start) {
-      return new Date(stripeSubscription.current_period_start * 1000).getDate();
-    }
-    if (subscription.startDate) {
-      return new Date(subscription.startDate).getDate();
-    }
-    return null;
-  };
-  const billingCycleStartDay = getBillingCycleStartDay();
+  const {
+    isEnterprise,
+    currency,
+    discountPercent,
+    creditPricing,
+    creditPurchaseLimits,
+    billingCycleStartDay,
+    isCreditPurchaseInfoLoading,
+  } = useCreditPurchaseInfo({
+    workspaceId: owner.sId,
+  });
 
   const creditsByType = useMemo(() => {
     const activeCredits = credits.filter((c) => isActive(c));
@@ -563,7 +490,7 @@ export default function CreditsUsagePage({
           creditsByType={creditsByType}
           totalConsumed={totalConsumed}
           totalCredits={totalCredits}
-          isLoading={isCreditsLoading}
+          isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
@@ -600,6 +527,15 @@ export default function CreditsUsagePage({
   );
 }
 
-CreditsUsagePage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = CreditsUsagePage as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

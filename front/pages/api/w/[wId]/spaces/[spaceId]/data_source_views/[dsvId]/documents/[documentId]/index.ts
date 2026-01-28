@@ -1,7 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import apiConfig from "@app/lib/api/config";
+import apiConfig, {
+  DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
+} from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -13,7 +15,7 @@ import { CoreAPI } from "@app/types";
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "8mb",
+      sizeLimit: DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
     },
   },
 };

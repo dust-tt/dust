@@ -9,11 +9,7 @@ import {
   LinkWrapper,
   LinkWrapperProps,
   Spinner,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
+  Tooltip,
 } from "@sparkle/components/";
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
@@ -34,13 +30,33 @@ export const BUTTON_VARIANTS = [
 
 export type ButtonVariantType = (typeof BUTTON_VARIANTS)[number];
 
-export const BUTTON_SIZES = ["xmini", "mini", "xs", "sm", "md"] as const;
-export type ButtonSizeType = (typeof BUTTON_SIZES)[number];
+export const REGULAR_BUTTON_SIZES = [
+  "xmini",
+  "mini",
+  "xs",
+  "sm",
+  "md",
+] as const;
+export const ICON_ONLY_SIZES = ["icon-xs", "icon"] as const;
+export const SMALL_BUTTON_SIZES = ["icon-xs", "icon", "xmini", "mini"] as const;
+
+export type RegularButtonSize = (typeof REGULAR_BUTTON_SIZES)[number];
+export type IconOnlySize = (typeof ICON_ONLY_SIZES)[number];
+export type ButtonSize = RegularButtonSize | IconOnlySize;
+
+function isSmallButtonSize(
+  size: ButtonSize | undefined
+): size is (typeof SMALL_BUTTON_SIZES)[number] {
+  return (
+    size !== undefined &&
+    SMALL_BUTTON_SIZES.includes(size as (typeof SMALL_BUTTON_SIZES)[number])
+  );
+}
 
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
+    "s-box-content s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
   ),
@@ -141,13 +157,17 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        xmini: "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
+        "icon-xs": "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
+        icon: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
+        xmini: "s-h-6 s-px-1.5 s-label-xs s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-px-2 s-label-xs s-gap-1.5 s-shrink-0",
         xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
         sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
         md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
       },
       rounded: {
+        "icon-xs": "s-rounded-lg",
+        icon: "s-rounded-lg",
         xmini: "s-rounded-lg",
         mini: "s-rounded-lg",
         xs: "s-rounded-lg",
@@ -167,8 +187,10 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      xmini: "s-label-xs s-hidden",
-      mini: "s-label-xs s-hidden",
+      "icon-xs": "s-label-xs s-hidden",
+      icon: "s-label-xs s-hidden",
+      xmini: "s-label-xs",
+      mini: "s-label-xs",
       xs: "s-label-xs",
       sm: "s-label-sm",
       md: "s-label-base",
@@ -245,7 +267,9 @@ MetaButton.displayName = "MetaButton";
 type IconSizeType = "xs" | "sm" | "md";
 type CounterSizeType = "xs" | "sm" | "md";
 
-export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
+export const ICON_SIZE_MAP: Record<ButtonSize, IconSizeType> = {
+  "icon-xs": "xs",
+  icon: "sm",
   xmini: "xs",
   mini: "sm",
   xs: "xs",
@@ -253,13 +277,49 @@ export const ICON_SIZE_MAP: Record<ButtonSizeType, IconSizeType> = {
   md: "md",
 };
 
-const COUNTER_SIZE_MAP: Record<ButtonSizeType, CounterSizeType> = {
+const COUNTER_SIZE_MAP: Record<ButtonSize, CounterSizeType> = {
+  "icon-xs": "xs",
+  icon: "xs",
   xmini: "xs",
   mini: "xs",
   xs: "xs",
   sm: "sm",
   md: "md",
 };
+
+const loadingContainerVariants = cva("-s-mx-0.5", {
+  variants: {
+    size: {
+      "icon-xs": "s-w-5 s-px-0.5",
+      icon: "s-w-5 s-px-0.5",
+      xmini: "s-w-5 s-px-0.5",
+      mini: "s-w-5 s-px-0.5",
+      xs: "s-w-5 s-px-0.5",
+      sm: "",
+      md: "",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
+
+const selectButtonSizeVariants = cva("", {
+  variants: {
+    size: {
+      "icon-xs": "s-w-auto s-px-1.5",
+      xmini: "s-w-auto s-px-1.5",
+      mini: "s-w-auto s-px-2",
+      icon: "s-w-auto s-px-2",
+      xs: "",
+      sm: "",
+      md: "",
+    },
+  },
+  defaultVariants: {
+    size: "sm",
+  },
+});
 
 type CommonButtonProps = Omit<MetaButtonProps, "children"> &
   Omit<LinkWrapperProps, "children"> & {
@@ -268,24 +328,25 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isPulsing?: boolean;
     briefPulse?: boolean;
     tooltip?: string;
+    tooltipShortcut?: string;
     isCounter?: boolean;
     counterValue?: string;
     isRounded?: boolean;
   };
 
-export type MiniButtonProps = CommonButtonProps & {
-  size: "mini";
+export type IconOnlyButtonProps = CommonButtonProps & {
+  size: IconOnlySize;
   icon: React.ComponentType;
   label?: never;
 };
 
 export type RegularButtonProps = CommonButtonProps & {
-  size?: Exclude<ButtonSizeType, "mini">;
+  size?: RegularButtonSize;
   icon?: React.ComponentType;
   label?: string;
 };
 
-export type ButtonProps = MiniButtonProps | RegularButtonProps;
+export type ButtonProps = IconOnlyButtonProps | RegularButtonProps;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   (
@@ -296,6 +357,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading = false,
       variant = "primary",
       tooltip,
+      tooltipShortcut,
       isSelect = false,
       isPulsing = false,
       briefPulse = false,
@@ -350,14 +412,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <>
         {isLoading ? (
           <div
-            className={cn(
-              "-s-mx-0.5",
-              size === "mini" && "s-w-5 s-px-0.5",
-              size === "xmini" && "s-w-5 s-px-0.5"
-            )}
+            className={loadingContainerVariants({ size })}
           >
             <Spinner
-              size={size === "mini" || size === "xmini" ? "xs" : iconSize}
+              size={isSmallButtonSize(size) ? "xs" : iconSize}
               variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
             />
           </div>
@@ -415,6 +473,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled}
         className={cn(
           (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          isSelect && selectButtonSizeVariants({ size }),
           className
         )}
         aria-label={ariaLabel || tooltip || label}
@@ -433,14 +492,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
 
     const wrappedContent = tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent>{tooltip}</TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
+      <Tooltip
+        trigger={innerButton}
+        tooltipTriggerAsChild={true}
+        label={tooltip}
+        shortcut={tooltipShortcut}
+      />
     ) : (
       innerButton
     );

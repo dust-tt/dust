@@ -12,6 +12,7 @@ import {
   useSWRWithDefaults,
 } from "@app/lib/swr/swr";
 import datadogLogger from "@app/logger/datadogLogger";
+import logger from "@app/logger/logger";
 import type { GetConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations";
 import type {
   GetConversationResponseBody,
@@ -793,19 +794,31 @@ export function useConversationMarkAsRead({
     },
   });
 
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId,
+    options: {
+      disabled: true,
+    },
+  });
+
   const markAsRead = useCallback(
     /**
+     * Marks a conversation as read with optional mutation control.
+     *
+     * This is useful to avoid unnecessary network requests when marking a conversation as read.
+     *
      * @param conversationId - The ID of the conversation to mark as read.
-     * @param mutateList - Whether to mutate the list of conversations in the sidebar.
-     *
-     * If mutateList is true, the list of conversations in the sidebar will be mutated to update the unread status of the conversation.
-     * If mutateList is false, the list of conversations in the sidebar will not be mutated to update the unread status of the conversation.
-     *
-     * This is useful to avoid any network request when marking a conversation as read.
-     * @param conversationId
-     * @param mutateList
+     * @param options - Options to control mutation behavior.
+     * @param options.mutateList - Whether to mutate the list of conversations in the sidebar to update the unread status. Defaults to false.
+     * @param options.mutateSpaceConversationsSummary - Whether to mutate the space conversations summary to update the unread counts. Defaults to false.
      */
-    async (conversationId: string, mutateList: boolean): Promise<void> => {
+    async (
+      conversationId: string,
+      options?: {
+        mutateList?: boolean;
+        mutateSpaceConversationsSummary?: boolean;
+      }
+    ): Promise<void> => {
       try {
         const response = await clientFetch(
           `/api/w/${workspaceId}/assistant/conversations/${conversationId}`,
@@ -823,7 +836,7 @@ export function useConversationMarkAsRead({
         if (!response.ok) {
           throw new Error("Failed to mark conversation as read");
         }
-        if (mutateList) {
+        if (options?.mutateList) {
           void mutateConversations(
             (prevState) => ({
               ...prevState,
@@ -835,18 +848,59 @@ export function useConversationMarkAsRead({
             { revalidate: false }
           );
         }
+        if (options?.mutateSpaceConversationsSummary) {
+          void mutateSpaceSummary((prevState) => {
+            if (!prevState) {
+              return prevState;
+            }
+            return {
+              ...prevState,
+              summary: prevState.summary.map((spaceSummary) => {
+                if (spaceSummary.space.sId === conversation?.spaceId) {
+                  return {
+                    ...spaceSummary,
+                    unreadConversations: spaceSummary.unreadConversations.map(
+                      (convSummary) => {
+                        if (convSummary.sId === conversationId) {
+                          return {
+                            ...convSummary,
+                            unread: false,
+                            lastRead: Date.now(),
+                          };
+                        }
+                        return convSummary;
+                      }
+                    ),
+                  };
+                }
+                return spaceSummary;
+              }),
+            };
+          });
+        }
       } catch (error) {
-        console.error("Error marking conversation as read:", error);
+        logger.error({ err: error }, "Error marking conversation as read:");
       }
     },
-    [workspaceId, mutateConversations]
+    [
+      workspaceId,
+      mutateConversations,
+      mutateSpaceSummary,
+      conversation?.spaceId,
+    ]
   );
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
-    if (conversation?.sId && conversation.unread) {
+    if (conversation?.sId) {
+      const isProjectConversation = !!conversation.spaceId;
+
       timeout = setTimeout(
-        () => markAsRead(conversation.sId, true),
+        () =>
+          markAsRead(conversation.sId, {
+            mutateList: !isProjectConversation,
+            mutateSpaceConversationsSummary: isProjectConversation,
+          }),
         DELAY_BEFORE_MARKING_AS_READ
       );
     }
@@ -856,7 +910,7 @@ export function useConversationMarkAsRead({
         clearTimeout(timeout);
       }
     };
-  }, [conversation?.sId, conversation?.unread, markAsRead]);
+  }, [conversation?.sId, markAsRead, conversation?.spaceId]);
 
   return {
     markAsRead,

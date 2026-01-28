@@ -151,11 +151,6 @@ async function processEventForUnreadState(
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
   if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
-    // No excluded user because the message is created by the agent.
-    await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-      conversation,
-    });
-
     // Publish the agent message done event that will be handled on the client-side.
     await publishConversationRelatedEvent({
       conversationId: conversation.sId,

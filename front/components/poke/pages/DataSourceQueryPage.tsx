@@ -8,7 +8,10 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeTables } from "@app/poke/swr";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
 import type { DataSourceType, LightWorkspaceType } from "@app/types";
@@ -243,12 +246,11 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
   );
 }
 
-interface DataSourceQueryPageProps {
-  owner: LightWorkspaceType;
-  dsId: string;
-}
+export function DataSourceQueryPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Query`);
 
-export function DataSourceQueryPage({ owner, dsId }: DataSourceQueryPageProps) {
+  const dsId = useRequiredPathParam("dsId");
   const {
     data: dataSourceDetails,
     isLoading,

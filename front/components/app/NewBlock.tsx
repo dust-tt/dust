@@ -130,7 +130,7 @@ export default function NewBlock({
             icon={PlusIcon}
             disabled={disabled}
             variant="ghost-secondary"
-            size="mini"
+            size="icon"
           />
         ) : (
           <Button

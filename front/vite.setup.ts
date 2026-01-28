@@ -7,6 +7,7 @@ import { Sequelize } from "sequelize";
 import { afterEach, beforeEach, vi } from "vitest";
 
 import { frontSequelize } from "@app/lib/resources/storage";
+import type { CacheableFunction, JsonSerializable } from "@app/lib/utils/cache";
 
 // Mock Redis - must be at module level
 vi.mock("@app/lib/api/redis", () => ({
@@ -41,6 +42,24 @@ vi.mock("@app/lib/api/redis", () => ({
         return fn(mockRedisClient);
       }
     ),
+}));
+
+vi.mock("@app/lib/utils/cache", () => ({
+  cacheWithRedis: vi
+    .fn()
+    .mockImplementation(
+      <T, Args extends unknown[]>(
+        fn: CacheableFunction<JsonSerializable<T>, Args>
+      ): ((...args: Args) => Promise<JsonSerializable<T>>) => {
+        return async function (...args: Args): Promise<JsonSerializable<T>> {
+          const result = await fn(...args);
+          return result;
+        };
+      }
+    ),
+  invalidateCacheWithRedis: vi.fn().mockImplementation(() => {
+    return async () => {};
+  }),
 }));
 
 // Mock Temporal - must be at module level

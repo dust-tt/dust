@@ -290,6 +290,7 @@ export function SpaceAboutTab({
       await doUpdate(space, {
         isRestricted,
         groupIds: selectedGroups.map((group) => group.sId),
+        editorGroupIds: [], // todo(projects): handle editor groups in the UI
         managementMode: "group",
         name: space.name,
       });
@@ -297,6 +298,7 @@ export function SpaceAboutTab({
       await doUpdate(space, {
         isRestricted,
         memberIds: selectedMembers.map((member) => member.sId),
+        editorIds: [], // todo(projects): handle editors in the UI
         managementMode: "manual",
         name: space.name,
       });

@@ -5,6 +5,10 @@ import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import {
+  hasKeyReachedUsageCap,
+  incrementRedisKeyUsageMicroUsd,
+} from "@app/lib/api/key_cap_tracking";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -19,8 +23,10 @@ import type {
   AgentMessageStatus,
   LightWorkspaceType,
   PublicAPILimitsType,
+  Result,
   UserMessageOrigin,
 } from "@app/types";
+import { Err, Ok } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -138,6 +144,41 @@ export async function hasReachedProgrammaticUsageLimits(
   auth: Authenticator
 ): Promise<boolean> {
   return (await CreditResource.listActive(auth)).length === 0;
+}
+
+/**
+ * Check if programmatic usage limits have been reached.
+ * Checks both workspace credits and per-key caps.
+ * Returns Ok if no limit reached, Err with message if a limit was reached.
+ */
+export async function checkProgrammaticUsageLimits(
+  auth: Authenticator
+): Promise<Result<void, Error>> {
+  const isAdmin = auth.isAdmin();
+
+  // First check workspace credits.
+  const hasNoCredits = await hasReachedProgrammaticUsageLimits(auth);
+  if (hasNoCredits) {
+    const message = isAdmin
+      ? "Your workspace has run out of programmatic usage credits. " +
+        "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
+      : "Your workspace has run out of programmatic usage credits. " +
+        "Please ask a Dust workspace admin to purchase more credits.";
+    return new Err(new Error(message));
+  }
+
+  // Then check per-key cap.
+  const keyCapReached = await hasKeyReachedUsageCap(auth);
+  if (keyCapReached) {
+    const message = isAdmin
+      ? "This API key has reached its monthly usage cap. " +
+        "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
+      : "This API key has reached its monthly usage cap. " +
+        "Please ask a Dust workspace admin to increase the cap.";
+    return new Err(new Error(message));
+  }
+
+  return new Ok(undefined);
 }
 
 // TODO(PPUL): remove this method once we switch to new credits tracking system.
@@ -437,6 +478,11 @@ export async function trackProgrammaticCost(
       },
       localLogger
     );
+
+  const keyAuth = auth.key();
+  if (keyAuth) {
+    await incrementRedisKeyUsageMicroUsd(keyAuth.id, costWithMarkupMicroUsd);
+  }
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(

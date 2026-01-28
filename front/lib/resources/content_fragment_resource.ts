@@ -49,7 +49,7 @@ import {
   assertNever,
   CoreAPI,
   Err,
-  isSupportedImageContentType,
+  isLLMVisionSupportedImageContentType,
   normalizeError,
   Ok,
   removeNulls,
@@ -570,7 +570,7 @@ export async function getContentFragmentFromAttachmentFile(
           conversationAttachmentId(attachment)
         );
 
-  if (isSupportedImageContentType(attachment.contentType)) {
+  if (isLLMVisionSupportedImageContentType(attachment.contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
@@ -763,7 +763,7 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  if (fileStringId && isSupportedImageContentType(contentType)) {
+  if (fileStringId && isLLMVisionSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
         role: "content_fragment",

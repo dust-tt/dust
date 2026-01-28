@@ -1,11 +1,11 @@
 import _ from "lodash";
 
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { makeScript } from "@app/scripts/helpers";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 async function backfillWorkspacesGroup(execute: boolean) {
-  const workspaces = await WorkspaceModel.findAll();
+  const workspaces = await WorkspaceResource.listAll();
 
   const chunks = _.chunk(workspaces, 16);
   for (const [i, c] of chunks.entries()) {

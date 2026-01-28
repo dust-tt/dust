@@ -1,37 +1,102 @@
-import Head from "next/head";
-import React, { createContext, useContext } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import type { RegionType } from "@app/lib/api/regions/config";
+import type {
+  AuthContextNoWorkspaceValue,
+  AuthContextValue,
+} from "@app/lib/auth/AuthContext";
+import { AuthContext, AuthContextNoWorkspace } from "@app/lib/auth/AuthContext";
+import { Head } from "@app/lib/platform";
 import { usePokeRegion } from "@app/lib/swr/poke";
 
 export interface PokeLayoutProps {
   currentRegion: RegionType;
 }
 
-const PokePageTitleContext = createContext<string>("");
-
-export function usePokePageTitle() {
-  return useContext(PokePageTitleContext);
+interface PokePageTitleContextValue {
+  title: string;
+  setTitle: (title: string) => void;
 }
 
+const PokePageTitleContext = createContext<PokePageTitleContextValue>({
+  title: "Poke",
+  setTitle: () => {},
+});
+
+export function usePokePageTitle() {
+  return useContext(PokePageTitleContext).title;
+}
+
+export function useSetPokePageTitle(title: string) {
+  const setTitle = useContext(PokePageTitleContext).setTitle;
+  useEffect(() => {
+    setTitle(title);
+  }, [setTitle, title]);
+}
+
+// Layout for workspace-scoped poke pages (uses AuthContext).
 export default function PokeLayout({
   children,
-  title,
+  authContext,
 }: {
   children: React.ReactNode;
-  title: string;
+  authContext: AuthContextValue;
 }) {
+  const [title, setTitle] = useState("Poke");
+
+  const titleContextValue = useMemo(
+    () => ({ title, setTitle }),
+    [title, setTitle]
+  );
+
   return (
-    <ThemeProvider>
-      <PokePageTitleContext.Provider value={title}>
-        <Head>
-          <title>{"Poke - " + title}</title>
-        </Head>
-        <PokeLayoutContent>{children}</PokeLayoutContent>
-      </PokePageTitleContext.Provider>
-    </ThemeProvider>
+    <AuthContext.Provider value={authContext}>
+      <ThemeProvider>
+        <PokePageTitleContext.Provider value={titleContextValue}>
+          <Head>
+            <title>{"Poke - " + title}</title>
+          </Head>
+          <PokeLayoutContent>{children}</PokeLayoutContent>
+        </PokePageTitleContext.Provider>
+      </ThemeProvider>
+    </AuthContext.Provider>
+  );
+}
+
+// Layout for global poke pages without workspace (uses AuthContextNoWorkspace).
+export function PokeLayoutNoWorkspace({
+  children,
+  authContext,
+}: {
+  children: React.ReactNode;
+  authContext: AuthContextNoWorkspaceValue;
+}) {
+  const [title, setTitle] = useState("Poke");
+
+  const titleContextValue = useMemo(
+    () => ({ title, setTitle }),
+    [title, setTitle]
+  );
+
+  return (
+    <AuthContextNoWorkspace.Provider value={authContext}>
+      <ThemeProvider>
+        <PokePageTitleContext.Provider value={titleContextValue}>
+          <Head>
+            <title>{"Poke - " + title}</title>
+          </Head>
+          <PokeLayoutContent>{children}</PokeLayoutContent>
+        </PokePageTitleContext.Provider>
+      </ThemeProvider>
+    </AuthContextNoWorkspace.Provider>
   );
 }
 

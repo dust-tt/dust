@@ -25,11 +25,17 @@ procs:
     cwd: "<CONFIG_DIR>/../core"
     shell: "bacon oauth"
 
+  sparkle:
+    cwd: "<CONFIG_DIR>/../sparkle"
+    shell: |
+      set -euo pipefail
+      source ~/.nvm/nvm.sh && nvm install && npm run watch
+
   sdks-js:
     cwd: "<CONFIG_DIR>/../sdks/js"
     shell: |
       set -euo pipefail
-      source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh
+      source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
 
   front:
     cwd: "<CONFIG_DIR>/../front"
@@ -40,8 +46,7 @@ procs:
       echo "Expecting file: $READY_FILE"
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting front."
-      rm -rf node_modules/isomorphic-dompurify node_modules/@elevenlabs/
-      source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh
+      source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
 
   front-workers:
     cwd: "<CONFIG_DIR>/../front"
@@ -50,7 +55,7 @@ procs:
       echo "Waiting for front to be ready..."
       until curl -sf http://localhost:3000/api/healthz; do sleep 1; done
       echo "front ready. Starting front-workers."
-      source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev_worker.sh
+      source ~/.nvm/nvm.sh && nvm install && ./admin/dev_worker.sh
 
   connectors:
     cwd: "<CONFIG_DIR>/../connectors"
@@ -60,21 +65,21 @@ procs:
       echo "Waiting for sdks-js to compile..."
       while [ ! -f "$READY_FILE" ]; do sleep 1; done
       echo "sdks-js ready. Starting connectors."
-      source ~/.nvm/nvm.sh && nvm install && npm install && ./admin/dev.sh
+      source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
 
-  sparkle:
+  sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run storybook"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm run storybook"
     autostart: false
 
   viz:
     cwd: "<CONFIG_DIR>/../viz"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm run dev"
     autostart: false
 
   extension:
     cwd: "<CONFIG_DIR>/../extension"
-    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev:chrome"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm run dev:chrome"
     autostart: false
 
   ngrok:

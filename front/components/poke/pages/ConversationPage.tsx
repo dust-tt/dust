@@ -22,7 +22,10 @@ import {
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 import { usePokeConversation } from "@app/poke/swr";
 import { usePokeAgentConfigurations } from "@app/poke/swr/agent_configurations";
@@ -287,15 +290,11 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
   );
 };
 
-interface ConversationPageProps {
-  owner: LightWorkspaceType;
-  conversationId: string;
-}
+export function ConversationPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Conversation`);
 
-export function ConversationPage({
-  owner,
-  conversationId,
-}: ConversationPageProps) {
+  const conversationId = useRequiredPathParam("cId");
   const {
     data: conversationConfig,
     isLoading: isConfigLoading,

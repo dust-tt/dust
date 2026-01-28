@@ -27,6 +27,15 @@ export type ToolChartUsagePayload = {
   payload?: ChartDatum;
 };
 
+export type ToolLatencyDatum = {
+  name: string;
+  label: string;
+  count: number;
+  avgLatencyMs: number;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+};
+
 export type SourceChartDatum = {
   origin: UserMessageOrigin;
   count: number;

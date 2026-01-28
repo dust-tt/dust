@@ -2,14 +2,14 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  registerWebBrowserTool,
-  registerWebSearchTool,
-} from "@app/lib/actions/mcp_internal_actions/tools/web_browser/web_browser_tools";
 import { makeInternalMCPServer } from "@app/lib/actions/mcp_internal_actions/utils";
-import { withToolLogging } from "@app/lib/actions/mcp_internal_actions/wrappers";
+import {
+  registerTool,
+  withToolLogging,
+} from "@app/lib/actions/mcp_internal_actions/wrappers";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import { TOOLS as WEB_TOOLS } from "@app/lib/api/actions/servers/web_search_browse/tools";
 import type { Authenticator } from "@app/lib/auth";
 import { untrustedFetch } from "@app/lib/egress/server";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
@@ -234,8 +234,11 @@ function createServer(
     )
   );
 
-  registerWebSearchTool(auth, server, agentLoopContext);
-  registerWebBrowserTool(auth, server, agentLoopContext);
+  for (const tool of WEB_TOOLS) {
+    registerTool(auth, agentLoopContext, server, tool, {
+      monitoringName: "http_client",
+    });
+  }
 
   return server;
 }
