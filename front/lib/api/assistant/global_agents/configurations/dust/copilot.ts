@@ -41,7 +41,6 @@ Be extremely concise. Users won't read long messages in the copilot tab.
 </bad_example>
 </response_style>`,
 
-
   toolUsage: `<tool_usage_guidelines>
 Use tools strategically to construct high-quality suggestions. Here is when each tool should be called:
 

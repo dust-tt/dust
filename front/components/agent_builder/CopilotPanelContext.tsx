@@ -60,12 +60,9 @@ EXISTING agent.
 ## STEP 1: Gather context (CALL ALL THREE TOOLS IN PARALLEL)
 You MUST call all three tools simultaneously in the same tool call round:
 1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
-2. \`list_suggestions\` - filtered by \`pending\` state and the current agent version
 3. \`get_agent_feedback\` - to retrieve feedback for the current version
 
-CRITICAL: All three tools must be called together in parallel, not sequentially. Make all three tool calls in your first response to minimize latency.
-
-IMPORTANT: Avoid calling \`list_suggestions\` again mid-session unless explicitly asked. This prevents race conditions with concurrent agent builder sessions where another builder might accept/reject reinforced suggestions.
+CRITICAL: All tools must be called together in parallel, not sequentially. Make all tool calls in your first response to minimize latency.
 
 ## STEP 2: Provide context & prompt action
 Based on gathered data, provide a brief summary:
