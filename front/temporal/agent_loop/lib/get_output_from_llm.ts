@@ -41,71 +41,85 @@ async function* withPeriodicHeartbeat<T>(
   let heartbeatCount = 0;
   let lastEventTimeMs = Date.now();
 
-  while (!streamExhausted) {
-    const result = await Promise.race([
-      nextPromise
-        .then((value) => ({ type: "stream" as const, value }))
-        .catch((error) => {
-          // Rethrow to ensure errors are not swallowed
-          throw error;
-        }),
-      new Promise<{ type: "heartbeat" }>((resolve) =>
-        setTimeout(
-          () => resolve({ type: "heartbeat" }),
-          LLM_HEARTBEAT_INTERVAL_MS
-        )
-      ),
-    ]);
+  try {
+    while (!streamExhausted) {
+      const result = await Promise.race([
+        nextPromise
+          .then((value) => ({ type: "stream" as const, value }))
+          .catch((error) => {
+            // Rethrow to ensure errors are not swallowed
+            throw error;
+          }),
+        new Promise<{ type: "heartbeat" }>((resolve) =>
+          setTimeout(
+            () => resolve({ type: "heartbeat" }),
+            LLM_HEARTBEAT_INTERVAL_MS
+          )
+        ),
+      ]);
 
-    heartbeat();
+      heartbeat();
 
-    if (result.type === "heartbeat") {
-      heartbeatCount++;
-      const elapsedMs = Date.now() - lastEventTimeMs;
+      if (result.type === "heartbeat") {
+        heartbeatCount++;
+        const elapsedMs = Date.now() - lastEventTimeMs;
 
-      // Check for timeout waiting on event.
-      if (elapsedMs >= LLM_EVENT_TIMEOUT_MS) {
-        logger.error(
-          {
-            ...logContext,
-            heartbeatCount,
-            elapsedMs,
-            timeoutMinutes: LLM_EVENT_TIMEOUT_MINUTES,
-          },
-          "[LLM stream] timeout - no event received"
-        );
-        throw new LLMStreamTimeoutError(elapsedMs, logContext);
+        // Check for timeout waiting on event.
+        if (elapsedMs >= LLM_EVENT_TIMEOUT_MS) {
+          logger.error(
+            {
+              ...logContext,
+              heartbeatCount,
+              elapsedMs,
+              timeoutMinutes: LLM_EVENT_TIMEOUT_MINUTES,
+            },
+            "[LLM stream] timeout - no event received"
+          );
+          throw new LLMStreamTimeoutError(elapsedMs, logContext);
+        }
+
+        // Log every minute to track long-waiting LLM calls.
+        if (heartbeatCount % HEARTBEAT_LOG_INTERVAL === 0) {
+          logger.info(
+            {
+              ...logContext,
+              heartbeatCount,
+              elapsedMs,
+            },
+            "[LLM stream] heartbeat - still waiting for event"
+          );
+        }
+        // Heartbeat won the race, but nextPromise is still pending
+        // Continue racing with the same nextPromise
+        continue;
       }
 
-      // Log every minute to track long-waiting LLM calls.
-      if (heartbeatCount % HEARTBEAT_LOG_INTERVAL === 0) {
-        logger.info(
-          {
-            ...logContext,
-            heartbeatCount,
-            elapsedMs,
-          },
-          "[LLM stream] heartbeat - still waiting for event"
-        );
+      // Stream value arrived
+      const streamResult = result.value;
+
+      if (streamResult.done) {
+        streamExhausted = true;
+        break;
       }
-      // Heartbeat won the race, but nextPromise is still pending
-      // Continue racing with the same nextPromise
-      continue;
+
+      yield streamResult.value;
+      nextPromise = stream.next();
+      // Reset for next event.
+      heartbeatCount = 0;
+      lastEventTimeMs = Date.now();
     }
-
-    // Stream value arrived
-    const streamResult = result.value;
-
-    if (streamResult.done) {
-      streamExhausted = true;
-      break;
+  } finally {
+    // Ensure the underlying stream is closed on early exit (timeout, error, or break).
+    // This aborts the HTTP connection to the LLM provider.
+    // Wrapped in try/catch to avoid masking the original error if cleanup fails.
+    try {
+      await stream.return?.();
+    } catch (cleanupError) {
+      logger.warn(
+        { err: cleanupError, ...logContext },
+        "[LLM stream] cleanup error"
+      );
     }
-
-    yield streamResult.value;
-    nextPromise = stream.next();
-    // Reset for next event.
-    heartbeatCount = 0;
-    lastEventTimeMs = Date.now();
   }
 }
 
