@@ -7,7 +7,11 @@ import type { Authenticator } from "@app/lib/auth";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
-import type { RunType, SpecificationType, WithAPIErrorResponse } from "@app/types";
+import type {
+  RunType,
+  SpecificationType,
+  WithAPIErrorResponse,
+} from "@app/types";
 
 export type GetRunResponseBody = {
   run: RunType;
