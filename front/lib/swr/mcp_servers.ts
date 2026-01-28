@@ -898,13 +898,13 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
 
       const result = await createMCPServerConnection({
         connectionId: cRes.value.connection_id,
-        mcpServerId: mcpServerId,
-        mcpServerDisplayName: mcpServerDisplayName,
+        mcpServerId,
+        mcpServerDisplayName,
         provider,
       });
 
       return { success: result !== null };
-    } catch (error) {
+    } catch {
       return {
         success: false,
         error:
