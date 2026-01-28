@@ -51,6 +51,37 @@ export class ProjectJournalEntryResource extends BaseResource<ProjectJournalEntr
     });
   }
 
+  static async create(
+    auth: Authenticator,
+    {
+      spaceId,
+      journalEntry,
+      sourceConversationId,
+      transaction,
+    }: {
+      spaceId: ModelId;
+      journalEntry: string;
+      sourceConversationId?: ModelId | null;
+      transaction?: Transaction;
+    }
+  ): Promise<ProjectJournalEntryResource> {
+    const workspace = auth.getNonNullableWorkspace();
+    const user = auth.getNonNullableUser();
+
+    const entry = await ProjectJournalEntryModel.create(
+      {
+        workspaceId: workspace.id,
+        spaceId,
+        userId: user.id,
+        journalEntry,
+        sourceConversationId: sourceConversationId ?? null,
+      },
+      { transaction }
+    );
+
+    return new this(this.model, entry.get(), { user });
+  }
+
   static async fetchBySpace(
     auth: Authenticator,
     spaceId: ModelId,
