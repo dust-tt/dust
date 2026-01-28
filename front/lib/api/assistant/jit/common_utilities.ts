@@ -52,6 +52,7 @@ export async function getCommonUtilitiesServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: commonUtilitiesViewJSON.sId,
     dustAppConfiguration: null,

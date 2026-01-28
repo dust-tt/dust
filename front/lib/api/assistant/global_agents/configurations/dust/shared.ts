@@ -55,6 +55,7 @@ export function getCompanyDataAction(
     dustAppConfiguration: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
   };
 }
 
@@ -99,5 +100,6 @@ export function getCompanyDataWarehousesAction(
     dustAppConfiguration: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
   };
 }

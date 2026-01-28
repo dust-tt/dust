@@ -117,6 +117,7 @@ export async function getQueryTablesServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: queryTablesView.sId,
     dustAppConfiguration: null,

@@ -75,6 +75,7 @@ export async function getFolderSearchServers(
       timeFrame: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
       additionalConfiguration: {},
       mcpServerViewId: retrievalView.sId,
       dustAppConfiguration: null,

@@ -70,6 +70,7 @@ export async function getSchedulesManagementServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: schedulesManagementViewJSON.sId,
     dustAppConfiguration: null,

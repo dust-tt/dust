@@ -24,6 +24,10 @@ export const AGENT_CONFIGURATION_URI_PATTERN =
   // because global agents have dashes in their sId.
   /^agent:\/\/dust\/w\/(\w+)\/agents\/([\w-]+)$/;
 
+// URI pattern for configuring the project to use within an action.
+export const PROJECT_CONFIGURATION_URI_PATTERN =
+  /^project:\/\/dust\/w\/(\w+)\/projects\/(\w+)$/;
+
 // The full, recursive schema for a JSON schema is not yet supported by MCP call
 // tool, and anyway its full validation is not needed. Therefore, we describe 2
 // levels of depth then use z.any(). As an added bonus, it is arguably better
@@ -92,7 +96,7 @@ export function validateConfiguredJsonSchema(
 
 /**
  * Mapping between the mime types we used to identify a configurable resource and the Zod schema used to validate it.
- * Not all mime types have a fixed schema, for instance the ENUM mime type is flexible.
+ * Not all mime types have a fixed schema, for instance, the ENUM mime type is flexible.
  */
 export const ConfigurableToolInputSchemas = {
   [INTERNAL_MIME_TYPES.TOOL_INPUT.DATA_SOURCE]: z.array(
@@ -150,6 +154,10 @@ export const ConfigurableToolInputSchemas = {
     secretName: z.string(),
     mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.SECRET),
   }),
+  [INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT]: z.object({
+    uri: z.string().regex(PROJECT_CONFIGURATION_URI_PATTERN),
+    mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT),
+  }),
   // All mime types do not necessarily have a fixed schema,
   // for instance the ENUM mime type is flexible and the exact content of the enum is dynamic.
 } as const satisfies Omit<
@@ -188,6 +196,10 @@ export type DataSourcesToolConfigurationType = z.infer<
 
 export type TablesConfigurationToolType = z.infer<
   (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE]
+>;
+
+export type DustProjectConfigurationType = z.infer<
+  (typeof ConfigurableToolInputSchemas)[typeof INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT]
 >;
 
 /**

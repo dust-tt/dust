@@ -45,6 +45,7 @@ export async function getProjectContextManagementServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: mcpServerView.sId,
     dustAppConfiguration: null,

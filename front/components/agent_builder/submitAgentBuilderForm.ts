@@ -440,6 +440,7 @@ export async function submitAgentBuilderForm({
               : {},
           dustAppConfiguration: action.configuration.dustAppConfiguration,
           secretName: action.configuration.secretName,
+          dustProject: action.configuration.dustProject,
         };
       },
       { concurrency: 3 }
