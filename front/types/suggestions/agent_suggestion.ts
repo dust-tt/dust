@@ -64,6 +64,26 @@ export type InstructionsSuggestionType = z.infer<
 >;
 export type ModelSuggestionType = z.infer<typeof ModelSuggestionSchema>;
 
+export function isToolsSuggestion(data: unknown): data is ToolsSuggestionType {
+  return ToolsSuggestionSchema.safeParse(data).success;
+}
+
+export function isSkillsSuggestion(
+  data: unknown
+): data is SkillsSuggestionType {
+  return SkillsSuggestionSchema.safeParse(data).success;
+}
+
+export function isInstructionsSuggestion(
+  data: unknown
+): data is InstructionsSuggestionType {
+  return InstructionsSuggestionSchema.safeParse(data).success;
+}
+
+export function isModelSuggestion(data: unknown): data is ModelSuggestionType {
+  return ModelSuggestionSchema.safeParse(data).success;
+}
+
 export type SuggestionPayload =
   | ToolsSuggestionType
   | SkillsSuggestionType
