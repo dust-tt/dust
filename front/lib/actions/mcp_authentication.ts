@@ -4,8 +4,27 @@ import { DustError } from "@app/lib/error";
 import type { MCPServerConnectionConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { OAuthConnectionType, OAuthProvider, Result } from "@app/types";
-import { Err, getOAuthConnectionAccessToken, Ok } from "@app/types";
+import type {
+  OAuthConnectionType,
+  OAuthProvider,
+  Result,
+  SnowflakeCredentials,
+} from "@app/types";
+import { Err, getOAuthConnectionAccessToken, OAuthAPI, Ok } from "@app/types";
+
+// Return type for getConnectionForMCPServer that supports both OAuth and key pair auth.
+export type MCPServerAuthInfo =
+  | {
+      authType: "oauth";
+      connection: OAuthConnectionType;
+      access_token: string;
+      access_token_expiry: number | null;
+      scrubbed_raw_json: unknown;
+    }
+  | {
+      authType: "keypair";
+      credentials: SnowflakeCredentials;
+    };
 
 // Dedicated function to get the connection details for an MCP server.
 // Not using the one from mcp_metadata.ts to avoid circular dependency.
@@ -20,12 +39,7 @@ export async function getConnectionForMCPServer(
   }
 ): Promise<
   Result<
-    {
-      connection: OAuthConnectionType;
-      access_token: string;
-      access_token_expiry: number | null;
-      scrubbed_raw_json: unknown;
-    },
+    MCPServerAuthInfo,
     DustError<"mcp_access_token_error" | "connection_not_found">
   >
 > {
@@ -34,13 +48,55 @@ export async function getConnectionForMCPServer(
     connectionType,
   });
   if (connection.isOk()) {
+    const connectionResource = connection.value;
+
+    // Check if this connection uses key pair auth (credentialId) instead of OAuth (connectionId).
+    if (connectionResource.credentialId) {
+      // Key pair authentication: fetch credentials from Core.
+      const oAuthAPI = new OAuthAPI(apiConfig.getOAuthAPIConfig(), logger);
+      const credentialsResult = await oAuthAPI.getCredentials({
+        credentialsId: connectionResource.credentialId,
+      });
+
+      if (credentialsResult.isErr()) {
+        logger.warn(
+          {
+            workspaceId: auth.getNonNullableWorkspace().sId,
+            mcpServerId,
+            connectionType,
+            credentialId: connectionResource.credentialId,
+            error: credentialsResult.error,
+          },
+          "Failed to get credentials for MCP server key pair auth"
+        );
+        return new Err(
+          new DustError(
+            "mcp_access_token_error",
+            "Failed to get credentials for MCP server"
+          )
+        );
+      }
+
+      // The content should be SnowflakeCredentials for key pair auth.
+      const credentials =
+        credentialsResult.value.credential.content as SnowflakeCredentials;
+      return new Ok({
+        authType: "keypair",
+        credentials,
+      });
+    }
+
+    // OAuth authentication: fetch access token.
     const token = await getOAuthConnectionAccessToken({
       config: apiConfig.getOAuthAPIConfig(),
       logger,
-      connectionId: connection.value.connectionId,
+      connectionId: connectionResource.connectionId,
     });
     if (token.isOk()) {
-      return new Ok(token.value);
+      return new Ok({
+        authType: "oauth",
+        ...token.value,
+      });
     } else {
       logger.warn(
         {

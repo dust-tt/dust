@@ -16,6 +16,8 @@ pub static CREDENTIAL_ID_PREFIX: &str = "cred";
 #[serde(rename_all = "snake_case")]
 pub enum CredentialProvider {
     Snowflake,
+    #[serde(rename = "snowflake_keypair")]
+    SnowflakeKeyPair,
     Bigquery,
     Salesforce,
     Slack,
@@ -50,6 +52,7 @@ impl From<ConnectionProvider> for CredentialProvider {
             ConnectionProvider::Freshservice => CredentialProvider::Freshservice,
             ConnectionProvider::Databricks => CredentialProvider::Databricks,
             ConnectionProvider::Snowflake => CredentialProvider::Snowflake,
+            ConnectionProvider::SnowflakeKeyPair => CredentialProvider::SnowflakeKeyPair,
             ConnectionProvider::UkgReady => CredentialProvider::UkgReady,
             ConnectionProvider::Vanta => CredentialProvider::Vanta,
             _ => panic!("Unsupported provider: {:?}", provider),
@@ -191,6 +194,16 @@ impl Credential {
                     // Legacy or explicit password auth for data warehouse
                     vec!["account", "warehouse", "username", "password", "role"]
                 }
+            }
+            CredentialProvider::SnowflakeKeyPair => {
+                // Key pair credentials for Snowflake MCP server integration
+                vec![
+                    "account",
+                    "warehouse",
+                    "username",
+                    "private_key",
+                    "role",
+                ]
             }
             CredentialProvider::Modjo => {
                 vec!["api_key"]

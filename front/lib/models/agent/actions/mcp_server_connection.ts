@@ -22,6 +22,10 @@ export class MCPServerConnectionModel extends WorkspaceAwareModel<MCPServerConne
 
   declare remoteMCPServerId: ForeignKey<RemoteMCPServerModel["id"]> | null;
 
+  // For key pair authentication (Core credential ID).
+  // When set, this connection uses key pair auth instead of OAuth.
+  declare credentialId: string | null;
+
   declare user: NonAttribute<UserModel>;
 }
 
@@ -40,6 +44,10 @@ MCPServerConnectionModel.init(
     connectionId: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    credentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     connectionType: {
       type: DataTypes.STRING,

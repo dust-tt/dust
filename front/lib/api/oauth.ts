@@ -319,3 +319,28 @@ export async function checkConnectionOwnership(
 
   return new Ok(undefined);
 }
+
+export async function checkCredentialOwnership(
+  auth: Authenticator,
+  credentialId: string
+) {
+  if (!credentialId || !credentialId.startsWith("cred_")) {
+    return new Err(new Error("Invalid credential ID format"));
+  }
+
+  // Ensure the credentialId has been created by the current user/workspace.
+  const oauthAPI = new OAuthAPI(config.getOAuthAPIConfig(), logger);
+  const credentialRes = await oauthAPI.getCredentials({
+    credentialsId: credentialId,
+  });
+  if (
+    credentialRes.isErr() ||
+    credentialRes.value.credential.metadata.user_id !== auth.user()?.sId ||
+    credentialRes.value.credential.metadata.workspace_id !==
+      auth.workspace()?.sId
+  ) {
+    return new Err(new Error("Invalid credential"));
+  }
+
+  return new Ok(undefined);
+}

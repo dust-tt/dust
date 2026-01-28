@@ -1,12 +1,7 @@
 import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
-import type {
-  Connection,
-  ConnectionOptions,
-  SnowflakeError,
-} from "snowflake-sdk";
-import snowflake from "snowflake-sdk";
 
+import { SnowflakeClient } from "@app/lib/api/actions/servers/snowflake/client";
 import config from "@app/lib/api/config";
 import type { OAuthError } from "@app/lib/api/oauth";
 import type {
@@ -19,7 +14,6 @@ import {
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
-import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { Result } from "@app/types";
@@ -29,18 +23,23 @@ import { isValidSnowflakeRole } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 
 /**
- * Snowflake OAuth provider for MCP server integration.
- *
- * Snowflake OAuth requires:
- * 1. Account identifier (e.g., "abc123.us-east-1" or "myorg-myaccount")
- * 2. Client ID and Client Secret from customer's security integration
- *
- * The OAuth endpoints are account-specific:
- * - Authorization: https://<account>.snowflakecomputing.com/oauth/authorize
- * - Token: https://<account>.snowflakecomputing.com/oauth/token-request
+ * Helper to determine if a user is connecting to a workspace-backed MCP server.
+ * When true, credentials should be retrieved from the existing workspace connection
+ * rather than requiring the user to provide client_secret directly.
  */
+function isWorkspaceBacked(
+  extraConfig: ExtraConfigType,
+  useCase: OAuthUseCase
+): boolean {
+  return (
+    (useCase === "personal_actions" || useCase === "platform_actions") &&
+    isString(extraConfig.mcp_server_id) &&
+    extraConfig.mcp_server_id.trim().length > 0
+  );
+}
+
 /**
- * Helper to fetch the workspace OAuth connection for an MCP server.
+ * Fetches the workspace OAuth connection for an MCP server.
  * Used to get credentials from an existing admin-configured connection.
  */
 async function getWorkspaceConnectionForMCPServer(
@@ -130,8 +129,8 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {
     if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // If we have an mcp_server_id it means the admin already setup the connection.
-      if (extraConfig.mcp_server_id) {
+      // If workspace-backed, the admin already setup the connection.
+      if (isWorkspaceBacked(extraConfig, useCase)) {
         return true;
       }
       // Initial admin setup - requires full credentials including default role and warehouse
@@ -160,29 +159,24 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<Result<RelatedCredential, OAuthError>> {
-    if (useCase === "personal_actions" || useCase === "platform_actions") {
-      // For personal/platform actions we reuse the existing connection credential id from the
-      // existing workspace connection (setup by admin) if we have it, otherwise we fallback to
-      // assuming we have client_secret (initial admin setup).
-      const { mcp_server_id } = extraConfig;
+    // For workspace-backed connections, reuse the existing credential id from the
+    // workspace connection (setup by admin).
+    if (isWorkspaceBacked(extraConfig, useCase)) {
+      const connectionResult = await getWorkspaceConnectionForMCPServer(
+        auth,
+        extraConfig.mcp_server_id as string
+      );
 
-      if (mcp_server_id && isString(mcp_server_id)) {
-        const connectionResult = await getWorkspaceConnectionForMCPServer(
-          auth,
-          mcp_server_id
-        );
-
-        if (connectionResult.isErr()) {
-          return connectionResult;
-        }
-
-        return new Ok({
-          content: {
-            from_connection_id: connectionResult.value.connection_id,
-          },
-          metadata: { workspace_id: workspaceId, user_id: userId },
-        });
+      if (connectionResult.isErr()) {
+        return connectionResult;
       }
+
+      return new Ok({
+        content: {
+          from_connection_id: connectionResult.value.connection_id,
+        },
+        metadata: { workspace_id: workspaceId, user_id: userId },
+      });
     }
 
     const {
@@ -230,61 +224,59 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
       useCase: OAuthUseCase;
     }
   ): Promise<ExtraConfigType> {
-    if (useCase === "personal_actions") {
-      // For personal actions we reuse the existing connection credential id from the existing
-      // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
-      // we have client_secret (initial admin setup).
-      const { mcp_server_id, snowflake_role: userRole } = extraConfig;
+    // For workspace-backed personal connections, retrieve config from the workspace connection.
+    if (
+      useCase === "personal_actions" &&
+      isWorkspaceBacked(extraConfig, useCase)
+    ) {
+      const { snowflake_role: userRole } = extraConfig;
+      const connectionResult = await getWorkspaceConnectionForMCPServer(
+        auth,
+        extraConfig.mcp_server_id as string
+      );
 
-      if (mcp_server_id && isString(mcp_server_id)) {
-        const connectionResult = await getWorkspaceConnectionForMCPServer(
-          auth,
-          mcp_server_id
+      if (connectionResult.isErr()) {
+        throw new Error(connectionResult.error.message);
+      }
+
+      const {
+        client_id: wsClientId,
+        snowflake_account: wsAccount,
+        snowflake_role: wsRole,
+        snowflake_warehouse: wsWarehouse,
+      } = connectionResult.value.metadata;
+
+      if (
+        !isString(wsClientId) ||
+        !isString(wsAccount) ||
+        !isString(wsRole) ||
+        !isString(wsWarehouse)
+      ) {
+        throw new Error(
+          "Workspace connection is missing required Snowflake configuration. " +
+            "Please ask an admin to reconfigure the MCP server connection."
         );
+      }
 
-        if (connectionResult.isErr()) {
-          throw new Error(connectionResult.error.message);
-        }
-
-        const {
-          client_id: wsClientId,
-          snowflake_account: wsAccount,
-          snowflake_role: wsRole,
-          snowflake_warehouse: wsWarehouse,
-        } = connectionResult.value.metadata;
-
-        if (
-          !isString(wsClientId) ||
-          !isString(wsAccount) ||
-          !isString(wsRole) ||
-          !isString(wsWarehouse)
-        ) {
+      // Use user-provided role if specified, otherwise use the default from workspace connection.
+      let role = wsRole;
+      const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
+      if (trimmedUserRole) {
+        if (!isValidSnowflakeRole(trimmedUserRole)) {
           throw new Error(
-            "Workspace connection is missing required Snowflake configuration. " +
-              "Please ask an admin to reconfigure the MCP server connection."
+            `Invalid Snowflake role format: "${trimmedUserRole}". ` +
+              "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
           );
         }
-
-        // Use user-provided role if specified, otherwise use the default from workspace connection.
-        let role = wsRole;
-        const trimmedUserRole = isString(userRole) ? userRole.trim() : "";
-        if (trimmedUserRole) {
-          if (!isValidSnowflakeRole(trimmedUserRole)) {
-            throw new Error(
-              `Invalid Snowflake role format: "${trimmedUserRole}". ` +
-                "Role must start with a letter or underscore and contain only alphanumeric characters and underscores."
-            );
-          }
-          role = trimmedUserRole;
-        }
-
-        return {
-          client_id: wsClientId,
-          snowflake_account: wsAccount,
-          snowflake_role: role,
-          snowflake_warehouse: wsWarehouse,
-        };
+        role = trimmedUserRole;
       }
+
+      return {
+        client_id: wsClientId,
+        snowflake_account: wsAccount,
+        snowflake_role: role,
+        snowflake_warehouse: wsWarehouse,
+      };
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
@@ -320,12 +312,14 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
 
     const accessToken = accessTokenRes.value.access_token;
 
-    // Test the connection and warehouse access
-    const testResult = await this.testWarehouseAccess(
+    // Test the connection and warehouse access using SnowflakeClient.
+    // listDatabases() will connect, set the warehouse, and run a simple query.
+    const client = SnowflakeClient.createWithOAuth(
       snowflake_account,
       accessToken,
       snowflake_warehouse
     );
+    const testResult = await client.listDatabases();
 
     if (testResult.isErr()) {
       return new Err({
@@ -334,70 +328,5 @@ export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
     }
 
     return new Ok(undefined);
-  }
-
-  /**
-   * Test that the OAuth token can connect and use the specified warehouse.
-   */
-  private async testWarehouseAccess(
-    account: string,
-    accessToken: string,
-    warehouse: string
-  ): Promise<Result<void, Error>> {
-    // Configure SDK to suppress verbose logging
-    snowflake.configure({ logLevel: "OFF" });
-
-    try {
-      const connectionOptions: ConnectionOptions = {
-        account: account.replace(/_/g, "-"),
-        authenticator: "OAUTH",
-        token: accessToken,
-      };
-
-      // Connect to Snowflake
-      const connection = await new Promise<Connection>((resolve, reject) => {
-        const conn = snowflake.createConnection(connectionOptions);
-        conn.connect((err: SnowflakeError | undefined, c: Connection) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(c);
-          }
-        });
-      });
-
-      // Try to use the warehouse
-      try {
-        await new Promise<void>((resolve, reject) => {
-          connection.execute({
-            sqlText: `USE WAREHOUSE "${escapeSnowflakeIdentifier(warehouse)}"`,
-            complete: (err: SnowflakeError | undefined) => {
-              if (err) {
-                reject(err);
-              } else {
-                resolve();
-              }
-            },
-          });
-        });
-      } catch {
-        // Clean up connection
-        connection.destroy(() => {});
-        return new Err(
-          new Error(
-            `The role does not have access to warehouse "${warehouse}". ` +
-              `Please ensure the role has USAGE privilege on the warehouse, or choose a different warehouse.`
-          )
-        );
-      }
-
-      // Clean up connection
-      connection.destroy(() => {});
-      return new Ok(undefined);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unknown connection error";
-      return new Err(new Error(`Failed to connect to Snowflake: ${message}`));
-    }
   }
 }

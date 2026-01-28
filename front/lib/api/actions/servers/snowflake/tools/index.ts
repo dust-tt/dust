@@ -6,12 +6,25 @@ import {
   MAX_QUERY_ROWS,
   SNOWFLAKE_TOOLS_METADATA,
 } from "@app/lib/api/actions/servers/snowflake/metadata";
-import type { Result } from "@app/types";
+import type { Result, SnowflakeCredentials } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const CONNECTION_ERROR = new MCPError(
   "Snowflake connection not configured. Please connect your Snowflake account."
 );
+
+function isSnowflakeCredentials(obj: unknown): obj is SnowflakeCredentials {
+  if (typeof obj !== "object" || obj === null) {
+    return false;
+  }
+  const creds = obj as Record<string, unknown>;
+  return (
+    typeof creds.account === "string" &&
+    typeof creds.username === "string" &&
+    typeof creds.warehouse === "string" &&
+    typeof creds.role === "string"
+  );
+}
 
 function getClientFromAuthInfo(
   authInfo:
@@ -22,6 +35,24 @@ function getClientFromAuthInfo(
     | null
     | undefined
 ): Result<SnowflakeClient, MCPError> {
+  const authType = authInfo?.extra?.auth_type;
+
+  // Key pair authentication path.
+  if (authType === "keypair") {
+    const credentials = authInfo?.extra?.credentials;
+    if (!isSnowflakeCredentials(credentials)) {
+      return new Err(CONNECTION_ERROR);
+    }
+
+    // createWithKeyPair validates private_key field and returns appropriate error.
+    const clientResult = SnowflakeClient.createWithKeyPair(credentials);
+    if (clientResult.isErr()) {
+      return new Err(new MCPError(clientResult.error.message));
+    }
+    return new Ok(clientResult.value);
+  }
+
+  // OAuth authentication path (default).
   const account = authInfo?.extra?.snowflake_account;
   const warehouse = authInfo?.extra?.snowflake_warehouse;
   const token = authInfo?.token;
@@ -30,7 +61,7 @@ function getClientFromAuthInfo(
     return new Err(CONNECTION_ERROR);
   }
 
-  return new Ok(new SnowflakeClient(account, token, warehouse));
+  return new Ok(SnowflakeClient.createWithOAuth(account, token, warehouse));
 }
 
 const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {

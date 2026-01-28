@@ -5,7 +5,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { getServerTypeAndIdFromSId } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { checkConnectionOwnership } from "@app/lib/api/oauth";
+import {
+  checkConnectionOwnership,
+  checkCredentialOwnership,
+} from "@app/lib/api/oauth";
 import type { Authenticator } from "@app/lib/auth";
 import type { MCPServerConnectionType } from "@app/lib/resources/mcp_server_connection_resource";
 import {
@@ -15,10 +18,17 @@ import {
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
-const PostConnectionBodySchema = t.type({
-  connectionId: t.string,
-  mcpServerId: t.string,
-});
+// Support both OAuth (connectionId) and key pair (credentialId) authentication.
+// At least one must be provided, but not both.
+const PostConnectionBodySchema = t.intersection([
+  t.type({
+    mcpServerId: t.string,
+  }),
+  t.partial({
+    connectionId: t.string, // OAuth connection ID from OAuth API.
+    credentialId: t.string, // Credential ID from Core (key pair auth).
+  }),
+]);
 export type PostConnectionBodyType = t.TypeOf<typeof PostConnectionBodySchema>;
 
 export type PostConnectionResponseBody = {
@@ -77,8 +87,31 @@ async function handler(
       }
 
       const validatedBody = bodyValidation.right;
-      const { connectionId, mcpServerId } = validatedBody;
+      const { connectionId, credentialId, mcpServerId } = validatedBody;
 
+      // Validate that exactly one of connectionId or credentialId is provided.
+      if (!connectionId && !credentialId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Either connectionId (OAuth) or credentialId (key pair) must be provided.",
+          },
+        });
+      }
+      if (connectionId && credentialId) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "Cannot provide both connectionId (OAuth) and credentialId (key pair). Choose one authentication method.",
+          },
+        });
+      }
+
+      // Verify ownership of the connection or credential.
       if (connectionId) {
         const checkConnectionOwnershipRes = await checkConnectionOwnership(
           auth,
@@ -89,7 +122,22 @@ async function handler(
             status_code: 400,
             api_error: {
               type: "invalid_request_error",
-              message: "Failed to get the access token for the MCP server.",
+              message: "Failed to verify ownership of the OAuth connection.",
+            },
+          });
+        }
+      }
+      if (credentialId) {
+        const checkCredentialOwnershipRes = await checkCredentialOwnership(
+          auth,
+          credentialId
+        );
+        if (checkCredentialOwnershipRes.isErr()) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message: "Failed to verify ownership of the credential.",
             },
           });
         }
@@ -100,7 +148,10 @@ async function handler(
       const connectionResource = await MCPServerConnectionResource.makeNew(
         auth,
         {
-          connectionId,
+          // For OAuth: use connectionId, credentialId is null.
+          // For key pair: use sentinel "keypair", credentialId stores the actual ID.
+          connectionId: connectionId ?? "keypair",
+          credentialId: credentialId ?? null,
           connectionType,
           serverType,
           internalMCPServerId: serverType === "internal" ? mcpServerId : null,

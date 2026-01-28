@@ -1,3 +1,5 @@
+import { createPrivateKey } from "node:crypto";
+
 import type {
   Connection,
   ConnectionOptions,
@@ -8,7 +10,7 @@ import snowflake from "snowflake-sdk";
 
 import { escapeSnowflakeIdentifier } from "@app/lib/utils/snowflake";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
+import type { Result, SnowflakeCredentials } from "@app/types";
 import { EnvironmentConfig, Err, normalizeError, Ok } from "@app/types";
 import { isString } from "@app/types/shared/utils/general";
 
@@ -52,20 +54,91 @@ function getRowStringMultiKey(
   return undefined;
 }
 
+/**
+ * Custom error class for invalid private key errors.
+ */
+class InvalidPrivateKeyError extends Error {
+  cause?: unknown;
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = "InvalidPrivateKeyError";
+    this.cause = cause;
+  }
+}
+
+// Auth type discriminator for the client.
+type SnowflakeClientAuth =
+  | { type: "oauth"; accessToken: string }
+  | {
+      type: "keypair";
+      username: string;
+      privateKey: string;
+      role: string;
+      passphrase?: string;
+    };
+
 export class SnowflakeClient {
   private account: string;
-  private accessToken: string;
+  private auth: SnowflakeClientAuth;
   private warehouse: string;
 
-  constructor(account: string, accessToken: string, warehouse: string) {
+  private constructor(
+    account: string,
+    auth: SnowflakeClientAuth,
+    warehouse: string
+  ) {
     this.account = account.trim();
-    this.accessToken = accessToken;
+    this.auth = auth;
     this.warehouse = warehouse.trim();
   }
 
   /**
-   * Create a Snowflake connection using OAuth authentication.
-   * Uses proxy for static IP whitelisting support.
+   * Create a SnowflakeClient with OAuth authentication.
+   */
+  static createWithOAuth(
+    account: string,
+    accessToken: string,
+    warehouse: string
+  ): SnowflakeClient {
+    return new SnowflakeClient(
+      account,
+      { type: "oauth", accessToken },
+      warehouse
+    );
+  }
+
+  /**
+   * Create a SnowflakeClient with key pair authentication.
+   * Validates and prepares the private key for use with Snowflake SDK.
+   */
+  static createWithKeyPair(
+    credentials: SnowflakeCredentials
+  ): Result<SnowflakeClient, Error> {
+    // Validate that credentials include key pair auth fields.
+    if (!("private_key" in credentials)) {
+      return new Err(
+        new Error("Key pair credentials missing private_key field")
+      );
+    }
+
+    return new Ok(
+      new SnowflakeClient(
+        credentials.account,
+        {
+          type: "keypair",
+          username: credentials.username,
+          privateKey: credentials.private_key,
+          role: credentials.role,
+          passphrase: credentials.private_key_passphrase,
+        },
+        credentials.warehouse
+      )
+    );
+  }
+
+  /**
+   * Create a Snowflake connection.
+   * Supports both OAuth and key pair authentication.
    */
   private async connect(): Promise<Result<Connection, Error>> {
     // Configure SDK to suppress verbose logging
@@ -77,8 +150,6 @@ export class SnowflakeClient {
       const connectionOptions: ConnectionOptions = {
         // Replace any `_` with `-` in the account name for nginx proxy
         account: this.account.replace(/_/g, "-"),
-        authenticator: "OAUTH",
-        token: this.accessToken,
         warehouse: this.warehouse,
 
         // Use proxy if defined to have all requests coming from the same IP.
@@ -91,6 +162,60 @@ export class SnowflakeClient {
           "PROXY_USER_PASSWORD"
         ),
       };
+
+      // Configure authentication based on auth type.
+      if (this.auth.type === "oauth") {
+        connectionOptions.authenticator = "OAUTH";
+        connectionOptions.token = this.auth.accessToken;
+      } else {
+        // Key pair authentication
+        connectionOptions.authenticator = "SNOWFLAKE_JWT";
+        connectionOptions.username = this.auth.username;
+        connectionOptions.role = this.auth.role;
+
+        // Parse the private key to ensure it's in the correct format for Snowflake SDK.
+        // Snowflake SDK only accepts unencrypted PKCS#8 PEM format.
+        // This handles:
+        // - Unencrypted PKCS#8 (-----BEGIN PRIVATE KEY-----)
+        // - Encrypted PKCS#8 (-----BEGIN ENCRYPTED PRIVATE KEY-----) with passphrase
+        // - PKCS#1 RSA keys (-----BEGIN RSA PRIVATE KEY-----), encrypted or not
+        try {
+          const passphraseToUse = this.auth.passphrase ?? "";
+
+          const privateKeyObject = createPrivateKey({
+            key: this.auth.privateKey.trim(),
+            format: "pem",
+            passphrase: passphraseToUse,
+          });
+
+          // Export as unencrypted PKCS#8 PEM since snowflake-sdk only accepts that shape.
+          connectionOptions.privateKey = privateKeyObject
+            .export({
+              format: "pem",
+              type: "pkcs8",
+            })
+            .toString();
+        } catch (err) {
+          const detail =
+            err instanceof Error && err.message
+              ? ` Original error: ${err.message}`
+              : "";
+          const isEncrypted = /-----BEGIN ENCRYPTED PRIVATE KEY-----/.test(
+            this.auth.privateKey
+          );
+          const missingPassphrase = this.auth.passphrase === undefined;
+          const hint =
+            isEncrypted && missingPassphrase
+              ? " Encrypted key detected but no passphrase was supplied. If your passphrase is intentionally empty, submit an empty passphrase."
+              : "";
+          return new Err(
+            new InvalidPrivateKeyError(
+              `Invalid private key or passphrase.${hint} Provide a valid PEM key (PKCS#8 or RSA) and, if encrypted, the correct passphrase.${detail}`,
+              err
+            )
+          );
+        }
+      }
 
       const connection = await new Promise<Connection>((resolve, reject) => {
         const connectTimeoutMs = 15000;
