@@ -26,6 +26,7 @@ import type {
   PostSpaceRequestBodyType,
   PostSpacesResponseBody,
 } from "@app/pages/api/w/[wId]/spaces";
+import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type {
   GetSpaceResponseBody,
   PatchSpaceResponseBody,
@@ -136,6 +137,8 @@ export function useSpaceInfo({
 
   return {
     spaceInfo: data ? data.space : null,
+    canWriteInSpace: data?.space.canWrite ?? false,
+    canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
     isSpaceInfoLoading: !error && !data && !disabled,
     isSpaceInfoError: error,
@@ -165,6 +168,7 @@ export function useSpaceDataSourceView({
 
   return {
     dataSourceView: data?.dataSourceView,
+    connector: data?.connector ?? null,
     isDataSourceViewLoading: !disabled && !error && !data,
     isDataSourceViewError: error,
     mutate,
@@ -679,6 +683,52 @@ export function useSystemSpace({
     isSystemSpaceLoading: !error && !data && !disabled,
     isSystemSpaceError: error,
     mutateSystemSpace: mutate,
+  };
+}
+
+export function useGlobalSpace({
+  workspaceId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const globalSpaceFetcher: Fetcher<GetSpacesResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces?kind=global`,
+    globalSpaceFetcher,
+    { disabled }
+  );
+
+  return {
+    globalSpace: data ? data.spaces[0] : null,
+    isGlobalSpaceLoading: !error && !data && !disabled,
+    isGlobalSpaceError: error,
+    mutateGlobalSpace: mutate,
+  };
+}
+
+export function useActiveSeats({
+  workspaceId,
+  disabled = false,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const seatsFetcher: Fetcher<GetWorkspaceSeatsCountResponseBody> = fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/seats/count`,
+    seatsFetcher,
+    { disabled }
+  );
+
+  return {
+    activeSeats: data?.seatsCount ?? 0,
+    isActiveSeatsLoading: !error && !data && !disabled,
+    isActiveSeatsError: error,
+    mutateActiveSeats: mutate,
   };
 }
 
