@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { untrustedFetch } from "@app/lib/egress/server";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { extractDomain, hasValidMxRecords } from "@app/lib/utils/email";
 import { isPersonalEmailDomain } from "@app/lib/utils/personal_email_domains";
 import logger from "@app/logger/logger";
@@ -19,16 +19,6 @@ interface EnrichmentResponse {
   companyName?: string;
   redirectUrl: string;
   error?: string;
-}
-
-async function checkAutoJoinDomain(domain: string): Promise<boolean> {
-  const workspaceDomain = await WorkspaceHasDomainModel.findOne({
-    where: {
-      domain,
-      domainAutoJoinEnabled: true,
-    },
-  });
-  return workspaceDomain !== null;
 }
 
 // Parse employee count from Apollo's employee range strings
@@ -451,7 +441,8 @@ export default async function handler(
   }
 
   // Check if domain has auto-join enabled - redirect to sign-up (user doesn't exist yet)
-  const isAutoJoinDomain = await checkAutoJoinDomain(domain);
+  const isAutoJoinDomain =
+    await WorkspaceResource.isDomainAutoJoinEnabled(domain);
   if (isAutoJoinDomain) {
     return res.status(200).json({
       success: true,
