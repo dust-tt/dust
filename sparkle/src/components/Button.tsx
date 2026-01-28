@@ -9,11 +9,7 @@ import {
   LinkWrapper,
   LinkWrapperProps,
   Spinner,
-  TooltipContent,
-  TooltipPortal,
-  TooltipProvider,
-  TooltipRoot,
-  TooltipTrigger,
+  Tooltip,
 } from "@sparkle/components/";
 import { SpinnerProps } from "@sparkle/components/Spinner";
 import { ChevronDownIcon } from "@sparkle/icons/app";
@@ -298,6 +294,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isPulsing?: boolean;
     briefPulse?: boolean;
     tooltip?: string;
+    tooltipShortcut?: string;
     isCounter?: boolean;
     counterValue?: string;
     isRounded?: boolean;
@@ -326,6 +323,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       isLoading = false,
       variant = "primary",
       tooltip,
+      tooltipShortcut,
       isSelect = false,
       isPulsing = false,
       briefPulse = false,
@@ -462,14 +460,12 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     );
 
     const wrappedContent = tooltip ? (
-      <TooltipProvider>
-        <TooltipRoot>
-          <TooltipTrigger asChild>{innerButton}</TooltipTrigger>
-          <TooltipPortal>
-            <TooltipContent>{tooltip}</TooltipContent>
-          </TooltipPortal>
-        </TooltipRoot>
-      </TooltipProvider>
+      <Tooltip
+        trigger={innerButton}
+        tooltipTriggerAsChild={true}
+        label={tooltip}
+        shortcut={tooltipShortcut}
+      />
     ) : (
       innerButton
     );
