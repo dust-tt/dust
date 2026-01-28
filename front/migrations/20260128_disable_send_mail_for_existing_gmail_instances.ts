@@ -75,25 +75,26 @@ async function disableSendMailForWorkspace(
     {
       workspaceId: workspace.id,
       instancesCount: existingInstances.length,
-      execute,
     },
     "Found Gmail instances to disable in workspace."
   );
 
-  // Force disable send_mail for all existing instances.
+  // Force disable send_mail for all existing instances using upsert.
   let processedCount = 0;
 
   for (const instance of existingInstances) {
     if (execute) {
-      // Update to force enabled: false.
-      await RemoteMCPServerToolMetadataModel.update(
-        { enabled: false },
+      // Upsert to force enabled: false.
+      await RemoteMCPServerToolMetadataModel.upsert(
         {
-          where: {
-            workspaceId: instance.workspaceId,
-            internalMCPServerId: instance.internalMCPServerId,
-            toolName: TOOL_NAME,
-          },
+          workspaceId: instance.workspaceId,
+          internalMCPServerId: instance.internalMCPServerId,
+          toolName: TOOL_NAME,
+          permission: PERMISSION_LEVEL,
+          enabled: false,
+        },
+        {
+          conflictFields: ["workspaceId", "internalMCPServerId", "toolName"],
         }
       );
 
@@ -107,7 +108,6 @@ async function disableSendMailForWorkspace(
           enabled: false,
           permission: PERMISSION_LEVEL,
           instanceCreatedAt: instance.createdAt.toISOString(),
-          execute,
         },
         "Forced send_mail disabled for existing Gmail instance."
       );
@@ -123,7 +123,6 @@ async function disableSendMailForWorkspace(
           enabled: false,
           permission: PERMISSION_LEVEL,
           instanceCreatedAt: instance.createdAt.toISOString(),
-          execute,
         },
         "Would force send_mail disabled for existing Gmail instance."
       );
@@ -145,7 +144,6 @@ makeScript(
   async ({ workspaceId, execute }, logger) => {
     logger.info(
       {
-        execute,
         workspaceId: workspaceId || "all",
         cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
         toolName: TOOL_NAME,
@@ -189,7 +187,6 @@ makeScript(
 
     logger.info(
       {
-        execute,
         workspaceId: workspaceId || "all",
         processedCount: totalProcessed,
       },
