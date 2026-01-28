@@ -15,6 +15,7 @@ import React, {
   useState,
 } from "react";
 import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -71,7 +72,6 @@ import {
 import { Err, Ok } from "@app/types";
 
 import { findFirstUnreadMessageIndex } from "./utils";
-import { PluggableList } from "react-markdown/lib/react-markdown";
 
 const DEFAULT_PAGE_LIMIT = 50;
 

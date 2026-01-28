@@ -1,4 +1,6 @@
 import uniq from "lodash/uniq";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
@@ -22,8 +24,6 @@ import type {
 } from "@app/types";
 import { isLightAgentMessageWithActionsType } from "@app/types";
 import type { AgentMCPActionType } from "@app/types/actions";
-import { Components } from "react-markdown";
-import { PluggableList } from "react-markdown/lib/react-markdown";
 
 export type AgentStateClassification =
   | "placeholder"
