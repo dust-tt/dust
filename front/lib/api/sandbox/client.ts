@@ -184,15 +184,24 @@ export class Sandbox {
   async readFile(remotePath: string): Promise<Buffer> {
     logger.info({ serviceId: this.info.serviceId, remotePath }, "[sandbox] Reading file");
 
-    const { fileStream } = await this.api.fileCopy.downloadServiceFileStream(
+    const { fileStream, completionPromise } = await this.api.fileCopy.downloadServiceFileStream(
       this.serviceParams,
       { remotePath }
     );
 
-    const result = await streamToBuffer(fileStream);
+    const [result, success] = await Promise.all([
+      streamToBuffer(fileStream),
+      completionPromise,
+    ]);
+
     if (result.isErr()) {
       throw new Error(result.error);
     }
+
+    if (!success) {
+      throw new Error(`Failed to read file "${remotePath}"`);
+    }
+
     return result.value;
   }
 
