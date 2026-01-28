@@ -43,11 +43,6 @@ const ConversationsUnreadEmailTemplate = ({
                   getConversationRoute(workspace.id, conversation.id)
                 }
                 target="_blank"
-                style={{
-                  textDecoration: "underline",
-                  color: "inherit",
-                  fontWeight: "bold",
-                }}
               >
                 {conversation.title}
               </a>
