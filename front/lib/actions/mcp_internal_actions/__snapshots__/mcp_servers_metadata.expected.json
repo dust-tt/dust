@@ -1941,8 +1941,8 @@
       }
     ],
     "toolsStakes": {
-      "convert_file_format": "low",
-      "generate_file": "low",
+      "convert_file_format": "never_ask",
+      "generate_file": "never_ask",
       "get_supported_source_formats_for_output_format": "never_ask"
     }
   },
@@ -3934,7 +3934,7 @@
       "add_issue_to_project": "low",
       "comment_on_issue": "low",
       "create_issue": "low",
-      "create_pull_request_review": "low",
+      "create_pull_request_review": "high",
       "get_issue": "never_ask",
       "get_pull_request": "never_ask",
       "list_issues": "never_ask",
@@ -4176,7 +4176,7 @@
     "toolsStakes": {
       "create_draft": "medium",
       "create_reply_draft": "medium",
-      "delete_draft": "low",
+      "delete_draft": "high",
       "get_attachment": "never_ask",
       "get_drafts": "never_ask",
       "get_messages": "never_ask"
@@ -10629,12 +10629,15 @@
       "create_column": "high",
       "create_group": "high",
       "create_item": "high",
+      "create_multiple_items": "high",
       "create_subitem": "high",
       "create_update": "high",
       "delete_group": "high",
       "delete_item": "high",
       "duplicate_group": "high",
       "find_user_by_name": "never_ask",
+      "get_activity_logs": "never_ask",
+      "get_board_analytics": "never_ask",
       "get_board_items": "never_ask",
       "get_board_values": "never_ask",
       "get_boards": "never_ask",
@@ -10645,6 +10648,7 @@
       "get_items_by_column_value": "never_ask",
       "get_subitem_values": "never_ask",
       "get_user_details": "never_ask",
+      "move_item_to_board": "high",
       "search_items": "never_ask",
       "update_item": "high",
       "update_item_name": "high",
@@ -12987,8 +12991,8 @@
       }
     ],
     "toolsStakes": {
-      "pass_through": "never_ask",
-      "tool_without_user_config": "never_ask"
+      "pass_through": "high",
+      "tool_without_user_config": "high"
     }
   },
   {
@@ -13801,7 +13805,7 @@
       }
     ],
     "toolsStakes": {
-      "execute_database_query": "low",
+      "execute_database_query": "never_ask",
       "get_database_schema": "never_ask"
     }
   },
