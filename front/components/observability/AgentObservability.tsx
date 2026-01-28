@@ -49,6 +49,13 @@ const ToolUsageChart = dynamic(
     ),
   { ssr: false }
 );
+const ToolExecutionTimeChart = dynamic(
+  () =>
+    import("@app/components/agent_builder/observability/charts/ToolExecutionTimeChart").then(
+      (mod) => mod.ToolExecutionTimeChart
+    ),
+  { ssr: false }
+);
 const UsageMetricsChart = dynamic(
   () =>
     import("@app/components/agent_builder/observability/charts/UsageMetricsChart").then(
@@ -230,6 +237,12 @@ export function AgentObservability({
           isCustomAgent={isCustomAgent}
         />
         <Separator />
+        <LatencyChart
+          workspaceId={workspaceId}
+          agentConfigurationId={agentConfigurationId}
+          isCustomAgent={isCustomAgent}
+        />
+        <Separator />
         <DatasourceRetrievalTreemapChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
@@ -242,7 +255,7 @@ export function AgentObservability({
           isCustomAgent={isCustomAgent}
         />
         <Separator />
-        <LatencyChart
+        <ToolExecutionTimeChart
           workspaceId={workspaceId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
