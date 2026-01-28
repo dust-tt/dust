@@ -86,7 +86,10 @@ export interface ScriptProps {
   children?: string;
 }
 
-export interface ImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "width" | "height" | "src" | "alt"> {
+export interface ImageProps extends Omit<
+  React.ImgHTMLAttributes<HTMLImageElement>,
+  "width" | "height" | "src" | "alt"
+> {
   width?: number | `${number}` | undefined;
   height?: number | `${number}` | undefined;
   src: string;
