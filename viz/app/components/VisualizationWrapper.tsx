@@ -459,7 +459,7 @@ export function VisualizationWrapper({
             } else {
               // Set data-viz-ready attribute once fully rendered to enable screen capture.
               // In PDF mode, delay to let Recharts animations complete (react-smooth is JS-based).
-              const delayMs = isPdfMode ? 2000 : 0;
+              const delayMs = isPdfMode ? 5000 : 0;
               setTimeout(() => setVizReady(true), delayMs);
             }
           }}
