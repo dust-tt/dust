@@ -34,7 +34,6 @@ import {
   GithubCodeRepositoryModel,
   GithubConnectorStateModel,
 } from "@connectors/lib/models/github";
-import { syncFailed } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -429,12 +428,10 @@ export async function githubCleanupCodeSyncActivity({
 
   if (!githubCodeRepository) {
     // The repository was removed during the sync (e.g., deleted from GitHub or unselected).
-    // Mark the connector as errored to notify the user.
-    logger.error(
+    logger.warn(
       { connectorId: connector.id, repoId },
       "GithubCodeRepository not found during cleanup - repository may have been removed"
     );
-    await syncFailed(connector.id, "third_party_internal_error");
     return;
   }
 
