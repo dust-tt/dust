@@ -39,7 +39,7 @@ import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
-import { OUTLOOK_SERVER } from "@app/lib/api/actions/servers/outlook/metadata";
+import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import {
@@ -533,7 +533,7 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    metadata: OUTLOOK_SERVER,
+    metadata: OUTLOOK_MAIL_SERVER,
   },
   outlook_calendar: {
     id: 25,

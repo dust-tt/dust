@@ -243,7 +243,7 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-export const OUTLOOK_SERVER = {
+export const OUTLOOK_MAIL_SERVER = {
   serverInfo: {
     name: "outlook",
     version: "1.0.0",
