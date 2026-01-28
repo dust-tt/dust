@@ -78,7 +78,8 @@ async function handler(
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "monthly_cap_micro_usd must be greater than or equal to 0.",
+            message:
+              "monthly_cap_micro_usd must be greater than or equal to 0.",
           },
         });
       }

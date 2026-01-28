@@ -107,7 +107,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
   const { submit: handleUpdateCap, isSubmitting: isUpdatingCap } =
     useSubmitFunction(async (monthlyCapMicroUsd: number | null) => {
       if (!editCapKey) {
-        return false;
+        return;
       }
       const response = await clientFetch(
         `/api/w/${owner.sId}/keys/${editCapKey.id}`,
@@ -125,7 +125,7 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
           title: "Monthly cap updated",
           type: "success",
         });
-        return true;
+        setEditCapKey(null);
       } else {
         const errorResponse = await response.json();
         sendNotification({
@@ -133,7 +133,6 @@ export function APIKeys({ owner }: { owner: WorkspaceType }) {
           description: get(errorResponse, "error.message", "Unknown error"),
           type: "error",
         });
-        return false;
       }
     });
 

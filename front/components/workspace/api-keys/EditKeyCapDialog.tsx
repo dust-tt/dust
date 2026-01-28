@@ -25,7 +25,7 @@ interface EditKeyCapDialogProps {
   keyData: KeyType;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (monthlyCapMicroUsd: number | null) => Promise<boolean>;
+  onSave: (monthlyCapMicroUsd: number | null) => Promise<void>;
   isSaving: boolean;
 }
 
@@ -73,10 +73,7 @@ export function EditKeyCapDialog({
       data.capValueDollars === ""
         ? null
         : Math.round(parseFloat(data.capValueDollars) * 1_000_000);
-    const success = await onSave(monthlyCapMicroUsd);
-    if (success) {
-      onClose();
-    }
+    await onSave(monthlyCapMicroUsd);
   };
 
   return (
