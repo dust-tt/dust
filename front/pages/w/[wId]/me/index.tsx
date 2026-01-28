@@ -10,66 +10,30 @@ import {
   TabsTrigger,
   UserIcon,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AccountSettings } from "@app/components/me/AccountSettings";
 import { PendingInvitationsTable } from "@app/components/me/PendingInvitationsTable";
 import { ProfileTriggersTab } from "@app/components/me/ProfileTriggersTab";
 import { UserToolsTable } from "@app/components/me/UserToolsTable";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { usePendingInvitations } from "@app/lib/swr/user";
-import type { PlanType, SubscriptionType, WorkspaceType } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
-}>(async (_context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const plan = auth.plan();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!owner || !subscription || !plan) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-      plan,
-    },
-  };
-});
-
-export default function ProfilePage({
-  owner,
-  subscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function ProfilePage() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
   const { pendingInvitations, isPendingInvitationsLoading } =
     usePendingInvitations({
       workspaceId: owner.sId,
     });
-
-  if (isPendingInvitationsLoading) {
-    return (
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        pageTitle="Dust - Profile"
-        navChildren={<AgentSidebarMenu owner={owner} />}
-      >
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      </AppCenteredLayout>
-    );
-  }
 
   return (
     <AppCenteredLayout
@@ -84,12 +48,18 @@ export default function ProfilePage({
           <Page.SectionHeader title="Account Settings" />
           <AccountSettings owner={owner} />
 
-          {pendingInvitations.length > 0 && (
-            <>
-              <Separator />
-              <Page.SectionHeader title="Pending Invitations" />
-              <PendingInvitationsTable invitations={pendingInvitations} />
-            </>
+          {isPendingInvitationsLoading ? (
+            <div className="flex justify-center py-4">
+              <Spinner />
+            </div>
+          ) : (
+            pendingInvitations.length > 0 && (
+              <>
+                <Separator />
+                <Page.SectionHeader title="Pending Invitations" />
+                <PendingInvitationsTable invitations={pendingInvitations} />
+              </>
+            )
           )}
 
           <Separator />
@@ -113,6 +83,15 @@ export default function ProfilePage({
   );
 }
 
-ProfilePage.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = ProfilePage as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

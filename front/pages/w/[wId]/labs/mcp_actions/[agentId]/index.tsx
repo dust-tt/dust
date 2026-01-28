@@ -11,91 +11,48 @@ import {
   Pagination,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useCallback } from "react";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useCallback, useEffect } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import { getFeatureFlags } from "@app/lib/auth";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type {
-  LightAgentConfigurationType,
-  SubscriptionType,
-  WorkspaceType,
-} from "@app/types";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  agent: LightAgentConfigurationType;
-  agentId: string;
-}>(async (_context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user();
-  const agentId = _context.params?.agentId as string;
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
-  if (!owner || !subscription || !user || !agentId) {
-    return {
-      notFound: true,
-    };
-  }
+function AgentMCPActions() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
+  const router = useRouter();
+  const { agentId } = router.query;
 
-  const flags = await getFeatureFlags(owner);
-  if (!flags.includes("labs_mcp_actions_dashboard")) {
-    return {
-      notFound: true,
-    };
-  }
-
-  if (!auth.isAdmin()) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "light",
+  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
   });
-  if (!agent) {
-    return {
-      notFound: true,
-    };
-  }
 
-  return {
-    props: {
-      owner,
-      subscription,
-      agent,
-      agentId,
-    },
-  };
-});
+  const { agentConfiguration: agent, isAgentConfigurationLoading } =
+    useAgentConfiguration({
+      workspaceId: owner.sId,
+      agentConfigurationId: isString(agentId) ? agentId : null,
+    });
 
-export default function AgentMCPActions({
-  owner,
-  subscription,
-  agent,
-  agentId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const { actions, totalCount, currentPage, isLoading, setPage } =
     useMCPActions({
       owner,
-      agentId,
+      agentId: isString(agentId) ? agentId : "",
       pageSize: 25,
     });
-
-  const pagination = {
-    pageIndex: currentPage,
-    pageSize: 25,
-  };
 
   const setPagination = useCallback(
     (newPagination: { pageIndex: number; pageSize: number }) => {
@@ -103,6 +60,41 @@ export default function AgentMCPActions({
     },
     [setPage]
   );
+
+  // Redirect if feature flag is not enabled.
+  useEffect(() => {
+    if (
+      !isFeatureFlagsLoading &&
+      !featureFlags.includes("labs_mcp_actions_dashboard")
+    ) {
+      void router.replace(`/w/${owner.sId}/labs`);
+    }
+  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
+
+  // Redirect if agent not found.
+  useEffect(() => {
+    if (!isAgentConfigurationLoading && !agent && isString(agentId)) {
+      void router.replace(`/w/${owner.sId}/labs/mcp_actions`);
+    }
+  }, [agent, isAgentConfigurationLoading, agentId, owner.sId, router]);
+
+  if (
+    isFeatureFlagsLoading ||
+    !featureFlags.includes("labs_mcp_actions_dashboard") ||
+    isAgentConfigurationLoading ||
+    !agent
+  ) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  const pagination = {
+    pageIndex: currentPage,
+    pageSize: 25,
+  };
 
   const items = [
     {
@@ -115,7 +107,7 @@ export default function AgentMCPActions({
     },
     {
       label: agent.name,
-      href: `/w/${owner.sId}/labs/mcp_actions/${agentId}`,
+      href: `/w/${owner.sId}/labs/mcp_actions/${agent.sId}`,
     },
   ];
 
@@ -297,6 +289,15 @@ export default function AgentMCPActions({
   );
 }
 
-AgentMCPActions.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = AgentMCPActions as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
