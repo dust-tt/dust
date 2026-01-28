@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import React from "react";
 import type { Node } from "unist";
 import { visit } from "unist-util-visit";
@@ -9,14 +10,35 @@ import * as PlatformLogos from "@sparkle/logo/platforms";
 
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";
+const ACTION_CARD_STATES = [
+  "active",
+  "disabled",
+  "accepted",
+  "rejected",
+] as const;
+
+type ActionCardState = (typeof ACTION_CARD_STATES)[number];
 
 interface ActionCardBlockProps {
   title?: string;
   visual?: React.ReactNode;
+  avatars?: Array<React.ComponentProps<typeof Avatar>>;
+  avatarNames?: string;
+  avatarEmojis?: string;
+  avatarVisuals?: string;
+  avatarHexBgColors?: string;
+  avatarBackgroundColors?: string;
+  avatarIconNames?: string;
+  avatarIsRounded?: boolean;
   description?: string;
   applyLabel?: string;
   rejectLabel?: string;
   cardVariant?: CardVariantType;
+  state?: ActionCardState;
+  acceptedTitle?: string;
+  rejectedTitle?: string;
+  applyOnClick?: (() => void) | boolean;
+  rejectOnClick?: (() => void) | boolean;
   children?: React.ReactNode;
 }
 
@@ -30,16 +52,52 @@ function getStringAttribute(value: unknown): string | undefined {
 
 function resolvePlatformLogo(
   name: string
-): React.ComponentType<{ className?: string }> | null {
+): React.ComponentType<{ className?: string }> | undefined {
   if (Object.prototype.hasOwnProperty.call(PlatformLogos, name)) {
     return PlatformLogos[name as keyof typeof PlatformLogos];
   }
-  return null;
+  return undefined;
 }
 
-function buildAvatarVisual(
-  attributes: Record<string, unknown>
-): React.ReactNode | undefined {
+function parseListAttribute(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value !== "string") {
+    return [];
+  }
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getAttributeValue(
+  attributes: Record<string, unknown>,
+  keys: string[]
+): unknown {
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(attributes, key)) {
+      return attributes[key];
+    }
+  }
+  return undefined;
+}
+
+function parseBooleanAttribute(value: unknown): boolean {
+  if (value === true) {
+    return true;
+  }
+  if (typeof value !== "string") {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "yes";
+}
+
+function buildAvatarVisual(attributes: Record<string, unknown>): {
+  visual?: React.ReactNode;
+} {
   const avatarIconName = getStringAttribute(attributes.avatarIcon);
   const avatarEmoji = getStringAttribute(attributes.avatarEmoji);
   const avatarVisual =
@@ -51,24 +109,57 @@ function buildAvatarVisual(
   const iconColor = getStringAttribute(attributes.avatarIconColor);
   const iconComponent = avatarIconName
     ? resolvePlatformLogo(avatarIconName)
-    : null;
+    : undefined;
 
   if (!iconComponent && !avatarEmoji && !avatarVisual && !avatarName) {
-    return undefined;
+    return {};
   }
 
-  return (
-    <Avatar
-      size="sm"
-      icon={iconComponent ?? undefined}
-      emoji={avatarEmoji}
-      visual={avatarVisual}
-      name={avatarName}
-      backgroundColor={backgroundColor}
-      hexBgColor={hexBgColor}
-      iconColor={iconColor}
-    />
+  return {
+    visual: (
+      <Avatar
+        size="sm"
+        icon={iconComponent}
+        emoji={avatarEmoji}
+        visual={avatarVisual}
+        name={avatarName}
+        backgroundColor={backgroundColor}
+        hexBgColor={hexBgColor}
+        iconColor={iconColor}
+      />
+    ),
+  };
+}
+
+function buildAvatarStackFromProps(props: {
+  avatarNames?: string;
+  avatarEmojis?: string;
+  avatarVisuals?: string;
+  avatarHexBgColors?: string;
+  avatarBackgroundColors?: string;
+  avatarIconNames?: string;
+  avatarIsRounded?: boolean;
+}) {
+  const avatarNames = parseListAttribute(props.avatarNames);
+  const avatarEmojis = parseListAttribute(props.avatarEmojis);
+  const avatarVisuals = parseListAttribute(props.avatarVisuals);
+  const avatarHexBgColors = parseListAttribute(props.avatarHexBgColors);
+  const avatarBackgroundColors = parseListAttribute(
+    props.avatarBackgroundColors
   );
+  const avatarIconNames = parseListAttribute(props.avatarIconNames);
+
+  return avatarNames.map((name, index) => ({
+    name,
+    emoji: avatarEmojis[index],
+    visual: avatarVisuals[index],
+    hexBgColor: avatarHexBgColors[index],
+    backgroundColor: avatarBackgroundColors[index],
+    icon: avatarIconNames[index]
+      ? resolvePlatformLogo(avatarIconNames[index])
+      : undefined,
+    isRounded: props.avatarIsRounded,
+  }));
 }
 
 function getPlainText(node: Node): string {
@@ -101,55 +192,186 @@ function resolveCardVariant(attributes: Record<string, unknown>) {
     : undefined;
 }
 
+function resolveCardState(attributes: Record<string, unknown>) {
+  const state = getStringAttribute(attributes.state);
+  if (!state) {
+    return undefined;
+  }
+  return ACTION_CARD_STATES.includes(state as ActionCardState)
+    ? (state as ActionCardState)
+    : undefined;
+}
+
+function hasAttribute(
+  attributes: Record<string, unknown>,
+  key: string
+): boolean {
+  return Object.prototype.hasOwnProperty.call(attributes, key);
+}
+
+const cardClassVariants = cva("s-my-2 s-flex s-flex-col s-gap-3", {
+  variants: {
+    resolved: {
+      true: "s-h-fit s-w-fit s-max-w-fit",
+      false: "s-max-w-lg",
+    },
+  },
+  defaultVariants: {
+    resolved: false,
+  },
+});
+
+const titleClassVariants = cva("", {
+  variants: {
+    status: {
+      default: "s-heading-base s-text-foreground dark:s-text-foreground-night",
+      resolved:
+        "s-text-base s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
+      disabled: "s-heading-base s-text-faint",
+    },
+  },
+  defaultVariants: {
+    status: "default",
+  },
+});
+
+const descriptionClassVariants = cva("", {
+  variants: {
+    status: {
+      default: "s-text-foreground dark:s-text-foreground-night",
+      disabled: "s-text-faint dark:s-text-faint-night",
+    },
+  },
+  defaultVariants: {
+    status: "default",
+  },
+});
+
 export function ActionCardBlock({
   title,
   visual,
+  avatars,
+  avatarNames,
+  avatarEmojis,
+  avatarVisuals,
+  avatarHexBgColors,
+  avatarBackgroundColors,
+  avatarIconNames,
+  avatarIsRounded,
   description,
   applyLabel,
   rejectLabel,
   cardVariant,
+  state = "active",
+  acceptedTitle,
+  rejectedTitle,
+  applyOnClick,
+  rejectOnClick,
   children,
 }: ActionCardBlockProps) {
   const resolvedDescription = description ?? "";
+  const resolvedAvatarList = Array.isArray(avatars)
+    ? avatars
+    : buildAvatarStackFromProps({
+        avatarNames,
+        avatarEmojis,
+        avatarVisuals,
+        avatarHexBgColors,
+        avatarBackgroundColors,
+        avatarIconNames,
+        avatarIsRounded,
+      });
+  const resolvedVisual =
+    resolvedAvatarList.length > 0 ? (
+      <Avatar.Stack avatars={resolvedAvatarList} size="sm" nbVisibleItems={4} />
+    ) : (
+      visual
+    );
   const applyVariant = cardVariant === "warning" ? "warning" : "primary";
+  const [localState, setLocalState] = React.useState<ActionCardState>(state);
+
+  React.useEffect(() => {
+    setLocalState(state);
+  }, [state]);
+
+  const isAccepted = localState === "accepted";
+  const isRejected = localState === "rejected";
+  const isResolved = isAccepted || isRejected;
+  const isDisabled = localState === "disabled";
+  const resolvedTitle = isAccepted
+    ? (acceptedTitle ?? title)
+    : isRejected
+      ? (rejectedTitle ?? title)
+      : title;
+  const hasApplyClick = Boolean(applyOnClick);
+  const hasRejectClick = Boolean(rejectOnClick);
+  const cardClassName = cardClassVariants({ resolved: isResolved });
+  const titleClasses = titleClassVariants({
+    status: isResolved ? "resolved" : isDisabled ? "disabled" : "default",
+  });
+  const descriptionClasses = descriptionClassVariants({
+    status: isDisabled ? "disabled" : "default",
+  });
+  const handleApplyClick = () => {
+    if (isDisabled || isResolved) {
+      return;
+    }
+    if (typeof applyOnClick === "function") {
+      applyOnClick();
+    }
+    if (hasApplyClick) {
+      setLocalState("accepted");
+    }
+  };
+  const handleRejectClick = () => {
+    if (isDisabled || isResolved) {
+      return;
+    }
+    if (typeof rejectOnClick === "function") {
+      rejectOnClick();
+    }
+    if (hasRejectClick) {
+      setLocalState("rejected");
+    }
+  };
 
   return (
     <Card
       variant={"primary"}
-      size="sm"
-      className="s-my-2 s-flex s-max-w-md s-flex-col s-gap-3"
+      size="md"
+      disabled={isDisabled}
+      className={cardClassName}
     >
-      {(visual || title) && (
+      {(resolvedVisual || resolvedTitle) && (
         <div className="s-flex s-h-8 s-items-center s-gap-2">
-          {visual && visual}
-          {title && (
-            <div className="s-heading-base s-text-foreground dark:s-text-foreground-night">
-              {title}
-            </div>
-          )}
+          {resolvedVisual && resolvedVisual}
+          {resolvedTitle && <div className={titleClasses}>{resolvedTitle}</div>}
         </div>
       )}
-      {resolvedDescription.length > 0 ? (
-        <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
-          {resolvedDescription}
+      {!isResolved &&
+        (resolvedDescription.length > 0 ? (
+          <div className={descriptionClasses}>{resolvedDescription}</div>
+        ) : (
+          children
+        ))}
+      {!isResolved && (
+        <div className="s-flex s-flex-wrap s-justify-between s-gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            label={rejectLabel ?? DEFAULT_REJECT_LABEL}
+            disabled={isDisabled}
+            onClick={handleRejectClick}
+          />
+          <Button
+            variant={applyVariant}
+            size="sm"
+            label={applyLabel ?? DEFAULT_APPLY_LABEL}
+            disabled={isDisabled}
+            onClick={handleApplyClick}
+          />
         </div>
-      ) : (
-        children
       )}
-      <div className="s-flex s-flex-wrap s-justify-between s-gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          label={rejectLabel ?? DEFAULT_REJECT_LABEL}
-          disabled
-        />
-        <Button
-          variant={applyVariant}
-          size="sm"
-          label={applyLabel ?? DEFAULT_APPLY_LABEL}
-          disabled
-        />
-      </div>
     </Card>
   );
 }
@@ -175,17 +397,79 @@ export function actionCardDirective() {
           string,
           unknown
         >;
-        const visual = buildAvatarVisual(attributes);
+        const title = getStringAttribute(attributes.title);
+        const { visual } = buildAvatarVisual(attributes);
         const data = directiveNode.data ?? (directiveNode.data = {});
         const description = getPlainTextFromChildren(directiveNode);
         data.hName = "action_card";
         data.hProperties = {
-          title: getStringAttribute(attributes.title),
+          title,
           visual,
+          avatarNames: getStringAttribute(
+            getAttributeValue(attributes, [
+              "avatarNames",
+              "avatar-names",
+              "avatar_names",
+              "avatarnames",
+            ])
+          ),
+          avatarEmojis: getStringAttribute(
+            getAttributeValue(attributes, [
+              "avatarEmojis",
+              "avatar-emojis",
+              "avatar_emojis",
+              "avataremojis",
+            ])
+          ),
+          avatarVisuals: getStringAttribute(
+            getAttributeValue(attributes, [
+              "avatarVisuals",
+              "avatar-visuals",
+              "avatar_visuals",
+              "avatarvisuals",
+            ])
+          ),
+          avatarHexBgColors: getStringAttribute(
+            getAttributeValue(attributes, [
+              "avatarHexBgColors",
+              "avatar-hex-bg-colors",
+              "avatar_hex_bg_colors",
+              "avatarhexbgcolors",
+            ])
+          ),
+          avatarBackgroundColors: getStringAttribute(
+            getAttributeValue(attributes, [
+              "avatarBackgroundColors",
+              "avatar-background-colors",
+              "avatar_background_colors",
+              "avatarbackgroundcolors",
+            ])
+          ),
+          avatarIconNames: getStringAttribute(
+            getAttributeValue(attributes, [
+              "avatarIconNames",
+              "avatar-icon-names",
+              "avatar_icon_names",
+              "avatariconnames",
+            ])
+          ),
+          avatarIsRounded: parseBooleanAttribute(
+            getAttributeValue(attributes, [
+              "avatarIsRounded",
+              "avatar-is-rounded",
+              "avatar_is_rounded",
+              "avatarisrounded",
+            ])
+          ),
           description: description.length > 0 ? description : undefined,
           applyLabel: getStringAttribute(attributes.applyLabel),
           rejectLabel: getStringAttribute(attributes.rejectLabel),
+          acceptedTitle: getStringAttribute(attributes.acceptedTitle),
+          rejectedTitle: getStringAttribute(attributes.rejectedTitle),
           cardVariant: resolveCardVariant(attributes),
+          state: resolveCardState(attributes),
+          applyOnClick: hasAttribute(attributes, "applyOnClick"),
+          rejectOnClick: hasAttribute(attributes, "rejectOnClick"),
         };
       }
     });

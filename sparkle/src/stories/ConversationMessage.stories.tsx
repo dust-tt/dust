@@ -1,8 +1,11 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
+import type { Components } from "react-markdown";
 
 import {
   ArrowPathIcon,
+  ActionCardBlock,
+  actionCardDirective,
   BoltIcon,
   Button,
   ChevronRightIcon,
@@ -297,6 +300,21 @@ Occasional system crashes when presented with empty food bowl. Single whisker ma
 `;
 
 export const ConversationWithActions = () => {
+  const diffStart = "[[diff]]";
+  const diffEnd = "[[/diff]]";
+  const actionCardExampleWithInvite = getActionCardExampleWithInvite();
+  const hasDiffBlock =
+    actionCardExampleWithInvite.includes(diffStart) &&
+    actionCardExampleWithInvite.includes(diffEnd);
+  const [beforeDiff, rest = ""] = hasDiffBlock
+    ? actionCardExampleWithInvite.split(diffStart)
+    : [actionCardExampleWithInvite, ""];
+  const [diffContent, afterDiff = ""] = hasDiffBlock
+    ? rest.split(diffEnd)
+    : ["", ""];
+  const trimmedBefore = beforeDiff.trim();
+  const trimmedAfter = afterDiff.trim();
+
   return (
     <div className="s-flex s-w-full s-justify-center s-gap-6">
       <ConversationContainer>
@@ -332,10 +350,57 @@ export const ConversationWithActions = () => {
           pictureUrl="https://dust.tt/static/droidavatar/Droid_Pink_3.jpg"
           timestamp="14:31"
         >
-          This is an agent message with edit and delete actions available in the
-          dropdown menu.
+          <div className="s-flex s-flex-col s-gap-3">
+            {trimmedBefore ? (
+              <Markdown
+                content={trimmedBefore}
+                additionalMarkdownComponents={actionCardComponents}
+                additionalMarkdownPlugins={actionCardPlugins}
+              />
+            ) : null}
+            {hasDiffBlock ? <DiffBlock content={diffContent.trim()} /> : null}
+            {trimmedAfter ? (
+              <Markdown
+                content={trimmedAfter}
+                additionalMarkdownComponents={actionCardComponents}
+                additionalMarkdownPlugins={actionCardPlugins}
+              />
+            ) : null}
+          </div>
         </ConversationMessage>
       </ConversationContainer>
     </div>
   );
 };
+
+const actionCardComponents = {
+  action_card: ActionCardBlock,
+} as Components;
+const actionCardPlugins = [actionCardDirective];
+
+const inviteEditorsCard = `::::action_card{title="Invite editors" acceptedTitle="Editors invited" rejectedTitle="Invite editors rejected" avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin" avatarIsRounded="true" applyLabel="Invite" rejectLabel="Skip" applyOnClick="" rejectOnClick="" cardVariant="highlight"}
+Add four editors to collaborate on this agent.
+::::`;
+
+const getActionCardExampleWithInvite = () =>
+  `${actionCardExample}\n\n${inviteEditorsCard}`;
+
+const actionCardExample = `Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?
+
+[[diff]]
+- Keep responses short and formal.
++ Keep responses friendly and concise.
++ Add a short welcome line for new hires.
+[[/diff]]
+
+:::action_card{title="Update agent name and avatar" acceptedTitle="Agent name and avatar updated" rejectedTitle="Agent name and avatar update rejected" avatarEmoji="👋" avatarBackgroundColor="s-bg-blue-100" applyLabel="Update" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight"}
+Set the agent name to "Concise Researcher" and update the avatar to a clean, blue icon for better clarity in the workspace.
+:::
+
+:::action_card{title="Add Gmail tool" acceptedTitle="Gmail tool added" rejectedTitle="Gmail tool addition rejected" avatarIcon="GmailLogo" avatarBackgroundColor="s-bg-white" applyLabel="Add" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight" state="disabled"}
+Enable the Gmail tool so the agent can read and send emails when users ask to draft replies.
+:::
+
+:::action_card{title="Remove Slack tool" acceptedTitle="Slack tool removed" rejectedTitle="Slack tool removal rejected" avatarIcon="SlackLogo" avatarBackgroundColor="s-bg-white" applyLabel="Remove" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="warning"}
+Disable the Slack tool to prevent the agent from posting or reading channel messages by default.
+:::`;
