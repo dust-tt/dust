@@ -149,7 +149,7 @@ export default function LandingLayout({
                   "go_to_app",
                   () => {
                     // eslint-disable-next-line react-hooks/immutability
-                    window.location.href = "/api/login";
+                    window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
                   }
                 )}
               />
