@@ -145,7 +145,7 @@ const NOTIFICATION_PREFERENCES_DELAYS: Record<
   NotificationPreferencesDelay,
   NotificationDelayConfig
 > = {
-  "5_minutes": { amount: 1, unit: "minutes" },
+  "5_minutes": { amount: 5, unit: "minutes" },
   "15_minutes": { amount: 15, unit: "minutes" },
   "30_minutes": { amount: 30, unit: "minutes" },
   "1_hour": { amount: 1, unit: "hours" },
@@ -209,8 +209,6 @@ const getConversationDetails = async ({
   const workspaceName = auth.getNonNullableWorkspace().name;
   const subject = conversation.title ?? "Dust conversation";
   const isFromTrigger = !!conversation.triggerId;
-
-  console.log("TRIGGERED BY MESSAGE ID", payload.messageId);
 
   // Retrieve the message that triggered the notification.
   const message = conversation.content
