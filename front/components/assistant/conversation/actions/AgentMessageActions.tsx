@@ -98,13 +98,13 @@ export function AgentMessageActions({
         <Card variant="secondary" className="max-w-xl">
           {imageGenerationActions.length > 1 ? (
             <MCPImageGenerationGroupedDetails
-              viewType="conversation"
+              displayContext="conversation"
               actions={imageGenerationActions}
               owner={owner}
             />
           ) : (
             <MCPActionDetails
-              viewType="conversation"
+              displayContext="conversation"
               action={lastAction}
               owner={owner}
               lastNotification={lastNotification}

@@ -7,15 +7,22 @@ import type {
   ChartDatum,
   ToolChartModeType,
   ToolChartUsageDatum,
+  ToolLatencyDatum,
 } from "@app/components/agent_builder/observability/types";
 import { selectTopTools } from "@app/components/agent_builder/observability/utils";
 import type { ToolExecutionByVersion } from "@app/lib/api/assistant/observability/tool_execution";
+import type {
+  ToolLatencyRow,
+  ToolLatencyView,
+} from "@app/lib/api/assistant/observability/tool_latency";
 import type { ToolStepIndexByStep } from "@app/lib/api/assistant/observability/tool_step_index";
 import {
   useAgentLatency,
   useAgentToolExecution,
+  useAgentToolLatency,
   useAgentToolStepIndex,
 } from "@app/lib/swr/assistants";
+import { asDisplayToolName } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type ToolUsageResult = {
@@ -49,6 +56,12 @@ export type LatencyPoint = {
 
 type LatencyDataResult = {
   data: LatencyPoint[];
+  isLoading: boolean;
+  errorMessage: string | undefined;
+};
+
+type ToolLatencyDataResult = {
+  data: ToolLatencyDatum[];
   isLoading: boolean;
   errorMessage: string | undefined;
 };
@@ -332,5 +345,62 @@ export function useLatencyData(params: {
     data: latency,
     isLoading: isLatencyLoading,
     errorMessage: isLatencyError ? "Failed to load latency data." : undefined,
+  };
+}
+
+function buildToolLatencyData(rows: ToolLatencyRow[]): ToolLatencyDatum[] {
+  const sortedRows = [...rows].sort((a, b) => {
+    const countDiff = b.count - a.count;
+    return countDiff !== 0 ? countDiff : a.name.localeCompare(b.name);
+  });
+
+  return sortedRows.map((row) => ({
+    name: row.name,
+    label: asDisplayToolName(row.name),
+    count: row.count,
+    avgLatencyMs: row.avgLatencyMs,
+    p50LatencyMs: row.p50LatencyMs,
+    p95LatencyMs: row.p95LatencyMs,
+  }));
+}
+
+export function useToolLatencyData(params: {
+  workspaceId: string;
+  agentConfigurationId: string;
+  period: number;
+  view: ToolLatencyView;
+  filterVersion?: string | null;
+  serverName?: string | null;
+  disabled?: boolean;
+}): ToolLatencyDataResult {
+  const {
+    workspaceId,
+    agentConfigurationId,
+    period,
+    view,
+    filterVersion,
+    serverName,
+    disabled,
+  } = params;
+
+  const { toolLatencyRows, isToolLatencyLoading, isToolLatencyError } =
+    useAgentToolLatency({
+      workspaceId,
+      agentConfigurationId,
+      days: period,
+      version: filterVersion ?? undefined,
+      view,
+      serverName: serverName ?? undefined,
+      disabled: disabled ?? (view === "tool" && !serverName),
+    });
+
+  const data = buildToolLatencyData(toolLatencyRows);
+
+  return {
+    data,
+    isLoading: isToolLatencyLoading,
+    errorMessage: isToolLatencyError
+      ? "Failed to load tool execution time data."
+      : undefined,
   };
 }

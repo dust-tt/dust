@@ -19,7 +19,7 @@ import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
 export function MCPDeepDiveActionDetails({
   owner,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const handoffResource =
     toolOutput?.find(isAgentPauseOutputResourceType) ?? null;
@@ -44,7 +44,7 @@ export function MCPDeepDiveActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName="Hand off to Deep dive"
       visual={() => <Avatar visual={DUST_AVATAR_URL} size="xs" busy={isBusy} />}
     >

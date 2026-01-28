@@ -10,7 +10,7 @@ import {
 } from "@dust-tt/sparkle";
 import { UsersIcon } from "@heroicons/react/20/solid";
 import type { PaginationState } from "@tanstack/react-table";
-import type { InferGetServerSidePropsType } from "next";
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { WorkspaceLimit } from "@app/components/app/ReachedLimitPopup";
@@ -19,12 +19,15 @@ import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { MembersList } from "@app/components/members/MembersList";
 import { subNavigationAdmin } from "@app/components/navigation/config";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
@@ -34,47 +37,18 @@ import {
   useWorkspaceVerifiedDomains,
 } from "@app/lib/swr/workspaces";
 import type {
-  PlanType,
-  SubscriptionType,
   UserType,
   UserTypeWithWorkspace,
   WorkspaceType,
 } from "@app/types";
 import { isAdmin } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  user: UserType;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  plan: PlanType;
-}>(async (_context, auth) => {
-  const plan = auth.plan();
-  const owner = auth.workspace();
-  const user = auth.user()?.toJSON();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
-  if (!owner || !user || !auth.isAdmin() || !plan || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      user,
-      owner,
-      subscription,
-      plan,
-    },
-  };
-});
-
-export default function WorkspaceAdmin({
-  user,
-  owner,
-  subscription,
-  plan,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function WorkspaceAdmin() {
+  const owner = useWorkspace();
+  const { subscription, user } = useAuth();
+  const plan = subscription.plan;
   const [searchTerm, setSearchTerm] = useState("");
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
@@ -304,6 +278,15 @@ function WorkspaceMembersList({
   );
 }
 
-WorkspaceAdmin.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = WorkspaceAdmin as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

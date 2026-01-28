@@ -9,13 +9,20 @@ import {
   fetchIntercomTeams,
 } from "@connectors/connectors/intercom/lib/intercom_api";
 import type { IntercomConversationType } from "@connectors/connectors/intercom/lib/types";
-import { launchIntercomFullSyncWorkflow } from "@connectors/connectors/intercom/temporal/client";
+import {
+  launchIntercomFullSyncWorkflow,
+  launchIntercomSchedules,
+} from "@connectors/connectors/intercom/temporal/client";
 import {
   IntercomArticleModel,
   IntercomConversationModel,
   IntercomTeamModel,
   IntercomWorkspaceModel,
 } from "@connectors/lib/models/intercom";
+import {
+  deleteSchedule,
+  scheduleExists,
+} from "@connectors/lib/temporal_schedules";
 import { default as topLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import type {
@@ -29,7 +36,12 @@ import type {
   IntercomForceResyncAllConversationsResponseType,
   IntercomForceResyncArticlesResponseType,
   IntercomGetConversationsSlidingWindowResponseType,
+  IntercomRestartSchedulesResponseType,
   IntercomSearchConversationsResponseType,
+} from "@connectors/types";
+import {
+  makeIntercomConversationScheduleId,
+  makeIntercomHelpCenterScheduleId,
 } from "@connectors/types";
 
 type IntercomResponse =
@@ -41,6 +53,7 @@ type IntercomResponse =
   | IntercomForceResyncAllConversationsResponseType
   | IntercomFetchArticlesResponseType
   | IntercomGetConversationsSlidingWindowResponseType
+  | IntercomRestartSchedulesResponseType
   | IntercomSearchConversationsResponseType;
 
 export const intercom = async ({
@@ -381,6 +394,71 @@ export const intercom = async ({
         conversationsSlidingWindow,
       });
       return { success: true };
+    }
+
+    case "restart-schedules": {
+      if (!connector) {
+        throw new Error(`Connector ${connectorId} not found`);
+      }
+
+      const forceDeleteExisting = args.forceDeleteExisting === "true";
+      const helpCenterScheduleId = makeIntercomHelpCenterScheduleId(connector);
+      const conversationScheduleId =
+        makeIntercomConversationScheduleId(connector);
+
+      // Check if schedules already exist.
+      const helpCenterExists = await scheduleExists({
+        scheduleId: helpCenterScheduleId,
+      });
+      const conversationExists = await scheduleExists({
+        scheduleId: conversationScheduleId,
+      });
+
+      if (helpCenterExists || conversationExists) {
+        if (!forceDeleteExisting) {
+          throw new Error(
+            `Schedules already exist (helpCenter: ${helpCenterExists}, conversation: ${conversationExists}). ` +
+              `Use --forceDeleteExisting=true to delete and recreate them.`
+          );
+        }
+
+        logger.info(
+          { connectorId, helpCenterExists, conversationExists },
+          "[Admin] Deleting existing schedules before recreating."
+        );
+
+        // Delete existing schedules.
+        if (helpCenterExists) {
+          const deleteResult = await deleteSchedule({
+            scheduleId: helpCenterScheduleId,
+            connector,
+          });
+          if (deleteResult.isErr()) {
+            throw deleteResult.error;
+          }
+        }
+        if (conversationExists) {
+          const deleteResult = await deleteSchedule({
+            scheduleId: conversationScheduleId,
+            connector,
+          });
+          if (deleteResult.isErr()) {
+            throw deleteResult.error;
+          }
+        }
+      }
+
+      logger.info({ connectorId }, "[Admin] Creating Intercom schedules.");
+
+      const result = await launchIntercomSchedules(connector);
+      if (result.isErr()) {
+        throw result.error;
+      }
+
+      return {
+        helpCenterScheduleId,
+        conversationScheduleId,
+      };
     }
   }
 };

@@ -16,6 +16,10 @@ export const AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
       "Get detailed information about the current agent configuration, including name, description, instructions, model settings, and the IDs of all skills and tools currently used by the agent.",
     schema: {},
     stake: "never_ask" as MCPToolStakeLevelType,
+    displayLabels: {
+      running: "Getting agent info",
+      done: "Get agent info",
+    },
   },
 });
 
@@ -32,6 +36,7 @@ export const AGENT_COPILOT_AGENT_STATE_TOOLS: MCPToolType[] = (
   inputSchema: zodToJsonSchema(
     z.object(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].schema)
   ) as JSONSchema,
+  displayLabels: AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].displayLabels,
 }));
 
 export const AGENT_COPILOT_AGENT_STATE_TOOL_STAKES: Record<

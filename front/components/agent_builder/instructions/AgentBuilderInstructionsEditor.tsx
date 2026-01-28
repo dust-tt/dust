@@ -12,12 +12,15 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
 import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
@@ -81,6 +84,8 @@ export function AgentBuilderInstructionsEditor({
   const suggestionHandler = blockDropdown.suggestionOptions;
   const initialContentSetRef = useRef(false);
 
+  const suggestionsContext = useCopilotSuggestions();
+
   const extensions = useMemo(() => {
     const extensions: Extensions = [
       Markdown,
@@ -134,6 +139,7 @@ export function AgentBuilderInstructionsEditor({
       KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      InstructionSuggestionExtension,
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),
@@ -247,6 +253,11 @@ export function AgentBuilderInstructionsEditor({
     // Mark as set immediately to prevent race conditions
     initialContentSetRef.current = true;
 
+    // Register the editor with the suggestions context if available.
+    if (suggestionsContext) {
+      suggestionsContext.registerEditor(editor);
+    }
+
     // Use requestAnimationFrame to ensure DOM is fully ready
     // This fixes "Applying a mismatched transaction" error in Safari/iOS
     requestAnimationFrame(() => {
@@ -356,6 +367,7 @@ export function AgentBuilderInstructionsEditor({
     <div className="flex h-full flex-col gap-1">
       <div className="relative p-px">
         <EditorContent editor={editor} />
+        {editor && <SuggestionBubbleMenu editor={editor} />}
         <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
         </div>

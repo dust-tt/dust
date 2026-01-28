@@ -16,6 +16,8 @@ export type GetPokeWorkspaceAuthContextResponseType = {
   user: UserType;
   workspace: LightWorkspaceType;
   subscription: SubscriptionType;
+  isAdmin: true; // Superusers have admin privileges
+  isBuilder: true; // Superusers have builder privileges
   isSuperUser: true;
 };
 
@@ -50,9 +52,9 @@ async function handler(
   const auth = await Authenticator.fromSuperUserSession(session, wId);
   const workspace = auth.workspace();
   const subscription = auth.subscription();
-  const user = auth.user();
+  const userResource = auth.getNonNullableUser();
 
-  if (!workspace || !subscription || !user || !auth.isDustSuperUser()) {
+  if (!workspace || !subscription) {
     return apiError(req, res, {
       status_code: 404,
       api_error: {
@@ -63,9 +65,11 @@ async function handler(
   }
 
   return res.status(200).json({
-    user: user.toJSON(),
+    user: userResource.toJSON(),
     workspace,
     subscription,
+    isAdmin: true,
+    isBuilder: true,
     isSuperUser: true,
   });
 }

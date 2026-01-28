@@ -92,6 +92,10 @@ export const EXTRACT_DATA_BASE_TOOLS_METADATA = createToolsRecord({
     description: TOOL_DESCRIPTION,
     schema: baseExtractSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Extracting data",
+      done: "Extract data",
+    },
   },
 });
 
@@ -101,6 +105,10 @@ export const EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
     description: TOOL_DESCRIPTION,
     schema: extractWithTagsSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Extracting data",
+      done: "Extract data",
+    },
   },
   find_tags: {
     description:
@@ -108,6 +116,10 @@ export const EXTRACT_DATA_WITH_TAGS_TOOLS_METADATA = createToolsRecord({
       ` This tool is meant to be used before the ${EXTRACT_DATA_MAIN_TOOL_NAME} tool.`,
     schema: findTagsSchema,
     stake: "never_ask",
+    displayLabels: {
+      running: "Finding tags",
+      done: "Find tags",
+    },
   },
 });
 
@@ -126,6 +138,7 @@ export const EXTRACT_DATA_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(EXTRACT_DATA_BASE_TOOLS_METADATA).map((t) => [

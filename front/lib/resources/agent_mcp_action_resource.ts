@@ -11,7 +11,10 @@ import { Op } from "sequelize";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameFromSId,
+  getInternalMCPServerToolDisplayLabels,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -667,6 +670,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       "Action linked to a non-function call step content."
     );
 
+    const internalMCPServerName = this.metadata.internalMCPServerName;
+    const toolName = this.toolConfiguration.originalName;
+
+    const displayLabels = internalMCPServerName
+      ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
+          toolName
+        ] ?? null)
+      : null;
+
     return {
       id: this.id,
       sId: this.sId,
@@ -676,13 +688,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
       functionCallId: this.stepContent.value.value.id,
-      internalMCPServerName: this.metadata.internalMCPServerName,
-      toolName: this.toolConfiguration.originalName,
+      internalMCPServerName,
+      toolName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
       step: this.stepContent.step,
       executionDurationMs: this.executionDurationMs,
+      displayLabels,
     };
   }
 

@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form";
 import type { ContactFormData } from "@app/lib/api/hubspot/contactFormSchema";
 import { FIELD_DEFINITIONS } from "@app/lib/api/hubspot/contactFormSchema";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { getStoredUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 
 // Default.com configuration
@@ -66,6 +67,15 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
   const howToUseDust = formValues.landing_use_cases ?? "";
   const consentMarketing = formValues.consent_marketing ?? false;
 
+  // Get tracking params from sessionStorage for dataLayer
+  const storedParams = getStoredUTMParams();
+  const gclid = storedParams.gclid;
+  const utmSource = storedParams.utm_source;
+  const utmMedium = storedParams.utm_medium;
+  const utmCampaign = storedParams.utm_campaign;
+  const utmContent = storedParams.utm_content;
+  const utmTerm = storedParams.utm_term;
+
   const hasTrackedRef = useRef(false);
   const defaultTriggeredRef = useRef(false);
 
@@ -93,11 +103,18 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
           user_headquarters_region: headquartersRegion,
           user_company_headcount: companyHeadcount,
           consent_marketing: consentMarketing,
+          gclid,
+          utm_source: utmSource,
+          utm_medium: utmMedium,
+          utm_campaign: utmCampaign,
+          utm_content: utmContent,
+          utm_term: utmTerm,
         });
       }
     }
   }, [
     isQualified,
+    consentMarketing,
     email,
     phone,
     firstName,
@@ -105,7 +122,12 @@ export function ContactFormThankYou({ isQualified }: ContactFormThankYouProps) {
     language,
     headquartersRegion,
     companyHeadcount,
-    consentMarketing,
+    gclid,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    utmTerm,
   ]);
 
   // Load Default.com SDK and submit form data for all leads

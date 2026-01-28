@@ -16,6 +16,7 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import { CopilotSuggestionsProvider } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
 import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
@@ -477,22 +478,29 @@ export default function AgentBuilder({
       : `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
+  // Only load suggestions when editing an existing agent (not duplicating).
+  const suggestionsAgentId =
+    !duplicateAgentId && agentConfiguration ? agentConfiguration.sId : null;
+
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <AgentBuilderContent
-          agentConfiguration={agentConfiguration}
-          pendingAgentId={pendingAgentId}
-          title={title}
-          handleCancel={handleCancel}
-          saveLabel={saveLabel}
-          handleSave={handleSave}
-          isSaveDisabled={isSaveDisabled}
-          isTriggersLoading={isTriggersLoading}
-          dialogProps={dialogProps}
-          isCreatedDialogOpen={isCreatedDialogOpen}
-          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-        />
+        <CopilotSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
+          <AgentBuilderContent
+            agentConfiguration={agentConfiguration}
+            pendingAgentId={pendingAgentId}
+            title={title}
+            handleCancel={handleCancel}
+            saveLabel={saveLabel}
+            handleSave={handleSave}
+            isSaveDisabled={isSaveDisabled}
+            isTriggersLoading={isTriggersLoading}
+            dialogProps={dialogProps}
+            isCreatedDialogOpen={isCreatedDialogOpen}
+            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+            isNewAgent={!!duplicateAgentId || !agentConfiguration}
+          />
+        </CopilotSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
   );
@@ -520,6 +528,7 @@ interface AgentBuilderContentProps {
   };
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
+  isNewAgent: boolean;
 }
 
 function AgentBuilderContent({
@@ -534,6 +543,7 @@ function AgentBuilderContent({
   dialogProps,
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
+  isNewAgent,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -590,6 +600,7 @@ function AgentBuilderContent({
             clientSideMCPServerIds={
               clientSideMCPServerId ? [clientSideMCPServerId] : []
             }
+            isNewAgent={isNewAgent}
           >
             <ConversationSidePanelProvider>
               <AgentBuilderRightPanel

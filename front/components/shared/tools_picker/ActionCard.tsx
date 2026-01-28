@@ -54,7 +54,7 @@ export function ActionCard({ action, onRemove, onClick }: ActionCardProps) {
       onClick={onClick}
       action={
         <CardActionButton
-          size="mini"
+          size="icon"
           icon={XMarkIcon}
           onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
             onRemove();

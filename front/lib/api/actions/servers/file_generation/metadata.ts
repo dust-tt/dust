@@ -46,6 +46,10 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
       output_format: z.enum(OUTPUT_FORMATS).describe("The format to check."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing supported formats",
+      done: "List supported formats",
+    },
   },
   convert_file_format: {
     description: "Converts a file from one format to another.",
@@ -69,7 +73,11 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
         .enum(OUTPUT_FORMATS)
         .describe("The format of the output file."),
     },
-    stake: "low",
+    stake: "never_ask",
+    displayLabels: {
+      running: "Converting file",
+      done: "Convert file",
+    },
   },
   generate_file: {
     description: "Generate a file with some content.",
@@ -93,7 +101,11 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
           "The format of the input content. Use 'markdown' for markdown-formatted text, 'html' for HTML content, or 'text' for plain text (default)."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
+    displayLabels: {
+      running: "Generating file",
+      done: "Generate file",
+    },
   },
 });
 
@@ -111,6 +123,7 @@ export const FILE_GENERATION_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(FILE_GENERATION_TOOLS_METADATA).map((t) => [t.name, t.stake])

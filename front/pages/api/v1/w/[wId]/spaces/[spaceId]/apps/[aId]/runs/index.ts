@@ -549,5 +549,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   // Check read on the workspace authenticator - for public space, everybody can read
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } }),
+  { allowSystemKeyBypassBuilderCheck: true }
 );

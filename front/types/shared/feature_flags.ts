@@ -30,11 +30,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Export and Import agents to/from YAML format",
     stage: "dust_only",
   },
-  agent_tool_outputs_analytics: {
-    description:
-      "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
-    stage: "dust_only",
-  },
   agent_builder_copilot: {
     description: "Enable Copilot in Agent Builder",
     stage: "dust_only",
@@ -225,10 +220,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  ukg_ready_mcp: {
-    description: "UKG Ready MCP tool for workforce management",
-    stage: "dust_only",
-  },
   statuspage_tool: {
     description: "Statuspage MCP tool for incident management",
     stage: "dust_only",
@@ -236,6 +227,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   dust_academy: {
     description: "Access to Dust Academy learning content",
     stage: "on_demand",
+  },
+  sandbox_tools: {
+    description:
+      "Sandbox MCP tool for executing code in isolated Linux containers",
+    stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;
 

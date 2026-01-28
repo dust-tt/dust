@@ -12,6 +12,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
@@ -389,6 +390,10 @@ export async function getUserUsageData(
             where: {
               userId: {
                 [Op.not]: null,
+              },
+              // Filter out "fake" user messages created by the system (new system that replaced the "origin" field for detection of agent messages)
+              agenticMessageType: {
+                [Op.is]: null,
               },
             },
           },
@@ -821,14 +826,10 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
-  // INFO: keep accessing the model for now to avoid circular deps warning
-  const owner = auth.getNonNullableWorkspace();
-  const hasRecentConversation = await ConversationModel.findAll({
-    where: {
-      workspaceId: owner.id,
-      updatedAt: { [Op.gte]: sevenDaysAgo },
-    },
-  });
+  const hasRecentConversation =
+    (await ConversationResource.countForWorkspace(auth, {
+      updatedSince: sevenDaysAgo.getTime(),
+    })) > 0;
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;

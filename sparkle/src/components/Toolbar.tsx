@@ -121,7 +121,7 @@ function Toolbar({
     };
 
     if (closeButtonSize === "mini") {
-      return <Button size="mini" {...buttonProps} />;
+      return <Button size="icon" {...buttonProps} />;
     }
 
     return <Button size={closeButtonSize} {...buttonProps} />;
@@ -205,7 +205,7 @@ function ToolbarIcon({
         tooltip={tooltip}
         icon={icon}
         onClick={handleClick}
-        size="mini"
+        size="icon"
         variant={active ? "ghost" : "ghost-secondary"}
       />
     );

@@ -5,18 +5,15 @@ import {
   AgentConfigurationModel,
   AgentUserRelationModel,
 } from "@app/lib/models/agent/agent";
-import {
-  ConversationParticipantModel,
-  UserMessageModel,
-} from "@app/lib/models/agent/conversation";
+import { UserMessageModel } from "@app/lib/models/agent/conversation";
 import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
 import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_fragment";
 import { FileModel } from "@app/lib/resources/storage/models/files";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { KeyModel } from "@app/lib/resources/storage/models/keys";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { guessFirstAndLastNameFromFullName } from "@app/lib/user";
@@ -97,16 +94,7 @@ export async function maybeUpdateFromExternalUser(
   externalUser: ExternalUser
 ) {
   if (!user.imageUrl && externalUser.picture) {
-    void UserModel.update(
-      {
-        imageUrl: externalUser.picture,
-      },
-      {
-        where: {
-          id: user.id,
-        },
-      }
-    );
+    void user.updateImage(externalUser.picture);
   }
 }
 
@@ -324,23 +312,11 @@ export async function mergeUserIdentities({
     },
   };
 
-  // Delete all conversation participants for the secondary user that are already in conversations with the primary user.
-  const conversations = await ConversationParticipantModel.findAll({
-    where: {
-      userId: primaryUser.id,
-      workspaceId: workspaceId,
-    },
-    attributes: ["conversationId"],
+  // Merge conversation participations from secondary user to primary user.
+  await ConversationResource.mergeUserParticipations(workspaceId, {
+    primaryUserId: primaryUser.id,
+    secondaryUserId: secondaryUser.id,
   });
-  await ConversationParticipantModel.destroy({
-    where: {
-      userId: secondaryUser.id,
-      conversationId: conversations.map((p) => p.conversationId),
-      workspaceId: workspaceId,
-    },
-  });
-  // Replace all conversation participants for the secondary user with the primary user.
-  await ConversationParticipantModel.update(userIdValues, userIdOptions);
   // Migrate authorship of user messages from the secondary user to the primary user.
   await UserMessageModel.update(userIdValues, userIdOptions);
   // Migrate authorship of content fragments from the secondary user to the primary user.
@@ -396,26 +372,8 @@ export async function mergeUserIdentities({
     !primaryUser.workOSUserId
   ) {
     const workOSUserId = secondaryUser.workOSUserId;
-    await UserModel.update(
-      {
-        workOSUserId: null,
-      },
-      {
-        where: {
-          id: secondaryUser.id,
-        },
-      }
-    );
-    await UserModel.update(
-      {
-        workOSUserId,
-      },
-      {
-        where: {
-          id: primaryUser.id,
-        },
-      }
-    );
+    await secondaryUser.setWorkOSUserId(null);
+    await primaryUser.setWorkOSUserId(workOSUserId);
   }
 
   if (revokeSecondaryUser) {

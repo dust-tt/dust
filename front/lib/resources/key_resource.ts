@@ -19,12 +19,13 @@ import { formatUserFullName, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
-  name: string | null;
+  name: string;
   isSystem: boolean;
   role: RoleType;
   monthlyCapMicroUsd: number | null;
 }
 
+export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging

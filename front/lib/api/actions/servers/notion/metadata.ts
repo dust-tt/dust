@@ -238,6 +238,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
         .describe("What type of notion objects to search."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching Notion",
+      done: "Search Notion",
+    },
   },
   retrieve_page: {
     description: "Retrieve a Notion page by its ID.",
@@ -245,6 +249,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       pageId: z.string().describe("The Notion page ID."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving page",
+      done: "Retrieve page",
+    },
   },
   retrieve_database_schema: {
     description: "Retrieve a Notion database's schema by its ID.",
@@ -252,6 +260,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       databaseId: z.string().describe("The Notion database ID."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving database schema",
+      done: "Retrieve database schema",
+    },
   },
   retrieve_database_content: {
     description: "Retrieve the content (pages) of a Notion database by its ID.",
@@ -266,6 +278,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       page_size: z.number().optional().describe("Page size for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving database content",
+      done: "Retrieve database content",
+    },
   },
   query_database: {
     description: "Query a Notion database.",
@@ -280,6 +296,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       page_size: z.number().optional().describe("Page size for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Querying database",
+      done: "Query database",
+    },
   },
   create_page: {
     description: "Create a new Notion page.",
@@ -292,6 +312,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       cover: z.any().optional().describe("Cover (optional)."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating page",
+      done: "Create page",
+    },
   },
   insert_row_into_database: {
     description: "Create a new Notion page in a database.",
@@ -302,6 +326,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       cover: z.any().optional().describe("Cover (optional)."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Inserting row",
+      done: "Insert row",
+    },
   },
   create_database: {
     description: "Create a new Notion database (table).",
@@ -319,6 +347,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       cover: z.any().optional().describe("Cover (optional)."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating database",
+      done: "Create database",
+    },
   },
   update_page: {
     description: "Update a Notion page's properties.",
@@ -327,6 +359,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       properties: propertiesSchema,
     },
     stake: "low",
+    displayLabels: {
+      running: "Updating page",
+      done: "Update page",
+    },
   },
   retrieve_block: {
     description: "Retrieve a Notion block by its ID.",
@@ -334,6 +370,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       blockId: z.string().describe("The Notion block ID."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving block",
+      done: "Retrieve block",
+    },
   },
   retrieve_block_children: {
     description: "Retrieve the children of a Notion block or page by its ID.",
@@ -346,6 +386,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       page_size: z.number().optional().describe("Page size for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving block children",
+      done: "Retrieve block children",
+    },
   },
   add_page_content: {
     description:
@@ -359,6 +403,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding page content",
+      done: "Add page content",
+    },
   },
   create_comment: {
     description:
@@ -380,6 +428,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       comment: z.string().describe("The comment text."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating comment",
+      done: "Create comment",
+    },
   },
   delete_block: {
     description:
@@ -388,6 +440,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       blockId: z.string().describe("The ID of the block"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Deleting block",
+      done: "Delete block",
+    },
   },
   delete_page: {
     description:
@@ -396,6 +452,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       pageId: z.string().describe("The ID of the page"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Deleting page",
+      done: "Delete page",
+    },
   },
   fetch_comments: {
     description:
@@ -406,6 +466,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
         .describe("The ID of the page or block to fetch comments from."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Fetching comments",
+      done: "Fetch comments",
+    },
   },
   update_row_database: {
     description:
@@ -415,6 +479,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       properties: propertiesSchema,
     },
     stake: "low",
+    displayLabels: {
+      running: "Updating row",
+      done: "Update row",
+    },
   },
   update_schema_database: {
     description:
@@ -424,11 +492,19 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       properties: propertiesSchema,
     },
     stake: "low",
+    displayLabels: {
+      running: "Updating database schema",
+      done: "Update database schema",
+    },
   },
   list_users: {
     description: "List all users in the Notion workspace.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing users",
+      done: "List users",
+    },
   },
   get_about_user: {
     description: "Get information about a specific user by userId.",
@@ -436,6 +512,10 @@ export const NOTION_TOOLS_METADATA = createToolsRecord({
       userId: z.string().describe("The Notion user ID."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving user info",
+      done: "Retrieve user info",
+    },
   },
 });
 
@@ -456,6 +536,7 @@ export const NOTION_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(NOTION_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -163,7 +163,7 @@ const CitationClose = React.forwardRef<HTMLButtonElement, CitationCloseProps>(
       <Button
         ref={ref}
         variant="ghost"
-        size="mini"
+        size="icon"
         className={className}
         icon={XMarkIcon}
         onClick={(e) => {

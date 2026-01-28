@@ -8,11 +8,11 @@ import {
   ValidationError,
 } from "sequelize";
 
-import {
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import {
+  WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
+  WEB_SEARCH_BROWSE_SERVER_NAME,
+} from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   enrichAgentConfigurations,
@@ -849,8 +849,8 @@ export async function createGenericAgentConfiguration(
     auth,
     {
       type: "mcp_server_configuration",
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      name: WEB_SEARCH_BROWSE_SERVER_NAME,
+      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchMCPServerView.sId,
       dataSources: null,
       tables: null,

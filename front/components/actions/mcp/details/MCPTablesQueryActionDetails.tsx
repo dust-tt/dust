@@ -20,7 +20,7 @@ import {
 export function MCPTablesQueryActionDetails({
   toolOutput,
   toolParams,
-  viewType,
+  displayContext,
   owner,
 }: ToolExecutionDetailsProps) {
   const thinkingBlocks =
@@ -43,13 +43,13 @@ export function MCPTablesQueryActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation" ? "Querying tables" : "Query tables"
+        displayContext === "conversation" ? "Querying tables" : "Query tables"
       }
       visual={TableIcon}
     >
-      {viewType === "conversation" ? (
+      {displayContext === "conversation" ? (
         thinkingBlocks.length > 0 && (
           <div className="flex flex-col gap-4 pl-6 pt-4">
             {thinkingBlocks.map((block) => (

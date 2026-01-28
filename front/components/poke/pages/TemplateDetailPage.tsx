@@ -23,6 +23,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { MultiSelect } from "react-multi-select-component";
 
 import { makeUrlForEmojiAndBackground } from "@app/components/agent_builder/settings/avatar_picker/utils";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import {
   PokeForm,
@@ -423,6 +424,8 @@ function PreviewDialog({ form }: { form: any }) {
 }
 
 export function TemplateDetailPage() {
+  useSetPokePageTitle("Template");
+
   const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useAppRouter();

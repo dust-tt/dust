@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import {
   PokeAlert,
@@ -886,6 +887,8 @@ const ConfigToggle = ({
 
 export function DataSourcePage() {
   const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Data Source`);
+
   const dsId = useRequiredPathParam("dsId");
   const router = useAppRouter();
 
@@ -1086,14 +1089,6 @@ export function DataSourcePage() {
                   dataSource={dataSource}
                   configKey="largeFilesEnabled"
                   featureKey="googleDriveLargeFilesEnabled"
-                />
-                <ConfigToggle
-                  title="Parallel syncing enabled?"
-                  owner={owner}
-                  features={features}
-                  dataSource={dataSource}
-                  configKey="useParallelSync"
-                  featureKey="googleDriveParallelSyncEnabled"
                 />
               </>
             )}

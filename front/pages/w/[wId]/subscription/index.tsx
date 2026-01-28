@@ -17,19 +17,22 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import React, { useEffect, useState } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { SubscriptionPlanCards } from "@app/components/plans/SubscriptionPlanCards";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { getPriceAsString } from "@app/lib/client/subscription";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import {
   isProPlan,
@@ -48,34 +51,13 @@ import type {
   BillingPeriod,
   SubscriptionPerSeatPricing,
   SubscriptionType,
-  WorkspaceType,
 } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user();
-  if (!owner || !auth.isAdmin() || !user || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = appGetServerSidePropsForAdmin;
 
-  return {
-    props: {
-      owner,
-      subscription,
-    },
-  };
-});
-
-export default function Subscription({
-  owner,
-  subscription,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function Subscription() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
   const router = useRouter();
   const sendNotification = useSendNotification();
   const [isWebhookProcessing, setIsWebhookProcessing] =
@@ -671,6 +653,15 @@ function CancelFreeTrialDialog({
   );
 }
 
-Subscription.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = Subscription as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

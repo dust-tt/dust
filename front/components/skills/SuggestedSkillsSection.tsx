@@ -64,7 +64,7 @@ function SuggestedSkillCard({
         onClick={onMoreInfoClick}
         action={
           <CardActionButton
-            size="mini"
+            size="icon"
             icon={XMarkIcon}
             onClick={(e) => {
               e.stopPropagation();

@@ -646,7 +646,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
-  | "agent_tool_outputs_analytics"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
   | "claude_4_5_opus_feature"
@@ -685,6 +684,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "salesforce_tool_write"
   | "salesforce_tool"
   | "salesloft_tool"
+  | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
   | "skills_similar_display"
@@ -696,7 +696,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "snowflake_tool"
   | "statuspage_tool"
-  | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
 >();
