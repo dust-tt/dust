@@ -6,10 +6,7 @@ import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent
 import { _getCopilotGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/copilot";
 import { getLLM } from "@app/lib/api/llm";
 import { Authenticator } from "@app/lib/auth";
-import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
-
-import { filterTestCases } from "./lib/suite-loader";
+import { filterTestCases } from "@app/tests/copilot-evals/lib/suite-loader";
 import type {
   CategorizedTestCase,
   CopilotConfig,
@@ -18,8 +15,10 @@ import type {
   MockAgentState,
   TestCase,
   ToolCall,
-} from "./lib/types";
-import { allTestSuites } from "./test-suites";
+} from "@app/tests/copilot-evals/lib/types";
+import { allTestSuites } from "@app/tests/copilot-evals/test-suites";
+import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
+import type { ModelMessageTypeMultiActionsWithoutContentFragment } from "@app/types";
 
 vi.mock("openai", async (importOriginal) => {
   const actual = await importOriginal();
@@ -52,6 +51,8 @@ const FILTER_CATEGORY = process.env.FILTER_CATEGORY;
 const FILTER_SCENARIO = process.env.FILTER_SCENARIO;
 const TIMEOUT_MS = 180_000;
 const MAX_TOOL_CALL_ROUNDS = 5;
+const ONE_HOUR_MS = 3_600_000;
+const ONE_DAY_MS = 86_400_000;
 
 const COPILOT_MCP_SERVERS = [
   AGENT_COPILOT_AGENT_STATE_SERVER,
@@ -163,19 +164,19 @@ function getMockToolResponse(
           id: "fb1",
           thumbDirection: "down",
           content: "The agent's responses are too formal and robotic",
-          createdAt: Date.now() - 86400000,
+          createdAt: Date.now() - ONE_DAY_MS,
         },
         {
           id: "fb2",
           thumbDirection: "up",
           content: "Great at finding relevant information quickly",
-          createdAt: Date.now() - 172800000,
+          createdAt: Date.now() - ONE_DAY_MS * 2,
         },
         {
           id: "fb3",
           thumbDirection: "down",
           content: "Sometimes misses important context from previous messages",
-          createdAt: Date.now() - 259200000,
+          createdAt: Date.now() - ONE_DAY_MS * 3,
         },
       ],
       total: 3,
@@ -226,7 +227,7 @@ function getMockToolResponse(
           id: "sug1",
           kind: "instructions",
           status: "pending",
-          createdAt: Date.now() - 3600000,
+          createdAt: Date.now() - ONE_HOUR_MS,
           analysis: "Make tone more friendly based on user feedback",
         },
       ],

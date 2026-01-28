@@ -36,21 +36,6 @@ interface TestCase {
 
 **Category** is derived from the parent `TestSuite.name`.
 
-## Available Tools (Mocked)
-
-From `agent_copilot_agent_state`:
-
-- `get_agent_info` - Returns `mockState`
-
-From `agent_copilot_context`:
-
-- `get_available_models` / `get_available_skills` / `get_available_tools`
-- `get_agent_feedback` / `get_agent_insights`
-- `suggest_prompt_editions` / `suggest_tools` / `suggest_skills` / `suggest_model`
-- `list_suggestions`
-
-Mock responses are in `getMockToolResponse()` in `copilot-eval.test.ts`.
-
 ## Running Tests
 
 ```bash
