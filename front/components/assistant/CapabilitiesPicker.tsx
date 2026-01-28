@@ -135,7 +135,9 @@ export function CapabilitiesPicker({
 }: CapabilitiesPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
+
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
@@ -145,7 +147,7 @@ export function CapabilitiesPicker({
     useState<MCPServerType | null>(null);
 
   const shouldFetchToolsData =
-    isOpen || isSettingUpServer || !!pendingServerToAdd;
+    isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
 
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -312,6 +314,7 @@ export function CapabilitiesPicker({
         onOpenChange={(open) => {
           setIsOpen(open);
           if (open) {
+            setIsClosing(false);
             trackEvent({
               area: TRACKING_AREAS.TOOLS,
               object: "tool_picker",
@@ -319,6 +322,8 @@ export function CapabilitiesPicker({
             });
             setSearchText("");
             setFilter("all");
+          } else {
+            setIsClosing(true);
           }
         }}
       >
@@ -334,6 +339,11 @@ export function CapabilitiesPicker({
         <DropdownMenuContent
           className="max-h-96 w-96"
           align="start"
+          onAnimationEnd={(e) => {
+            if (!isOpen) {
+              setIsClosing(false);
+            }
+          }}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
