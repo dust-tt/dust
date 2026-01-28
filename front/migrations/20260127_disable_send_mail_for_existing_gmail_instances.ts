@@ -4,6 +4,7 @@ import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_int
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { makeScript } from "@app/scripts/helpers";
+import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
 const DEPLOYMENT_CUTOFF_DATE = new Date("2026-01-08T00:00:00Z");
 
@@ -11,22 +12,15 @@ const TOOL_NAME = "send_mail";
 const INTERNAL_MCP_SERVER_NAME = "gmail";
 const PERMISSION_LEVEL = "high";
 
-makeScript({}, async ({ execute }, logger) => {
-  logger.info(
-    {
-      execute,
-      cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
-      toolName: TOOL_NAME,
-      serverName: INTERNAL_MCP_SERVER_NAME,
-    },
-    "Starting send_mail disabling migration for existing Gmail instances."
-  );
-
-  // Finding all internal MCP server connections created before deployment.
-
-  // WORKSPACE_ISOLATION_BYPASS: Migration script needs to operate across all workspaces to disable send_mail for existing Gmail instances.
-  const allConnections = await MCPServerConnectionModel.findAll({
+async function disableSendMailForWorkspace(
+  workspaceId: number,
+  execute: boolean,
+  logger: any
+): Promise<number> {
+  // Finding all internal MCP server connections created before deployment for this workspace.
+  const connections = await MCPServerConnectionModel.findAll({
     where: {
+      workspaceId,
       serverType: "internal",
       internalMCPServerId: {
         [Op.ne]: null,
@@ -36,13 +30,10 @@ makeScript({}, async ({ execute }, logger) => {
       },
     },
     attributes: ["id", "workspaceId", "internalMCPServerId", "createdAt"],
-    // @ts-ignore -- Migration script that operates across all workspaces
-    dangerouslyBypassWorkspaceIsolationSecurity: true,
   });
 
   // Filter to keep only Gmail instances by decoding the internalMCPServerId.
-  // Group by workspace + serverId to avoid duplicates (personal + workspace connections).
-
+  // Group by internalMCPServerId to avoid duplicates (personal + workspace connections).
   const uniqueInstancesMap = new Map<
     string,
     {
@@ -52,7 +43,7 @@ makeScript({}, async ({ execute }, logger) => {
     }
   >();
 
-  for (const conn of allConnections) {
+  for (const conn of connections) {
     if (!conn.internalMCPServerId) continue;
 
     const parsed = getInternalMCPServerNameAndWorkspaceId(
@@ -60,10 +51,9 @@ makeScript({}, async ({ execute }, logger) => {
     );
 
     if (parsed.isOk() && parsed.value.name === INTERNAL_MCP_SERVER_NAME) {
-      const key = `${conn.workspaceId}:${conn.internalMCPServerId}`;
-      // Any instance works since they share the same workspaceId+internalMCPServerId key.
-      if (!uniqueInstancesMap.has(key)) {
-        uniqueInstancesMap.set(key, {
+      // Any instance works since they share the same internalMCPServerId key.
+      if (!uniqueInstancesMap.has(conn.internalMCPServerId)) {
+        uniqueInstancesMap.set(conn.internalMCPServerId, {
           workspaceId: conn.workspaceId,
           internalMCPServerId: conn.internalMCPServerId,
           createdAt: conn.createdAt,
@@ -74,22 +64,20 @@ makeScript({}, async ({ execute }, logger) => {
 
   const existingInstances = Array.from(uniqueInstancesMap.values());
 
-  logger.info(
-    {
-      execute,
-      totalInstances: existingInstances.length,
-      cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
-    },
-    "Found existing Gmail instances to disable."
-  );
-
   if (existingInstances.length === 0) {
-    logger.info({ execute }, "No existing Gmail instances found. Stopping.");
-    return;
+    return 0;
   }
 
-  // Force disable send_mail for all existing instances using upsert.
+  logger.info(
+    {
+      workspaceId,
+      instancesCount: existingInstances.length,
+      execute,
+    },
+    "Found Gmail instances to disable in workspace."
+  );
 
+  // Force disable send_mail for all existing instances using upsert.
   let processedCount = 0;
 
   for (const instance of existingInstances) {
@@ -141,11 +129,38 @@ makeScript({}, async ({ execute }, logger) => {
     }
   }
 
+  return processedCount;
+}
+
+makeScript({}, async ({ execute }, logger) => {
   logger.info(
     {
       execute,
-      processedCount,
-      totalToProcess: existingInstances.length,
+      cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
+      toolName: TOOL_NAME,
+      serverName: INTERNAL_MCP_SERVER_NAME,
+    },
+    "Starting send_mail disabling migration for existing Gmail instances."
+  );
+
+  let totalProcessed = 0;
+
+  await runOnAllWorkspaces(
+    async (workspace) => {
+      const processed = await disableSendMailForWorkspace(
+        workspace.id,
+        execute,
+        logger
+      );
+      totalProcessed += processed;
+    },
+    { concurrency: 8 }
+  );
+
+  logger.info(
+    {
+      execute,
+      processedCount: totalProcessed,
     },
     execute
       ? "Migration completed successfully."
