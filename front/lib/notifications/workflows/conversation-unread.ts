@@ -685,6 +685,7 @@ export const conversationUnreadWorkflow = workflow(
             }
 
             const shouldSkip = await shouldSkipConversation({
+              subscriberId: subscriber.subscriberId,
               payload: event.payload as ConversationUnreadPayloadType,
               triggerShouldSkip: true,
               hasUnreadMessages: detailsResult.value.hasUnreadMessages,
@@ -748,17 +749,26 @@ export const conversationUnreadWorkflow = workflow(
       {
         // No email from trigger until we give more control over the notification to the users.
         skip: async () => {
-          if (!details) {
-            return true;
-          }
-          const shouldSkip = await Promise.all(
-            events.map(async (event) =>
-              shouldSkipConversation({
+          const shouldSkip = await concurrentExecutor(
+            events,
+            async (event) => {
+              const detailsResult = await getConversationDetails({
+                subscriberId: subscriber.subscriberId ?? "",
+                payload: event.payload as ConversationUnreadPayloadType,
+              });
+              if (detailsResult.isErr()) {
+                // Conversation or message was deleted during workflow delay - skip this event.
+                return true;
+              }
+              const details = detailsResult.value;
+              return shouldSkipConversation({
+                subscriberId: subscriber.subscriberId,
                 payload: event.payload as ConversationUnreadPayloadType,
                 triggerShouldSkip: true,
                 hasUnreadMessages: details.hasUnreadMessages,
-              })
-            )
+              });
+            },
+            { concurrency: 8 }
           );
 
           // Do not skip if at least one conversation is not skipped.
