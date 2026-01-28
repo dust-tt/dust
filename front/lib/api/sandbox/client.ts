@@ -279,7 +279,10 @@ export class Sandbox {
     return response.data.servicePaused;
   }
 
-  /** @internal Used by factory during creation and by resume(). */
+  /**
+   * Poll until the sandbox deployment is complete and running.
+   * Returns Err on timeout, throws on deployment failure.
+   */
   async waitForReady(): Promise<Result<void, SandboxReadyTimeoutError>> {
     logger.info(
       { serviceId: this.info.serviceId },
