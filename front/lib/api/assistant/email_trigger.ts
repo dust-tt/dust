@@ -1,5 +1,6 @@
 import fs from "fs";
 import { Op } from "sequelize";
+import sanitizeHtml from "sanitize-html";
 import { Readable } from "stream";
 
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
@@ -53,6 +54,22 @@ export type EmailReplyContext = {
   conversationSId: string;
 };
 
+function isEmailReplyContext(value: unknown): value is EmailReplyContext {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.subject === "string" &&
+    typeof v.originalText === "string" &&
+    typeof v.fromEmail === "string" &&
+    typeof v.fromFull === "string" &&
+    typeof v.agentConfigurationSId === "string" &&
+    typeof v.workspaceSId === "string" &&
+    typeof v.conversationSId === "string"
+  );
+}
+
 function makeEmailReplyContextKey(agentMessageSId: string): string {
   return `${EMAIL_REPLY_CONTEXT_PREFIX}:${agentMessageSId}`;
 }
@@ -95,19 +112,30 @@ export async function getAndDeleteEmailReplyContext(
   // Delete after retrieval to ensure we only reply once.
   await redis.del(key);
 
+  let parsed: unknown;
   try {
-    return JSON.parse(value) as EmailReplyContext;
+    parsed = JSON.parse(value);
   } catch {
     logger.warn(
       { agentMessageSId, key },
-      "[email] Failed to parse email reply context from Redis"
+      "[email] Failed to parse email reply context JSON from Redis"
     );
     return null;
   }
+
+  if (!isEmailReplyContext(parsed)) {
+    logger.warn(
+      { agentMessageSId, key },
+      "[email] Invalid email reply context structure from Redis"
+    );
+    return null;
+  }
+
+  return parsed;
 }
 
 export const ASSISTANT_EMAIL_SUBDOMAIN = isDevelopment()
-  ? "run.dust.help"
+  ? "dev.dust.help"
   : "run.dust.help";
 
 export type EmailAttachment = {
@@ -226,9 +254,11 @@ export async function userAndWorkspacesFromEmail({
   // b. latest participation as above using the above (latestParticipation?.conversation?.workspaceId)
   // c. most frequent-recent activity? (return 10 results with participants and pick the workspace with most convos)
   // (will work fine since most users likely use only one workspace with a given email)
-  const workspace = workspaces.find(
-    (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
-  );
+  const workspace = isDevelopment()
+    ? workspaces[0] // In dev, use the first available workspace.
+    : workspaces.find(
+        (w) => w.sId === PRODUCTION_DUST_WORKSPACE_ID // Gating to dust workspace
+      );
   if (!workspace) {
     return new Err({
       type: "unexpected_error",
@@ -558,6 +588,7 @@ export async function triggerFromEmail({
 
   // Store email reply context in Redis for each agent message.
   // The finalization activity will use this to send the reply.
+  // O(n²) acceptable: both arrays are small (typically 1-3 agents matching an email prefix).
   for (const agentMessage of agentMessages) {
     const agentConfig = agentConfigurations.find(
       (ac) => ac.sId === agentMessage.configuration.sId
@@ -622,7 +653,7 @@ export async function replyToEmail({
     "<div>\n" +
     htmlContent +
     `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${email.envelope.full} wrote:<br/>\n` +
+    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
     `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
     `${quote}` +
     `</blockquote>\n` +

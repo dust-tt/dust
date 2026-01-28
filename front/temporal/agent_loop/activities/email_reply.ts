@@ -7,13 +7,13 @@ import type {
   InboundEmail,
 } from "@app/lib/api/assistant/email_trigger";
 import {
-  ASSISTANT_EMAIL_SUBDOMAIN,
   getAndDeleteEmailReplyContext,
+  replyToEmail,
 } from "@app/lib/api/assistant/email_trigger";
-import { sendEmail } from "@app/lib/api/email";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
+import { isDevelopment } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
 
@@ -43,13 +43,15 @@ function reconstructEmailFromContext(context: EmailReplyContext): InboundEmail {
 /**
  * Check security gating for email replies.
  * Returns true if the reply should be sent, false otherwise.
+ *
+ * Defense-in-depth: duplicates the webhook handler checks as a second layer
+ * of protection in case Redis data is manipulated or context is stored incorrectly.
  */
 function checkEmailReplyGating(
   context: EmailReplyContext,
   agentMessageId: string
 ): boolean {
   // Security gating: only allow replies to dust.tt emails in the Dust workspace.
-  // This mirrors the checks in the webhook handler.
   if (!context.fromEmail.endsWith("@dust.tt")) {
     logger.warn(
       { agentMessageId, fromEmail: context.fromEmail },
@@ -58,6 +60,7 @@ function checkEmailReplyGating(
     return false;
   }
   if (
+    !isDevelopment() &&
     PRODUCTION_DUST_WORKSPACE_ID &&
     context.workspaceSId !== PRODUCTION_DUST_WORKSPACE_ID
   ) {
@@ -141,9 +144,9 @@ export async function emailReplyOnCompletionActivity(
 
     // Reconstruct the email and send reply.
     const email = reconstructEmailFromContext(context);
-    await replyToEmailInternal({
+    await replyToEmail({
       email,
-      agentConfiguration,
+      agentConfiguration: agentConfiguration ?? undefined,
       htmlContent: fullHtmlContent,
     });
 
@@ -165,64 +168,6 @@ export async function emailReplyOnCompletionActivity(
       "[email] Failed to send email reply on completion, skipping"
     );
   }
-}
-
-/**
- * Internal version of replyToEmail that sends the actual email.
- * Duplicated from email_trigger.ts to avoid circular dependencies
- * and to keep this activity self-contained.
- */
-async function replyToEmailInternal({
-  email,
-  agentConfiguration,
-  htmlContent,
-}: {
-  email: InboundEmail;
-  agentConfiguration: { name: string } | null;
-  htmlContent: string;
-}) {
-  const name = agentConfiguration
-    ? `Dust Agent (${agentConfiguration.name})`
-    : "Dust Agent";
-  const sender = agentConfiguration
-    ? `${agentConfiguration.name}@${ASSISTANT_EMAIL_SUBDOMAIN}`
-    : `assistants@${ASSISTANT_EMAIL_SUBDOMAIN}`;
-
-  // Subject: if Re: is already there, don't add it.
-  const subject = email.subject
-    .toLowerCase()
-    .replaceAll(" ", "")
-    .startsWith("re:")
-    ? email.subject
-    : `Re: ${email.subject}`;
-
-  const quote = email.text
-    .replaceAll(">", "&gt;")
-    .replaceAll("<", "&lt;")
-    .split("\n")
-    .join("<br/>\n");
-
-  const html =
-    "<div>\n" +
-    htmlContent +
-    `<br/><br/>` +
-    `On ${new Date().toUTCString()} ${sanitizeHtml(email.envelope.full, { allowedTags: [], allowedAttributes: {} })} wrote:<br/>\n` +
-    `<blockquote class="quote" style="margin:0px 0px 0px 0.8ex;border-left:1px solid rgb(204,204,204);padding-left:1ex">\n` +
-    `${quote}` +
-    `</blockquote>\n` +
-    "<div>\n";
-
-  const msg = {
-    from: {
-      name,
-      email: sender,
-    },
-    reply_to: sender,
-    subject,
-    html,
-  };
-
-  await sendEmail(email.envelope.from, msg);
 }
 
 /**
@@ -258,9 +203,8 @@ export async function emailReplyOnErrorActivity(
     const htmlContent =
       `<p>Error running agent:</p>\n` + `<p>${errorMessage}</p>\n`;
 
-    await replyToEmailInternal({
+    await replyToEmail({
       email,
-      agentConfiguration: null,
       htmlContent,
     });
 
