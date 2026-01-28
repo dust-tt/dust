@@ -20,7 +20,13 @@ function buildNewAgentInitMessage(): string {
 NEW agent - no suggestions/feedback/insights.
 
 ## STEP 1: Gather context
-Call \`get_agent_config\` to check if user started filling the form.
+You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
+This tool must be called at session start to ensure you have the latest state.
+
+The response includes:
+- Agent settings (name, description, scope, model, tools, skills)
+- Instructions: The committed instructions text (without pending suggestions)
+- pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
 ## STEP 2: Suggest use cases
 Based on:
@@ -42,6 +48,8 @@ Tool usage rules when creating suggestions:
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
+
+Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
 }
 
@@ -49,8 +57,15 @@ function buildExistingAgentInitMessage(): string {
   return `<dust_system>
 EXISTING agent.
 
-## STEP 1: Gather context (IN PARALLEL)
-\`list_suggestions\`, \`get_agent_config\`, \`get_agent_feedback\`
+## STEP 1: Gather context (CALL ALL THREE TOOLS IN PARALLEL)
+You MUST call all three tools simultaneously in the same tool call round:
+1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
+2. \`list_suggestions\` - filtered by \`pending\` state and the current agent version
+3. \`get_agent_feedback\` - to retrieve feedback for the current version
+
+CRITICAL: All three tools must be called together in parallel, not sequentially. Make all three tool calls in your first response to minimize latency.
+
+IMPORTANT: Avoid calling \`list_suggestions\` again mid-session unless explicitly asked. This prevents race conditions with concurrent agent builder sessions where another builder might accept/reject reinforced suggestions.
 
 ## STEP 2: Provide context & prompt action
 Based on gathered data, provide a brief summary:
@@ -66,6 +81,8 @@ Tool usage rules when creating suggestions:
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
+
+Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
 }
 

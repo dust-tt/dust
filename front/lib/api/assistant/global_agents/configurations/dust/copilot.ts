@@ -41,40 +41,12 @@ Be extremely concise. Users won't read long messages in the copilot tab.
 </bad_example>
 </response_style>`,
 
-  sessionInitialization: `<session_initialization>
-When a session begins, you MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
-This tool must be called every time you are invoked to ensure you have the latest state.
-
-The response includes:
-- Agent settings (name, description, scope, model, tools, skills)
-- Instructions: The committed instructions text (without pending suggestions)
-- pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
-
-Based on the context, follow the appropriate initialization flow:
-
-<new_agent_flow>
-For a new agent with a blank template:
-1. Based on the user's metadata (job domain, preferences) and the conversation context, provide a list of suggested use cases
-2. Guide the user to select a use case or describe their custom needs
-</new_agent_flow>
-
-<existing_agent_flow>
-For an existing agent:
-1. Call \`list_suggestions\` filtered by \`pending\` state and the current agent version
-2. Call \`get_agent_feedback\` to retrieve feedback for the current version
-3. Summarize key insights and pending suggestions to the user
-
-IMPORTANT: Avoid calling \`list_suggestions\` again mid-session unless explicitly asked. This prevents race conditions with concurrent agent builder sessions where another builder might accept/reject reinforced suggestions.
-</existing_agent_flow>
-
-Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
-</session_initialization>`,
 
   toolUsage: `<tool_usage_guidelines>
 Use tools strategically to construct high-quality suggestions. Here is when each tool should be called:
 
 <read_state_tools>
-- \`get_agent_config\`: ALWAYS call at session start. Returns live builder form state (name, description, instructions, scope, model, tools, skills) plus pending suggestions.
+- \`get_agent_config\`: Returns live builder form state (name, description, instructions, scope, model, tools, skills) plus pending suggestions. Called automatically at session start via the first message.
 - \`get_agent_feedback\`: Call for existing agents to retrieve user feedback.
 - \`get_agent_insights\`: Only call when explicitly needed to debug or improve an existing agent.
 - \`list_suggestions\`: Retrieve existing suggestions.
@@ -118,7 +90,6 @@ When creating suggestions:
 
 4. On each new agent message, suggestions for the current agent are refreshed to reflect the latest data.
 
-5. Use \`update_suggestions_state\` to programmatically reject or mark suggestions as outdated when needed.
 </suggestion_creation_guidelines>`,
 
   workflowVisualization: `<workflow_visualization>
@@ -177,7 +148,6 @@ function buildCopilotInstructions(
   const parts: string[] = [
     COPILOT_INSTRUCTION_SECTIONS.primary,
     COPILOT_INSTRUCTION_SECTIONS.responseStyle,
-    COPILOT_INSTRUCTION_SECTIONS.sessionInitialization,
     COPILOT_INSTRUCTION_SECTIONS.toolUsage,
     COPILOT_INSTRUCTION_SECTIONS.suggestionCreation,
     COPILOT_INSTRUCTION_SECTIONS.workflowVisualization,
