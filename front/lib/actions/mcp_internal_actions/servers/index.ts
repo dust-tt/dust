@@ -59,6 +59,7 @@ import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/se
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
+import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
@@ -238,6 +239,8 @@ export async function getInternalMCPServer(
       return ukgReadyServer(auth, agentLoopContext);
     case "statuspage":
       return statuspageServer(auth, agentLoopContext);
+    case "sandbox":
+      return sandboxServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }
