@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import { lazy, Suspense, useEffect } from "react";
 
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { shallowBlockClone } from "@app/lib/utils";
 import type {
@@ -29,12 +30,6 @@ const CodeEditor = lazy(() =>
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
-  );
-}
 
 export default function Curl({
   owner,

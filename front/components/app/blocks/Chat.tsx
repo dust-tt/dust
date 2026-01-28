@@ -12,6 +12,7 @@ import {
 import { lazy, Suspense, useState } from "react";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { supportsResponseFormat } from "@app/lib/providers";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
@@ -31,12 +32,6 @@ const CodeEditor = lazy(() =>
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
-  );
-}
 
 export default function Chat({
   owner,
