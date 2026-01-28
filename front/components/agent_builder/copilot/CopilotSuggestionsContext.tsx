@@ -47,7 +47,10 @@ export interface CopilotSuggestionsContextType {
   getPendingSuggestions: () => CopilotSuggestion[];
   getCommittedInstructions: () => string;
   backendSuggestions: AgentSuggestionType[];
-  getBackendSuggestion: (sId: string) => AgentSuggestionType | undefined;
+  getOrFetchSuggestion: (sId: string) => {
+    notFoundAfterFetch: boolean;
+    suggestion: AgentSuggestionType | null;
+  };
   isSuggestionsLoading: boolean;
 }
 
@@ -89,16 +92,41 @@ export const CopilotSuggestionsProvider = ({
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
 
   // Fetch all pending suggestions from the backend (all kinds).
-  const { suggestions: backendSuggestions, isSuggestionsLoading } =
-    useAgentSuggestions({
-      agentConfigurationId,
-      state: ["pending"],
-      workspaceId: owner.sId,
-    });
+  const {
+    suggestions: backendSuggestions,
+    isSuggestionsLoading,
+    mutateSuggestions,
+  } = useAgentSuggestions({
+    agentConfigurationId,
+    state: ["pending"],
+    workspaceId: owner.sId,
+  });
 
-  const getBackendSuggestion = useCallback(
-    (sId: string) => backendSuggestions.find((s) => s.sId === sId),
-    [backendSuggestions]
+  const requestedSuggestionsRef = useRef<Set<string>>(new Set());
+  const getOrFetchSuggestion = useCallback(
+    (
+      sId: string
+    ): {
+      notFoundAfterFetch: boolean;
+      suggestion: AgentSuggestionType | null;
+    } => {
+      const suggestion = backendSuggestions.find((s) => s.sId === sId);
+      if (suggestion) {
+        return { notFoundAfterFetch: false, suggestion };
+      }
+
+      if (!requestedSuggestionsRef.current.has(sId)) {
+        requestedSuggestionsRef.current.add(sId);
+        // Defer to avoid setState during render (called from directive's useMemo).
+        queueMicrotask(() => {
+          void mutateSuggestions();
+        });
+        return { notFoundAfterFetch: false, suggestion: null };
+      }
+
+      return { notFoundAfterFetch: true, suggestion: null };
+    },
+    [backendSuggestions, mutateSuggestions]
   );
 
   const registerEditor = useCallback((editor: Editor) => {
@@ -305,7 +333,7 @@ export const CopilotSuggestionsProvider = ({
       acceptSuggestion,
       addSuggestion,
       backendSuggestions,
-      getBackendSuggestion,
+      getOrFetchSuggestion,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
@@ -320,7 +348,7 @@ export const CopilotSuggestionsProvider = ({
       acceptSuggestion,
       addSuggestion,
       backendSuggestions,
-      getBackendSuggestion,
+      getOrFetchSuggestion,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,

@@ -5,7 +5,7 @@
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import React from "react";
+import React, { useMemo } from "react";
 import { visit } from "unist-util-visit";
 
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
@@ -39,8 +39,8 @@ export function copilotSuggestionDirective() {
 }
 
 interface CopilotSuggestionPluginProps {
-  sId: string;
-  kind: AgentSuggestionKind;
+  sId?: string;
+  kind?: AgentSuggestionKind;
 }
 
 /**
@@ -54,20 +54,29 @@ export function getCopilotSuggestionPlugin() {
     sId,
     kind,
   }: CopilotSuggestionPluginProps) => {
-    const { getBackendSuggestion, isSuggestionsLoading } =
+    const { getOrFetchSuggestion, isSuggestionsLoading } =
       useCopilotSuggestions();
 
-    if (isSuggestionsLoading || !sId) {
+    const { notFoundAfterFetch, suggestion } = useMemo(() => {
+      if (!sId) {
+        return { notFoundAfterFetch: false, suggestion: null };
+      }
+      return getOrFetchSuggestion(sId);
+    }, [sId, getOrFetchSuggestion]);
+
+    if (isSuggestionsLoading || !sId || !kind) {
       return <SuggestionCardSkeleton kind={kind} />;
     }
 
-    const suggestionData = getBackendSuggestion(sId);
-
-    if (!suggestionData) {
-      return <SuggestionCardError />;
+    if (!suggestion) {
+      return notFoundAfterFetch ? (
+        <SuggestionCardError />
+      ) : (
+        <SuggestionCardSkeleton kind={kind} />
+      );
     }
 
-    return <CopilotSuggestionCard agentSuggestion={suggestionData} />;
+    return <CopilotSuggestionCard agentSuggestion={suggestion} />;
   };
 
   return CopilotSuggestionPlugin;

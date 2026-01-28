@@ -27,7 +27,7 @@ interface SuggestionCardProps {
 
 type SuggestionKindWithHeader = Exclude<AgentSuggestionKind, "instructions">;
 
-function getTitle(kind: SuggestionKindWithHeader): string {
+function getTitle(kind?: SuggestionKindWithHeader): string {
   switch (kind) {
     case "tools":
       return "Tools Suggestion";
@@ -35,10 +35,12 @@ function getTitle(kind: SuggestionKindWithHeader): string {
       return "Skills Suggestion";
     case "model":
       return "Model Suggestion";
+    default:
+      return "Suggestion";
   }
 }
 
-function getIcon(kind: SuggestionKindWithHeader) {
+function getIcon(kind?: SuggestionKindWithHeader) {
   switch (kind) {
     case "tools":
       return CommandLineIcon;
@@ -46,6 +48,8 @@ function getIcon(kind: SuggestionKindWithHeader) {
       return PuzzleIcon;
     case "model":
       return SparklesIcon;
+    default:
+      return undefined;
   }
 }
 
@@ -224,7 +228,7 @@ export function CopilotSuggestionCard({
 }
 
 interface SuggestionCardSkeletonProps {
-  kind: AgentSuggestionKind;
+  kind?: AgentSuggestionKind;
 }
 
 export function SuggestionCardSkeleton({ kind }: SuggestionCardSkeletonProps) {
