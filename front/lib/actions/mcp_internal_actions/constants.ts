@@ -7,7 +7,6 @@ import {
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
-import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
@@ -39,6 +38,7 @@ import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
+import { PRODUCTBOARD_SERVER } from "@app/lib/api/actions/servers/productboard/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import {
   QUERY_TABLES_V2_SERVER,
@@ -1078,32 +1078,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_note: "never_ask",
-      query_notes: "never_ask",
-      create_note: "low",
-      update_note: "low",
-      query_entities: "never_ask",
-      get_relationships: "never_ask",
-      create_entity: "low",
-      update_entity: "low",
-      get_configuration: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "productboard",
-      version: "1.0.0",
-      description: "Manage productboard entities and notes.",
-      authorization: {
-        provider: "productboard" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ProductboardLogo",
-      documentationUrl: "https://docs.dust.tt/docs/productboard",
-      instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
-    },
+    metadata: PRODUCTBOARD_SERVER,
   },
   snowflake: {
     id: 47,

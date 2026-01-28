@@ -1,12 +1,16 @@
 import type { z } from "zod";
 
 import type { MCPError } from "@app/lib/actions/mcp_errors";
+import { untrustedFetch } from "@app/lib/egress/server";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
+
 import type {
   ProductboardConfiguration,
   ProductboardEntity,
   ProductboardNote,
   ProductboardRelationship,
-} from "@app/lib/actions/mcp_internal_actions/servers/productboard/types";
+} from "./types";
 import {
   ProductboardConfigurationResponseSchema,
   ProductboardConfigurationsResponseSchema,
@@ -16,10 +20,7 @@ import {
   ProductboardNoteResponseSchema,
   ProductboardNotesListResponseSchema,
   ProductboardRelationshipsListResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/productboard/types";
-import { untrustedFetch } from "@app/lib/egress/server";
-import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+} from "./types";
 
 const PRODUCTBOARD_API_V2_BASE_URL = "https://api.productboard.com/v2";
 
