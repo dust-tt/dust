@@ -166,7 +166,7 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     // Generate PKCE parameters for the OAuth flow
     const { code_verifier, code_challenge } = await getPKCEConfig();
 
@@ -183,10 +183,11 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "A workspace admin must first connect this tool at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection.",
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -194,29 +195,32 @@ export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+          });
         }
         const connection = connectionRes.value.connection;
 
         // Return config with workspace connection metadata and PKCE parameters
-        return {
+        return new Ok({
           ...restConfig,
           client_id: connection.metadata.client_id,
           instance_url: connection.metadata.instance_url,
           ukg_ready_company_id: connection.metadata.ukg_ready_company_id,
           code_verifier,
           code_challenge,
-        };
+        });
       }
     }
 
     // Return config with PKCE parameters
-    return {
+    return new Ok({
       ...extraConfig,
       code_verifier,
       code_challenge,
-    };
+    });
   }
 }

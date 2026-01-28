@@ -62,6 +62,9 @@ export interface BaseOAuthStrategyProvider {
     }
   ) => Promise<Result<RelatedCredential, OAuthError> | undefined>;
 
+  // Returns:
+  // - Ok(extraConfig) if the config was successfully updated
+  // - Err(error) if config update failed (e.g., missing workspace connection)
   getUpdatedExtraConfig?: (
     auth: Authenticator,
     {
@@ -71,7 +74,7 @@ export interface BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ) => Promise<ExtraConfigType>;
+  ) => Promise<Result<ExtraConfigType, OAuthError>>;
 
   isExtraConfigValidPostRelatedCredential?: (
     extraConfig: ExtraConfigType,

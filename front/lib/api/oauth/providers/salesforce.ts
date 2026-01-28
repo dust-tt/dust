@@ -156,7 +156,7 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -171,10 +171,12 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "A workspace admin must first connect this tool at the workspace level before users can connect their personal accounts. " +
+              "Please contact your workspace administrator to set up the workspace connection.",
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -182,21 +184,24 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+          });
         }
         const connection = connectionRes.value.connection;
 
         const { code_verifier, code_challenge } = await getPKCEConfig();
 
-        return {
+        return new Ok({
           ...restConfig,
           client_id: connection.metadata.client_id,
           instance_url: connection.metadata.instance_url,
           code_verifier,
           code_challenge,
-        };
+        });
       }
     }
 
@@ -205,10 +210,10 @@ export class SalesforceOAuthProvider implements BaseOAuthStrategyProvider {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
-    return {
+    return new Ok({
       ...restConfig,
       code_verifier,
       code_challenge,
-    };
+    });
   }
 }

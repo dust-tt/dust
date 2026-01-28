@@ -214,7 +214,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it.
@@ -228,10 +228,11 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "A workspace admin must first connect this tool at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection.",
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -239,15 +240,18 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+          });
         }
         const connection = connectionRes.value.connection;
 
         const { code_verifier, code_challenge } = await getPKCEConfig();
 
-        return {
+        return new Ok({
           client_id: connection.metadata.client_id,
           token_endpoint: connection.metadata.token_endpoint,
           authorization_endpoint: connection.metadata.authorization_endpoint,
@@ -256,7 +260,7 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           code_verifier,
           code_challenge,
           ...restConfig,
-        };
+        });
       }
     } else if (useCase === "platform_actions") {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig
@@ -264,13 +268,16 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
 
       const { code_verifier, code_challenge } = await getPKCEConfig();
 
-      return {
+      return new Ok({
         ...restConfig,
         code_challenge,
         code_verifier,
-      };
+      });
     }
-    throw new Error("MCP oauth provider does not support use case: " + useCase);
+    return new Err({
+      code: "connection_creation_failed",
+      message: "MCP oauth provider does not support use case: " + useCase,
+    });
   }
 
   isExtraConfigValidPostRelatedCredential(
