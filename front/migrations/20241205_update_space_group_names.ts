@@ -3,11 +3,6 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
-import {
-  PROJECT_EDITOR_GROUP_PREFIX,
-  PROJECT_GROUP_PREFIX,
-  SPACE_GROUP_PREFIX,
-} from "@app/types";
 
 makeScript({}, async ({ execute }) => {
   await runOnAllWorkspaces(async (w) => {
@@ -24,13 +19,10 @@ makeScript({}, async ({ execute }) => {
       if (regularGroups.length === 1) {
         const group = regularGroups[0];
         if (execute) {
-          await group.updateName(
-            auth,
-            `${space.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${space.name}`
-          );
+          await group.updateName(auth, `Group for space ${space.name}`);
         }
         logger.info(
-          `[Execute: ${execute}] Updating group ${group.id} to "${space.isProject() ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${space.name}"`
+          `[Execute: ${execute}] Updating group ${group.id} to "Group for space ${space.name}"`
         );
       }
 
@@ -40,13 +32,10 @@ makeScript({}, async ({ execute }) => {
       if (spaceEditorsGroups.length === 1) {
         const group = spaceEditorsGroups[0];
         if (execute) {
-          await group.updateName(
-            auth,
-            `${PROJECT_EDITOR_GROUP_PREFIX} ${space.name}`
-          );
+          await group.updateName(auth, `Editors for space ${space.name}`);
         }
         logger.info(
-          `[Execute: ${execute}] Updating group ${group.id} to "${PROJECT_EDITOR_GROUP_PREFIX} ${space.name}"`
+          `[Execute: ${execute}] Updating group ${group.id} to "Editors for space ${space.name}"`
         );
       }
     }

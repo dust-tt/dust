@@ -127,5 +127,4 @@ export const AGENT_GROUP_PREFIX = "Group for Agent";
 export const SKILL_GROUP_PREFIX = "Group for Skill";
 export const SPACE_GROUP_PREFIX = "Group for space";
 export const PROJECT_GROUP_PREFIX = "Group for project";
-export const PROJECT_EDITOR_GROUP_PREFIX = "Editors for project";
 export const GLOBAL_SPACE_NAME = "Company Data";
