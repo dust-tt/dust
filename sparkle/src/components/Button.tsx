@@ -60,7 +60,7 @@ function isSmallButtonSize(
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
+    "s-box-content s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
   ),

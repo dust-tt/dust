@@ -32,10 +32,10 @@ export function MessageEmojiPicker({
           key="emoji-picker-button"
           tooltip="Add reaction"
           variant="outline"
-          size="mini"
+          size="xmini"
           icon={EmotionLaughIcon}
           isSelect
-          className={cn("text-muted-foreground w-12", className)}
+          className={cn("text-muted-foreground", className)}
         />
       </PopoverTrigger>
       <PopoverContent fullWidth>
