@@ -1704,7 +1704,12 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "describe_tables": "never_ask",
+      "find": "never_ask",
+      "list": "never_ask",
+      "query": "never_ask"
+    }
   },
   {
     "name": "databricks",
@@ -9254,7 +9259,9 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "jit_all_optionals_and_defaults": "high"
+    }
   },
   {
     "name": "microsoft_drive",

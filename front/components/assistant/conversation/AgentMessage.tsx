@@ -2,6 +2,7 @@ import {
   ArrowPathIcon,
   Button,
   ButtonGroup,
+  ButtonGroupDropdown,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
@@ -533,36 +534,28 @@ export function AgentMessage({
     }
 
     messageButtons.push(
-      <ButtonGroup
-        key="split-button-group"
-        variant="outline"
-        items={[
-          {
-            type: "button",
-            props: {
-              tooltip: isCopied ? "Copied!" : "Copy to clipboard",
-              variant: "ghost-secondary",
-              size: "xs",
-              onClick: handleCopyToClipboard,
-              icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
-              className: "text-muted-foreground",
-            },
-          },
-          {
-            type: "dropdown",
-            triggerProps: {
-              variant: "ghost-secondary",
-              size: "xs",
-              icon: MoreIcon,
-              className: "text-muted-foreground",
-            },
-            dropdownProps: {
-              items: dropdownItems,
-              align: "end",
-            },
-          },
-        ]}
-      />
+      <ButtonGroup key="split-button-group">
+        <Button
+          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
+          variant="outline"
+          size="xs"
+          onClick={handleCopyToClipboard}
+          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
+          className="text-muted-foreground"
+        />
+        <ButtonGroupDropdown
+          trigger={
+            <Button
+              variant="outline"
+              size="xs"
+              icon={MoreIcon}
+              className="text-muted-foreground"
+            />
+          }
+          items={dropdownItems}
+          align="end"
+        />
+      </ButtonGroup>
     );
   } else {
     if (shouldShowCopy) {

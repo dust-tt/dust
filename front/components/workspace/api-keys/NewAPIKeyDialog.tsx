@@ -164,6 +164,7 @@ export const NewAPIKeyDialog = ({
           rightButtonProps={{
             label: "Create",
             variant: "primary",
+            disabled: newApiKeyName.trim().length === 0,
             onClick: async () => {
               await onCreate({
                 name: newApiKeyName,

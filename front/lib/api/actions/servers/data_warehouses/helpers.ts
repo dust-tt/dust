@@ -1,3 +1,4 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import _ from "lodash";
 

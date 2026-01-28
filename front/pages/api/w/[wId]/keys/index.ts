@@ -71,6 +71,17 @@ async function handler(
       }
 
       const { name, group_id, monthly_cap_micro_usd } = bodyValidation.right;
+      const trimmedName = name.trim();
+
+      if (trimmedName.length === 0) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message: "API key name cannot be empty.",
+          },
+        });
+      }
 
       if (
         monthly_cap_micro_usd !== null &&
@@ -82,6 +93,20 @@ async function handler(
           api_error: {
             type: "invalid_request_error",
             message: "monthly_cap_micro_usd must be greater than or equal to 0",
+          },
+        });
+      }
+
+      const existingKey = await KeyResource.fetchByName(auth, {
+        name: trimmedName,
+      });
+      if (existingKey) {
+        return apiError(req, res, {
+          status_code: 400,
+          api_error: {
+            type: "invalid_request_error",
+            message:
+              "An API key with this name already exists in this workspace.",
           },
         });
       }
@@ -122,7 +147,7 @@ async function handler(
 
       const key = await KeyResource.makeNew(
         {
-          name: name,
+          name: trimmedName,
           status: "active",
           userId: user.id,
           workspaceId: owner.id,

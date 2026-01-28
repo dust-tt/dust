@@ -2,10 +2,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import { default as agentManagementServer } from "@app/lib/actions/mcp_internal_actions/servers/agent_management";
 import { default as commonUtilitiesServer } from "@app/lib/actions/mcp_internal_actions/servers/common_utilities";
 import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actions/servers/confluence";
-import { default as dataWarehousesServer } from "@app/lib/actions/mcp_internal_actions/servers/data_warehouses";
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
@@ -13,9 +11,7 @@ import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
-import { default as jitTestingServer } from "@app/lib/actions/mcp_internal_actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
-import { default as microsoftExcelServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_excel";
 import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
@@ -36,11 +32,13 @@ import {
 } from "@app/lib/actions/types/guards";
 import { default as agentCopilotAgentStateServer } from "@app/lib/api/actions/servers/agent_copilot_agent_state";
 import { default as agentCopilotContextServer } from "@app/lib/api/actions/servers/agent_copilot_context";
+import { default as agentManagementServer } from "@app/lib/api/actions/servers/agent_management";
 import { default as agentMemoryServer } from "@app/lib/api/actions/servers/agent_memory";
 import { default as agentRouterServer } from "@app/lib/api/actions/servers/agent_router";
 import { default as ashbyServer } from "@app/lib/api/actions/servers/ashby";
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
+import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
@@ -51,6 +49,8 @@ import { default as sheetsServer } from "@app/lib/api/actions/servers/google_she
 import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
+import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
+import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/api/actions/servers/monday";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";

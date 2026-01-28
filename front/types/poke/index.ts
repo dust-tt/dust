@@ -20,7 +20,8 @@ type PokeItemType =
   | "Data Source"
   | "Data Source View"
   | "Connector"
-  | "MCP Server View";
+  | "MCP Server View"
+  | "Frame";
 
 export interface PokeItemBase {
   id: ModelId;

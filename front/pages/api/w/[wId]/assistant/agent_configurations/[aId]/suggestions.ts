@@ -1,7 +1,5 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
-import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
+import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -13,16 +11,12 @@ import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
-const PatchSuggestionRequestBodySchema = t.type({
-  suggestionId: t.string,
-  state: t.union([
-    t.literal("approved"),
-    t.literal("rejected"),
-    t.literal("outdated"),
-  ]),
+const PatchSuggestionRequestBodySchema = z.object({
+  suggestionId: z.string(),
+  state: z.enum(["approved", "rejected", "outdated"]),
 });
 
-export type PatchSuggestionRequestBody = t.TypeOf<
+export type PatchSuggestionRequestBody = z.infer<
   typeof PatchSuggestionRequestBodySchema
 >;
 
@@ -30,25 +24,21 @@ export interface PatchSuggestionResponseBody {
   suggestion: AgentSuggestionType;
 }
 
-const GetSuggestionsQuerySchema = t.partial({
-  states: t.array(
-    t.union([
-      t.literal("pending"),
-      t.literal("approved"),
-      t.literal("rejected"),
-      t.literal("outdated"),
-    ])
-  ),
-  kind: t.union([
-    t.literal("instructions"),
-    t.literal("tools"),
-    t.literal("skills"),
-    t.literal("model"),
-  ]),
-  limit: t.string,
+const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
+
+// Next.js serializes single query param values as string, multiple as array.
+const stringOrArrayToArray = z.preprocess(
+  (v) => (typeof v === "string" ? [v] : v),
+  z.array(StateSchema)
+);
+
+const GetSuggestionsQuerySchema = z.object({
+  states: stringOrArrayToArray.optional(),
+  kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
+  limit: z.string().optional(),
 });
 
-export type GetSuggestionsQuery = t.TypeOf<typeof GetSuggestionsQuerySchema>;
+export type GetSuggestionsQuery = z.infer<typeof GetSuggestionsQuerySchema>;
 
 export interface GetSuggestionsResponseBody {
   suggestions: AgentSuggestionType[];
@@ -112,19 +102,18 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const queryValidation = GetSuggestionsQuerySchema.decode(req.query);
-      if (isLeft(queryValidation)) {
-        const pathError = reporter.formatValidationErrors(queryValidation.left);
+      const queryValidation = GetSuggestionsQuerySchema.safeParse(req.query);
+      if (!queryValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid query parameters: ${pathError}`,
+            message: `Invalid query parameters: ${queryValidation.error.message}`,
           },
         });
       }
 
-      const { states, kind, limit } = queryValidation.right;
+      const { states, kind, limit } = queryValidation.data;
 
       const parsedLimit = limit ? parseInt(limit, 10) : undefined;
       if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -154,19 +143,20 @@ async function handler(
     }
 
     case "PATCH": {
-      const bodyValidation = PatchSuggestionRequestBodySchema.decode(req.body);
-      if (isLeft(bodyValidation)) {
-        const pathError = reporter.formatValidationErrors(bodyValidation.left);
+      const bodyValidation = PatchSuggestionRequestBodySchema.safeParse(
+        req.body
+      );
+      if (!bodyValidation.success) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: `Invalid request body: ${pathError}`,
+            message: `Invalid request body: ${bodyValidation.error.message}`,
           },
         });
       }
 
-      const { suggestionId, state } = bodyValidation.right;
+      const { suggestionId, state } = bodyValidation.data;
 
       const suggestion = await AgentSuggestionResource.fetchById(
         auth,

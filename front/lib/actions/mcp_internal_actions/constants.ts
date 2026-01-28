@@ -12,14 +12,14 @@ import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/se
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/agent_copilot_agent_state/metadata";
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
+import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import {
-  AGENT_ROUTER_SERVER,
-  AGENT_ROUTER_SERVER_NAME,
-} from "@app/lib/api/actions/servers/agent_router/metadata";
+import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
@@ -30,6 +30,8 @@ import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
+import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
@@ -387,7 +389,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -399,13 +400,13 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    metadata: SLACK_PERSONAL_SERVER,
     tools_arguments_requiring_approval: {
       post_message: ["channel"],
       schedule_message: ["channel"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    metadata: SLACK_PERSONAL_SERVER,
   },
   google_sheets: {
     id: 19,
@@ -439,7 +440,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -857,30 +857,20 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_excel_files: "never_ask",
-      get_worksheets: "never_ask",
-      read_worksheet: "never_ask",
-      write_worksheet: "high",
-      create_worksheet: "low",
-      clear_range: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "microsoft_excel",
-      version: "1.0.0",
-      description: "Work with Excel files in SharePoint.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
+    metadata: {
+      ...MICROSOFT_EXCEL_SERVER,
+      serverInfo: {
+        ...MICROSOFT_EXCEL_SERVER.serverInfo,
+        authorization: {
+          provider: "microsoft_tools" as const,
+          supported_use_cases: ["personal_actions"] as const,
+          scope:
+            "User.Read Files.ReadWrite.All Sites.Read.All offline_access" as const,
+        },
       },
-      icon: "MicrosoftExcelLogo",
-      documentationUrl: null,
-      instructions: null,
     },
   },
   http_client: {
@@ -1216,7 +1206,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1230,7 +1219,6 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1244,21 +1232,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_management_tool");
     },
-    tools_stakes: {
-      create_agent: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "agent_management",
-      version: "1.0.0",
-      description: "Tools for managing agent configurations.",
-      authorization: null,
-      icon: "ActionRobotIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: AGENT_MANAGEMENT_SERVER,
   },
   [DATA_WAREHOUSE_SERVER_NAME]: {
     id: 1012,
@@ -1266,19 +1243,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: DATA_WAREHOUSE_SERVER_NAME,
-      version: "1.0.0",
-      description: "Browse tables organized by warehouse and schema.",
-      authorization: null,
-      icon: "ActionTableIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: DATA_WAREHOUSES_SERVER,
   },
   toolsets: {
     id: 1013,
@@ -1332,19 +1300,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("dev_mcp_actions");
     },
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "jit_testing",
-      version: "1.0.0",
-      description: "Demo server to test if can be added to JIT.",
-      icon: "ActionEmotionLaughIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: JIT_TESTING_SERVER,
   },
   common_utilities: {
     id: 1017,
@@ -1464,13 +1423,6 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("projects");
     },
-    tools_stakes: {
-      list_project_files: "never_ask",
-      add_project_file: "high",
-      update_project_file: "high",
-      delete_project_file: "high",
-      read_project_journal_entry: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -1484,10 +1436,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_builder_copilot");
     },
-    metadata: AGENT_COPILOT_CONTEXT_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    metadata: AGENT_COPILOT_CONTEXT_SERVER,
   },
   agent_copilot_agent_state: {
     id: 1023,
@@ -1497,10 +1449,10 @@ export const INTERNAL_MCP_SERVERS = {
     isRestricted: ({ featureFlags }) => {
       return !featureFlags.includes("agent_builder_copilot");
     },
-    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
+    metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {
