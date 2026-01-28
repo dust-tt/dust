@@ -738,12 +738,7 @@ export function AgentMessage({
                 isLastMessage={isLastMessage}
                 agentMessage={agentMessage}
                 references={references}
-                streaming={shouldStream}
-                lastTokenClassification={
-                  agentMessage.streaming.agentState === "thinking"
-                    ? "tokens"
-                    : null
-                }
+                  streaming={shouldStream}
                 activeReferences={activeReferences}
                 setActiveReferences={setActiveReferences}
                 triggeringUser={triggeringUser}
@@ -767,7 +762,6 @@ function AgentMessageContent({
   agentMessage,
   references,
   streaming,
-  lastTokenClassification,
   owner,
   conversationId,
   activeReferences,
@@ -786,8 +780,7 @@ function AgentMessageContent({
   }) => Promise<void>;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
-  streaming: boolean;
-  lastTokenClassification: null | "tokens" | "chain_of_thought";
+    streaming: boolean;
   activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
     references: {
