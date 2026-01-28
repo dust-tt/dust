@@ -63,6 +63,11 @@ export interface SandboxInfo {
   createdAt: Date;
 }
 
+export interface SandboxStatus {
+  info: SandboxInfo;
+  isPaused: boolean;
+}
+
 export interface SandboxMetadata {
   workspaceId?: string;
   conversationId?: string;
@@ -469,6 +474,79 @@ export class NorthflankSandboxClient {
 
   attach(info: SandboxInfo): Sandbox {
     return new Sandbox(this.api, this.config, info);
+  }
+
+  /**
+   * Look up an existing sandbox by service name.
+   *
+   * Returns the sandbox status (info + paused state) if found, null if not found.
+   * Throws for API errors.
+   */
+  async getServiceByName(serviceName: string): Promise<SandboxStatus | null> {
+    // List all services and find by name (API doesn't support name filtering)
+    const listResponse = await this.api.list.services({
+      parameters: { projectId: this.config.projectId },
+    });
+
+    if (listResponse.error) {
+      throw new Error(
+        `Failed to list services: ${normalizeError(listResponse.error).message}`
+      );
+    }
+
+    const serviceEntry = listResponse.data.services.find(
+      (s) => s.name === serviceName
+    );
+
+    if (!serviceEntry) {
+      return null;
+    }
+
+    // Get full service details (list response doesn't include servicePaused/createdAt)
+    const serviceResponse = await this.api.get.service({
+      parameters: { projectId: this.config.projectId, serviceId: serviceEntry.id },
+    });
+
+    if (serviceResponse.error) {
+      throw new Error(
+        `Failed to get service: ${normalizeError(serviceResponse.error).message}`
+      );
+    }
+
+    const service = serviceResponse.data;
+
+    // Get volume info - volume name follows convention: {serviceName}-vol
+    const volumeName = `${serviceName}-vol`;
+    const volumeResponse = await this.api.list.volumes({
+      parameters: { projectId: this.config.projectId },
+    });
+
+    if (volumeResponse.error) {
+      throw new Error(
+        `Failed to list volumes: ${normalizeError(volumeResponse.error).message}`
+      );
+    }
+
+    // ListVolumesResult is an array directly
+    const volume = volumeResponse.data.find((v) => v.name === volumeName);
+
+    if (!volume) {
+      logger.warn(
+        { serviceName, serviceId: service.id },
+        "[sandbox] Service exists but volume not found"
+      );
+      // Return without volume ID - caller can handle this edge case
+    }
+
+    return {
+      info: {
+        serviceId: service.id,
+        volumeId: volume?.id ?? "",
+        projectId: this.config.projectId,
+        createdAt: new Date(service.createdAt),
+      },
+      isPaused: service.servicePaused,
+    };
   }
 
   private buildTags(metadata?: SandboxMetadata): string[] {
