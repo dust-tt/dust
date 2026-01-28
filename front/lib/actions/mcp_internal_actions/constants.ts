@@ -57,6 +57,7 @@ import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
+import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
@@ -1057,29 +1058,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("snowflake_tool");
     },
     isPreview: false,
-    tools_stakes: {
-      list_databases: "never_ask",
-      list_schemas: "never_ask",
-      list_tables: "never_ask",
-      describe_table: "never_ask",
-      query: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "snowflake",
-      version: "1.0.0",
-      description:
-        "Execute read-only SQL queries and browse schema in Snowflake.",
-      authorization: {
-        provider: "snowflake" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "SnowflakeLogo",
-      documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
-      instructions: null,
-    },
+    metadata: SNOWFLAKE_SERVER,
   },
   ukg_ready: {
     id: 48,
