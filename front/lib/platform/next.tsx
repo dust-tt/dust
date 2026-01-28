@@ -52,6 +52,7 @@ export function Image({
   className,
   sizes,
   priority,
+  ...rest
 }: ImageProps) {
   return (
     <NextImage
@@ -62,6 +63,7 @@ export function Image({
       className={className}
       sizes={sizes}
       priority={priority}
+      {...rest}
     />
   );
 }

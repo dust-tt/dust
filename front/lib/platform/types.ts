@@ -86,12 +86,11 @@ export interface ScriptProps {
   children?: string;
 }
 
-export interface ImageProps {
-  width: number;
-  height: number;
+export interface ImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, "width" | "height" | "src" | "alt"> {
+  width?: number | `${number}` | undefined;
+  height?: number | `${number}` | undefined;
   src: string;
   alt: string;
-  className?: string;
   priority?: boolean | undefined;
   sizes?: string;
 }
