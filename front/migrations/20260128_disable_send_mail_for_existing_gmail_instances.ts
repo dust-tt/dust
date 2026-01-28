@@ -3,6 +3,7 @@ import { Op } from "sequelize";
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
@@ -132,38 +133,65 @@ async function disableSendMailForWorkspace(
   return processedCount;
 }
 
-makeScript({}, async ({ execute }, logger) => {
-  logger.info(
-    {
-      execute,
-      cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
-      toolName: TOOL_NAME,
-      serverName: INTERNAL_MCP_SERVER_NAME,
+makeScript(
+  {
+    workspaceId: {
+      type: "string",
+      description:
+        "Optional workspace sId to process (processes all if omitted)",
+      required: false,
     },
-    "Starting send_mail disabling migration for existing Gmail instances."
-  );
+  },
+  async ({ workspaceId, execute }, logger) => {
+    logger.info(
+      {
+        execute,
+        workspaceId: workspaceId || "all",
+        cutoffDate: DEPLOYMENT_CUTOFF_DATE.toISOString(),
+        toolName: TOOL_NAME,
+        serverName: INTERNAL_MCP_SERVER_NAME,
+      },
+      "Starting send_mail disabling migration for existing Gmail instances."
+    );
 
-  let totalProcessed = 0;
+    let totalProcessed = 0;
 
-  await runOnAllWorkspaces(
-    async (workspace) => {
-      const processed = await disableSendMailForWorkspace(
+    if (workspaceId) {
+      // Process single workspace
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      totalProcessed = await disableSendMailForWorkspace(
         workspace.id,
         execute,
         logger
       );
-      totalProcessed += processed;
-    },
-    { concurrency: 8 }
-  );
+    } else {
+      // Process all workspaces
+      await runOnAllWorkspaces(
+        async (workspace) => {
+          const processed = await disableSendMailForWorkspace(
+            workspace.id,
+            execute,
+            logger
+          );
+          totalProcessed += processed;
+        },
+        { concurrency: 8 }
+      );
+    }
 
-  logger.info(
-    {
-      execute,
-      processedCount: totalProcessed,
-    },
-    execute
-      ? "Migration completed successfully."
-      : "Dry-run completed. Use --execute to apply changes."
-  );
-});
+    logger.info(
+      {
+        execute,
+        workspaceId: workspaceId || "all",
+        processedCount: totalProcessed,
+      },
+      execute
+        ? "Migration completed successfully."
+        : "Dry-run completed. Use --execute to apply changes."
+    );
+  }
+);
