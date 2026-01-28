@@ -15,7 +15,8 @@ import apiConfig from "@app/lib/api/config";
 import { setTimeoutAsync } from "@app/lib/utils/async_utils";
 import { streamToBuffer } from "@app/lib/utils/streams";
 import logger from "@app/logger/logger";
-import { Err, normalizeError, Ok, Result } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 interface SandboxConfig {
   // Docker image for the sandbox container.
@@ -213,29 +214,30 @@ export class Sandbox {
 
     logger.info({ serviceId, volumeId }, "[sandbox] Destroying");
 
-    const serviceResponse = await this.api.delete.service({
+    await this.deleteServiceIfExists(projectId, serviceId);
+    await this.deleteVolumeIfExists(projectId, volumeId);
+
+    logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
+  }
+
+  private async deleteServiceIfExists(projectId: string, serviceId: string): Promise<void> {
+    const response = await this.api.delete.service({
       parameters: { projectId, serviceId },
     });
 
-    // Treat 404 as success (already deleted).
-    if (serviceResponse.error && serviceResponse.error.status !== 404) {
-      throw new Error(
-        `Failed to delete service: ${normalizeError(serviceResponse.error).message}`
-      );
+    if (response.error && response.error.status !== 404) {
+      throw new Error(`Failed to delete service: ${normalizeError(response.error).message}`);
     }
+  }
 
-    const volumeResponse = await this.api.delete.volume({
+  private async deleteVolumeIfExists(projectId: string, volumeId: string): Promise<void> {
+    const response = await this.api.delete.volume({
       parameters: { projectId, volumeId },
     });
 
-    // Treat 404 as success (already deleted).
-    if (volumeResponse.error && volumeResponse.error.status !== 404) {
-      throw new Error(
-        `Failed to delete volume: ${normalizeError(volumeResponse.error).message}`
-      );
+    if (response.error && response.error.status !== 404) {
+      throw new Error(`Failed to delete volume: ${normalizeError(response.error).message}`);
     }
-
-    logger.info({ serviceId, volumeId }, "[sandbox] Destroyed");
   }
 
   private async isServicePaused(): Promise<boolean> {
@@ -421,17 +423,15 @@ export class NorthflankSandboxClient {
   }
 
   private buildTags(metadata?: SandboxMetadata): string[] {
-    const tags: string[] = [];
-    if (this.config.spotTag) {
-      tags.push(this.config.spotTag);
-    }
+    const tags = this.config.spotTag ? [this.config.spotTag] : [];
+
     if (metadata) {
-      for (const [key, value] of Object.entries(metadata)) {
-        if (value) {
-          tags.push(`${key}:${value}`);
-        }
-      }
+      const metadataTags = Object.entries(metadata)
+        .filter(([, value]) => value)
+        .map(([key, value]) => `${key}:${value}`);
+      tags.push(...metadataTags);
     }
+
     return tags;
   }
 
