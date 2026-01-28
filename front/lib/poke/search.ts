@@ -29,7 +29,7 @@ async function searchPokeWorkspaces(
       {
         id: workspaceInfos.id,
         name: workspaceInfos.name,
-        link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
+        link: `${config.getPokeAppUrl()}/${workspaceInfos.sId}`,
         type: "Workspace",
       },
     ];
@@ -42,7 +42,7 @@ async function searchPokeWorkspaces(
       return workspaces.map((w) => ({
         id: w.id,
         name: w.name,
-        link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
+        link: `${config.getPokeAppUrl()}/${w.sId}`,
         type: "Workspace",
       }));
     }
@@ -56,7 +56,7 @@ async function searchPokeWorkspaces(
         {
           id: workspaceByOrgId.id,
           name: workspaceByOrgId.name,
-          link: `${config.getClientFacingUrl()}/poke/${workspaceByOrgId.sId}`,
+          link: `${config.getPokeAppUrl()}/${workspaceByOrgId.sId}`,
           type: "Workspace",
         },
       ];
@@ -93,7 +93,7 @@ async function searchConnectorModelId(
         {
           id: parseInt(connector.id, 10),
           name: `${workspace.name}'s ${asDisplayName(connector.type)}`,
-          link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+          link: `${config.getPokeAppUrl()}/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
           type: "Connector",
         },
       ];
@@ -147,7 +147,7 @@ async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
     {
       id: file.id,
       name: `Frame (token: ${searchTerm.slice(0, 8)}...)`,
-      link: `${config.getClientFacingUrl()}/poke/${workspace.sId}/files/${file.sId}`,
+      link: `${config.getPokeAppUrl()}/${workspace.sId}/files/${file.sId}`,
       type: "Frame",
     },
   ];
