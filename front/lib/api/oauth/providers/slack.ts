@@ -192,7 +192,9 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   ): Promise<Result<ExtraConfigType, OAuthError>> {
     if (useCase === "connection") {
       // Only strip secrets if the feature flag is enabled (meaning they were stored in relatedCredential)
-      const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
+      const featureFlags = await getFeatureFlags(
+        auth.getNonNullableWorkspace()
+      );
       if (featureFlags.includes("self_created_slack_app_connector_rollout")) {
         const {
           client_secret: _,
