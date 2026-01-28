@@ -42,7 +42,7 @@ export interface ToolDefinition<
   name: TName;
   description: string;
   schema: TSchema;
-  stake: MCPToolStakeLevelType;
+  stake?: MCPToolStakeLevelType;
   displayLabels?: ToolDisplayLabels;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
