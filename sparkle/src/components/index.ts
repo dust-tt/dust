@@ -232,6 +232,8 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
+export type { UniversalSearchItemProps } from "./UniversalSearchItem";
+export { UniversalSearchItem } from "./UniversalSearchItem";
 export { ValueCard } from "./ValueCard";
 export type { VoicePickerProps, VoicePickerStatus } from "./VoicePicker";
 export { VoicePicker } from "./VoicePicker";

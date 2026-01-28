@@ -11,6 +11,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
   Icon,
@@ -18,8 +22,11 @@ import {
   Input,
   ListGroup,
   ListItemSection,
+  MoreIcon,
+  LogoutIcon,
   ReplySection,
   SearchInput,
+  SearchInputWithPopover,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -36,6 +43,7 @@ import {
   UserGroupIcon,
   TrashIcon,
 } from "@dust-tt/sparkle";
+import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 
@@ -64,6 +72,9 @@ interface GroupConversationViewProps {
   onUpdateSpaceName?: (spaceId: string, newName: string) => void;
   onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
   spacePublicSettings?: Map<string, boolean>;
+  isProjectJoined?: boolean;
+  onJoinProject?: () => void;
+  onLeaveProject?: () => void;
 }
 
 interface Member {
@@ -71,6 +82,23 @@ interface Member {
   joinedAt: Date;
   onClick?: () => void; // For DataTable compatibility
 }
+
+type UniversalSearchItem =
+  | {
+      type: "document";
+      dataSource: DataSource;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "conversation";
+      conversation: Conversation;
+      creator?: User;
+      title: string;
+      description: string;
+      score: number;
+    };
 
 // Helper function to get random participants for a conversation
 function getRandomParticipants(
@@ -240,6 +268,43 @@ function generateJoinedAt(spaceId: string, memberId: string): Date {
   return joinedAt;
 }
 
+const fakeDocumentFirstLines = [
+  "Introduction: This document outlines the initial scope and goals.",
+  "Summary: Key findings are consolidated in the sections below.",
+  "Overview: A first pass at the requirements and assumptions.",
+  "Draft note: Please review the proposed changes and provide feedback.",
+  "Excerpt: The following section captures the primary constraints.",
+  "Context: This file compiles the core decisions made so far.",
+  "Opening: A quick recap of the current state and next steps.",
+  "First line: The document begins with a brief background statement.",
+];
+
+function getFakeDocumentFirstLine(dataSource: DataSource): string {
+  const seed = `${dataSource.id}-${dataSource.fileName}`;
+  const index = Math.floor(
+    seededRandom(seed, 2) * fakeDocumentFirstLines.length
+  );
+  return (
+    fakeDocumentFirstLines[index] ||
+    "Overview: This document contains a summary of the content."
+  );
+}
+
+function getBaseConversationId(
+  conversation: Conversation,
+  allConversations: Conversation[]
+): string {
+  const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
+  if (expandedIdMatch) {
+    const potentialBase = expandedIdMatch[1];
+    const baseExists = allConversations.some((c) => c.id === potentialBase);
+    if (baseExists) {
+      return potentialBase;
+    }
+  }
+  return conversation.id;
+}
+
 export function GroupConversationView({
   space,
   conversations,
@@ -252,8 +317,12 @@ export function GroupConversationView({
   onUpdateSpaceName,
   onUpdateSpacePublic,
   spacePublicSettings,
+  isProjectJoined = false,
+  onJoinProject = () => {},
+  onLeaveProject = () => {},
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
@@ -306,18 +375,136 @@ export function GroupConversationView({
     return generateConversationsWithDates(conversations, targetCount);
   }, [conversations, space.id]);
 
-  // Filter conversations by search text
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) {
-      return expandedConversations;
+  const searchResults = useMemo((): UniversalSearchItem[] => {
+    const trimmed = searchText.trim();
+    if (!trimmed) {
+      return [];
     }
-    const searchLower = searchText.toLowerCase();
-    return expandedConversations.filter(
-      (conv) =>
-        conv.title.toLowerCase().includes(searchLower) ||
-        conv.description?.toLowerCase().includes(searchLower)
+
+    const searchLower = trimmed.toLowerCase();
+
+    const documentResults = dataSources.reduce<UniversalSearchItem[]>(
+      (acc, dataSource) => {
+        const title = dataSource.fileName;
+        const description = getFakeDocumentFirstLine(dataSource);
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "document",
+            dataSource,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
     );
-  }, [expandedConversations, searchText]);
+
+    const conversationResults = expandedConversations.reduce<
+      UniversalSearchItem[]
+    >((acc, conversation) => {
+      const creator = getRandomCreator(conversation, users);
+      const title = conversation.title;
+      const description = conversation.description ?? "";
+      const searchableTitle = creator ? `${creator.fullName} ${title}` : title;
+      const titleMatch = searchableTitle.toLowerCase().includes(searchLower);
+      const descriptionMatch = description.toLowerCase().includes(searchLower);
+      if (titleMatch || descriptionMatch) {
+        acc.push({
+          type: "conversation",
+          conversation,
+          creator: creator || undefined,
+          title,
+          description,
+          score: titleMatch ? 2 : 1,
+        });
+      }
+      return acc;
+    }, []);
+
+    return [...documentResults, ...conversationResults].sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [dataSources, expandedConversations, searchText, users]);
+
+  const handleSearchItemSelect = (item: UniversalSearchItem) => {
+    if (item.type === "document") {
+      setSelectedDataSource(item.dataSource);
+      setIsDocumentSheetOpen(true);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    const baseConversationId = getBaseConversationId(
+      item.conversation,
+      conversations
+    );
+    onConversationClick?.({
+      ...item.conversation,
+      id: baseConversationId,
+    });
+    setIsSearchOpen(false);
+  };
+
+  const SearchResultItem = ({
+    item,
+    selected,
+  }: {
+    item: UniversalSearchItem;
+    selected: boolean;
+  }) => {
+    const isDocument = item.type === "document";
+    const key = isDocument ? item.dataSource.id : item.conversation.id;
+    const onClick = () => handleSearchItemSelect(item);
+    const description = isDocument
+      ? item.description
+      : item.description || "No description available.";
+    const visual = isDocument ? (
+      item.dataSource.icon ? (
+        <Icon visual={item.dataSource.icon} size="md" />
+      ) : null
+    ) : item.creator ? (
+      <Avatar
+        name={item.creator.fullName}
+        visual={item.creator.portrait}
+        size="xs"
+        isRounded={true}
+      />
+    ) : null;
+    const titlePrefix =
+      !isDocument && item.creator ? item.creator.fullName : "";
+
+    const title = titlePrefix ? (
+      <>
+        <span className="s-shrink-0">{titlePrefix}</span>
+        <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+          {item.title}
+        </span>
+      </>
+    ) : (
+      <span className="s-min-w-0 s-truncate">{item.title}</span>
+    );
+
+    return (
+      <UniversalSearchItem
+        key={key}
+        onClick={onClick}
+        selected={selected}
+        hasSeparator={false}
+        visual={visual}
+        title={title}
+        description={description}
+      />
+    );
+  };
 
   // Group conversations by date bucket
   const conversationsByBucket = useMemo(() => {
@@ -333,7 +520,7 @@ export function GroupConversationView({
       "Last Month": [],
     };
 
-    filteredConversations.forEach((conversation) => {
+    expandedConversations.forEach((conversation) => {
       const bucket = getDateBucket(conversation.updatedAt);
       buckets[bucket].push(conversation);
     });
@@ -347,7 +534,7 @@ export function GroupConversationView({
     });
 
     return buckets;
-  }, [filteredConversations]);
+  }, [expandedConversations]);
 
   // Determine if space is new (no conversations and no members)
   const isNew = useMemo(() => {
@@ -688,34 +875,38 @@ export function GroupConversationView({
       {/* Tabs */}
       <Tabs
         defaultValue="conversations"
-        className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
+        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-px-6">
-          <TabsTrigger
-            value="conversations"
-            label="Conversations"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger
-            value="knowledge"
-            label="Knowledge"
-            icon={BookOpenIcon}
-          />
-          {showToolsAndAboutTabs && (
-            <>
-              <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-px-6">
+          <div className="s-flex s-h-full s-flex-1 s-items-end">
+            <TabsList border={false}>
               <TabsTrigger
-                value="about"
-                label="About"
-                icon={InformationCircleIcon}
+                value="conversations"
+                label="Conversations"
+                icon={ChatBubbleLeftRightIcon}
               />
-            </>
-          )}
-          <TabsTrigger
-            value="settings"
-            icon={Cog6ToothIcon}
-            tooltip={"Room settings"}
-          />
+              <TabsTrigger
+                value="knowledge"
+                label="Knowledge"
+                icon={BookOpenIcon}
+              />
+              {showToolsAndAboutTabs && (
+                <>
+                  <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+                  <TabsTrigger
+                    value="about"
+                    label="About"
+                    icon={InformationCircleIcon}
+                  />
+                </>
+              )}
+              <TabsTrigger
+                value="settings"
+                icon={Cog6ToothIcon}
+                tooltip={"Room settings"}
+              />
+            </TabsList>
+          </div>
           <div className="s-flex-1" />
           {spaceAvatars.length > 0 && (
             <div className="s-flex s-h-8 s-items-center">
@@ -724,11 +915,38 @@ export function GroupConversationView({
                 nbVisibleItems={spaceAvatars.length}
                 orientation="horizontal"
                 hasMagnifier={false}
-                size="xs"
+                size="sm"
               />
             </div>
           )}
-        </TabsList>
+          {isProjectJoined ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={MoreIcon}
+                  tooltip="Project options"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label="Leave the project"
+                  icon={LogoutIcon}
+                  onClick={onLeaveProject}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              size="sm"
+              variant="primary"
+              label="Join the project"
+              tooltip="Join the project to be notified of new conversations"
+              onClick={onJoinProject}
+            />
+          )}
+        </div>
 
         {/* Conversations Tab */}
         <TabsContent value="conversations">
@@ -758,9 +976,7 @@ export function GroupConversationView({
                       icon: BookOpenIcon,
                       description:
                         "Centralize the information used in this project for Agents and Participants.",
-                      onClick: () => {
-                        console.log("Add knowledge clicked");
-                      },
+                      onClick: () => {},
                     },
                     {
                       id: "invite-members",
@@ -781,12 +997,30 @@ export function GroupConversationView({
                 {expandedConversations.length > 0 && (
                   <>
                     <div className="s-flex s-w-full s-px-3">
-                      <SearchInput
+                      <SearchInputWithPopover
                         name="conversation-search"
                         value={searchText}
-                        onChange={setSearchText}
+                        onChange={(value) => {
+                          setSearchText(value);
+                          if (!value.trim()) {
+                            setIsSearchOpen(false);
+                          }
+                        }}
+                        open={isSearchOpen}
+                        onOpenChange={setIsSearchOpen}
                         placeholder={`Search in ${space.name}`}
                         className="s-w-full"
+                        items={searchResults}
+                        availableHeight
+                        noResults={
+                          searchText.trim()
+                            ? "No results found"
+                            : "Start typing to search"
+                        }
+                        onItemSelect={handleSearchItemSelect}
+                        renderItem={(item, selected) => (
+                          <SearchResultItem item={item} selected={selected} />
+                        )}
                       />
                     </div>
                     <div className="s-flex s-flex-col">
@@ -838,26 +1072,12 @@ export function GroupConversationView({
                                   Math.random() * 8 + 1
                                 );
 
-                                // Extract base conversation ID if this is an expanded conversation
-                                // Expanded IDs have pattern: {baseId}-{number} (e.g., "conv-1-5")
-                                // Check if ID matches expanded pattern (ends with -{digits})
-                                // Use a more specific pattern to avoid false matches with IDs like "conv-10"
-                                const expandedIdMatch =
-                                  conversation.id.match(/^(.+)-(\d+)$/);
-                                // Only extract if the match makes sense (base ID exists in original conversations)
-                                let baseConversationId = conversation.id;
-                                if (expandedIdMatch) {
-                                  const potentialBase = expandedIdMatch[1];
-                                  // Check if the base ID exists in the original conversations
-                                  const baseExists = conversations.some(
-                                    (c) => c.id === potentialBase
+                                const baseConversationId =
+                                  getBaseConversationId(
+                                    conversation,
+                                    conversations
                                   );
-                                  if (baseExists) {
-                                    baseConversationId = potentialBase;
-                                  }
-                                }
 
-                                // Create a conversation object with the base ID for lookup
                                 const conversationForLookup = {
                                   ...conversation,
                                   id: baseConversationId,
