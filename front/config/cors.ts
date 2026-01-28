@@ -9,6 +9,8 @@ const STATIC_ALLOWED_ORIGINS = [
   // Microsoft Power Automate.
   "https://make.powerautomate.com",
   "https://office-addins.dust.tt",
+  // Poke SPA (backoffice).
+  "https://poke.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [
