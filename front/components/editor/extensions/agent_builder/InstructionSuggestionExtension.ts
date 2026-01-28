@@ -158,32 +158,61 @@ export const InstructionSuggestionExtension = Extension.create({
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
-          // Find the text position in the actual document.
+          // Normalize find string by trimming trailing whitespace/newlines.
+          // Backend may include trailing newlines that don't exist in editor.
+          const normalizedFind = find.replace(/\s+$/, "");
+
+          // Get full document text and find the position.
+          const fullText = doc.textContent;
+          const textIndex = fullText.indexOf(normalizedFind);
+
+          if (textIndex === -1) {
+            return false;
+          }
+
+          // Use normalizedFind for position mapping.
+          const findLength = normalizedFind.length;
+
+          // Map text offset to document position.
+          // We need to account for non-text content (block boundaries, etc.)
           let from = -1;
           let to = -1;
+          let currentTextOffset = 0;
 
           doc.descendants((node, pos) => {
-            if (from !== -1) {
-              return false; // Stop searching once found.
+            if (from !== -1 && to !== -1) {
+              return false;
             }
 
             if (node.isText && node.text) {
-              const index = node.text.indexOf(find);
-              if (index !== -1) {
-                from = pos + index;
-                to = pos + index + find.length;
-                return false;
+              const nodeStart = currentTextOffset;
+              const nodeEnd = currentTextOffset + node.text.length;
+
+              // Check if find starts in this node.
+              if (from === -1 && textIndex >= nodeStart && textIndex < nodeEnd) {
+                from = pos + (textIndex - nodeStart);
               }
+
+              // Check if find ends in this node.
+              const findEnd = textIndex + findLength;
+              if (to === -1 && findEnd > nodeStart && findEnd <= nodeEnd) {
+                to = pos + (findEnd - nodeStart);
+              }
+
+              currentTextOffset = nodeEnd;
             }
             return true;
           });
 
-          if (from === -1) {
+          if (from === -1 || to === -1) {
             return false;
           }
 
-          // Build diff parts.
-          const diffParts = diffWords(find, replacement);
+          // Normalize replacement too for consistent diff.
+          const normalizedReplacement = replacement.replace(/\s+$/, "");
+
+          // Build diff parts using normalized strings.
+          const diffParts = diffWords(normalizedFind, normalizedReplacement);
 
           // Create content nodes with marks for the diff.
           const nodes: ReturnType<typeof schema.text>[] = [];

@@ -113,6 +113,7 @@ export const CopilotSuggestionsProvider = ({
   // Apply backend suggestions when editor is ready and suggestions are loaded.
   useEffect(() => {
     const editor = editorRef.current;
+
     if (!editor || editor.isDestroyed || !isEditorReady || isSuggestionsLoading) {
       return;
     }
