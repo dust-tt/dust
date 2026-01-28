@@ -4,14 +4,14 @@ import type { ReactElement } from "react";
 import { useMemo } from "react";
 
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayoutWrapper } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import {
   useSpaceDataSourceViews,
   useSpaceInfo,
@@ -26,27 +26,28 @@ import {
   CONNECTOR_PROVIDERS,
   isConnectorProvider,
   isDataSourceViewCategoryWithoutApps,
-  isString,
 } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function Space() {
   const router = useRouter();
-  const { spaceId, category, setupWithSuffixConnector, setupWithSuffixSuffix } =
-    router.query;
+  const spaceId = useRequiredPathParam("spaceId");
+  const category = useRequiredPathParam("category");
+  const setupWithSuffixConnector = useSearchParam("setupWithSuffixConnector");
+  const setupWithSuffixSuffix = useSearchParam("setupWithSuffixSuffix");
+
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder, user } = useAuth();
+  const { subscription, isAdmin, user } = useAuth();
   const plan = subscription.plan;
 
   const {
     spaceInfo: space,
     canWriteInSpace,
-    canReadInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : null,
+    spaceId,
   });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
@@ -63,7 +64,7 @@ function Space() {
   const { spaceDataSourceViews, isSpaceDataSourceViewsLoading } =
     useSpaceDataSourceViews({
       workspaceId: owner.sId,
-      spaceId: isString(spaceId) ? spaceId : "",
+      spaceId,
       category: "managed",
       disabled: !isSystemSpace,
     });
@@ -81,9 +82,8 @@ function Space() {
 
     if (
       setupWithSuffixConnector &&
-      isConnectorProvider(setupWithSuffixConnector as string) &&
-      setupWithSuffixSuffix &&
-      typeof setupWithSuffixSuffix === "string"
+      isConnectorProvider(setupWithSuffixConnector) &&
+      setupWithSuffixSuffix
     ) {
       setupWithSuffix = {
         connector: setupWithSuffixConnector as ConnectorProvider,
@@ -122,7 +122,7 @@ function Space() {
   ]);
 
   const validCategory = isDataSourceViewCategoryWithoutApps(category)
-    ? category
+    ? (category as DataSourceViewCategoryWithoutApps)
     : null;
 
   const isLoading =
@@ -139,37 +139,24 @@ function Space() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: validCategory,
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
   return (
-    <SpaceLayout pageProps={pageProps} useBackendSearch>
-      <SpaceResourcesList
-        owner={owner}
-        user={user}
-        plan={plan}
-        space={space}
-        systemSpace={systemSpace}
-        isAdmin={isAdmin}
-        canWriteInSpace={canWriteInSpace}
-        category={validCategory}
-        integrations={integrations}
-        activeSeats={seatsCount}
-        onSelect={(sId) => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
-          );
-        }}
-      />
-    </SpaceLayout>
+    <SpaceResourcesList
+      owner={owner}
+      user={user}
+      plan={plan}
+      space={space}
+      systemSpace={systemSpace}
+      isAdmin={isAdmin}
+      canWriteInSpace={canWriteInSpace}
+      category={validCategory}
+      integrations={integrations}
+      activeSeats={seatsCount}
+      onSelect={(sId) => {
+        void router.push(
+          `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
+        );
+      }}
+    />
   );
 }
 
@@ -180,7 +167,9 @@ PageWithAuthLayout.getLayout = (
   pageProps: AuthContextValue
 ) => {
   return (
-    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+    <AppAuthContextLayout authContext={pageProps}>
+      <SpaceLayoutWrapper useBackendSearch>{page}</SpaceLayoutWrapper>
+    </AppAuthContextLayout>
   );
 };
 

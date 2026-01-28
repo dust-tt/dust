@@ -1,36 +1,27 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { SpaceActionsList } from "@app/components/spaces/SpaceActionsList";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
-import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
+import { SpaceLayoutWrapper } from "@app/components/spaces/SpaceLayout";
 import { SystemSpaceActionsList } from "@app/components/spaces/SystemSpaceActionsList";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { isString } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function Space() {
-  const router = useRouter();
-  const { spaceId } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder, user } = useAuth();
-  const plan = subscription.plan;
+  const { isAdmin, user } = useAuth();
 
-  const {
-    spaceInfo: space,
-    canWriteInSpace,
-    canReadInSpace,
-    isSpaceInfoLoading,
-  } = useSpaceInfo({
+  const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : null,
+    spaceId,
   });
 
   if (isSpaceInfoLoading || !space || !user) {
@@ -41,30 +32,18 @@ function Space() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: "actions",
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
-  const content =
-    space.kind === "system" ? (
+  if (space.kind === "system") {
+    return (
       <SystemSpaceActionsList
         isAdmin={isAdmin}
         owner={owner}
         user={user}
         space={space}
       />
-    ) : (
-      <SpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />
     );
+  }
 
-  return <SpaceLayout pageProps={pageProps}>{content}</SpaceLayout>;
+  return <SpaceActionsList isAdmin={isAdmin} owner={owner} space={space} />;
 }
 
 const PageWithAuthLayout = Space as AppPageWithLayout;
@@ -74,7 +53,9 @@ PageWithAuthLayout.getLayout = (
   pageProps: AuthContextValue
 ) => {
   return (
-    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+    <AppAuthContextLayout authContext={pageProps}>
+      <SpaceLayoutWrapper>{page}</SpaceLayoutWrapper>
+    </AppAuthContextLayout>
   );
 };
 
