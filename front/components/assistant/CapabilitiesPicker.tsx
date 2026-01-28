@@ -135,7 +135,9 @@ export function CapabilitiesPicker({
 }: CapabilitiesPickerProps) {
   const [searchText, setSearchText] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [filter, setFilter] = useState<CapabilityFilterType>("all");
+
   const [setupSheetServer, setSetupSheetServer] =
     useState<MCPServerType | null>(null);
   const [setupSheetRemoteServerConfig, setSetupSheetRemoteServerConfig] =
@@ -145,7 +147,7 @@ export function CapabilitiesPicker({
     useState<MCPServerType | null>(null);
 
   const shouldFetchToolsData =
-    isOpen || isSettingUpServer || !!pendingServerToAdd;
+    isOpen || isClosing || isSettingUpServer || !!pendingServerToAdd;
 
   const { spaces: globalSpaces } = useSpaces({
     workspaceId: owner.sId,
@@ -227,8 +229,9 @@ export function CapabilitiesPicker({
     disabled: !shouldFetchToolsData,
   });
 
-  const isDataReady =
-    !isServerViewsLoading && !isAvailableMCPServersLoading && !isSkillsLoading;
+  const isSkillsDataReady = !isSkillsLoading;
+  const isToolsDataReady =
+    !isServerViewsLoading && !isAvailableMCPServersLoading;
 
   const filteredSkillsUnselected = useMemo(() => {
     const selectedSkillIds = new Set(selectedSkills.map((s) => s.sId));
@@ -252,7 +255,7 @@ export function CapabilitiesPicker({
   // - We filter by manual availability to show only servers that need install step, and by search text if present.
   // - We don't compute uninstalled servers until BOTH data sources have loaded to prevent flicker.
   const filteredUninstalledServers = useMemo(() => {
-    if (!isAdmin || !isDataReady || !shouldFetchToolsData) {
+    if (!isAdmin || !isToolsDataReady || !shouldFetchToolsData) {
       return [];
     }
 
@@ -278,7 +281,7 @@ export function CapabilitiesPicker({
       .sort((a, b) => mcpServersSortingFn({ mcpServer: a }, { mcpServer: b }));
   }, [
     isAdmin,
-    isDataReady,
+    isToolsDataReady,
     shouldFetchToolsData,
     serverViews,
     availableMCPServers,
@@ -298,7 +301,11 @@ export function CapabilitiesPicker({
     showToolsSection &&
     (filteredServerViewsUnselected.length > 0 ||
       filteredUninstalledServers.length > 0);
-  const hasNoVisibleItems = !hasVisibleSkills && !hasVisibleTools;
+  const hasNoVisibleItems =
+    isSkillsDataReady &&
+    isToolsDataReady &&
+    !hasVisibleSkills &&
+    !hasVisibleTools;
 
   return (
     <>
@@ -307,6 +314,7 @@ export function CapabilitiesPicker({
         onOpenChange={(open) => {
           setIsOpen(open);
           if (open) {
+            setIsClosing(false);
             trackEvent({
               area: TRACKING_AREAS.TOOLS,
               object: "tool_picker",
@@ -314,6 +322,8 @@ export function CapabilitiesPicker({
             });
             setSearchText("");
             setFilter("all");
+          } else {
+            setIsClosing(true);
           }
         }}
       >
@@ -329,6 +339,11 @@ export function CapabilitiesPicker({
         <DropdownMenuContent
           className="max-h-96 w-96"
           align="start"
+          onAnimationEnd={() => {
+            if (!isOpen) {
+              setIsClosing(false);
+            }
+          }}
           dropdownHeaders={
             <>
               <DropdownMenuSearchbar
@@ -381,9 +396,12 @@ export function CapabilitiesPicker({
             </>
           }
         >
-          {!isDataReady && <CapabilitiesPickerLoading />}
+          {!(showSkillsSection && isSkillsDataReady) &&
+            !(showToolsSection && isToolsDataReady) && (
+              <CapabilitiesPickerLoading />
+            )}
 
-          {isDataReady && hasVisibleSkills && (
+          {isSkillsDataReady && hasVisibleSkills && (
             <>
               <div className="text-element-700 px-4 py-2 text-xs font-semibold">
                 Skills
@@ -414,7 +432,7 @@ export function CapabilitiesPicker({
             </>
           )}
 
-          {isDataReady &&
+          {isToolsDataReady &&
             showToolsSection &&
             filteredServerViewsUnselected.length > 0 && (
               <>
@@ -447,7 +465,7 @@ export function CapabilitiesPicker({
               </>
             )}
 
-          {isDataReady &&
+          {isToolsDataReady &&
             showToolsSection &&
             filteredUninstalledServers.length > 0 &&
             filteredUninstalledServers.map((server) => (
@@ -482,7 +500,7 @@ export function CapabilitiesPicker({
               />
             ))}
 
-          {isDataReady && hasNoVisibleItems && (
+          {hasNoVisibleItems && (
             <CapabilityItem
               id="no-selected"
               icon={() => <Icon visual={BoltIcon} size="xs" />}

@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
-import { fetchUserFromSession } from "@app/lib/iam/users";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
 
@@ -28,11 +28,8 @@ async function handler(
     });
   }
 
-  // Fetch the actual user from the database
-  const userResource = await fetchUserFromSession(session);
-  if (!userResource) {
-    return res.status(200).json({ user: null, isSuperUser: false });
-  }
+  const auth = await Authenticator.fromSuperUserSession(session, null);
+  const userResource = auth.getNonNullableUser();
 
   // If we reach here, user is a superuser (withSessionAuthenticationForPoke checks this)
   return res.status(200).json({

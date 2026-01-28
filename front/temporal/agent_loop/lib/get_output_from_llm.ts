@@ -15,7 +15,7 @@ const LLM_HEARTBEAT_INTERVAL_MS = 10_000;
 // Log heartbeat status periodically to track long-waiting LLM calls.
 const HEARTBEAT_LOG_INTERVAL = 6; // Every minute (6 * 10s)
 // Timeout for waiting on a single LLM event (first or subsequent).
-const LLM_EVENT_TIMEOUT_MINUTES = 5;
+const LLM_EVENT_TIMEOUT_MINUTES = 3;
 const LLM_EVENT_TIMEOUT_MS = LLM_EVENT_TIMEOUT_MINUTES * 60 * 1000;
 
 class LLMStreamTimeoutError extends Error {
@@ -91,19 +91,6 @@ async function* withPeriodicHeartbeat<T>(
       // Heartbeat won the race, but nextPromise is still pending
       // Continue racing with the same nextPromise
       continue;
-    }
-
-    // Log if we waited a significant time for first event.
-    if (heartbeatCount > 0) {
-      const elapsedMs = Date.now() - lastEventTimeMs;
-      logger.info(
-        {
-          ...logContext,
-          heartbeatCount,
-          elapsedMs,
-        },
-        "[AGENT_LOOP_DEBUG] LLM stream received first event after waiting"
-      );
     }
 
     // Stream value arrived

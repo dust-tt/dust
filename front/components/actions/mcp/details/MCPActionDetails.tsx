@@ -43,7 +43,10 @@ import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import type {
+  ActionDetailsDisplayContext,
+  ToolExecutionDetailsProps,
+} from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
 import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import {
@@ -51,10 +54,6 @@ import {
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GENERATE_IMAGE_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
@@ -90,6 +89,13 @@ import {
 } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import {
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FILESYSTEM_SEARCH_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
   EXECUTE_DATABASE_QUERY_TOOL_NAME,
   GET_DATABASE_SCHEMA_TOOL_NAME,
   TABLE_QUERY_V2_SERVER_NAME,
@@ -104,21 +110,24 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
-  viewType: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
 }
 
-function getActionLabel(
-  action: AgentMCPActionWithOutputType,
-  viewType: "conversation" | "sidebar"
-): string {
+function getActionLabel({
+  action,
+  displayContext,
+}: {
+  action: AgentMCPActionWithOutputType;
+  displayContext: ActionDetailsDisplayContext;
+}): string {
   if (action.displayLabels) {
-    return viewType === "conversation"
+    return displayContext === "conversation"
       ? action.displayLabels.running
       : action.displayLabels.done;
   }
 
   return (
-    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
+    (displayContext === "conversation" ? "Running a tool" : "Run a tool") +
     (action.functionCallName
       ? `: ${asDisplayName(action.functionCallName)}`
       : "")
@@ -127,7 +136,7 @@ function getActionLabel(
 
 export function MCPActionDetails({
   action,
-  viewType,
+  displayContext,
   owner,
   lastNotification,
   messageStatus,
@@ -165,7 +174,7 @@ export function MCPActionDetails({
     owner,
     toolOutput: output,
     toolParams: params,
-    viewType,
+    displayContext,
   };
 
   if (
@@ -174,11 +183,14 @@ export function MCPActionDetails({
   ) {
     switch (toolName) {
       case SEARCH_TOOL_NAME:
+      case FILESYSTEM_SEARCH_TOOL_NAME:
         return (
           <SearchResultDetails
-            viewType={viewType}
+            displayContext={displayContext}
             actionName={
-              viewType === "conversation" ? "Searching data" : "Search data"
+              displayContext === "conversation"
+                ? "Searching data"
+                : "Search data"
             }
             actionOutput={output}
             visual={MagnifyingGlassIcon}
@@ -193,9 +205,9 @@ export function MCPActionDetails({
       case FILESYSTEM_FIND_TOOL_NAME:
         return (
           <SearchResultDetails
-            viewType={viewType}
+            displayContext={displayContext}
             actionName={
-              viewType === "conversation"
+              displayContext === "conversation"
                 ? "Browsing data sources"
                 : "Browse data sources"
             }
@@ -223,9 +235,9 @@ export function MCPActionDetails({
   ) {
     return (
       <SearchResultDetails
-        viewType={viewType}
+        displayContext={displayContext}
         actionName={
-          viewType === "conversation" ? "Including data" : "Include data"
+          displayContext === "conversation" ? "Including data" : "Include data"
         }
         actionOutput={output}
         visual={ClockIcon}
@@ -245,10 +257,12 @@ export function MCPActionDetails({
       case WEBSEARCH_TOOL_NAME:
         return (
           <SearchResultDetails
-            viewType={viewType}
+            displayContext={displayContext}
             query={isWebsearchInputType(params) ? params.query : null}
             actionName={
-              viewType === "conversation" ? "Searching the web" : "Web search"
+              displayContext === "conversation"
+                ? "Searching the web"
+                : "Web search"
             }
             actionOutput={output}
             visual={GlobeAltIcon}
@@ -361,7 +375,7 @@ export function MCPActionDetails({
       owner={owner}
       lastNotification={lastNotification}
       messageStatus={messageStatus}
-      viewType={viewType}
+      displayContext={displayContext}
       action={{ ...action, output }}
     />
   );
@@ -370,7 +384,7 @@ export function MCPActionDetails({
 export function GenericActionDetails({
   owner,
   action,
-  viewType,
+  displayContext,
 }: MCPActionDetailsProps) {
   const inputs =
     Object.keys(action.params).length > 0
@@ -385,11 +399,11 @@ export function GenericActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
-      actionName={getActionLabel(action, viewType)}
+      displayContext={displayContext}
+      actionName={getActionLabel({ action, displayContext })}
       visual={actionIcon ?? MCP_SPECIFICATION.cardIcon}
     >
-      {viewType !== "conversation" && (
+      {displayContext !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>

@@ -11,7 +11,7 @@ import { useSpaces } from "@app/lib/swr/spaces";
 export function MCPListToolsActionDetails({
   owner,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const { spaces } = useSpaces({
     kinds: ["global"],
@@ -28,11 +28,13 @@ export function MCPListToolsActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
-      actionName={viewType === "conversation" ? `Listing tools` : `List tools`}
+      displayContext={displayContext}
+      actionName={
+        displayContext === "conversation" ? `Listing tools` : `List tools`
+      }
       visual={BoltIcon}
     >
-      {viewType !== "conversation" && (
+      {displayContext !== "conversation" && (
         <div className="pl-6 pt-4 text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
           <div className="flex flex-wrap gap-1">
             {results.map((result) => {

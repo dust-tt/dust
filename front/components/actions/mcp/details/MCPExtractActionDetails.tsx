@@ -44,7 +44,7 @@ interface MCPExtractActionResultsProps {
 export function MCPExtractActionDetails({
   toolParams,
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const queryResource = toolOutput
     ?.filter(isExtractQueryResourceType)
@@ -58,9 +58,9 @@ export function MCPExtractActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation" ? "Extracting data" : "Extract data"
+        displayContext === "conversation" ? "Extracting data" : "Extract data"
       }
       visual={ScanIcon}
     >
@@ -97,7 +97,7 @@ export function MCPExtractActionDetails({
           </div>
         )}
 
-        {viewType === "sidebar" && (
+        {displayContext === "sidebar" && (
           <div>
             <Collapsible defaultOpen={false}>
               <CollapsibleTrigger>

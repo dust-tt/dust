@@ -51,7 +51,7 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       subject: z.string().describe("The subject of the draft to delete"),
       to: z.array(z.string()).describe("The email addresses of the recipients"),
     },
-    stake: "low",
+    stake: "high",
   },
   get_messages: {
     description:

@@ -25,10 +25,12 @@ const PatchSpaceMembersRequestBodySchema = t.intersection([
     t.type({
       memberIds: t.array(t.string),
       managementMode: t.literal("manual"),
+      editorIds: t.array(t.string),
     }),
     t.type({
       groupIds: t.array(t.string),
       managementMode: t.literal("group"),
+      editorGroupIds: t.array(t.string),
     }),
   ]),
 ]);

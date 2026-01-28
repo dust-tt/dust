@@ -1,9 +1,11 @@
 import type { Fetcher } from "swr";
 
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetPokeAuthContextResponseType } from "@app/pages/api/poke/auth-context";
 import type { GetPokePlansResponseBody } from "@app/pages/api/poke/plans";
 import type { GetRegionResponseType } from "@app/pages/api/poke/region";
 import type { GetPokeWorkspacesResponseBody } from "@app/pages/api/poke/workspaces";
+import type { GetPokeWorkspaceAuthContextResponseType } from "@app/pages/api/poke/workspaces/[wId]/auth-context";
 import type { GetPokeFeaturesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/features";
 import type { GetDataSourcePermissionsResponseBody } from "@app/pages/api/w/[wId]/data_sources/[dsId]/managed/permissions";
 import type {
@@ -84,7 +86,7 @@ export function usePokeWorkspaces({
   }
 
   const { data, error } = useSWRWithDefaults(
-    `api/poke/workspaces${query}`,
+    `/api/poke/workspaces${query}`,
     workspacesFetcher,
     {
       disabled,
@@ -151,5 +153,34 @@ export function usePokeWorkOSDSyncStatus({
     error,
     isLoading: !error && !data,
     mutate,
+  };
+}
+
+export function usePokeAuthContext() {
+  // Fetch global poke auth (superuser check)
+  const { data, isLoading, error } = useSWRWithDefaults<
+    string,
+    GetPokeAuthContextResponseType
+  >("/api/poke/auth-context", fetcher);
+
+  return {
+    authContext: data,
+    isAuthenticated: !!data?.user && data.isSuperUser,
+    isLoading,
+    isError: !!error,
+  };
+}
+
+export function usePokeWorkspaceAuthContext({ wId }: { wId: string }) {
+  const { data, isLoading, error } = useSWRWithDefaults<
+    string,
+    GetPokeWorkspaceAuthContextResponseType
+  >(`/api/poke/workspaces/${wId}/auth-context`, fetcher);
+
+  return {
+    authContext: data,
+    isAuthenticated: !!data?.user && data.isSuperUser,
+    isLoading,
+    isError: !!error,
   };
 }

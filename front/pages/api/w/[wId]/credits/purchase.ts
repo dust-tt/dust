@@ -10,8 +10,11 @@ import {
   createEnterpriseCreditPurchase,
   createProCreditPurchase,
 } from "@app/lib/credits/committed";
+import type { CreditPurchaseLimits } from "@app/lib/credits/limits";
 import { getCreditPurchaseLimits } from "@app/lib/credits/limits";
 import {
+  getCreditPurchasePriceId,
+  getStripePricingData,
   getStripeSubscription,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
@@ -19,6 +22,8 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
+import { isSupportedCurrency } from "@app/types/currency";
+import type { StripePricingData } from "@app/types/stripe/pricing";
 
 export const PostCreditPurchaseRequestBody = t.type({
   amountDollars: t.number,
@@ -31,23 +36,36 @@ type PostCreditPurchaseResponseBody = {
   paymentUrl: string | null;
 };
 
+export type GetCreditPurchaseInfoResponseBody = {
+  isEnterprise: boolean;
+  currency: string;
+  discountPercent: number;
+  creditPricing: StripePricingData | null;
+  creditPurchaseLimits: CreditPurchaseLimits | null;
+  billingCycleStartDay: number | null;
+};
+
 async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<WithAPIErrorResponse<PostCreditPurchaseResponseBody>>,
+  res: NextApiResponse<
+    WithAPIErrorResponse<
+      PostCreditPurchaseResponseBody | GetCreditPurchaseInfoResponseBody
+    >
+  >,
   auth: Authenticator
 ): Promise<void> {
-  // Only admins can purchase credits.
+  // Only admins can view/purchase credits.
   if (!auth.isAdmin()) {
     return apiError(req, res, {
       status_code: 403,
       api_error: {
         type: "workspace_auth_error",
         message:
-          "Only users that are `admins` for the current workspace can purchase credits.",
+          "Only users that are `admins` for the current workspace can access credit purchases.",
       },
     });
   }
-  // Get active subscription.
+
   const subscription = auth.subscription();
   if (!subscription || !subscription.stripeSubscriptionId) {
     return apiError(req, res, {
@@ -60,10 +78,58 @@ async function handler(
     });
   }
 
-  const workspace = auth.getNonNullableWorkspace();
-
   switch (req.method) {
+    case "GET": {
+      const stripeSubscription = await getStripeSubscription(
+        subscription.stripeSubscriptionId
+      );
+
+      let isEnterprise = false;
+      let currency = "usd";
+      let creditPurchaseLimits: CreditPurchaseLimits | null = null;
+      let billingCycleStartDay: number | null = null;
+
+      if (stripeSubscription) {
+        isEnterprise = isEnterpriseSubscription(stripeSubscription);
+        currency = isSupportedCurrency(stripeSubscription.currency)
+          ? stripeSubscription.currency
+          : "usd";
+        creditPurchaseLimits = await getCreditPurchaseLimits(
+          auth,
+          stripeSubscription
+        );
+        if (stripeSubscription.current_period_start) {
+          billingCycleStartDay = new Date(
+            stripeSubscription.current_period_start * 1000
+          ).getDate();
+        }
+      }
+
+      // Fallback billingCycleStartDay from Dust subscription if not set from Stripe.
+      if (billingCycleStartDay === null && subscription.startDate) {
+        billingCycleStartDay = new Date(subscription.startDate).getDate();
+      }
+
+      const programmaticConfig =
+        await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+      const discountPercent = programmaticConfig?.defaultDiscountPercent ?? 0;
+
+      const creditPricing = await getStripePricingData(
+        getCreditPurchasePriceId()
+      );
+
+      return res.status(200).json({
+        isEnterprise,
+        currency,
+        discountPercent,
+        creditPricing,
+        creditPurchaseLimits,
+        billingCycleStartDay,
+      });
+    }
+
     case "POST": {
+      const workspace = auth.getNonNullableWorkspace();
       const bodyValidation = PostCreditPurchaseRequestBody.decode(req.body);
       if (isLeft(bodyValidation)) {
         const pathError = reporter.formatValidationErrors(bodyValidation.left);

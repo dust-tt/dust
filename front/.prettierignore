@@ -2,3 +2,4 @@
 public/swagger.json
 node_modules
 .yalc
+**/__snapshots__
