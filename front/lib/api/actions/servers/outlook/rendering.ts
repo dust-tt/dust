@@ -1,7 +1,7 @@
 import DOMPurify from "isomorphic-dompurify";
 import moment from "moment-timezone";
 
-import type { OutlookEvent } from "@app/lib/actions/mcp_internal_actions/servers/outlook/outlook_api_helper";
+import type { OutlookEvent } from "@app/lib/api/actions/servers/outlook/outlook_api_helper";
 import { pluralize } from "@app/types";
 
 const OUTLOOK_EVENT_BODY_SANITIZE_CONFIG = {

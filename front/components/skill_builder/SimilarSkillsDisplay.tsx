@@ -1,7 +1,7 @@
 import { ExternalLinkIcon, Icon, Spinner } from "@dust-tt/sparkle";
-import Link from "next/link";
 import React from "react";
 
+import { LinkWrapper } from "@app/lib/platform";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 import type { LightWorkspaceType } from "@app/types/user";
@@ -50,13 +50,13 @@ export function SimilarSkillsDisplay({
                   <span className="text-sm font-medium text-foreground dark:text-foreground-night">
                     {skill.name}
                   </span>
-                  <Link
+                  <LinkWrapper
                     href={`/w/${owner.sId}/builder/skills#?skillId=${skill.sId}`}
                     target="_blank"
                     className="text-muted-foreground hover:text-foreground dark:text-muted-foreground-night dark:hover:text-foreground-night"
                   >
                     <Icon visual={ExternalLinkIcon} size="xs" />
-                  </Link>
+                  </LinkWrapper>
                 </div>
                 <span className="line-clamp-1 text-xs text-muted-foreground dark:text-muted-foreground-night">
                   {skill.agentFacingDescription}

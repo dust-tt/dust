@@ -12,7 +12,6 @@ import {
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
-import UTMPageWrapper from "@app/components/UTMPageWrapper";
 
 export async function getStaticProps() {
   return {
@@ -27,7 +26,7 @@ export function Landing() {
   const router = useRouter();
 
   return (
-    <UTMPageWrapper>
+    <>
       <PageMetadata
         title="Dust - Build Custom AI Agents for Your Organization"
         description="Break down knowledge silos and amplify team performance with data-augmented, customizable and secure AI agents. Deploy in minutes, no coding required."
@@ -46,7 +45,7 @@ export function Landing() {
         {/* <BlogSection /> */}
         <ProductJustUseDustSection />
       </div>
-    </UTMPageWrapper>
+    </>
   );
 }
 

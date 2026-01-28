@@ -1,7 +1,6 @@
 import { cn } from "@dust-tt/sparkle";
-import Link from "next/link";
 
-import { useAppRouter } from "@app/lib/platform";
+import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 
 interface AgentHandleProps {
   agent: {
@@ -30,7 +29,7 @@ export function AgentHandle({
   }
 
   return (
-    <Link
+    <LinkWrapper
       href={href}
       shallow
       className={cn(
@@ -39,6 +38,6 @@ export function AgentHandle({
       )}
     >
       {agent.name}
-    </Link>
+    </LinkWrapper>
   );
 }

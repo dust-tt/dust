@@ -8,6 +8,7 @@ import {
 import { JsonViewer } from "@textea/json-viewer";
 import { useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -18,6 +19,8 @@ type HttpMethod = "GET" | "POST";
 
 export function NotionRequestsPage() {
   const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Notion Requests`);
+
   const dsId = useRequiredPathParam("dsId");
   const { isDark } = useTheme();
   const [url, setUrl] = useState("");

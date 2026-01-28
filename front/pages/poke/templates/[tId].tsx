@@ -15,7 +15,7 @@ Page.getLayout = (
   pageProps: AuthContextNoWorkspaceValue
 ) => {
   return (
-    <PokeLayoutNoWorkspace title="Template" authContext={pageProps}>
+    <PokeLayoutNoWorkspace authContext={pageProps}>
       {page}
     </PokeLayoutNoWorkspace>
   );

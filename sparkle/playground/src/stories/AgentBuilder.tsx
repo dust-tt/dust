@@ -539,20 +539,20 @@ export default function AgentBuilder() {
                         <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
                           <Button
                             icon={HeadingIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Heading"
                           />
                           <Button
                             icon={BoldIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Bold"
                             tooltipShortcut="Cmd+B"
                           />
                           <Button
                             icon={ItalicIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Italic"
                             tooltipShortcut="Cmd+I"
@@ -560,39 +560,39 @@ export default function AgentBuilder() {
                           <Separator orientation="vertical" />
                           <Button
                             icon={LinkIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Insert a link"
                           />
                           <Button
                             icon={ListCheckIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Bulleted list"
                           />
                           <Button
                             icon={ListOrdered2Icon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Ordered list"
                           />
                           <Separator orientation="vertical" />
                           <Button
                             icon={QuoteTextIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Quotation block"
                           />
                           <Button
                             icon={CodeBlockIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="Code Block"
                           />
                           <Separator orientation="vertical" />
                           <Button
                             icon={TagBlockIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost-secondary"
                             tooltip="XML tag"
                           />
@@ -600,7 +600,7 @@ export default function AgentBuilder() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                size="mini"
+                                size="icon"
                                 variant="ghost-secondary"
                                 icon={HistoryIcon}
                                 isSelect

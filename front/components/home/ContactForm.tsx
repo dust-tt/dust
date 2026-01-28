@@ -55,13 +55,10 @@ function useContactFormSubmit() {
       utm_campaign: storedParams.utm_campaign,
       utm_content: storedParams.utm_content,
       utm_term: storedParams.utm_term,
-      gclid: storedParams.gclid ?? sessionStorage.getItem("gclid") ?? undefined,
+      gclid: storedParams.gclid,
       fbclid: storedParams.fbclid,
       msclkid: storedParams.msclkid,
-      li_fat_id:
-        storedParams.li_fat_id ??
-        sessionStorage.getItem("li_fat_id") ??
-        undefined,
+      li_fat_id: storedParams.li_fat_id,
     };
 
     // Track form submission attempt
@@ -101,7 +98,7 @@ function useContactFormSubmit() {
         action: "submit_success",
       });
 
-      // Push GTM event with actual qualification status and form details
+      // Push GTM event with qualification status, form details, and tracking params
       // Only include PII if user has consented to marketing
       if (typeof window !== "undefined") {
         window.dataLayer = window.dataLayer ?? [];
@@ -117,6 +114,12 @@ function useContactFormSubmit() {
           user_headquarters_region: data.headquarters_region,
           user_company_headcount: data.company_headcount_form,
           consent_marketing: consentMarketing,
+          gclid: tracking.gclid,
+          utm_source: tracking.utm_source,
+          utm_medium: tracking.utm_medium,
+          utm_campaign: tracking.utm_campaign,
+          utm_content: tracking.utm_content,
+          utm_term: tracking.utm_term,
         });
       }
 
@@ -139,30 +142,6 @@ interface DropdownFieldProps {
   options: readonly { value: string; label: string }[];
   placeholder: string;
   required?: boolean;
-}
-
-function MarketingConsentCheckbox() {
-  const { field } = useController<ContactFormData>({
-    name: "consent_marketing",
-  });
-
-  return (
-    <div className="flex items-start gap-2">
-      <Checkbox
-        id="consent_marketing"
-        checked={field.value === true}
-        onCheckedChange={(checked) => field.onChange(checked === true)}
-        className="mt-0.5"
-      />
-      <Label
-        htmlFor="consent_marketing"
-        className="cursor-pointer text-sm font-normal leading-tight"
-      >
-        I consent to receive marketing communications from Dust about products,
-        services, and events.
-      </Label>
-    </div>
-  );
 }
 
 function DropdownField({
@@ -210,6 +189,30 @@ function DropdownField({
   );
 }
 
+function MarketingConsentCheckbox() {
+  const { field } = useController<ContactFormData>({
+    name: "consent_marketing",
+  });
+
+  return (
+    <div className="flex items-start gap-2">
+      <Checkbox
+        id="consent_marketing"
+        checked={field.value === true}
+        onCheckedChange={(checked) => field.onChange(checked === true)}
+        className="mt-0.5"
+      />
+      <Label
+        htmlFor="consent_marketing"
+        className="cursor-pointer text-sm font-normal leading-tight"
+      >
+        I consent to receive marketing communications from Dust about products,
+        services, and events.
+      </Label>
+    </div>
+  );
+}
+
 export function ContactForm({
   prefillEmail,
   prefillHeadcount,
@@ -234,18 +237,20 @@ export function ContactForm({
     mode: "onBlur",
   });
 
-  // Update marketing consent default when geolocation data is loaded
-  // Non-GDPR countries: checked by default, GDPR countries: unchecked by default
+  // Show checkbox by default (safe for SSR and GDPR).
+  // Once geo data loads, hide it for non-GDPR and set consent to true.
+  const [showMarketingConsent, setShowMarketingConsent] = useState(true);
+
   useEffect(() => {
     if (!isGeoDataLoading && geoData) {
-      const shouldDefault = !geoData.isGDPR;
-      // Only set if the user hasn't interacted with the checkbox yet
-      if (!form.formState.dirtyFields.consent_marketing) {
-        form.setValue("consent_marketing", shouldDefault);
+      if (!geoData.isGDPR) {
+        setShowMarketingConsent(false);
+        if (!form.formState.dirtyFields.consent_marketing) {
+          form.setValue("consent_marketing", true);
+        }
       }
     }
   }, [geoData, isGeoDataLoading, form]);
-
   const { isSubmitting, errors } = form.formState;
 
   return (
@@ -333,8 +338,8 @@ export function ContactForm({
             />
           </div>
 
-          {/* Marketing Consent Checkbox */}
-          <MarketingConsentCheckbox />
+          {/* Marketing Consent Checkbox - only shown in GDPR countries */}
+          {showMarketingConsent && <MarketingConsentCheckbox />}
 
           {/* Disclaimer */}
           <div className="text-xs text-muted-foreground">
@@ -344,7 +349,7 @@ export function ContactForm({
               contact information to communicate with you about our products and
               services. You may unsubscribe at any time. Please review our{" "}
               <a
-                href="https://dust.tt/privacy"
+                href="https://dust.tt/home/platform-privacy"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline hover:text-foreground"

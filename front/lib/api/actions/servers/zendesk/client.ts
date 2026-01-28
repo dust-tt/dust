@@ -9,7 +9,7 @@ import type {
   ZendeskTicketField,
   ZendeskTicketMetrics,
   ZendeskUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+} from "@app/lib/api/actions/servers/zendesk/types";
 import {
   isValidZendeskSubdomain,
   ZendeskSearchResponseSchema,
@@ -18,7 +18,7 @@ import {
   ZendeskTicketMetricsResponseSchema,
   ZendeskTicketResponseSchema,
   ZendeskUsersResponseSchema,
-} from "@app/lib/actions/mcp_internal_actions/servers/zendesk/types";
+} from "@app/lib/api/actions/servers/zendesk/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";

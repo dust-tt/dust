@@ -11,10 +11,6 @@ import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
-import { default as microsoftDriveServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_drive";
-import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_actions/servers/microsoft/microsoft_teams";
-import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
-import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
@@ -24,7 +20,6 @@ import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/ser
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
-import { default as zendeskServer } from "@app/lib/actions/mcp_internal_actions/servers/zendesk";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
   isLightServerSideMCPToolConfiguration,
@@ -50,15 +45,20 @@ import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
 import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
+import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
 import { default as microsoftExcelServer } from "@app/lib/api/actions/servers/microsoft_excel";
+import { default as microsoftTeamsServer } from "@app/lib/api/actions/servers/microsoft_teams";
 import { default as missingActionCatcherServer } from "@app/lib/api/actions/servers/missing_action_catcher";
 import { default as mondayServer } from "@app/lib/api/actions/servers/monday";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
+import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
+import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
+import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";
 import { default as skillManagementServer } from "@app/lib/api/actions/servers/skill_management";
 import { default as slackBotServer } from "@app/lib/api/actions/servers/slack_bot";
@@ -70,6 +70,7 @@ import { default as statuspageServer } from "@app/lib/api/actions/servers/status
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
+import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
 import { assertNever } from "@app/types";
 
@@ -199,7 +200,7 @@ export async function getInternalMCPServer(
     case "confluence":
       return confluenceServer(auth, agentLoopContext);
     case "outlook":
-      return outlookServer(auth, agentLoopContext);
+      return outlookMailServer(auth, agentLoopContext);
     case "outlook_calendar":
       return outlookCalendarServer(auth, agentLoopContext);
     case "agent_copilot_agent_state":
@@ -238,6 +239,8 @@ export async function getInternalMCPServer(
       return ukgReadyServer(auth, agentLoopContext);
     case "statuspage":
       return statuspageServer(auth, agentLoopContext);
+    case "sandbox":
+      return sandboxServer(auth, agentLoopContext);
     default:
       assertNever(internalMCPServerName);
   }

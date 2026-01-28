@@ -1,11 +1,11 @@
 import { Button, cn } from "@dust-tt/sparkle";
 import type { InferGetServerSidePropsType } from "next";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import { LinkWrapper } from "@app/lib/platform/next";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
@@ -187,7 +187,7 @@ export default function RunsView({
               <div className="rounded border border-border px-4 py-4 dark:border-border-night">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-initial">
-                    <Link
+                    <LinkWrapper
                       href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                       className="block"
                     >
@@ -195,7 +195,7 @@ export default function RunsView({
                         {run.run_id.slice(0, 8)}...
                         {run.run_id.slice(-8)}
                       </p>
-                    </Link>
+                    </LinkWrapper>
                   </div>
                   <div className="ml-2 flex flex-shrink-0">
                     <p

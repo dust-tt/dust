@@ -144,8 +144,8 @@ cli
   });
 
 cli
-  .command("restart [name] <service>", "Restart a single service")
-  .action(async (name: string | undefined, service: string) => {
+  .command("restart [name] [service]", "Restart a single service")
+  .action(async (name: string | undefined, service: string | undefined) => {
     await prepareAndRun(restartCommand(name, service));
   });
 

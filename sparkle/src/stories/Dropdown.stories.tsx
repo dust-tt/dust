@@ -136,7 +136,7 @@ export const ComplexDropdown: Story = {
               label="Profile"
               endComponent={
                 <Button
-                  size="mini"
+                  size="icon"
                   icon={ArrowUpOnSquareIcon}
                   variant="ghost"
                 />

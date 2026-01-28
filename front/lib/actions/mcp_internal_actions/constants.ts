@@ -14,8 +14,10 @@ import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/a
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_ROUTER_SERVER,
+  AGENT_ROUTER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
@@ -31,11 +33,15 @@ import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
+import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
+import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
 import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
+import { OUTLOOK_CALENDAR_SERVER } from "@app/lib/api/actions/servers/outlook/calendar_metadata";
+import { OUTLOOK_MAIL_SERVER } from "@app/lib/api/actions/servers/outlook/mail_metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
 import { PROJECT_CONTEXT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import {
@@ -43,6 +49,7 @@ import {
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
@@ -56,6 +63,7 @@ import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -176,6 +184,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "skill_management",
   "schedules_management",
   "project_context_management",
+  "sandbox",
 ] as const;
 
 export const INTERNAL_SERVERS_WITH_WEBSEARCH = [
@@ -363,6 +372,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
+      send_mail: ["to"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
@@ -521,35 +531,12 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_messages: "never_ask",
-      get_drafts: "never_ask",
-      create_draft: "medium",
-      delete_draft: "low",
-      create_reply_draft: "medium",
-      get_contacts: "never_ask",
-      create_contact: "high",
-      update_contact: "high",
-    },
     tools_arguments_requiring_approval: {
       create_draft: ["to"],
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "outlook",
-      version: "1.0.0",
-      description: "Read emails, manage drafts and contacts.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "Mail.ReadWrite Mail.ReadWrite.Shared Contacts.ReadWrite Contacts.ReadWrite.Shared User.Read offline_access" as const,
-      },
-      icon: "MicrosoftOutlookLogo",
-      documentationUrl: "https://docs.dust.tt/docs/outlook-tool-setup",
-      instructions: null,
-    },
+    metadata: OUTLOOK_MAIL_SERVER,
   },
   outlook_calendar: {
     id: 25,
@@ -557,34 +544,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_user_timezone: "never_ask",
-      list_calendars: "never_ask",
-      list_events: "never_ask",
-      get_event: "never_ask",
-      create_event: "low",
-      update_event: "low",
-      delete_event: "low",
-      check_availability: "never_ask",
-      check_self_availability: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "outlook_calendar",
-      version: "1.0.0",
-      description: "Tools for managing Outlook calendars and events.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "Calendars.ReadWrite Calendars.ReadWrite.Shared User.Read MailboxSettings.Read offline_access" as const,
-      },
-      icon: "MicrosoftOutlookLogo",
-      documentationUrl: "https://docs.dust.tt/docs/outlook-calendar-tool-setup",
-      instructions: null,
-    },
+    metadata: OUTLOOK_CALENDAR_SERVER,
   },
   freshservice: {
     id: 26,
@@ -790,19 +753,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "microsoft_drive",
-      version: "1.0.0",
-      description: "Tools for managing Microsoft files.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
+    metadata: {
+      ...MICROSOFT_DRIVE_SERVER,
+      serverInfo: {
+        ...MICROSOFT_DRIVE_SERVER.serverInfo,
+        authorization: {
+          provider: "microsoft_tools" as const,
+          supported_use_cases: ["personal_actions"] as const,
+          scope:
+            "User.Read Files.ReadWrite.All Sites.Read.All ExternalItem.Read.All offline_access" as const,
+        },
+        documentationUrl:
+          "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
       },
-      icon: "MicrosoftLogo",
-      documentationUrl: "https://docs.dust.tt/docs/microsoft-drive-tool-setup",
-      instructions: null,
     },
   },
   microsoft_teams: {
@@ -825,19 +788,19 @@ export const INTERNAL_MCP_SERVERS = {
     },
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "microsoft_teams",
-      version: "1.0.0",
-      description: "Microsoft Teams for searching and posting messages.",
-      authorization: {
-        provider: "microsoft_tools" as const,
-        supported_use_cases: ["personal_actions"] as const,
-        scope:
-          "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
+    metadata: {
+      ...MICROSOFT_TEAMS_SERVER,
+      serverInfo: {
+        ...MICROSOFT_TEAMS_SERVER.serverInfo,
+        authorization: {
+          provider: "microsoft_tools" as const,
+          supported_use_cases: ["personal_actions"] as const,
+          scope:
+            "User.Read User.ReadBasic.All Team.ReadBasic.All Channel.ReadBasic.All Chat.Read Chat.ReadWrite ChatMessage.Read ChatMessage.Send ChannelMessage.Read.All ChannelMessage.Send offline_access" as const,
+        },
+        documentationUrl:
+          "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
       },
-      icon: "MicrosoftTeamsLogo",
-      documentationUrl: "https://docs.dust.tt/docs/microsoft-teams-tool-setup",
-      instructions: null,
     },
   },
   sound_studio: {
@@ -950,27 +913,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_ticket: "never_ask",
-      search_tickets: "never_ask",
-      draft_reply: "low", // Low because it's a draft.
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "zendesk",
-      version: "1.0.0",
-      description:
-        "Access and manage support tickets, help center, and customer interactions.",
-      authorization: {
-        provider: "zendesk" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "ZendeskLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: ZENDESK_SERVER,
   },
   slab: {
     id: 43,
@@ -1453,6 +1399,19 @@ export const INTERNAL_MCP_SERVERS = {
     tools_retry_policies: undefined,
     timeoutMs: undefined,
     metadata: AGENT_COPILOT_AGENT_STATE_SERVER,
+  },
+  sandbox: {
+    id: 1024,
+    availability: "auto",
+    allowMultipleInstances: false,
+    isPreview: true,
+    isRestricted: ({ featureFlags }) => {
+      return !featureFlags.includes("sandbox_tools");
+    },
+    metadata: SANDBOX_SERVER,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: 120000, // 2 minutes for command execution
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

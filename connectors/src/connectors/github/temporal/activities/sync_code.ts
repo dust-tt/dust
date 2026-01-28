@@ -1,5 +1,4 @@
 import { Err, INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
-import assert from "assert";
 
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
@@ -427,7 +426,14 @@ export async function githubCleanupCodeSyncActivity({
     },
   });
 
-  assert(githubCodeRepository, "GithubCodeRepository not found");
+  if (!githubCodeRepository) {
+    // The repository was removed during the sync (e.g., deleted from GitHub or unselected).
+    logger.warn(
+      { connectorId: connector.id, repoId },
+      "GithubCodeRepository not found during cleanup - repository may have been removed"
+    );
+    return;
+  }
 
   // Finally we update the repository updatedAt value.
   if (repoUpdatedAt) {

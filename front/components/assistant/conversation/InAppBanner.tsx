@@ -2,9 +2,9 @@ import { Button, XMarkIcon } from "@dust-tt/sparkle";
 import { cn } from "@dust-tt/sparkle";
 import { AnimatePresence, motion } from "framer-motion";
 import debounce from "lodash/debounce";
-import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { Image } from "@app/lib/platform";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { WorkspaceType } from "@app/types";
 import { isString } from "@app/types";

@@ -8,6 +8,7 @@ makeScript({}, async ({ execute }, logger) => {
   const KeyModelWithBypass: ModelStaticWorkspaceAware<KeyModel> = KeyModel;
 
   const keysWithNullName = await KeyModelWithBypass.findAll({
+    // @ts-expect-error backfill for null names
     where: { name: null },
     // WORKSPACE_ISOLATION_BYPASS: Migration script operates across all workspaces to backfill null names.
     dangerouslyBypassWorkspaceIsolationSecurity: true,

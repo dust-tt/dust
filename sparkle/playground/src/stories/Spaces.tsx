@@ -757,7 +757,7 @@ function DustMain() {
         </DropdownMenu>
         <Button
           variant="ghost-secondary"
-          size="mini"
+          size="icon"
           icon={isSidebarCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
           onClick={() => sidebarLayoutRef.current?.toggle()}
         />

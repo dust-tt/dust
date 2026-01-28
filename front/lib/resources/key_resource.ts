@@ -19,7 +19,7 @@ import { formatUserFullName, isString, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
-  name: string | null;
+  name: string;
   isSystem: boolean;
   role: RoleType;
   monthlyCapMicroUsd: number | null;

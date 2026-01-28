@@ -1229,7 +1229,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
               <HoveringBar size="xs">
                 <Button
                   icon={BoldIcon}
-                  size="mini"
+                  size="icon"
                   variant={
                     editor.isActive("bold") ? "primary" : "ghost-secondary"
                   }
@@ -1240,7 +1240,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 />
                 <Button
                   icon={ItalicIcon}
-                  size="mini"
+                  size="icon"
                   variant={
                     editor.isActive("italic") ? "primary" : "ghost-secondary"
                   }
@@ -1252,7 +1252,7 @@ export const RichTextArea = forwardRef<RichTextAreaHandle, RichTextAreaProps>(
                 <HoveringBar.Separator />
                 <Button
                   icon={LinkIcon}
-                  size="mini"
+                  size="icon"
                   variant={
                     editor.isActive("link") ? "primary" : "ghost-secondary"
                   }
