@@ -10,7 +10,8 @@ export const framesSkill = {
   agentFacingDescription:
     "Create interactive visualizations, charts, dashboards, and presentations as executable React " +
     "components. These visualizations are typically called 'Frames' and can be used in various " +
-    "contexts: daily digests, data analytics, sales reports, and more.",
+    "contexts: daily digests, data analytics, sales reports, and more. Consider using when tsx " +
+    "or React code is shared in the conversation.",
   instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
   mcpServers: [{ name: "interactive_content" }],
   version: 1,
