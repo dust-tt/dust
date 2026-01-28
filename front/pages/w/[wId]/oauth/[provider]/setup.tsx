@@ -1,10 +1,11 @@
-import { Button, ExclamationCircleIcon, Page } from "@dust-tt/sparkle";
 import { isLeft } from "fp-ts/lib/Either";
 import * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
+import { useEffect } from "react";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { OAuthProvider } from "@app/types";
 import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@app/types";
 
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);
@@ -12,6 +13,7 @@ export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   error?: string;
+  provider?: OAuthProvider;
 }>(async (context, auth) => {
   if (!auth.workspace() || !auth.user()) {
     return {
@@ -58,6 +60,7 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     return {
       props: {
         error: urlRes.error.message,
+        provider,
       },
     };
   }
@@ -72,23 +75,38 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
 
 export default function OAuthSetup({
   error,
+  provider,
 }: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  if (error) {
-    return (
-      <Page variant="normal">
-        <div className="flex h-full min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-          <ExclamationCircleIcon className="h-12 w-12 text-warning-500" />
-          <Page.Header title="Connection Error" />
-          <p className="max-w-md text-sm text-muted-foreground">{error}</p>
-          <Button
-            variant="outline"
-            label="Go Back"
-            onClick={() => window.history.back()}
-          />
-        </div>
-      </Page>
-    );
-  }
+  useEffect(() => {
+    if (!error || !provider) {
+      return;
+    }
 
-  return <></>;
+    const messageData = {
+      type: "connection_finalized",
+      error,
+      provider,
+    };
+
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(messageData, window.location.origin);
+    } else {
+      try {
+        const channel = new BroadcastChannel("oauth_finalize");
+        channel.postMessage(messageData);
+        setTimeout(() => channel.close(), 100);
+      } catch (e) {
+        // BroadcastChannel not supported or failed — nothing more we can do.
+      }
+    }
+
+    setTimeout(() => {
+      window.close();
+      setTimeout(() => {
+        window.location.href = window.location.origin;
+      }, 100);
+    }, 1000);
+  }, [error, provider]);
+
+  return null;
 }
