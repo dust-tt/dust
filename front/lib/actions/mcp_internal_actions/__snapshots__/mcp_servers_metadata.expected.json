@@ -1704,7 +1704,12 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "describe_tables": "never_ask",
+      "find": "never_ask",
+      "list": "never_ask",
+      "query": "never_ask"
+    }
   },
   {
     "name": "databricks",

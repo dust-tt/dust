@@ -19,6 +19,7 @@ import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/m
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
@@ -1242,19 +1243,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: DATA_WAREHOUSE_SERVER_NAME,
-      version: "1.0.0",
-      description: "Browse tables organized by warehouse and schema.",
-      authorization: null,
-      icon: "ActionTableIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: DATA_WAREHOUSES_SERVER,
   },
   toolsets: {
     id: 1013,
