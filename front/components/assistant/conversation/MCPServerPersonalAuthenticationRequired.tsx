@@ -62,6 +62,31 @@ export function MCPServerPersonalAuthenticationRequired({
     ? getIcon(mcpServer.icon)
     : InformationCircleIcon;
 
+  const serverDisplayName =
+    mcpServer && mcpServer.name
+      ? getMcpServerDisplayName(mcpServer)
+      : undefined;
+
+  function getContentMessageTitle(): string {
+    if (isConnected) {
+      return "Connected successfully";
+    }
+    if (connectionError) {
+      return "Connection failed";
+    }
+    return serverDisplayName ?? "Personal authentication required";
+  }
+
+  function getContentMessageVariant(): "success" | "warning" | "primary" {
+    if (isConnected) {
+      return "success";
+    }
+    if (connectionError) {
+      return "warning";
+    }
+    return "primary";
+  }
+
   const onConnectClick = async (mcpServer: MCPServerType) => {
     setIsConnecting(true);
     setConnectionError(null);
@@ -100,14 +125,8 @@ export function MCPServerPersonalAuthenticationRequired({
 
   return (
     <ContentMessage
-      title={
-        isConnected
-          ? "Connected successfully"
-          : connectionError
-            ? "Connection failed"
-            : `${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "Personal authentication required"}`
-      }
-      variant={isConnected ? "success" : connectionError ? "warning" : "primary"}
+      title={getContentMessageTitle()}
+      variant={getContentMessageVariant()}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
       icon={icon}
     >
@@ -118,7 +137,7 @@ export function MCPServerPersonalAuthenticationRequired({
             {!isConnected && connectionError && <>{connectionError}</>}
             {!isConnected && !connectionError && (
               <>
-                {`Your agent is trying to use ${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "a tool"}.`}
+                {`Your agent is trying to use ${serverDisplayName ?? "a tool"}.`}
                 <br />
                 <span className="font-semibold">
                   Connect your account to continue.
@@ -164,7 +183,7 @@ export function MCPServerPersonalAuthenticationRequired({
         </>
       ) : (
         <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
-          {`${triggeringUser?.fullName} is trying to use ${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "a tool"}.`}
+          {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
           <br />
           <span className="font-semibold">
             Waiting on them to connect their account to continue...
