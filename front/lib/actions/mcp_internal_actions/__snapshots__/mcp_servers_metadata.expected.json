@@ -4176,6 +4176,61 @@
           },
           "type": "object"
         }
+      },
+      {
+        "name": "send_mail",
+        "description": "Send an email directly via Gmail.\n- The email will be sent immediately without creating a draft.\n- Use this to send emails when you have all the required information.\n- The email will include proper headers and formatting.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "bcc": {
+              "description": "The email addresses to BCC",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "body": {
+              "description": "The body of the email",
+              "type": "string"
+            },
+            "cc": {
+              "description": "The email addresses to CC",
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "contentType": {
+              "description": "The content type of the email (text/plain or text/html).",
+              "enum": [
+                "text/plain",
+                "text/html"
+              ],
+              "type": "string"
+            },
+            "subject": {
+              "description": "The subject line of the email",
+              "type": "string"
+            },
+            "to": {
+              "description": "The email addresses of the recipients",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "to",
+            "subject",
+            "contentType",
+            "body"
+          ],
+          "type": "object"
+        }
       }
     ],
     "toolsStakes": {
@@ -4184,7 +4239,8 @@
       "delete_draft": "high",
       "get_attachment": "never_ask",
       "get_drafts": "never_ask",
-      "get_messages": "never_ask"
+      "get_messages": "never_ask",
+      "send_mail": "high"
     }
   },
   {
