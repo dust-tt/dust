@@ -172,7 +172,7 @@ function SuggestionActions() {
   );
 }
 
-export function AgentMessageSuggestionCard({
+export function CopilotSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
   // Instructions suggestions: no title/icon, full width, no actions.
@@ -216,7 +216,7 @@ export function AgentMessageSuggestionCard({
       <ContentMessage title={title} icon={icon} variant="primary" size="sm">
         <div className="flex flex-col gap-3">
           {renderContent()}
-          <SuggestionActions acceptLabel="Accept" />
+          <SuggestionActions />
         </div>
       </ContentMessage>
     </div>

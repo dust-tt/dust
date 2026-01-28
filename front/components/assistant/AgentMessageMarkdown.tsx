@@ -15,9 +15,9 @@ import {
 } from "@app/components/markdown/InstructionBlock";
 import { quickReplyDirective } from "@app/components/markdown/QuickReplyBlock";
 import {
-  agentMessageSuggestionDirective,
-  getAgentMessageSuggestionPlugin,
-} from "@app/components/markdown/suggestion/AgentMessageSuggestionDirective";
+  copilotSuggestionDirective,
+  getCopilotSuggestionPlugin,
+} from "@app/components/markdown/suggestion/CopilotSuggestionDirective";
 import { toolDirective } from "@app/components/markdown/tool/tool";
 import { visualizationDirective } from "@app/components/markdown/VisualizationBlock";
 import {
@@ -68,7 +68,7 @@ export const AgentMessageMarkdown = ({
       instruction_block: InstructionBlock,
       // Add copilot-specific components when inside copilot context
       ...(copilotContext
-        ? { agentMessageSuggestion: getAgentMessageSuggestionPlugin() }
+        ? { agentSuggestion: getCopilotSuggestionPlugin() }
         : {}),
       ...additionalMarkdownComponents,
     }),
@@ -88,7 +88,7 @@ export const AgentMessageMarkdown = ({
 
     // Add copilot-specific directives when inside copilot context
     if (copilotContext) {
-      baseDirectives.push(agentMessageSuggestionDirective);
+      baseDirectives.push(copilotSuggestionDirective);
     }
 
     return isInstructions

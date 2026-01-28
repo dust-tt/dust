@@ -1,8 +1,8 @@
 /**
- * Markdown directive plugin for suggestions.
+ * Markdown directive plugin for copilot suggestions.
  *
  * This module provides remark-directive plugins for parsing and rendering
- * suggestion directives in markdown content, enabling the :agentMessageSuggestion[]{sId=xxx kind=yyy} syntax.
+ * suggestion directives in markdown content, enabling the :agentSuggestion[]{sId=xxx kind=yyy} syntax.
  */
 
 import React from "react";
@@ -10,25 +10,25 @@ import { visit } from "unist-util-visit";
 
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import {
-  AgentMessageSuggestionCard,
+  CopilotSuggestionCard,
   SuggestionCardError,
   SuggestionCardSkeleton,
-} from "@app/components/markdown/suggestion/AgentMessageSuggestionCard";
+} from "@app/components/markdown/suggestion/CopilotSuggestionCard";
 import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 
 /**
- * Remark directive plugin for parsing agent message suggestion directives.
+ * Remark directive plugin for parsing copilot suggestion directives.
  *
- * Transforms `:agentMessageSuggestion[]{sId=xxx kind=yyy}` into a custom HTML element
+ * Transforms `:agentSuggestion[]{sId=xxx kind=yyy}` into a custom HTML element
  * that can be rendered by the suggestion card component.
  */
-export function agentMessageSuggestionDirective() {
+export function copilotSuggestionDirective() {
   return (tree: any) => {
     visit(tree, ["textDirective"], (node) => {
-      if (node.name === "agentMessageSuggestion") {
+      if (node.name === "agentSuggestion") {
         // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         const data = node.data || (node.data = {});
-        data.hName = "agentMessageSuggestion";
+        data.hName = "agentSuggestion";
         data.hProperties = {
           sId: node.attributes.sId,
           kind: node.attributes.kind,
@@ -38,22 +38,22 @@ export function agentMessageSuggestionDirective() {
   };
 }
 
-interface AgentMessageSuggestionPluginProps {
+interface CopilotSuggestionPluginProps {
   sId: string;
   kind: AgentSuggestionKind;
 }
 
 /**
- * Creates a React component plugin for rendering agent message suggestions in markdown.
+ * Creates a React component plugin for rendering copilot suggestions in markdown.
  *
  * This function returns a component that can be used as a custom component
- * in ReactMarkdown to render the agent message suggestion HTML elements.
+ * in ReactMarkdown to render the copilot suggestion HTML elements.
  */
-export function getAgentMessageSuggestionPlugin() {
-  const AgentMessageSuggestionPlugin = ({
+export function getCopilotSuggestionPlugin() {
+  const CopilotSuggestionPlugin = ({
     sId,
     kind,
-  }: AgentMessageSuggestionPluginProps) => {
+  }: CopilotSuggestionPluginProps) => {
     const { getBackendSuggestion, isSuggestionsLoading } =
       useCopilotSuggestions();
 
@@ -67,8 +67,8 @@ export function getAgentMessageSuggestionPlugin() {
       return <SuggestionCardError />;
     }
 
-    return <AgentMessageSuggestionCard agentSuggestion={suggestionData} />;
+    return <CopilotSuggestionCard agentSuggestion={suggestionData} />;
   };
 
-  return AgentMessageSuggestionPlugin;
+  return CopilotSuggestionPlugin;
 }
