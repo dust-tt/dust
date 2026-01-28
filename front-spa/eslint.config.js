@@ -4,6 +4,7 @@ import simpleImportSort from "eslint-plugin-simple-import-sort";
 import unusedImports from "eslint-plugin-unused-imports";
 import tseslint from "typescript-eslint";
 import reactHooks from "eslint-plugin-react-hooks";
+import reactYouMightNotNeedAnEffect from "eslint-plugin-react-you-might-not-need-an-effect";
 
 export default [
   // Ignores
@@ -55,6 +56,8 @@ export default [
       "react-hooks": reactHooks,
     },
   },
+
+  reactYouMightNotNeedAnEffect.configs.recommended,
 
   // Main rules
   {
