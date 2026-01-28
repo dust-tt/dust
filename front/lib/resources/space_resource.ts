@@ -803,10 +803,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
   /**
    * Check if the auth is a member of this space.
    */
-
   isMember(auth: Authenticator): boolean {
-    // TODO(projects): update this method to check groups whose group_vaults relationship is
-    // to remove the complexity of checking the global group based on the space type.
     switch (this.kind) {
       case "regular":
         for (const group of this.groups) {
@@ -844,10 +841,23 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     }
   }
 
-  // TODO(projects): update this method to check groups whose group_vaults relationship is
-  // space_editor (not space_viewer or space_member) when the PR adding the relationship is live.
+  /**
+   * Check if the auth can edit this space.
+   * For projects, only members of space_editors groups are editors.
+   * For other space types, all members are editors.
+   */
   isEditor(auth: Authenticator): boolean {
-    return this.isMember(auth);
+    if (!this.isProject()) {
+      return this.isMember(auth);
+    }
+
+    // For projects, check if user is in a space_editors group.
+    for (const group of this.groups) {
+      if (group.kind === "space_editors" && auth.hasGroupByModelId(group.id)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -967,9 +977,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         roles: [{ role: "admin", permissions: ["admin"] }],
         groups: this.groups.reduce((acc, group) => {
           if (groupFilter(group)) {
+            // For projects, space_editors groups get admin permission to manage the project.
+            const isProjectEditor =
+              this.isProject() && group.kind === "space_editors";
             acc.push({
               id: group.id,
-              permissions: ["read", "write"],
+              permissions: isProjectEditor
+                ? ["read", "write", "admin"]
+                : ["read", "write"],
             });
           }
           return acc;
