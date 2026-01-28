@@ -231,8 +231,8 @@ const chevronVariantMap = {
 
 export interface MetaButtonProps
   extends
-  React.ButtonHTMLAttributes<HTMLButtonElement>,
-  VariantProps<typeof buttonVariants> {
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isRounded?: boolean;
 }

@@ -20,13 +20,12 @@ import {
   TrashIcon,
 } from "../index_with_tw_base";
 
-
 const DefaultButtons = ({
   variant = "outline",
   size = "sm",
 }: {
   variant?: ButtonVariantType;
-    size?: RegularButtonSize;
+  size?: RegularButtonSize;
 }) => (
   <>
     <Button label="First" variant={variant} size={size} />

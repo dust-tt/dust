@@ -1,7 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { REGULAR_BUTTON_SIZES, BUTTON_VARIANTS } from "@sparkle/components/Button";
+import {
+  REGULAR_BUTTON_SIZES,
+  BUTTON_VARIANTS,
+} from "@sparkle/components/Button";
 
 import { Button, PlusIcon, RobotIcon, Separator } from "../index_with_tw_base";
 
