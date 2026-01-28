@@ -25,6 +25,7 @@ import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/da
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
@@ -1271,46 +1272,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("front_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      search_conversations: "never_ask",
-      get_conversation: "never_ask",
-      get_conversation_messages: "never_ask",
-      get_contact: "never_ask",
-      list_tags: "never_ask",
-      list_teammates: "never_ask",
-      get_customer_history: "never_ask",
-      list_inboxes: "never_ask",
-
-      create_conversation: "low",
-      create_draft: "low",
-      add_tags: "low",
-      add_comment: "low",
-      add_links: "low",
-
-      send_message: "high",
-      update_conversation_status: "high",
-      assign_conversation: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "front",
-      version: "1.0.0",
-      description:
-        "Manage support conversations, messages, and customer interactions.",
-      authorization: null,
-      icon: "FrontLogo",
-      documentationUrl: "https://dev.frontapp.com/reference/introduction",
-      instructions:
-        "When handling support tickets:\n" +
-        "- Always check customer history before replying using get_customer_history\n" +
-        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
-        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
-        "- Use LLM-friendly timeline format for conversation data\n" +
-        "- Include full context (metadata, custom fields) in responses",
-      developerSecretSelection: "required",
-    },
+    metadata: FRONT_SERVER,
   },
   skill_management: {
     id: 1019,
