@@ -843,12 +843,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
   /**
    * Check if the auth can edit this space.
-   * For projects, only members of space_editors groups are editors.
+   * For projects, workspace admins or members of space_editors groups are editors.
    * For other space types, all members are editors.
    */
   isEditor(auth: Authenticator): boolean {
     if (!this.isProject()) {
       return this.isMember(auth);
+    }
+
+    // Workspace admins can edit any project.
+    if (auth.isAdmin()) {
+      return true;
     }
 
     // For projects, check if user is in a space_editors group.
