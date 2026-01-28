@@ -4,6 +4,7 @@ import { Button, Label, PlusIcon, XMarkIcon } from "@dust-tt/sparkle";
 import _ from "lodash";
 import { lazy, Suspense, useCallback, useEffect } from "react";
 
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import DataSourcePicker from "@app/components/data_source/DataSourcePicker";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import TablePicker from "@app/components/tables/TablePicker";
@@ -17,18 +18,11 @@ import type {
 import type { BlockType, RunType } from "@app/types";
 
 import Block from "./Block";
-
 const CodeEditor = lazy(() =>
   import("@uiw/react-textarea-code-editor").then((mod) => ({
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
-  );
-}
 
 export interface TableConfig {
   workspace_id: string;

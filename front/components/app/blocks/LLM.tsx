@@ -6,6 +6,7 @@ import { lazy, Suspense, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import ModelPicker from "@app/components/app/ModelPicker";
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { classNames, shallowBlockClone } from "@app/lib/utils";
 import type { WorkspaceType } from "@app/types";
@@ -23,12 +24,6 @@ const CodeEditor = lazy(() =>
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
-  );
-}
 
 export default function LLM({
   owner,

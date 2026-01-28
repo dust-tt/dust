@@ -13,6 +13,7 @@ import {
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DatasetDataType } from "@app/lib/datasets";
 import {
@@ -34,12 +35,6 @@ const CodeEditor = lazy(() =>
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
-  );
-}
 
 const defaultData = [
   {

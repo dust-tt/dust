@@ -15,6 +15,7 @@ import {
 } from "@dust-tt/sparkle";
 import { lazy, Suspense, useState } from "react";
 
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -24,12 +25,6 @@ const CodeEditor = lazy(() =>
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="mt-5 h-32 animate-pulse rounded-md bg-muted-background" />
-  );
-}
 
 const cleanUpConfig = (config: RunConfig) => {
   if (!config) {

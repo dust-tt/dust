@@ -22,6 +22,7 @@ import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBu
 import { ModelSelectionSubmenu } from "@app/components/agent_builder/instructions/ModelSelectionSubmenu";
 import { ReasoningEffortSubmenu } from "@app/components/agent_builder/instructions/ReasoningEffortSubmenu";
 import { isInvalidJson } from "@app/components/agent_builder/utils";
+import { CodeEditorFallback } from "@app/components/CodeEditorFallback";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useModels } from "@app/lib/swr/models";
 import { isSupportingResponseFormat } from "@app/types";
@@ -31,12 +32,6 @@ const CodeEditor = lazy(() =>
     default: mod.default,
   }))
 );
-
-function CodeEditorFallback() {
-  return (
-    <div className="h-[450px] animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
-  );
-}
 
 const RESPONSE_FORMAT_PLACEHOLDER =
   "Example:\n\n" +
