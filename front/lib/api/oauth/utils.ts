@@ -24,3 +24,20 @@ export function getStringFromQuery(
   }
   return value;
 }
+
+/**
+ * Returns an error object for when a workspace-level connection is required but missing.
+ * Use with `new Err(missingWorkspaceConnectionError())` in providers.
+ */
+export function missingWorkspaceConnectionError(toolName?: string): {
+  code: "connection_creation_failed";
+  message: string;
+} {
+  const tool = toolName ?? "this tool";
+  return {
+    code: "connection_creation_failed",
+    message:
+      `A workspace admin must first connect ${tool} at the workspace level before users can connect their personal accounts. ` +
+      "Please contact your workspace administrator to set up the workspace connection.",
+  };
+}
