@@ -72,7 +72,7 @@ async function* withPeriodicHeartbeat<T>(
             elapsedMs,
             timeoutMinutes: LLM_EVENT_TIMEOUT_MINUTES,
           },
-          "[AGENT_LOOP_DEBUG] LLM stream timeout - no event received"
+          "[LLM stream] timeout - no event received"
         );
         throw new LLMStreamTimeoutError(elapsedMs, logContext);
       }
@@ -85,7 +85,7 @@ async function* withPeriodicHeartbeat<T>(
             heartbeatCount,
             elapsedMs,
           },
-          "[AGENT_LOOP_DEBUG] LLM stream heartbeat - still waiting for event"
+          "[LLM stream] heartbeat - still waiting for event"
         );
       }
       // Heartbeat won the race, but nextPromise is still pending
@@ -291,7 +291,7 @@ export async function getOutputFromLLMStream(
       return new Err({
         type: "shouldRetryMessage",
         content: {
-          type: "rate_limit_error",
+          type: "llm_timeout_error",
           message: `LLM stream timeout after ${LLM_EVENT_TIMEOUT_MINUTES} minutes waiting for event`,
           isRetryable: true,
         },

@@ -420,7 +420,7 @@ export async function runModelActivity(
         modelConversationRes.value.modelConversation.messages.length,
       toolCount: specifications.length,
     },
-    "[AGENT_LOOP_DEBUG] Starting LLM stream"
+    "[LLM stream] Starting (agent loop)"
   );
 
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
