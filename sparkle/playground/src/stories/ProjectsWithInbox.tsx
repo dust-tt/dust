@@ -34,6 +34,7 @@ import {
   NavigationListItemAction,
   PencilSquareIcon,
   PlusIcon,
+  PuzzleIcon,
   ScrollArea,
   ScrollBar,
   Sheet,
@@ -872,7 +873,7 @@ function DustMain() {
           <ScrollArea className="s-flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
             {/* Search Bar */}
-            <div className="s-flex s-gap-2 s-p-2 s-px-2">
+            <div className="s-flex s-gap-2 s-p-2 s-px-2 s-items-center">
               <SearchInput
                 name="conversation-search"
                 value={searchText}
@@ -888,6 +889,84 @@ function DustMain() {
                 label="New"
                 onClick={handleNewConversation}
               />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="mini"
+                    icon={MoreIcon}
+                    aria-label="More options"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel label="Agents" />
+                  <DropdownMenuItem
+                    label="New agent"
+                    icon={PlusIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Edit agent"
+                    icon={PencilSquareIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage agents"
+                    icon={ContactsUserIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Skills" />
+                  <DropdownMenuItem
+                    label="New skill"
+                    icon={PlusIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage skills"
+                    icon={PuzzleIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label="Edit conversations"
+                    icon={ListSelectIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Clear conversation history"
+                    icon={TrashIcon}
+                    variant="warning"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             {/* Collapsible Sections */}
             <NavigationList className="s-px-2">
