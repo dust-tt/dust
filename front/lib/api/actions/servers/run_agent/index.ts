@@ -1,18 +1,15 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import type {
   AgentMessagePublicType,
   ConversationPublicType,
 } from "@dust-tt/client";
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
 import { DustAPI, INTERNAL_MIME_TYPES, isAgentMessage } from "@dust-tt/client";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import assert from "assert";
 import _ from "lodash";
-import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import {
-  AGENT_CONFIGURATION_URI_PATTERN,
-  ConfigurableToolInputSchemas,
-} from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
@@ -36,6 +33,12 @@ import {
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
+  parseAgentConfigurationUri,
+  RUN_AGENT_CONFIGURABLE_PROPERTIES,
+  RUN_AGENT_TOOL_NAME,
+  RUN_AGENT_TOOL_SCHEMA,
+} from "@app/lib/api/actions/servers/run_agent/metadata";
+import {
   getCitationsFromActions,
   getRefs,
 } from "@app/lib/api/assistant/citations";
@@ -46,7 +49,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getApiKeyNameHeader, prodAPICredentialsForOwner } from "@app/lib/auth";
 import { serializeMention } from "@app/lib/mentions/format";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import { getResourcePrefix } from "@app/lib/resources/string_ids";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { CitationType, Result } from "@app/types";
@@ -59,7 +61,6 @@ import {
 } from "@app/types";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
-const RUN_AGENT_TOOL_LOG_NAME = "run_agent";
 
 function isRunAgentHandoffMode(
   agentLoopContext?: AgentLoopContextType
@@ -94,15 +95,6 @@ function isRunAgentHandoffMode(
   }
 
   return false;
-}
-
-function parseAgentConfigurationUri(uri: string): Result<string, Error> {
-  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
-  if (!match) {
-    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
-  }
-  // Safe to do this because the inputs are already checked against the zod schema here.
-  return new Ok(match[2]);
 }
 
 /**
@@ -159,46 +151,14 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
-const configurableProperties = {
-  executionMode: z
-    .object({
-      options: z
-        .union([
-          z
-            .object({
-              value: z.literal("run-agent"),
-              label: z.literal("Agent runs in the background"),
-            })
-            .describe(
-              "The selected agent runs in a background conversation and passes results back to " +
-                "the main agent.\nThis is the default behavior, well suited for breaking down " +
-                "complex work by delegating specific research/analysis subtasks while " +
-                "maintaining control of the overall response."
-            ),
-          z
-            .object({
-              value: z.literal("handoff"),
-              label: z.literal("Agent responds in conversation"),
-            })
-            .describe(
-              "The selected agent takes over and responds directly in the conversation." +
-                "\nWell suited for a routing use case where the sub-agent should handle " +
-                "the entire interaction going forward."
-            ),
-        ])
-        .optional(),
-      value: z.string(),
-      mimeType: z.literal(INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM),
-    })
-    .default({
-      value: "run-agent",
-      mimeType: INTERNAL_MIME_TYPES.TOOL_INPUT.ENUM,
-    }),
-  childAgent:
-    ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.AGENT],
-};
+function createServer(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): Promise<McpServer> {
+  return createRunAgentServer(auth, agentLoopContext);
+}
 
-export default async function createServer(
+async function createRunAgentServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
@@ -243,11 +203,11 @@ export default async function createServer(
       "run_agent_tool_not_available",
       "No child agent configured for this tool, as the child agent was probably archived. " +
         "Do not attempt to run the tool and warn the user instead.",
-      configurableProperties,
+      RUN_AGENT_CONFIGURABLE_PROPERTIES,
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: RUN_AGENT_TOOL_LOG_NAME,
+          toolNameForMonitoring: RUN_AGENT_TOOL_NAME,
           agentLoopContext,
           enableAlerting: true,
         },
@@ -272,36 +232,13 @@ export default async function createServer(
     toolName,
     toolDescription,
     {
-      query: z
-        .string()
-        .describe(
-          "The query sent to the agent. This is the question or instruction that will be " +
-            "processed by the agent, which will respond with its own capabilities and knowledge."
-        ),
-      toolsetsToAdd: z
-        .array(
-          z
-            .string()
-            .regex(new RegExp(`^${getResourcePrefix("mcp_server_view")}_\\w+$`))
-        )
-        .describe(
-          "The toolsets ids to add to the agent in addition to the ones already set in the agent configuration."
-        )
-        .optional()
-        .nullable(),
-      fileOrContentFragmentIds: z
-        .array(z.string().regex(new RegExp(`^[_\\w]+$`)))
-        .describe(
-          "The filesId of the files to pass to the agent conversation. If the file is a content node, use the contentFragmentId instead."
-        )
-        .optional()
-        .nullable(),
-      ...configurableProperties,
+      ...RUN_AGENT_TOOL_SCHEMA,
+      ...RUN_AGENT_CONFIGURABLE_PROPERTIES,
     },
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: RUN_AGENT_TOOL_LOG_NAME,
+        toolNameForMonitoring: RUN_AGENT_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -337,13 +274,14 @@ export default async function createServer(
           conversation: mainConversation,
         } = agentLoopContext.runContext;
 
-        const childAgentIdRes = parseAgentConfigurationUri(uri);
-        if (childAgentIdRes.isErr()) {
+        const parsedChildAgentId = parseAgentConfigurationUri(uri);
+        if (!parsedChildAgentId) {
           return finalizeAndReturn(
-            new Err(new MCPError(childAgentIdRes.error.message))
+            new Err(
+              new MCPError(`Invalid URI for an agent configuration: ${uri}`)
+            )
           );
         }
-        const childAgentId = childAgentIdRes.value;
 
         const user = auth.user();
 
@@ -385,7 +323,7 @@ export default async function createServer(
                         mimeType:
                           INTERNAL_MIME_TYPES.TOOL_OUTPUT.RUN_AGENT_QUERY,
                         text: query,
-                        childAgentId: childAgentId,
+                        childAgentId: parsedChildAgentId,
                         uri: "",
                       },
                     },
@@ -402,7 +340,7 @@ export default async function createServer(
           agentLoopContext.runContext,
           {
             childAgentBlob,
-            childAgentId,
+            childAgentId: parsedChildAgentId,
             mainAgent,
             mainConversation,
             query: isHandoff
@@ -423,7 +361,7 @@ export default async function createServer(
           const mentionMain = serializeMention(mainAgent);
           const mentionChild = serializeMention({
             name: childAgentBlob.name,
-            sId: childAgentId,
+            sId: parsedChildAgentId,
           });
           return finalizeAndReturn(
             new Ok(
@@ -533,7 +471,7 @@ export default async function createServer(
                 output: {
                   type: "run_agent",
                   query,
-                  childAgentId: childAgentId,
+                  childAgentId: parsedChildAgentId,
                   conversationId: conversation.sId,
                   userMessageId,
                 },
@@ -694,7 +632,7 @@ export default async function createServer(
                       label: "Agent thinking...",
                       output: {
                         type: "run_agent_chain_of_thought",
-                        childAgentId: childAgentId,
+                        childAgentId: parsedChildAgentId,
                         conversationId: conversation.sId,
                         chainOfThought: chainOfThought,
                       },
@@ -716,7 +654,7 @@ export default async function createServer(
                       label: "Agent responding...",
                       output: {
                         type: "run_agent_generation_tokens",
-                        childAgentId: childAgentId,
+                        childAgentId: parsedChildAgentId,
                         conversationId: conversation.sId,
                         text: finalContent,
                       },
@@ -743,7 +681,7 @@ export default async function createServer(
                       label: "Agent thinking...",
                       output: {
                         type: "run_agent_chain_of_thought",
-                        childAgentId: childAgentId,
+                        childAgentId: parsedChildAgentId,
                         conversationId: conversation.sId,
                         chainOfThought: chainOfThought,
                       },
@@ -900,3 +838,5 @@ function getLatestVersionByParentMessageId(
       )
     : undefined;
 }
+
+export default createServer;
