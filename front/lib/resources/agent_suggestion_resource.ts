@@ -683,15 +683,19 @@ function canApplyInstructionSuggestion(
     }
   }
 
-  // Build the new regions (before any replacement, to check for overlaps).
+  // Compute the range of characters that actually change in this suggestion.
+  // This allows suggestions with overlapping source regions but non-overlapping
+  // changes to both remain valid.
+  const changedRange = computeChangedRange(oldString, newString);
+
   const newRegions: Array<{ start: number; end: number }> = positions.map(
     (pos) => ({
-      start: pos,
-      end: pos + oldString.length,
+      start: pos + changedRange.start,
+      end: pos + changedRange.end,
     })
   );
 
-  // No new region should overlap with any applied region.
+  // No new changed region should overlap with any applied changed region.
   for (const newRegion of newRegions) {
     for (const appliedRegion of appliedRegions) {
       if (
@@ -717,7 +721,7 @@ function canApplyInstructionSuggestion(
       result.substring(pos + oldString.length);
   }
 
-  // Calculate final regions after replacement (adjusted for newString length).
+  // Calculate final regions after replacement (tracking only the changed portion).
   const singleShift = newString.length - oldString.length;
   const totalShift = singleShift * positions.length;
 
@@ -726,8 +730,8 @@ function canApplyInstructionSuggestion(
 
   for (const pos of positions) {
     finalRegions.push({
-      start: pos + accumulatedShift,
-      end: pos + accumulatedShift + newString.length,
+      start: pos + changedRange.start + accumulatedShift,
+      end: pos + changedRange.end + accumulatedShift,
     });
     accumulatedShift += singleShift;
   }
@@ -759,4 +763,48 @@ function regionsOverlap(
 ): boolean {
   // Regions overlap if one starts before the other ends and vice versa.
   return start1 < end2 && start2 < end1;
+}
+
+/**
+ * Computes the range of characters that actually change between oldString and newString.
+ * Returns a {start, end} range relative to the oldString positions,
+ * where start is inclusive and end is exclusive.
+ *
+ * For example:
+ * - "ABC" -> "AXC" returns {start: 1, end: 2} (only B changes to X)
+ * - "ABC" -> "AXXC" returns {start: 1, end: 2} (B is replaced, insertion happens there)
+ * - "ABCD" -> "AXYD" returns {start: 1, end: 3} (BC changes to XY)
+ *
+ * TODO(copilot): We may store this in DB to avoid recomputing it each time.
+ */
+function computeChangedRange(
+  oldString: string,
+  newString: string
+): { start: number; end: number } {
+  // Find common prefix length.
+  let prefixLen = 0;
+  while (
+    prefixLen < oldString.length &&
+    prefixLen < newString.length &&
+    oldString[prefixLen] === newString[prefixLen]
+  ) {
+    prefixLen++;
+  }
+
+  // Find common suffix length (but don't overlap with prefix).
+  let suffixLen = 0;
+  while (
+    suffixLen < oldString.length - prefixLen &&
+    suffixLen < newString.length - prefixLen &&
+    oldString[oldString.length - 1 - suffixLen] ===
+      newString[newString.length - 1 - suffixLen]
+  ) {
+    suffixLen++;
+  }
+
+  // The changed region in oldString is from prefixLen to (oldString.length - suffixLen).
+  const changedStart = prefixLen;
+  const changedEnd = oldString.length - suffixLen;
+
+  return { start: changedStart, end: Math.max(changedStart, changedEnd) };
 }

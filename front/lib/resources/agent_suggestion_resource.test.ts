@@ -1443,6 +1443,68 @@ describe("AgentSuggestionResource", () => {
         expect(fetched1?.state).toBe("pending");
         expect(fetched2?.state).toBe("pending");
       });
+
+      it("should not mark suggestions as outdated when source regions overlap but changes don't", async () => {
+        // Create an agent with specific instructions.
+        const agentWithInstructions =
+          await AgentConfigurationFactory.updateTestAgent(
+            authenticator,
+            agentConfiguration.sId,
+            {
+              instructions: "ABCDE",
+            }
+          );
+
+        // Older suggestion targets "ABC" and changes B to X.
+        const suggestion1 = await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentWithInstructions,
+          {
+            suggestion: {
+              oldString: "ABC",
+              newString: "AXXXXXC",
+            },
+          }
+        );
+
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Newer suggestion targets "CDE" and changes D to Y.
+        // The source regions overlap at "C", but "C" is unchanged in both suggestions.
+        const suggestion2 = await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentWithInstructions,
+          {
+            suggestion: {
+              oldString: "CDE",
+              newString: "CYYYYYE",
+            },
+          }
+        );
+
+        const fullAgent = await getFullAgentConfiguration(
+          authenticator,
+          agentWithInstructions.sId
+        );
+
+        await AgentSuggestionResource.pruneSuggestions(
+          authenticator,
+          fullAgent
+        );
+
+        const fetched1 = await AgentSuggestionResource.fetchById(
+          authenticator,
+          suggestion1.sId
+        );
+        const fetched2 = await AgentSuggestionResource.fetchById(
+          authenticator,
+          suggestion2.sId
+        );
+
+        // Both should remain pending since the actual changes don't overlap.
+        expect(fetched1?.state).toBe("pending");
+        expect(fetched2?.state).toBe("pending");
+      });
     });
   });
 });
