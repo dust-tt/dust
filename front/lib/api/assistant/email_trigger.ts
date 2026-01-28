@@ -1,6 +1,6 @@
 import fs from "fs";
-import { Op } from "sequelize";
 import sanitizeHtml from "sanitize-html";
+import { Op } from "sequelize";
 import { Readable } from "stream";
 
 import { getAgentConfigurationsForView } from "@app/lib/api/assistant/configuration/views";
