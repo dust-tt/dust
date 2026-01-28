@@ -59,6 +59,7 @@ import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_gen
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -1211,32 +1212,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      create_val: "low",
-      get_file_content: "low",
-      delete_file: "low",
-      update_file_content: "low",
-      write_file: "low",
-      create_file: "low",
-      call_http_endpoint: "low",
-      get_val: "never_ask",
-      list_vals: "never_ask",
-      search_vals: "never_ask",
-      list_val_files: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "val_town",
-      version: "1.0.0",
-      description: "Create and execute vals in Val Town.",
-      authorization: null,
-      icon: "ValTownLogo",
-      documentationUrl: "https://docs.dust.tt/docs/val-town",
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: VAL_TOWN_SERVER,
   },
   jit_testing: {
     id: 1016,
