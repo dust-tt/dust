@@ -16,8 +16,11 @@ import type {
   DataSourceViewType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { ConnectorsAPI, PatchDataSourceViewSchema } from "@app/types";
-import { assertNever } from "@app/types/shared/utils/assert_never";
+import {
+  assertNever,
+  ConnectorsAPI,
+  PatchDataSourceViewSchema,
+} from "@app/types";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;

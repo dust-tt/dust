@@ -1,164 +1,118 @@
-import type { InferGetServerSidePropsType } from "next";
+import { Spinner } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import config from "@app/lib/api/config";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
-import logger from "@app/logger/logger";
-import type {
-  ConnectorType,
-  DataSourceType,
-  DataSourceViewCategory,
-  DataSourceViewType,
-  SpaceType,
-} from "@app/types";
-import { ConnectorsAPI } from "@app/types";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  useSpaceDataSourceView,
+  useSpaceInfo,
+  useSystemSpace,
+} from "@app/lib/swr/spaces";
+import type { DataSourceViewCategory } from "@app/types";
+import { isString, isValidDataSourceViewCategory } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<
-  SpaceLayoutPageProps & {
-    category: DataSourceViewCategory;
-    dataSource: DataSourceType;
-    dataSourceView: DataSourceViewType;
-    parentId?: string;
-    systemSpace: SpaceType;
-    connector: ConnectorType | null;
-  }
->(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
-  const subscription = auth.subscription();
-  const plan = auth.plan();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!subscription || !plan) {
-    return {
-      notFound: true,
-    };
-  }
+function Space() {
+  const router = useRouter();
+  const { spaceId, dataSourceViewId, category, parentId } = router.query;
+  const owner = useWorkspace();
+  const { subscription, isAdmin, user } = useAuth();
+  const plan = subscription.plan;
 
-  const { spaceId } = context.query;
-  if (typeof spaceId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
+  const {
+    spaceInfo: space,
+    canWriteInSpace,
+    canReadInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : null,
+  });
 
-  const { dataSourceViewId } = context.query;
-  if (typeof dataSourceViewId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-  const isAdmin = auth.isAdmin();
-  const parentId = context.query?.parentId as string | undefined;
+  const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
+    workspaceId: owner.sId,
+  });
 
-  const dataSourceView = await DataSourceViewResource.fetchById(
-    auth,
-    dataSourceViewId,
-    { includeEditedBy: true }
-  );
+  const { dataSourceView, connector, isDataSourceViewLoading } =
+    useSpaceDataSourceView({
+      owner,
+      spaceId: isString(spaceId) ? spaceId : null,
+      dataSourceViewId: isString(dataSourceViewId) ? dataSourceViewId : null,
+    });
+
+  const validCategory = isValidDataSourceViewCategory(category)
+    ? (category as DataSourceViewCategory)
+    : null;
+
+  const isLoading =
+    isSpaceInfoLoading || isSystemSpaceLoading || isDataSourceViewLoading;
 
   if (
-    !dataSourceView ||
-    dataSourceView.space.sId !== spaceId ||
-    !dataSourceView.canReadOrAdministrate(auth)
+    isLoading ||
+    !space ||
+    !systemSpace ||
+    !validCategory ||
+    !user ||
+    !dataSourceView
   ) {
-    return {
-      notFound: true,
-    };
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
-  const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-  const { space } = dataSourceView;
-  const canWriteInSpace = space.canWrite(auth);
-  const canReadInSpace = space.canRead(auth);
-
-  let connector: ConnectorType | null = null;
-  if (dataSourceView.dataSource.connectorId) {
-    const connectorsAPI = new ConnectorsAPI(
-      config.getConnectorsAPIConfig(),
-      logger
-    );
-    const connectorRes = await connectorsAPI.getConnector(
-      dataSourceView.dataSource.connectorId
-    );
-    if (connectorRes.isOk()) {
-      connector = {
-        ...connectorRes.value,
-        connectionId: null,
-      };
-    }
-  }
-
-  return {
-    props: {
-      category: context.query.category as DataSourceViewCategory,
-      dataSource: dataSourceView.dataSource.toJSON(),
-      dataSourceView: dataSourceView.toJSON(),
-      isAdmin,
-      canWriteInSpace,
-      canReadInSpace,
-      owner,
-      // undefined is not allowed in the JSON response
-      ...(parentId && { parentId }),
-      plan,
-      subscription,
-      space: space.toJSON(),
-      systemSpace: systemSpace.toJSON(),
-      connector,
-    },
+  const pageProps: SpaceLayoutPageProps = {
+    canReadInSpace,
+    canWriteInSpace,
+    category: validCategory,
+    isAdmin,
+    owner,
+    plan,
+    space,
+    subscription,
   };
-});
-
-export default function Space({
-  space,
-  category,
-  dataSourceView,
-  canWriteInSpace,
-  canReadInSpace,
-  owner,
-  parentId,
-  plan,
-  isAdmin,
-  systemSpace,
-  connector,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
 
   return (
-    <SpaceDataSourceViewContentList
-      owner={owner}
-      space={space}
-      plan={plan}
-      canWriteInSpace={canWriteInSpace}
-      canReadInSpace={canReadInSpace}
-      parentId={parentId}
-      dataSourceView={dataSourceView}
-      onSelect={(parentId) => {
-        void router.push(
-          `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${category}/data_source_views/${dataSourceView.sId}?parentId=${parentId}`
-        );
-      }}
-      isAdmin={isAdmin}
-      systemSpace={systemSpace}
-      connector={connector}
-    />
+    <SpaceLayout pageProps={pageProps} useBackendSearch>
+      <SpaceDataSourceViewContentList
+        owner={owner}
+        space={space}
+        plan={plan}
+        canWriteInSpace={canWriteInSpace}
+        canReadInSpace={canReadInSpace}
+        parentId={isString(parentId) ? parentId : undefined}
+        dataSourceView={dataSourceView}
+        onSelect={(selectedParentId) => {
+          void router.push(
+            `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${validCategory}/data_source_views/${dataSourceView.sId}?parentId=${selectedParentId}`
+          );
+        }}
+        isAdmin={isAdmin}
+        systemSpace={systemSpace}
+        connector={connector}
+      />
+    </SpaceLayout>
   );
 }
 
-Space.getLayout = (
+const PageWithAuthLayout = Space as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
   page: ReactElement,
-  pageProps: InferGetServerSidePropsType<typeof getServerSideProps>
+  pageProps: AuthContextValue
 ) => {
   return (
-    <AppRootLayout>
-      <SpaceLayout pageProps={pageProps} useBackendSearch>
-        {page}
-      </SpaceLayout>
-    </AppRootLayout>
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
   );
 };
+
+export default PageWithAuthLayout;

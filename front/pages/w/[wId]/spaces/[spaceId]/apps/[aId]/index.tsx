@@ -3,10 +3,11 @@ import {
   Button,
   DocumentTextIcon,
   PlayIcon,
+  Spinner,
   StopIcon,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useRef, useState } from "react";
 import { useSWRConfig } from "swr";
 
@@ -14,78 +15,31 @@ import NewBlock from "@app/components/app/NewBlock";
 import SpecRunView from "@app/components/app/SpecRunView";
 import { ViewAppAPIModal } from "@app/components/app/ViewAppAPIModal";
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { extractConfig } from "@app/lib/config";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { AppResource } from "@app/lib/resources/app_resource";
-import { SpaceResource } from "@app/lib/resources/space_resource";
 import {
   addBlock,
   deleteBlock,
   moveBlockDown,
   moveBlockUp,
 } from "@app/lib/specification";
-import { useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
+import { useApp, useCancelRun, useSavedRunStatus } from "@app/lib/swr/apps";
 import type {
   APIErrorResponse,
-  AppType,
   BlockRunConfig,
   BlockType,
   CoreAPIError,
   SpecificationBlockType,
   SpecificationType,
-  SubscriptionType,
-  WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  isAdmin: boolean;
-  app: AppType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-
-  const { spaceId } = context.query;
-  if (typeof spaceId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
-
-  const space = await SpaceResource.fetchById(auth, spaceId);
-
-  const isAdmin = auth.isAdmin();
-
-  if (!owner || !subscription || !space || !space.canReadOrAdministrate(auth)) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const app = await AppResource.fetchById(auth, context.params?.aId as string);
-
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-      isAdmin,
-      readOnly,
-      app: app.toJSON(),
-    },
-  };
-});
+export const getServerSideProps = appGetServerSideProps;
 
 let saveTimeout = null as string | number | NodeJS.Timeout | null;
 
@@ -149,30 +103,47 @@ const isRunnable = (
   return true;
 };
 
-export default function AppView({
-  owner,
-  subscription,
-  readOnly,
-  isAdmin,
-  app,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function AppView() {
+  const router = useRouter();
+  const { spaceId, aId } = router.query;
+  const owner = useWorkspace();
+  const { subscription, isAdmin, isBuilder } = useAuth();
+  const readOnly = !isBuilder;
+
+  const { app, isAppLoading } = useApp({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : "",
+    appId: isString(aId) ? aId : "",
+    disabled: !isString(spaceId) || !isString(aId),
+  });
+
   const { mutate } = useSWRConfig();
 
-  const [spec, setSpec] = useState(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    JSON.parse(app.savedSpecification || `[]`) as SpecificationType
-  );
-
-  const [config, setConfig] = useState(
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    extractConfig(JSON.parse(app.savedSpecification || `{}`))
-  );
-  const [runnable, setRunnable] = useState(isRunnable(readOnly, spec, config));
+  const [spec, setSpec] = useState<SpecificationType>([]);
+  const [config, setConfig] = useState<BlockRunConfig>({});
+  const [runnable, setRunnable] = useState(false);
+  const [specInitialized, setSpecInitialized] = useState(false);
   const [runRequested, setRunRequested] = useState(false);
   const [runError, setRunError] = useState(null as null | CoreAPIError);
   const [cancelRequested, setCancelRequested] = useState(false);
 
-  const { run } = useSavedRunStatus(owner, app, (data) => {
+  // Initialize spec and config when app loads
+  if (app && !specInitialized) {
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const initialSpec = JSON.parse(
+      app.savedSpecification || `[]`
+    ) as SpecificationType;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const initialConfig = extractConfig(
+      JSON.parse(app.savedSpecification || `{}`)
+    );
+    setSpec(initialSpec);
+    setConfig(initialConfig);
+    setRunnable(isRunnable(readOnly, initialSpec, initialConfig));
+    setSpecInitialized(true);
+  }
+
+  const { run } = useSavedRunStatus(owner, app!, (data) => {
     if (data && data.run) {
       switch (data?.run.status.run) {
         case "running":
@@ -193,6 +164,10 @@ export default function AppView({
     Date.now() - run.created > 60 * 60 * 1000; // 1 hour in milliseconds
 
   const saveState = async (spec: SpecificationType, config: BlockRunConfig) => {
+    if (!app) {
+      return;
+    }
+
     if (saveTimeout) {
       clearTimeout(saveTimeout);
       saveTimeout = null;
@@ -213,8 +188,6 @@ export default function AppView({
             }),
           }
         );
-
-        console.log("STATE SAVED", spec, config);
       }
     }, 1000);
   };
@@ -280,6 +253,10 @@ export default function AppView({
   };
 
   const handleRun = () => {
+    if (!app) {
+      return;
+    }
+
     setRunRequested(true);
 
     // We disable runRequested after 1s, time to disable the Run button while the network
@@ -332,10 +309,10 @@ export default function AppView({
     }, 0);
   };
 
-  const { doCancel } = useCancelRun({ owner, app });
+  const { doCancel } = useCancelRun({ owner, app: app! });
 
   const handleCancelRun = async () => {
-    if (!run?.run_id || cancelRequested) {
+    if (!run?.run_id || cancelRequested || !app) {
       return;
     }
 
@@ -378,7 +355,13 @@ export default function AppView({
     }
   };
 
-  const router = useRouter();
+  if (isAppLoading || !app) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <DustAppPageLayout
@@ -559,6 +542,15 @@ export default function AppView({
   );
 }
 
-AppView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = AppView as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

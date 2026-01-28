@@ -1,65 +1,44 @@
 import "@uiw/react-textarea-code-editor/dist.css";
 
-import { Button } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, Spinner } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import DatasetView from "@app/components/app/DatasetView";
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getDatasets } from "@app/lib/api/datasets";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { AppResource } from "@app/lib/resources/app_resource";
-import type { WorkspaceType } from "@app/types";
-import type { AppType } from "@app/types";
+import { useApp } from "@app/lib/swr/apps";
+import { useDatasets } from "@app/lib/swr/datasets";
 import type { DatasetSchema, DatasetType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
+import { isString } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  app: AppType;
-  datasets: DatasetType[];
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!owner || !auth.isBuilder() || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const app = await AppResource.fetchById(auth, context.params?.aId as string);
-
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const datasets = await getDatasets(auth, app.toJSON());
-
-  return {
-    props: {
-      owner,
-      subscription,
-      app: app.toJSON(),
-      datasets,
-    },
-  };
-});
-
-export default function NewDatasetView({
-  owner,
-  subscription,
-  app,
-  datasets,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function NewDatasetView() {
   const router = useRouter();
+  const { spaceId, aId } = router.query;
+  const owner = useWorkspace();
+  const { subscription, isBuilder } = useAuth();
+
+  const { app, isAppLoading } = useApp({
+    workspaceId: owner.sId,
+    spaceId: isString(spaceId) ? spaceId : "",
+    appId: isString(aId) ? aId : "",
+    disabled: !isString(spaceId) || !isString(aId),
+  });
+
+  const { datasets, isDatasetsLoading } = useDatasets({
+    owner,
+    app: app!,
+    disabled: !app,
+  });
 
   const [disable, setDisabled] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -71,12 +50,21 @@ export default function NewDatasetView({
 
   useRegisterUnloadHandlers(editorDirty);
 
+  // Redirect non-builders
+  useEffect(() => {
+    if (!isBuilder && app) {
+      void router.push(
+        `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`
+      );
+    }
+  }, [isBuilder, app, router, owner.sId]);
+
   // This is a little wonky, but in order to redirect to the dataset's main page and not pop up the
   // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
   // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
   // this should happen.
   useEffect(() => {
-    if (isFinishedEditing) {
+    if (isFinishedEditing && app) {
       void router.push(
         `/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`
       );
@@ -101,6 +89,10 @@ export default function NewDatasetView({
   };
 
   const handleSubmit = async () => {
+    if (!app) {
+      return;
+    }
+
     setLoading(true);
     const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
@@ -119,6 +111,16 @@ export default function NewDatasetView({
     setEditorDirty(false);
     setIsFinishedEditing(true);
   };
+
+  const isLoading = isAppLoading || isDatasetsLoading;
+
+  if (isLoading || !app) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <DustAppPageLayout
@@ -155,6 +157,15 @@ export default function NewDatasetView({
   );
 }
 
-NewDatasetView.getLayout = function getLayout(page: React.ReactElement) {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = NewDatasetView as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
