@@ -26,9 +26,10 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
         .describe("Working directory for command execution. Defaults to /tmp."),
       timeoutMs: z
         .number()
+        .max(120000)
         .optional()
         .describe(
-          "Timeout in milliseconds for command execution. Defaults to 60000 (60 seconds)."
+          "Timeout in milliseconds for command execution. Defaults to 60000, max 120000."
         ),
     },
     stake: "low",
