@@ -1,5 +1,4 @@
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
@@ -14,11 +13,7 @@ import { defaultSelectionConfiguration } from "@app/types";
 
 export function SpaceDataSourceViewPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - Data Source View`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - Data Source View`);
 
   const dsvId = useRequiredPathParam("dsvId");
   const {

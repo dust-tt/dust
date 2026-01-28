@@ -8,7 +8,7 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
-import React, { useEffect } from "react";
+import React from "react";
 import { useSWRConfig } from "swr";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
@@ -27,8 +27,7 @@ import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
 import type { PlanType } from "@app/types";
 
 export function PlansPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Plans"), [setPageTitle]);
+  useSetPokePageTitle("Plans");
 
   const { mutate } = useSWRConfig();
 

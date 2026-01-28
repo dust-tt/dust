@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
@@ -29,8 +35,11 @@ export function usePokePageTitle() {
   return useContext(PokePageTitleContext).title;
 }
 
-export function useSetPokePageTitle() {
-  return useContext(PokePageTitleContext).setTitle;
+export function useSetPokePageTitle(title: string) {
+  const setTitle = useContext(PokePageTitleContext).setTitle;
+  useEffect(() => {
+    setTitle(title);
+  }, [setTitle, title]);
 }
 
 // Layout for workspace-scoped poke pages (uses AuthContext).

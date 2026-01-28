@@ -1,5 +1,4 @@
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
 import { InvitationsDataTable } from "@app/components/poke/invitations/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
@@ -9,11 +8,7 @@ import { usePokeMemberships } from "@app/poke/swr/memberships";
 
 export function MembershipsPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - Memberships`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - Memberships`);
 
   const {
     data: membershipsData,

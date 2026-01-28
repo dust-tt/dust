@@ -14,7 +14,6 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import { useEffect } from "react";
 
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
@@ -30,11 +29,7 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export function AssistantDetailsPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - Assistants`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - Assistants`);
 
   const aId = useRequiredPathParam("aId");
   const { isDark } = useTheme();

@@ -12,11 +12,7 @@ import type { DocumentType } from "@app/types";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - Search`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - Search`);
 
   const dsId = useRequiredPathParam("dsId");
   const [searchQuery, setSearchQuery] = useState("");

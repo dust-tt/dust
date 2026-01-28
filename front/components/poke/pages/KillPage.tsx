@@ -1,5 +1,5 @@
 import { SliderToggle, Spinner } from "@dust-tt/sparkle";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useSWRConfig } from "swr/_internal";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
@@ -26,8 +26,7 @@ const killSwitchMap: Record<
 };
 
 export function KillPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Kill Switches"), [setPageTitle]);
+  useSetPokePageTitle("Kill Switches");
 
   const { killSwitches, isKillSwitchesLoading } = usePokeKillSwitches();
   const [loading, setLoading] = useState(false);

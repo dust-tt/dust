@@ -492,8 +492,7 @@ function ProductionCheckCard({
 }
 
 export function ProductionChecksPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Production Checks"), [setPageTitle]);
+  useSetPokePageTitle("Production Checks");
 
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();

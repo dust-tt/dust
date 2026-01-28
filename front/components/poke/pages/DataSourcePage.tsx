@@ -887,11 +887,7 @@ const ConfigToggle = ({
 
 export function DataSourcePage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - Data Source`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - Data Source`);
 
   const dsId = useRequiredPathParam("dsId");
   const router = useAppRouter();

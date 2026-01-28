@@ -10,8 +10,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
-
 import { AppDataTable } from "@app/components/poke/apps/table";
 import { AssistantsDataTable } from "@app/components/poke/assistants/table";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
@@ -46,11 +44,7 @@ import { isString } from "@app/types";
 
 export function WorkspacePage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(owner.name ?? "Workspace"),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(owner.name ?? "Workspace");
 
   const router = useAppRouter();
 

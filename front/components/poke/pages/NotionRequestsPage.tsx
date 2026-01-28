@@ -6,7 +6,7 @@ import {
   TextArea,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
@@ -19,11 +19,7 @@ type HttpMethod = "GET" | "POST";
 
 export function NotionRequestsPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - Notion Requests`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - Notion Requests`);
 
   const dsId = useRequiredPathParam("dsId");
   const { isDark } = useTheme();

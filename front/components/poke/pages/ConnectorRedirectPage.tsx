@@ -7,8 +7,7 @@ import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { fetcher } from "@app/lib/swr/swr";
 
 export function ConnectorRedirectPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Connector Redirect"), [setPageTitle]);
+  useSetPokePageTitle("Connector Redirect");
 
   const connectorId = useRequiredPathParam("connectorId");
   const router = useAppRouter();

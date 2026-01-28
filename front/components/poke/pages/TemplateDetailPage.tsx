@@ -424,8 +424,7 @@ function PreviewDialog({ form }: { form: any }) {
 }
 
 export function TemplateDetailPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Template"), [setPageTitle]);
+  useSetPokePageTitle("Template");
 
   const templateId = useRequiredPathParam("tId");
   const [isSubmitting, setIsSubmitting] = useState(false);

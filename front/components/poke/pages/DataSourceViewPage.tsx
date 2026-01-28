@@ -1,5 +1,4 @@
 import { Input, Page, Spinner, TextArea } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -9,11 +8,7 @@ import { usePokeDocument } from "@app/poke/swr/document";
 
 export function DataSourceViewPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - View Document`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - View Document`);
 
   const dsId = useRequiredPathParam("dsId");
   const documentId = useSearchParam("documentId");

@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { convertUrlToPoke } from "@app/lib/utils/url-to-poke";
 
 export function PokefyPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Pokefy"), [setPageTitle]);
+  useSetPokePageTitle("Pokefy");
 
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");

@@ -338,8 +338,7 @@ function SchemaFormField({
 }
 
 export function EmailTemplatesPage() {
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(() => setPageTitle("Email Templates"), [setPageTitle]);
+  useSetPokePageTitle("Email Templates");
 
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<string>("default");

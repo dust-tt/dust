@@ -8,7 +8,6 @@ import {
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -17,11 +16,7 @@ import { usePokeLLMTrace } from "@app/poke/swr";
 
 export function LLMTracePage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - LLM Trace`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - LLM Trace`);
 
   const runId = useRequiredPathParam("runId");
   const { trace, isLLMTraceLoading, isLLMTraceError } = usePokeLLMTrace({

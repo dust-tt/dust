@@ -1,5 +1,4 @@
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
 
 import { ViewMCPServerViewTable } from "@app/components/poke/mcp_server_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
@@ -11,11 +10,7 @@ import { usePokeMCPServerViewDetails } from "@app/poke/swr/mcp_server_view_detai
 
 export function MCPServerViewPage() {
   const owner = useWorkspace();
-  const setPageTitle = useSetPokePageTitle();
-  useEffect(
-    () => setPageTitle(`${owner.name} - MCP Server View`),
-    [setPageTitle, owner.name]
-  );
+  useSetPokePageTitle(`${owner.name} - MCP Server View`);
 
   const svId = useRequiredPathParam("svId");
   const {
