@@ -283,6 +283,8 @@ export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare agenticOriginMessageId: string | null;
 
   declare userContextLastTriggerRunAt: Date | null;
+  declare userContextApiKeyId: number | null;
+  declare userContextAuthMethod: string | null;
 
   declare userId: ForeignKey<UserModel["id"]> | null;
 
@@ -344,6 +346,14 @@ UserMessageModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    userContextApiKeyId: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+    },
+    userContextAuthMethod: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
     },
     agenticMessageType: {
       type: DataTypes.STRING(16),
