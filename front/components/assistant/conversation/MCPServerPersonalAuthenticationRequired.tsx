@@ -51,6 +51,7 @@ export function MCPServerPersonalAuthenticationRequired({
 
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const [overriddenCredentials, setCredentialOverrides] = useState<
     Record<string, string>
   >({});
@@ -61,11 +62,37 @@ export function MCPServerPersonalAuthenticationRequired({
     ? getIcon(mcpServer.icon)
     : InformationCircleIcon;
 
+  const serverDisplayName =
+    mcpServer && mcpServer.name
+      ? getMcpServerDisplayName(mcpServer)
+      : undefined;
+
+  function getContentMessageTitle(): string {
+    if (isConnected) {
+      return "Connected successfully";
+    }
+    if (connectionError) {
+      return "Connection failed";
+    }
+    return serverDisplayName ?? "Personal authentication required";
+  }
+
+  function getContentMessageVariant(): "success" | "warning" | "primary" {
+    if (isConnected) {
+      return "success";
+    }
+    if (connectionError) {
+      return "warning";
+    }
+    return "primary";
+  }
+
   const onConnectClick = async (mcpServer: MCPServerType) => {
     setIsConnecting(true);
+    setConnectionError(null);
 
     try {
-      const success = await createPersonalConnection({
+      const result = await createPersonalConnection({
         mcpServerId: mcpServer.sId,
         mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
         provider,
@@ -77,8 +104,11 @@ export function MCPServerPersonalAuthenticationRequired({
             : undefined,
       });
 
-      if (!success) {
+      if (!result.success) {
         setIsConnected(false);
+        if (result.error) {
+          setConnectionError(result.error);
+        }
       } else {
         setIsConnected(true);
         await retry();
@@ -95,12 +125,8 @@ export function MCPServerPersonalAuthenticationRequired({
 
   return (
     <ContentMessage
-      title={
-        isConnected
-          ? "Connected successfully"
-          : `${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "Personal authentication required"}`
-      }
-      variant={isConnected ? "success" : "primary"}
+      title={getContentMessageTitle()}
+      variant={getContentMessageVariant()}
       className="flex w-80 min-w-[300px] flex-col gap-3 sm:min-w-[500px]"
       icon={icon}
     >
@@ -108,9 +134,10 @@ export function MCPServerPersonalAuthenticationRequired({
         <>
           <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
             {isConnected && "You are now connected. Automatically retrying..."}
-            {!isConnected && (
+            {!isConnected && connectionError && <>{connectionError}</>}
+            {!isConnected && !connectionError && (
               <>
-                {`Your agent is trying to use ${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "a tool"}.`}
+                {`Your agent is trying to use ${serverDisplayName ?? "a tool"}.`}
                 <br />
                 <span className="font-semibold">
                   Connect your account to continue.
@@ -156,7 +183,7 @@ export function MCPServerPersonalAuthenticationRequired({
         </>
       ) : (
         <div className="font-sm whitespace-normal break-words text-foreground dark:text-foreground-night">
-          {`${triggeringUser?.fullName} is trying to use ${mcpServer && mcpServer.name ? getMcpServerDisplayName(mcpServer) : "a tool"}.`}
+          {`${triggeringUser?.fullName} is trying to use ${serverDisplayName ?? "a tool"}.`}
           <br />
           <span className="font-semibold">
             Waiting on them to connect their account to continue...

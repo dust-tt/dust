@@ -152,35 +152,45 @@ export async function createConnectionAndGetSetupUrl(
       }
 
       relatedCredential = credentials;
+    }
+  }
 
-      extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
+  // Update extra config if the provider has a method for it
+  if (providerStrategy.getUpdatedExtraConfig) {
+    const extraConfigResult = await providerStrategy.getUpdatedExtraConfig(
+      auth,
+      {
         extraConfig,
         useCase,
-      });
-
-      if (
-        //TODO: add the same verification for other providers with a getRelatedCredential method.
-        providerStrategy.isExtraConfigValidPostRelatedCredential &&
-        !providerStrategy.isExtraConfigValidPostRelatedCredential!(
-          extraConfig,
-          useCase
-        )
-      ) {
-        logger.error(
-          { provider, useCase, extraConfig },
-          "OAuth: Invalid extraConfig after getting related credential"
-        );
-        return new Err({
-          code: "connection_creation_failed",
-          message:
-            "Invalid OAuth connection extraConfig for provider after getting related credential",
-        });
       }
+    );
+    if (extraConfigResult.isErr()) {
+      logger.error(
+        { provider, useCase, error: extraConfigResult.error },
+        "OAuth: Failed to update extra config"
+      );
+      return extraConfigResult;
     }
-  } else if (providerStrategy.getUpdatedExtraConfig) {
-    extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
+    extraConfig = extraConfigResult.value;
+  }
+
+  // Validate extraConfig after update (some providers add required fields in getUpdatedExtraConfig)
+  if (
+    relatedCredential &&
+    providerStrategy.isExtraConfigValidPostRelatedCredential &&
+    !providerStrategy.isExtraConfigValidPostRelatedCredential(
       extraConfig,
-      useCase,
+      useCase
+    )
+  ) {
+    logger.error(
+      { provider, useCase, extraConfig },
+      "OAuth: Invalid extraConfig after getting related credential"
+    );
+    return new Err({
+      code: "connection_creation_failed",
+      message:
+        "Invalid OAuth connection extraConfig for provider after getting related credential",
     });
   }
 
