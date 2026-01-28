@@ -63,6 +63,11 @@ export interface SandboxInfo {
   createdAt: Date;
 }
 
+export interface SandboxStatus {
+  info: SandboxInfo;
+  isPaused: boolean;
+}
+
 export interface SandboxMetadata {
   workspaceId?: string;
   conversationId?: string;
@@ -359,24 +364,25 @@ export class NorthflankSandboxClient {
   /**
    * Create a new sandbox.
    *
-   * Returns Err for recoverable errors (service name collision, readiness timeout).
+   * Returns Err for recoverable errors (service ID collision, readiness timeout).
    * Throws for infrastructure failures (API errors, deployment failures).
    */
   async createSandbox(
-    serviceName: string,
+    serviceId: string,
     metadata?: SandboxMetadata
   ): Promise<Result<Sandbox, SandboxError>> {
     const tags = this.buildTags(metadata);
 
     logger.info(
-      { serviceName, image: this.config.baseImage, tags },
+      { serviceId, image: this.config.baseImage, tags },
       "[sandbox] Creating service"
     );
 
+    // Northflank uses name as the service ID for slug-formatted names
     const serviceResponse = await this.api.create.service.deployment({
       parameters: { projectId: this.config.projectId },
       data: {
-        name: serviceName,
+        name: serviceId,
         tags,
         billing: { deploymentPlan: this.config.deploymentPlan },
         deployment: {
@@ -396,28 +402,27 @@ export class NorthflankSandboxClient {
         serviceResponse.error.status === 400 &&
         serviceResponse.error.message === "Service already exists"
       ) {
-        return new Err(new ServiceAlreadyExistsError(serviceName));
+        return new Err(new ServiceAlreadyExistsError(serviceId));
       }
       throw new Error(
         `Failed to create sandbox: ${normalizeError(serviceResponse.error).message}`
       );
     }
 
-    const serviceId = serviceResponse.data.id;
     const createdAt = new Date();
 
     logger.info({ serviceId }, "[sandbox] Service created");
 
-    const volumeName = `${serviceName}-vol`;
+    const volumeId = this.volumeIdForService(serviceId);
     logger.info(
-      { volumeName, sizeMb: this.config.volumeSizeMb },
+      { volumeId, sizeMb: this.config.volumeSizeMb },
       "[sandbox] Creating volume"
     );
 
     const volumeResponse = await this.api.create.volume({
       parameters: { projectId: this.config.projectId },
       data: {
-        name: volumeName,
+        name: volumeId,
         tags,
         mounts: [{ containerMountPath: this.config.volumeMountPath }],
         spec: {
@@ -436,8 +441,6 @@ export class NorthflankSandboxClient {
         `Failed to create volume: ${normalizeError(volumeResponse.error).message}`
       );
     }
-
-    const volumeId = volumeResponse.data.id;
 
     logger.info(
       { serviceId, volumeId },
@@ -469,6 +472,63 @@ export class NorthflankSandboxClient {
 
   attach(info: SandboxInfo): Sandbox {
     return new Sandbox(this.api, this.config, info);
+  }
+
+  /**
+   * Look up an existing sandbox by service ID.
+   *
+   * Returns the sandbox status (info + paused state) if found, null if not found.
+   * Throws for API errors or if service exists but volume is missing.
+   */
+  async getSandbox(serviceId: string): Promise<SandboxStatus | null> {
+    const serviceResponse = await this.api.get.service({
+      parameters: {
+        projectId: this.config.projectId,
+        serviceId,
+      },
+    });
+
+    if (serviceResponse.error) {
+      if (serviceResponse.error.status === 404) {
+        return null;
+      }
+      throw new Error(
+        `Failed to get service: ${normalizeError(serviceResponse.error).message}`
+      );
+    }
+
+    const service = serviceResponse.data;
+
+    const volumeId = this.volumeIdForService(serviceId);
+    const volumeResponse = await this.api.get.volume({
+      parameters: { projectId: this.config.projectId, volumeId },
+    });
+
+    if (volumeResponse.error) {
+      if (volumeResponse.error.status === 404) {
+        throw new Error(
+          `Service "${serviceId}" exists but volume "${volumeId}" not found. ` +
+            `The sandbox may be in an inconsistent state.`
+        );
+      }
+      throw new Error(
+        `Failed to get volume: ${normalizeError(volumeResponse.error).message}`
+      );
+    }
+
+    return {
+      info: {
+        serviceId: service.id,
+        volumeId: volumeResponse.data.id,
+        projectId: this.config.projectId,
+        createdAt: new Date(service.createdAt),
+      },
+      isPaused: service.servicePaused,
+    };
+  }
+
+  private volumeIdForService(serviceId: string): string {
+    return `${serviceId}-vol`;
   }
 
   private buildTags(metadata?: SandboxMetadata): string[] {
