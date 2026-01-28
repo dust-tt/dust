@@ -11,6 +11,7 @@ import { UserResource } from "@app/lib/resources/user_resource";
 import { getSpaceRoute } from "@app/lib/utils/router";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 
 const ProjectAddedAsMemberPayloadSchema = z.object({
   workspaceId: z.string(),
@@ -21,8 +22,6 @@ const ProjectAddedAsMemberPayloadSchema = z.object({
 type ProjectAddedAsMemberPayloadType = z.infer<
   typeof ProjectAddedAsMemberPayloadSchema
 >;
-
-const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID = "project-added-as-member";
 
 const ProjectDetailsSchema = z.object({
   projectName: z.string(),
