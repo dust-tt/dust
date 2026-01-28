@@ -100,7 +100,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     }: {
       extraConfig: ExtraConfigType;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
@@ -112,6 +112,6 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
         .join("\n");
     }
 
-    return restConfig;
+    return new Ok(restConfig);
   }
 }

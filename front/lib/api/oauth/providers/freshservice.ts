@@ -204,7 +204,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<ExtraConfigType> {
+  ): Promise<Result<ExtraConfigType, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -219,10 +219,11 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "A workspace admin must first connect this tool at the workspace level before users can connect their personal accounts. Please contact your workspace administrator to set up the workspace connection.",
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -230,20 +231,23 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "connection_creation_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+          });
         }
         const connection = connectionRes.value.connection;
 
-        return {
+        return new Ok({
           ...restConfig,
           freshservice_domain: connection.metadata.freshservice_domain,
           freshworks_org_url: connection.metadata.freshworks_org_url,
-        };
+        });
       }
     }
 
-    return extraConfig;
+    return new Ok(extraConfig);
   }
 }
