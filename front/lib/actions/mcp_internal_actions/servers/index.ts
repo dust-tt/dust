@@ -6,7 +6,6 @@ import { default as confluenceServer } from "@app/lib/actions/mcp_internal_actio
 import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as freshserviceServer } from "@app/lib/actions/mcp_internal_actions/servers/freshservice";
-import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/servers/front";
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
@@ -36,6 +35,7 @@ import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/ser
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
+import { default as frontServer } from "@app/lib/api/actions/servers/front";
 import { default as githubServer } from "@app/lib/api/actions/servers/github";
 import { default as gmailServer } from "@app/lib/api/actions/servers/gmail";
 import { default as calendarServer } from "@app/lib/api/actions/servers/google_calendar";
