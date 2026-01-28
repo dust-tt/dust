@@ -1,6 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
@@ -474,9 +473,7 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: null,
       icon: "ActionFrameIcon",
       documentationUrl: null,
-      // Will be removed as soon as we add the ability to add skills to global agents.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
+      instructions: null,
     },
   },
   outlook: {
