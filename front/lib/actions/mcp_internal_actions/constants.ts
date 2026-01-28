@@ -17,6 +17,7 @@ import {
   AGENT_ROUTER_SERVER,
   AGENT_ROUTER_SERVER_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
+import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
@@ -30,6 +31,7 @@ import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
 import { MISSING_ACTION_CATCHER_SERVER } from "@app/lib/api/actions/servers/missing_action_catcher/metadata";
+import { MONDAY_SERVER } from "@app/lib/api/actions/servers/monday/metadata";
 import { NOTION_SERVER } from "@app/lib/api/actions/servers/notion/metadata";
 import { OPENAI_USAGE_SERVER } from "@app/lib/api/actions/servers/openai_usage/metadata";
 import { PRIMITIVE_TYPES_DEBUGGER_SERVER } from "@app/lib/api/actions/servers/primitive_types_debugger/metadata";
@@ -426,52 +428,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("monday_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      // Read operations
-      get_boards: "never_ask",
-      get_board_items: "never_ask",
-      get_item_details: "never_ask",
-      search_items: "never_ask",
-      get_items_by_column_value: "never_ask",
-      find_user_by_name: "never_ask",
-      get_board_values: "never_ask",
-      get_column_values: "never_ask",
-      get_file_column_values: "never_ask",
-      get_group_details: "never_ask",
-      get_subitem_values: "never_ask",
-      get_user_details: "never_ask",
-
-      // Write operations - High stakes
-      create_item: "high",
-      update_item: "high",
-      update_item_name: "high",
-      create_update: "high",
-      create_board: "high",
-      create_column: "high",
-      create_group: "high",
-      create_subitem: "high",
-      update_subitem: "high",
-      duplicate_group: "high",
-      upload_file_to_column: "high",
-      delete_item: "high",
-      delete_group: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "monday",
-      version: "1.0.0",
-      description: "Manage project boards, items and updates.",
-      authorization: {
-        provider: "monday" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "MondayLogo",
-      documentationUrl:
-        "https://developer.monday.com/api-reference/docs/introduction-to-graphql",
-      instructions: null,
-    },
+    metadata: MONDAY_SERVER,
   },
   agent_memory: {
     id: 21,
@@ -961,26 +921,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("ashby_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      search_candidates: "never_ask",
-      get_report_data: "never_ask",
-      get_interview_feedback: "never_ask",
-      get_candidate_notes: "never_ask",
-      create_candidate_note: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "ashby",
-      version: "1.0.0",
-      description: "Access and manage Ashby ATS data.",
-      authorization: null,
-      icon: "AshbyLogo",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: ASHBY_SERVER,
   },
   salesloft: {
     id: 41,

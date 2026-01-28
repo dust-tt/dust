@@ -73,7 +73,7 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
         .enum(OUTPUT_FORMATS)
         .describe("The format of the output file."),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Converting file",
       done: "Convert file",
@@ -101,7 +101,7 @@ export const FILE_GENERATION_TOOLS_METADATA = createToolsRecord({
           "The format of the input content. Use 'markdown' for markdown-formatted text, 'html' for HTML content, or 'text' for plain text (default)."
         ),
     },
-    stake: "low",
+    stake: "never_ask",
     displayLabels: {
       running: "Generating file",
       done: "Generate file",

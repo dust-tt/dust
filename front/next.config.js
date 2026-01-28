@@ -408,35 +408,76 @@ const config = {
       });
     }
 
-    return [
+    const result = [
       {
         source: "/:path*", // Match all paths
         headers,
       },
     ];
+
+    // Add CORS headers for API routes in development (for Vite SPA on localhost:3010)
+    if (isDev) {
+      result.push({
+        source: "/api/:path*",
+        headers: [
+          {
+            key: "Access-Control-Allow-Origin",
+            value: "http://localhost:3010",
+          },
+          {
+            key: "Access-Control-Allow-Methods",
+            value: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+          },
+          {
+            key: "Access-Control-Allow-Headers",
+            value: "Content-Type, Authorization, X-Commit-Hash",
+          },
+          { key: "Access-Control-Allow-Credentials", value: "true" },
+        ],
+      });
+    }
+
+    return result;
   },
   async rewrites() {
-    return [
-      // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
-      // endpoints on the public API.
-      {
-        source: "/api/v1/w/:wId/vaults/:vId/:path*",
-        destination: "/api/v1/w/:wId/spaces/:vId/:path*",
-      },
-      {
-        source: "/api/v1/w/:wId/vaults",
-        destination: "/api/v1/w/:wId/spaces",
-      },
-      // Posthog tracking - endpoint name called "subtle1"
-      {
-        source: "/subtle1/static/:path*",
-        destination: "https://eu-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/subtle1/:path*",
-        destination: "https://eu.i.posthog.com/:path*",
-      },
-    ];
+    return {
+      beforeFiles: [
+        // SPA catch-all: serve index.html for all /spa/* routes (client-side routing)
+        // This must be beforeFiles to take precedence over static file serving
+        {
+          source: "/spa/:path*",
+          destination: "/spa/poke.html",
+          has: [
+            {
+              type: "header",
+              key: "accept",
+              value: ".*text/html.*",
+            },
+          ],
+        },
+      ],
+      afterFiles: [
+        // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
+        // endpoints on the public API.
+        {
+          source: "/api/v1/w/:wId/vaults/:vId/:path*",
+          destination: "/api/v1/w/:wId/spaces/:vId/:path*",
+        },
+        {
+          source: "/api/v1/w/:wId/vaults",
+          destination: "/api/v1/w/:wId/spaces",
+        },
+        // Posthog tracking - endpoint name called "subtle1"
+        {
+          source: "/subtle1/static/:path*",
+          destination: "https://eu-assets.i.posthog.com/static/:path*",
+        },
+        {
+          source: "/subtle1/:path*",
+          destination: "https://eu.i.posthog.com/:path*",
+        },
+      ],
+    };
   },
   webpack(config, { dev, isServer }) {
     if (process.env.BUILD_WITH_SOURCE_MAPS === "true" && !dev) {
