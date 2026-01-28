@@ -15,6 +15,7 @@ import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -30,10 +31,11 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
 import {
+  assertNever,
   Err,
   Ok,
+  PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
-  removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
 
@@ -42,10 +44,13 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
   space: SpaceResource,
   force?: boolean
 ) {
-  assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(
     space.isRegular() || space.isProject(),
     "Cannot delete spaces that are not regular or project."
+  );
+  assert(
+    space.canAdministrate(auth),
+    "Only project editors or workspace admins can delete project spaces."
   );
 
   const usages: AgentsUsageType[] = [];
@@ -331,9 +336,25 @@ export async function createSpaceAndGroup(
 ): Promise<
   Result<
     SpaceResource,
-    DustError<"limit_reached" | "space_already_exists" | "internal_error">
+    DustError<
+      | "limit_reached"
+      | "space_already_exists"
+      | "internal_error"
+      | "unauthorized"
+    >
   >
 > {
+  // Check permissions based on space kind
+  // Projects can be created by any workspace member
+  // Regular spaces require admin permissions
+  if (params.spaceKind !== "project" && !auth.isAdmin()) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Only users that are `admins` can create regular spaces."
+      )
+    );
+  }
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
@@ -355,8 +376,14 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, spaceKind } = params;
-    const managementMode = isRestricted ? params.managementMode : "manual";
+    const { name, isRestricted, spaceKind, managementMode } = params;
+    if (spaceKind === "regular" && !isRestricted) {
+      assert(
+        managementMode === "manual",
+        "Unrestricted regular spaces must use manual management mode."
+      );
+    }
+
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
@@ -369,21 +396,24 @@ export async function createSpaceAndGroup(
 
     const membersGroup = await GroupResource.makeNew(
       {
-        name: `${SPACE_GROUP_PREFIX} ${name}`,
+        name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
         kind: "regular",
       },
       { transaction: t }
     );
 
-    const globalGroupRes = isRestricted
-      ? null
-      : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-    const memberGroups = removeNulls([
-      membersGroup,
-      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-    ]);
+    let globalGroup: GroupResource | null = null;
+    if (!isRestricted) {
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      assert(globalGroupRes.isOk(), "Failed to fetch the global group.");
+      globalGroup = globalGroupRes.value;
+      assert(
+        globalGroup !== null,
+        "Global group must exist for non-restricted spaces."
+      );
+    }
 
     // Create the editor group for projects and add the creator
     const editorGroups: GroupResource[] = [];
@@ -391,7 +421,7 @@ export async function createSpaceAndGroup(
       const creator = auth.getNonNullableUser();
       const editorGroup = await GroupResource.makeNew(
         {
-          name: `${PROJECT_GROUP_PREFIX} ${name}`,
+          name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
           kind: "space_editors",
         },
@@ -407,64 +437,89 @@ export async function createSpaceAndGroup(
         managementMode,
         workspaceId: owner.id,
       },
-      { members: memberGroups, editors: editorGroups },
+      { members: [membersGroup], editors: editorGroups },
       t
     );
 
-    // Handle member-based space creation
-    if ("memberIds" in params && params.memberIds) {
-      const users = (await UserResource.fetchByIds(params.memberIds)).map(
-        (user) => user.toJSON()
+    if (!isRestricted) {
+      // Set the global group as viewer for non-restricted project spaces
+      assert(globalGroup, "Global group must exist");
+      await GroupSpaceModel.create(
+        {
+          kind: space.isProject() ? "project_viewer" : "member",
+          groupId: globalGroup.id,
+          vaultId: space.id,
+          workspaceId: owner.id,
+        },
+        {
+          transaction: t,
+        }
       );
-      const groupsResult = await membersGroup.addMembers(auth, {
-        users,
-        transaction: t,
-      });
-      if (groupsResult.isErr()) {
-        logger.error(
-          {
-            error: groupsResult.error,
-          },
-          "The space cannot be created - group members could not be added"
-        );
-
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
-        );
-      }
     }
 
-    // Handle group-based space creation
-    if ("groupIds" in params && params.groupIds.length > 0) {
-      // For group-based spaces, we need to associate the selected groups with the space
-      const selectedGroupsResult = await GroupResource.fetchByIds(
-        auth,
-        params.groupIds
-      );
-      if (selectedGroupsResult.isErr()) {
-        logger.error(
-          {
-            error: selectedGroupsResult.error,
-          },
-          "The space cannot be created - failed to fetch groups"
+    // Handle member-based space creation
+    switch (managementMode) {
+      case "manual":
+        if (spaceKind === "project") {
+          assert(
+            params.memberIds.length === 0,
+            "Cannot add members to projects on creation."
+          );
+          break;
+        }
+        // Add members to the member group in regular spaces
+        const users = (await UserResource.fetchByIds(params.memberIds)).map(
+          (user) => user.toJSON()
         );
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
-        );
-      }
+        const groupsResult = await membersGroup.addMembers(auth, {
+          users,
+          transaction: t,
+        });
+        if (groupsResult.isErr()) {
+          logger.error(
+            {
+              error: groupsResult.error,
+            },
+            "Failed to add members to the member group"
+          );
+          return new Err(
+            new DustError("internal_error", "The space cannot be created.")
+          );
+        }
+        break;
 
-      const selectedGroups = selectedGroupsResult.value;
-      for (const selectedGroup of selectedGroups) {
-        await GroupSpaceModel.create(
-          {
-            groupId: selectedGroup.id,
-            vaultId: space.id,
-            workspaceId: space.workspaceId,
-            kind: "member",
-          },
-          { transaction: t }
-        );
-      }
+      // Handle group-based space creation
+      case "group":
+        // For group-based spaces, we need to associate the selected groups with the space
+        if (params.groupIds.length > 0) {
+          const selectedGroupsResult = await GroupResource.fetchByIds(
+            auth,
+            params.groupIds
+          );
+          if (selectedGroupsResult.isErr()) {
+            logger.error(
+              {
+                error: selectedGroupsResult.error,
+              },
+              "The space cannot be created - failed to fetch groups"
+            );
+            return new Err(
+              new DustError("internal_error", "The space cannot be created.")
+            );
+          }
+
+          const selectedGroups = selectedGroupsResult.value;
+          for (const selectedGroup of selectedGroups) {
+            await GroupSpaceMemberResource.makeNew(auth, {
+              group: selectedGroup,
+              space,
+              transaction: t,
+            });
+          }
+        }
+        break;
+      default:
+        assertNever(managementMode);
     }
 
     // Create empty project metadata for project spaces
