@@ -11,14 +11,7 @@ export const getServerSideProps = pokeGetServerSideProps;
 const Page = MCPServerViewPage as PageWithLayout;
 
 Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
-  return (
-    <PokeLayout
-      title={`${pageProps.workspace?.name ?? "Workspace"} - MCP Server View`}
-      authContext={pageProps}
-    >
-      {page}
-    </PokeLayout>
-  );
+  return <PokeLayout authContext={pageProps}>{page}</PokeLayout>;
 };
 
 export default Page;

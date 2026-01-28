@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeForm,
   PokeFormControl,
@@ -337,6 +338,9 @@ function SchemaFormField({
 }
 
 export function EmailTemplatesPage() {
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(() => setPageTitle("Email Templates"), [setPageTitle]);
+
   const [selectedTemplateId, setSelectedTemplateId] =
     useState<string>("default");
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">(

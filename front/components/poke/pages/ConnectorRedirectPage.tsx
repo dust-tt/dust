@@ -2,10 +2,14 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 import useSWR from "swr";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { fetcher } from "@app/lib/swr/swr";
 
 export function ConnectorRedirectPage() {
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(() => setPageTitle("Connector Redirect"), [setPageTitle]);
+
   const connectorId = useRequiredPathParam("connectorId");
   const router = useAppRouter();
 

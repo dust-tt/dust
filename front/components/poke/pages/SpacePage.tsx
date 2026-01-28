@@ -1,9 +1,11 @@
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -11,6 +13,12 @@ import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
 
 export function SpacePage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Space`),
+    [setPageTitle, owner.name]
+  );
+
   const spaceId = useRequiredPathParam("spaceId");
   const {
     data: spaceDetails,

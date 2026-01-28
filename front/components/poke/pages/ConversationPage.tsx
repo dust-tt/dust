@@ -22,6 +22,7 @@ import {
 import { CodeBracketIcon, DocumentTextIcon } from "@heroicons/react/24/outline";
 import { useEffect, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -291,6 +292,12 @@ const ContentFragmentView = ({ message }: ContentFragmentViewProps) => {
 
 export function ConversationPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Conversation`),
+    [setPageTitle, owner.name]
+  );
+
   const conversationId = useRequiredPathParam("cId");
   const {
     data: conversationConfig,

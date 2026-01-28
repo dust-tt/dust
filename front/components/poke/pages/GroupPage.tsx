@@ -1,13 +1,21 @@
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeGroupDetails } from "@app/poke/swr/group_details";
 
 export function GroupPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Group`),
+    [setPageTitle, owner.name]
+  );
+
   const groupId = useRequiredPathParam("groupId");
   const {
     data: groupDetails,

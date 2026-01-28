@@ -7,9 +7,11 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
+import { useEffect } from "react";
 
 import { ViewAppTable } from "@app/components/poke/apps/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
@@ -25,6 +27,12 @@ import type {
 
 export function AppPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - App`),
+    [setPageTitle, owner.name]
+  );
+
   const appId = useRequiredPathParam("appId");
   const hash = useSearchParam("hash");
   const {

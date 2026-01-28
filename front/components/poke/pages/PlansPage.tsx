@@ -8,9 +8,10 @@ import {
   XMarkIcon,
 } from "@dust-tt/sparkle";
 import type * as t from "io-ts";
-import React from "react";
+import React, { useEffect } from "react";
 import { useSWRConfig } from "swr";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import type { EditingPlanType } from "@app/components/poke/plans/form";
 import {
   Field,
@@ -26,6 +27,9 @@ import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
 import type { PlanType } from "@app/types";
 
 export function PlansPage() {
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(() => setPageTitle("Plans"), [setPageTitle]);
+
   const { mutate } = useSWRConfig();
 
   const sendNotification = useSendNotification();

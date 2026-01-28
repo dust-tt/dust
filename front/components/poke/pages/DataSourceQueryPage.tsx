@@ -6,8 +6,9 @@ import {
   Spinner,
   TextArea,
 } from "@dust-tt/sparkle";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -247,6 +248,12 @@ function QueryContent({ owner, dataSource }: QueryContentProps) {
 
 export function DataSourceQueryPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Query`),
+    [setPageTitle, owner.name]
+  );
+
   const dsId = useRequiredPathParam("dsId");
   const {
     data: dataSourceDetails,

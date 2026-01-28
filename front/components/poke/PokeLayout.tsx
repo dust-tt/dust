@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useMemo, useState } from "react";
 
 import PokeNavbar from "@app/components/poke/PokeNavbar";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
@@ -15,26 +15,45 @@ export interface PokeLayoutProps {
   currentRegion: RegionType;
 }
 
-const PokePageTitleContext = createContext<string>("");
+interface PokePageTitleContextValue {
+  title: string;
+  setTitle: (title: string) => void;
+}
+
+const PokePageTitleContext = createContext<PokePageTitleContextValue>({
+  title: "Poke",
+  setTitle: () => {},
+});
 
 export function usePokePageTitle() {
-  return useContext(PokePageTitleContext);
+  return useContext(PokePageTitleContext).title;
+}
+
+export function useSetPokePageTitle() {
+  return useContext(PokePageTitleContext).setTitle;
 }
 
 // Layout for workspace-scoped poke pages (uses AuthContext).
 export default function PokeLayout({
   children,
-  title,
+  title: initialTitle,
   authContext,
 }: {
   children: React.ReactNode;
-  title: string;
+  title?: string;
   authContext: AuthContextValue;
 }) {
+  const [title, setTitle] = useState(initialTitle ?? "Poke");
+
+  const titleContextValue = useMemo(
+    () => ({ title, setTitle }),
+    [title, setTitle]
+  );
+
   return (
     <AuthContext.Provider value={authContext}>
       <ThemeProvider>
-        <PokePageTitleContext.Provider value={title}>
+        <PokePageTitleContext.Provider value={titleContextValue}>
           <Head>
             <title>{"Poke - " + title}</title>
           </Head>
@@ -48,17 +67,24 @@ export default function PokeLayout({
 // Layout for global poke pages without workspace (uses AuthContextNoWorkspace).
 export function PokeLayoutNoWorkspace({
   children,
-  title,
+  title: initialTitle,
   authContext,
 }: {
   children: React.ReactNode;
-  title: string;
+  title?: string;
   authContext: AuthContextNoWorkspaceValue;
 }) {
+  const [title, setTitle] = useState(initialTitle ?? "Poke");
+
+  const titleContextValue = useMemo(
+    () => ({ title, setTitle }),
+    [title, setTitle]
+  );
+
   return (
     <AuthContextNoWorkspace.Provider value={authContext}>
       <ThemeProvider>
-        <PokePageTitleContext.Provider value={title}>
+        <PokePageTitleContext.Provider value={titleContextValue}>
           <Head>
             <title>{"Poke - " + title}</title>
           </Head>

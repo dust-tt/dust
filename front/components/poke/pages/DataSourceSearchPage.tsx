@@ -1,6 +1,7 @@
 import { Input, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
@@ -11,6 +12,12 @@ import type { DocumentType } from "@app/types";
 
 export function DataSourceSearchPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Search`),
+    [setPageTitle, owner.name]
+  );
+
   const dsId = useRequiredPathParam("dsId");
   const [searchQuery, setSearchQuery] = useState("");
   const [tagsIn, setTagsIn] = useState("");

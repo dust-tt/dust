@@ -19,6 +19,7 @@ import { useEffect, useState } from "react";
 
 import { ViewDataSourceTable } from "@app/components/poke/data_sources/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PokePermissionTree } from "@app/components/poke/PokeConnectorPermissionsTree";
 import { SlackChannelPatternInput } from "@app/components/poke/PokeSlackChannelPatternInput";
 import {
@@ -886,6 +887,12 @@ const ConfigToggle = ({
 
 export function DataSourcePage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Data Source`),
+    [setPageTitle, owner.name]
+  );
+
   const dsId = useRequiredPathParam("dsId");
   const router = useAppRouter();
 

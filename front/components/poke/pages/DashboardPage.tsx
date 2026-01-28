@@ -8,7 +8,9 @@ import {
 import { UsersIcon } from "lucide-react";
 import moment from "moment";
 import type { ChangeEvent } from "react";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 
 import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
 import {
@@ -104,6 +106,9 @@ const renderWorkspaces = (title: string, workspaces: PokeWorkspaceType[]) => (
 );
 
 export function DashboardPage() {
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(() => setPageTitle("Home"), [setPageTitle]);
+
   const {
     workspaces: upgradedWorkspaces,
     isWorkspacesLoading: isUpgradedWorkspacesLoading,

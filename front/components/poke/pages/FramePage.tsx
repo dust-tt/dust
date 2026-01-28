@@ -9,13 +9,21 @@ import {
   Spinner,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeFileDetails } from "@app/poke/swr/frame_details";
 
 export function FramePage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - File`),
+    [setPageTitle, owner.name]
+  );
+
   const sId = useRequiredPathParam("sId");
   const { file, content, isFileLoading, isFileError } = usePokeFileDetails({
     owner,

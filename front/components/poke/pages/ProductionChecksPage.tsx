@@ -10,8 +10,9 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -491,6 +492,9 @@ function ProductionCheckCard({
 }
 
 export function ProductionChecksPage() {
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(() => setPageTitle("Production Checks"), [setPageTitle]);
+
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();
   const { runCheck, isCheckRunning } = useRunProductionCheck();

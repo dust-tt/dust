@@ -14,8 +14,10 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
+import { useEffect } from "react";
 
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
@@ -28,6 +30,12 @@ import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export function AssistantDetailsPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Assistants`),
+    [setPageTitle, owner.name]
+  );
+
   const aId = useRequiredPathParam("aId");
   const { isDark } = useTheme();
 

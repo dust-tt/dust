@@ -1,7 +1,9 @@
 import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
+import { useEffect } from "react";
 
 import { ConversationDataTable } from "@app/components/poke/conversation/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { PokeRecentWebhookRequests } from "@app/components/poke/triggers/RecentWebhookRequests";
 import { ViewTriggerTable } from "@app/components/poke/triggers/view";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
@@ -10,6 +12,12 @@ import { usePokeTriggerDetails } from "@app/poke/swr/trigger_details";
 
 export function TriggerDetailsPage() {
   const owner = useWorkspace();
+  const setPageTitle = useSetPokePageTitle();
+  useEffect(
+    () => setPageTitle(`${owner.name} - Trigger`),
+    [setPageTitle, owner.name]
+  );
+
   const triggerId = useRequiredPathParam("triggerId");
   const {
     data: triggerDetails,
