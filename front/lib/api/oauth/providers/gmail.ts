@@ -143,7 +143,6 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
     auth: Authenticator,
     {
       extraConfig,
-
       useCase,
     }: {
       extraConfig: ExtraConfigType;
