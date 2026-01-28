@@ -99,7 +99,7 @@ export class Sandbox {
   }
 
   private get serviceParams() {
-    return { projectId: this.config.projectId, serviceId: this.info.serviceId };
+    return { projectId: this.info.projectId, serviceId: this.info.serviceId };
   }
 
   async pause(): Promise<void> {
@@ -197,12 +197,12 @@ export class Sandbox {
   }
 
   async destroy(): Promise<void> {
-    const { serviceId, volumeId } = this.info;
+    const { serviceId, volumeId, projectId } = this.info;
 
     logger.info({ serviceId, volumeId }, "[sandbox] Destroying");
 
     const serviceResponse = await this.api.delete.service({
-      parameters: { projectId: this.config.projectId, serviceId },
+      parameters: { projectId, serviceId },
     });
 
     // Treat 404 as success (already deleted).
@@ -213,7 +213,7 @@ export class Sandbox {
     }
 
     const volumeResponse = await this.api.delete.volume({
-      parameters: { projectId: this.config.projectId, volumeId },
+      parameters: { projectId, volumeId },
     });
 
     // Treat 404 as success (already deleted).
@@ -259,7 +259,7 @@ export class Sandbox {
       const { status } = response.data;
       const deploymentStatus = status?.deployment?.status;
 
-      if (deploymentStatus === "COMPLETED") {
+      if (deploymentStatus === "COMPLETED" && !response.data.servicePaused) {
         logger.info({ serviceId: this.info.serviceId }, "[sandbox] Service ready");
         return new Ok(undefined);
       }
