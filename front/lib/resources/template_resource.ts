@@ -23,7 +23,8 @@ import { Err, normalizeError, Ok } from "@app/types";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface TemplateResource extends ReadonlyAttributesType<TemplateModel> {}
+export interface TemplateResource
+  extends ReadonlyAttributesType<TemplateModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class TemplateResource extends BaseResource<TemplateModel> {
@@ -81,7 +82,9 @@ export class TemplateResource extends BaseResource<TemplateModel> {
 
   static async listAll({
     visibility,
-  }: { visibility?: TemplateVisibility } = {}) {
+  }: {
+    visibility?: TemplateVisibility;
+  } = {}) {
     const where: WhereOptions<TemplateModel> = {};
     if (visibility) {
       where.visibility = visibility;

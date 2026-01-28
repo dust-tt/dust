@@ -170,28 +170,28 @@ describe("AgentSuggestionResource", () => {
       "approved",
       "rejected",
       "outdated",
-    ])(
-      "should update a suggestion state to %s",
-      async (newState: "approved" | "rejected" | "outdated") => {
-        const suggestion = await AgentSuggestionFactory.createInstructions(
-          authenticator,
-          agentConfiguration,
-          {
-            suggestion: { oldString: "old", newString: "new" },
-          }
-        );
+    ])("should update a suggestion state to %s", async (newState:
+      | "approved"
+      | "rejected"
+      | "outdated") => {
+      const suggestion = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: { oldString: "old", newString: "new" },
+        }
+      );
 
-        expect(suggestion.state).toBe("pending");
+      expect(suggestion.state).toBe("pending");
 
-        await suggestion.updateState(authenticator, newState);
+      await suggestion.updateState(authenticator, newState);
 
-        const fetched = await AgentSuggestionResource.fetchById(
-          authenticator,
-          suggestion.sId
-        );
-        expect(fetched?.state).toBe(newState);
-      }
-    );
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched?.state).toBe(newState);
+    });
 
     it("should fail to update state when user is not an editor of the agent", async () => {
       const suggestion = await AgentSuggestionFactory.createInstructions(

@@ -45,8 +45,9 @@ describe("agent_copilot_agent_state tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return null (no agent config ID).
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("get_agent_info");
@@ -64,8 +65,9 @@ describe("agent_copilot_agent_state tools", () => {
       const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
       // Mock the helper to return a non-existent agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "non-existent-agent-id"
       );
@@ -97,8 +99,9 @@ describe("agent_copilot_agent_state tools", () => {
       });
 
       // Mock the helper to return the agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agent.sId
       );
@@ -155,8 +158,9 @@ describe("agent_copilot_agent_state tools", () => {
       });
 
       // Mock the helper to return the agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agent.sId
       );
@@ -200,8 +204,9 @@ describe("agent_copilot_agent_state tools", () => {
       });
 
       // Mock the helper to return the agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agent.sId
       );

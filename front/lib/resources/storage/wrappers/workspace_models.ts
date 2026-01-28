@@ -69,9 +69,8 @@ const TEMPORARY_WHITELISTED_MODELS_FOR_WORKSPACE_ISOLATION_BYPASS = [
 ];
 
 // Define a custom FindOptions extension with the skipWorkspaceCheck flag.
-interface WorkspaceTenantIsolationSecurityBypassOptions<
-  T,
-> extends FindOptions<T> {
+interface WorkspaceTenantIsolationSecurityBypassOptions<T>
+  extends FindOptions<T> {
   /**
    * When true, BYPASSES CRITICAL TENANT ISOLATION SECURITY for this query.
    *

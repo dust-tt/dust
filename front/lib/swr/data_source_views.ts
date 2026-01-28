@@ -78,8 +78,9 @@ export function useMultipleDataSourceViewsContentNodes({
   // We need to return an invalidation function to avoid stale data.
   invalidate: () => void;
 } {
-  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] =
-    useState<DataSourceViewsAndNodes[]>(emptyArray());
+  const [dataSourceViewsAndNodes, setDataSourceViewsAndNodes] = useState<
+    DataSourceViewsAndNodes[]
+  >(emptyArray());
   const [isNodesLoading, setIsNodesLoading] = useState(false);
   const [isNodesError, setIsNodesError] = useState(false);
 

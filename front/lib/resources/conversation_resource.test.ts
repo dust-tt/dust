@@ -895,8 +895,9 @@ describe("listConversationsForUser", () => {
 
   it("should return conversations with populated participation data", async () => {
     // First, get the raw participation data from the database to compare
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
     const participation = await ConversationParticipantModel.findOne({
       where: {
         conversationId: (await ConversationResource.fetchById(
@@ -1004,8 +1005,9 @@ describe("listConversationsForUser", () => {
 
   describe("onlyUnread filter", () => {
     it("should return only unread conversations when onlyUnread is true", async () => {
-      const { ConversationParticipantModel } =
-        await import("@app/lib/models/agent/conversation");
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
 
       // Create two more conversations
       const unreadConvo = await ConversationFactory.create(adminAuth, {
@@ -1107,8 +1109,9 @@ describe("listConversationsForUser", () => {
 
     it("should return empty array when onlyUnread is true but user has no unread conversations", async () => {
       // Mark all conversations as read
-      const { ConversationParticipantModel } =
-        await import("@app/lib/models/agent/conversation");
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
 
       const conversation = await ConversationResource.fetchById(
         adminAuth,
@@ -1282,8 +1285,9 @@ describe("listConversationsForUser", () => {
 
   describe("combined filters", () => {
     it("should filter by both onlyUnread and kind when both are specified", async () => {
-      const { ConversationParticipantModel } =
-        await import("@app/lib/models/agent/conversation");
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
 
       // Create a space
       const space = await SpaceFactory.regular(workspace);
@@ -3045,8 +3049,9 @@ describe("markAsActionRequired", () => {
   });
 
   it("should set actionRequired to true for the user's participant", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
 
     // Create a participant first
     await ConversationResource.upsertParticipation(auth, {
@@ -3090,8 +3095,9 @@ describe("markAsActionRequired", () => {
   });
 
   it("should update actionRequired even when it's already true", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
 
     // Create a participant with actionRequired already set to true
     await ConversationResource.upsertParticipation(auth, {
@@ -3142,8 +3148,9 @@ describe("markAsActionRequired", () => {
   });
 
   it("should only update the specific user's participant", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
     const workspace = auth.getNonNullableWorkspace();
 
     await GroupResource.makeDefaultsForWorkspace(workspace);
@@ -3756,8 +3763,9 @@ describe("ConversationResource.isConversationCreator", () => {
   });
 
   it("should return error when conversation has no participants", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
 
     const conversationResource = await ConversationResource.fetchById(
       auth,

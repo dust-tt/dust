@@ -42,7 +42,10 @@ type NextHandler = (
 export const createPublicApiMockRequest = async ({
   systemKey = false,
   method = "GET",
-}: { systemKey?: boolean; method?: RequestMethod } = {}) => {
+}: {
+  systemKey?: boolean;
+  method?: RequestMethod;
+} = {}) => {
   const workspace = await WorkspaceFactory.basic();
   const { globalGroup, systemGroup } = await GroupFactory.defaults(workspace);
   const key = systemKey
