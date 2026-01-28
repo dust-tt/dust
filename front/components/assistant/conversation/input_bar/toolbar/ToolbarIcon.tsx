@@ -21,7 +21,7 @@ export function ToolbarIcon({
 }: ToolbarIconProps) {
   const isMobile = useIsMobile();
   const shortcutLabel = useKeyboardShortcutLabel(shortcut);
-  const buttonSize = isMobile ? "xs" : "mini";
+  const buttonSize = isMobile ? "xs" : "icon";
 
   let tooltipText = tooltip;
   if (isMobile) {

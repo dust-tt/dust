@@ -437,7 +437,12 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+    <div
+      className={cn(
+        "absolute top-[80%] flex flex-wrap items-center gap-1",
+        reactionsEnabled ? "left-2.5" : "right-2.5"
+      )}
+    >
       {!isDeleted && reactionsEnabled && (
         <>
           <MessageReactions
@@ -462,7 +467,7 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="xs"
+              size="icon-xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(
