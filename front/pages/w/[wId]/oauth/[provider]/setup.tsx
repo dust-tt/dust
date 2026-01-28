@@ -95,7 +95,7 @@ export default function OAuthSetup({
         const channel = new BroadcastChannel("oauth_finalize");
         channel.postMessage(messageData);
         setTimeout(() => channel.close(), 100);
-      } catch (e) {
+      } catch {
         // BroadcastChannel not supported or failed — nothing more we can do.
       }
     }
