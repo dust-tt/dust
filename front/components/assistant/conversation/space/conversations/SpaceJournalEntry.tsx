@@ -22,6 +22,7 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
     useProjectJournalEntries({
       workspaceId: owner.sId,
       spaceId: space.sId,
+      spaceKind: space.kind,
       limit: 1,
     });
 

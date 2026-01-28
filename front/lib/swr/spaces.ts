@@ -959,27 +959,32 @@ export function useUpdateProjectMetadata({
 export function useProjectJournalEntries({
   workspaceId,
   spaceId,
+  spaceKind,
   limit = 1,
   disabled = false,
 }: {
   workspaceId: string;
   spaceId: string | null;
+  spaceKind: SpaceKind | null;
   limit?: number;
   disabled?: boolean;
 }) {
   const journalEntriesFetcher: Fetcher<GetProjectJournalEntriesResponseBody> =
     fetcher;
 
+  // Only fetch journal entries for project spaces.
+  const isDisabled = disabled || spaceId === null || spaceKind !== "project";
+
   const { data, error, mutate } = useSWRWithDefaults(
     `/api/w/${workspaceId}/spaces/${spaceId}/project_journal_entries?limit=${limit}`,
     journalEntriesFetcher,
-    { disabled: disabled || spaceId === null }
+    { disabled: isDisabled }
   );
 
   return {
     journalEntries: data?.entries ?? emptyArray(),
     latestJournalEntry: data?.entries?.[0] ?? null,
-    isJournalEntriesLoading: !error && !data && !disabled,
+    isJournalEntriesLoading: !error && !data && !isDisabled,
     isJournalEntriesError: error,
     mutateJournalEntries: mutate,
   };
