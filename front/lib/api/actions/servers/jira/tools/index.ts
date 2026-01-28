@@ -312,7 +312,9 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(`Error retrieving issue types: ${error}`)
+            new MCPError(
+              `Error retrieving issue types: ${normalizeError(error).message}`
+            )
           );
         }
       },
@@ -347,7 +349,9 @@ const handlers: ToolHandlers<typeof JIRA_TOOLS_METADATA> = {
           ]);
         } catch (error) {
           return new Err(
-            new MCPError(`Error retrieving issue fields: ${error}`)
+            new MCPError(
+              `Error retrieving issue fields: ${normalizeError(error).message}`
+            )
           );
         }
       },
