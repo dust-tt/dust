@@ -569,10 +569,7 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.suggestions).toHaveLength(1);
-          expect(parsed.suggestions[0].sId).toBeDefined();
+          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
         }
       }
     });
@@ -629,9 +626,7 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.sId).toBeDefined();
+          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
         }
       }
     });
@@ -687,9 +682,7 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.sId).toBeDefined();
+          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
         }
       }
     });
@@ -746,9 +739,7 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.sId).toBeDefined();
+          expect(content.text).toContain(":agentMessageSuggestion[]{sId=");
         }
       }
     });
