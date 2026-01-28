@@ -21,7 +21,6 @@ import { default as microsoftTeamsServer } from "@app/lib/actions/mcp_internal_a
 import { default as mondayServer } from "@app/lib/actions/mcp_internal_actions/servers/monday";
 import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
 import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
-import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
@@ -56,6 +55,7 @@ import { default as missingActionCatcherServer } from "@app/lib/api/actions/serv
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
+import { default as productboardServer } from "@app/lib/api/actions/servers/productboard";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
