@@ -33,7 +33,7 @@ export const pokeGetServerSideProps =
       props: {
         workspace,
         subscription,
-        user: auth.user()?.toJSON() ?? null,
+        user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
         isSuperUser: true,
