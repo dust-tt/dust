@@ -33,16 +33,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
         with:
-          node-version: "20"
-          cache: "npm"
-          cache-dependency-path: front-spa/package-lock.json
-
-      - name: Install dependencies
-        working-directory: front-spa
-        run: npm ci
+          build-sdks: "true"
+          build-sparkle: "true"
 
       - name: Build SPA
         working-directory: front-spa
