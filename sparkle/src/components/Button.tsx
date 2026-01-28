@@ -442,6 +442,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isLoading || props.disabled}
         className={cn(
           (isPulsing || isPulsingBriefly) && "s-animate-pulse",
+          isSelect && (size === "xmini" || size === "icon-xs") && "s-w-auto s-px-1.5",
+          isSelect && (size === "mini" || size === "icon") && "s-w-auto s-px-2",
           className
         )}
         aria-label={ariaLabel || tooltip || label}
