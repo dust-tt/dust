@@ -5,7 +5,6 @@ import {
   ContentMessage,
   ExclamationCircleIcon,
   Page,
-  Spinner,
 } from "@dust-tt/sparkle";
 import dynamic from "next/dynamic";
 import type { ReactElement } from "react";
@@ -351,24 +350,6 @@ function CreditsUsagePage() {
     );
   }, [credits]);
 
-  if (isCreditPurchaseInfoLoading) {
-    return (
-      <AppCenteredLayout
-        owner={owner}
-        subscription={subscription}
-        subNavigation={subNavigationAdmin({
-          owner,
-          current: "credits_usage",
-          featureFlags,
-        })}
-      >
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      </AppCenteredLayout>
-    );
-  }
-
   return (
     <AppCenteredLayout
       owner={owner}
@@ -509,7 +490,7 @@ function CreditsUsagePage() {
           creditsByType={creditsByType}
           totalConsumed={totalConsumed}
           totalCredits={totalCredits}
-          isLoading={isCreditsLoading}
+          isLoading={isCreditsLoading || isCreditPurchaseInfoLoading}
           setShowBuyCreditDialog={setShowBuyCreditDialog}
         />
 
