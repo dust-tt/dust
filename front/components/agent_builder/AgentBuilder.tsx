@@ -478,10 +478,14 @@ export default function AgentBuilder({
       : `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
+  // Only load suggestions when editing an existing agent (not duplicating).
+  const suggestionsAgentId =
+    !duplicateAgentId && agentConfiguration ? agentConfiguration.sId : null;
+
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <CopilotSuggestionsProvider>
+        <CopilotSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
           <AgentBuilderContent
             agentConfiguration={agentConfiguration}
             pendingAgentId={pendingAgentId}

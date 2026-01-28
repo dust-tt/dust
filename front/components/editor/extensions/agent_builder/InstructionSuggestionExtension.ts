@@ -1,7 +1,6 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
-import type { Change } from "diff";
 import { diffWords } from "diff";
 
 // Mark for additions (blue background).
@@ -155,49 +154,101 @@ export const InstructionSuggestionExtension = Extension.create({
     return {
       applySuggestion:
         (options: ApplySuggestionOptions) =>
-        ({ editor }) => {
+        ({ tr, state, dispatch }) => {
           const { id, find, replacement } = options;
-          const markdown = editor.getMarkdown();
+          const { doc, schema } = state;
 
-          // Find all occurrences of the find text.
-          const matches: SuggestionMatch[] = [];
-          let searchStart = 0;
-          let index = markdown.indexOf(find, searchStart);
+          // Normalize find string by trimming trailing whitespace/newlines.
+          // Backend may include trailing newlines that don't exist in editor.
+          const normalizedFind = find.replace(/\s+$/, "");
 
-          while (index !== -1) {
-            matches.push({
-              start: index,
-              end: index + find.length,
-            });
-            searchStart = index + 1;
-            index = markdown.indexOf(find, searchStart);
-          }
+          // Get full document text and find the position.
+          const fullText = doc.textContent;
+          const textIndex = fullText.indexOf(normalizedFind);
 
-          if (matches.length === 0) {
+          if (textIndex === -1) {
             return false;
           }
 
-          // Build new content with diff marks.
-          const diffParts = diffWords(find, replacement);
-          const diffContent = buildSuggestionDiffContent(diffParts, id);
+          // Use normalizedFind for position mapping.
+          const findLength = normalizedFind.length;
 
-          // For now, we'll apply to the first match only.
-          // In a more complex implementation, we'd handle multiple matches.
-          const match = matches[0];
+          // Map text offset to document position.
+          // We need to account for non-text content (block boundaries, etc.)
+          let from = -1;
+          let to = -1;
+          let currentTextOffset = 0;
 
-          // Get the text before and after the match.
-          const beforeText = markdown.substring(0, match.start);
-          const afterText = markdown.substring(match.end);
+          doc.descendants((node, pos) => {
+            if (from !== -1 && to !== -1) {
+              return false;
+            }
 
-          // Build the complete new content.
-          const newContent = buildNewContent(
-            beforeText,
-            afterText,
-            diffContent
-          );
+            if (node.isText && node.text) {
+              const nodeStart = currentTextOffset;
+              const nodeEnd = currentTextOffset + node.text.length;
 
-          // Set the new content.
-          editor.commands.setContent(newContent);
+              // Check if find starts in this node.
+              if (
+                from === -1 &&
+                textIndex >= nodeStart &&
+                textIndex < nodeEnd
+              ) {
+                from = pos + (textIndex - nodeStart);
+              }
+
+              // Check if find ends in this node.
+              const findEnd = textIndex + findLength;
+              if (to === -1 && findEnd > nodeStart && findEnd <= nodeEnd) {
+                to = pos + (findEnd - nodeStart);
+              }
+
+              currentTextOffset = nodeEnd;
+            }
+            return true;
+          });
+
+          if (from === -1 || to === -1) {
+            return false;
+          }
+
+          // Normalize replacement too for consistent diff.
+          const normalizedReplacement = replacement.replace(/\s+$/, "");
+
+          // Build diff parts using normalized strings.
+          const diffParts = diffWords(normalizedFind, normalizedReplacement);
+
+          // Create content nodes with marks for the diff.
+          const nodes: ReturnType<typeof schema.text>[] = [];
+          for (const part of diffParts) {
+            if (part.added) {
+              const mark = schema.marks.suggestionAddition.create({
+                suggestionId: id,
+              });
+              nodes.push(schema.text(part.value, [mark]));
+            } else if (part.removed) {
+              const mark = schema.marks.suggestionDeletion.create({
+                suggestionId: id,
+              });
+              nodes.push(schema.text(part.value, [mark]));
+            } else {
+              nodes.push(schema.text(part.value));
+            }
+          }
+
+          // Apply the transaction: delete old text and insert new nodes.
+          if (dispatch) {
+            tr.delete(from, to);
+
+            // Insert nodes at the deletion position.
+            let insertPos = from;
+            for (const node of nodes) {
+              tr.insert(insertPos, node);
+              insertPos += node.nodeSize;
+            }
+
+            dispatch(tr);
+          }
 
           // Track this suggestion.
           this.storage.activeSuggestionIds.push(id);
@@ -332,60 +383,4 @@ function processSuggestionMarks(
   }
 
   return true;
-}
-
-// Builds diff content with suggestion marks.
-function buildSuggestionDiffContent(
-  diffParts: Change[],
-  suggestionId: string
-): JSONContent[] {
-  return diffParts.map((part) => {
-    const node: JSONContent = {
-      type: "text",
-      text: part.value,
-    };
-
-    if (part.added) {
-      node.marks = [{ type: "suggestionAddition", attrs: { suggestionId } }];
-    } else if (part.removed) {
-      node.marks = [{ type: "suggestionDeletion", attrs: { suggestionId } }];
-    }
-
-    return node;
-  });
-}
-
-// Builds new content with suggestion marks.
-function buildNewContent(
-  beforeText: string,
-  afterText: string,
-  diffContent: JSONContent[]
-): JSONContent {
-  const content: JSONContent[] = [];
-
-  if (beforeText) {
-    content.push({
-      type: "text",
-      text: beforeText,
-    });
-  }
-
-  content.push(...diffContent);
-
-  if (afterText) {
-    content.push({
-      type: "text",
-      text: afterText,
-    });
-  }
-
-  return {
-    type: "doc",
-    content: [
-      {
-        type: "paragraph",
-        content,
-      },
-    ],
-  };
 }
