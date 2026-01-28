@@ -211,7 +211,7 @@ export function ToolExecutionTimeChart({
           <ButtonsSwitchList defaultValue={view} size="xs">
             <ButtonsSwitch
               value="server"
-              label="By server"
+              label="By capability"
               onClick={() => setView("server")}
             />
             <ButtonsSwitch
@@ -232,7 +232,7 @@ export function ToolExecutionTimeChart({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel label="Servers" />
+                <DropdownMenuLabel label="Capability" />
                 {serverOptions.map((server) => (
                   <DropdownMenuItem
                     key={server.name}
