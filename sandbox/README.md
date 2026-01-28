@@ -12,6 +12,7 @@ A well-optimized Docker image for the Northflank sandbox environment with TypeSc
 
 **Included Libraries:**
 - `@dust-tt/client` - Dust SDK
+- `react`, `react-dom` - React framework
 - `zod` - Schema validation
 - `recharts`, `d3` - Data visualization
 - `lodash`, `date-fns` - Utilities
