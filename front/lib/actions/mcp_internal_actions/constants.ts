@@ -2,7 +2,6 @@ import type { InternalAllowedIconType } from "@app/components/resources/resource
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
-  FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
@@ -25,6 +24,7 @@ import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/da
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
 import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
@@ -557,62 +557,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Read operations - never ask
-      list_tickets: "never_ask",
-      get_ticket: "never_ask",
-      get_ticket_read_fields: "never_ask",
-      get_ticket_write_fields: "never_ask",
-      list_departments: "never_ask",
-      list_products: "never_ask",
-      list_oncall_schedules: "never_ask",
-      list_service_categories: "never_ask",
-      list_service_items: "never_ask",
-      search_service_items: "never_ask",
-      get_service_item: "never_ask",
-      get_service_item_fields: "never_ask",
-      list_solution_categories: "never_ask",
-      list_solution_folders: "never_ask",
-      list_solution_articles: "never_ask",
-      list_requesters: "never_ask",
-      get_requester: "never_ask",
-      list_purchase_orders: "never_ask",
-      list_sla_policies: "never_ask",
-      get_solution_article: "never_ask",
-      list_canned_responses: "never_ask",
-      get_canned_response: "never_ask",
-      get_ticket_approval: "never_ask",
-      list_ticket_approvals: "never_ask",
-      list_ticket_tasks: "never_ask",
-      get_ticket_task: "never_ask",
-
-      // Write operations - low/high stakes
-      create_ticket: "low",
-      update_ticket: "low",
-      add_ticket_note: "low",
-      add_ticket_reply: "low",
-      create_ticket_task: "low",
-      update_ticket_task: "low",
-      delete_ticket_task: "low",
-      request_service_item: "low",
-      request_service_approval: "low",
-      create_solution_article: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "freshservice",
-      icon: "FreshserviceLogo",
-      version: "1.0.0",
-      description: "Connect to tickets, schedules and service catalog.",
-      authorization: {
-        provider: "freshservice" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      documentationUrl: "https://docs.dust.tt/docs/freshservice",
-      instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
-    },
+    metadata: FRESHSERVICE_SERVER,
   },
   google_drive: {
     id: 27,
