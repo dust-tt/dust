@@ -4,7 +4,6 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import React from "react";
 
-import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
@@ -80,7 +79,6 @@ export default function Space({
 
   return (
     <Page.Vertical gap="xl" align="stretch">
-      <SpaceJournalEntry owner={owner} space={space} />
       <SpaceCategoriesList
         owner={owner}
         canWriteInSpace={canWriteInSpace}
