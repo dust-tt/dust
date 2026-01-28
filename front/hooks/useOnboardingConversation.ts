@@ -1,7 +1,7 @@
-import { useRouter } from "next/router";
 import { useCallback, useEffect, useRef } from "react";
 
 import { clientFetch } from "@app/lib/egress/client";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import type { PostSendOnboardingResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/send-onboarding";
 
 interface UseOnboardingConversationProps {
@@ -13,7 +13,8 @@ export function useOnboardingConversation({
   workspaceId,
   conversationId,
 }: UseOnboardingConversationProps) {
-  const router = useRouter();
+  const router = useAppRouter();
+  const welcome = useSearchParam("welcome");
   const isCreatingRef = useRef(false);
 
   const createOnboardingConversation = useCallback(async () => {
@@ -56,10 +57,10 @@ export function useOnboardingConversation({
 
   useEffect(() => {
     const shouldCreateOnboarding =
-      router.query.welcome === "true" && conversationId === null;
+      welcome === "true" && conversationId === null;
 
     if (shouldCreateOnboarding) {
       void createOnboardingConversation();
     }
-  }, [router.query.welcome, conversationId, createOnboardingConversation]);
+  }, [welcome, conversationId, createOnboardingConversation]);
 }
