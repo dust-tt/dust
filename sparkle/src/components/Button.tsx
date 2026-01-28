@@ -303,10 +303,6 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isRounded?: boolean;
   };
 
-/**
- * Icon-only button sizes (fixed width).
- * When using these sizes, an icon is required and labels are not allowed.
- */
 export type IconOnlyButtonProps = CommonButtonProps & {
   size: IconOnlySize;
   icon: React.ComponentType;
