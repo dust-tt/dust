@@ -6,7 +6,7 @@ import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 
-const DEPLOYMENT_CUTOFF_DATE = new Date("2026-01-08T00:00:00Z");
+const DEPLOYMENT_CUTOFF_DATE = new Date("2026-01-28T00:00:00Z");
 
 const TOOL_NAME = "send_mail";
 const INTERNAL_MCP_SERVER_NAME = "gmail";
