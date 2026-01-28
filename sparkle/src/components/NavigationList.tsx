@@ -72,8 +72,7 @@ NavigationList.displayName = "NavigationList";
 export type NavigationListItemStatus = "idle" | "unread" | "blocked" | "error";
 
 interface NavigationListItemProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     Omit<LinkWrapperProps, "children" | "className"> {
   selected?: boolean;
   label?: string;
@@ -202,7 +201,8 @@ const NavigationListItem = React.forwardRef<
 );
 NavigationListItem.displayName = "NavigationListItem";
 
-interface NavigationListItemActionProps extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListItemActionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   showOnHover?: boolean;
 }
 
@@ -251,8 +251,7 @@ const labelStyles = cva(
 );
 
 interface NavigationListLabelProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantStyles> {
   label: string;
   action?: React.ReactNode;
@@ -299,8 +298,7 @@ const variantCompactStyles = cva(
 );
 
 interface NavigationListCompactLabelProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof variantCompactStyles> {
   label: string;
 }
@@ -322,7 +320,8 @@ const NavigationListCompactLabel = React.forwardRef<
 
 NavigationListCompactLabel.displayName = "NavigationListCompactLabel";
 
-interface NavigationListCollapsibleSectionProps extends React.HTMLAttributes<HTMLDivElement> {
+interface NavigationListCollapsibleSectionProps
+  extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   action?: React.ReactNode;
   actionOnHover?: boolean;

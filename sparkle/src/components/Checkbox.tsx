@@ -44,8 +44,7 @@ const checkboxStyles = cva(
 type CheckBoxStateType = boolean | "partial";
 
 interface CheckboxProps
-  extends
-    Omit<
+  extends Omit<
       React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>,
       "checked" | "defaultChecked"
     >,

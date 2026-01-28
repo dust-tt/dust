@@ -42,7 +42,8 @@ const variantStyle = cva(
 );
 
 interface MetaHoverableProps
-  extends React.HTMLAttributes<HTMLElement>, VariantProps<typeof variantStyle> {
+  extends React.HTMLAttributes<HTMLElement>,
+    VariantProps<typeof variantStyle> {
   asChild?: boolean;
 }
 
@@ -63,7 +64,8 @@ const MetaHoverable = React.forwardRef<HTMLElement, MetaHoverableProps>(
 MetaHoverable.displayName = "MetaHoverable";
 
 export interface HoverableProps
-  extends MetaHoverableProps, Omit<LinkWrapperProps, "children"> {}
+  extends MetaHoverableProps,
+    Omit<LinkWrapperProps, "children"> {}
 
 const Hoverable = React.forwardRef<HTMLElement, HoverableProps>(
   ({ href, target, rel, children, variant, className, ...props }, ref) => {

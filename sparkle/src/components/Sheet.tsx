@@ -82,9 +82,8 @@ const sheetVariants = cva(
   }
 );
 
-interface SheetContentProps extends React.ComponentPropsWithoutRef<
-  typeof SheetPrimitive.Content
-> {
+interface SheetContentProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Content> {
   size?: SheetSizeType;
   trapFocusScope?: boolean;
   side?: SheetSideType;
@@ -304,9 +303,8 @@ const SheetFooter = ({
 };
 SheetFooter.displayName = "SheetFooter";
 
-interface SheetTitleProps extends React.ComponentPropsWithoutRef<
-  typeof SheetPrimitive.Title
-> {
+interface SheetTitleProps
+  extends React.ComponentPropsWithoutRef<typeof SheetPrimitive.Title> {
   icon?: React.ComponentType;
 }
 

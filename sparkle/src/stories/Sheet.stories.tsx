@@ -232,9 +232,8 @@ const QIG: React.FC = () => (
         </Page.P>
         <Page.P>
           With the right Data source, agents can answer demands like
-          <span className="italic">
-            “Have we been working with company X”
-          </span>, <span className="italic">“How do we manage expenses”</span>,{" "}
+          <span className="italic">“Have we been working with company X”</span>,{" "}
+          <span className="italic">“How do we manage expenses”</span>,{" "}
           <span className="italic">
             “Write an intro email using the company tone of voice”...
           </span>
@@ -355,9 +354,8 @@ const QIG: React.FC = () => (
         </Page.P>
         <Page.P>
           With the right Data source, agents can answer demands like
-          <span className="italic">
-            “Have we been working with company X”
-          </span>, <span className="italic">“How do we manage expenses”</span>,{" "}
+          <span className="italic">“Have we been working with company X”</span>,{" "}
+          <span className="italic">“How do we manage expenses”</span>,{" "}
           <span className="italic">
             “Write an intro email using the company tone of voice”...
           </span>
