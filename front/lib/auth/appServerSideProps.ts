@@ -14,7 +14,7 @@ export const appGetServerSideProps =
       props: {
         workspace: auth.getNonNullableWorkspace(),
         subscription: auth.getNonNullableSubscription(),
-        user: auth.user()?.toJSON() ?? null,
+        user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
         isSuperUser: false,
@@ -34,7 +34,7 @@ export const appGetServerSidePropsForBuilders =
       props: {
         workspace: auth.getNonNullableWorkspace(),
         subscription: auth.getNonNullableSubscription(),
-        user: auth.user()?.toJSON() ?? null,
+        user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
         isSuperUser: false,
@@ -54,7 +54,7 @@ export const appGetServerSidePropsForAdmin =
       props: {
         workspace: auth.getNonNullableWorkspace(),
         subscription: auth.getNonNullableSubscription(),
-        user: auth.user()?.toJSON() ?? null,
+        user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
         isSuperUser: false,
