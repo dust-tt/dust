@@ -11,8 +11,6 @@ import { default as frontServer } from "@app/lib/actions/mcp_internal_actions/se
 import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actions/servers/http_client";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
-import { default as outlookServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook";
-import { default as outlookCalendarServer } from "@app/lib/actions/mcp_internal_actions/servers/outlook/calendar_server";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
@@ -55,6 +53,8 @@ import { default as missingActionCatcherServer } from "@app/lib/api/actions/serv
 import { default as mondayServer } from "@app/lib/api/actions/servers/monday";
 import { default as notionServer } from "@app/lib/api/actions/servers/notion";
 import { default as openaiUsageServer } from "@app/lib/api/actions/servers/openai_usage";
+import { default as outlookCalendarServer } from "@app/lib/api/actions/servers/outlook/calendar_server";
+import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlook/mail_server";
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
@@ -200,7 +200,7 @@ export async function getInternalMCPServer(
     case "confluence":
       return confluenceServer(auth, agentLoopContext);
     case "outlook":
-      return outlookServer(auth, agentLoopContext);
+      return outlookMailServer(auth, agentLoopContext);
     case "outlook_calendar":
       return outlookCalendarServer(auth, agentLoopContext);
     case "agent_copilot_agent_state":
