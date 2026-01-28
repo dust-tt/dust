@@ -687,8 +687,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "skills_similar_display"
-  | "skills"
   | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
