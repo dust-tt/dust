@@ -52,6 +52,7 @@ import {
 import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
+import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
@@ -757,25 +758,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("salesloft_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      get_current_user: "never_ask",
-      get_cadences: "never_ask",
-      get_tasks: "never_ask",
-      get_actions: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "salesloft",
-      version: "1.0.0",
-      description: "Access Salesloft cadences, tasks, and actions.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: SALESLOFT_SERVER,
   },
   zendesk: {
     id: 42,
