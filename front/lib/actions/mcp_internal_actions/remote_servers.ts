@@ -1,5 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import type { MCPOAuthUseCase } from "@app/types";
+import type { MCPOAuthUseCase, OAuthCredentials } from "@app/types";
 
 export type DefaultRemoteMCPServerConfig = {
   id: number;
@@ -9,9 +9,10 @@ export type DefaultRemoteMCPServerConfig = {
   icon: InternalAllowedIconType;
   documentationUrl?: string;
   connectionInstructions?: string;
-  authMethod: "bearer" | "oauth-dynamic" | null;
+  authMethod: "bearer" | "oauth-dynamic" | "oauth-static" | null;
   supportedOAuthUseCases?: MCPOAuthUseCase[];
   scope?: string;
+  authCredentials?: OAuthCredentials;
   toolStakes?: Record<string, "high" | "low" | "never_ask">;
 };
 
@@ -300,10 +301,15 @@ export const DEFAULT_REMOTE_MCP_SERVERS: DefaultRemoteMCPServerConfig[] = [
     icon: "ActionTableIcon",
     documentationUrl: "https://cloud.google.com/bigquery/docs/use-bigquery-mcp",
     connectionInstructions:
-      "Google BigQuery uses OAuth authentication. You'll be prompted to authorize access to your BigQuery projects and datasets.",
-    authMethod: "oauth-dynamic",
+      "Google BigQuery uses OAuth (Google Cloud OAuth client credentials). Create an OAuth client in Google Cloud, allow Dust's redirect URI (shown below), and paste the client ID/secret. You must also enable the BigQuery MCP API in the GCP project(s) you want to query. Note: BigQuery MCP tools require an explicit `projectId` parameter (no project discovery).",
+    authMethod: "oauth-static",
     supportedOAuthUseCases: ["personal_actions", "platform_actions"],
     scope: "https://www.googleapis.com/auth/bigquery",
+    authCredentials: {
+      authorization_endpoint: "https://accounts.google.com/o/oauth2/v2/auth",
+      token_endpoint: "https://oauth2.googleapis.com/token",
+      scope: "https://www.googleapis.com/auth/bigquery",
+    },
     toolStakes: {
       // Schema exploration - read-only, safe
       list_dataset_ids: "never_ask",

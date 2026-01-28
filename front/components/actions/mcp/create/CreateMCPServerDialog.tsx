@@ -126,6 +126,29 @@ export function CreateMCPServerDialog({
     }
   }, [internalMCPServer, isOpen]);
 
+  // Initialize authorization for default remote servers that require static OAuth configuration.
+  useEffect(() => {
+    if (!isOpen || internalMCPServer) {
+      return;
+    }
+
+    if (defaultServerConfig?.authMethod === "oauth-static") {
+      setAuthorization({
+        provider: "mcp_static",
+        supported_use_cases:
+          defaultServerConfig.supportedOAuthUseCases ?? [
+            "platform_actions",
+            "personal_actions",
+          ],
+        scope: defaultServerConfig.scope,
+      });
+
+      if (defaultServerConfig.authCredentials) {
+        form.setValue("authCredentials", defaultServerConfig.authCredentials);
+      }
+    }
+  }, [defaultServerConfig, form, internalMCPServer, isOpen]);
+
   const resetState = () => {
     setIsLoading(false);
     setExternalIsLoading(false);
