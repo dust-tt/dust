@@ -492,7 +492,7 @@ export function DatasourceRetrievalTreemapChart({
   return (
     <>
       <ChartContainer
-        title="Documents retrieved by data sources (BETA)"
+        title="Documents retrieved by data sources"
         description="Number of documents retrieved per searches, grouped by datasource."
         isLoading={isDatasourceRetrievalLoading}
         errorMessage={
