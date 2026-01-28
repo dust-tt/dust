@@ -25,6 +25,7 @@ export interface KeyAuthType {
   monthlyCapMicroUsd: number | null;
 }
 
+export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
