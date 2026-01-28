@@ -1,72 +1,40 @@
 import { BookOpenIcon, Breadcrumbs, Page, Spinner } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useState } from "react";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
+import { useEffect, useState } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { DeleteProviderDialog } from "@app/components/labs/transcripts/DeleteProviderDialog";
 import { ProcessingConfiguration } from "@app/components/labs/transcripts/ProcessingConfiguration";
 import { ProviderSelection } from "@app/components/labs/transcripts/ProviderSelection";
 import { StorageConfiguration } from "@app/components/labs/transcripts/StorageConfiguration";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getFeatureFlags } from "@app/lib/auth";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
+import { useDataSourceViews } from "@app/lib/swr/data_source_views";
 import { useLabsTranscriptsConfiguration } from "@app/lib/swr/labs";
 import { useSpaces } from "@app/lib/swr/spaces";
-import type {
-  DataSourceViewType,
-  SubscriptionType,
-  WhitelistableFeature,
-  WorkspaceType,
-} from "@app/types";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { isProviderWithDefaultWorkspaceConfiguration } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  dataSourcesViews: DataSourceViewType[];
-  featureFlags: WhitelistableFeature[];
-}>(async (_context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const user = auth.user();
+export const getServerSideProps = appGetServerSideProps;
 
-  const dataSourcesViews = (
-    await DataSourceViewResource.listByWorkspace(auth)
-  ).map((dsv) => dsv.toJSON());
+function LabsTranscriptsIndex() {
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
+  const router = useRouter();
 
-  if (!owner || !subscription || !user) {
-    return {
-      notFound: true,
-    };
-  }
+  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const { dataSourceViews } = useDataSourceViews(owner);
 
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("labs_transcripts")) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-      dataSourcesViews,
-      featureFlags,
-    },
-  };
-});
-
-export default function LabsTranscriptsIndex({
-  owner,
-  subscription,
-  dataSourcesViews,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const {
     transcriptsConfiguration,
     isTranscriptsConfigurationLoading,
@@ -86,6 +54,13 @@ export default function LabsTranscriptsIndex({
   });
 
   const sendNotification = useSendNotification();
+
+  // Redirect if feature flag is not enabled.
+  useEffect(() => {
+    if (!isFeatureFlagsLoading && !featureFlags.includes("labs_transcripts")) {
+      void router.replace(`/w/${owner.sId}/labs`);
+    }
+  }, [featureFlags, isFeatureFlagsLoading, owner.sId, router]);
 
   const handleDisconnectProvider = async (
     transcriptConfigurationId: string | null
@@ -122,7 +97,11 @@ export default function LabsTranscriptsIndex({
     return response;
   };
 
-  if (isTranscriptsConfigurationLoading) {
+  if (
+    isTranscriptsConfigurationLoading ||
+    isFeatureFlagsLoading ||
+    !featureFlags.includes("labs_transcripts")
+  ) {
     return (
       <div
         style={{
@@ -193,7 +172,7 @@ export default function LabsTranscriptsIndex({
                   mutateTranscriptsConfiguration={
                     mutateTranscriptsConfiguration
                   }
-                  dataSourcesViews={dataSourcesViews}
+                  dataSourcesViews={dataSourceViews}
                   spaces={spaces}
                   isSpacesLoading={isSpacesLoading}
                 />
@@ -212,6 +191,15 @@ export default function LabsTranscriptsIndex({
   );
 }
 
-LabsTranscriptsIndex.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = LabsTranscriptsIndex as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
