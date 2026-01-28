@@ -205,12 +205,18 @@ export function formatConversationForLLM(
   return metadata;
 }
 
+interface FrontRecipient {
+  handle?: string;
+  name?: string;
+  email?: string;
+}
+
 interface FrontMessage {
   created_at: number;
   type?: string;
   is_inbound?: boolean;
   author?: { email?: string; username?: string };
-  recipients?: Array<{ handle?: string; name?: string }>;
+  recipients?: FrontRecipient[];
   subject?: string;
   body?: string;
   text?: string;
@@ -299,8 +305,7 @@ export async function findChannelAddress(
   }
 
   for (const recipient of lastInboundMessage.recipients) {
-    const recipientAddress =
-      recipient.handle ?? (recipient as { email?: string }).email;
+    const recipientAddress = recipient.handle ?? recipient.email;
     if (!recipientAddress) {
       continue;
     }
