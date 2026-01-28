@@ -13,7 +13,7 @@ export type { BreadcrumbItem } from "./Breadcrumbs";
 export { Breadcrumbs } from "./Breadcrumbs";
 export type {
   ButtonProps,
-  MiniButtonProps,
+  IconOnlyButtonProps,
   RegularButtonProps,
 } from "./Button";
 export { Button } from "./Button";

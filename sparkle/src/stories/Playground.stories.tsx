@@ -262,7 +262,7 @@ export const Demo = () => {
                   <Button
                     variant="highlight"
                     icon={ArrowUpIcon}
-                    size="mini"
+                    size="icon"
                     tooltip="Send message"
                     isRounded
                     disabled={recordState === "recording"}

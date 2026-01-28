@@ -219,7 +219,7 @@ export const WithActions: Story = {
           onClick={() => {
             alert(`You clicked on ${card.title}`);
           }}
-          action={<CardActionButton size="mini" icon={XMarkIcon} />}
+          action={<CardActionButton size="icon" icon={XMarkIcon} />}
         >
           <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
             <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">
@@ -249,7 +249,7 @@ export const SelectableGrid: Story = {
             size="md"
             selected={selected === index}
             onClick={() => setSelected(index)}
-            action={<CardActionButton size="mini" icon={XMarkIcon} />}
+            action={<CardActionButton size="icon" icon={XMarkIcon} />}
           >
             <div className="s-flex s-w-full s-flex-col s-gap-1 s-text-sm">
               <div className="s-flex s-w-full s-gap-1 s-font-semibold s-text-foreground">

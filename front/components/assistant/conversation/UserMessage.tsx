@@ -496,7 +496,7 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="xs"
+              size="icon-xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(

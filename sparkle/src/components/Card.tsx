@@ -1,7 +1,8 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { Button, MiniButtonProps } from "@sparkle/components/Button";
+import type { IconOnlyButtonProps } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import {
   noHrefLink,
@@ -227,7 +228,7 @@ CardActions.displayName = "CardActions";
 
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
-  MiniButtonProps
+  IconOnlyButtonProps
 >(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
   return (
     <Button
