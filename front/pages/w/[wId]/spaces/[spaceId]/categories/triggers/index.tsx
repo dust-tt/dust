@@ -20,7 +20,7 @@ function Space() {
   const router = useRouter();
   const { spaceId } = router.query;
   const owner = useWorkspace();
-  const { subscription, isAdmin, isBuilder, user } = useAuth();
+  const { subscription, isAdmin, user } = useAuth();
   const plan = subscription.plan;
 
   const {

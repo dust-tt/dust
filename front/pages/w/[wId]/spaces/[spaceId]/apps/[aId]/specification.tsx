@@ -4,9 +4,9 @@ import type { ReactElement } from "react";
 import { useMemo } from "react";
 
 import { subNavigationApp } from "@app/components/navigation/config";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
@@ -38,8 +38,8 @@ function Specification() {
       return "";
     }
     try {
-      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const spec = JSON.parse(
+        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
         app.savedSpecification || "[]"
       ) as SpecificationType;
       // Note: We don't have access to latestDatasets here, so we pass an empty object.
