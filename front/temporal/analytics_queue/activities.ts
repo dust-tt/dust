@@ -129,6 +129,7 @@ export async function storeAgentAnalyticsActivity(
     agentMessageRow,
     agentAgentMessageRow,
     userModel: userUserMessageRow.user ?? null,
+    userMessageModel: userUserMessageRow,
     conversationRow,
     contextOrigin: userUserMessageRow.userContextOrigin,
   });
@@ -143,6 +144,7 @@ export async function storeAgentAnalytics(
     agentMessageRow: MessageModel;
     agentAgentMessageRow: AgentMessageModel;
     userModel: UserModel | null;
+    userMessageModel: UserMessageModel;
     conversationRow: ConversationModel;
     contextOrigin: UserMessageOrigin | null;
   }
@@ -151,6 +153,7 @@ export async function storeAgentAnalytics(
     agentMessageRow,
     agentAgentMessageRow,
     userModel,
+    userMessageModel,
     conversationRow,
     contextOrigin,
   } = params;
@@ -193,8 +196,6 @@ export async function storeAgentAnalytics(
     ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
     : [];
 
-  const apiKey = auth.key();
-
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
@@ -211,8 +212,8 @@ export async function storeAgentAnalytics(
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
-    auth_method: auth.authMethod(),
-    api_key_name: apiKey?.name,
+    auth_method: userMessageModel.userContextAuthMethod ?? auth.authMethod(),
+    api_key_name: userMessageModel.userContextApiKeyName ?? auth.key()?.name,
   };
 
   await storeToElasticsearch(document);

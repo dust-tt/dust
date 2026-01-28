@@ -470,6 +470,8 @@ export async function createUserMessage(
       userContextLastTriggerRunAt: context.lastTriggerRunAt
         ? new Date(context.lastTriggerRunAt)
         : null,
+      userContextApiKeyName: context.apiKeyName ?? null,
+      userContextAuthMethod: context.authMethod ?? null,
       agenticMessageType,
       agenticOriginMessageId,
       userId: user?.id,
