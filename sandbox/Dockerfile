@@ -43,18 +43,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libjpeg8 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Bun
-RUN curl -fsSL https://bun.sh/install | bash
-ENV PATH="/root/.bun/bin:$PATH"
+# Install Bun (pinned version, direct binary download)
+ARG BUN_VERSION=1.3.7
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then BUN_ARCH="x64"; else BUN_ARCH="aarch64"; fi && \
+    curl -fsSL "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${BUN_ARCH}.zip" -o /tmp/bun.zip && \
+    unzip -q /tmp/bun.zip -d /tmp && \
+    mv /tmp/bun-linux-${BUN_ARCH}/bun /usr/local/bin/bun && \
+    chmod +x /usr/local/bin/bun && \
+    rm -rf /tmp/bun.zip /tmp/bun-linux-${BUN_ARCH} && \
+    ln -s /usr/local/bin/bun /usr/local/bin/node
+ENV PATH="/root/.bun/bin:/usr/local/bin:$PATH"
 
-# Create symlink for node (bun provides node compatibility)
-RUN ln -s /root/.bun/bin/bun /usr/local/bin/node
-
-# Install tsgo (TypeScript native Go compiler)
-RUN bun install -g @typescript/native-preview
-
-# Install Biome
-RUN bun install -g @biomejs/biome
+# Install tsgo (TypeScript native Go compiler) and Biome
+RUN bun install -g @typescript/native-preview @biomejs/biome
 
 # Copy Python venv from builder
 COPY --from=builder /opt/venv /opt/venv
