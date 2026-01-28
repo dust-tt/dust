@@ -116,6 +116,14 @@ async function handler(
                   "Users cannot be removed from system or global groups.",
               },
             });
+          case "group_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "group_not_found",
+                message: "The group was not found in the workspace.",
+              },
+            });
           default:
             assertNever(updateRes.error.code);
         }

@@ -9,6 +9,7 @@ import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
@@ -261,12 +262,17 @@ describe("createSpaceAndGroup", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        expect(space.isRegularAndRestricted()).toBe(false);
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        expect(reloadedSpace).not.toBeNull();
+        expect(reloadedSpace!.isRegularAndRestricted()).toBe(false);
 
         // Verify global group was added
         const groupSpaces = await GroupSpaceModel.findAll({
           where: {
-            vaultId: space.id,
+            vaultId: reloadedSpace!.id,
             workspaceId: workspace.id,
           },
         });
@@ -585,20 +591,67 @@ describe("createSpaceAndGroup", () => {
       }
     });
 
-    it("should set managementMode to manual when isRestricted is false", async () => {
+    it("should set global group kind to 'member' for unrestricted regular spaces", async () => {
       const result = await createSpaceAndGroup(adminAuth, {
-        name: "Test Auto Manual Space",
+        name: "Test Unrestricted Regular Space",
         isRestricted: false,
         spaceKind: "regular",
-        managementMode: "group", // This should be ignored
-        groupIds: [],
+        managementMode: "manual",
+        memberIds: [],
       });
 
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
-        // When isRestricted is false, managementMode should be forced to "manual"
-        expect(space.managementMode).toBe("manual");
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        expect(reloadedSpace!.isOpen()).toBe(true);
+
+        // Verify global group was added with kind "member"
+        const groupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+          space: reloadedSpace!,
+        });
+        expect(groupSpaces.length).toBeGreaterThan(0);
+        expect(groupSpaces.some((gs) => gs.group.kind === "global")).toBe(true);
+      }
+    });
+
+    it("should set global group kind to 'project_viewer' for unrestricted project spaces", async () => {
+      vi.spyOn(
+        await import("@app/lib/api/projects"),
+        "createDataSourceAndConnectorForProject"
+      ).mockResolvedValue(new Ok(undefined));
+
+      const result = await createSpaceAndGroup(adminAuth, {
+        name: "Test Unrestricted Project Space",
+        isRestricted: false,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const space = result.value;
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
+        expect(reloadedSpace!.kind).toBe("project");
+        expect(reloadedSpace!.isOpen()).toBe(true);
+
+        // Verify global group was added with kind "project_viewer"
+        const groupSpace = await GroupSpaceModel.findOne({
+          where: {
+            vaultId: reloadedSpace!.id,
+            workspaceId: workspace.id,
+            groupId: globalGroup.id,
+          },
+        });
+        expect(groupSpace).toBeDefined();
+        expect(groupSpace?.kind).toBe("project_viewer");
       }
     });
   });
@@ -901,8 +954,12 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
         // Verify the space has the global group
-        expect(space.groups.some((g) => g.isGlobal())).toBe(true);
+        expect(reloadedSpace!.groups.some((g) => g.isGlobal())).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
@@ -910,7 +967,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         // Should succeed because keys in global group are allowed for spaces
         const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
           adminAuth,
-          space,
+          reloadedSpace!,
           false
         );
         expect(deleteResult.isOk()).toBe(true);
@@ -934,8 +991,12 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
       expect(result.isOk()).toBe(true);
       if (result.isOk()) {
         const space = result.value;
+        const reloadedSpace = await SpaceResource.fetchById(
+          adminAuth,
+          space.sId
+        );
         // Verify the space has the global group
-        expect(space.groups.some((g) => g.isGlobal())).toBe(true);
+        expect(reloadedSpace!.groups.some((g) => g.isGlobal())).toBe(true);
 
         // Create an active API key for the global group
         await KeyFactory.regular(globalGroup);
@@ -943,7 +1004,7 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         // Should succeed because keys in global group are allowed for unrestricted spaces
         const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
           adminAuth,
-          space,
+          reloadedSpace!,
           false
         );
         expect(deleteResult.isOk()).toBe(true);
