@@ -7,7 +7,12 @@ export const ALL_SERVICES = [
   "oauth",
   "connectors",
   "front-workers",
+  "front-spa-poke",
+  "front-spa-app",
 ] as const;
+
+// Services that run in "cold" state (build watchers)
+export const COLD_STATE_SERVICES = ["sdk", "sparkle"] as const satisfies readonly ServiceName[];
 
 export type ServiceName = (typeof ALL_SERVICES)[number];
 

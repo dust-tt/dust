@@ -78,10 +78,12 @@ describe("registry", () => {
       expect(WARM_SERVICES).toContain("oauth");
       expect(WARM_SERVICES).toContain("connectors");
       expect(WARM_SERVICES).toContain("front-workers");
+      expect(WARM_SERVICES).toContain("front-spa-poke");
+      expect(WARM_SERVICES).toContain("front-spa-app");
     });
 
-    it("has 5 services (all except sparkle and sdk)", () => {
-      expect(WARM_SERVICES).toHaveLength(5);
+    it("has 7 services (all except sparkle and sdk)", () => {
+      expect(WARM_SERVICES).toHaveLength(7);
     });
 
     it("is derived from SERVICE_REGISTRY", () => {
