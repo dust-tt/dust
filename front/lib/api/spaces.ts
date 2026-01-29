@@ -1,16 +1,14 @@
 import assert from "assert";
 import uniq from "lodash/uniq";
+import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import {
-  getAgentConfigurations,
-  updateAgentRequirements,
-} from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -157,62 +155,56 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       { concurrency: 4 }
     );
 
-    if (force) {
-      const agentIds = uniq(
-        usages.flatMap((u) => u.agents).map((agent) => agent.sId)
-      );
-      const agentConfigurations = await getAgentConfigurations(auth, {
-        agentIds,
-        variant: "full",
-      });
-      const agentConfigurationsById = new Map(
-        agentConfigurations.map((config) => [config.sId, config])
-      );
+    // Update skills that have this space in their requestedSpaceIds.
+    const skillsWithSpace = await SkillResource.listByRequestedSpaceId(
+      auth,
+      space.id
+    );
 
-      await concurrentExecutor(
-        agentIds,
-        async (agentId) => {
-          const agentConfig = agentConfigurationsById.get(agentId);
-          if (!agentConfig) {
-            logger.error(
-              {
-                agentId,
-                workspaceId: auth.getNonNullableWorkspace().sId,
-              },
-              "Agent configuration not found for space soft delete"
-            );
-            return;
-          }
+    await concurrentExecutor(
+      skillsWithSpace,
+      async (skill) => {
+        const newSpaceIds = skill.requestedSpaceIds.filter(
+          (id) => id !== space.id
+        );
+        await skill.updateRequestedSpaceIds(newSpaceIds, { transaction: t });
+      },
+      { concurrency: 4 }
+    );
 
-          const skills = await SkillResource.listByAgentConfiguration(
-            auth,
-            agentConfig
-          );
-
-          // Get the required group IDs from the agent's actions
-          const requirements =
-            await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions: agentConfig.actions,
-              skills,
-              ignoreSpaces: [space],
-            });
-
-          const res = await updateAgentRequirements(
-            auth,
-            {
-              agentModelId: agentConfig.id,
-              newSpaceIds: requirements.requestedSpaceIds,
-            },
-            { transaction: t }
-          );
-
-          if (res.isErr()) {
-            throw res.error;
-          }
+    // Update agents that have this space in their requestedSpaceIds.
+    const agentsWithSpace = await AgentConfigurationModel.findAll({
+      attributes: ["id", "requestedSpaceIds"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        requestedSpaceIds: {
+          [Op.contains]: [space.id],
         },
-        { concurrency: 4 }
-      );
-    }
+      },
+    });
+
+    await concurrentExecutor(
+      agentsWithSpace,
+      async (agent) => {
+        const newSpaceIds = agent.requestedSpaceIds.filter(
+          (id) => id !== space.id
+        );
+        const res = await updateAgentRequirements(
+          auth,
+          {
+            agentModelId: agent.id,
+            newSpaceIds,
+          },
+          { transaction: t }
+        );
+
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
 
     // Finally, soft delete the space.
     const res = await space.delete(auth, { hardDelete: false, transaction: t });

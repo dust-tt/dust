@@ -760,6 +760,68 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
+   * List custom skills that have a specific space in their requestedSpaceIds.
+   * This is used during space deletion to find skills that need to be updated.
+   */
+  static async listByRequestedSpaceId(
+    auth: Authenticator,
+    spaceId: ModelId
+  ): Promise<SkillResource[]> {
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs where requestedSpaceIds array contains the given spaceId.
+    const skillsWithSpace = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        workspaceId: workspace.id,
+        status: "active",
+        requestedSpaceIds: {
+          [Op.contains]: [spaceId],
+        },
+      },
+    });
+
+    if (skillsWithSpace.length === 0) {
+      return [];
+    }
+
+    // Use baseFetch to get full SkillResource objects.
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillsWithSpace.map((s) => s.id),
+        },
+      },
+      onlyCustom: true,
+    });
+  }
+
+  /**
+   * Update the requestedSpaceIds for this skill.
+   * Used only during space deletion to remove a deleted space from skills.
+   * Note: In general, spaces should not be manipulated manually as they will be recomputed from tools and knowledge.
+   */
+  async updateRequestedSpaceIds(
+    newSpaceIds: ModelId[],
+    { transaction }: { transaction?: Transaction }
+  ): Promise<Result<boolean, Error>> {
+    const updated = await SkillResource.model.update(
+      {
+        requestedSpaceIds: newSpaceIds,
+      },
+      {
+        where: {
+          workspaceId: this.workspaceId,
+          id: this.id,
+        },
+        transaction,
+      }
+    );
+
+    return new Ok(updated[0] > 0);
+  }
+
+  /**
    * List enabled skills for a conversation.
    *
    * If agentConfiguration is provided, includes both agent enabled and conversation enabled skills.

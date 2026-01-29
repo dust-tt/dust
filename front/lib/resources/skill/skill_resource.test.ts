@@ -731,6 +731,135 @@ describe("SkillResource", () => {
     });
   });
 
+  describe("listByRequestedSpaceId", () => {
+    it("should return skills that have a specific space in their requestedSpaceIds", async () => {
+      const space1 = await SpaceFactory.regular(testContext.workspace);
+      const space2 = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
+      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+
+      // Create a skill with space1 in requestedSpaceIds.
+      const skillWithSpace1 = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Skill With Space 1",
+          requestedSpaceIds: [space1.id],
+        }
+      );
+
+      // Create a skill with both spaces in requestedSpaceIds.
+      const skillWithBothSpaces = await SkillFactory.create(
+        testContext.authenticator,
+        {
+          name: "Skill With Both Spaces",
+          requestedSpaceIds: [space1.id, space2.id],
+        }
+      );
+
+      // Create a skill with only space2 in requestedSpaceIds.
+      await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With Space 2 Only",
+        requestedSpaceIds: [space2.id],
+      });
+
+      // Create a skill with no requestedSpaceIds.
+      await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With No Spaces",
+        requestedSpaceIds: [],
+      });
+
+      // List skills by space1.
+      const skillsWithSpace1 = await SkillResource.listByRequestedSpaceId(
+        testContext.authenticator,
+        space1.id
+      );
+
+      expect(skillsWithSpace1).toHaveLength(2);
+      const skillIds = skillsWithSpace1.map((s) => s.id);
+      expect(skillIds).toContain(skillWithSpace1.id);
+      expect(skillIds).toContain(skillWithBothSpaces.id);
+    });
+
+    it("should return empty array when no skills have the space", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+
+      // Create a skill without this space.
+      await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Without Space",
+        requestedSpaceIds: [],
+      });
+
+      const skills = await SkillResource.listByRequestedSpaceId(
+        testContext.authenticator,
+        space.id
+      );
+
+      expect(skills).toHaveLength(0);
+    });
+  });
+
+  describe("updateRequestedSpaceIds", () => {
+    it("should update the requestedSpaceIds for a skill", async () => {
+      const space1 = await SpaceFactory.regular(testContext.workspace);
+      const space2 = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
+      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill To Update",
+        requestedSpaceIds: [space1.id],
+      });
+
+      // Verify initial state.
+      expect(skill.requestedSpaceIds).toEqual([space1.id]);
+
+      // Update to include both spaces.
+      const result = await skill.updateRequestedSpaceIds(
+        [space1.id, space2.id],
+        {}
+      );
+      expect(result.isOk()).toBe(true);
+
+      // Fetch the skill again to verify the update.
+      const updatedSkill = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill.id
+      );
+      expect(updatedSkill).not.toBeNull();
+      expect(updatedSkill!.requestedSpaceIds.map((id) => Number(id))).toEqual([
+        space1.id,
+        space2.id,
+      ]);
+    });
+
+    it("should remove a space from requestedSpaceIds", async () => {
+      const space1 = await SpaceFactory.regular(testContext.workspace);
+      const space2 = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
+      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+
+      const skill = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill To Update",
+        requestedSpaceIds: [space1.id, space2.id],
+      });
+
+      // Remove space2 from the skill.
+      const result = await skill.updateRequestedSpaceIds([space1.id], {});
+      expect(result.isOk()).toBe(true);
+
+      // Fetch the skill again to verify the update.
+      const updatedSkill = await SkillResource.fetchByModelIdWithAuth(
+        testContext.authenticator,
+        skill.id
+      );
+      expect(updatedSkill).not.toBeNull();
+      expect(updatedSkill!.requestedSpaceIds.map((id) => Number(id))).toEqual([
+        space1.id,
+      ]);
+    });
+  });
+
   describe("deleteAllForWorkspace", () => {
     it("should only delete skills from the authenticated workspace", async () => {
       // Create a skill in workspace1.
