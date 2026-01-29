@@ -96,11 +96,6 @@ async function backfillFramesSkillForWorkspace(
     (c) => !conversationsWithSkill.has(c.id)
   );
 
-  if (conversationsNeedingSkill.length === 0) {
-    logger.info("All conversations already have the frames skill");
-    return;
-  }
-
   logger.info(
     {
       alreadyHaveSkill: conversationsWithSkill.size,
@@ -109,6 +104,10 @@ async function backfillFramesSkillForWorkspace(
     },
     "Upserting conversation skills"
   );
+
+  if (conversationsNeedingSkill.length === 0) {
+    return;
+  }
 
   let created = 0;
   await concurrentExecutor(
