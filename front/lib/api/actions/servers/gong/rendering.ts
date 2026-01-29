@@ -1,14 +1,14 @@
 import type {
   GongCall,
   GongCallTranscript,
-} from "@app/lib/api/actions/servers/gong/client";
+} from "@app/lib/api/actions/servers/gong/schemas";
 
-function formatDuration(seconds: number | undefined): string {
-  if (!seconds) {
+function formatDuration(durationSeconds: number | undefined): string {
+  if (!durationSeconds) {
     return "Unknown duration";
   }
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
+  const minutes = Math.floor(durationSeconds / 60);
+  const remainingSeconds = durationSeconds % 60;
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;

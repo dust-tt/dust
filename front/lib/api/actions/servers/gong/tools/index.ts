@@ -13,6 +13,9 @@ import {
 } from "@app/lib/api/actions/servers/gong/rendering";
 import { Err, Ok } from "@app/types";
 
+// Hard limit on the number of calls returned per request to prevent unbounded results.
+const MAX_CALLS_PER_REQUEST = 100;
+
 function isTrackedError(error: Error): boolean {
   return !(error instanceof GongApiError && error.isInvalidInput);
 }
@@ -50,9 +53,15 @@ const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
       ]);
     }
 
-    let response = `Found ${totalRecords ?? calls.length} call(s):\n\n${renderCalls(calls)}`;
+    // Apply hard limit to prevent unbounded results.
+    const limitedCalls = calls.slice(0, MAX_CALLS_PER_REQUEST);
+    const wasLimited = calls.length > MAX_CALLS_PER_REQUEST;
 
-    if (nextCursor) {
+    let response = `Found ${totalRecords ?? calls.length} call(s):\n\n${renderCalls(limitedCalls)}`;
+
+    if (wasLimited) {
+      response += `\n\n---\n\n**Note:** Results limited to ${MAX_CALLS_PER_REQUEST} calls. Use a narrower date range or cursor to see more.`;
+    } else if (nextCursor) {
       response += `\n\n---\n\n**Note:** More calls available. Use cursor "${nextCursor}" to fetch the next page.`;
     }
 

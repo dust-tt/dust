@@ -5,8 +5,6 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const GONG_TOOL_NAME = "gong" as const;
-
 export const GONG_TOOLS_METADATA = createToolsRecord({
   list_calls: {
     description:
