@@ -161,28 +161,11 @@ function constructToolsSection({
   // whether their server has explicit instructions or is detailed in this specific prompt overview.
   let toolServersPrompt = "";
 
-  const areInstructionsAlreadyIncludedInSkillSection = ({
-    serverName,
-  }: ServerToolsAndInstructions): boolean => {
-    if (serverName !== "interactive_content" && serverName !== "deep_dive") {
-      return false;
-    }
-    return equippedSkills
-      .concat(enabledSkills)
-      .some((skill) => skill.sId === serverName);
-  };
-
   if (serverToolsAndInstructions && serverToolsAndInstructions.length > 0) {
     toolServersPrompt = "\n## AVAILABLE TOOL SERVERS\n";
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
-      if (areInstructionsAlreadyIncludedInSkillSection(serverData)) {
-        // Prevent interactive_content and deep_dive server instructions
-        // from being duplicated in the prompt if they are already included in the skills section.
-        continue;
-      }
-
       toolServersPrompt += `\n### SERVER NAME: ${serverData.serverName}\n`;
       if (serverData.instructions) {
         toolServersPrompt += `Server instructions: ${serverData.instructions}\n`;
