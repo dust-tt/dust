@@ -455,7 +455,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_editions: async (params, extra) => {
+  suggest_prompt_edits: async (params, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));

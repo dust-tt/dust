@@ -6,7 +6,6 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { registerGetAgentConfigTool } from "@app/components/agent_builder/copilot/tools/getAgentConfig";
-import { registerSuggestInstructionChangesTool } from "@app/components/agent_builder/copilot/tools/suggestInstructionChanges";
 import { BrowserMCPTransport } from "@app/lib/client/BrowserMCPTransport";
 
 // Server name used for MCP registration. This is a client-side MCP server
@@ -101,13 +100,6 @@ export function useCopilotMCPServer({
             ? () => suggestionsContextRef.current!.getCommittedInstructions()
             : undefined,
         });
-
-        // Register suggestion tool if context is provided.
-        if (suggestionsContextRef.current) {
-          registerSuggestInstructionChangesTool(mcpServer, {
-            addSuggestion: suggestionsContextRef.current!.addSuggestion,
-          });
-        }
 
         // Create the browser transport.
         const transport = new BrowserMCPTransport(

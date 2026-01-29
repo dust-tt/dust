@@ -480,7 +480,9 @@ export default function AgentBuilder({
 
   // Only load suggestions when editing an existing agent (not duplicating).
   const suggestionsAgentId =
-    !duplicateAgentId && agentConfiguration ? agentConfiguration.sId : null;
+    !duplicateAgentId && agentConfiguration
+      ? agentConfiguration.sId
+      : (pendingAgentId ?? null);
 
   return (
     <AgentBuilderFormContext.Provider value={form}>

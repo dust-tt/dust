@@ -12,7 +12,10 @@ import React, {
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
-import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
+import {
+  useAgentSuggestions,
+  usePatchAgentSuggestion,
+} from "@app/lib/swr/agent_suggestions";
 
 export type CopilotSuggestionType = "instructions"; // Future: | "tool" | "skill".
 
@@ -91,6 +94,11 @@ export const CopilotSuggestionsProvider = ({
       state: ["pending"],
       workspaceId: owner.sId,
     });
+
+  const { patchSuggestion } = usePatchAgentSuggestion({
+    agentConfigurationId,
+    workspaceId: owner.sId,
+  });
 
   const registerEditor = useCallback((editor: Editor) => {
     editorRef.current = editor;
@@ -233,25 +241,33 @@ export const CopilotSuggestionsProvider = ({
     []
   );
 
-  const acceptSuggestion = useCallback((id: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
+  const acceptSuggestion = useCallback(
+    (id: string) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
 
-    editor.commands.acceptSuggestion(id);
-    setSuggestions((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+      editor.commands.acceptSuggestion(id);
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+      void patchSuggestion(id, "approved");
+    },
+    [patchSuggestion]
+  );
 
-  const rejectSuggestion = useCallback((id: string) => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
+  const rejectSuggestion = useCallback(
+    (id: string) => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return;
+      }
 
-    editor.commands.rejectSuggestion(id);
-    setSuggestions((prev) => prev.filter((s) => s.id !== id));
-  }, []);
+      editor.commands.rejectSuggestion(id);
+      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+      void patchSuggestion(id, "rejected");
+    },
+    [patchSuggestion]
+  );
 
   const acceptAllSuggestions = useCallback(() => {
     const editor = editorRef.current;
@@ -259,9 +275,13 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
+    for (const suggestion of suggestions) {
+      void patchSuggestion(suggestion.id, "approved");
+    }
+
     editor.commands.acceptAllSuggestions();
     setSuggestions([]);
-  }, []);
+  }, [patchSuggestion, suggestions]);
 
   const rejectAllSuggestions = useCallback(() => {
     const editor = editorRef.current;
@@ -269,9 +289,13 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
+    for (const suggestion of suggestions) {
+      void patchSuggestion(suggestion.id, "rejected");
+    }
+
     editor.commands.rejectAllSuggestions();
     setSuggestions([]);
-  }, []);
+  }, [patchSuggestion, suggestions]);
 
   const hasPendingSuggestions = useCallback(() => {
     return suggestions.length > 0;

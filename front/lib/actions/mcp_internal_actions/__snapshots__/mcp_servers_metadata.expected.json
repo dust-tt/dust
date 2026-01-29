@@ -263,7 +263,7 @@
         }
       },
       {
-        "name": "suggest_prompt_editions",
+        "name": "suggest_prompt_edits",
         "description": "Create one or more suggestions to modify the agent's instructions/prompt. Each suggestion specifies text to find and replace.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -449,7 +449,7 @@
       "get_available_tools": "never_ask",
       "list_suggestions": "never_ask",
       "suggest_model": "never_ask",
-      "suggest_prompt_editions": "never_ask",
+      "suggest_prompt_edits": "never_ask",
       "suggest_skills": "never_ask",
       "suggest_tools": "never_ask",
       "update_suggestions_state": "never_ask"
