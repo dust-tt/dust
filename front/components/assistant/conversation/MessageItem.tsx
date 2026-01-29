@@ -185,7 +185,10 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
               // :warning: make sure to use the index in the key, as the mention.id is the userId
 
-              if (mention.status === "pending") {
+              if (
+                mention.status === "pending_conversation_access" ||
+                mention.status === "pending_project_membership"
+              ) {
                 return (
                   <MentionValidationRequired
                     key={index}

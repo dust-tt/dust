@@ -131,6 +131,21 @@ async function isUserMemberOfSpace(
   return space.isMember(userAuth);
 }
 
+/**
+ * Check if the current user can add members to a project space.
+ */
+async function canCurrentUserAddProjectMembers(
+  auth: Authenticator,
+  spaceId: string
+): Promise<boolean> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
+
+  return space.isEditor(auth);
+}
+
 export const createUserMentions = async (
   auth: Authenticator,
   {
@@ -202,11 +217,23 @@ export const createUserMentions = async (
           });
         }
 
-        const status: MentionStatusType = !canAccess
-          ? "user_restricted_by_conversation_access"
-          : autoApprove
-            ? "approved"
-            : "pending";
+        let status: MentionStatusType;
+        if (!canAccess) {
+          status = "user_restricted_by_conversation_access";
+        } else if (autoApprove) {
+          status = "approved";
+        } else if (conversation.spaceId) {
+          // Project conversation: check if current user can add members
+          const canAddMember = await canCurrentUserAddProjectMembers(
+            auth,
+            conversation.spaceId
+          );
+          status = canAddMember
+            ? "pending_project_membership"
+            : "user_restricted_by_conversation_access";
+        } else {
+          status = "pending_conversation_access";
+        }
 
         const mentionModel = await MentionModel.create(
           {
@@ -1064,6 +1091,10 @@ export async function validateUserMention(
     userMessages: [],
     agentMessages: [],
   };
+  const isPendingStatus = (status: MentionStatusType): boolean =>
+    status === "pending_conversation_access" ||
+    status === "pending_project_membership";
+
   // Find all pending mentions for the same user on conversation messages latest versions.
   for (const messageVersions of conversation.content) {
     const latestMessage = messageVersions[messageVersions.length - 1];
@@ -1072,7 +1103,7 @@ export async function validateUserMention(
       latestMessage.visibility !== "deleted" &&
       !isContentFragmentType(latestMessage) &&
       latestMessage.richMentions.some(
-        (m) => m.status === "pending" && m.id === userId
+        (m) => isPendingStatus(m.status) && m.id === userId
       )
     ) {
       const mentionModel = await MentionModel.findOne({
