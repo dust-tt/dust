@@ -23,9 +23,8 @@ const hoveringBarVariants = cva(
   }
 );
 
-export interface HoveringBarProps extends VariantProps<
-  typeof hoveringBarVariants
-> {
+export interface HoveringBarProps
+  extends VariantProps<typeof hoveringBarVariants> {
   children: React.ReactNode;
   className?: string;
 }

@@ -5,6 +5,7 @@ import type {
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   DATA_SOURCE_CONFIGURATION_URI_PATTERN,
+  PROJECT_CONFIGURATION_URI_PATTERN,
   TABLE_CONFIGURATION_URI_PATTERN,
 } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { TagsInputType } from "@app/lib/actions/mcp_internal_actions/types";
@@ -28,7 +29,8 @@ import type {
   DataSourceViewType,
   Result,
 } from "@app/types";
-import { assertNever, Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Type to represent data source configuration with resolved data source model
 export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {
@@ -534,4 +536,27 @@ export async function getCoreSearchArgs(
     default:
       assertNever(configInfo);
   }
+}
+
+export type ProjectConfigInfo = {
+  workspaceId: string;
+  projectId: string;
+};
+
+export function parseProjectConfigurationURI(
+  uri: string
+): Result<ProjectConfigInfo, Error> {
+  const match = uri.match(PROJECT_CONFIGURATION_URI_PATTERN);
+  if (!match) {
+    return new Err(
+      new Error(`Invalid URI for a project configuration: ${uri}`)
+    );
+  }
+
+  const [, workspaceId, projectId] = match;
+
+  return new Ok({
+    workspaceId,
+    projectId,
+  });
 }

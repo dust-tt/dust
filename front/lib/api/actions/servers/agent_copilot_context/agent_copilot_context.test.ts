@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -25,6 +25,11 @@ vi.mock("@app/lib/api/assistant/feedback", () => ({
 vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
 }));
+
+// Reset mocks between tests to prevent interference.
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -523,7 +528,7 @@ describe("agent_copilot_context tools", () => {
   });
 
   // Suggestion tools tests
-  describe("suggest_prompt_editions", () => {
+  describe("suggest_prompt_edits", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -531,7 +536,7 @@ describe("agent_copilot_context tools", () => {
         await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("suggest_prompt_editions");
+      const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
           suggestions: [{ oldString: "old text", newString: "new text" }],
@@ -555,11 +560,10 @@ describe("agent_copilot_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_prompt_editions");
+      const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
           suggestions: [{ oldString: "old text", newString: "new text" }],
-          analysis: "Test analysis",
         },
         createTestExtra(authenticator)
       );
@@ -569,11 +573,55 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.suggestions).toHaveLength(1);
-          expect(parsed.suggestions[0].sId).toBeDefined();
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=instructions\}/
+          );
         }
+      }
+    });
+
+    it("returns error when exceeding pending suggestions limit", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create 10 pending instruction suggestions (the maximum allowed).
+      for (let i = 0; i < 10; i++) {
+        await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration,
+          {
+            suggestion: {
+              oldString: `old text ${i}`,
+              newString: `new text ${i}`,
+            },
+            state: "pending",
+          }
+        );
+      }
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_prompt_edits");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "one more", newString: "exceeds limit" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("exceed the limit");
+        expect(result.error.message).toContain("10");
+        expect(result.error.message).toContain("instructions");
+        expect(result.error.message).toContain("outdated");
       }
     });
   });
@@ -629,9 +677,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.sId).toBeDefined();
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
+          );
         }
       }
     });
@@ -687,9 +735,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.sId).toBeDefined();
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=skills\}/
+          );
         }
       }
     });
@@ -746,9 +794,9 @@ describe("agent_copilot_context tools", () => {
         const content = result.value[0];
         expect(content.type).toBe("text");
         if (content.type === "text") {
-          const parsed = JSON.parse(content.text);
-          expect(parsed.success).toBe(true);
-          expect(parsed.sId).toBeDefined();
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=model\}/
+          );
         }
       }
     });

@@ -11,11 +11,12 @@ import type {
   LightWorkspaceType,
   ModelId,
 } from "@app/types";
-import { assertNever, isLightAgentMessageWithActionsType } from "@app/types";
+import { isLightAgentMessageWithActionsType } from "@app/types";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentStateClassification =
   | "placeholder"

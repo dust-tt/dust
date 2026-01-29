@@ -49,7 +49,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
     req.query = { wId: workspace.sId, aId: agent.sId };
     req.body = {
-      suggestionId: "test-id",
+      suggestionIds: ["test-id"],
       state: "approved",
     };
 
@@ -69,7 +69,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
     req.query = { wId: workspace.sId, aId: "non-existent-agent" };
     req.body = {
-      suggestionId: "test-id",
+      suggestionIds: ["test-id"],
       state: "approved",
     };
 
@@ -79,10 +79,24 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     expect(res._getJSONData().error.type).toBe("agent_configuration_not_found");
   });
 
-  it("returns 400 for missing suggestionId", async () => {
+  it("returns 400 for missing suggestionIds", async () => {
     const { req, res } = await setupTest();
 
     req.body = {
+      state: "approved",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(400);
+    expect(res._getJSONData().error.type).toBe("invalid_request_error");
+  });
+
+  it("returns 400 for empty suggestionIds array", async () => {
+    const { req, res } = await setupTest();
+
+    req.body = {
+      suggestionIds: [],
       state: "approved",
     };
 
@@ -96,7 +110,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     const { req, res } = await setupTest();
 
     req.body = {
-      suggestionId: "test-id",
+      suggestionIds: ["test-id"],
     };
 
     await handler(req, res);
@@ -109,7 +123,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     const { req, res } = await setupTest();
 
     req.body = {
-      suggestionId: "test-id",
+      suggestionIds: ["test-id"],
       state: "invalid_state",
     };
 
@@ -123,7 +137,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     const { req, res } = await setupTest();
 
     req.body = {
-      suggestionId: "test-id",
+      suggestionIds: ["test-id"],
       state: "pending",
     };
 
@@ -137,7 +151,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     const { req, res } = await setupTest();
 
     req.body = {
-      suggestionId: "non-existent-id",
+      suggestionIds: ["non-existent-id"],
       state: "approved",
     };
 
@@ -166,7 +180,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     // Try to update the suggestion via the first agent's endpoint
     req.query = { ...req.query, aId: agent.sId };
     req.body = {
-      suggestionId: suggestion.sId,
+      suggestionIds: [suggestion.sId],
       state: "approved",
     };
 
@@ -175,7 +189,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     expect(res._getStatusCode()).toBe(400);
     expect(res._getJSONData().error.type).toBe("invalid_request_error");
     expect(res._getJSONData().error.message).toContain(
-      "does not belong to the specified agent configuration"
+      "do not belong to the specified agent configuration"
     );
   });
 
@@ -204,7 +218,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     );
 
     req.body = {
-      suggestionId: suggestion.sId,
+      suggestionIds: [suggestion.sId],
       state: newState,
     };
 
@@ -213,9 +227,10 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.suggestion).toBeDefined();
-    expect(responseData.suggestion.state).toBe(newState);
-    expect(responseData.suggestion.sId).toBe(suggestion.sId);
+    expect(responseData.suggestions).toBeDefined();
+    expect(responseData.suggestions).toHaveLength(1);
+    expect(responseData.suggestions[0].state).toBe(newState);
+    expect(responseData.suggestions[0].sId).toBe(suggestion.sId);
 
     // Verify the state was persisted.
     const fetchedSuggestion = await AgentSuggestionResource.fetchById(
@@ -240,7 +255,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     );
 
     req.body = {
-      suggestionId: suggestion.sId,
+      suggestionIds: [suggestion.sId],
       state: "approved",
     };
 
@@ -249,7 +264,8 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     expect(res._getStatusCode()).toBe(200);
 
     const responseData = res._getJSONData();
-    expect(responseData.suggestion).toMatchObject({
+    expect(responseData.suggestions).toHaveLength(1);
+    expect(responseData.suggestions[0]).toMatchObject({
       sId: suggestion.sId,
       state: "approved",
       kind: "instructions",
@@ -257,8 +273,8 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
       source: "copilot",
       suggestion: { oldString: "old text", newString: "new text" },
     });
-    expect(responseData.suggestion.createdAt).toBeDefined();
-    expect(responseData.suggestion.updatedAt).toBeDefined();
+    expect(responseData.suggestions[0].createdAt).toBeDefined();
+    expect(responseData.suggestions[0].updatedAt).toBeDefined();
   });
 
   it("admin can update suggestions in their workspace", async () => {
@@ -273,14 +289,14 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     );
 
     req.body = {
-      suggestionId: suggestion.sId,
+      suggestionIds: [suggestion.sId],
       state: "approved",
     };
 
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(res._getJSONData().suggestion.state).toBe("approved");
+    expect(res._getJSONData().suggestions[0].state).toBe("approved");
   });
 
   it("returns 403 for non-editor of the agent", async () => {
@@ -309,7 +325,7 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
     // Update request to target the other agent
     req.query = { ...req.query, aId: otherAgent.sId };
     req.body = {
-      suggestionId: suggestion.sId,
+      suggestionIds: [suggestion.sId],
       state: "approved",
     };
 
@@ -317,6 +333,50 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
     expect(res._getStatusCode()).toBe(403);
     expect(res._getJSONData().error.type).toBe("agent_group_permission_error");
+  });
+
+  it("updates multiple suggestions in a single request", async () => {
+    const { req, res, authenticator, agent } = await setupTest();
+
+    const suggestion1 = await AgentSuggestionFactory.createInstructions(
+      authenticator,
+      agent,
+      { state: "pending" }
+    );
+    const suggestion2 = await AgentSuggestionFactory.createInstructions(
+      authenticator,
+      agent,
+      { state: "pending" }
+    );
+
+    req.body = {
+      suggestionIds: [suggestion1.sId, suggestion2.sId],
+      state: "approved",
+    };
+
+    await handler(req, res);
+
+    expect(res._getStatusCode()).toBe(200);
+
+    const responseData = res._getJSONData();
+    expect(responseData.suggestions).toHaveLength(2);
+    expect(
+      responseData.suggestions.every(
+        (s: { state: string }) => s.state === "approved"
+      )
+    ).toBe(true);
+
+    // Verify both were persisted.
+    const fetched1 = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion1.sId
+    );
+    const fetched2 = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion2.sId
+    );
+    expect(fetched1?.state).toBe("approved");
+    expect(fetched2?.state).toBe("approved");
   });
 });
 

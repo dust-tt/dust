@@ -63,12 +63,16 @@ When there are pending suggestions, the "instructions" field shows the original 
           description: skill.description,
         })),
         maxStepsPerRun: formData.maxStepsPerRun,
-        pendingSuggestions: pendingSuggestions.map((suggestion) => ({
-          id: suggestion.id,
-          type: suggestion.type,
-          find: suggestion.find,
-          replacement: suggestion.replacement,
-        })),
+        pendingSuggestions: pendingSuggestions.map((suggestion) =>
+          suggestion.type === "instructions"
+            ? {
+                id: suggestion.id,
+                type: suggestion.type,
+                find: suggestion.find,
+                replacement: suggestion.replacement,
+              }
+            : suggestion
+        ),
       };
 
       return {

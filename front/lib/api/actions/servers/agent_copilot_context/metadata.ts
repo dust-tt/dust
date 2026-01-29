@@ -27,6 +27,10 @@ const InstructionsSuggestionSchema = z.object({
     .number()
     .optional()
     .describe("Number of occurrences to replace."),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Analysis or reasoning for this specific suggestion"),
 });
 
 const ToolAdditionSchema = z.object({
@@ -170,27 +174,29 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
   },
   // Suggestion tools
-  suggest_prompt_editions: {
+  suggest_prompt_edits: {
     description:
-      "Create one or more suggestions to modify the agent's instructions/prompt. Each suggestion specifies text to find and replace.",
+      "Create suggestions to modify the agent's instructions/prompt. " +
+      "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
+      "NEVER replace entire instruction blocks. " +
+      "Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
         .array(InstructionsSuggestionSchema)
-        .describe("Array of instruction modifications to suggest"),
-      analysis: z
-        .string()
-        .optional()
-        .describe("Analysis or reasoning for the suggestions"),
+        .describe(
+          "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis."
+        ),
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Suggesting prompt editions",
-      done: "Suggest prompt editions",
+      running: "Suggesting prompt edits",
+      done: "Suggest prompt edits",
     },
   },
   suggest_tools: {
     description:
-      "Suggest adding or removing tools from the agent's configuration.",
+      "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ToolsSuggestionSchema.describe(
         "The tool additions and/or deletions to suggest"
@@ -208,7 +214,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_skills: {
     description:
-      "Suggest adding or removing skills from the agent's configuration.",
+      "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: SkillsSuggestionSchema.describe(
         "The skill additions and/or deletions to suggest"
@@ -225,7 +231,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
   },
   suggest_model: {
-    description: "Suggest changing the agent's LLM model configuration.",
+    description:
+      "Suggest changing the agent's LLM model configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ModelSuggestionSchema.describe(
         "The model configuration to suggest"
@@ -248,9 +255,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       states: z
         .array(z.enum(AGENT_SUGGESTION_STATES))
         .optional()
-        .default(["pending"])
         .describe(
-          `Filter by suggestion states (default: ['pending']). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
+          `Filter by suggestion states. Options: ${AGENT_SUGGESTION_STATES.join(", ")}. If not provided, returns all states.`
         ),
       kind: z
         .enum(AGENT_SUGGESTION_KINDS)
@@ -263,6 +269,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .int()
         .positive()
         .optional()
+        .default(50)
         .describe(
           "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
         ),

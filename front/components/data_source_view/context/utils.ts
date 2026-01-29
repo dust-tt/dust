@@ -16,7 +16,7 @@ import type {
   DataSourceViewType,
   SpaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function pathToString(path: string[]): string {
   return path.join("/");

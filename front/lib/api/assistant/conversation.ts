@@ -29,8 +29,8 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/key_cap_tracking";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -43,11 +43,11 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -82,7 +82,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import {
-  assertNever,
   ConversationError,
   Err,
   isAgentMention,
@@ -97,6 +96,7 @@ import {
   toMentionType,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
@@ -145,7 +145,7 @@ export async function createConversation(
       depth,
       triggerId,
       spaceId,
-      requestedSpaceIds: [],
+      requestedSpaceIds: spaceId ? [spaceId] : [],
       metadata: metadata ?? {},
     },
     space
@@ -602,7 +602,7 @@ export async function postUserMessage(
     const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig.featureFlag &&
+      supportedModelConfig?.featureFlag &&
       !featureFlags.includes(supportedModelConfig.featureFlag)
     ) {
       return new Err({
@@ -1740,7 +1740,8 @@ async function isMessagesLimitReached(
   }
 
   // Checking rate limit
-  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

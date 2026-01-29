@@ -15,9 +15,8 @@ const TooltipPortal = TooltipPrimitive.Portal;
 
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
-interface TooltipContentProps extends React.ComponentPropsWithoutRef<
-  typeof TooltipPrimitive.Content
-> {
+interface TooltipContentProps
+  extends React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
 }

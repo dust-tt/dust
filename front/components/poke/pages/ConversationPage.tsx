@@ -36,7 +36,8 @@ import type {
   PokeAgentMessageType,
   UserMessageType,
 } from "@app/types";
-import { assertNever, isFileContentFragment } from "@app/types";
+import { isFileContentFragment } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface UserMessageViewProps {
   message: UserMessageType;

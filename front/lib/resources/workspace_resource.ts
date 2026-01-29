@@ -103,12 +103,13 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspaces.map((w) => w.id);
   }
 
-  static async fetchByDomain(
-    domain: string
-  ): Promise<WorkspaceResource | null> {
+  private static async fetchWorkspaceAndDomainInfo(domain: string): Promise<{
+    workspace: WorkspaceResource;
+    domainInfo: WorkspaceDomain;
+  } | null> {
     const workspaceDomain = await this.workspaceDomainModel.findOne({
       where: { domain },
-      // WORKSPACE_ISOLATION_BYPASS: Use to search for existing workspaces by domain.
+      // WORKSPACE_ISOLATION_BYPASS: Looking up which workspace owns a domain requires cross-workspace query.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -120,7 +121,36 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       where: { id: workspaceDomain.workspaceId },
     });
 
-    return workspace ? new this(this.model, workspace.get()) : null;
+    if (!workspace) {
+      return null;
+    }
+
+    return {
+      workspace: new this(this.model, workspace.get()),
+      domainInfo: {
+        domain: workspaceDomain.domain,
+        domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
+      },
+    };
+  }
+
+  static async fetchByDomain(
+    domain: string
+  ): Promise<WorkspaceResource | null> {
+    const result = await this.fetchWorkspaceAndDomainInfo(domain);
+    return result?.workspace ?? null;
+  }
+
+  static async fetchByDomainWithInfo(domain: string): Promise<{
+    workspace: WorkspaceResource;
+    domainInfo: WorkspaceDomain;
+  } | null> {
+    return this.fetchWorkspaceAndDomainInfo(domain);
+  }
+
+  static async isDomainAutoJoinEnabled(domain: string): Promise<boolean> {
+    const result = await this.fetchWorkspaceAndDomainInfo(domain);
+    return result?.domainInfo.domainAutoJoinEnabled ?? false;
   }
 
   static async fetchByWorkOSOrganizationId(

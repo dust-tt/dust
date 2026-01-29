@@ -10,7 +10,8 @@ import type {
   Result,
   WithAPIErrorResponse,
 } from "@app/types";
-import { Err, isAPIErrorResponse, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { isAPIErrorResponse } from "@app/types/error";
 
 export const useFinalize = () => {
   const doFinalize = async (

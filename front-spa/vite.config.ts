@@ -12,6 +12,9 @@ function stubModulesPlugin(): Plugin {
     // Buffer: minimal stub for Node.js Buffer
     buffer:
       "export const Buffer = { isBuffer: () => false, from: (x) => new Uint8Array(typeof x === 'string' ? [...x].map(c => c.charCodeAt(0)) : x), alloc: (n) => new Uint8Array(n) }; export default { Buffer };",
+    // Assert: minimal stub for Node.js assert module
+    assert:
+      "function assert(value, message) { if (!value) throw new Error(message || 'Assertion failed'); } assert.ok = assert; assert.strictEqual = (a, b, msg) => { if (a !== b) throw new Error(msg || `Expected ${a} to strictly equal ${b}`); }; assert.deepStrictEqual = assert.strictEqual; export default assert; export { assert };",
   };
 
   // Stubs for resolved file paths (after @dust-tt/front alias is applied)
@@ -110,7 +113,22 @@ export default defineConfig(({ mode }) => {
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),
-    plugins: [stubModulesPlugin(), serveHtmlPlugin(htmlEntry), react()],
+    plugins: [
+      stubModulesPlugin(),
+      serveHtmlPlugin(htmlEntry),
+      react({
+        babel: {
+          plugins: [
+            [
+              "babel-plugin-react-compiler",
+              {
+                target: "18",
+              },
+            ],
+          ],
+        },
+      }),
+    ],
     define: {
       ...envVarDefines,
       // Fallback for any remaining process.env access
@@ -139,7 +157,7 @@ export default defineConfig(({ mode }) => {
         // Platform abstraction: redirect @app/lib/platform to SPA implementation
         {
           find: "@app/lib/platform",
-          replacement: path.resolve(__dirname, "src/lib/platform.ts"),
+          replacement: path.resolve(__dirname, "src/lib/platform.tsx"),
         },
         // @app alias for front internal imports
         {

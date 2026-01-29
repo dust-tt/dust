@@ -23,7 +23,6 @@ import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType, Result } from "@app/types";
 import {
-  assertNever,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -33,6 +32,7 @@ import {
   Err,
   Ok,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Generates a unique data source name for project conversations connector.

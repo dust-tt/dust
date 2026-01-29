@@ -19,6 +19,31 @@ import type { AppType, WhitelistableFeature, WorkspaceType } from "@app/types";
 import { isAdmin, isBuilder } from "@app/types";
 
 /**
+ * Check if an actual route path matches any of the given route patterns.
+ * Supports both Next.js patterns like "/w/[wId]/members" and actual paths like "/w/abc123/members".
+ * @param currentRoute - The actual route path (e.g., "/w/abc123/members")
+ * @param patterns - Array of route patterns to match against
+ */
+function matchesRoutePattern(
+  currentRoute: string,
+  patterns: string[]
+): boolean {
+  // First try exact match (works for Next.js where pathname is the pattern)
+  if (patterns.includes(currentRoute)) {
+    return true;
+  }
+
+  // Convert patterns to regexes and try matching (works for SPA where pathname is actual path)
+  return patterns.some((pattern) => {
+    // Escape special regex chars except [ and ]
+    const escaped = pattern.replace(/[.*+?^${}()|\\]/g, "\\$&");
+    // Convert [paramName] to [^/]+ to match any segment
+    const regexStr = "^" + escaped.replace(/\[[^\]]+\]/g, "[^/]+") + "$";
+    return new RegExp(regexStr).test(currentRoute);
+  });
+}
+
+/**
  * NavigationIds are typed ids we use to identify which navigation item is currently active. We need
  * ones for the topNavigation (same across the whole app) and for the subNavigation which appears in
  * some section of the app in the AppLayout navigation panel.
@@ -128,11 +153,11 @@ export const getTopNavigationTabs = (
     icon: ChatBubbleLeftRightIcon,
     sizing: "hug",
     isCurrent: (currentRoute) =>
-      [
+      matchesRoutePattern(currentRoute, [
         "/w/[wId]/conversation/new",
         "/w/[wId]/conversation/[cId]",
         "/w/[wId]/conversation/space/[spaceId]",
-      ].includes(currentRoute),
+      ]),
   });
 
   nav.push({
@@ -141,7 +166,8 @@ export const getTopNavigationTabs = (
     icon: PlanetIcon,
     href: `/w/${owner.sId}/spaces`,
     isCurrent: (currentRoute: string) =>
-      currentRoute.startsWith("/w/[wId]/spaces/"),
+      currentRoute.startsWith("/w/[wId]/spaces/") ||
+      /^\/w\/[^/]+\/spaces\//.test(currentRoute),
     sizing: "hug",
     ref: spaceMenuButtonRef,
   });
@@ -153,7 +179,7 @@ export const getTopNavigationTabs = (
       icon: Cog6ToothIcon,
       href: `/w/${owner.sId}/members`,
       isCurrent: (currentRoute) =>
-        [
+        matchesRoutePattern(currentRoute, [
           "/w/[wId]/members",
           "/w/[wId]/workspace",
           "/w/[wId]/subscription",
@@ -163,7 +189,7 @@ export const getTopNavigationTabs = (
           "/w/[wId]/developers/providers",
           "/w/[wId]/developers/api-keys",
           "/w/[wId]/developers/dev-secrets",
-        ].includes(currentRoute),
+        ]),
       sizing: "hug",
     });
   }

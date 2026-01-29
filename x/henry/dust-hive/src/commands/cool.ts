@@ -3,7 +3,7 @@ import { pauseDocker } from "../lib/docker";
 import { logger } from "../lib/logger";
 import { stopService } from "../lib/process";
 import { CommandError, Err, Ok } from "../lib/result";
-import { ALL_SERVICES } from "../lib/services";
+import { ALL_SERVICES, COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
 export const coolCommand = withEnvironment("cool", async (env) => {
@@ -16,9 +16,10 @@ export const coolCommand = withEnvironment("cool", async (env) => {
   logger.info(`Cooling environment '${env.name}'...`);
   console.log();
 
-  // Stop all services except SDK
+  // Stop all services except cold state services (SDK, sparkle)
   logger.step("Stopping services...");
-  for (const service of ALL_SERVICES.filter((s) => s !== "sdk")) {
+  const coldSet = new Set<string>(COLD_STATE_SERVICES);
+  for (const service of ALL_SERVICES.filter((s) => !coldSet.has(s))) {
     const stopped = await stopService(env.name, service);
     if (stopped) {
       logger.info(`  Stopped ${service}`);

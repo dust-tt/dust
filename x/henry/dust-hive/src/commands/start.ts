@@ -3,6 +3,7 @@ import { logger } from "../lib/logger";
 import { isServiceRunning } from "../lib/process";
 import { startService, waitForServiceReady } from "../lib/registry";
 import { Ok } from "../lib/result";
+import { COLD_STATE_SERVICES } from "../lib/services";
 import { getStateInfo } from "../lib/state";
 
 export const startCommand = withEnvironment("start", async (env) => {
@@ -20,28 +21,19 @@ export const startCommand = withEnvironment("start", async (env) => {
   console.log();
 
   // Start build watchers (sparkle and SDK) using registry
-  const sparkleRunning = await isServiceRunning(env.name, "sparkle");
-  const sdkRunning = await isServiceRunning(env.name, "sdk");
-
-  const startPromises: Promise<void>[] = [];
-  if (!sparkleRunning) {
-    startPromises.push(startService(env, "sparkle"));
-  } else {
-    logger.info("Sparkle watch already running");
-  }
-  if (!sdkRunning) {
-    startPromises.push(startService(env, "sdk"));
-  } else {
-    logger.info("SDK watch already running");
+  const servicesToStart: (typeof COLD_STATE_SERVICES)[number][] = [];
+  for (const service of COLD_STATE_SERVICES) {
+    const running = await isServiceRunning(env.name, service);
+    if (!running) {
+      servicesToStart.push(service);
+    } else {
+      logger.info(`${service} watch already running`);
+    }
   }
 
-  if (startPromises.length > 0) {
-    await Promise.all(startPromises);
-    // Wait for both to be ready
-    const readyPromises: Promise<void>[] = [];
-    if (!sparkleRunning) readyPromises.push(waitForServiceReady(env, "sparkle"));
-    if (!sdkRunning) readyPromises.push(waitForServiceReady(env, "sdk"));
-    await Promise.all(readyPromises);
+  if (servicesToStart.length > 0) {
+    await Promise.all(servicesToStart.map((s) => startService(env, s)));
+    await Promise.all(servicesToStart.map((s) => waitForServiceReady(env, s)));
   }
 
   console.log();

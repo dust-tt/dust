@@ -22,6 +22,7 @@ import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
 import React, { useCallback, useContext, useMemo } from "react";
 import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentMessageMarkdown } from "@app/components/assistant/AgentMessageMarkdown";
 import { AgentMessageActions } from "@app/components/assistant/conversation/actions/AgentMessageActions";
@@ -85,11 +86,11 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface AgentMessageProps {
   conversationId: string;
@@ -105,6 +106,8 @@ interface AgentMessageProps {
     contentFragments: ContentFragmentsType,
   ) => Promise<Result<undefined, DustError>>;
   enableExtendedActions: boolean;
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
 }
 
 export function AgentMessage({
@@ -117,6 +120,8 @@ export function AgentMessage({
   triggeringUser,
   handleSubmit,
   enableExtendedActions,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
 }: AgentMessageProps) {
   const sId = agentMessage.sId;
 
@@ -762,6 +767,8 @@ export function AgentMessage({
                 activeReferences={activeReferences}
                 setActiveReferences={setActiveReferences}
                 triggeringUser={triggeringUser}
+                additionalMarkdownComponents={additionalMarkdownComponents}
+                additionalMarkdownPlugins={additionalMarkdownPlugins}
               />
             </>
           )}
@@ -788,6 +795,8 @@ function AgentMessageContent({
   setActiveReferences,
   retryHandler,
   onQuickReplySend,
+  additionalMarkdownComponents: propsAdditionalMarkdownComponents,
+  additionalMarkdownPlugins,
 }: {
   triggeringUser: UserType | null;
   isLastMessage: boolean;
@@ -809,6 +818,8 @@ function AgentMessageContent({
     }[],
   ) => void;
   onQuickReplySend: (message: string) => Promise<void>;
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
 }) {
   const methods = useVirtuosoMethods<
     VirtuosoMessage,
@@ -894,6 +905,7 @@ function AgentMessageContent({
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
       toolSetup: getToolSetupPlugin(owner, handleToolSetupComplete),
+      ...propsAdditionalMarkdownComponents,
     }),
     [
       owner,
@@ -903,6 +915,7 @@ function AgentMessageContent({
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
+      propsAdditionalMarkdownComponents,
     ],
   );
 
@@ -1038,6 +1051,7 @@ function AgentMessageContent({
               streamingState={streamingState}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
             />
           </CitationsContext.Provider>
         </div>

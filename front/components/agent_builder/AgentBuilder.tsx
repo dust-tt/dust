@@ -478,9 +478,10 @@ export default function AgentBuilder({
       : `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
-  // Only load suggestions when editing an existing agent (not duplicating).
-  const suggestionsAgentId =
-    !duplicateAgentId && agentConfiguration ? agentConfiguration.sId : null;
+  // Only load suggestions when not duplicating an existing agent.
+  const suggestionsAgentId = duplicateAgentId
+    ? null
+    : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
   return (
     <AgentBuilderFormContext.Provider value={form}>

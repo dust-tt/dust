@@ -12,7 +12,7 @@ import {
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import {
   CONTENT_OUTDATED_MSG,
@@ -86,6 +86,9 @@ const handlers: ToolHandlers<typeof CONVERSATION_FILES_TOOLS_METADATA> = {
     const model = getSupportedModelConfig(
       extra.agentLoopContext.runContext.agentConfiguration.model
     );
+    if (!model) {
+      return new Err(new MCPError("Model configuration not found"));
+    }
 
     const fileRes = await getFileFromConversation(
       auth,

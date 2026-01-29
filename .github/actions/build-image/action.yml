@@ -83,6 +83,12 @@ runs:
       shell: bash
       run: gcloud auth configure-docker ${{ inputs.region }}-docker.pkg.dev --quiet
 
+    - name: "Fetch custom models config"
+      if: contains(inputs.component, 'front')
+      shell: bash
+      run: |
+        gcloud storage cp gs://bkt-dust-infra-model-configs/custom.json front/custom-models.json 2>/dev/null || echo '{"models":[]}' > front/custom-models.json
+
     - name: "Setup Depot"
       uses: "depot/setup-action@v1"
 

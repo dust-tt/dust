@@ -13,6 +13,8 @@ import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getSupportedModelConfigs } from "@app/lib/api/models";
+import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -22,13 +24,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
-import {
-  Err,
-  isModelProviderId,
-  normalizeError,
-  Ok,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { Err, isModelProviderId, normalizeError, Ok } from "@app/types";
+import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
@@ -36,6 +33,13 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "folder",
   "website",
 ];
+
+// Limits for pending suggestions by kind
+const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
+const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
+const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
+
+type LimitedSuggestionKind = "instructions" | "tools" | "skills";
 
 interface KnowledgeDataSource {
   sId: string;
@@ -54,6 +58,52 @@ interface KnowledgeSpace {
   name: string;
   kind: SpaceType["kind"];
   categories: KnowledgeCategoryData[];
+}
+
+function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
+  switch (kind) {
+    case "instructions":
+      return MAX_PENDING_INSTRUCTIONS_SUGGESTIONS;
+    case "tools":
+      return MAX_PENDING_TOOLS_SUGGESTIONS;
+    case "skills":
+      return MAX_PENDING_SKILLS_SUGGESTIONS;
+  }
+}
+
+async function checkPendingSuggestionLimit(
+  auth: Authenticator,
+  agentConfigurationId: string,
+  kind: LimitedSuggestionKind,
+  newSuggestionCount: number
+): Promise<{ allowed: true } | { allowed: false; errorMessage: string }> {
+  const maxAllowed = getMaxPendingSuggestions(kind);
+
+  const existingPendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { states: ["pending"], kind }
+    );
+
+  const totalAfterAddition =
+    existingPendingSuggestions.length + newSuggestionCount;
+
+  if (totalAfterAddition > maxAllowed) {
+    const existingCount = existingPendingSuggestions.length;
+    const availableSlots = Math.max(0, maxAllowed - existingCount);
+
+    return {
+      allowed: false,
+      errorMessage:
+        `Cannot add ${newSuggestionCount} new ${kind} suggestion(s): ` +
+        `this would exceed the limit of ${maxAllowed} pending ${kind} suggestions. ` +
+        `Currently ${existingCount} pending, only ${availableSlots} slot(s) available. ` +
+        `Please mark some existing suggestions as outdated using update_suggestions_state before adding new ones.`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
@@ -169,7 +219,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     const owner = auth.getNonNullableWorkspace();
 
-    let models = SUPPORTED_MODEL_CONFIGS.filter((m) => !m.isLegacy);
+    const allModels = getSupportedModelConfigs();
+    let models = allModels.filter((m) => !m.isLegacy);
 
     if (providerId) {
       if (!isModelProviderId(providerId)) {
@@ -184,8 +235,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // Filter by whitelisted providers for the workspace.
     const whiteListedProviders =
-      owner.whiteListedProviders ??
-      SUPPORTED_MODEL_CONFIGS.map((m) => m.providerId);
+      owner.whiteListedProviders ?? allModels.map((m) => m.providerId);
     models = models.filter((m) => whiteListedProviders.includes(m.providerId));
 
     const modelList = models.map((m) => ({
@@ -455,7 +505,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_editions: async (params, extra) => {
+  suggest_prompt_edits: async (params, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -474,6 +524,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "instructions",
+      params.suggestions.length
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
+    }
+
     // Fetch the latest version of the agent configuration.
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
@@ -489,22 +550,27 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     const createdSuggestions: { sId: string }[] = [];
+    const directives: string[] = [];
 
     for (const suggestion of params.suggestions) {
       try {
+        const { analysis, ...suggestionData } = suggestion;
         const created = await AgentSuggestionResource.createSuggestionForAgent(
           auth,
           agentConfiguration,
           {
             kind: "instructions",
-            suggestion,
-            analysis: params.analysis ?? null,
+            suggestion: suggestionData,
+            analysis: analysis ?? null,
             state: "pending",
             source: "copilot",
           }
         );
 
         createdSuggestions.push({ sId: created.sId });
+        directives.push(
+          `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
+        );
       } catch (error) {
         return new Err(
           new MCPError(
@@ -518,14 +584,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            success: true,
-            suggestions: createdSuggestions,
-          },
-          null,
-          2
-        ),
+        text: directives.join("\n\n"),
       },
     ]);
   },
@@ -547,6 +606,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           { tracked: false }
         )
       );
+    }
+
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "tools",
+      1
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
     // Fetch the latest version of the agent configuration.
@@ -579,14 +649,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -616,6 +679,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           { tracked: false }
         )
       );
+    }
+
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "skills",
+      1
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
     // Fetch the latest version of the agent configuration.
@@ -648,14 +722,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -717,14 +784,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -793,61 +853,64 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     const { suggestions: suggestionUpdates } = params;
 
+    const suggestionIds = suggestionUpdates.map((s) => s.suggestionId);
+    const suggestions = await AgentSuggestionResource.fetchByIds(
+      auth,
+      suggestionIds
+    );
+    const suggestionsById = new Map(suggestions.map((s) => [s.sId, s]));
+
     const results: {
       success: boolean;
       suggestionId: string;
       error?: string;
-    }[] = await concurrentExecutor(
-      suggestionUpdates,
-      async ({
-        suggestionId,
-        state,
-      }): Promise<{
-        success: boolean;
-        suggestionId: string;
-        error?: string;
-      }> => {
-        // Fetch the suggestion by ID.
-        const suggestion = await AgentSuggestionResource.fetchById(
-          auth,
-          suggestionId
+    }[] = [];
+
+    // Group suggestions by target state.
+    const suggestionsByState = new Map<
+      AgentSuggestionState,
+      AgentSuggestionResource[]
+    >();
+
+    for (const { suggestionId, state } of suggestionUpdates) {
+      const suggestion = suggestionsById.get(suggestionId);
+      if (!suggestion) {
+        results.push({
+          success: false,
+          suggestionId,
+          error: `Suggestion not found: ${suggestionId}`,
+        });
+        continue;
+      }
+
+      const group = suggestionsByState.get(state) ?? [];
+      group.push(suggestion);
+      suggestionsByState.set(state, group);
+    }
+
+    // Bulk update each state group.
+    for (const [state, group] of suggestionsByState) {
+      try {
+        await AgentSuggestionResource.bulkUpdateState(auth, group, state);
+        results.push(
+          ...group.map((s) => ({ success: true, suggestionId: s.sId }))
         );
-
-        if (!suggestion) {
-          return {
+      } catch (error) {
+        const msg = normalizeError(error).message;
+        results.push(
+          ...group.map((s) => ({
             success: false,
-            suggestionId,
-            error: `Suggestion not found: ${suggestionId}`,
-          };
-        }
-
-        try {
-          await suggestion.updateState(auth, state);
-          return {
-            success: true,
-            suggestionId,
-          };
-        } catch (error) {
-          return {
-            success: false,
-            suggestionId,
-            error: `Failed to update suggestion state: ${normalizeError(error).message}`,
-          };
-        }
-      },
-      { concurrency: 4 }
-    );
+            suggestionId: s.sId,
+            error: `Failed to update suggestion state: ${msg}`,
+          }))
+        );
+      }
+    }
 
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            results,
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify({ results }, null, 2),
       },
     ]);
   },

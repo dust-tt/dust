@@ -1,4 +1,5 @@
 import Anthropic, { APIError } from "@anthropic-ai/sdk";
+import type { BetaThinkingConfigParam } from "@anthropic-ai/sdk/resources/beta.mjs";
 
 import type { AnthropicWhitelistedModelId } from "@app/lib/api/llm/clients/anthropic/types";
 import {
@@ -58,12 +59,25 @@ export class AnthropicLLM extends LLM {
         toMessage(msg, { isLast: index === array.length - 1 })
       );
 
+      // Build thinking config, use custom type if specified.
+      const thinkingConfig =
+        this.modelConfig.customThinkingType === "auto"
+          ? ({ type: "auto" } as unknown as BetaThinkingConfigParam)
+          : toThinkingConfig(
+              this.reasoningEffort,
+              this.modelConfig.useNativeLightReasoning
+            );
+
+      // Merge betas, always include structured-outputs, add custom betas if specified.
+      // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available.
+      const betas = [
+        "structured-outputs-2025-11-13",
+        ...(this.modelConfig.customBetas ?? []),
+      ];
+
       const events = this.client.beta.messages.stream({
         model: this.modelId,
-        thinking: toThinkingConfig(
-          this.reasoningEffort,
-          this.modelConfig.useNativeLightReasoning
-        ),
+        thinking: thinkingConfig,
         system: [
           {
             type: "text",
@@ -79,11 +93,13 @@ export class AnthropicLLM extends LLM {
         tools: specifications.map(toTool),
         max_tokens: this.modelConfig.generationTokensCount,
         tool_choice: toToolChoiceParam(specifications, forceToolCall),
-        // Structured output
-        // TODO(fabien): Remove beta tag and beta client when structured outputs are generally available
-        betas: ["structured-outputs-2025-11-13"],
+        betas,
         output_format: toOutputFormatParam(this.responseFormat),
-      });
+        // Custom output config for models that require it (e.g., effort control)
+        ...(this.modelConfig.customOutputConfig && {
+          output_config: this.modelConfig.customOutputConfig,
+        }),
+      } as Parameters<typeof this.client.beta.messages.stream>[0]);
 
       yield* streamLLMEvents(events, this.metadata);
     } catch (err) {

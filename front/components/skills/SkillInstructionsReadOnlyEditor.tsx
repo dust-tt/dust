@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,

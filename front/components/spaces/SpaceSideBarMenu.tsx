@@ -60,7 +60,8 @@ import type {
   SpaceType,
   WhitelistableFeature,
 } from "@app/types";
-import { assertNever, DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+import { DATA_SOURCE_VIEW_CATEGORIES } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface SpaceSideBarMenuProps {
   owner: LightWorkspaceType;

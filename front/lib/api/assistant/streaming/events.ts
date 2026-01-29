@@ -16,7 +16,7 @@ import type {
   UserMessageNewEvent,
   UserMessageTypeWithContentFragments,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Generic event publication interface.

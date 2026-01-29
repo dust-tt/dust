@@ -1,4 +1,6 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import type { DustProjectConfigurationType } from "@app/lib/actions/mcp_internal_actions/input_schemas";
+import { parseProjectConfigurationURI } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -15,58 +17,106 @@ const DISALLOWED_USE_CASES: FileUseCase[] = [
   "folders_document",
 ];
 
-/**
- * Context returned by getProjectSpace.
- */
 export interface ProjectSpaceContext {
   space: SpaceResource;
 }
 
 /**
- * Gets the space from the agent loop context.
- * The conversation must be in a project (space).
+ * Gets the spaces from the agent loop context or from the provided dustProject parameter.
+ * If dustProject is provided, uses that to fetch all spaces. Otherwise, gets from conversation.
+ * The conversation must be in a project (space) if dustProject is not provided.
  */
 export async function getProjectSpace(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  from:
+    | { agentLoopContext?: AgentLoopContextType }
+    | { dustProject?: DustProjectConfigurationType }
 ): Promise<Result<ProjectSpaceContext, MCPError>> {
-  if (!agentLoopContext?.runContext?.conversation) {
-    return new Err(
-      new MCPError("No conversation context available", { tracked: false })
-    );
+  if ("dustProject" in from && from.dustProject) {
+    const { dustProject } = from;
+    const authWorkspaceId = auth.getNonNullableWorkspace().sId;
+
+    // Parse the project URI to extract workspaceId and projectId.
+    const parseResult = parseProjectConfigurationURI(dustProject.uri);
+    if (parseResult.isErr()) {
+      return new Err(
+        new MCPError(`Invalid project URI: ${parseResult.error.message}`, {
+          tracked: false,
+        })
+      );
+    }
+
+    const { workspaceId, projectId } = parseResult.value;
+
+    // Validate that the workspace ID matches the authenticated workspace.
+    if (workspaceId !== authWorkspaceId) {
+      return new Err(
+        new MCPError(
+          `Workspace mismatch: project belongs to workspace ${workspaceId} but authenticated workspace is ${authWorkspaceId}`,
+          { tracked: false }
+        )
+      );
+    }
+
+    // Fetch the space by projectId.
+    const space = await SpaceResource.fetchById(auth, projectId);
+    if (!space) {
+      return new Err(
+        new MCPError(`Project not found: ${projectId}`, { tracked: false })
+      );
+    }
+
+    return new Ok({ space });
   }
 
-  const conversationRes =
-    await ConversationResource.fetchConversationWithoutContent(
-      auth,
-      agentLoopContext.runContext.conversation.sId
-    );
+  // Otherwise, use the existing logic to get space from conversation context.
+  if ("agentLoopContext" in from && from.agentLoopContext) {
+    const { agentLoopContext } = from;
+    if (!agentLoopContext.runContext?.conversation) {
+      return new Err(
+        new MCPError("No conversation context available", { tracked: false })
+      );
+    }
 
-  if (conversationRes.isErr()) {
-    return new Err(
-      new MCPError(`Conversation not found: ${conversationRes.error.message}`, {
-        tracked: false,
-      })
-    );
+    const conversationRes =
+      await ConversationResource.fetchConversationWithoutContent(
+        auth,
+        agentLoopContext.runContext.conversation.sId
+      );
+
+    if (conversationRes.isErr()) {
+      return new Err(
+        new MCPError(
+          `Conversation not found: ${conversationRes.error.message}`,
+          {
+            tracked: false,
+          }
+        )
+      );
+    }
+
+    const conversation = conversationRes.value;
+
+    if (!conversation.spaceId) {
+      return new Err(
+        new MCPError(
+          "This conversation is not in a project. Project context management is only available in project conversations.",
+          { tracked: false }
+        )
+      );
+    }
+
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err(new MCPError("Project not found", { tracked: false }));
+    }
+
+    return new Ok({ space });
   }
 
-  const conversation = conversationRes.value;
-
-  if (!conversation.spaceId) {
-    return new Err(
-      new MCPError(
-        "This conversation is not in a project. Project context management is only available in project conversations.",
-        { tracked: false }
-      )
-    );
-  }
-
-  const space = await SpaceResource.fetchById(auth, conversation.spaceId);
-  if (!space) {
-    return new Err(new MCPError("Project not found", { tracked: false }));
-  }
-
-  return new Ok({ space });
+  return new Err(
+    new MCPError("No project context available", { tracked: false })
+  );
 }
 
 /**
@@ -88,19 +138,23 @@ export function checkWritePermission(
 }
 
 /**
- * Gets the space context and verifies write permissions.
+ * Gets the space context and verifies write permissions for all spaces.
  * This is a convenience function that combines getProjectSpace and checkWritePermission.
  */
 export async function getWritableProjectContext(
   auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
+  from:
+    | { agentLoopContext?: AgentLoopContextType }
+    | { dustProject?: DustProjectConfigurationType }
 ): Promise<Result<ProjectSpaceContext, MCPError>> {
-  const contextRes = await getProjectSpace(auth, agentLoopContext);
+  const contextRes = await getProjectSpace(auth, from);
   if (contextRes.isErr()) {
     return contextRes;
   }
 
   const { space } = contextRes.value;
+
+  // Check write permissions for all spaces.
   const permissionRes = checkWritePermission(auth, space);
   if (permissionRes.isErr()) {
     return permissionRes;

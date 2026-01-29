@@ -28,6 +28,7 @@ export type DatasourceRetrievalDocumentData = {
   displayName: string;
   parentId: string | null;
   parents: string[];
+  sourceUrl: string | null;
   count: number;
 };
 
@@ -228,6 +229,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
       displayName: bucket.key,
       parentId: null,
       parents: [bucket.key],
+      sourceUrl: null,
       count: bucket.doc_count,
     })
   );
@@ -264,6 +266,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
       displayName: getNodeTitle(node),
       parentId: node.parent_id,
       parents: node.parents,
+      sourceUrl: node.source_url ?? null,
     };
   });
 

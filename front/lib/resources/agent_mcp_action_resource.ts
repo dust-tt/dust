@@ -46,6 +46,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
@@ -54,6 +55,11 @@ import type {
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
+
+// Batch size for fetching output items to avoid loading too many large rows at once.
+const OUTPUT_ITEMS_BATCH_SIZE = 32;
+
+const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
@@ -557,20 +563,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const outputItems = await AgentMCPActionOutputItemModel.findAll({
-      where: {
-        workspaceId,
-        agentMCPActionId: {
-          [Op.in]: actionIds,
-        },
-      },
-    });
+    // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
+    const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+    const batchResults = await concurrentExecutor(
+      batches,
+      async (batchActionIds) =>
+        AgentMCPActionOutputItemModel.findAll({
+          where: {
+            workspaceId,
+            agentMCPActionId: {
+              [Op.in]: batchActionIds,
+            },
+          },
+        }),
+      { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
+    );
 
     const outputItemsByActionId = new Map<
       number,
       AgentMCPActionOutputItemModel[]
     >();
-    for (const item of outputItems) {
+    for (const item of batchResults.flat()) {
       const existing = outputItemsByActionId.get(item.agentMCPActionId);
       if (existing) {
         existing.push(item);

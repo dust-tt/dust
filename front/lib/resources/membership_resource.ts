@@ -11,14 +11,16 @@ import { Op } from "sequelize";
 import { getWorkOS } from "@app/lib/api/workos/client";
 import { invalidateWorkOSOrganizationsCacheForUserId } from "@app/lib/api/workos/organization_membership";
 import type { Authenticator } from "@app/lib/auth";
-import { invalidateActiveSeatsCache } from "@app/lib/plans/usage/seats";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
+import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger, { auditLog } from "@app/logger/logger";
 import { launchIndexUserSearchWorkflow } from "@app/temporal/es_indexation/client";
 import type {
@@ -30,7 +32,8 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];
@@ -474,6 +477,35 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     });
   }
 
+  // Seat counting with caching - used to track active seats in a workspace
+  private static readonly seatsCacheKeyResolver = (workspaceId: string) =>
+    `count-active-seats-in-workspace:${workspaceId}`;
+
+  static async countActiveSeatsInWorkspace(
+    workspaceId: string
+  ): Promise<number> {
+    const workspace = await WorkspaceResource.fetchById(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found for sId: ${workspaceId}`);
+    }
+
+    return MembershipResource.getMembersCountForWorkspace({
+      workspace: renderLightWorkspaceType({ workspace }),
+      activeOnly: true,
+    });
+  }
+
+  static countActiveSeatsInWorkspaceCached = cacheWithRedis(
+    MembershipResource.countActiveSeatsInWorkspace,
+    MembershipResource.seatsCacheKeyResolver,
+    { ttlMs: 60 * 10 * 1000 } // 10 minutes
+  );
+
+  static invalidateActiveSeatsCache = invalidateCacheWithRedis(
+    MembershipResource.countActiveSeatsInWorkspace,
+    MembershipResource.seatsCacheKeyResolver
+  );
+
   static async deleteAllForWorkspace(auth: Authenticator) {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -575,7 +607,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Invalidate the active seats cache for this workspace.
-    await invalidateActiveSeatsCache(workspace.sId);
+    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
 
     return new MembershipResource(MembershipModel, newMembership.get());
   }
@@ -671,7 +703,7 @@ export class MembershipResource extends BaseResource<MembershipModel> {
     }
 
     // Invalidate the active seats cache for this workspace.
-    await invalidateActiveSeatsCache(workspace.sId);
+    await MembershipResource.invalidateActiveSeatsCache(workspace.sId);
 
     return new Ok({
       role: membership.role,

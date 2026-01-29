@@ -2,7 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { useUserMetadata } from "@app/lib/swr/user";
 import { setUserMetadataFromClient } from "@app/lib/user";
-import { safeParseJSON } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 // We change the name of the metadata key to avoid conflicts with the old one, as we changed the way we store the data.
 export const AGENT_BROWSER_SELECTION_METADATA_NAME = "agentBrowserSelection-2";

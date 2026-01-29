@@ -33,7 +33,7 @@ import type { ConfigurationState } from "@app/components/agent_builder/skills/ty
 import { isConfigurationState } from "@app/components/agent_builder/skills/types";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import { getSkillIcon } from "@app/lib/skill";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function useCapabilitiesPageAndFooter({
   sheetState,

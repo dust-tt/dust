@@ -1,5 +1,5 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { usePokeLoginRedirect } from "@spa/hooks/usePokeLoginRedirect";
+import { useLoginRedirect } from "@spa/hooks/useLoginRedirect";
 import { useRequiredPathParam } from "@spa/lib/platform";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
@@ -18,7 +18,7 @@ export function PokeWorkspacePage({ children }: PokeLayoutProps) {
     usePokeWorkspaceAuthContext({
       wId,
     });
-  const { isRedirecting } = usePokeLoginRedirect({
+  const { isRedirecting } = useLoginRedirect({
     isLoading,
     isAuthenticated,
   });

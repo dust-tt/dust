@@ -10,7 +10,8 @@ import type {
   UserLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
 import type { Result } from "@app/types";
-import { Err, isAPIErrorResponse, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { isAPIErrorResponse } from "@app/types/error";
 
 interface UserLookup {
   email: string;

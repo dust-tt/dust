@@ -107,9 +107,9 @@ describe("DELETE /api/w/[wId]/webhook_sources/[webhookSourceId]", () => {
     );
     req.query.webhookSourceId = webhookSource.sId;
 
-    // Mock the delete method to simulate failure
+    // Mock the hardDelete method to simulate failure
     const deleteSpy = vi
-      .spyOn(WebhookSourceResource.prototype, "delete")
+      .spyOn(WebhookSourceResource.prototype, "hardDelete")
       .mockImplementation(async () => {
         throw new Error("Database error");
       });

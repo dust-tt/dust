@@ -69,6 +69,7 @@ function FileSharingDropdown({
             label={selectedOption?.label}
             icon={selectedOption?.icon}
             disabled={disabled}
+            className="grid grid-cols-[auto_1fr_auto] truncate"
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">

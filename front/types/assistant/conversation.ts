@@ -176,6 +176,11 @@ export type AgentMessageStatus =
   | "failed"
   | "cancelled";
 
+export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  "succeeded",
+  "cancelled",
+];
+
 export interface CitationType {
   description?: string;
   href?: string;

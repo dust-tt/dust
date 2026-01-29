@@ -1,71 +1,50 @@
-import { Button, Chip, PlusIcon, TrashIcon } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, Chip, PlusIcon, Spinner, TrashIcon } from "@dust-tt/sparkle";
+import Link from "next/link";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useContext } from "react";
 
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getDatasets } from "@app/lib/api/datasets";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { LinkWrapper } from "@app/lib/platform";
-import { AppResource } from "@app/lib/resources/app_resource";
+import { useRequiredPathParam } from "@app/lib/platform";
+import { useApp } from "@app/lib/swr/apps";
+import { useDatasets } from "@app/lib/swr/datasets";
 import { classNames } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
-import type { AppType } from "@app/types";
-import type { DatasetType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  app: AppType;
-  datasets: DatasetType[];
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSideProps;
 
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const app = await AppResource.fetchById(auth, context.params?.aId as string);
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const datasets = await getDatasets(auth, app.toJSON());
-
-  return {
-    props: {
-      owner,
-      subscription,
-      readOnly,
-      app: app.toJSON(),
-      datasets,
-    },
-  };
-});
-
-export default function DatasetsView({
-  owner,
-  subscription,
-  readOnly,
-  app,
-  datasets,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function DatasetsView() {
   const router = useRouter();
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
+  const owner = useWorkspace();
+  const { subscription, isBuilder } = useAuth();
+
+  const { app, isAppLoading, isAppError } = useApp({
+    workspaceId: owner.sId,
+    spaceId,
+    appId: aId,
+  });
+
+  const { datasets, isDatasetsLoading } = useDatasets({
+    owner,
+    app,
+  });
+
   const confirm = useContext(ConfirmContext);
+  const readOnly = !isBuilder;
 
   const handleDelete = async (datasetName: string) => {
+    if (!app) {
+      return;
+    }
+
     if (
       await confirm({
         title: "Double checking",
@@ -87,6 +66,26 @@ export default function DatasetsView({
       );
     }
   };
+
+  const isLoading = isAppLoading || isDatasetsLoading;
+
+  // Show 404 on error or if app not found after loading completes
+  if (isAppError || (!isLoading && !app)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isLoading || !app) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <DustAppPageLayout
@@ -115,15 +114,12 @@ export default function DatasetsView({
               <ul role="list" className="flex-1 space-y-4">
                 {datasets.map((d) => {
                   return (
-                    <LinkWrapper
+                    <Link
                       key={d.name}
                       href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${d.name}`}
                       className="block"
                     >
-                      <div
-                        key={d.name}
-                        className="group rounded border border-gray-300 px-4 py-4 dark:border-gray-300-night"
-                      >
+                      <div className="group rounded border border-gray-300 px-4 py-4 dark:border-gray-300-night">
                         <div className="flex items-center justify-between">
                           <p className="heading-base truncate text-highlight-500">
                             {d.name}
@@ -156,7 +152,7 @@ export default function DatasetsView({
                           </div>
                         </div>
                       </div>
-                    </LinkWrapper>
+                    </Link>
                   );
                 })}
               </ul>
@@ -176,6 +172,15 @@ export default function DatasetsView({
   );
 }
 
-DatasetsView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = DatasetsView as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

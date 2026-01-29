@@ -8,6 +8,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  custom_model_feature: {
+    description: "Access to custom models loaded from external config",
+    stage: "dust_only",
+  },
   dust_edge_global_agent: {
     description:
       "Access to dust-edge global agent that we use internally to test other models on dust",
@@ -205,11 +209,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   discord_bot: {
     description:
       "Discord bot integration for workspace-level Discord integration",
-    stage: "dust_only",
-  },
-  skills_similar_display: {
-    description:
-      "Display similar skills when creating a new skill to avoid duplicates",
     stage: "dust_only",
   },
   projects: {

@@ -29,7 +29,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   CLAUDE_4_5_HAIKU_DEFAULT_MODEL_CONFIG,
   CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -41,6 +40,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MAX_CONCURRENT_SUB_AGENT_TASKS = 6;
 
@@ -545,6 +545,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 
@@ -566,6 +567,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
     actions.push({
       id: -1,
@@ -584,6 +586,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 
@@ -606,6 +609,7 @@ export function _getDeepDiveGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 
@@ -721,6 +725,7 @@ export function _getDustTaskGlobalAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 

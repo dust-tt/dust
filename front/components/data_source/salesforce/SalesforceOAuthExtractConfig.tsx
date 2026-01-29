@@ -3,7 +3,10 @@ import { useEffect } from "react";
 
 import type { ConnectorOauthExtraConfigProps } from "@app/lib/connector_providers_ui";
 import { getPKCEConfig } from "@app/lib/utils/pkce";
-import { isValidClientIdOrSecret, isValidSalesforceDomain } from "@app/types";
+import {
+  isValidClientIdOrSecret,
+  isValidSalesforceDomain,
+} from "@app/types/oauth/lib";
 
 export function SalesforceOauthExtraConfig({
   extraConfig,

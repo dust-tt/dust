@@ -3,6 +3,7 @@ import { removeNulls } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 import * as _ from "lodash";
 import { Readable } from "stream";
 import { pipeline } from "stream/promises";
@@ -61,7 +62,7 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { heartbeat } from "@connectors/lib/temporal";
+import { getTemporalClient, heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -2301,4 +2302,21 @@ export async function processDeltaChangesFromGCS({
     nextCursor,
     processedCount: currentBatch.length,
   };
+}
+
+export async function isMicrosoftFullSyncRunning(
+  connectorId: ModelId
+): Promise<boolean> {
+  const client = await getTemporalClient();
+  const workflowId = `microsoft-fullSync-${connectorId}`;
+  try {
+    const handle = client.workflow.getHandle(workflowId);
+    const description = await handle.describe();
+    return description.status.name === "RUNNING";
+  } catch (e) {
+    if (e instanceof WorkflowNotFoundError) {
+      return false;
+    }
+    throw e;
+  }
 }

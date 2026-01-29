@@ -33,7 +33,6 @@ import type {
 } from "@app/types";
 import { isSupportedAudioContentType } from "@app/types";
 import {
-  assertNever,
   Err,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
@@ -41,6 +40,7 @@ import {
   slugify,
   TABLE_PREFIX,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Upload to dataSource
 const upsertDocumentToDatasource: ProcessingFunction = async (

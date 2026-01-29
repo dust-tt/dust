@@ -6,6 +6,7 @@ import type {
   Transaction,
   WhereOptions,
 } from "sequelize";
+import { Op } from "sequelize";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -40,7 +41,6 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
   readonly editorsGroupId: ModelId | null;
-
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
@@ -324,21 +324,29 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     });
   }
 
-  async updateState(
+  static async bulkUpdateState(
     auth: Authenticator,
-    state: AgentSuggestionState,
-    { transaction }: { transaction?: Transaction } = {}
+    suggestions: AgentSuggestionResource[],
+    state: AgentSuggestionState
   ): Promise<void> {
-    assert(
-      this.workspaceId === auth.getNonNullableWorkspace().id,
-      "Unexpected: workspace mismatch in suggestion"
-    );
-
-    if (!this.canWrite(auth)) {
-      throw new Error("User does not have permission to edit this agent");
+    if (suggestions.length === 0) {
+      return;
     }
 
-    await this.update({ state }, transaction);
+    assert(
+      suggestions.every((s) => s.canWrite(auth)),
+      "User does not have permission to edit this agent"
+    );
+
+    await this.model.update(
+      { state },
+      {
+        where: {
+          workspaceId: auth.getNonNullableWorkspace().id,
+          id: { [Op.in]: suggestions.map((s) => s.id) },
+        },
+      }
+    );
   }
 
   static modelIdToSId({

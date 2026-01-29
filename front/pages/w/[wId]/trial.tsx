@@ -44,7 +44,7 @@ export default function Trial({
   };
 
   const features = [
-    "Free 30-day trial",
+    "Free 14-day trial",
     "Advanced models (GPT-5, Claude..)",
     "Custom agents which can execute actions",
     "Connections (GitHub, Google Drive, Notion, Slack...)",
@@ -87,7 +87,11 @@ export default function Trial({
                   variant="primary"
                   label="Start free trial"
                 />
-                <Button onClick={skip} variant="outline" label="Skip for now" />
+                <Button
+                  onClick={skip}
+                  variant="outline"
+                  label="Subscribe now"
+                />
               </div>
             </Page.Vertical>
           </Page.Horizontal>

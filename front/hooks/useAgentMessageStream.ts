@@ -17,8 +17,8 @@ import type {
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Throttle the update of the message to avoid excessive re-renders.
 const updateMessageThrottled = _.throttle(

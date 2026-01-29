@@ -31,7 +31,8 @@ import type {
   VisualizationRPCCommand,
   VisualizationRPCRequest,
 } from "@app/types";
-import { assertNever, isVisualizationRPCRequest } from "@app/types";
+import { isVisualizationRPCRequest } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface BaseVisualization {
   complete: boolean;

@@ -1,7 +1,10 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
@@ -9,17 +12,22 @@ export const PROJECT_CONTEXT_MANAGEMENT_SERVER_NAME =
   "project_context_management" as const;
 
 export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
-  list_project_files: {
+  list_files: {
     description:
       "List all files in the project context. Returns file metadata including names, IDs, and content types.",
-    schema: {},
+    schema: {
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing project files",
       done: "List project files",
     },
   },
-  add_project_file: {
+  add_file: {
     description:
       "Add a new file to the project context. The file will be available to all conversations in this project. " +
       "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
@@ -43,6 +51,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "MIME type (default: text/plain, or inherited from sourceFileId if provided)"
         ),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "high",
     displayLabels: {
@@ -50,7 +62,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Add project file",
     },
   },
-  update_project_file: {
+  update_file: {
     description:
       "Update the content of an existing file in the project context. This replaces the entire file content. " +
       "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
@@ -68,6 +80,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "ID of an existing file to copy content from (provide either this or content)"
         ),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "high",
     displayLabels: {
@@ -75,13 +91,17 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Update project file",
     },
   },
-  edit_project_description: {
+  edit_description: {
     description:
       "Edit the project description. This updates the project's description text.",
     schema: {
       description: z
         .string()
         .describe("New project description (free-form text)."),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "low",
     displayLabels: {
@@ -89,7 +109,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Edit project description",
     },
   },
-  add_project_url: {
+  add_url: {
     description:
       "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
     schema: {
@@ -97,6 +117,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("Name/label for the URL (e.g., 'Documentation')"),
       url: z.string().describe("The URL to add"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "low",
     displayLabels: {
@@ -104,7 +128,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Add project URL",
     },
   },
-  edit_project_url: {
+  edit_url: {
     description:
       "Edit an existing URL in the project. You can change the name and/or the URL itself. " +
       "Identify the URL to edit by its current name.",
@@ -118,6 +142,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("New URL value (leave empty to keep current)"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "low",
     displayLabels: {
@@ -125,7 +153,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Edit project URL",
     },
   },
-  read_project_journal_entry: {
+  read_journal_entry: {
     description:
       "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
     schema: {
@@ -133,6 +161,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .number()
         .optional()
         .describe("Maximum number of journal entries to return (default: 1)"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "never_ask",
     displayLabels: {

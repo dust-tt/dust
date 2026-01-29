@@ -10,7 +10,7 @@ import type {
 import { col, fn, literal, Op, QueryTypes, Sequelize, where } from "sequelize";
 
 import { getMaximalVersionAgentStepContent } from "@app/lib/api/assistant/configuration/steps";
-import { Authenticator } from "@app/lib/auth";
+import type { Authenticator } from "@app/lib/auth";
 import { ConversationMCPServerViewModel } from "@app/lib/models/agent/actions/conversation_mcp_server_view";
 import { AgentStepContentModel } from "@app/lib/models/agent/agent_step_content";
 import {
@@ -113,6 +113,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
+    // Add spaceId to the requestedSpaceIds if it is not already part of the requestedSpaceIds.
+    if (space && !blob.requestedSpaceIds.includes(space.id)) {
+      blob.requestedSpaceIds.push(space.id);
+    }
+
     const conversation = await this.model.create({
       ...blob,
       workspaceId: workspace.id,
@@ -178,9 +183,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const uniqueSpaceIds = uniq([
       // Include requestedSpaceIds from conversations.
       ...conversations.flatMap((c) => c.requestedSpaceIds),
-
-      // Include spaceId of the conversations if it exists.
-      ...conversations.flatMap((c) => c.spaceId ?? []),
     ]);
 
     // Only fetch spaces if there are any used spaces.
@@ -352,21 +354,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return "conversation_not_found";
     }
     return "allowed";
-  }
-
-  static async canUserAccess(
-    auth: Authenticator,
-    { conversationId, userId }: { conversationId: string; userId: string }
-  ): Promise<
-    "allowed" | "conversation_not_found" | "conversation_access_restricted"
-  > {
-    const workspace = auth.getNonNullableWorkspace();
-    const fakeAuth = await Authenticator.fromUserIdAndWorkspaceId(
-      userId,
-      workspace.sId
-    );
-
-    return ConversationResource.canAccess(fakeAuth, conversationId);
   }
 
   static async listAll(
@@ -1384,7 +1371,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ) {
     return this.update(
       {
-        requestedSpaceIds,
+        requestedSpaceIds: uniq(requestedSpaceIds),
       },
       transaction
     );
@@ -1568,11 +1555,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: this.workspaceId,
       })
     );
-
-    // Add the main space (if any).
-    if (this.space) {
-      spaceIds.push(this.space.sId);
-    }
 
     return spaceIds;
   }

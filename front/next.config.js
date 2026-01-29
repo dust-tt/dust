@@ -415,27 +415,9 @@ const config = {
       },
     ];
 
-    // Add CORS headers for API routes in development (for Vite SPA on localhost:3010)
-    if (isDev) {
-      result.push({
-        source: "/api/:path*",
-        headers: [
-          {
-            key: "Access-Control-Allow-Origin",
-            value: "http://localhost:3010",
-          },
-          {
-            key: "Access-Control-Allow-Methods",
-            value: "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-          },
-          {
-            key: "Access-Control-Allow-Headers",
-            value: "Content-Type, Authorization, X-Commit-Hash",
-          },
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-        ],
-      });
-    }
+    // Note: CORS headers for API routes are handled dynamically by middleware.ts
+    // In development, the middleware echoes back the request origin, allowing
+    // any localhost port (3010, 3011, etc.) to work.
 
     return result;
   },

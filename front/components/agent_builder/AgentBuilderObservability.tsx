@@ -32,7 +32,7 @@ export function AgentBuilderObservability({
     </div>
   ) : (
     <AgentObservability
-      workspaceId={owner.sId}
+      owner={owner}
       agentConfigurationId={agentConfiguration.sId}
       isCustomAgent={agentConfiguration.scope !== "global"}
     />

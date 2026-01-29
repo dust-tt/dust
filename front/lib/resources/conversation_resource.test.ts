@@ -9,6 +9,7 @@ import {
 } from "vitest";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
@@ -1148,10 +1149,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create a new conversation and add user as participant
-      const spaceConvo = await ConversationFactory.create(adminAuth, {
+      const spaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1159,17 +1163,6 @@ describe("listConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: spaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
 
       // Test with kind: "private"
       const privateConversations =
@@ -1196,10 +1189,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create a new conversation and add user as participant
-      const spaceConvo = await ConversationFactory.create(adminAuth, {
+      const spaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1207,17 +1203,6 @@ describe("listConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: spaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
 
       // Test with kind: "space"
       const spaceConversations =
@@ -1244,10 +1229,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create a new conversation and add user as participant
-      const spaceConvo = await ConversationFactory.create(adminAuth, {
+      const spaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1255,17 +1243,6 @@ describe("listConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: spaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
 
       // Test with default parameters (should default to kind: "private")
       const defaultConversations =
@@ -1294,10 +1271,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create unread space conversation
-      const unreadSpaceConvo = await ConversationFactory.create(adminAuth, {
+      const unreadSpaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1306,21 +1286,11 @@ describe("listConversationsForUser", () => {
         user: userAuth.getNonNullableUser().toJSON(),
       });
 
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: unreadSpaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
-
       // Create read space conversation
-      const readSpaceConvo = await ConversationFactory.create(adminAuth, {
+      const readSpaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1329,19 +1299,8 @@ describe("listConversationsForUser", () => {
         user: userAuth.getNonNullableUser().toJSON(),
       });
 
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: readSpaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
-
       // Create unread private conversation
-      const unreadPrivateConvo = await ConversationFactory.create(adminAuth, {
+      const unreadPrivateConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
       });
@@ -1371,7 +1330,7 @@ describe("listConversationsForUser", () => {
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
-              adminAuth,
+              userAuth,
               unreadSpaceConvo.sId
             ))!.id,
             workspaceId: userAuth.getNonNullableWorkspace().id,
@@ -1386,7 +1345,7 @@ describe("listConversationsForUser", () => {
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
-              adminAuth,
+              userAuth,
               readSpaceConvo.sId
             ))!.id,
             workspaceId: userAuth.getNonNullableWorkspace().id,
@@ -2010,6 +1969,102 @@ describe("Space Handling", () => {
         (c) => c.sId === testSId
       );
       expect(foundConversation).toBe(false);
+    });
+  });
+
+  describe("restricted project space access", () => {
+    it("should not allow a user not in a restricted project space to fetch a conversation in that space", async () => {
+      // Create a workspace
+      const workspace = await WorkspaceFactory.basic();
+
+      // Set up default spaces (global, system, conversations) for the workspace first
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(internalAdminAuth);
+
+      // Create an admin user to create the project space
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+
+      // Create a user who will be a member of the project space
+      const memberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, memberUser, {
+        role: "user",
+      });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        workspace.sId
+      );
+
+      // Create a restricted project space using admin auth
+      const projectSpaceResult = await createSpaceAndGroup(adminAuth, {
+        name: "Restricted Project Space",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(projectSpaceResult.isOk()).toBe(true);
+      if (!projectSpaceResult.isOk()) {
+        throw new Error("Failed to create restricted project space");
+      }
+      const projectSpace = projectSpaceResult.value;
+
+      // Add the member user to the project space
+      const addMemberResult = await projectSpace.addMembers(adminAuth, {
+        userIds: [memberUser.sId],
+      });
+      expect(addMemberResult.isOk()).toBe(true);
+
+      // Reload the authenticator to get updated group memberships
+      await memberAuth.refresh();
+
+      // Reload the space to get updated group memberships
+      const reloadedProjectSpace = await SpaceResource.fetchById(
+        memberAuth,
+        projectSpace.sId
+      );
+      expect(reloadedProjectSpace).not.toBeNull();
+
+      // Create a conversation with the project space id using the member user
+      const conversation = await ConversationResource.makeNew(
+        memberAuth,
+        {
+          title: "Test conversation in restricted project",
+          sId: generateRandomModelSId(),
+          spaceId: reloadedProjectSpace!.id,
+          requestedSpaceIds: [],
+        },
+        reloadedProjectSpace!
+      );
+
+      // Create another user in the same workspace who is NOT part of the project space
+      const nonMemberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, nonMemberUser, {
+        role: "user",
+      });
+      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        nonMemberUser.sId,
+        workspace.sId
+      );
+
+      // Try to fetch the conversation with the non-member user's authenticator
+      // This should fail (return null) because the user is not part of the restricted project space
+      const fetchedConversation = await ConversationResource.fetchById(
+        nonMemberAuth,
+        conversation.sId
+      );
+
+      // The conversation should not be accessible to the non-member user
+      expect(fetchedConversation).toBeNull();
     });
   });
 

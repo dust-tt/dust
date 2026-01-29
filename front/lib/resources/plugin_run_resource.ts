@@ -22,8 +22,9 @@ import type {
   PluginResourceTarget,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok, safeParseJSON } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import type { PluginRunType } from "@app/types/poke/plugins";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 import type { UserResource } from "./user_resource";
 

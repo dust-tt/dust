@@ -1,8 +1,6 @@
 import type { RunUsageType } from "@app/lib/resources/run_resource";
-import type {
-  ImageModelIdType,
-  ModelIdType as BaseModelIdType,
-} from "@app/types";
+import type { ImageModelIdType, ModelIdType } from "@app/types";
+import type { StaticModelIdType } from "@app/types/assistant/models/models";
 
 // All pricing are in USD per million tokens (equivalent to micro-USD per token).
 type PricingEntry = {
@@ -24,8 +22,8 @@ export const MAX_DISCOUNT_PERCENT = Math.ceil(
 );
 
 // Pricing for current models (USD per million tokens - equivalent to micro-USD per token)
-// This record must contain all BaseModelIdType values.
-const CURRENT_MODEL_PRICING: Record<BaseModelIdType, PricingEntry> = {
+// This record contains all static model IDs. Custom models use default pricing.
+const CURRENT_MODEL_PRICING: Record<StaticModelIdType, PricingEntry> = {
   // https://openai.com/api/pricing
   "gpt-5.2": {
     input: 1.75,
@@ -446,7 +444,7 @@ export const MODEL_PRICING: Record<string, PricingEntry> = {
 };
 
 // If model is not found in the MODEL_PRICING, use the default pricing.
-const DEFAULT_PRICING_MODEL_ID: BaseModelIdType = "gpt-4o";
+const DEFAULT_PRICING_MODEL_ID: StaticModelIdType = "gpt-4o";
 
 const DEFAULT_PRICING = MODEL_PRICING[DEFAULT_PRICING_MODEL_ID];
 
@@ -462,7 +460,7 @@ export function computeTokensCostForUsageInMicroUsd({
   cachedTokens,
   cacheCreationTokens,
 }: {
-  modelId: BaseModelIdType | ImageModelIdType;
+  modelId: ModelIdType | ImageModelIdType;
   promptTokens: number;
   completionTokens: number;
   cachedTokens: number | null;

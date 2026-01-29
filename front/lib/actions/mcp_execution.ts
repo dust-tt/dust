@@ -43,13 +43,13 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
-  assertNever,
   extensionsForContentType,
   isSupportedFileContentType,
   removeNulls,
   stripNullBytes,
   toWellFormed,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
