@@ -174,7 +174,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
   },
   // Suggestion tools
-  suggest_prompt_editions: {
+  suggest_prompt_edits: {
     description:
       "Create suggestions to modify the agent's instructions/prompt. " +
       "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
@@ -190,8 +190,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Suggesting prompt editions",
-      done: "Suggest prompt editions",
+      running: "Suggesting prompt edits",
+      done: "Suggest prompt edits",
     },
   },
   suggest_tools: {
@@ -255,9 +255,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       states: z
         .array(z.enum(AGENT_SUGGESTION_STATES))
         .optional()
-        .default(["pending"])
         .describe(
-          `Filter by suggestion states (default: ['pending']). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
+          `Filter by suggestion states. Options: ${AGENT_SUGGESTION_STATES.join(", ")}. If not provided, returns all states.`
         ),
       kind: z
         .enum(AGENT_SUGGESTION_KINDS)
@@ -270,6 +269,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .int()
         .positive()
         .optional()
+        .default(50)
         .describe(
           "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
         ),

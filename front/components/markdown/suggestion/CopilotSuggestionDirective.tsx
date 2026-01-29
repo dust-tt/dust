@@ -5,7 +5,7 @@
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { visit } from "unist-util-visit";
 
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
@@ -60,9 +60,16 @@ export function getCopilotSuggestionPlugin() {
     const suggestion = sId ? getSuggestion(sId) : null;
 
     // Trigger refetch when suggestion not found and not currently fetching.
+    const refetchAttempted = useRef(false);
     useEffect(() => {
-      if (sId && !suggestion && !isSuggestionsValidating) {
+      if (
+        sId &&
+        !suggestion &&
+        !isSuggestionsValidating &&
+        !refetchAttempted.current
+      ) {
         triggerRefetch();
+        refetchAttempted.current = true; // attempt refetch only once.
       }
     }, [sId, suggestion, isSuggestionsValidating, triggerRefetch]);
 

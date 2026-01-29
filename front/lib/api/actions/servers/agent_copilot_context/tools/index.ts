@@ -25,6 +25,7 @@ import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
 import { Err, isModelProviderId, normalizeError, Ok } from "@app/types";
+import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
@@ -504,7 +505,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   },
 
   // Suggestion handlers
-  suggest_prompt_editions: async (params, extra) => {
+  suggest_prompt_edits: async (params, extra) => {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
@@ -852,61 +853,64 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     const { suggestions: suggestionUpdates } = params;
 
+    const suggestionIds = suggestionUpdates.map((s) => s.suggestionId);
+    const suggestions = await AgentSuggestionResource.fetchByIds(
+      auth,
+      suggestionIds
+    );
+    const suggestionsById = new Map(suggestions.map((s) => [s.sId, s]));
+
     const results: {
       success: boolean;
       suggestionId: string;
       error?: string;
-    }[] = await concurrentExecutor(
-      suggestionUpdates,
-      async ({
-        suggestionId,
-        state,
-      }): Promise<{
-        success: boolean;
-        suggestionId: string;
-        error?: string;
-      }> => {
-        // Fetch the suggestion by ID.
-        const suggestion = await AgentSuggestionResource.fetchById(
-          auth,
-          suggestionId
+    }[] = [];
+
+    // Group suggestions by target state.
+    const suggestionsByState = new Map<
+      AgentSuggestionState,
+      AgentSuggestionResource[]
+    >();
+
+    for (const { suggestionId, state } of suggestionUpdates) {
+      const suggestion = suggestionsById.get(suggestionId);
+      if (!suggestion) {
+        results.push({
+          success: false,
+          suggestionId,
+          error: `Suggestion not found: ${suggestionId}`,
+        });
+        continue;
+      }
+
+      const group = suggestionsByState.get(state) ?? [];
+      group.push(suggestion);
+      suggestionsByState.set(state, group);
+    }
+
+    // Bulk update each state group.
+    for (const [state, group] of suggestionsByState) {
+      try {
+        await AgentSuggestionResource.bulkUpdateState(auth, group, state);
+        results.push(
+          ...group.map((s) => ({ success: true, suggestionId: s.sId }))
         );
-
-        if (!suggestion) {
-          return {
+      } catch (error) {
+        const msg = normalizeError(error).message;
+        results.push(
+          ...group.map((s) => ({
             success: false,
-            suggestionId,
-            error: `Suggestion not found: ${suggestionId}`,
-          };
-        }
-
-        try {
-          await suggestion.updateState(auth, state);
-          return {
-            success: true,
-            suggestionId,
-          };
-        } catch (error) {
-          return {
-            success: false,
-            suggestionId,
-            error: `Failed to update suggestion state: ${normalizeError(error).message}`,
-          };
-        }
-      },
-      { concurrency: 4 }
-    );
+            suggestionId: s.sId,
+            error: `Failed to update suggestion state: ${msg}`,
+          }))
+        );
+      }
+    }
 
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            results,
-          },
-          null,
-          2
-        ),
+        text: JSON.stringify({ results }, null, 2),
       },
     ]);
   },

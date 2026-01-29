@@ -208,6 +208,12 @@ export const InstructionSuggestionExtension = Extension.create({
             return true;
           });
 
+          if (findLength === 0) {
+            // If no text nodes exist, insert at position 1 (after opening paragraph).
+            from = from === -1 ? 1 : from;
+            to = from;
+          }
+
           if (from === -1 || to === -1) {
             return false;
           }
