@@ -6,6 +6,7 @@ import type { PluggableList } from "react-markdown/lib/react-markdown";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import type { Node } from "unist";
 import { visit } from "unist-util-visit";
 
 import { Checkbox, Chip } from "@sparkle/components";
@@ -244,13 +245,21 @@ const MemoHrBlock = memo(
 
 MemoHrBlock.displayName = "MemoHrBlock";
 
+interface DirectiveNode extends Node {
+  type: string;
+  name?: string;
+  value?: string;
+  children?: Array<{ value?: string }>;
+}
+
 function showUnsupportedDirective() {
-  return (tree: any) => {
+  return (tree: Node) => {
     visit(tree, ["textDirective"], (node) => {
-      if (node.type === "textDirective") {
+      const directiveNode = node as DirectiveNode;
+      if (directiveNode.type === "textDirective") {
         // it's not a valid directive, so we'll leave it as plain text
-        node.type = "text";
-        node.value = `:${node.name}${node.children ? node.children.map((c: any) => c.value).join("") : ""}`;
+        directiveNode.type = "text";
+        directiveNode.value = `:${directiveNode.name}${directiveNode.children ? directiveNode.children.map((c) => c.value).join("") : ""}`;
       }
     });
   };
