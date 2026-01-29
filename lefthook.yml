@@ -22,6 +22,7 @@
 #   lefthook run pre-commit --interactive
 #
 # ===================================================================
+output: false
 
 pre-commit:
   # Run tasks in parallel for better performance
