@@ -32,7 +32,7 @@ import {
   isProPlan,
   isWhitelistedBusinessPlan,
 } from "@app/lib/plans/plan_codes";
-import { LinkWrapper, useAppRouter } from "@app/lib/platform/next";
+import { LinkWrapper, useAppRouter, useSearchParam } from "@app/lib/platform";
 import {
   useFeatureFlags,
   usePerSeatPricing,
@@ -194,6 +194,8 @@ export function SubscriptionPage() {
   const { subscription } = useAuth();
   const router = useAppRouter();
   const sendNotification = useSendNotification();
+  const type = useSearchParam("type");
+  const planCode = useSearchParam("plan_code");
   const [isWebhookProcessing, setIsWebhookProcessing] =
     React.useState<boolean>(false);
 
@@ -216,8 +218,8 @@ export function SubscriptionPage() {
     isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
 
   useEffect(() => {
-    if (router.query.type === "succeeded") {
-      if (subscription.plan.code === router.query.plan_code) {
+    if (type === "succeeded") {
+      if (subscription.plan.code === planCode) {
         sendNotification({
           type: "success",
           title: `Subscription to ${subscription.plan.name}`,

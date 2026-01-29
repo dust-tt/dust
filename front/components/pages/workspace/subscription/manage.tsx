@@ -3,7 +3,7 @@ import { useEffect } from "react";
 
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { useAppRouter } from "@app/lib/platform/next";
+import { useAppRouter } from "@app/lib/platform";
 
 export function ManageSubscriptionPage() {
   const owner = useWorkspace();

@@ -16,7 +16,7 @@ import { useEffect } from "react";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform/next";
+import { useAppRouter } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 

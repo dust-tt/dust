@@ -17,7 +17,7 @@ import { AgentSidebarMenu } from "@app/components/assistant/conversation/Sidebar
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform/next";
+import { useAppRouter, usePathParams } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useMCPActions } from "@app/lib/swr/mcp_actions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
@@ -28,7 +28,7 @@ export function AgentMCPActionsPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
-  const { agentId } = router.query;
+  const { agentId } = usePathParams();
 
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,

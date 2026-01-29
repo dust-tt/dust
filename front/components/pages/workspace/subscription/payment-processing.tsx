@@ -2,17 +2,19 @@ import { BarHeader, Page, Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform/next";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
 
 export function PaymentProcessingPage() {
   const owner = useWorkspace();
   const { subscription } = useAuth();
   const router = useAppRouter();
+  const type = useSearchParam("type");
+  const planCode = useSearchParam("plan_code");
 
   useEffect(() => {
-    if (router.query.type === "succeeded") {
-      if (subscription.plan.code === router.query.plan_code) {
+    if (type === "succeeded") {
+      if (subscription.plan.code === planCode) {
         // Then we remove the query params to avoid going through this logic again.
         void router.replace(
           getConversationRoute(owner.sId, "new", "welcome=true")
