@@ -11,38 +11,44 @@ export function useDatasets({
   disabled,
 }: {
   owner: LightWorkspaceType;
-  app: AppType;
-  disabled: boolean;
+  app: AppType | null;
+  disabled?: boolean;
 }) {
   const datasetsFetcher: Fetcher<GetDatasetsResponseBody> = fetcher;
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  const isDisabled = disabled || !app;
 
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`,
+    app
+      ? `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets`
+      : null,
     datasetsFetcher,
     {
-      disabled,
+      disabled: isDisabled,
     }
   );
 
   return {
     datasets: data?.datasets ?? emptyArray(),
-    isDatasetsLoading: !error && !data,
+    isDatasetsLoading: !isDisabled && !error && !data,
     isDatasetsError: !!error,
   };
 }
 
 export function useDataset(
   owner: LightWorkspaceType,
-  app: AppType,
+  app: AppType | null,
   dataset: string | undefined,
   showData = false
 ) {
   const datasetFetcher: Fetcher<GetDatasetResponseBody> = fetcher;
-  const disabled = !dataset;
+  const disabled = !dataset || !app;
   const { data, error, mutate } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${dataset}${
-      showData ? "?data=true" : ""
-    }`,
+    app && dataset
+      ? `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/datasets/${dataset}${
+          showData ? "?data=true" : ""
+        }`
+      : null,
     datasetFetcher,
     { disabled }
   );

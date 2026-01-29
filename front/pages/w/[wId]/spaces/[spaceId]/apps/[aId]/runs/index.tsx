@@ -1,58 +1,21 @@
-import { Button, cn } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, cn, Spinner } from "@dust-tt/sparkle";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
 
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { LinkWrapper } from "@app/lib/platform/next";
-import { AppResource } from "@app/lib/resources/app_resource";
-import { useRuns } from "@app/lib/swr/apps";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
+import { useApp, useRuns } from "@app/lib/swr/apps";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
-import type { WorkspaceType } from "@app/types";
-import type { AppType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
 import type { RunRunType, RunStatus } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  readOnly: boolean;
-  app: AppType;
-  wIdTarget: string | null;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const readOnly = !auth.isBuilder();
-
-  const app = await AppResource.fetchById(auth, context.params?.aId as string);
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  // `wIdTarget` is used to change the workspace owning the runs of the apps we're looking at.
-  // Mostly useful for debugging as an example our use of `dust-apps` as `dust`.
-  const wIdTarget = (context.query?.wIdTarget as string) || null;
-
-  return {
-    props: {
-      owner,
-      subscription,
-      readOnly,
-      app: app.toJSON(),
-      wIdTarget,
-    },
-  };
-});
+export const getServerSideProps = appGetServerSideProps;
 
 const TABS = [
   { name: "Design", runType: "local", ownerOwnly: true },
@@ -70,13 +33,22 @@ const inputCount = (status: RunStatus) => {
   return 0;
 };
 
-export default function RunsView({
-  owner,
-  subscription,
-  readOnly,
-  app,
-  wIdTarget,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function RunsView() {
+  const router = useRouter();
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
+  const wIdTarget = useSearchParam("wIdTarget");
+  const owner = useWorkspace();
+  const { subscription, isBuilder } = useAuth();
+
+  const readOnly = !isBuilder;
+
+  const { app, isAppLoading, isAppError } = useApp({
+    workspaceId: owner.sId,
+    spaceId,
+    appId: aId,
+  });
+
   const [runType, setRunType] = useState(
     (wIdTarget ? "deploy" : "local") as RunRunType
   );
@@ -86,6 +58,7 @@ export default function RunsView({
   const [tabs, setTabs] = useState(
     [] as { name: string; runType: RunRunType; ownerOwnly: boolean }[]
   );
+
   useEffect(() => {
     setTabs(
       TABS.filter((tab) => {
@@ -106,6 +79,24 @@ export default function RunsView({
   let last = offset + limit;
   if (offset + limit > total) {
     last = total;
+  }
+
+  // Show 404 on error or if app not found after loading completes
+  if (isAppError || (!isAppLoading && !app)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isAppLoading || !app) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
   }
 
   return (
@@ -187,7 +178,7 @@ export default function RunsView({
               <div className="rounded border border-border px-4 py-4 dark:border-border-night">
                 <div className="flex items-center justify-between">
                   <div className="flex flex-initial">
-                    <LinkWrapper
+                    <Link
                       href={`/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${run.run_id}`}
                       className="block"
                     >
@@ -195,7 +186,7 @@ export default function RunsView({
                         {run.run_id.slice(0, 8)}...
                         {run.run_id.slice(-8)}
                       </p>
-                    </LinkWrapper>
+                    </Link>
                   </div>
                   <div className="ml-2 flex flex-shrink-0">
                     <p
@@ -238,7 +229,7 @@ export default function RunsView({
           ))}
           {runs.length == 0 ? (
             <div className="mt-10 flex flex-col items-center justify-center text-sm text-muted-foreground dark:text-muted-foreground-night">
-              <p>No runs found 🔎</p>
+              <p>No runs found</p>
               {runType == "local" ? (
                 <p className="mt-2">
                   Runs triggered from Dust will appear here.
@@ -254,6 +245,15 @@ export default function RunsView({
   );
 }
 
-RunsView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = RunsView as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
