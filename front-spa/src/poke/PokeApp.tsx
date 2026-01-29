@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { PokeRegionProvider } from "@dust-tt/front/components/poke/PokeRegionContext";
 import { AppPage } from "@dust-tt/front/components/poke/pages/AppPage";
 import { AssistantDetailsPage } from "@dust-tt/front/components/poke/pages/AssistantDetailsPage";
 import { ConnectorRedirectPage } from "@dust-tt/front/components/poke/pages/ConnectorRedirectPage";
@@ -103,7 +104,9 @@ const router = createBrowserRouter(
 export default function PokeApp() {
   return (
     <RootLayout>
-      <RouterProvider router={router} />
+      <PokeRegionProvider>
+        <RouterProvider router={router} />
+      </PokeRegionProvider>
     </RootLayout>
   );
 }

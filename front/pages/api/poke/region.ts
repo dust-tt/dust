@@ -19,7 +19,6 @@ async function handler(
   session: SessionWithUser
 ) {
   const auth = await Authenticator.fromSuperUserSession(session, null);
-
   if (!auth.isDustSuperUser()) {
     return apiError(req, res, {
       status_code: 404,
