@@ -37,6 +37,9 @@ COPY /front-spa .
 WORKDIR /app/front
 COPY /front .
 
+# Generate custom models TypeScript from JSON config (downloaded by CI)
+RUN npx tsx scripts/fetch-custom-models.ts
+
 # Remove test files (shared optimization)
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete
@@ -77,9 +80,6 @@ ENV NEXT_PUBLIC_NOVU_API_URL=$NEXT_PUBLIC_NOVU_API_URL
 ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
-
-# Generate custom models TypeScript from JSON config (downloaded by CI)
-RUN npx tsx scripts/fetch-custom-models.ts
 
 # Build Next.js application and sitemap (front-nextjs only)
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
