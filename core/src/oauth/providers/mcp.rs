@@ -110,6 +110,11 @@ impl Provider for MCPConnectionProvider {
             form_data.push(("client_secret", secret));
         }
 
+        // Include resource parameter per RFC 8707 if available.
+        if let Some(ref resource) = metadata.resource {
+            form_data.push(("resource", resource));
+        }
+
         let req = self
             .reqwest_client()
             .post(metadata.token_endpoint)
@@ -182,6 +187,11 @@ impl Provider for MCPConnectionProvider {
         // Only include client_secret if it's provided
         if let Some(ref secret) = client_secret {
             form_data.push(("client_secret", secret));
+        }
+
+        // Include resource parameter per RFC 8707 if available.
+        if let Some(ref resource) = metadata.resource {
+            form_data.push(("resource", resource));
         }
 
         let req = self
