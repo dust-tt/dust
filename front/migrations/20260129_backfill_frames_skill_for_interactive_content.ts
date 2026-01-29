@@ -37,7 +37,7 @@ async function backfillFramesSkillForWorkspace(
   const logger = parentLogger.child({ workspaceId: workspace.sId });
   const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
 
-  // Step 1: we fetch th eshareable files, every frame has an associated shareable file created when
+  // Step 1: we fetch the shareable files, every frame has an associated shareable file created when
   // we upload the content in the tool that creates the frame.
   const shareableFiles = await ShareableFileModel.findAll({
     where: {
@@ -97,10 +97,7 @@ async function backfillFramesSkillForWorkspace(
   );
 
   if (conversationsNeedingSkill.length === 0) {
-    logger.info(
-      { workspaceId: workspace.sId },
-      "All conversations already have the frames skill"
-    );
+    logger.info("All conversations already have the frames skill");
     return;
   }
 
@@ -108,7 +105,7 @@ async function backfillFramesSkillForWorkspace(
     {
       alreadyHaveSkill: conversationsWithSkill.size,
       needingSkill: conversationsNeedingSkill.length,
-      foundConversations: conversations.length,
+      totalConversations: conversations.length,
     },
     "Upserting conversation skills"
   );
@@ -139,6 +136,8 @@ async function backfillFramesSkillForWorkspace(
     },
     { concurrency: 8 }
   );
+
+  logger.info({ created }, "Backfill completed for workspace");
 }
 
 makeScript(
