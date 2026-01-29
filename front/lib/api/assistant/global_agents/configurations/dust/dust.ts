@@ -47,6 +47,7 @@ import {
   MAX_STEPS_USE_PER_RUN_LIMIT,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 
 const INSTRUCTION_SECTIONS = {
   primary: `<primary_goal>
@@ -593,6 +594,27 @@ export function _getDustOaiGlobalAgent(
     agentId: GLOBAL_AGENTS_SID.DUST_OAI,
     name: "dust-oai",
     preferredModelConfiguration: GPT_5_2_MODEL_CONFIG,
+    preferredReasoningEffort: "light",
+  });
+}
+
+export function _getDustNextGlobalAgent(
+  auth: Authenticator,
+  args: {
+    settings: GlobalAgentSettingsModel | null;
+    preFetchedDataSources: PrefetchedDataSourcesType | null;
+    mcpServerViews: MCPServerViewsForGlobalAgentsMap;
+    memories: AgentMemoryResource[];
+    availableToolsets: MCPServerViewResource[];
+  }
+): AgentConfigurationType | null {
+  const customModel = CUSTOM_MODEL_CONFIGS[0];
+
+  return _getDustLikeGlobalAgent(auth, args, {
+    agentId: GLOBAL_AGENTS_SID.DUST_NEXT,
+    name: "dust-next",
+    preferredModelConfiguration:
+      customModel ?? CLAUDE_4_5_OPUS_DEFAULT_MODEL_CONFIG,
     preferredReasoningEffort: "light",
   });
 }

@@ -26,6 +26,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to dust-oai global agent running OpenAI models",
     stage: "dust_only",
   },
+  dust_next_global_agent: {
+    description:
+      "Access to dust-next global agent running a custom model for internal testing",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
