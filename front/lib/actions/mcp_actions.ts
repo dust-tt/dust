@@ -734,7 +734,7 @@ function deduplicateMCPServerConfigurations({
     const viewId = isServerSideMCPServerConfiguration(config)
       ? config.mcpServerViewId
       : config.clientSideMcpServerId;
-    const key = `${viewId}:${config.name}`;
+    const key = `${viewId}:${slugify(config.name)}`;
 
     if (seen.has(key)) {
       return false;
