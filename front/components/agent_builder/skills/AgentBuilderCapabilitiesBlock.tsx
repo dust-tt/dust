@@ -116,7 +116,7 @@ function ActionButtons({
   );
 }
 
-export function AgentBuilderSkillsBlock() {
+export function AgentBuilderCapabilitiesBlock() {
   const sendNotification = useSendNotification();
   const { owner } = useAgentBuilderContext();
 

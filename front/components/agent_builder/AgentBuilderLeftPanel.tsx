@@ -12,7 +12,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { AgentBuilderSpacesBlock } from "@app/components/agent_builder/AgentBuilderSpacesBlock";
 import { AgentBuilderInstructionsBlock } from "@app/components/agent_builder/instructions/AgentBuilderInstructionsBlock";
 import { AgentBuilderSettingsBlock } from "@app/components/agent_builder/settings/AgentBuilderSettingsBlock";
-import { AgentBuilderSkillsBlock } from "@app/components/agent_builder/skills/AgentBuilderSkillsBlock";
+import { AgentBuilderCapabilitiesBlock } from "@app/components/agent_builder/skills/AgentBuilderCapabilitiesBlock";
 import { AgentBuilderTriggersBlock } from "@app/components/agent_builder/triggers/AgentBuilderTriggersBlock";
 
 interface AgentBuilderLeftPanelProps {
@@ -56,7 +56,7 @@ export function AgentBuilderLeftPanel({
             agentConfigurationId={agentConfigurationId}
           />
           <AgentBuilderSpacesBlock />
-          <AgentBuilderSkillsBlock />
+          <AgentBuilderCapabilitiesBlock />
           <AgentBuilderTriggersBlock
             owner={owner}
             isTriggersLoading={isTriggersLoading}
