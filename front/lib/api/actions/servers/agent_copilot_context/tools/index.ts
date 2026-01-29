@@ -13,6 +13,7 @@ import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getSupportedModelConfigs } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
@@ -23,13 +24,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
-import {
-  Err,
-  isModelProviderId,
-  normalizeError,
-  Ok,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { Err, isModelProviderId, normalizeError, Ok } from "@app/types";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
@@ -223,7 +218,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     const owner = auth.getNonNullableWorkspace();
 
-    let models = SUPPORTED_MODEL_CONFIGS.filter((m) => !m.isLegacy);
+    const allModels = getSupportedModelConfigs();
+    let models = allModels.filter((m) => !m.isLegacy);
 
     if (providerId) {
       if (!isModelProviderId(providerId)) {
@@ -238,8 +234,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // Filter by whitelisted providers for the workspace.
     const whiteListedProviders =
-      owner.whiteListedProviders ??
-      SUPPORTED_MODEL_CONFIGS.map((m) => m.providerId);
+      owner.whiteListedProviders ?? allModels.map((m) => m.providerId);
     models = models.filter((m) => whiteListedProviders.includes(m.providerId));
 
     const modelList = models.map((m) => ({

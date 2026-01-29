@@ -34,7 +34,7 @@ import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";

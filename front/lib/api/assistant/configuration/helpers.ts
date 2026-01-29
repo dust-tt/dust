@@ -1,6 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";

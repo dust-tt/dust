@@ -1,10 +1,14 @@
 import { Op } from "sequelize";
 
+import {
+  getModelConfigByModelId,
+  getSupportedModelConfigs,
+} from "@app/lib/api/models";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 import type { ModelId, SupportedModel } from "@app/types";
-import { isSupportedModel, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { isSupportedModel } from "@app/types";
 
 type SupportedModelIds = SupportedModel["modelId"];
 type SelectCriteria = {
@@ -87,7 +91,7 @@ async function updateWorkspaceAssistants(
     }
 
     const targetProviderId = forceProviderChange
-      ? SUPPORTED_MODEL_CONFIGS.find((m) => m.modelId === toModel)?.providerId
+      ? getModelConfigByModelId(toModel)?.providerId
       : agent.providerId;
     if (execute) {
       await agent.update({ modelId: toModel, providerId: targetProviderId });
@@ -113,7 +117,7 @@ makeScript(
     },
     toModel: {
       type: "string",
-      choices: SUPPORTED_MODEL_CONFIGS.map((m) => m.modelId),
+      choices: getSupportedModelConfigs().map((m) => m.modelId),
       demandOption: true,
     },
     workspaceIds: {
