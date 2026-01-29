@@ -1,6 +1,6 @@
 import escapeRegExp from "lodash/escapeRegExp";
 
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
@@ -299,6 +299,12 @@ export function getDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
+  if (!model) {
+    return {
+      delimiters: [],
+      incompleteDelimiterPatterns: [],
+    };
+  }
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
@@ -325,6 +331,13 @@ export function getCoTDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
+  if (!model) {
+    return {
+      delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
+      incompleteDelimiterPatterns:
+        CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
+    };
+  }
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;

@@ -7,12 +7,11 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
 } from "@dust-tt/sparkle";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useController, useWatch } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import { getSupportedModelConfig } from "@app/lib/assistant";
-import type { AgentReasoningEffort } from "@app/types";
+import type { AgentReasoningEffort, ModelConfigurationType } from "@app/types";
 import { asDisplayName } from "@app/types";
 
 const REASONING_EFFORT_DESCRIPTIONS: Record<AgentReasoningEffort, string> = {
@@ -22,7 +21,11 @@ const REASONING_EFFORT_DESCRIPTIONS: Record<AgentReasoningEffort, string> = {
   high: "Deep reasoning (slower)",
 };
 
-export function ReasoningEffortSubmenu() {
+interface ReasoningEffortSubmenuProps {
+  models: ModelConfigurationType[];
+}
+
+export function ReasoningEffortSubmenu({ models }: ReasoningEffortSubmenuProps) {
   const modelSettings = useWatch<
     AgentBuilderFormData,
     "generationSettings.modelSettings"
@@ -37,10 +40,15 @@ export function ReasoningEffortSubmenu() {
     name: "generationSettings.reasoningEffort",
   });
 
-  const modelConfig = getSupportedModelConfig({
-    modelId: modelSettings.modelId,
-    providerId: modelSettings.providerId,
-  });
+  const modelConfig = useMemo(
+    () =>
+      models.find(
+        (m) =>
+          m.modelId === modelSettings.modelId &&
+          m.providerId === modelSettings.providerId
+      ),
+    [models, modelSettings.modelId, modelSettings.providerId]
+  );
 
   useEffect(() => {
     if (modelConfig) {

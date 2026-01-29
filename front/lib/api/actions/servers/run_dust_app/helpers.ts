@@ -18,6 +18,7 @@ import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_action
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getDatasetSchema } from "@app/lib/api/datasets";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
 import { AppResource } from "@app/lib/resources/app_resource";
@@ -30,7 +31,7 @@ import type {
   SpecificationBlockType,
   SupportedFileContentType,
 } from "@app/types";
-import { extensionsForContentType, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { extensionsForContentType } from "@app/types";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const MIN_GENERATION_TOKENS = 2048;
@@ -288,10 +289,8 @@ export async function prepareParamsWithHistory(
   if (
     schema?.some((s) => s.key === DUST_CONVERSATION_HISTORY_MAGIC_INPUT_KEY)
   ) {
-    const model = SUPPORTED_MODEL_CONFIGS.find(
-      (m) =>
-        m.modelId === agentLoopRunContext.agentConfiguration.model.modelId &&
-        m.providerId === agentLoopRunContext.agentConfiguration.model.providerId
+    const model = getSupportedModelConfig(
+      agentLoopRunContext.agentConfiguration.model
     );
 
     if (model) {

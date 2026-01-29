@@ -20,7 +20,7 @@ import type {
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
 import {
   // Anthropic models

@@ -84,7 +84,7 @@ export function AdvancedSettings() {
         <DropdownMenuContent align="start">
           <ModelSelectionSubmenu models={models} />
 
-          <ReasoningEffortSubmenu />
+          <ReasoningEffortSubmenu models={models} />
 
           {supportsResponseFormat && (
             <DropdownMenuItem
