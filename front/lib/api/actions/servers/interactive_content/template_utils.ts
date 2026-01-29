@@ -7,8 +7,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
-import type { Result } from "@app/types";
-import { CoreAPI, Err, Ok } from "@app/types";
+import type { Result, UserMessageType } from "@app/types";
+import { CoreAPI, Err, isUserMessageType, Ok } from "@app/types";
 
 const MAX_TEMPLATE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
@@ -22,10 +22,17 @@ export async function fetchTemplateContent(
 ): Promise<Result<string, MCPError>> {
   const { agentConfiguration, conversation } = runContext;
 
+  // Extract the last user message for dynamic skill instructions
+  const lastUserMessage = conversation.content
+    .map((tuple) => tuple[0])
+    .filter((m): m is UserMessageType => isUserMessageType(m))
+    .at(-1);
+
   // Fetch skills for this agent and conversation (same pattern as agent loop).
   const { enabledSkills } = await SkillResource.listForAgentLoop(auth, {
     agentConfiguration,
     conversation,
+    userMessage: lastUserMessage,
   });
 
   // Get merged data source configurations from skills.

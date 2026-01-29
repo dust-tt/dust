@@ -167,6 +167,7 @@ async function handler(
         await SkillResource.listForAgentLoop(auth, {
           agentConfiguration,
           conversation,
+          userMessage,
         });
 
       const skillServers = await getSkillServers(auth, {

@@ -64,6 +64,7 @@ import type {
   LightWorkspaceType,
   ModelId,
   Result,
+  UserMessageType,
 } from "@app/types";
 import {
   Err,
@@ -466,7 +467,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private static async baseFetch(
     auth: Authenticator,
     options: SkillConfigurationFindOptions = {},
-    context: { agentConfiguration?: LightAgentConfigurationType } = {}
+    context: {
+      agentConfiguration?: LightAgentConfigurationType;
+      userMessage?: UserMessageType;
+    } = {}
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
 
@@ -671,7 +675,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   static async fetchByIds(
     auth: Authenticator,
     sIds: string[],
-    context: { agentConfiguration?: LightAgentConfigurationType } = {}
+    context?: {
+      agentConfiguration: LightAgentConfigurationType;
+      userMessage: UserMessageType;
+    }
   ): Promise<SkillResource[]> {
     if (sIds.length === 0) {
       return [];
@@ -741,9 +748,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentConfiguration,
       status,
+      userMessage,
     }: {
       agentConfiguration?: LightAgentConfigurationType;
       status?: SkillStatus | SkillStatus[];
+      userMessage?: UserMessageType;
     } = {}
   ): Promise<SkillResource[]> {
     const customSkillModelIds = removeNulls(refs.map((r) => r.customSkillId));
@@ -758,7 +767,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
           ...(status ? { status } : {}),
         },
       },
-      { agentConfiguration }
+      { agentConfiguration, userMessage }
     );
   }
 
@@ -775,7 +784,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: AgentConfigurationType
+    {
+      agentConfiguration,
+    }: {
+      agentConfiguration: AgentConfigurationType;
+    }
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -970,9 +983,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       conversation,
       agentConfiguration,
+      userMessage,
     }: {
       conversation: ConversationWithoutContentType;
       agentConfiguration?: AgentConfigurationType;
+      userMessage?: UserMessageType;
     }
   ): Promise<SkillResource[]> {
     const workspace = auth.getNonNullableWorkspace();
@@ -994,6 +1009,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
     return this.fetchBySkillReferences(auth, conversationSkills, {
       agentConfiguration,
+      userMessage,
     });
   }
 
@@ -1005,9 +1021,11 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     {
       agentConfiguration,
       conversation,
+      userMessage,
     }: {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
+      userMessage?: UserMessageType;
     }
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
@@ -1018,12 +1036,12 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       {
         conversation,
         agentConfiguration,
+        userMessage,
       }
     );
-    const allAgentSkills = await this.listByAgentConfiguration(
-      auth,
-      agentConfiguration
-    );
+    const allAgentSkills = await this.listByAgentConfiguration(auth, {
+      agentConfiguration,
+    });
 
     // Auto-enabled skills are always treated as enabled when present in the agent configuration. Only possible for global skills for now.
     const autoEnabledSkills = allAgentSkills.filter((s) => s.isAutoEnabled);
@@ -1144,7 +1162,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   private static async fromGlobalSkill(
     auth: Authenticator,
     def: GlobalSkillDefinition,
-    context: { agentConfiguration?: LightAgentConfigurationType } = {}
+    context: {
+      agentConfiguration?: LightAgentConfigurationType;
+      userMessage?: UserMessageType;
+    } = {}
   ): Promise<SkillResource> {
     const requestedSpaceIds =
       context?.agentConfiguration?.requestedSpaceIds ?? [];
@@ -1176,7 +1197,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     const instructions = def.fetchInstructions
-      ? await def.fetchInstructions(auth, requestedSpaceIds)
+      ? await def.fetchInstructions(auth, {
+          spaceIds: requestedSpaceIds,
+          userMessage: context.userMessage,
+        })
       : def.instructions;
 
     return new SkillResource(
@@ -1295,7 +1319,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
           const agentSkills = await SkillResource.listByAgentConfiguration(
             auth,
-            agentConfig
+            { agentConfiguration: agentConfig }
           );
           const otherAgentSkills = agentSkills.filter(
             (skill) => skill.sId !== this.sId

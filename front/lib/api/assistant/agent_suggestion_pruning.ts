@@ -184,10 +184,9 @@ async function getOutdatedSkillsSuggestions(
   if (suggestions.length === 0) {
     return [];
   }
-  const currentSkills = await SkillResource.listByAgentConfiguration(
-    auth,
-    agentConfiguration
-  );
+  const currentSkills = await SkillResource.listByAgentConfiguration(auth, {
+    agentConfiguration,
+  });
   const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
 
   const outdatedSuggestions: SkillsSuggestionResource[] = [];

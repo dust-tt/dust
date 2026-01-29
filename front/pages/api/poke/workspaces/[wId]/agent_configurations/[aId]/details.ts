@@ -82,7 +82,7 @@ async function handler(
 
       const skillResources = await SkillResource.listByAgentConfiguration(
         auth,
-        latestAgentConfiguration
+        { agentConfiguration: latestAgentConfiguration }
       );
 
       return res.status(200).json({

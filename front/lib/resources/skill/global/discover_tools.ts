@@ -14,7 +14,10 @@ export const discoverToolsSkill = {
     "Automatically discover and activate specialized tools as needed. Extend your agent's capabilities on-demand without manual configuration.",
   agentFacingDescription:
     "List available toolsets and enable them for the current conversation.",
-  fetchInstructions: async (auth: Authenticator, spaceIds: string[]) => {
+  fetchInstructions: async (
+    auth: Authenticator,
+    { spaceIds }: { spaceIds: string[] }
+  ) => {
     const allToolsets = await MCPServerViewResource.listBySpaceIds(
       auth,
       spaceIds,

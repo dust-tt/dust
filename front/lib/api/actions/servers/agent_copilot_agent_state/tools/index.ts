@@ -54,10 +54,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA> =
       }
 
       // Get skills associated with this agent.
-      const agentSkills = await SkillResource.listByAgentConfiguration(
-        auth,
-        agentConfiguration
-      );
+      const agentSkills = await SkillResource.listByAgentConfiguration(auth, {
+        agentConfiguration,
+      });
 
       const agentInfo = {
         sId: agentConfiguration.sId,
