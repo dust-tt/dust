@@ -269,15 +269,15 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
-            "analysis": {
-              "description": "Analysis or reasoning for the suggestions",
-              "type": "string"
-            },
             "suggestions": {
-              "description": "Array of small, scoped instruction modifications. Each should target 1-3 lines max.",
+              "description": "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis.",
               "items": {
                 "additionalProperties": false,
                 "properties": {
+                  "analysis": {
+                    "description": "Analysis or reasoning for this specific suggestion",
+                    "type": "string"
+                  },
                   "expectedOccurrences": {
                     "description": "Number of occurrences to replace.",
                     "type": "number"
