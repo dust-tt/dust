@@ -25,7 +25,9 @@ interface ReasoningEffortSubmenuProps {
   models: ModelConfigurationType[];
 }
 
-export function ReasoningEffortSubmenu({ models }: ReasoningEffortSubmenuProps) {
+export function ReasoningEffortSubmenu({
+  models,
+}: ReasoningEffortSubmenuProps) {
   const modelSettings = useWatch<
     AgentBuilderFormData,
     "generationSettings.modelSettings"
