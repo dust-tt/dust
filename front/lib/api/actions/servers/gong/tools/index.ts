@@ -10,7 +10,6 @@ import {
   renderCall,
   renderCalls,
   renderTranscripts,
-  renderUsers,
 } from "@app/lib/api/actions/servers/gong/rendering";
 import { Err, Ok } from "@app/types";
 
@@ -19,42 +18,6 @@ function isTrackedError(error: Error): boolean {
 }
 
 const handlers: ToolHandlers<typeof GONG_TOOLS_METADATA> = {
-  list_users: async (_, { authInfo }) => {
-    const clientResult = getGongClient(authInfo);
-    if (clientResult.isErr()) {
-      return clientResult;
-    }
-    const client = clientResult.value;
-
-    const result = await client.listUsers();
-
-    if (result.isErr()) {
-      return new Err(
-        new MCPError(`Failed to list users: ${result.error.message}`, {
-          tracked: isTrackedError(result.error),
-        })
-      );
-    }
-
-    const users = result.value;
-
-    if (users.length === 0) {
-      return new Ok([
-        {
-          type: "text" as const,
-          text: "No users found in this Gong account.",
-        },
-      ]);
-    }
-
-    return new Ok([
-      {
-        type: "text" as const,
-        text: `Found ${users.length} user(s):\n\n${renderUsers(users)}`,
-      },
-    ]);
-  },
-
   list_calls: async ({ fromDateTime, toDateTime, cursor }, { authInfo }) => {
     const clientResult = getGongClient(authInfo);
     if (clientResult.isErr()) {

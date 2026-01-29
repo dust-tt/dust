@@ -1,7 +1,6 @@
 import type {
   GongCall,
   GongCallTranscript,
-  GongUser,
 } from "@app/lib/api/actions/servers/gong/client";
 
 function formatDuration(seconds: number | undefined): string {
@@ -35,41 +34,6 @@ function formatDateTime(dateString: string | undefined): string {
   } catch {
     return dateString;
   }
-}
-
-export function renderUser(user: GongUser): string {
-  const lines: string[] = [];
-
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ");
-  lines.push(`## ${name || "User"}`);
-  lines.push(`- **ID:** ${user.id}`);
-  lines.push(`- **Email:** ${user.emailAddress}`);
-
-  if (user.title) {
-    lines.push(`- **Title:** ${user.title}`);
-  }
-  if (user.phoneNumber) {
-    lines.push(`- **Phone:** ${user.phoneNumber}`);
-  }
-  if (user.active !== undefined) {
-    lines.push(`- **Active:** ${user.active ? "Yes" : "No"}`);
-  }
-  if (user.managerId) {
-    lines.push(`- **Manager ID:** ${user.managerId}`);
-  }
-  if (user.created) {
-    lines.push(`- **Created:** ${formatDateTime(user.created)}`);
-  }
-
-  return lines.join("\n");
-}
-
-export function renderUsers(users: GongUser[]): string {
-  if (users.length === 0) {
-    return "No users found.";
-  }
-
-  return users.map(renderUser).join("\n\n---\n\n");
 }
 
 export function renderCall(call: GongCall, includeDetails = false): string {
@@ -213,29 +177,28 @@ export function renderTranscript(transcript: GongCallTranscript): string {
     return lines.join("\n");
   }
 
-  // Group sentences by speaker for readability
-  let currentSpeaker: string | undefined;
-  let currentBlock: string[] = [];
+  // Each segment has a speakerId and sentences array
+  for (const segment of transcript.transcript) {
+    const speakerLabel = segment.speakerId
+      ? `Speaker ${segment.speakerId}`
+      : "Unknown Speaker";
+    const topicLabel = segment.topic ? ` [${segment.topic}]` : "";
 
-  const flushBlock = () => {
-    if (currentBlock.length > 0) {
-      const speakerLabel = currentSpeaker ?? "Unknown Speaker";
-      lines.push(`**${speakerLabel}:**`);
-      lines.push(currentBlock.join(" "));
+    if (!segment.sentences || segment.sentences.length === 0) {
+      continue;
+    }
+
+    const text = segment.sentences
+      .filter((s) => s.text)
+      .map((s) => s.text)
+      .join(" ");
+
+    if (text) {
+      lines.push(`**${speakerLabel}${topicLabel}:**`);
+      lines.push(text);
       lines.push("");
-      currentBlock = [];
     }
-  };
-
-  for (const sentence of transcript.transcript) {
-    const speakerId = sentence.speakerId ?? undefined;
-    if (speakerId !== currentSpeaker) {
-      flushBlock();
-      currentSpeaker = speakerId;
-    }
-    currentBlock.push(sentence.text);
   }
-  flushBlock();
 
   return lines.join("\n");
 }
