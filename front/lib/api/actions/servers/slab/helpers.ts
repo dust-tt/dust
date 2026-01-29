@@ -1,4 +1,4 @@
-import type { SlabPost, SlabTopic } from "./slab_types";
+import type { SlabPost, SlabTopic } from "./types";
 
 export function formatPostSummary(post: SlabPost): string {
   const status = post.archivedAt

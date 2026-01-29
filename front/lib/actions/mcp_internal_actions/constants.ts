@@ -55,6 +55,7 @@ import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
@@ -808,24 +809,10 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     requiresBearerToken: true,
-    tools_stakes: {
-      search_posts: "never_ask",
-      get_post_contents: "never_ask",
-      get_topics: "never_ask",
-      get_post_metadata: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slab",
-      version: "1.0.0",
-      description: "Search and read from your Slab knowledge base",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SLAB_SERVER,
   },
   vanta: {
     id: 44,
