@@ -35,7 +35,7 @@ const FilterSchema = z.record(z.enum(GROUP_BY_KEYS), z.string().array());
 
 export const QuerySchema = z.object({
   groupBy: z.enum(GROUP_BY_KEYS).optional(),
-  groupByCount: z.number().optional().default(5),
+  groupByCount: z.coerce.number().optional().default(5),
   filter: z
     .string()
     .optional()
@@ -425,10 +425,9 @@ export async function handleProgrammaticCostRequest(
           };
         });
 
-        // Keep at most 5 groups
         const allGroupsToProcess = ensureAtMostNGroups(
           groupsWithParsedPoints,
-          5,
+          groupByCount,
           "costMicroUsd"
         );
 

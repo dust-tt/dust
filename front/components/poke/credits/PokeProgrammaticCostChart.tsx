@@ -24,6 +24,7 @@ export function PokeProgrammaticCostChart({
   billingCycleStartDay,
 }: PokeProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [groupByCount, setGroupByCount] = useState<number>(5);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
@@ -52,6 +53,7 @@ export function PokeProgrammaticCostChart({
     selectedPeriod,
     billingCycleStartDay,
     groupBy,
+    groupByCount,
     filter,
   });
 
@@ -62,6 +64,8 @@ export function PokeProgrammaticCostChart({
       isProgrammaticCostError={!!isProgrammaticCostError}
       groupBy={groupBy}
       setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
       filter={filter}
       setFilter={setFilter}
       selectedPeriod={selectedPeriod}
