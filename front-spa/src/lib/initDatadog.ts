@@ -47,7 +47,16 @@ export function initDatadogRUM() {
           event.action?.target &&
           event.action?.type === "click"
         ) {
-          const ddContext = (event as { _dd?: { action?: { name_source?: string; target?: { selector?: string } } } })._dd;
+          const ddContext = (
+            event as {
+              _dd?: {
+                action?: {
+                  name_source?: string;
+                  target?: { selector?: string };
+                };
+              };
+            }
+          )._dd;
           if (ddContext?.action?.name_source === "text_content") {
             const elSelector = ddContext.action.target?.selector;
             if (elSelector && typeof elSelector === "string") {

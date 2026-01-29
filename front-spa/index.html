@@ -28,11 +28,25 @@
     </script>
     <!-- Datadog RUM (Real User Monitoring) -->
     <script>
-      (function(h,o,u,n,d) {
-        h=h[d]=h[d]||{q:[],onReady:function(c){h.q.push(c)}}
-        d=o.createElement(u);d.async=1;d.src=n
-        n=o.getElementsByTagName(u)[0];n.parentNode.insertBefore(d,n)
-      })(window,document,'script','https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js','DD_RUM')
+      (function (h, o, u, n, d) {
+        h = h[d] = h[d] || {
+          q: [],
+          onReady: function (c) {
+            h.q.push(c);
+          },
+        };
+        d = o.createElement(u);
+        d.async = 1;
+        d.src = n;
+        n = o.getElementsByTagName(u)[0];
+        n.parentNode.insertBefore(d, n);
+      })(
+        window,
+        document,
+        "script",
+        "https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js",
+        "DD_RUM"
+      );
     </script>
   </head>
   <body>
@@ -51,20 +65,20 @@
 
     <!-- Privacy mask initialization script -->
     <script>
-      (function() {
+      (function () {
         // Initialize privacy mask state from localStorage on page load.
         function initPrivacyMask() {
-          var stored = localStorage.getItem('privacy-mask');
-          var isEnabled = stored === 'true';
+          var stored = localStorage.getItem("privacy-mask");
+          var isEnabled = stored === "true";
 
           if (isEnabled) {
-            document.body.classList.add('privacy-mask-enabled');
+            document.body.classList.add("privacy-mask-enabled");
           }
         }
 
         // Run on DOM ready.
-        if (document.readyState === 'loading') {
-          document.addEventListener('DOMContentLoaded', initPrivacyMask);
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initPrivacyMask);
         } else {
           initPrivacyMask();
         }
