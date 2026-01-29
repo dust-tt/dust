@@ -8,16 +8,6 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 export const GONG_TOOL_NAME = "gong" as const;
 
 export const GONG_TOOLS_METADATA = createToolsRecord({
-  list_users: {
-    description:
-      "List all users in the Gong account. Returns user information including names, emails, titles, and activity status.",
-    schema: {},
-    stake: "never_ask",
-    displayLabels: {
-      running: "Listing users",
-      done: "List users",
-    },
-  },
   list_calls: {
     description:
       "List calls recorded in Gong within a date range. Returns call metadata including title, participants, duration, and timing. " +

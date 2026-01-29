@@ -15,58 +15,6 @@ const idSchema = z.coerce.string();
 
 // Zod schemas for API response validation
 
-const GongUserSchema = z
-  .object({
-    id: idSchema,
-    emailAddress: z.string(),
-    firstName: z.string().optional().nullable(),
-    lastName: z.string().optional().nullable(),
-    title: z.string().optional().nullable(),
-    phoneNumber: z.string().optional().nullable(),
-    extension: z.string().optional().nullable(),
-    personalMeetingUrls: z.array(z.string()).optional().nullable(),
-    settings: z
-      .object({
-        webConferencesRecorded: z.boolean().optional(),
-        preventWebConferenceRecording: z.boolean().optional(),
-        telephonyCallsImported: z.boolean().optional(),
-        emailsImported: z.boolean().optional(),
-        preventEmailImport: z.boolean().optional(),
-        nonRecordedMeetingsImported: z.boolean().optional(),
-        gpiEnabled: z.boolean().optional(),
-      })
-      .optional()
-      .nullable(),
-    managerId: idSchema.optional().nullable(),
-    meetingConsentPageUrl: z.string().optional().nullable(),
-    active: z.boolean().optional().nullable(),
-    created: z.string().optional().nullable(),
-    spokenLanguages: z
-      .array(
-        z.object({
-          language: z.string(),
-          primary: z.boolean().optional(),
-        })
-      )
-      .optional()
-      .nullable(),
-  })
-  .passthrough();
-
-const GongUsersResponseSchema = z
-  .object({
-    requestId: z.string().optional(),
-    users: z.array(GongUserSchema),
-    records: z
-      .object({
-        totalRecords: z.number(),
-        currentPageNumber: z.number(),
-        currentPageSize: z.number(),
-      })
-      .optional(),
-  })
-  .passthrough();
-
 const GongPartySchema = z
   .object({
     id: idSchema.optional().nullable(),
@@ -117,30 +65,7 @@ const GongCallSchema = z
           )
           .optional()
           .nullable(),
-        trackers: z
-          .array(
-            z
-              .object({
-                id: idSchema.optional().nullable(),
-                name: z.string(),
-                count: z.number().optional().nullable(),
-                occurrences: z
-                  .array(
-                    z
-                      .object({
-                        startTime: z.number().optional().nullable(),
-                        speakerId: idSchema.optional().nullable(),
-                      })
-                      .passthrough()
-                  )
-                  .optional()
-                  .nullable(),
-                type: z.string().optional().nullable(),
-              })
-              .passthrough()
-          )
-          .optional()
-          .nullable(),
+        trackers: z.array(z.any()).optional().nullable(),
         pointsOfInterest: z
           .object({
             actionItems: z
@@ -149,7 +74,7 @@ const GongCallSchema = z
                   .object({
                     snippetStartTime: z.number().optional().nullable(),
                     snippetEndTime: z.number().optional().nullable(),
-                    speakerID: idSchema.optional().nullable(),
+                    speakerId: idSchema.optional().nullable(),
                     snippet: z.string().optional().nullable(),
                   })
                   .passthrough()
@@ -168,7 +93,17 @@ const GongCallSchema = z
                 section: z.string().optional().nullable(),
                 startTime: z.number().optional().nullable(),
                 duration: z.number().optional().nullable(),
-                items: z.array(z.string()).optional().nullable(),
+                items: z
+                  .array(
+                    z
+                      .object({
+                        text: z.string().optional().nullable(),
+                        startTime: z.number().optional().nullable(),
+                      })
+                      .passthrough()
+                  )
+                  .optional()
+                  .nullable(),
               })
               .passthrough()
           )
@@ -218,77 +153,8 @@ const GongCallSchema = z
       .passthrough()
       .optional()
       .nullable(),
-    interaction: z
-      .object({
-        speakers: z
-          .array(
-            z
-              .object({
-                id: idSchema.optional().nullable(),
-                userId: idSchema.optional().nullable(),
-                talkTime: z.number().optional().nullable(),
-              })
-              .passthrough()
-          )
-          .optional()
-          .nullable(),
-        interactionStats: z
-          .array(
-            z
-              .object({
-                name: z.string().optional().nullable(),
-                value: z.number().optional().nullable(),
-              })
-              .passthrough()
-          )
-          .optional()
-          .nullable(),
-        questions: z
-          .object({
-            companyCount: z.number().optional().nullable(),
-            nonCompanyCount: z.number().optional().nullable(),
-          })
-          .passthrough()
-          .optional()
-          .nullable(),
-        video: z
-          .array(
-            z
-              .object({
-                name: z.string().optional().nullable(),
-                duration: z.number().optional().nullable(),
-              })
-              .passthrough()
-          )
-          .optional()
-          .nullable(),
-      })
-      .passthrough()
-      .optional()
-      .nullable(),
-    collaboration: z
-      .object({
-        publicComments: z
-          .array(
-            z
-              .object({
-                id: idSchema.optional().nullable(),
-                audioStartTime: z.number().optional().nullable(),
-                audioEndTime: z.number().optional().nullable(),
-                commenterUserId: idSchema.optional().nullable(),
-                comment: z.string().optional().nullable(),
-                posted: z.string().optional().nullable(),
-                inReplyTo: idSchema.optional().nullable(),
-                duringCall: z.boolean().optional().nullable(),
-              })
-              .passthrough()
-          )
-          .optional()
-          .nullable(),
-      })
-      .passthrough()
-      .optional()
-      .nullable(),
+    interaction: z.any().optional().nullable(),
+    collaboration: z.any().optional().nullable(),
   })
   .passthrough();
 
@@ -312,17 +178,24 @@ const GongCallsResponseSchema = z
 
 const GongTranscriptSentenceSchema = z
   .object({
-    start: z.number(),
-    end: z.number(),
-    text: z.string(),
+    start: z.number().optional().nullable(),
+    end: z.number().optional().nullable(),
+    text: z.string().optional().nullable(),
+  })
+  .passthrough();
+
+const GongTranscriptSegmentSchema = z
+  .object({
     speakerId: idSchema.optional().nullable(),
+    topic: z.string().optional().nullable(),
+    sentences: z.array(GongTranscriptSentenceSchema).optional().nullable(),
   })
   .passthrough();
 
 const GongCallTranscriptSchema = z
   .object({
     callId: idSchema,
-    transcript: z.array(GongTranscriptSentenceSchema),
+    transcript: z.array(GongTranscriptSegmentSchema),
   })
   .passthrough();
 
@@ -336,7 +209,6 @@ const GongTranscriptsResponseSchema = z
   .passthrough();
 
 // Export types inferred from schemas
-export type GongUser = z.infer<typeof GongUserSchema>;
 export type GongCall = z.infer<typeof GongCallSchema>;
 export type GongCallTranscript = z.infer<typeof GongCallTranscriptSchema>;
 export type GongTranscriptSentence = z.infer<
@@ -445,16 +317,6 @@ class GongClient {
     }
 
     return new Ok(parseResult.data);
-  }
-
-  async listUsers(): Promise<Result<GongUser[], Error>> {
-    const result = await this.request("/users", GongUsersResponseSchema);
-
-    if (result.isErr()) {
-      return new Err(result.error);
-    }
-
-    return new Ok(result.value.users);
   }
 
   async listCalls(options: {
