@@ -136,6 +136,8 @@ export function useSpaceInfo({
 
   return {
     spaceInfo: data ? data.space : null,
+    canWriteInSpace: data?.space.canWrite ?? false,
+    canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
     isSpaceInfoLoading: !error && !data && !disabled,
     isSpaceInfoError: error,
@@ -165,6 +167,7 @@ export function useSpaceDataSourceView({
 
   return {
     dataSourceView: data?.dataSourceView,
+    connector: data?.connector ?? null,
     isDataSourceViewLoading: !disabled && !error && !data,
     isDataSourceViewError: error,
     mutate,
@@ -983,4 +986,46 @@ export function useProjectJournalEntries({
     isJournalEntriesError: error,
     mutateJournalEntries: mutate,
   };
+}
+
+export function useGenerateProjectJournalEntry({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doGenerate = async () => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${spaceId}/project_journal_entries/generate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (res.ok) {
+      sendNotification({
+        type: "success",
+        title: "Generating journal entry",
+        description:
+          "Your journal entry is being generated. Refresh the page in a moment to see the result.",
+      });
+      return true;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error generating journal entry",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+  };
+
+  return doGenerate;
 }

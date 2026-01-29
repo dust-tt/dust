@@ -55,13 +55,13 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   getSupportedFileExtensions,
   isBuilder,
   normalizeError,
   toRichAgentMentionType,
 } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const INPUT_BAR_ACTIONS = [
   "capabilities",

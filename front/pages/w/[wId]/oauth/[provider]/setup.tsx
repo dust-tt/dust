@@ -3,7 +3,8 @@ import * as t from "io-ts";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isOAuthProvider, isOAuthUseCase, safeParseJSON } from "@app/types";
+import { isOAuthProvider, isOAuthUseCase } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export const ExtraConfigTypeSchema = t.record(t.string, t.string);
 export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
     <title>Dust</title>
     <script>
       // Shim for Node.js Buffer API used by some dependencies
@@ -25,9 +26,63 @@
         },
       };
     </script>
+    <!-- Datadog RUM (Real User Monitoring) -->
+    <script>
+      (function (h, o, u, n, d) {
+        h = h[d] = h[d] || {
+          q: [],
+          onReady: function (c) {
+            h.q.push(c);
+          },
+        };
+        d = o.createElement(u);
+        d.async = 1;
+        d.src = n;
+        n = o.getElementsByTagName(u)[0];
+        n.parentNode.insertBefore(d, n);
+      })(
+        window,
+        document,
+        "script",
+        "https://www.datadoghq-browser-agent.com/eu1/v6/datadog-rum.js",
+        "DD_RUM"
+      );
+    </script>
   </head>
   <body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript>
+      <iframe
+        src="https://www.googletagmanager.com/ns.html?id=%VITE_GTM_TRACKING_ID%"
+        height="0"
+        width="0"
+        style="display: none; visibility: hidden"
+      ></iframe>
+    </noscript>
+
     <div id="root"></div>
     <script type="module" src="/src/app/main.tsx"></script>
+
+    <!-- Privacy mask initialization script -->
+    <script>
+      (function () {
+        // Initialize privacy mask state from localStorage on page load.
+        function initPrivacyMask() {
+          var stored = localStorage.getItem("privacy-mask");
+          var isEnabled = stored === "true";
+
+          if (isEnabled) {
+            document.body.classList.add("privacy-mask-enabled");
+          }
+        }
+
+        // Run on DOM ready.
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initPrivacyMask);
+        } else {
+          initPrivacyMask();
+        }
+      })();
+    </script>
   </body>
 </html>

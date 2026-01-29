@@ -19,7 +19,7 @@ import type {
   ModelIdType,
   ReasoningEffort,
 } from "@app/types";
-import { safeParseJSON } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const LLM_TRACE_PREFIX = "llm_trace_";
 

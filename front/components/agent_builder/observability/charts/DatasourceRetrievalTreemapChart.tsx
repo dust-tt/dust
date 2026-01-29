@@ -44,6 +44,7 @@ interface TreemapNode {
   connectorProvider?: ConnectorProvider;
   parentId?: string | null;
   documentId?: string;
+  sourceUrl?: string | null;
   children?: TreemapNode[];
 
   [key: string]: unknown;
@@ -67,6 +68,7 @@ interface TreemapContentProps {
   connectorProvider?: ConnectorProvider;
   parentId?: string | null;
   documentId?: string;
+  sourceUrl?: string | null;
   children?: TreemapNode[] | null;
   root?: {
     depth?: number;
@@ -110,6 +112,7 @@ function TreemapContent({
   connectorProvider,
   parentId,
   documentId,
+  sourceUrl,
   children,
   root,
   onNodeClick,
@@ -178,6 +181,7 @@ function TreemapContent({
                   connectorProvider,
                   parentId,
                   documentId,
+                  sourceUrl,
                 });
               }
             : undefined
@@ -384,6 +388,7 @@ export function DatasourceRetrievalTreemapChart({
             name: d.displayName,
             documentId: d.documentId,
             parentId: d.parentId,
+            sourceUrl: d.sourceUrl,
             size: d.count,
             color: zoomSelection.color,
             baseColor: zoomSelection.baseColor,
@@ -413,6 +418,12 @@ export function DatasourceRetrievalTreemapChart({
       baseColor: node.baseColor,
     });
   }, []);
+
+  const handleDocumentClick = (node: TreemapNode) => {
+    if (node.sourceUrl) {
+      window.open(node.sourceUrl, "_blank");
+    }
+  };
 
   const makeTooltipRenderer = useCallback(
     (total: number) => (props: { payload?: { payload?: TreemapNode }[] }) => {
@@ -475,7 +486,7 @@ export function DatasourceRetrievalTreemapChart({
               dataKey="size"
               aspectRatio={4 / 3}
               isAnimationActive={false}
-              content={<TreemapContent />}
+              content={<TreemapContent onNodeClick={handleDocumentClick} />}
             >
               <Tooltip
                 cursor={false}

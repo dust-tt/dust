@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   expireRateLimiterKey,
   getRateLimiterCount,
@@ -60,7 +60,8 @@ export async function getMessageUsageCount(auth: Authenticator): Promise<{
     return { count: 0, limit: -1 };
   }
 
-  const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
   const effectiveLimit = computeEffectiveMessageLimit({
     planCode: plan.code,
     maxMessages,

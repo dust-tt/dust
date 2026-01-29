@@ -8,7 +8,7 @@ import { startVerification } from "@app/lib/api/workspace_verification";
 import type { Authenticator } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   StartVerificationResponse,
   VerificationErrorResponse,

@@ -13,6 +13,8 @@ import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import { getSupportedModelConfigs } from "@app/lib/api/models";
+import type { Authenticator } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -22,13 +24,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { DataSourceViewCategory, SpaceType } from "@app/types";
 import { removeNulls } from "@app/types";
-import {
-  Err,
-  isModelProviderId,
-  normalizeError,
-  Ok,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { Err, isModelProviderId, normalizeError, Ok } from "@app/types";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
@@ -37,6 +33,13 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
   "folder",
   "website",
 ];
+
+// Limits for pending suggestions by kind
+const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
+const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
+const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
+
+type LimitedSuggestionKind = "instructions" | "tools" | "skills";
 
 interface KnowledgeDataSource {
   sId: string;
@@ -55,6 +58,52 @@ interface KnowledgeSpace {
   name: string;
   kind: SpaceType["kind"];
   categories: KnowledgeCategoryData[];
+}
+
+function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
+  switch (kind) {
+    case "instructions":
+      return MAX_PENDING_INSTRUCTIONS_SUGGESTIONS;
+    case "tools":
+      return MAX_PENDING_TOOLS_SUGGESTIONS;
+    case "skills":
+      return MAX_PENDING_SKILLS_SUGGESTIONS;
+  }
+}
+
+async function checkPendingSuggestionLimit(
+  auth: Authenticator,
+  agentConfigurationId: string,
+  kind: LimitedSuggestionKind,
+  newSuggestionCount: number
+): Promise<{ allowed: true } | { allowed: false; errorMessage: string }> {
+  const maxAllowed = getMaxPendingSuggestions(kind);
+
+  const existingPendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfigurationId,
+      { states: ["pending"], kind }
+    );
+
+  const totalAfterAddition =
+    existingPendingSuggestions.length + newSuggestionCount;
+
+  if (totalAfterAddition > maxAllowed) {
+    const existingCount = existingPendingSuggestions.length;
+    const availableSlots = Math.max(0, maxAllowed - existingCount);
+
+    return {
+      allowed: false,
+      errorMessage:
+        `Cannot add ${newSuggestionCount} new ${kind} suggestion(s): ` +
+        `this would exceed the limit of ${maxAllowed} pending ${kind} suggestions. ` +
+        `Currently ${existingCount} pending, only ${availableSlots} slot(s) available. ` +
+        `Please mark some existing suggestions as outdated using update_suggestions_state before adding new ones.`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
@@ -170,7 +219,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     const owner = auth.getNonNullableWorkspace();
 
-    let models = SUPPORTED_MODEL_CONFIGS.filter((m) => !m.isLegacy);
+    const allModels = getSupportedModelConfigs();
+    let models = allModels.filter((m) => !m.isLegacy);
 
     if (providerId) {
       if (!isModelProviderId(providerId)) {
@@ -185,8 +235,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // Filter by whitelisted providers for the workspace.
     const whiteListedProviders =
-      owner.whiteListedProviders ??
-      SUPPORTED_MODEL_CONFIGS.map((m) => m.providerId);
+      owner.whiteListedProviders ?? allModels.map((m) => m.providerId);
     models = models.filter((m) => whiteListedProviders.includes(m.providerId));
 
     const modelList = models.map((m) => ({
@@ -475,6 +524,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "instructions",
+      params.suggestions.length
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
+    }
+
     // Fetch the latest version of the agent configuration.
     const agentConfiguration = await getAgentConfiguration(auth, {
       agentId: agentConfigurationId,
@@ -494,13 +554,14 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     for (const suggestion of params.suggestions) {
       try {
+        const { analysis, ...suggestionData } = suggestion;
         const created = await AgentSuggestionResource.createSuggestionForAgent(
           auth,
           agentConfiguration,
           {
             kind: "instructions",
-            suggestion,
-            analysis: params.analysis ?? null,
+            suggestion: suggestionData,
+            analysis: analysis ?? null,
             state: "pending",
             source: "copilot",
           }
@@ -545,6 +606,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           { tracked: false }
         )
       );
+    }
+
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "tools",
+      1
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
     // Fetch the latest version of the agent configuration.
@@ -607,6 +679,17 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           { tracked: false }
         )
       );
+    }
+
+    // Check pending suggestion limit before proceeding.
+    const limitCheck = await checkPendingSuggestionLimit(
+      auth,
+      agentConfigurationId,
+      "skills",
+      1
+    );
+    if (!limitCheck.allowed) {
+      return new Err(new MCPError(limitCheck.errorMessage, { tracked: false }));
     }
 
     // Fetch the latest version of the agent configuration.

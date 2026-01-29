@@ -1,6 +1,6 @@
 import type { NavigationSelectionType } from "@app/hooks/usePersistedNavigationSelection";
 import { NAVIGATION_SELECTION_METADATA_NAME } from "@app/hooks/usePersistedNavigationSelection";
-import { safeParseJSON } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 import type { UserResource } from "./resources/user_resource";
 

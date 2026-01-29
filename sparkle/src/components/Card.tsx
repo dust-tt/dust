@@ -91,7 +91,8 @@ interface CardLinkProps extends CommonProps, LinkWrapperProps {
 }
 
 interface CardButtonProps
-  extends CommonProps, React.ButtonHTMLAttributes<HTMLDivElement> {
+  extends CommonProps,
+    React.ButtonHTMLAttributes<HTMLDivElement> {
   href?: never;
   target?: never;
   rel?: never;
@@ -177,13 +178,15 @@ interface CardPropsBase {
 }
 
 interface CardPropsWithLink
-  extends CardPropsBase, Omit<CardLinkProps, keyof CardPropsBase> {
+  extends CardPropsBase,
+    Omit<CardLinkProps, keyof CardPropsBase> {
   href: string;
   onClick?: never;
 }
 
 interface CardPropsWithButton
-  extends CardPropsBase, Omit<CardButtonProps, keyof CardPropsBase> {
+  extends CardPropsBase,
+    Omit<CardButtonProps, keyof CardPropsBase> {
   href?: never;
 }
 

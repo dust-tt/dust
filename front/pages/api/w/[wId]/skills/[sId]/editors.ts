@@ -9,7 +9,8 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const PatchSkillEditorsRequestBodySchema = t.intersection([
   t.type({}),

@@ -61,7 +61,7 @@ import type {
   TagsFilter,
   TagsFilterMode,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type StateType = {
   /**

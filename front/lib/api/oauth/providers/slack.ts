@@ -15,8 +15,9 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({

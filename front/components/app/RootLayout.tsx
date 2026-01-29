@@ -6,7 +6,7 @@ import { ConfirmPopupArea } from "@app/components/Confirm";
 import { NavigationLoadingProvider } from "@app/components/sparkle/NavigationLoadingContext";
 import { SidebarProvider } from "@app/components/sparkle/SidebarContext";
 import { LinkWrapper, useAppRouter } from "@app/lib/platform";
-import { isAPIErrorResponse } from "@app/types";
+import { isAPIErrorResponse } from "@app/types/error";
 
 /**
  * This layout is used in _app only

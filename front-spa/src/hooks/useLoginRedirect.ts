@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
 
-interface UsePokeLoginRedirectParams {
+interface UseLoginRedirectParams {
   isLoading: boolean;
   isAuthenticated: boolean;
 }
 
-interface UsePokeLoginRedirectResult {
+interface UseLoginRedirectResult {
   isRedirecting: boolean;
 }
 
 /**
- * Hook that handles login redirect for Poke pages.
+ * Hook that handles login redirect.
  * Redirects to login when user is not authenticated.
  */
-export function usePokeLoginRedirect({
+export function useLoginRedirect({
   isLoading,
   isAuthenticated,
-}: UsePokeLoginRedirectParams): UsePokeLoginRedirectResult {
+}: UseLoginRedirectParams): UseLoginRedirectResult {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {

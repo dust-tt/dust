@@ -20,7 +20,8 @@ import type {
   PatchDataSourceViewType,
   Result,
 } from "@app/types";
-import { assertNever, CoreAPI, Err, Ok } from "@app/types";
+import { CoreAPI, Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const DEFAULT_PAGINATION_LIMIT = 1000;
 const CORE_MAX_PAGE_SIZE = 1000;

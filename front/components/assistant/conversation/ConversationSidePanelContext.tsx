@@ -2,7 +2,6 @@ import React, { useCallback, useEffect } from "react";
 import type { ImperativePanelHandle } from "react-resizable-panels";
 
 import { useHashParam } from "@app/hooks/useHashParams";
-import { assertNever } from "@app/types";
 import type { ConversationSidePanelType } from "@app/types/conversation_side_panel";
 import {
   AGENT_ACTIONS_SIDE_PANEL_TYPE,
@@ -10,6 +9,7 @@ import {
   SIDE_PANEL_HASH_PARAM,
   SIDE_PANEL_TYPE_HASH_PARAM,
 } from "@app/types/conversation_side_panel";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type OpenPanelParams =
   | {

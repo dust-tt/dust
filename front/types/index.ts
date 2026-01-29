@@ -84,7 +84,6 @@ export * from "./shared/retries";
 export * from "./shared/text_extraction";
 export * from "./shared/typescipt_utils";
 export * from "./shared/user_operation";
-export * from "./shared/utils/assert_never";
 export * from "./shared/utils/config";
 export * from "./shared/utils/date_utils";
 export * from "./shared/utils/error_utils";

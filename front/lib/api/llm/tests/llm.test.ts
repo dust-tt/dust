@@ -1,3 +1,4 @@
+import assert from "assert";
 import clone from "lodash/clone";
 import { describe, it, vi } from "vitest";
 
@@ -20,7 +21,7 @@ import type {
   TestConfig,
   TestConversation,
 } from "@app/lib/api/llm/tests/types";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { ModelIdType, ModelProviderIdType } from "@app/types";
 import {
   // Anthropic models
@@ -215,6 +216,8 @@ function getSupportedConversations({
     modelId,
     providerId,
   });
+  assert(modelConfig, `Model config not found for ${providerId} / ${modelId}`);
+
   if (modelConfig.supportsVision) {
     conversationsToTest.push(...TEST_VISION_CONVERSATIONS);
   }

@@ -23,8 +23,9 @@ import type {
   ConversationType,
   Result,
 } from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import { Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { makeTriggerScheduleId } from "../schedule/client";
 

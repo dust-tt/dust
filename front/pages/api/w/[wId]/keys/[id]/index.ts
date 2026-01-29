@@ -3,6 +3,7 @@ import * as t from "io-ts";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { invalidateKeyCapCache } from "@app/lib/api/key_cap_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -85,8 +86,12 @@ async function handler(
         });
       }
 
-      await key.updateMonthlyCap(auth, {
+      await key.updateMonthlyCap({
         monthlyCapMicroUsd: monthly_cap_micro_usd,
+      });
+      await invalidateKeyCapCache({
+        workspace: owner,
+        keyId: key.id,
       });
 
       res.status(200).json({

@@ -15,7 +15,8 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { assertNever, Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Base class for group-space junction resources
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.

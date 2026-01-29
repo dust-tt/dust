@@ -1,85 +1,63 @@
-import { Button, Input, Label } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
+import { Button, Input, Label, Spinner } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useContext, useState } from "react";
 import { useEffect } from "react";
 
 import { DustAppPageLayout } from "@app/components/apps/DustAppPageLayout";
 import { ConfirmContext } from "@app/components/Confirm";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { AppResource } from "@app/lib/resources/app_resource";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
+import { useApp } from "@app/lib/swr/apps";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
-import type { AppType } from "@app/types";
-import type { SubscriptionType } from "@app/types";
 import type { APIError } from "@app/types";
-import type { WorkspaceType } from "@app/types";
 import { APP_NAME_REGEXP } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  app: AppType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = appGetServerSideProps;
 
-  const { spaceId } = context.query;
-  if (typeof spaceId !== "string") {
-    return {
-      notFound: true,
-    };
-  }
+function SettingsView() {
+  const router = useRouter();
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
+  const owner = useWorkspace();
+  const { subscription, isBuilder } = useAuth();
 
-  if (!auth.isBuilder()) {
-    return {
-      redirect: {
-        destination: `/w/${owner.sId}/spaces/${context.query.spaceId}/apps/${context.query.aId}`,
-        permanent: false,
-      },
-    };
-  }
+  const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId,
+  });
 
-  const app = await AppResource.fetchById(auth, context.params?.aId as string);
+  const { app, isAppLoading, isAppError } = useApp({
+    workspaceId: owner.sId,
+    spaceId,
+    appId: aId,
+  });
 
-  if (!app) {
-    return {
-      notFound: true,
-    };
-  }
-
-  return {
-    props: {
-      owner,
-      subscription,
-      app: app.toJSON(),
-    },
-  };
-});
-
-export default function SettingsView({
-  owner,
-  subscription,
-  app,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const [disable, setDisabled] = useState(true);
 
-  const [appName, setAppName] = useState(app.name);
+  const [appName, setAppName] = useState("");
   const [appNameError, setAppNameError] = useState<boolean>(false);
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const [appDescription, setAppDescription] = useState(app.description || "");
+  const [appDescription, setAppDescription] = useState("");
 
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const confirm = useContext(ConfirmContext);
+
+  // Initialize form values when app loads
+  useEffect(() => {
+    if (app) {
+      setAppName(app.name);
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      setAppDescription(app.description || "");
+    }
+  }, [app]);
 
   const formValidation = () => {
     if (appName.length == 0) {
@@ -94,9 +72,11 @@ export default function SettingsView({
     }
   };
 
-  const router = useRouter();
-
   const handleDelete = async () => {
+    if (!app || !space) {
+      return false;
+    }
+
     if (
       await confirm({
         title: "Double checking",
@@ -127,6 +107,10 @@ export default function SettingsView({
   };
 
   const handleUpdate = async () => {
+    if (!app) {
+      return;
+    }
+
     setIsUpdating(true);
     const res = await clientFetch(
       `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}`,
@@ -159,6 +143,33 @@ export default function SettingsView({
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appName]);
+
+  // Redirect non-builders
+  useEffect(() => {
+    if (!isBuilder && app && space) {
+      void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${app.sId}`);
+    }
+  }, [isBuilder, app, space, router, owner.sId]);
+
+  const isLoading = isSpaceInfoLoading || isAppLoading;
+
+  // Show 404 on error or if app not found after loading completes
+  if (isAppError || (!isLoading && !app)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  if (isLoading || !app || !space) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   return (
     <DustAppPageLayout
@@ -215,6 +226,15 @@ export default function SettingsView({
   );
 }
 
-SettingsView.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = SettingsView as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

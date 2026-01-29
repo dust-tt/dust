@@ -12,12 +12,12 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
-import { assertNever } from "@app/types";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
 import {
   getAgentLoopData,
   isAgentLoopDataSoftDeleteError,
 } from "@app/types/assistant/agent_run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 

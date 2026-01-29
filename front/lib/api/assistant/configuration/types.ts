@@ -21,6 +21,11 @@ export type TableDataSourceConfiguration = {
   tableId: string;
 };
 
+export type ProjectConfiguration = {
+  workspaceId: string; // The sId of the workspace (organization)
+  projectId: string; // The sId of the project (space)
+};
+
 export type SortStrategyType = "alphabetical" | "priority" | "updatedAt";
 
 export interface SortStrategy {

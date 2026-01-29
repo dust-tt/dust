@@ -81,7 +81,7 @@ import { isFavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import { isJobType } from "@app/types/job_type";
 import { isStringArray } from "@app/types/shared/utils/general";
-import { safeParseJSON } from "@app/types/shared/utils/string_utils";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export interface CopilotUserMetadata {
   jobType: JobType | null;

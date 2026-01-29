@@ -13,7 +13,7 @@ import type {
   ConversationWithoutContentType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type SearchConversationsResponseBody = {
   conversations: ConversationWithoutContentType[];

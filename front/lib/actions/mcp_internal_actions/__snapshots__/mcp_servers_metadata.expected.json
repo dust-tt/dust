@@ -267,15 +267,15 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
-            "analysis": {
-              "description": "Analysis or reasoning for the suggestions",
-              "type": "string"
-            },
             "suggestions": {
-              "description": "Array of small, scoped instruction modifications. Each should target 1-3 lines max.",
+              "description": "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis.",
               "items": {
                 "additionalProperties": false,
                 "properties": {
+                  "analysis": {
+                    "description": "Analysis or reasoning for this specific suggestion",
+                    "type": "string"
+                  },
                   "expectedOccurrences": {
                     "description": "Number of occurrences to replace.",
                     "type": "number"
@@ -13631,7 +13631,7 @@
     "name": "project_context_management",
     "tools": [
       {
-        "name": "add_project_file",
+        "name": "add_file",
         "description": "Add a new file to the project context. The file will be available to all conversations in this project. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13644,6 +13644,24 @@
             "contentType": {
               "description": "MIME type (default: text/plain, or inherited from sourceFileId if provided)",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             },
             "fileName": {
               "description": "Name of the file to add",
@@ -13661,12 +13679,30 @@
         }
       },
       {
-        "name": "add_project_url",
+        "name": "add_url",
         "description": "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
             "name": {
               "description": "Name/label for the URL (e.g., 'Documentation')",
               "type": "string"
@@ -13684,7 +13720,7 @@
         }
       },
       {
-        "name": "edit_project_description",
+        "name": "edit_description",
         "description": "Edit the project description. This updates the project's description text.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13693,6 +13729,24 @@
             "description": {
               "description": "New project description (free-form text).",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             }
           },
           "required": [
@@ -13702,7 +13756,7 @@
         }
       },
       {
-        "name": "edit_project_url",
+        "name": "edit_url",
         "description": "Edit an existing URL in the project. You can change the name and/or the URL itself. Identify the URL to edit by its current name.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13711,6 +13765,24 @@
             "currentName": {
               "description": "Current name/label of the URL to edit",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             },
             "newName": {
               "description": "New name/label for the URL (leave empty to keep current)",
@@ -13728,22 +13800,59 @@
         }
       },
       {
-        "name": "list_project_files",
+        "name": "list_files",
         "description": "List all files in the project context. Returns file metadata including names, IDs, and content types.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
-          "properties": {},
+          "properties": {
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            }
+          },
           "type": "object"
         }
       },
       {
-        "name": "read_project_journal_entry",
+        "name": "read_journal_entry",
         "description": "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
             "limit": {
               "description": "Maximum number of journal entries to return (default: 1)",
               "type": "number"
@@ -13753,7 +13862,7 @@
         }
       },
       {
-        "name": "update_project_file",
+        "name": "update_file",
         "description": "Update the content of an existing file in the project context. This replaces the entire file content. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13762,6 +13871,24 @@
             "content": {
               "description": "New text content for the file (provide either this or sourceFileId)",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             },
             "fileId": {
               "description": "ID of the file to update",
@@ -13780,13 +13907,13 @@
       }
     ],
     "toolsStakes": {
-      "add_project_file": "high",
-      "add_project_url": "low",
-      "edit_project_description": "low",
-      "edit_project_url": "low",
-      "list_project_files": "never_ask",
-      "read_project_journal_entry": "never_ask",
-      "update_project_file": "high"
+      "add_file": "high",
+      "add_url": "low",
+      "edit_description": "low",
+      "edit_url": "low",
+      "list_files": "never_ask",
+      "read_journal_entry": "never_ask",
+      "update_file": "high"
     }
   },
   {

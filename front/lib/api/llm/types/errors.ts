@@ -2,7 +2,8 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { AgentErrorCategory, ModelProviderIdType } from "@app/types";
-import { assertNever, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type LLMErrorType =
   // LLM errors

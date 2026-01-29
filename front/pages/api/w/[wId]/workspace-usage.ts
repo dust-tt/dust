@@ -16,7 +16,7 @@ import {
 } from "@app/lib/workspace_usage";
 import { apiError } from "@app/logger/withlogging";
 import type { WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MonthSchema = t.refinement(
   t.string,

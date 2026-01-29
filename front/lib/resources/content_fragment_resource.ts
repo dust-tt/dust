@@ -46,7 +46,6 @@ import type {
   Result,
 } from "@app/types";
 import {
-  assertNever,
   CoreAPI,
   Err,
   isLLMVisionSupportedImageContentType,
@@ -54,6 +53,7 @@ import {
   Ok,
   removeNulls,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";

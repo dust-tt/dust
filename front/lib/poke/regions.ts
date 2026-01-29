@@ -1,5 +1,5 @@
 import type { RegionType } from "@app/lib/api/regions/config";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const getRegionDisplay = (region: RegionType): string => {
   switch (region) {

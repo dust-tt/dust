@@ -31,13 +31,13 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
 import {
-  assertNever,
   Err,
   Ok,
   PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,

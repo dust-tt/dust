@@ -20,13 +20,13 @@ import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { launchCreditAlertWorkflow } from "@app/temporal/credit_alerts/client";
 import type {
-  AgentMessageStatus,
   LightWorkspaceType,
   PublicAPILimitsType,
   Result,
   UserMessageOrigin,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -57,11 +57,6 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
 };
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
-
-export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
-  "succeeded",
-  "cancelled",
-];
 
 export const USER_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION

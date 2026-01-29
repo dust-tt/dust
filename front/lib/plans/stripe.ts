@@ -4,14 +4,14 @@ import { Stripe } from "stripe";
 import config from "@app/lib/api/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
 import {
   isEnterpriseReportUsage,
   isMauReportUsage,
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -21,9 +21,9 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
@@ -236,7 +236,9 @@ export const createProPlanCheckoutSession = async ({
     line_items: [
       {
         price: priceId,
-        quantity: await countActiveSeatsInWorkspace(owner.sId),
+        quantity: await MembershipResource.countActiveSeatsInWorkspace(
+          owner.sId
+        ),
       },
     ],
     allow_promotion_codes: true,
@@ -891,7 +893,9 @@ export async function reportActiveSeats(
   stripeSubscriptionItem: Stripe.SubscriptionItem,
   workspace: LightWorkspaceType
 ): Promise<void> {
-  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
 
   await updateStripeQuantityForSubscriptionItem(
     stripeSubscriptionItem,

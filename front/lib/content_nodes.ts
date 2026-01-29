@@ -22,8 +22,8 @@ import type {
   DataSourceViewContentNode,
   SpaceType,
 } from "@app/types";
-import { isConnectorProvider } from "@app/types";
-import { assertNever } from "@app/types";
+import { isConnectorProvider } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import {
   CHANNEL_INTERNAL_MIME_TYPES,

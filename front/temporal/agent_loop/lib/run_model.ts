@@ -34,7 +34,7 @@ import { getLLM } from "@app/lib/api/llm";
 import type { LLMTraceContext } from "@app/lib/api/llm/traces/types";
 import { getUserFacingLLMErrorMessage } from "@app/lib/api/llm/types/errors";
 import { DEFAULT_MCP_TOOL_RETRY_POLICY } from "@app/lib/api/mcp";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentStepContentResource } from "@app/lib/resources/agent_step_content_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -46,8 +46,9 @@ import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
-import { assertNever, isTextContent, removeNulls } from "@app/types";
+import { isTextContent, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.
@@ -684,6 +685,7 @@ export async function runModelActivity(
         timeFrame: null,
         jsonSchema: null,
         secretName: null,
+        dustProject: null,
         additionalConfiguration: {},
         mcpServerViewId: mcpServerView.sId,
         dustAppConfiguration: null,

@@ -13,7 +13,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Changed schema to accept optional add/remove lists
 export const PatchAgentEditorsRequestBodySchema = t.intersection([

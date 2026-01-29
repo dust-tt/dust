@@ -40,7 +40,8 @@ import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_conne
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import logger from "@app/logger/logger";
 import type { MCPOAuthUseCase, Result } from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const DEFAULT_MCP_CLIENT_CONNECT_TIMEOUT_MS = 25_000;
 

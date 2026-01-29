@@ -1,7 +1,7 @@
 import * as _ from "lodash";
 
 import { FREE_TEST_PLAN_CODE } from "@app/lib/plans/plan_codes";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { CustomerioServerSideTracking } from "@app/lib/tracking/customerio/server";
 import logger from "@app/logger/logger";
@@ -33,9 +33,10 @@ export class ServerSideTracking {
       const seatsByWorkspaceId = _.keyBy(
         await Promise.all(
           user.workspaces.map(async (workspace) => {
-            const seats = await countActiveSeatsInWorkspaceCached(
-              workspace.sId
-            );
+            const seats =
+              await MembershipResource.countActiveSeatsInWorkspaceCached(
+                workspace.sId
+              );
             return { sId: workspace.sId, seats };
           })
         ),

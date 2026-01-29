@@ -392,6 +392,7 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
             additionalConfiguration: {},
             dustAppConfiguration: null,
             secretName: null,
+            dustProject: null,
           },
         ],
         editors: [{ sId: user.sId }],

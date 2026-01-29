@@ -2555,12 +2555,12 @@ describe("createUserMentions", () => {
         conversation: projectConversation,
       });
 
-      // Verify return value shows pending status (requires approval for non-members)
+      // Verify return value shows user_restricted_by_conversation_access status (requires approval for non-members)
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "user_restricted_by_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });

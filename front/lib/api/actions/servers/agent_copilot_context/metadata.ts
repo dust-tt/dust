@@ -27,6 +27,10 @@ const InstructionsSuggestionSchema = z.object({
     .number()
     .optional()
     .describe("Number of occurrences to replace."),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Analysis or reasoning for this specific suggestion"),
 });
 
 const ToolAdditionSchema = z.object({
@@ -181,12 +185,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
       suggestions: z
         .array(InstructionsSuggestionSchema)
         .describe(
-          "Array of small, scoped instruction modifications. Each should target 1-3 lines max."
+          "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis."
         ),
-      analysis: z
-        .string()
-        .optional()
-        .describe("Analysis or reasoning for the suggestions"),
     },
     stake: "never_ask",
     displayLabels: {

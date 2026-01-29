@@ -72,6 +72,11 @@ procs:
     shell: "source ~/.nvm/nvm.sh && nvm install && npm run storybook"
     autostart: false
 
+  sparkle-playground:
+    cwd: "<CONFIG_DIR>/../sparkle/playground"
+    shell: "source ~/.nvm/nvm.sh && nvm install && npm install && npm run dev"
+    autostart: false
+
   viz:
     cwd: "<CONFIG_DIR>/../viz"
     shell: "source ~/.nvm/nvm.sh && nvm install && npm run dev"
