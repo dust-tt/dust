@@ -68,9 +68,18 @@ export function PokeRegionProvider({
     (region: RegionType) => {
       setStoredRegion(region);
       setOverride(region);
+
+      // Update resolver synchronously BEFORE clearing cache to avoid race condition
+      setBaseUrlResolver(() => {
+        if (regionUrls?.[region]) {
+          return regionUrls[region];
+        }
+        return import.meta.env?.VITE_DUST_CLIENT_FACING_URL;
+      });
+
       void mutate(() => true, undefined, { revalidate: true });
     },
-    [mutate]
+    [mutate, regionUrls]
   );
 
   const value = useMemo(
