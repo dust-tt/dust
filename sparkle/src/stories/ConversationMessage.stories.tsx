@@ -6,6 +6,7 @@ import {
   ArrowPathIcon,
   ActionCardBlock,
   actionCardDirective,
+  Avatar,
   BoltIcon,
   Button,
   ChevronRightIcon,
@@ -20,9 +21,13 @@ import {
   HandThumbDownIcon,
   HandThumbUpIcon,
   Icon,
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
   Markdown,
   PencilSquareIcon,
   SlackLogo,
+  GmailLogo,
   TableIcon,
   TrashIcon,
 } from "../index_with_tw_base";
@@ -366,6 +371,36 @@ export const ConversationWithActions = () => {
                 additionalMarkdownPlugins={actionCardPlugins}
               />
             ) : null}
+            <ActionCardBlock
+              title="Agent wants to use Gmail"
+              acceptedTitle="Gmail request approved"
+              rejectedTitle="Gmail request denied"
+              applyLabel="Approve"
+              rejectLabel="Decline"
+              cardVariant="highlight"
+              hasCheck
+              checkLabel="Always allow"
+              visual={
+                <Avatar
+                  size="sm"
+                  icon={GmailLogo}
+                  backgroundColor="s-bg-white"
+                />
+              }
+              description={
+                <Collapsible>
+                  <CollapsibleTrigger
+                    label="See details"
+                    variant={"secondary"}
+                  />
+                  <CollapsibleContent>
+                    <div className="s-text-sm s-text-muted-foreground">
+                      Details about the action
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              }
+            />
           </div>
         </ConversationMessage>
       </ConversationContainer>
@@ -378,7 +413,7 @@ const actionCardComponents = {
 } as Components;
 const actionCardPlugins = [actionCardDirective];
 
-const inviteEditorsCard = `::::action_card{title="Invite editors" acceptedTitle="Editors invited" rejectedTitle="Invite editors rejected" avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin" avatarIsRounded="true" applyLabel="Invite" rejectLabel="Skip" applyOnClick="" rejectOnClick="" cardVariant="highlight"}
+const inviteEditorsCard = `::::action_card{title="Invite editors" acceptedTitle="Editors invited" rejectedTitle="Invite editors rejected" avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin" avatarEmojis="👩‍💻,🧑‍🔧,👩‍🎨,🧑‍💼" avatarIsRounded="true" applyLabel="Invite" rejectLabel="Skip" applyOnClick="" rejectOnClick="" cardVariant="highlight"}
 Add four editors to collaborate on this agent.
 ::::`;
 

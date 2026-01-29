@@ -6,10 +6,12 @@ import { visit } from "unist-util-visit";
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
 import { Card, CARD_VARIANTS, CardVariantType } from "@sparkle/components/Card";
+import { CheckboxWithText } from "@sparkle/components/Checkbox";
 import * as PlatformLogos from "@sparkle/logo/platforms";
 
 const DEFAULT_APPLY_LABEL = "Apply";
 const DEFAULT_REJECT_LABEL = "Reject";
+const DEFAULT_CHECK_LABEL = "Always allow";
 const ACTION_CARD_STATES = [
   "active",
   "disabled",
@@ -30,7 +32,9 @@ interface ActionCardBlockProps {
   avatarBackgroundColors?: string;
   avatarIconNames?: string;
   avatarIsRounded?: boolean;
-  description?: string;
+  hasCheck?: boolean;
+  checkLabel?: string;
+  description?: React.ReactNode;
   applyLabel?: string;
   rejectLabel?: string;
   cardVariant?: CardVariantType;
@@ -258,6 +262,8 @@ export function ActionCardBlock({
   avatarBackgroundColors,
   avatarIconNames,
   avatarIsRounded,
+  hasCheck,
+  checkLabel,
   description,
   applyLabel,
   rejectLabel,
@@ -270,6 +276,11 @@ export function ActionCardBlock({
   children,
 }: ActionCardBlockProps) {
   const resolvedDescription = description ?? "";
+  const hasDescription =
+    typeof resolvedDescription === "string"
+      ? resolvedDescription.trim().length > 0
+      : Boolean(resolvedDescription);
+  const [isChecked, setIsChecked] = React.useState(false);
   const resolvedAvatarList = Array.isArray(avatars)
     ? avatars
     : buildAvatarStackFromProps({
@@ -287,7 +298,7 @@ export function ActionCardBlock({
     ) : (
       visual
     );
-  const applyVariant = cardVariant === "warning" ? "warning" : "primary";
+  const applyVariant = cardVariant === "warning" ? "warning" : "highlight";
   const [localState, setLocalState] = React.useState<ActionCardState>(state);
 
   React.useEffect(() => {
@@ -349,27 +360,40 @@ export function ActionCardBlock({
         </div>
       )}
       {!isResolved &&
-        (resolvedDescription.length > 0 ? (
+        (hasDescription ? (
           <div className={descriptionClasses}>{resolvedDescription}</div>
         ) : (
           children
         ))}
       {!isResolved && (
         <div className="s-flex s-flex-wrap s-justify-between s-gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            label={rejectLabel ?? DEFAULT_REJECT_LABEL}
-            disabled={isDisabled}
-            onClick={handleRejectClick}
-          />
-          <Button
-            variant={applyVariant}
-            size="sm"
-            label={applyLabel ?? DEFAULT_APPLY_LABEL}
-            disabled={isDisabled}
-            onClick={handleApplyClick}
-          />
+          <div className="s-flex s-items-center s-gap-2">
+            {hasCheck ? (
+              <CheckboxWithText
+                text={checkLabel ?? DEFAULT_CHECK_LABEL}
+                size="sm"
+                checked={isChecked}
+                disabled={isDisabled}
+                onCheckedChange={(value) => setIsChecked(value === true)}
+              />
+            ) : null}
+          </div>
+          <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              label={rejectLabel ?? DEFAULT_REJECT_LABEL}
+              disabled={isDisabled}
+              onClick={handleRejectClick}
+            />
+            <Button
+              variant={applyVariant}
+              size="sm"
+              label={applyLabel ?? DEFAULT_APPLY_LABEL}
+              disabled={isDisabled}
+              onClick={handleApplyClick}
+            />
+          </div>
         </div>
       )}
     </Card>
@@ -459,6 +483,22 @@ export function actionCardDirective() {
               "avatar-is-rounded",
               "avatar_is_rounded",
               "avatarisrounded",
+            ])
+          ),
+          hasCheck: parseBooleanAttribute(
+            getAttributeValue(attributes, [
+              "hasCheck",
+              "has-check",
+              "has_check",
+              "hascheck",
+            ])
+          ),
+          checkLabel: getStringAttribute(
+            getAttributeValue(attributes, [
+              "checkLabel",
+              "check-label",
+              "check_label",
+              "checklabel",
             ])
           ),
           description: description.length > 0 ? description : undefined,
