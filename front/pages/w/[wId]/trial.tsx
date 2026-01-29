@@ -5,42 +5,30 @@ import {
   Icon,
   Page,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import React from "react";
 
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
-import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import type { WorkspaceType } from "@app/types";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsPaywallWhitelistedForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
+import { useAppRouter } from "@app/lib/platform";
 
-export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  owner: WorkspaceType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps =
+  appGetServerSidePropsPaywallWhitelistedForAdmin;
 
-  return {
-    props: {
-      owner,
-    },
-  };
-});
-
-export default function Trial({
-  owner,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
+function Trial() {
+  const { workspace } = useAuth();
+  const router = useAppRouter();
 
   const skip = async () => {
-    void router.push(`/w/${owner.sId}/subscribe`);
+    void router.push(`/w/${workspace.sId}/subscribe`);
   };
 
   const startTrial = async () => {
-    void router.push(`/w/${owner.sId}/verify`);
+    void router.push(`/w/${workspace.sId}/verify`);
   };
 
   const features = [
@@ -96,3 +84,13 @@ export default function Trial({
     </ThemeProvider>
   );
 }
+
+const TrialPage = Trial as AppPageWithLayout;
+
+TrialPage.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default TrialPage;

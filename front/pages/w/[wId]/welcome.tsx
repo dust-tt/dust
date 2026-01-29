@@ -19,24 +19,28 @@ import {
   NotionLogo,
   Page,
   SlackLogo,
+  Spinner,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactElement } from "react";
 import { useMemo, useState } from "react";
+import useSWR from "swr";
 
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
-import config from "@app/lib/api/config";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsPaywallWhitelisted } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
-import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { MembershipResource } from "@app/lib/resources/membership_resource";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import { fetcher } from "@app/lib/swr/swr";
 import { usePatchUser } from "@app/lib/swr/user";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
-import { detectEmailProvider } from "@app/lib/utils/email_provider_detection";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
-import type { UserType, WorkspaceType } from "@app/types";
+import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
+import type { WorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
@@ -55,55 +59,7 @@ const PLATFORM_ICONS: Record<FavoritePlatform, ComponentType> = {
   front: FrontLogo,
 };
 
-export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  user: UserType;
-  owner: WorkspaceType;
-  isAdmin: boolean;
-  isFirstAdmin: boolean;
-  conversationId: string | null;
-  baseUrl: string;
-  emailProvider: EmailProviderType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const user = auth.user();
-
-  if (!owner || !user || !auth.isUser()) {
-    return {
-      redirect: {
-        destination: "/",
-        permanent: false,
-      },
-    };
-  }
-  const isAdmin = auth.isAdmin();
-  const conversationId =
-    typeof context.query.cId === "string" ? context.query.cId : null;
-
-  // Check if this is the first admin (only one member in the workspace).
-  const { total: membersTotal } =
-    await MembershipResource.getMembershipsForWorkspace({
-      workspace: owner,
-    });
-  const isFirstAdmin = isAdmin && membersTotal === 1;
-
-  const userJson = user.toJSON();
-  const emailProvider = await detectEmailProvider(
-    userJson.email,
-    `user-${userJson.sId}`
-  );
-
-  return {
-    props: {
-      user: userJson,
-      owner,
-      isAdmin,
-      isFirstAdmin,
-      conversationId,
-      baseUrl: config.getClientFacingUrl(),
-      emailProvider,
-    },
-  };
-});
+export const getServerSideProps = appGetServerSidePropsPaywallWhitelisted;
 
 interface UserProfileStepProps {
   owner: WorkspaceType;
@@ -343,17 +299,20 @@ function getInitialSelectedPlatforms(
   return platforms;
 }
 
-export default function Welcome({
-  user,
-  owner,
-  isAdmin,
-  isFirstAdmin,
-  conversationId,
-  emailProvider,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
+function Welcome() {
+  const { workspace, user, isAdmin } = useAuth();
+  const router = useAppRouter();
   const { patchUser } = usePatchUser();
+  const conversationId = useSearchParam("cId");
 
+  // Fetch welcome data (isFirstAdmin, emailProvider) from API.
+  const { data: welcomeData } = useSWR<GetWelcomeResponseBody>(
+    `/api/w/${workspace.sId}/welcome`,
+    fetcher
+  );
+
+  const isFirstAdmin = welcomeData?.isFirstAdmin ?? false;
+  const emailProvider = welcomeData?.emailProvider ?? "other";
   const showFavoritePlatformsStep = isFirstAdmin;
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -364,8 +323,9 @@ export default function Welcome({
   });
   const [selectedPlatforms, setSelectedPlatforms] = useState<
     Set<FavoritePlatform>
-  >(() => getInitialSelectedPlatforms(emailProvider));
+  >(new Set());
   const [showErrors, setShowErrors] = useState(false);
+  const [platformsInitialized, setPlatformsInitialized] = useState(false);
 
   const validateForm = (data: FormData): FormErrors => {
     const errors: FormErrors = {};
@@ -387,6 +347,49 @@ export default function Welcome({
     }
     return validateForm(formData);
   }, [formData, showErrors]);
+
+  const { submit, isSubmitting } = useSubmitFunction(async () => {
+    await patchUser(
+      formData.firstName.trim(),
+      formData.lastName.trim(),
+      false,
+      formData.jobType ?? undefined,
+      undefined,
+      showFavoritePlatformsStep ? Array.from(selectedPlatforms) : undefined,
+      emailProvider,
+      workspace.sId
+    );
+
+    if (typeof window !== "undefined") {
+      window.dataLayer = window.dataLayer ?? [];
+      window.dataLayer.push({
+        event: "signup_completed",
+        user_email: user.email,
+        company_name: workspace.name,
+        gclid: getStoredUTMParams().gclid ?? null,
+      });
+    }
+
+    const queryParams = `welcome=true${
+      conversationId ? `&cId=${conversationId}` : ""
+    }`;
+    await router.push(getConversationRoute(workspace.sId, "new", queryParams));
+  });
+
+  // Initialize selectedPlatforms once emailProvider is loaded.
+  if (welcomeData && !platformsInitialized) {
+    setSelectedPlatforms(getInitialSelectedPlatforms(emailProvider));
+    setPlatformsInitialized(true);
+  }
+
+  // Show loading while fetching welcome data.
+  if (!welcomeData) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   const handleStep1Next = () => {
     setShowErrors(true);
@@ -413,34 +416,6 @@ export default function Welcome({
     });
   };
 
-  const { submit, isSubmitting } = useSubmitFunction(async () => {
-    await patchUser(
-      formData.firstName.trim(),
-      formData.lastName.trim(),
-      false,
-      formData.jobType ?? undefined,
-      undefined,
-      showFavoritePlatformsStep ? Array.from(selectedPlatforms) : undefined,
-      emailProvider,
-      owner.sId
-    );
-
-    if (typeof window !== "undefined") {
-      window.dataLayer = window.dataLayer ?? [];
-      window.dataLayer.push({
-        event: "signup_completed",
-        user_email: user.email,
-        company_name: owner.name,
-        gclid: getStoredUTMParams().gclid ?? null,
-      });
-    }
-
-    const queryParams = `welcome=true${
-      conversationId ? `&cId=${conversationId}` : ""
-    }`;
-    await router.push(getConversationRoute(owner.sId, "new", queryParams));
-  });
-
   const handleStep2Submit = withTracking(
     TRACKING_AREAS.AUTH,
     "onboarding_complete",
@@ -452,7 +427,7 @@ export default function Welcome({
   if (step === 1) {
     return (
       <UserProfileStep
-        owner={owner}
+        owner={workspace}
         isAdmin={isAdmin}
         formData={formData}
         setFormData={setFormData}
@@ -465,7 +440,7 @@ export default function Welcome({
 
   return (
     <FavoritePlatformsStep
-      owner={owner}
+      owner={workspace}
       selectedPlatforms={selectedPlatforms}
       onTogglePlatform={togglePlatform}
       onSubmit={handleStep2Submit}
@@ -473,3 +448,13 @@ export default function Welcome({
     />
   );
 }
+
+const WelcomePage = Welcome as AppPageWithLayout;
+
+WelcomePage.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default WelcomePage;
