@@ -1,11 +1,9 @@
 import type { Connection } from "jsforce";
 
+import { extractTextFromBuffer } from "@app/lib/actions/mcp_internal_actions/utils/attachment_processing";
+import { SF_API_VERSION } from "@app/lib/api/actions/servers/salesforce/helpers";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-
-import { extractTextFromBuffer } from "../../utils/attachment_processing";
-
-const SF_API_VERSION = "57.0";
 
 function isValidSalesforceId(id: string): boolean {
   if (!id || typeof id !== "string") {

@@ -1,6 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -52,6 +51,7 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
@@ -347,32 +347,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !isAvailable;
     },
     isPreview: false,
-    tools_stakes: {
-      execute_read_query: "never_ask",
-      list_objects: "never_ask",
-      describe_object: "never_ask",
-      list_attachments: "never_ask",
-      read_attachment: "never_ask",
-      update_object: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "salesforce",
-      version: "1.0.0",
-      description: "Salesforce tools.",
-      authorization: {
-        provider: "salesforce" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "SalesforceLogo",
-      documentationUrl: "https://docs.dust.tt/docs/salesforce",
-      // Predates the introduction of the rule, would require extensive work to improve, already
-      // widely adopted.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: SALESFORCE_SERVER_INSTRUCTIONS,
-    },
+    metadata: SALESFORCE_SERVER,
   },
   gmail: {
     id: 15,
