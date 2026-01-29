@@ -253,7 +253,7 @@ function showUnsupportedDirective() {
   };
 }
 
-const defaultDelimiter = /(?=[\s\S])/;
+const defaultDelimiter = "";
 const defaultAnimationDuration = 4;
 
 export function StreamingAnimationMarkdown({
