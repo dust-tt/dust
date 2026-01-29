@@ -85,7 +85,9 @@ async function handler(
         });
       }
 
-      await key.updateMonthlyCap({ monthlyCapMicroUsd: monthly_cap_micro_usd });
+      await key.updateMonthlyCap(auth, {
+        monthlyCapMicroUsd: monthly_cap_micro_usd,
+      });
 
       res.status(200).json({
         key: key.toJSON(),
