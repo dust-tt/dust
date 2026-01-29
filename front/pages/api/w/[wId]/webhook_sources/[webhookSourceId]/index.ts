@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WebhookSourceResource } from "@app/lib/resources/webhook_source_resource";
@@ -107,7 +108,10 @@ async function handler(
         });
       }
 
-      const deleteResult = await webhookSourceResource.delete(auth);
+      const deleteResult = await deleteWebhookSource(
+        auth,
+        webhookSourceResource
+      );
       if (deleteResult.isErr()) {
         throw deleteResult.error;
       }

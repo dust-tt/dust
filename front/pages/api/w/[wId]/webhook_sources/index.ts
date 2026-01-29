@@ -5,6 +5,7 @@ import { fromError } from "zod-validation-error";
 import { getWebhookSourcesUsage } from "@app/lib/api/agent_triggers";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { deleteWebhookSource } from "@app/lib/api/webhook_source";
 import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateSecureSecret } from "@app/lib/resources/string_ids";
@@ -216,10 +217,10 @@ async function handler(
         });
 
         if (result.isErr()) {
-          // If remote webhook creation fails, delete the webhook source
-          const deleteResult = await webhookSource.delete(auth);
+          // If remote webhook creation fails, delete the webhook source.
+          const deleteResult = await deleteWebhookSource(auth, webhookSource);
           if (deleteResult.isErr()) {
-            // Log the delete failure but still return the original error
+            // Log the delete failure but still return the original error.
             logger.error(
               {
                 error: deleteResult.error,
