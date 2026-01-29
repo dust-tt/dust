@@ -57,8 +57,8 @@ function buildExistingAgentInitMessage(): string {
   return `<dust_system>
 EXISTING agent.
 
-## STEP 1: Gather context (CALL ALL THREE TOOLS IN PARALLEL)
-You MUST call all three tools simultaneously in the same tool call round:
+## STEP 1: Gather context
+You MUST call these tools simultaneously in the same tool call round:
 1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
 3. \`get_agent_feedback\` - to retrieve feedback for the current version
 
@@ -68,9 +68,8 @@ CRITICAL: All tools must be called together in parallel, not sequentially. Make 
 Based on gathered data, provide a brief summary:
 - If reinforced suggestions exist (source="reinforcement"), highlight them
 - If negative feedback patterns exist, mention the top issue
-- If pending suggestions exist from \`list_suggestions\`, output their directives to render them as cards:
-  For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
-Then ask: "What would you like to improve?"
+- If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
+  CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
 ## STEP 3: After user responds, create suggestions
 Tool usage rules when creating suggestions:

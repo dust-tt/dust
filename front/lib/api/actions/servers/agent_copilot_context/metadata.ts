@@ -6,15 +6,18 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
-import {
-  AGENT_SUGGESTION_KINDS,
-  AGENT_SUGGESTION_STATES,
-} from "@app/types/suggestions/agent_suggestion";
+import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
+import { AGENT_SUGGESTION_KINDS } from "@app/types/suggestions/agent_suggestion";
 
 export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
+const LISTABLE_SUGGESTION_STATES = [
+  "approved",
+  "rejected",
+  "outdated",
+] as const satisfies Exclude<AgentSuggestionState, "pending">[];
 
 // Suggestion tool schemas
 
@@ -250,14 +253,14 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   list_suggestions: {
     description:
-      "List existing suggestions for the agent's configuration changes.",
+      "List existing suggestions for the agent's configuration changes. Excluding pending suggestions.",
     schema: {
       states: z
-        .array(z.enum(AGENT_SUGGESTION_STATES))
+        .array(z.enum(LISTABLE_SUGGESTION_STATES))
         .optional()
-        .default(["pending"])
+        .default(["rejected"])
         .describe(
-          `Filter by suggestion states (default: ['pending']). Options: ${AGENT_SUGGESTION_STATES.join(", ")}`
+          `Filter by suggestion states (default: ['rejected']). Options: ${LISTABLE_SUGGESTION_STATES.join(", ")}`
         ),
       kind: z
         .enum(AGENT_SUGGESTION_KINDS)
@@ -270,6 +273,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
         .int()
         .positive()
         .optional()
+        .default(50)
         .describe(
           "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
         ),
