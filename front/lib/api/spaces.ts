@@ -30,7 +30,6 @@ import logger from "@app/logger/logger";
 import { launchScrubSpaceWorkflow } from "@app/poke/temporal/client";
 import type { AgentsUsageType, Result } from "@app/types";
 import {
-  assertNever,
   Err,
   Ok,
   PROJECT_EDITOR_GROUP_PREFIX,

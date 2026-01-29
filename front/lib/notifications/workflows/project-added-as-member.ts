@@ -9,7 +9,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getSpaceRoute } from "@app/lib/utils/router";
-import type { Result } from "@app/types";
+import type { Result, SpaceType } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 
@@ -173,12 +173,12 @@ export const triggerProjectAddedAsMemberNotifications = async (
     project,
     addedUserIds,
   }: {
-    project: SpaceResource;
+    project: SpaceType;
     addedUserIds: string[];
   }
 ): Promise<Result<void, DustError<"internal_error">>> => {
   // Only notify for project spaces.
-  if (!project.isProject()) {
+  if (project.kind !== "project") {
     return new Ok(undefined);
   }
 

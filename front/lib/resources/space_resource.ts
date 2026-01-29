@@ -578,8 +578,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // For project spaces with manual management, track current members to identify newly added.
     let currentMemberIds: Set<string> | undefined;
     if (this.isProject() && params.managementMode === "manual") {
-      const currentMembers = await defaultSpaceGroup.getActiveMembers(auth);
-      currentMemberIds = new Set(currentMembers.map((m) => m.sId));
+      const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+        space: this,
+        filterOnManagementMode: true,
+      });
+      if (memberGroupSpaces.length === 1) {
+        const currentMembers =
+          await memberGroupSpaces[0].group.getActiveMembers(auth);
+        currentMemberIds = new Set(currentMembers.map((m) => m.sId));
+      }
     }
 
     const result = await withTransaction(async (t) => {
@@ -775,7 +782,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       );
       if (newlyAddedUserIds.length > 0) {
         void triggerProjectAddedAsMemberNotifications(auth, {
-          project: this,
+          project: this.toJSON(),
           addedUserIds: newlyAddedUserIds,
         }).then((res) => {
           if (res.isErr()) {
@@ -871,7 +878,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     // Trigger notifications for project spaces (don't await to avoid blocking).
     if (this.isProject()) {
       void triggerProjectAddedAsMemberNotifications(auth, {
-        project: this,
+        project: this.toJSON(),
         addedUserIds: userIds,
       }).then((res) => {
         if (res.isErr()) {
