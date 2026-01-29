@@ -56,7 +56,6 @@ async function backfillFramesSkillForWorkspace(
   }
 
   if (conversationIds.size === 0) {
-    logger.info("No conversation found in frame files metadata");
     return;
   }
 
