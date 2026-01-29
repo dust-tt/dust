@@ -10,6 +10,7 @@ import {
   CardGrid,
   ChatBubbleLeftRightIcon,
   ChevronLeftIcon,
+  CloudArrowUpIcon,
   ClipboardIcon,
   cn,
   ConversationMessage,
@@ -23,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
+  DropdownMenuSearchbar,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   ExternalLinkIcon,
@@ -227,7 +229,7 @@ declare module "../data" {
   }
 }
 
-type ViewType = "home" | "conversation" | "project" | "projectConversation" | "newProjectConversation";
+type ViewType = "home" | "conversation" | "project" | "projectConversation" | "newProjectConversation" | "newConversation";
 
 const viewDepth: Record<ViewType, number> = {
   home: 0,
@@ -235,6 +237,7 @@ const viewDepth: Record<ViewType, number> = {
   project: 1,
   projectConversation: 2,
   newProjectConversation: 2,
+  newConversation: 1,
 };
 
 // Family-inspired transition presets - smooth, snappy, delightful
@@ -271,6 +274,7 @@ function ExtensionPanel() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [projectSearchText, setProjectSearchText] = useState("");
+  const [knowledgeSearchText, setKnowledgeSearchText] = useState("");
   
   const navigateTo = useCallback((newView: ViewType) => {
     if (newView === view || isAnimating) return;
@@ -570,7 +574,7 @@ function ExtensionPanel() {
     );
   };
 
-  const ExtensionInputBar = ({ placeholder }: { placeholder?: string }) => {
+  const ExtensionInputBar = ({ placeholder, height = "120px" }: { placeholder?: string; height?: string }) => {
     const [isFocused, setIsFocused] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -593,12 +597,13 @@ function ExtensionPanel() {
         ref={containerRef}
         onClick={() => setIsFocused(true)}
         className={cn(
-          "s-flex s-h-[120px] s-w-full s-flex-col s-items-start s-justify-between s-self-stretch s-p-4",
+          "s-flex s-w-full s-flex-col s-items-start s-justify-between s-self-stretch s-p-4",
           "s-rounded-3xl s-border s-bg-primary-50 s-transition-all",
           isFocused
             ? "s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
             : "s-border-border"
         )}
+        style={{ height }}
       >
         <textarea
           ref={textareaRef}
@@ -622,9 +627,47 @@ function ExtensionPanel() {
                   icon={AttachmentIcon} 
                   label="Attach knowledge"
                 />
-                <DropdownMenuSubContent>
-                  <DropdownMenuItem icon={AttachmentIcon} label="From workspace" />
-                  <DropdownMenuItem icon={AttachmentIcon} label="Upload file" />
+                <DropdownMenuSubContent className="s-w-80">
+                  <div className="s-flex s-gap-1.5 s-p-1.5">
+                    <SearchInput
+                      name="search-knowledge"
+                      placeholder="Search Dust knowledge"
+                      value={knowledgeSearchText}
+                      onChange={setKnowledgeSearchText}
+                      className="s-w-full"
+                    />
+                    <Button
+                      icon={CloudArrowUpIcon}
+                      label="Upload file"
+                      onClick={() => showNotification("Upload file clicked")}
+                    />
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem 
+                    icon={AttachmentIcon} 
+                    label="Abundant Approaches to Contemporary Marketing"
+                    description="Projects/Work/John"
+                  />
+                  <DropdownMenuItem 
+                    icon={AttachmentIcon} 
+                    label="Q4 Product Strategy and Roadmap"
+                    description="Projects/Product/Team"
+                  />
+                  <DropdownMenuItem 
+                    icon={AttachmentIcon} 
+                    label="Customer Feedback Analysis 2024"
+                    description="Projects/Support/Data"
+                  />
+                  <DropdownMenuItem 
+                    icon={AttachmentIcon} 
+                    label="Technical Documentation v2.1"
+                    description="Projects/Engineering/Docs"
+                  />
+                  <DropdownMenuItem 
+                    icon={AttachmentIcon} 
+                    label="Sales Performance Report"
+                    description="Projects/Sales/Q4"
+                  />
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
               <DropdownMenuItem icon={GlobeAltIcon} label="Attach page content" />
@@ -704,12 +747,12 @@ function ExtensionPanel() {
             <span className="s-text-base s-font-medium s-text-foreground dark:s-text-foreground-night">
               Allow "{toolName}" on {domain}
             </span>
-          </div>
+              </div>
           <div className="s-flex s-justify-between">
             <Button variant="outline" size="sm" label="Decline" />
-            <Button
+                <Button
               variant="highlight" 
-              size="sm" 
+                  size="sm"
               label="Accept" 
               onClick={() => {
                 setAccepted(true);
@@ -738,6 +781,7 @@ function ExtensionPanel() {
                 size: "xs",
                 onClick: () => setThumbState(thumbState === "up" ? null : "up"),
                 icon: HandThumbUpIcon,
+                className: "s-text-muted-foreground dark:s-text-muted-foreground-night",
               },
             },
             {
@@ -748,6 +792,7 @@ function ExtensionPanel() {
                 size: "xs",
                 onClick: () => setThumbState(thumbState === "down" ? null : "down"),
                 icon: HandThumbDownIcon,
+                className: "s-text-muted-foreground dark:s-text-muted-foreground-night",
               },
             },
           ]}
@@ -763,6 +808,7 @@ function ExtensionPanel() {
                 size: "xs",
                 icon: ClipboardIcon,
                 onClick: () => showNotification("Copied to clipboard"),
+                className: "s-text-muted-foreground dark:s-text-muted-foreground-night",
               },
             },
             {
@@ -772,6 +818,7 @@ function ExtensionPanel() {
                 variant: "ghost-secondary",
                 size: "xs",
                 icon: MoreIcon,
+                className: "s-text-muted-foreground dark:s-text-muted-foreground-night",
               },
             },
           ]}
@@ -822,13 +869,13 @@ function ExtensionPanel() {
           />
               <Button
             variant="primary"
-            size="sm"
+                size="sm"
             icon={ChatBubbleLeftRightIcon}
             label="New"
             onClick={() => {
               setSelectedConversationId(null);
               setSelectedProject(null);
-              navigateTo("home");
+              navigateTo("newConversation");
               setSidebarOpen(false);
             }}
           />
@@ -837,9 +884,9 @@ function ExtensionPanel() {
         <ScrollArea className="s-flex-1">
           <NavigationList className="s-px-2">
             <NavigationListLabel label="Projects" variant="primary" />
-            {mockProjects.map((project) => {
-              const hasNotification =
-                project.id === "project-3" && Math.random() > 0.5;
+            {mockProjects.map((project, index) => {
+              const hasNotification = index === 0;
+              const unreadCount = hasNotification ? 3 : undefined;
               return (
                 <NavigationListItem
                   key={project.id}
@@ -847,6 +894,7 @@ function ExtensionPanel() {
                   icon={SpaceOpenIcon}
                   selected={selectedProject?.id === project.id}
                   hasNotification={hasNotification}
+                  count={unreadCount}
                   onClick={() => handleProjectSelect(project)}
                 />
               );
@@ -855,14 +903,14 @@ function ExtensionPanel() {
             {groupedConversations.today.length > 0 && (
               <>
                 <NavigationListCompactLabel label="TODAY" />
-                {groupedConversations.today.slice(0, 3).map((conv) => {
-                  const hasUnread = Math.random() > 0.7;
+                {groupedConversations.today.slice(0, 3).map((conv, index) => {
+                  const hasUnread = index === 0;
                   return (
                     <NavigationListItem
                       key={conv.id}
                       label={conv.title}
                       selected={selectedConversationId === conv.id}
-                      hasNotification={hasUnread}
+                      status={hasUnread ? "unread" : undefined}
                       onClick={() => handleConversationSelect(conv)}
                     />
                   );
@@ -905,19 +953,37 @@ function ExtensionPanel() {
 
   const HomeView = () => (
     <div className="s-flex s-h-full s-flex-col s-px-4">
-      <div className="s-flex s-flex-1 s-flex-col s-items-center s-justify-center s-pb-8">
-        <h1 className="s-heading-2xl s-text-center s-text-foreground dark:s-text-foreground-night">
+      <div className="s-shrink-0 s-pt-16 s-pb-4">
+        <h1 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
           {greeting || `Hi, ${currentUser.fullName.split(" ")[0]}`}
         </h1>
-                </div>
+      </div>
 
-      <div className="s-pb-4">
-                <FavoritesGrid />
-              </div>
+      <div className="s-shrink-0 s-pb-4">
+        <ExtensionInputBar height="160px" />
+      </div>
+
+      <div className="s-flex-1 s-overflow-y-auto s-pb-4">
+        <FavoritesGrid />
+      </div>
+    </div>
+  );
+
+  const NewConversationView = () => (
+    <div className="s-flex s-h-full s-flex-col s-px-4">
+      <div className="s-shrink-0 s-pt-16 s-pb-4">
+        <h1 className="s-heading-2xl s-text-foreground dark:s-text-foreground-night">
+          {greeting || `Hi, ${currentUser.fullName.split(" ")[0]}`}
+        </h1>
+      </div>
 
       <div className="s-shrink-0 s-pb-4">
         <ExtensionInputBar />
-            </div>
+      </div>
+
+      <div className="s-flex-1 s-overflow-y-auto s-pb-4">
+        <FavoritesGrid />
+      </div>
     </div>
   );
 
@@ -975,6 +1041,7 @@ function ExtensionPanel() {
                       pictureUrl={pictureUrl}
                           timestamp={formatTimestamp(message.timestamp)}
                       buttons={!isUser ? [<AgentMessageButtons key="feedback" />] : undefined}
+                      className={isUser ? "!s-p-4" : undefined}
                     >
                       {message.hasFrame && message.frameTitle && (
                         <FrameButton
@@ -1100,8 +1167,8 @@ function ExtensionPanel() {
                           <span className="s-flex-shrink-0 s-text-sm s-text-muted-foreground">
                             {newCount} new
                           </span>
-                        )}
-                      </div>
+        )}
+      </div>
                     );
                   })}
                 </div>
@@ -1136,17 +1203,17 @@ function ExtensionPanel() {
               {selectedProject.name.replace(" Space", "")}
             </span>
           </div>
-          <div className="s-flex -s-space-x-2">
-            {participants.slice(0, 3).map((p, i) => (
-              <Avatar
-                key={i}
-                size="xs"
-                name={p.name}
-                visual={p.visual}
-                isRounded={true}
-              />
-            ))}
-          </div>
+          {participants.length > 0 && (
+            <Avatar.Stack
+              avatars={participants.map((p) => ({
+                name: p.name,
+                visual: p.visual,
+                isRounded: true,
+              }))}
+              size="xs"
+              nbVisibleItems={3}
+            />
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button icon={MoreIcon} variant="ghost" size="sm" />
@@ -1198,12 +1265,12 @@ function ExtensionPanel() {
             size="sm"
             onClick={() => navigateTo("project")}
           />
-          <span className="s-flex-1 s-truncate s-font-medium s-text-foreground dark:s-text-foreground-night">
-            New conversation
-          </span>
-          <div className="s-flex s-items-center s-gap-1 s-rounded-full s-bg-muted-background s-px-2 s-py-1 dark:s-bg-muted-background-night">
-            <Icon visual={SpaceOpenIcon} size="xs" />
-            <span className="s-text-xs s-text-muted-foreground">
+          <div className="s-flex s-flex-1 s-items-center s-gap-2 s-truncate">
+            <span className="s-font-medium s-text-foreground dark:s-text-foreground-night">
+              New conversation
+            </span>
+            <Icon visual={SpaceOpenIcon} size="xs" className="s-text-muted-foreground" />
+            <span className="s-text-sm s-text-muted-foreground">
               {selectedProject.name.replace(" Space", "")}
             </span>
           </div>
@@ -1241,7 +1308,7 @@ function ExtensionPanel() {
   };
 
   const showBackButton =
-    view === "conversation" || view === "project" || view === "projectConversation" || view === "newProjectConversation";
+    view === "project" || view === "projectConversation" || view === "newProjectConversation";
 
   return (
     <div className="s-flex s-h-screen s-w-full s-justify-end s-bg-muted-background s-p-2">
@@ -1269,7 +1336,7 @@ function ExtensionPanel() {
               size="sm"
               title={getHeaderTitle()}
               leftActions={
-                view === "home" ? (
+                view === "home" || view === "conversation" || view === "newConversation" ? (
                   <Button
                     icon={MenuIcon}
                     variant="ghost"
@@ -1286,7 +1353,7 @@ function ExtensionPanel() {
                 ) : null
               }
               rightActions={
-                view === "home" ? (
+                view === "home" || view === "newConversation" ? (
                   <ProfileDropdown />
                 ) : view === "conversation" && selectedConversation ? (
                   <DropdownMenu>
@@ -1360,6 +1427,7 @@ function ExtensionPanel() {
                 }}
               >
                 {view === "home" && <HomeView />}
+                {view === "newConversation" && <NewConversationView />}
                 {view === "conversation" && <ConversationView />}
                 {view === "project" && <ProjectView />}
                 {view === "projectConversation" && <ProjectConversationView />}
