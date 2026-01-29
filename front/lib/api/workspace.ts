@@ -317,7 +317,7 @@ export async function checkWorkspaceSeatAvailabilityUsingAuth(
 }
 
 export async function evaluateWorkspaceSeatAvailability(
-  workspace: WorkspaceType | WorkspaceModel,
+  workspace: WorkspaceType | WorkspaceModel | WorkspaceResource,
   subscription: SubscriptionType
 ): Promise<boolean> {
   const { maxUsers } = subscription.plan.limits.users;

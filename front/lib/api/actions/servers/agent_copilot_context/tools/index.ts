@@ -489,6 +489,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     const createdSuggestions: { sId: string }[] = [];
+    const directives: string[] = [];
 
     for (const suggestion of params.suggestions) {
       try {
@@ -505,6 +506,9 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         );
 
         createdSuggestions.push({ sId: created.sId });
+        directives.push(
+          `:agent_suggestion[]{sId=${created.sId} kind=${created.kind}}`
+        );
       } catch (error) {
         return new Err(
           new MCPError(
@@ -518,14 +522,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     return new Ok([
       {
         type: "text" as const,
-        text: JSON.stringify(
-          {
-            success: true,
-            suggestions: createdSuggestions,
-          },
-          null,
-          2
-        ),
+        text: directives.join("\n\n"),
       },
     ]);
   },
@@ -579,14 +576,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -648,14 +638,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -717,14 +700,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Ok([
         {
           type: "text" as const,
-          text: JSON.stringify(
-            {
-              success: true,
-              sId: suggestion.sId,
-            },
-            null,
-            2
-          ),
+          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
         },
       ]);
     } catch (error) {

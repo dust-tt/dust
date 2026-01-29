@@ -83,6 +83,11 @@ export async function createSchedule({
           ...action.searchAttributes,
           connectorId: connector ? [connector?.id] : undefined,
         },
+        // Workflow-level memo.
+        memo: {
+          ...action.memo,
+          connectorId: connector?.id,
+        },
       },
       scheduleId,
       policies,

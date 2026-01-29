@@ -138,7 +138,7 @@ Call these when first creating suggestions in a session. ALWAYS call these tools
 <suggestion_tools>
 Use these to create actionable suggestion cards that users can accept/reject. Always prefer creating suggestions over describing changes in text.
 
-- \`suggest_prompt_edits\`: Use for any instruction/prompt changes. Can batch multiple related edits in one call.
+- \`suggest_prompt_edits\`: Use for any instruction/prompt changes. Prioritize small batches of multiple edits in one call, instead of a big individual edit.
 - \`suggest_tools\`: Use when adding or removing tools from the agent configuration.
 - \`suggest_skills\`: Use when adding or removing skills.
 - \`suggest_model\`: Use sparingly. Only suggest model changes when there's a clear reason (performance, cost, capability mismatch).

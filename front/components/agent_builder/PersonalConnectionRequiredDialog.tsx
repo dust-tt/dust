@@ -27,6 +27,7 @@ import {
   useCreatePersonalConnection,
   useMCPServerViewsWithPersonalConnections,
 } from "@app/lib/swr/mcp_servers";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightWorkspaceType } from "@app/types";
 import { getOverridablePersonalAuthInputs } from "@app/types";
 
@@ -107,6 +108,7 @@ export function PersonalConnectionRequiredDialog({
   onClose: (confirmed: boolean) => void;
 }) {
   const { createPersonalConnection } = useCreatePersonalConnection(owner);
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const [isConnecting, setIsConnecting] = useState(false);
   const [overriddenCredentialsMap, setCredentialOverridesMap] = useState<
     Record<string, Record<string, string>>
@@ -217,6 +219,19 @@ export function PersonalConnectionRequiredDialog({
                               }
                               setIsConnecting(true);
                               try {
+                                // Check if this is google_drive server and if write feature is enabled
+                                const isGoogleDrive =
+                                  mcpServerView.server.authorization
+                                    .provider === "google_drive";
+                                const hasWriteFeature = hasFeature(
+                                  "google_drive_write_enabled"
+                                );
+
+                                const scope =
+                                  isGoogleDrive && hasWriteFeature
+                                    ? "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+                                    : mcpServerView.server.authorization.scope;
+
                                 await createPersonalConnection({
                                   mcpServerId: mcpServerView.server.sId,
                                   mcpServerDisplayName:
@@ -224,8 +239,7 @@ export function PersonalConnectionRequiredDialog({
                                   provider:
                                     mcpServerView.server.authorization.provider,
                                   useCase: "personal_actions",
-                                  scope:
-                                    mcpServerView.server.authorization.scope,
+                                  scope,
                                   overriddenCredentials:
                                     Object.keys(serverOverrides).length > 0
                                       ? serverOverrides

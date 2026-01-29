@@ -12,11 +12,13 @@ import type {
 export function useAgentSuggestions({
   agentConfigurationId,
   disabled,
+  kind,
   state,
   workspaceId,
 }: {
   agentConfigurationId: string | null;
   disabled?: boolean;
+  kind?: GetSuggestionsQuery["kind"];
   state?: GetSuggestionsQuery["states"];
   workspaceId: string;
 }) {
@@ -26,11 +28,13 @@ export function useAgentSuggestions({
   if (state) {
     state.forEach((s) => urlParams.append("states", s));
   }
-  urlParams.append("kind", "instructions");
+  if (kind) {
+    urlParams.append("kind", kind);
+  }
 
   const queryString = urlParams.toString();
 
-  const { data, error, mutate, isValidating } = useSWRWithDefaults(
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
     agentConfigurationId
       ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions?${queryString}`
       : null,
@@ -40,9 +44,8 @@ export function useAgentSuggestions({
 
   return {
     suggestions: data?.suggestions ?? emptyArray(),
-    isSuggestionsLoading:
-      !!agentConfigurationId && !error && !data && !disabled,
-    isSuggestionsError: error,
+    isSuggestionsLoading: isLoading,
+    isSuggestionsError: !!error,
     isSuggestionsValidating: isValidating,
     mutateSuggestions: mutate,
   };

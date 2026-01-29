@@ -386,6 +386,9 @@ const config = {
       "TEMPORAL_CONNECTORS_NAMESPACE"
     );
   },
+  getTemporalAgentNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
+  },
   // Northflank sandbox.
   getNorthflankApiToken: () => {
     return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");

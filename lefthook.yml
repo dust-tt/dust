@@ -22,6 +22,16 @@
 #   lefthook run pre-commit --interactive
 #
 # ===================================================================
+output:
+  - meta           # Print lefthook version
+  - summary        # Print summary block (successful and failed steps)
+  - empty_summary  # Print summary heading when there are no steps to run
+  - success        # Print successful steps
+  - failure        # Print failed steps printing
+  #  - execution      # Print any execution logs
+  #  - execution_out  # Print execution output
+  #  - execution_info # Print `EXECUTE > ...` logging
+  - skips          # Print "skip" (i.e. no files matched)
 
 pre-commit:
   # Run tasks in parallel for better performance
@@ -95,7 +105,7 @@ pre-commit:
       tags: front
       glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
       root: front/
-      run: npm run format -- {staged_files}
+      run: npm run format:lefthook -- {staged_files}
       stage_fixed: true
 
     # Front eslint check
@@ -103,7 +113,7 @@ pre-commit:
       tags: front
       glob: "*.{js,jsx,ts,tsx}"
       root: front
-      run: npm run lint -- {staged_files}
+      run: npm run lint:lefthook -- {staged_files}
       stage_fixed: true
 
     # Connectors prettier check
@@ -111,7 +121,7 @@ pre-commit:
       tags: connectors
       glob: "*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}"
       root: connectors/
-      run: npm run format -- {staged_files}
+      run: npm run format:lefthook -- {staged_files}
       stage_fixed: true
 
     # Connectors eslint check
@@ -119,5 +129,5 @@ pre-commit:
       tags: connectors
       glob: "*.{js,jsx,ts,tsx}"
       root: connectors/
-      run: npm run lint -- {staged_files}
+      run: npm run lint:lefthook -- {staged_files}
       stage_fixed: true

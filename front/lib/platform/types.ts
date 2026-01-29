@@ -85,3 +85,15 @@ export interface ScriptProps {
   strategy?: "beforeInteractive" | "afterInteractive" | "lazyOnload";
   children?: string;
 }
+
+export interface ImageProps extends Omit<
+  React.ImgHTMLAttributes<HTMLImageElement>,
+  "width" | "height" | "src" | "alt"
+> {
+  width?: number | `${number}` | undefined;
+  height?: number | `${number}` | undefined;
+  src: string;
+  alt: string;
+  priority?: boolean | undefined;
+  sizes?: string;
+}

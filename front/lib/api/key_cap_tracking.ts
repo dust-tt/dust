@@ -6,15 +6,21 @@ import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
 import { cacheWithRedis, invalidateCacheWithRedis } from "@app/lib/utils/cache";
 import logger from "@app/logger/logger";
-import type { ModelId, Result } from "@app/types";
+import type { LightWorkspaceType, ModelId, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "./programmatic_usage_tracking";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-async function fetchKeyMonthlyCap(keyId: ModelId): Promise<number | null> {
-  const key = await KeyResource.fetchByModelId(keyId);
+async function fetchKeyMonthlyCap({
+  workspace,
+  keyId,
+}: {
+  workspace: LightWorkspaceType;
+  keyId: ModelId;
+}): Promise<number | null> {
+  const key = await KeyResource.fetchByWorkspaceAndId({ workspace, id: keyId });
 
   if (!key) {
     return null;
@@ -23,7 +29,8 @@ async function fetchKeyMonthlyCap(keyId: ModelId): Promise<number | null> {
   return key.monthlyCapMicroUsd;
 }
 
-const keyCapCacheResolver = (keyId: ModelId) => `key-cap:${keyId}`;
+const keyCapCacheResolver = ({ keyId }: { keyId: ModelId }) =>
+  `key-cap:${keyId}`;
 
 /**
  * Get the monthly cap for a key, with Redis caching.
@@ -55,9 +62,9 @@ type UsageAggregations = {
  */
 async function getLast29DaysKeyUsageMicroUsd(
   keyId: ModelId,
-  workspaceId: string
+  workspace: LightWorkspaceType
 ): Promise<Result<number, Error>> {
-  const key = await KeyResource.fetchByModelId(keyId);
+  const key = await KeyResource.fetchByWorkspaceAndId({ workspace, id: keyId });
 
   if (!key || !key.name) {
     return new Ok(0);
@@ -69,7 +76,7 @@ async function getLast29DaysKeyUsageMicroUsd(
     bool: {
       filter: [
         { term: { api_key_name: key.name } },
-        { term: { workspace_id: workspaceId } },
+        { term: { workspace_id: workspace.sId } },
         { range: { timestamp: { gte: twentyNineDaysAgoMs } } },
         { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
       ],
@@ -121,10 +128,13 @@ function getSecondsUntilMidnightUTC(): number {
  * Get usage from Redis cache, initializing from ES if missing.
  * Fails close: returns Err on Redis/ES errors to block API calls.
  */
-async function getKeyUsageMicroUsd(
-  keyId: ModelId,
-  workspaceId: string
-): Promise<Result<number, Error>> {
+async function getKeyUsageMicroUsd({
+  workspace,
+  keyId,
+}: {
+  workspace: LightWorkspaceType;
+  keyId: ModelId;
+}): Promise<Result<number, Error>> {
   const redisKey = getKeyUsageRedisKey(keyId);
 
   const redis = await runOnRedis(
@@ -137,7 +147,7 @@ async function getKeyUsageMicroUsd(
     return new Ok(parseInt(cached, 10));
   }
 
-  const usageResult = await getLast29DaysKeyUsageMicroUsd(keyId, workspaceId);
+  const usageResult = await getLast29DaysKeyUsageMicroUsd(keyId, workspace);
   if (usageResult.isErr()) {
     return usageResult;
   }
@@ -204,14 +214,20 @@ export async function hasKeyReachedUsageCap(
     return false;
   }
 
-  const cap = await getKeyMonthlyCapCached(keyAuth.id);
+  const workspace = auth.getNonNullableWorkspace();
+  const cap = await getKeyMonthlyCapCached({
+    workspace,
+    keyId: keyAuth.id,
+  });
 
   if (cap === null) {
     return false;
   }
 
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const usageResult = await getKeyUsageMicroUsd(keyAuth.id, workspaceId);
+  const usageResult = await getKeyUsageMicroUsd({
+    workspace,
+    keyId: keyAuth.id,
+  });
 
   if (usageResult.isErr()) {
     logger.error(
@@ -257,14 +273,17 @@ export async function getRemainingKeyCapMicroUsd(
     return null;
   }
 
-  const cap = await getKeyMonthlyCapCached(keyAuth.id);
+  const workspace = auth.getNonNullableWorkspace();
+  const cap = await getKeyMonthlyCapCached({ workspace, keyId: keyAuth.id });
 
   if (cap === null) {
     return null;
   }
 
-  const workspaceId = auth.getNonNullableWorkspace().sId;
-  const usageResult = await getKeyUsageMicroUsd(keyAuth.id, workspaceId);
+  const usageResult = await getKeyUsageMicroUsd({
+    workspace,
+    keyId: keyAuth.id,
+  });
 
   if (usageResult.isErr()) {
     logger.error(

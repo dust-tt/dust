@@ -207,11 +207,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  skills_similar_display: {
-    description:
-      "Display similar skills when creating a new skill to avoid duplicates",
-    stage: "dust_only",
-  },
   projects: {
     description: "Enable use Spaces as Projects",
     stage: "dust_only",
@@ -231,6 +226,11 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
   sandbox_tools: {
     description:
       "Sandbox MCP tool for executing code in isolated Linux containers",
+    stage: "dust_only",
+  },
+  google_drive_write_enabled: {
+    description:
+      "Google Docs/Sheets/Slides write capabilities via drive.file scope",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

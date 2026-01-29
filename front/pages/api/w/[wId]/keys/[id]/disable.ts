@@ -39,7 +39,7 @@ async function handler(
     });
   }
 
-  const key = await KeyResource.fetchByWorkspaceAndId(owner, id);
+  const key = await KeyResource.fetchByWorkspaceAndId({ workspace: owner, id });
 
   if (!key) {
     return apiError(req, res, {

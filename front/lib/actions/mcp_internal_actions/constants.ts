@@ -1,8 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
-  FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
   SALESFORCE_SERVER_INSTRUCTIONS,
 } from "@app/lib/actions/mcp_internal_actions/instructions";
@@ -14,19 +12,25 @@ import { AGENT_COPILOT_AGENT_STATE_SERVER } from "@app/lib/api/actions/servers/a
 import { AGENT_COPILOT_CONTEXT_SERVER } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
 import { AGENT_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/agent_management/metadata";
 import { AGENT_MEMORY_SERVER } from "@app/lib/api/actions/servers/agent_memory/metadata";
-import { AGENT_ROUTER_SERVER_NAME } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { AGENT_ROUTER_SERVER } from "@app/lib/api/actions/servers/agent_router/metadata";
+import {
+  AGENT_ROUTER_SERVER,
+  AGENT_ROUTER_SERVER_NAME,
+} from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
+import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
+import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
+import { FRONT_SERVER } from "@app/lib/api/actions/servers/front/metadata";
 import { GITHUB_SERVER } from "@app/lib/api/actions/servers/github/metadata";
 import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
+import { HTTP_CLIENT_SERVER } from "@app/lib/api/actions/servers/http_client/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
@@ -46,21 +50,26 @@ import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
+import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
+import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
 import { SOUND_STUDIO_SERVER } from "@app/lib/api/actions/servers/sound_studio/metadata";
 import { SPEECH_GENERATOR_SERVER } from "@app/lib/api/actions/servers/speech_generator/metadata";
 import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metadata";
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
+import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
 import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
+import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
 import {
   DEEP_DIVE_NAME,
   DEEP_DIVE_SERVER_INSTRUCTIONS,
@@ -552,62 +561,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      // Read operations - never ask
-      list_tickets: "never_ask",
-      get_ticket: "never_ask",
-      get_ticket_read_fields: "never_ask",
-      get_ticket_write_fields: "never_ask",
-      list_departments: "never_ask",
-      list_products: "never_ask",
-      list_oncall_schedules: "never_ask",
-      list_service_categories: "never_ask",
-      list_service_items: "never_ask",
-      search_service_items: "never_ask",
-      get_service_item: "never_ask",
-      get_service_item_fields: "never_ask",
-      list_solution_categories: "never_ask",
-      list_solution_folders: "never_ask",
-      list_solution_articles: "never_ask",
-      list_requesters: "never_ask",
-      get_requester: "never_ask",
-      list_purchase_orders: "never_ask",
-      list_sla_policies: "never_ask",
-      get_solution_article: "never_ask",
-      list_canned_responses: "never_ask",
-      get_canned_response: "never_ask",
-      get_ticket_approval: "never_ask",
-      list_ticket_approvals: "never_ask",
-      list_ticket_tasks: "never_ask",
-      get_ticket_task: "never_ask",
-
-      // Write operations - low/high stakes
-      create_ticket: "low",
-      update_ticket: "low",
-      add_ticket_note: "low",
-      add_ticket_reply: "low",
-      create_ticket_task: "low",
-      update_ticket_task: "low",
-      delete_ticket_task: "low",
-      request_service_item: "low",
-      request_service_approval: "low",
-      create_solution_article: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "freshservice",
-      icon: "FreshserviceLogo",
-      version: "1.0.0",
-      description: "Connect to tickets, schedules and service catalog.",
-      authorization: {
-        provider: "freshservice" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      documentationUrl: "https://docs.dust.tt/docs/freshservice",
-      instructions: FRESHSERVICE_SERVER_INSTRUCTIONS,
-    },
+    metadata: FRESHSERVICE_SERVER,
   },
   google_drive: {
     id: 27,
@@ -849,19 +806,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "http_client",
-      version: "1.0.0",
-      description:
-        "Make HTTP requests to external APIs with optional Bearer token authentication.",
-      authorization: null,
-      icon: "ActionGlobeAltIcon",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelectionDescription:
-        "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
-      developerSecretSelection: "optional",
-    },
+    metadata: HTTP_CLIENT_SERVER,
   },
   ashby: {
     id: 40,
@@ -910,27 +855,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      get_ticket: "never_ask",
-      search_tickets: "never_ask",
-      draft_reply: "low", // Low because it's a draft.
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "zendesk",
-      version: "1.0.0",
-      description:
-        "Access and manage support tickets, help center, and customer interactions.",
-      authorization: {
-        provider: "zendesk" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "ZendeskLogo",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: ZENDESK_SERVER,
   },
   slab: {
     id: 43,
@@ -1068,29 +996,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("snowflake_tool");
     },
     isPreview: false,
-    tools_stakes: {
-      list_databases: "never_ask",
-      list_schemas: "never_ask",
-      list_tables: "never_ask",
-      describe_table: "never_ask",
-      query: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "snowflake",
-      version: "1.0.0",
-      description:
-        "Execute read-only SQL queries and browse schema in Snowflake.",
-      authorization: {
-        provider: "snowflake" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "SnowflakeLogo",
-      documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
-      instructions: null,
-    },
+    metadata: SNOWFLAKE_SERVER,
   },
   ukg_ready: {
     id: 48,
@@ -1146,19 +1055,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-    serverInfo: {
-      name: "run_agent",
-      version: "1.0.0",
-      description: "Run a child agent (agent as tool).",
-      icon: "ActionRobotIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    timeoutMs: RUN_AGENT_SERVER.timeoutMs,
+    metadata: RUN_AGENT_SERVER,
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
@@ -1225,32 +1125,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      create_val: "low",
-      get_file_content: "low",
-      delete_file: "low",
-      update_file_content: "low",
-      write_file: "low",
-      create_file: "low",
-      call_http_endpoint: "low",
-      get_val: "never_ask",
-      list_vals: "never_ask",
-      search_vals: "never_ask",
-      list_val_files: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "val_town",
-      version: "1.0.0",
-      description: "Create and execute vals in Val Town.",
-      authorization: null,
-      icon: "ValTownLogo",
-      documentationUrl: "https://docs.dust.tt/docs/val-town",
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: VAL_TOWN_SERVER,
   },
   jit_testing: {
     id: 1016,
@@ -1271,20 +1149,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "common_utilities",
-      version: "1.0.0",
-      description:
-        "Miscellaneous helper tools such as random numbers, time retrieval, and timers.",
-      icon: "ActionAtomIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: COMMON_UTILITIES_SERVER,
   },
   front: {
     id: 1018,
@@ -1294,46 +1162,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("front_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      search_conversations: "never_ask",
-      get_conversation: "never_ask",
-      get_conversation_messages: "never_ask",
-      get_contact: "never_ask",
-      list_tags: "never_ask",
-      list_teammates: "never_ask",
-      get_customer_history: "never_ask",
-      list_inboxes: "never_ask",
-
-      create_conversation: "low",
-      create_draft: "low",
-      add_tags: "low",
-      add_comment: "low",
-      add_links: "low",
-
-      send_message: "high",
-      update_conversation_status: "high",
-      assign_conversation: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
     timeoutMs: undefined,
-    serverInfo: {
-      name: "front",
-      version: "1.0.0",
-      description:
-        "Manage support conversations, messages, and customer interactions.",
-      authorization: null,
-      icon: "FrontLogo",
-      documentationUrl: "https://dev.frontapp.com/reference/introduction",
-      instructions:
-        "When handling support tickets:\n" +
-        "- Always check customer history before replying using get_customer_history\n" +
-        "- Auto-tag conversations based on issue type (bug, feature-request, billing)\n" +
-        "- Assign to teammate 'ilias' if T1 cannot resolve after three attempts\n" +
-        "- Use LLM-friendly timeline format for conversation data\n" +
-        "- Include full context (metadata, custom fields) in responses",
-      developerSecretSelection: "required",
-    },
+    metadata: FRONT_SERVER,
   },
   skill_management: {
     id: 1019,
@@ -1352,28 +1184,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isPreview: false,
     isRestricted: undefined,
-    tools_stakes: {
-      create_schedule: "high",
-      list_schedules: "never_ask",
-      get_schedule: "never_ask",
-      update_schedule: "high",
-      delete_schedule: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "schedules_management",
-      version: "1.0.0",
-      description: "Create schedules to automate recurring tasks.",
-      icon: "ActionTimeIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions:
-        "Schedules are user-specific: each user can only view and manage their own schedules. " +
-        "When a schedule triggers, it runs this agent with the specified prompt. " +
-        "Limit: 20 schedule creations per user per day.",
-    },
+    metadata: SCHEDULES_MANAGEMENT_SERVER,
   },
   project_context_management: {
     id: 1021,

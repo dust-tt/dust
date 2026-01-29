@@ -21,6 +21,7 @@ import { ErrorBoundary } from "@app/components/error_boundary/ErrorBoundary";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useURLSheet } from "@app/hooks/useURLSheet";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { ONBOARDING_CONVERSATION_ENABLED } from "@app/lib/onboarding";
 import { useAppRouter } from "@app/lib/platform";
 import { useConversation } from "@app/lib/swr/conversations";
@@ -30,31 +31,21 @@ import type {
   LightWorkspaceType,
   SubscriptionType,
   UserType,
-  WorkspaceType,
 } from "@app/types";
 import { isString } from "@app/types";
-
-export interface ConversationLayoutProps {
-  baseUrl: string;
-  conversationId: string | null;
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
-  isAdmin: boolean;
-}
 
 export function ConversationLayout({
   children,
   pageProps,
 }: {
   children: React.ReactNode;
-  pageProps: ConversationLayoutProps;
+  pageProps: AuthContextValue;
 }) {
-  const { owner, subscription, user, isAdmin } = pageProps;
+  const { workspace, subscription, user, isAdmin } = pageProps;
 
   return (
     <ConversationLayoutContent
-      owner={owner}
+      owner={workspace}
       subscription={subscription}
       user={user}
       isAdmin={isAdmin}

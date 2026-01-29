@@ -17,9 +17,11 @@ import type { KeyType, ModelId, RoleType } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { formatUserFullName, redactString } from "@app/types";
 
+import { invalidateKeyCapCache } from "../api/key_cap_tracking";
+
 export interface KeyAuthType {
   id: ModelId;
-  name: string | null;
+  name: string;
   isSystem: boolean;
   role: RoleType;
   monthlyCapMicroUsd: number | null;
@@ -94,10 +96,13 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
-  static async fetchByWorkspaceAndId(
-    workspace: LightWorkspaceType,
-    id: ModelId | string
-  ) {
+  static async fetchByWorkspaceAndId({
+    workspace,
+    id,
+  }: {
+    workspace: LightWorkspaceType;
+    id: ModelId | string;
+  }) {
     const key = await this.fetchByModelId(id);
 
     if (!key) {
@@ -258,11 +263,18 @@ export class KeyResource extends BaseResource<KeyModel> {
     await this.update({ role: newRole });
   }
 
-  async updateMonthlyCap({
-    monthlyCapMicroUsd,
-  }: {
-    monthlyCapMicroUsd: number | null;
-  }) {
+  async updateMonthlyCap(
+    auth: Authenticator,
+    {
+      monthlyCapMicroUsd,
+    }: {
+      monthlyCapMicroUsd: number | null;
+    }
+  ) {
     await this.update({ monthlyCapMicroUsd });
+    await invalidateKeyCapCache({
+      workspace: auth.getNonNullableWorkspace(),
+      keyId: this.id,
+    });
   }
 }

@@ -162,6 +162,7 @@ export function useFeatureFlags({
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
+  groupByCount,
   selectedPeriod,
   billingCycleStartDay,
   filter,
@@ -169,6 +170,7 @@ export function useWorkspaceProgrammaticCost({
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
+  groupByCount?: number;
   selectedPeriod?: string;
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
@@ -183,6 +185,9 @@ export function useWorkspaceProgrammaticCost({
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
   }
   if (filter && Object.keys(filter).length > 0) {
     queryParams.set("filter", JSON.stringify(filter));

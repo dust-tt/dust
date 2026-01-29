@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
-} from "@app/lib/actions/constants";
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
 import {
   constructGuidelinesSection,
   constructProjectContextSection,
@@ -37,12 +37,37 @@ describe("constructGuidelinesSection", () => {
         userMessage,
       });
 
-      // For web origin, should use the tool-based approach
+      // For web origin, should use the tool-based approach with clear instructions
       expect(result).toContain(
-        `Use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users`
+        `Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term`
       );
       expect(result).toContain(
-        `Use the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive`
+        `Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label`
+      );
+
+      // Should include the critical warning
+      expect(result).toContain(
+        "CRITICAL: You MUST use the tools - DO NOT guess the format"
+      );
+      expect(result).toContain(
+        "Attempting to guess or construct the format manually WILL FAIL"
+      );
+
+      // Should explain the format distinction
+      expect(result).toContain(
+        "Format distinction (for reference only - NEVER construct manually)"
+      );
+      expect(result).toContain(
+        "Agent mentions: `:mention[Name]{sId=agent_id}` (no suffix)"
+      );
+      expect(result).toContain(
+        "User mentions: `:mention_user[Name]{sId=user_id}` (note the `_user` suffix)"
+      );
+
+      // Should include common mistakes section
+      expect(result).toContain("Common mistakes to AVOID:");
+      expect(result).toContain(
+        "❌ WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)"
       );
 
       // Should NOT tell to use simple @username

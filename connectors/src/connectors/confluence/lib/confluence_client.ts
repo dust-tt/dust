@@ -158,7 +158,7 @@ const ConfluencePageWithBodyCodec = t.intersection([
       results: t.array(
         t.type({
           id: t.string,
-          name: t.string,
+          name: t.union([t.string, t.null]),
           prefix: t.string,
         })
       ),

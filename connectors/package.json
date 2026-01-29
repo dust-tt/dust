@@ -2,9 +2,11 @@
   "name": "connectors",
   "version": "0.1.0",
   "scripts": {
-    "format": "biome format --write .",
+    "format": "npm run format:lefthook -- .",
+    "format:lefthook": "biome format --write",
     "format:check": "biome check --formatter-enabled=true --linter-enabled=false .",
-    "lint": "eslint .",
+    "lint": "npm run lint:lefthook -- .",
+    "lint:lefthook": "eslint",
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",

@@ -164,7 +164,7 @@
       },
       {
         "name": "suggest_model",
-        "description": "Suggest changing the agent's LLM model configuration.",
+        "description": "Suggest changing the agent's LLM model configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -264,7 +264,7 @@
       },
       {
         "name": "suggest_prompt_edits",
-        "description": "Create one or more suggestions to modify the agent's instructions/prompt. Each suggestion specifies text to find and replace.",
+        "description": "Create suggestions to modify the agent's instructions/prompt. CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. NEVER replace entire instruction blocks. Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -274,7 +274,7 @@
               "type": "string"
             },
             "suggestions": {
-              "description": "Array of instruction modifications to suggest",
+              "description": "Array of small, scoped instruction modifications. Each should target 1-3 lines max.",
               "items": {
                 "additionalProperties": false,
                 "properties": {
@@ -308,7 +308,7 @@
       },
       {
         "name": "suggest_skills",
-        "description": "Suggest adding or removing skills from the agent's configuration.",
+        "description": "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -347,7 +347,7 @@
       },
       {
         "name": "suggest_tools",
-        "description": "Suggest adding or removing tools from the agent's configuration.",
+        "description": "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -944,7 +944,15 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "generate_random_float": "never_ask",
+      "generate_random_number": "never_ask",
+      "get_current_time": "never_ask",
+      "get_mention_markdown": "never_ask",
+      "math_operation": "never_ask",
+      "search_available_users": "never_ask",
+      "wait": "never_ask"
+    }
   },
   {
     "name": "confluence",
@@ -13971,7 +13979,9 @@
         }
       }
     ],
-    "toolsStakes": null
+    "toolsStakes": {
+      "run_agent": "never_ask"
+    }
   },
   {
     "name": "run_dust_app",
@@ -14361,10 +14371,8 @@
     ],
     "toolsStakes": {
       "create_schedule": "high",
-      "delete_schedule": "high",
-      "get_schedule": "never_ask",
-      "list_schedules": "never_ask",
-      "update_schedule": "high"
+      "disable_schedule": "high",
+      "list_schedules": "never_ask"
     }
   },
   {
@@ -15267,7 +15275,7 @@
       "list_databases": "never_ask",
       "list_schemas": "never_ask",
       "list_tables": "never_ask",
-      "query": "low"
+      "query": "never_ask"
     }
   },
   {
