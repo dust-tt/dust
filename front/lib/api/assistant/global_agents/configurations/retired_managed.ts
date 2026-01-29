@@ -138,6 +138,7 @@ function _getManagedDataSourceAgent(
       dustAppConfiguration: null,
       jsonSchema: null,
       secretName: null,
+      dustProject: null,
     });
   }
 

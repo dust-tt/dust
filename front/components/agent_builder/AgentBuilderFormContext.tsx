@@ -7,6 +7,7 @@ import {
   actionSchema,
   generationSettingsSchema,
 } from "@app/components/shared/tools_picker/types";
+import type { ProjectConfiguration } from "@app/lib/api/assistant/configuration/types";
 import { TRIGGER_STATUSES } from "@app/types/assistant/triggers";
 import { editorUserSchema } from "@app/types/editors";
 import { WEBHOOK_PROVIDERS } from "@app/types/triggers/webhooks";
@@ -138,6 +139,7 @@ export interface MCPFormData {
     } | null;
     additionalConfiguration: AdditionalConfigurationInBuilderType;
     dustAppConfiguration: any;
+    dustProject: ProjectConfiguration | null;
     secretName: string | null;
     jsonSchema: any;
     _jsonSchemaString: string | null;

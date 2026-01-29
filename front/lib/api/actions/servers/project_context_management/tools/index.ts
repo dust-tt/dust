@@ -78,9 +78,12 @@ export function createProjectContextManagementTools(
   const handlers: ToolHandlers<
     typeof PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA
   > = {
-    list_project_files: async () => {
+    list_project_files: async ({ dustProject }) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, agentLoopContext);
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }
@@ -134,10 +137,10 @@ export function createProjectContextManagementTools(
 
     add_project_file: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(
-          auth,
-          agentLoopContext
-        );
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }
@@ -250,10 +253,10 @@ export function createProjectContextManagementTools(
 
     update_project_file: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(
-          auth,
-          agentLoopContext
-        );
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }
@@ -346,10 +349,10 @@ export function createProjectContextManagementTools(
 
     edit_project_description: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(
-          auth,
-          agentLoopContext
-        );
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }
@@ -394,10 +397,10 @@ export function createProjectContextManagementTools(
 
     add_project_url: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(
-          auth,
-          agentLoopContext
-        );
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }
@@ -440,10 +443,10 @@ export function createProjectContextManagementTools(
 
     edit_project_url: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getWritableProjectContext(
-          auth,
-          agentLoopContext
-        );
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }
@@ -522,7 +525,10 @@ export function createProjectContextManagementTools(
 
     read_project_journal_entry: async (params) => {
       return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, agentLoopContext);
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
         if (contextRes.isErr()) {
           return contextRes;
         }

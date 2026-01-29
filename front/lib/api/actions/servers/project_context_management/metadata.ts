@@ -1,7 +1,10 @@
+// eslint-disable-next-line dust/enforce-client-types-in-public-api
+import { INTERNAL_MIME_TYPES } from "@dust-tt/client";
 import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
+import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
@@ -12,7 +15,12 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   list_project_files: {
     description:
       "List all files in the project context. Returns file metadata including names, IDs, and content types.",
-    schema: {},
+    schema: {
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
     stake: "never_ask",
     displayLabels: {
       running: "Listing project files",
@@ -43,6 +51,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "MIME type (default: text/plain, or inherited from sourceFileId if provided)"
         ),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "high",
     displayLabels: {
@@ -68,6 +80,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .describe(
           "ID of an existing file to copy content from (provide either this or content)"
         ),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "high",
     displayLabels: {
@@ -82,6 +98,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       description: z
         .string()
         .describe("New project description (free-form text)."),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "low",
     displayLabels: {
@@ -97,6 +117,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .string()
         .describe("Name/label for the URL (e.g., 'Documentation')"),
       url: z.string().describe("The URL to add"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "low",
     displayLabels: {
@@ -118,6 +142,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .string()
         .optional()
         .describe("New URL value (leave empty to keep current)"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "low",
     displayLabels: {
@@ -133,6 +161,10 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         .number()
         .optional()
         .describe("Maximum number of journal entries to return (default: 1)"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
     },
     stake: "never_ask",
     displayLabels: {

@@ -13647,6 +13647,24 @@
               "description": "MIME type (default: text/plain, or inherited from sourceFileId if provided)",
               "type": "string"
             },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
             "fileName": {
               "description": "Name of the file to add",
               "type": "string"
@@ -13669,6 +13687,24 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
             "name": {
               "description": "Name/label for the URL (e.g., 'Documentation')",
               "type": "string"
@@ -13695,6 +13731,24 @@
             "description": {
               "description": "New project description (free-form text).",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             }
           },
           "required": [
@@ -13713,6 +13767,24 @@
             "currentName": {
               "description": "Current name/label of the URL to edit",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             },
             "newName": {
               "description": "New name/label for the URL (leave empty to keep current)",
@@ -13735,7 +13807,26 @@
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
-          "properties": {},
+          "properties": {
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            }
+          },
           "type": "object"
         }
       },
@@ -13746,6 +13837,24 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
             "limit": {
               "description": "Maximum number of journal entries to return (default: 1)",
               "type": "number"
@@ -13764,6 +13873,24 @@
             "content": {
               "description": "New text content for the file (provide either this or sourceFileId)",
               "type": "string"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
             },
             "fileId": {
               "description": "ID of the file to update",
