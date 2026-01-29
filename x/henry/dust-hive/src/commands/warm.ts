@@ -247,6 +247,8 @@ export const warmCommand = withEnvironment("warm", async (env, options: WarmOpti
   console.log(`  Front:       http://localhost:${env.ports.front}`);
   console.log(`  Core:        http://localhost:${env.ports.core}`);
   console.log(`  Connectors:  http://localhost:${env.ports.connectors}`);
+  console.log(`  Front app:   http://localhost:${env.ports.frontSpaApp}`);
+  console.log(`  Front poke:  http://localhost:${env.ports.frontSpaPoke}`);
   if (!noForward) {
     console.log();
     console.log(`  Forwarded:   ports ${FORWARDER_PORTS.join(", ")} → env (for OAuth)`);
