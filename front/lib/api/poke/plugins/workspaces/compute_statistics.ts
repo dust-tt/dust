@@ -1,7 +1,7 @@
 import { createPlugin } from "@app/lib/api/poke/types";
 import { computeWorkspaceStatistics } from "@app/lib/api/workspace_statistics";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { Err, fileSizeToHumanReadable, Ok } from "@app/types";
 
 export const computeWorkspaceStatsPlugin = createPlugin({
@@ -24,7 +24,9 @@ export const computeWorkspaceStatsPlugin = createPlugin({
 
     const stats = statsRes.value;
 
-    const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+    const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+      workspace.sId
+    );
 
     return new Ok({
       display: "markdown",
