@@ -203,6 +203,14 @@ export class ActivityInboundLogInterceptor
         err instanceof ExternalOAuthTokenError ||
         err instanceof WorkspaceQuotaExceededError
       ) {
+        this.logger.info(
+          {
+            connectorId,
+            workspaceId,
+            dataSourceId,
+          },
+          "ExternalOAuthTokenError / WorkspaceQuotaExceededError, will stop connector"
+        );
         // We have a connector working on an expired token, we need to cancel the workflow.
         if (connectorId) {
           if (!connector) {
