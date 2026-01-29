@@ -37,7 +37,6 @@ export class DustConnectorWorkflowError extends Error {
     readonly originalError?: Error | APIError
   ) {
     super(message);
-    Object.setPrototypeOf(this, DustConnectorWorkflowError.prototype);
   }
 }
 
@@ -50,7 +49,6 @@ export class ProviderWorkflowError extends DustConnectorWorkflowError {
     originalError?: Error | APIError
   ) {
     super(message, type, originalError);
-    Object.setPrototypeOf(this, ProviderWorkflowError.prototype);
   }
 }
 
@@ -61,7 +59,6 @@ export class ProviderRateLimitError extends ProviderWorkflowError {
     readonly retryAfter?: number
   ) {
     super("slack", message, "rate_limit_error", originalError);
-    Object.setPrototypeOf(this, ProviderRateLimitError.prototype);
   }
 }
 
@@ -79,7 +76,6 @@ export class ProviderTransientError extends ProviderWorkflowError {
       "transient_upstream_activity_error",
       originalError
     );
-    Object.setPrototypeOf(this, ProviderTransientError.prototype);
   }
 }
 
@@ -88,7 +84,6 @@ export class HTTPError extends Error {
   constructor(message: string, statusCode: number) {
     super(message);
     this.statusCode = statusCode;
-    Object.setPrototypeOf(this, HTTPError.prototype);
   }
 }
 
@@ -102,9 +97,6 @@ export class ExternalOAuthTokenError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message);
     this.name = "ExternalOAuthTokenError";
-    // Fix for instanceof to work correctly when extending Error in TypeScript.
-    // See: https://github.com/Microsoft/TypeScript/wiki/Breaking-Changes#extending-built-ins-like-error-array-and-map-may-no-longer-work
-    Object.setPrototypeOf(this, ExternalOAuthTokenError.prototype);
   }
 }
 
@@ -116,7 +108,6 @@ export class WorkspaceQuotaExceededError extends Error {
         "It should realistically never happen for big workspaces."
     );
     this.name = "WorkspaceQuotaExceededError";
-    Object.setPrototypeOf(this, WorkspaceQuotaExceededError.prototype);
   }
 }
 
@@ -127,7 +118,6 @@ export class DataSourceQuotaExceededError extends Error {
         "let the activity succeed."
     );
     this.name = "DataSourceQuotaExceededError";
-    Object.setPrototypeOf(this, DataSourceQuotaExceededError.prototype);
   }
 }
 
@@ -143,7 +133,6 @@ export class TablesError extends Error {
   ) {
     super(message);
     this.name = "TablesError";
-    Object.setPrototypeOf(this, TablesError.prototype);
   }
 }
 
@@ -152,6 +141,5 @@ export class WebcrawlerUrlValidationError extends Error {
   constructor(readonly innerError?: Error) {
     super(innerError?.message || "Invalid or malicious URL detected");
     this.name = "WebcrawlerUrlValidationError";
-    Object.setPrototypeOf(this, WebcrawlerUrlValidationError.prototype);
   }
 }
