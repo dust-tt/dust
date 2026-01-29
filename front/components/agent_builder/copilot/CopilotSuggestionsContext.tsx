@@ -1,4 +1,5 @@
 import type { Editor } from "@tiptap/react";
+import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
 import React, {
   createContext,
@@ -48,11 +49,10 @@ export interface CopilotSuggestionsContextType {
   getPendingSuggestions: () => CopilotSuggestion[];
   getCommittedInstructions: () => string;
   backendSuggestions: AgentSuggestionType[];
-  getOrFetchSuggestion: (sId: string) => {
-    notFoundAfterFetch: boolean;
-    suggestion: AgentSuggestionType | null;
-  };
+  getSuggestion: (sId: string) => AgentSuggestionType | null;
+  triggerRefetch: () => void;
   isSuggestionsLoading: boolean;
+  isSuggestionsValidating: boolean;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -99,6 +99,7 @@ export const CopilotSuggestionsProvider = ({
   const {
     suggestions: backendSuggestions,
     isSuggestionsLoading,
+    isSuggestionsValidating,
     mutateSuggestions,
   } = useAgentSuggestions({
     agentConfigurationId,
@@ -107,31 +108,15 @@ export const CopilotSuggestionsProvider = ({
     workspaceId: owner.sId,
   });
 
-  const requestedSuggestionsRef = useRef<Set<string>>(new Set());
-  const getOrFetchSuggestion = useCallback(
-    (
-      sId: string
-    ): {
-      notFoundAfterFetch: boolean;
-      suggestion: AgentSuggestionType | null;
-    } => {
-      const suggestion = backendSuggestions.find((s) => s.sId === sId);
-      if (suggestion) {
-        return { notFoundAfterFetch: false, suggestion };
-      }
+  const getSuggestion = useCallback(
+    (sId: string) => backendSuggestions.find((s) => s.sId === sId) ?? null,
+    [backendSuggestions]
+  );
 
-      if (!requestedSuggestionsRef.current.has(sId)) {
-        requestedSuggestionsRef.current.add(sId);
-        // Defer to avoid setState during render (called from directive's useMemo).
-        queueMicrotask(() => {
-          void mutateSuggestions();
-        });
-        return { notFoundAfterFetch: false, suggestion: null };
-      }
-
-      return { notFoundAfterFetch: true, suggestion: null };
-    },
-    [backendSuggestions, mutateSuggestions]
+  // Debounced refetch to batch multiple directive renders into one SWR call.
+  const triggerRefetch = useMemo(
+    () => debounce(() => void mutateSuggestions(), 100),
+    [mutateSuggestions]
   );
 
   const registerEditor = useCallback((editor: Editor) => {
@@ -338,11 +323,13 @@ export const CopilotSuggestionsProvider = ({
       acceptSuggestion,
       addSuggestion,
       backendSuggestions,
-      getOrFetchSuggestion,
+      getSuggestion,
+      triggerRefetch,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
       isSuggestionsLoading,
+      isSuggestionsValidating,
       registerEditor,
       rejectAllSuggestions,
       rejectSuggestion,
@@ -353,11 +340,13 @@ export const CopilotSuggestionsProvider = ({
       acceptSuggestion,
       addSuggestion,
       backendSuggestions,
-      getOrFetchSuggestion,
+      getSuggestion,
+      triggerRefetch,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
       isSuggestionsLoading,
+      isSuggestionsValidating,
       registerEditor,
       rejectAllSuggestions,
       rejectSuggestion,
