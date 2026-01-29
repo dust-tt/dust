@@ -22,8 +22,7 @@ export async function deleteWebhookSource(
   webhookSource: WebhookSourceResource,
   { transaction }: { transaction?: Transaction } = {}
 ): Promise<Result<undefined, Error>> {
-  const canAdministrate =
-    await SpaceResource.canAdministrateSystemSpace(auth);
+  const canAdministrate = await SpaceResource.canAdministrateSystemSpace(auth);
   assert(
     canAdministrate,
     "The user is not authorized to delete a webhook source"
