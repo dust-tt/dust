@@ -5,9 +5,9 @@ import { InputBarContext } from "@app/components/assistant/conversation/input_ba
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useOnboardingConversation } from "@app/hooks/useOnboardingConversation";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import { useAppRouter } from "@app/lib/platform";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
-import { isString, toRichAgentMentionType } from "@app/types";
+import { toRichAgentMentionType } from "@app/types";
 
 export function ConversationPage() {
   const [conversationKey, setConversationKey] = useState<string | null>(null);
@@ -18,9 +18,10 @@ export function ConversationPage() {
   const activeConversationId = useActiveConversationId();
 
   // Redirect old ?assistant= query param to ?agent=
-  const { assistant, agent } = router.query;
+  const assistant = useSearchParam("assistant");
+  const agent = useSearchParam("agent");
   useEffect(() => {
-    if (isString(assistant) && !isString(agent)) {
+    if (assistant && !agent) {
       const params = new URLSearchParams(window.location.search);
       params.delete("assistant");
       params.set("agent", assistant);
@@ -43,7 +44,7 @@ export function ConversationPage() {
   const { agentConfiguration: selectedAgentConfiguration } =
     useAgentConfiguration({
       workspaceId: owner.sId,
-      agentConfigurationId: agent && isString(agent) ? agent : null,
+      agentConfigurationId: agent,
     });
 
   useEffect(() => {
