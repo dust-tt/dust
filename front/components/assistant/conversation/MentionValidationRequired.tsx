@@ -82,61 +82,63 @@ export function MentionValidationRequired({
   }
 
   return (
-    <ContentMessage variant="info" className="my-3 w-full max-w-full">
-      <div className="flex flex-col items-center gap-2 sm:flex-row">
-        <Icon visual={InformationCircleIcon} className="hidden sm:block" />
-        <div>
-          {isMessageTemporayState(message) ? (
-            <>
-              <span className="font-semibold">
-                @{message.configuration.name}
-              </span>{" "}
-              mentioned <span className="font-semibold">{mention.label}</span>.
-              {isProjectConv ? (
-                <> Do you want to add them to this project?</>
-              ) : (
-                <>
-                  {" "}
-                  Do you want to invite them? They'll see the full history and
-                  be able to reply.
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              {isProjectConv ? (
-                <>
-                  Add <b>{mention.label}</b> to this project? They'll have
-                  access to all project conversations.
-                </>
-              ) : (
-                <>
-                  Invite <b>{mention.label}</b> to this conversation? They'll
-                  see the full history and be able to reply.
-                </>
-              )}
-            </>
-          )}
+    <div className="py-3">
+      <ContentMessage variant="info" className="w-full max-w-full">
+        <div className="flex flex-col items-center gap-2 sm:flex-row">
+          <Icon visual={InformationCircleIcon} className="hidden sm:block" />
+          <div>
+            {isMessageTemporayState(message) ? (
+              <>
+                <span className="font-semibold">
+                  @{message.configuration.name}
+                </span>{" "}
+                mentioned <span className="font-semibold">{mention.label}</span>.
+                {isProjectConv ? (
+                  <> Do you want to add them to this project?</>
+                ) : (
+                  <>
+                    {" "}
+                    Do you want to invite them? They'll see the full history and
+                    be able to reply.
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {isProjectConv ? (
+                  <>
+                    Add <b>{mention.label}</b> to this project? They'll have
+                    access to all project conversations.
+                  </>
+                ) : (
+                  <>
+                    Invite <b>{mention.label}</b> to this conversation? They'll
+                    see the full history and be able to reply.
+                  </>
+                )}
+              </>
+            )}
+          </div>
+          <div className="ml-auto flex gap-2">
+            <Button
+              label="No"
+              variant="outline"
+              size="xs"
+              icon={XMarkIcon}
+              disabled={isSubmitting}
+              onClick={handleReject}
+            />
+            <Button
+              label={isProjectConv ? "Add to project" : "Yes"}
+              variant="highlight"
+              size="xs"
+              icon={isProjectConv ? PlusIcon : CheckIcon}
+              disabled={isSubmitting}
+              onClick={handleApprove}
+            />
+          </div>
         </div>
-        <div className="ml-auto flex gap-2">
-          <Button
-            label="No"
-            variant="outline"
-            size="xs"
-            icon={XMarkIcon}
-            disabled={isSubmitting}
-            onClick={handleReject}
-          />
-          <Button
-            label={isProjectConv ? "Add to project" : "Yes"}
-            variant="highlight"
-            size="xs"
-            icon={isProjectConv ? PlusIcon : CheckIcon}
-            disabled={isSubmitting}
-            onClick={handleApprove}
-          />
-        </div>
-      </div>
-    </ContentMessage>
+      </ContentMessage>
+    </div>
   );
 }
