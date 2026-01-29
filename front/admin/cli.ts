@@ -10,6 +10,7 @@ import {
   getDataSources,
   softDeleteDataSourceAndLaunchScrubWorkflow,
 } from "@app/lib/api/data_sources";
+import { getModelConfigByModelId } from "@app/lib/api/models";
 import { garbageCollectGoogleDriveDocument } from "@app/lib/api/poke/plugins/data_sources/garbage_collect_google_drive_document";
 import { Authenticator } from "@app/lib/auth";
 import { FREE_UPGRADED_PLAN_CODE } from "@app/lib/plans/plan_codes";
@@ -37,12 +38,7 @@ import {
   stopRetrieveTranscriptsWorkflow,
 } from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
-import {
-  ConnectorsAPI,
-  isRoleType,
-  removeNulls,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { ConnectorsAPI, isRoleType, removeNulls } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
@@ -336,9 +332,7 @@ const conversation = async (command: string, args: parseArgs.ParsedArgs) => {
       if (!args.modelId) {
         throw new Error("Missing --modelId argument");
       }
-      const model = SUPPORTED_MODEL_CONFIGS.find(
-        (m) => m.modelId === args.modelId
-      );
+      const model = getModelConfigByModelId(args.modelId);
       if (!model) {
         throw new Error(`Model not found: '${args.modelId}'`);
       }

@@ -29,8 +29,8 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
 import { getRemainingKeyCapMicroUsd } from "@app/lib/api/key_cap_tracking";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -602,7 +602,7 @@ export async function postUserMessage(
     const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig.featureFlag &&
+      supportedModelConfig?.featureFlag &&
       !featureFlags.includes(supportedModelConfig.featureFlag)
     ) {
       return new Err({
