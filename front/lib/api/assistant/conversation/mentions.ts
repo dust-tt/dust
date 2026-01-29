@@ -62,6 +62,7 @@ import {
   isAgentMention,
   isAgentMessageType,
   isContentFragmentType,
+  isProjectConversation,
   isRichUserMention,
   isUserMention,
   isUserMessageType,
@@ -195,7 +196,7 @@ export const createUserMentions = async (
         }
 
         // Auto approve mentions for users who are members of the conversation's project space.
-        if (!autoApprove && conversation.spaceId) {
+        if (!autoApprove && isProjectConversation(conversation)) {
           autoApprove = await isUserMemberOfSpace(auth, {
             userId: user.sId,
             spaceId: conversation.spaceId,
@@ -662,7 +663,7 @@ export const createAgentMessages = async (
             }
 
             // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
-            if (conversation.spaceId) {
+            if (isProjectConversation(conversation)) {
               // Check to skip heavy work if the agent configuration is only using the project space.
               if (
                 configuration.requestedSpaceIds.some(
@@ -926,7 +927,7 @@ export async function validateUserMention(
   const isApproval = approvalState === "approved";
 
   // For project conversations, add user to project space first when approving.
-  if (conversation.spaceId && isApproval) {
+  if (isProjectConversation(conversation) && isApproval) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
       return new Err({

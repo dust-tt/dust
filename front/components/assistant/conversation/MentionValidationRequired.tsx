@@ -10,10 +10,7 @@ import {
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import {
-  isMessageTemporayState,
-  isProjectConversation,
-} from "@app/components/assistant/conversation/types";
+import { isMessageTemporayState } from "@app/components/assistant/conversation/types";
 import { useMentionValidation } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
@@ -22,6 +19,7 @@ import type {
   RichMentionWithStatus,
   UserType,
 } from "@app/types";
+import { isProjectConversation } from "@app/types";
 
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;

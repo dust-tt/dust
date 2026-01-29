@@ -317,6 +317,10 @@ export type ConversationType = ConversationWithoutContentType & {
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
 
+export const isProjectConversation = <T extends ConversationWithoutContentType>(
+  conversation: T
+): conversation is T & { spaceId: string } => !!conversation.spaceId;
+
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
 
 /**
