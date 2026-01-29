@@ -1,4 +1,8 @@
-import type { GetStaticPaths, GetStaticProps, InferGetStaticPropsType } from "next";
+import type {
+  GetStaticPaths,
+  GetStaticProps,
+  InferGetStaticPropsType,
+} from "next";
 import type { ReactElement } from "react";
 
 import { INTEGRATION_ENRICHMENTS } from "@app/components/home/content/Integration/configs";
@@ -20,9 +24,7 @@ interface IntegrationPageProps {
 }
 
 // Serialize for static props
-function serializeIntegration(
-  integration: IntegrationBase
-): IntegrationBase {
+function serializeIntegration(integration: IntegrationBase): IntegrationBase {
   return {
     ...integration,
     tools: integration.tools.map((t) => ({ ...t })),
@@ -63,9 +65,8 @@ export const getStaticProps: GetStaticProps<IntegrationPageProps> = async ({
     enrichment,
   };
 
-  const relatedIntegrations = getRelatedIntegrations(integration).map(
-    serializeIntegration
-  );
+  const relatedIntegrations =
+    getRelatedIntegrations(integration).map(serializeIntegration);
 
   return {
     props: {

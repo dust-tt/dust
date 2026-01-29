@@ -1,11 +1,20 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import { INTERNAL_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerIconByName,
+  getInternalMCPServerInfo,
+  getInternalMCPServerToolStakes,
+  INTERNAL_MCP_SERVERS,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { CONNECTOR_UI_CONFIGURATIONS } from "@app/lib/connector_providers_ui";
 import type { ConnectorProvider } from "@app/types";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";
 
-import type { IntegrationBase, IntegrationCategory, IntegrationTool } from "../types";
+import type {
+  IntegrationBase,
+  IntegrationCategory,
+  IntegrationTool,
+} from "../types";
 import { getToolDescription } from "./toolDescriptions";
 
 // MCP servers to exclude from public pages (internal/system/auto servers)
@@ -123,6 +132,7 @@ const CONNECTOR_CATEGORY_MAP: Record<ConnectorProvider, IntegrationCategory> = {
   bigquery: "data",
   salesforce: "crm",
   gong: "transcripts",
+  dust_project: "data",
 };
 
 // Display names for MCP servers (snake_case to Title Case)
@@ -198,33 +208,35 @@ function isWriteAction(toolName: string): boolean {
 function extractToolsFromServer(
   serverName: keyof typeof INTERNAL_MCP_SERVERS
 ): { tools: IntegrationTool[]; icon: InternalAllowedIconType } {
-  const server = INTERNAL_MCP_SERVERS[serverName];
-  if (!server?.tools_stakes) {
+  const toolStakes = getInternalMCPServerToolStakes(serverName);
+  const icon = getInternalMCPServerIconByName(serverName);
+
+  if (!toolStakes) {
     return {
       tools: [],
-      icon: server.serverInfo.icon as InternalAllowedIconType,
+      icon: icon as InternalAllowedIconType,
     };
   }
 
-  const tools: IntegrationTool[] = Object.keys(server.tools_stakes).map(
-    (toolName) => {
-      const displayName = asDisplayToolName(toolName);
-      return {
-        name: toolName,
-        displayName,
-        description: getToolDescription(serverName, toolName, displayName),
-        isWriteAction: isWriteAction(toolName),
-      };
-    }
-  );
+  const tools: IntegrationTool[] = Object.keys(toolStakes).map((toolName) => {
+    const displayName = asDisplayToolName(toolName);
+    return {
+      name: toolName,
+      displayName,
+      description: getToolDescription(serverName, toolName, displayName),
+      isWriteAction: isWriteAction(toolName),
+    };
+  });
 
   return {
     tools,
-    icon: server.serverInfo.icon as InternalAllowedIconType,
+    icon: icon as InternalAllowedIconType,
   };
 }
 
-function getConnectorIcon(provider: ConnectorProvider): InternalAllowedIconType {
+function getConnectorIcon(
+  provider: ConnectorProvider
+): InternalAllowedIconType {
   // Map connector providers to their Sparkle icon names
   const iconMap: Partial<Record<ConnectorProvider, InternalAllowedIconType>> = {
     confluence: "ConfluenceLogo",
@@ -262,15 +274,16 @@ export function buildIntegrationRegistry(): IntegrationBase[] {
     const serverName = name as keyof typeof INTERNAL_MCP_SERVERS;
     const { tools, icon } = extractToolsFromServer(serverName);
     const displayName = MCP_DISPLAY_NAMES[name] ?? formatToolName(name);
+    const serverInfo = getInternalMCPServerInfo(serverName);
 
     integrationMap.set(name, {
       slug: name,
       name: displayName,
       type: "mcp_server",
-      description: server.serverInfo.description,
+      description: serverInfo.description,
       icon,
-      documentationUrl: server.serverInfo.documentationUrl,
-      authorizationRequired: !!server.serverInfo.authorization,
+      documentationUrl: serverInfo.documentationUrl,
+      authorizationRequired: !!serverInfo.authorization,
       tools,
       category: MCP_CATEGORY_MAP[name] ?? "productivity",
       isPreview: server.isPreview ?? false,

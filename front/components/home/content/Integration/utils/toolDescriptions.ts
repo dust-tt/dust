@@ -54,7 +54,8 @@ export const TOOL_DESCRIPTIONS: Record<string, Record<string, string>> = {
     get_deal: "Get a specific deal by ID",
     get_meeting: "Get a specific meeting by ID",
     get_file_public_url: "Get a public URL for a HubSpot file",
-    get_associated_meetings: "Get meetings associated with a contact or company",
+    get_associated_meetings:
+      "Get meetings associated with a contact or company",
     get_hubspot_link: "Generate a direct link to a HubSpot record",
     get_hubspot_portal_id: "Get the HubSpot portal ID for the account",
     list_owners: "List all owners in the HubSpot account",
@@ -62,7 +63,8 @@ export const TOOL_DESCRIPTIONS: Record<string, Record<string, string>> = {
     get_current_user_id: "Get the ID of the currently authenticated user",
     get_user_activity: "Get activity history for a user",
     list_associations: "List associations between HubSpot objects",
-    count_objects_by_properties: "Count objects matching specific property filters",
+    count_objects_by_properties:
+      "Count objects matching specific property filters",
     search_crm_objects: "Search CRM objects with advanced filters",
     create_contact: "Create a new contact in HubSpot",
     create_company: "Create a new company in HubSpot",

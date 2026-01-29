@@ -19,10 +19,11 @@ export function UseCasesSection({
     <section className="py-16">
       <Grid>
         <div className="col-span-12">
-          <H2 className="mb-4 text-center">
-            Use cases for {integrationName}
-          </H2>
-          <P size="lg" className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground">
+          <H2 className="mb-4 text-center">Use cases for {integrationName}</H2>
+          <P
+            size="lg"
+            className="mx-auto mb-12 max-w-2xl text-center text-muted-foreground"
+          >
             See how teams use Dust with {integrationName}
           </P>
         </div>
@@ -32,7 +33,7 @@ export function UseCasesSection({
           return (
             <div
               key={index}
-              className="col-span-12 rounded-lg border border-border bg-card p-6 md:col-span-6 lg:col-span-4"
+              className="bg-card col-span-12 rounded-lg border border-border p-6 md:col-span-6 lg:col-span-4"
             >
               <ResourceAvatar icon={IconComponent} size="sm" />
               <h3 className="mt-4 text-lg font-semibold text-foreground">

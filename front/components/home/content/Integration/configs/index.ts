@@ -72,8 +72,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Knowledge Base Q&A",
-        description:
-          "Get instant answers based on your Notion documentation.",
+        description: "Get instant answers based on your Notion documentation.",
         icon: "ActionLightbulbIcon",
       },
     ],
@@ -114,8 +113,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Documentation",
-        description:
-          "Generate and update documentation based on code changes.",
+        description: "Generate and update documentation based on code changes.",
         icon: "ActionLightbulbIcon",
       },
     ],
@@ -240,8 +238,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Knowledge Lookup",
-        description:
-          "Instantly find relevant help articles and documentation.",
+        description: "Instantly find relevant help articles and documentation.",
         icon: "ActionMagnifyingGlassIcon",
       },
     ],
@@ -270,8 +267,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     useCases: [
       {
         title: "Conversation AI",
-        description:
-          "Get AI-suggested responses for customer conversations.",
+        description: "Get AI-suggested responses for customer conversations.",
         icon: "ActionMegaphoneIcon",
       },
       {
@@ -306,8 +302,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Data Exploration",
-        description:
-          "Explore your data without writing complex queries.",
+        description: "Explore your data without writing complex queries.",
         icon: "ActionTableIcon",
       },
       {
@@ -342,8 +337,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     useCases: [
       {
         title: "Plain English Queries",
-        description:
-          "Query your data using natural language instead of SQL.",
+        description: "Query your data using natural language instead of SQL.",
         icon: "ActionMagnifyingGlassIcon",
       },
       {
@@ -354,8 +348,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Data Discovery",
-        description:
-          "Explore and understand your data schemas effortlessly.",
+        description: "Explore and understand your data schemas effortlessly.",
         icon: "ActionTableIcon",
       },
     ],
@@ -372,8 +365,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     useCases: [
       {
         title: "Call Summaries",
-        description:
-          "Get instant summaries of sales calls with key takeaways.",
+        description: "Get instant summaries of sales calls with key takeaways.",
         icon: "ActionDocumentTextIcon",
       },
       {
@@ -384,8 +376,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Coaching Insights",
-        description:
-          "Identify coaching opportunities and best practices.",
+        description: "Identify coaching opportunities and best practices.",
         icon: "ActionSpeakIcon",
       },
     ],
@@ -486,8 +477,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Smart Search",
-        description:
-          "Find emails using natural language queries.",
+        description: "Find emails using natural language queries.",
         icon: "ActionLightbulbIcon",
       },
     ],
@@ -510,8 +500,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Meeting Prep",
-        description:
-          "Get AI-generated briefings before important meetings.",
+        description: "Get AI-generated briefings before important meetings.",
         icon: "ActionDocumentTextIcon",
       },
       {
@@ -576,8 +565,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Content Updates",
-        description:
-          "Keep documentation up-to-date with AI-assisted updates.",
+        description: "Keep documentation up-to-date with AI-assisted updates.",
         icon: "ActionLightbulbIcon",
       },
     ],
@@ -600,14 +588,12 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Deal Tracking",
-        description:
-          "Get AI insights on deal health and next best actions.",
+        description: "Get AI insights on deal health and next best actions.",
         icon: "ActionPieChartIcon",
       },
       {
         title: "Activity Logging",
-        description:
-          "Auto-log sales activities and interactions.",
+        description: "Auto-log sales activities and interactions.",
         icon: "ActionDocumentTextIcon",
       },
     ],
@@ -636,8 +622,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
       },
       {
         title: "Knowledge Base",
-        description:
-          "Build and maintain IT documentation with AI assistance.",
+        description: "Build and maintain IT documentation with AI assistance.",
         icon: "ActionDocumentTextIcon",
       },
     ],
