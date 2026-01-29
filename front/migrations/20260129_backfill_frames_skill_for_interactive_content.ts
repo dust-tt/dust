@@ -121,7 +121,7 @@ async function backfillFramesSkillForWorkspace(
         {
           conversationId: conversation.sId,
         },
-        "Creating frames skill for conversation"
+        "Enabling frames skill for conversation"
       );
 
       if (execute) {
