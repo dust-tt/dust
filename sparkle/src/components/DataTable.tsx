@@ -1093,7 +1093,7 @@ DataTable.CellContent = function CellContent({
       )}
       {avatarStack && (
         <Avatar.Stack
-          avatars={avatarStack.items}
+          avatars={avatarStack.items.map((item) => ({ ...item, isRounded: true }))}
           nbVisibleItems={avatarStack.nbVisibleItems}
           size="xs"
         />
