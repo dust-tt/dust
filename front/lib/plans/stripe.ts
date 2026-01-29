@@ -21,9 +21,9 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";

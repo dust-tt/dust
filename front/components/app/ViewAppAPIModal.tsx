@@ -18,7 +18,7 @@ import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const CodeEditor = dynamic(
   () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),

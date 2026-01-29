@@ -40,10 +40,10 @@ import type {
   ContentNodeType,
 } from "@app/types";
 import {
-  assertNever,
   isContentNodeContentFragment,
   isFileContentFragment,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const isTextualContentType = (
   attachmentCitation: AttachmentCitation

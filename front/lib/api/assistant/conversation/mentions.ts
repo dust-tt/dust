@@ -58,7 +58,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   Err,
   isAgentMention,
   isAgentMessageType,
@@ -70,6 +69,7 @@ import {
   removeNulls,
   toMentionType,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { getConversation } from "./fetch";
 

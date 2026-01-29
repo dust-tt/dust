@@ -19,12 +19,12 @@ import type {
   ModelMessageTypeMultiActions,
 } from "@app/types";
 import {
-  assertNever,
   isAgentMessageType,
   isContentFragmentType,
   isUserMessageType,
 } from "@app/types";
 import type { AgentTextContentType } from "@app/types/assistant/agent_message_content";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Renders agent message steps into model messages

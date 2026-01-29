@@ -23,7 +23,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {

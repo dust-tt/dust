@@ -24,7 +24,8 @@ import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import { asDisplayName, assertNever, removeNulls } from "@app/types";
+import { asDisplayName, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;

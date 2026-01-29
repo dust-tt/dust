@@ -28,7 +28,8 @@ import type {
   DataSourceViewType,
   Result,
 } from "@app/types";
-import { assertNever, Err, Ok, removeNulls } from "@app/types";
+import { Err, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Type to represent data source configuration with resolved data source model
 export type ResolvedDataSourceConfiguration = DataSourceConfiguration & {

@@ -27,11 +27,11 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import {
-  assertNever,
   CoreAPI,
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const config = {
   api: {

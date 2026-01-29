@@ -82,7 +82,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import {
-  assertNever,
   ConversationError,
   Err,
   isAgentMention,
@@ -97,6 +96,7 @@ import {
   toMentionType,
 } from "@app/types";
 import { isAgentMessageType } from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;

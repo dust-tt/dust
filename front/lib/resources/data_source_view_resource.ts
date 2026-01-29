@@ -44,14 +44,8 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import {
-  assertNever,
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { UserResource } from "./user_resource";
 

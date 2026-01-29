@@ -5,7 +5,7 @@ import TsconfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 import type { WorkerName } from "@app/temporal/worker_registry";
 import { ALL_WORKERS } from "@app/temporal/worker_registry";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface WorkerInfo {
   name: string;

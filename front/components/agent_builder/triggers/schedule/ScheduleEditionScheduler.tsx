@@ -15,7 +15,7 @@ import type { TriggerViewsSheetFormValues } from "@app/components/agent_builder/
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useTextAsCronRule } from "@app/lib/swr/agent_triggers";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const MIN_DESCRIPTION_LENGTH = 10;
 

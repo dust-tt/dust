@@ -51,13 +51,8 @@ import type {
   SpaceType,
   WorkspaceType,
 } from "@app/types";
-import {
-  assertNever,
-  Err,
-  isOAuthProvider,
-  Ok,
-  setupOAuthConnection,
-} from "@app/types";
+import { Err, isOAuthProvider, Ok, setupOAuthConnection } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type DataSourceIntegration = {
   connectorProvider: ConnectorProvider;

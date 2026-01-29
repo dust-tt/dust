@@ -13,11 +13,11 @@ import {
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
 } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentMessageTokenClassification = GenerationTokensEvent["classification"];
 

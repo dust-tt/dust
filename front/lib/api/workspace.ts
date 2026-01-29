@@ -35,15 +35,8 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
-import {
-  ACTIVE_ROLES,
-  assertNever,
-  Err,
-  isBuilder,
-  md5,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { ACTIVE_ROLES, Err, isBuilder, md5, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";

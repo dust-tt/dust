@@ -52,7 +52,8 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type GetResponseBody = {
   success: boolean;

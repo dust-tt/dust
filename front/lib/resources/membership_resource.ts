@@ -30,7 +30,8 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type GetMembershipsOptions = RequireAtLeastOne<{
   users: UserResource[];

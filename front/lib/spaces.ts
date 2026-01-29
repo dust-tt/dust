@@ -22,7 +22,8 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, GLOBAL_SPACE_NAME } from "@app/types";
+import { GLOBAL_SPACE_NAME } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SPACE_SECTION_GROUP_ORDER = [
   "system",

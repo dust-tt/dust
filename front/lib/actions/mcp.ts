@@ -31,11 +31,9 @@ import type {
   TimeFrame,
   ToolErrorEvent,
 } from "@app/types";
-import {
-  assertNever,
-  isPersonalAuthenticationRequiredErrorContent,
-} from "@app/types";
+import { isPersonalAuthenticationRequiredErrorContent } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type ActionApprovalStateType =
   | "approved"

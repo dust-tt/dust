@@ -4,13 +4,13 @@ import _ from "lodash";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import {
-  assertNever,
   dustManagedCredentials,
   Err,
   normalizeError,
   Ok,
   removeNulls,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const credentials = dustManagedCredentials();
 

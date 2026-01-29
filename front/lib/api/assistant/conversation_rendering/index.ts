@@ -12,13 +12,13 @@ import type {
   Result,
 } from "@app/types";
 import {
-  assertNever,
   Err,
   isContentFragmentMessageTypeModel,
   isImageContent,
   isTextContent,
   Ok,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { InteractionWithTokens, MessageWithTokens } from "./pruning";
 import {

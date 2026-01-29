@@ -10,7 +10,8 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever, CoreAPI, isString } from "@app/types";
+import { CoreAPI, isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * @swagger

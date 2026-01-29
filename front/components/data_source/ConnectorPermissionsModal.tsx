@@ -84,7 +84,8 @@ import type {
   UpdateConnectorRequestBody,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, isOAuthProvider } from "@app/types";
+import { isOAuthProvider } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const getUseResourceHook =
   (owner: LightWorkspaceType, dataSource: DataSourceType) =>

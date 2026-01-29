@@ -10,7 +10,8 @@ import type { DataSourceViewResource } from "@app/lib/resources/data_source_view
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { DataSourceViewType, WithAPIErrorResponse } from "@app/types";
-import { assertNever, PatchDataSourceViewSchema } from "@app/types";
+import { PatchDataSourceViewSchema } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;

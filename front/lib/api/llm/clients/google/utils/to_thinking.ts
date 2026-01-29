@@ -9,7 +9,7 @@ import {
 } from "@app/lib/api/llm/clients/google/types";
 import { parseResponseFormatSchema } from "@app/lib/api/llm/utils";
 import type { ReasoningEffort } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const THINKING_BUDGET_CONFIG_MAPPING: Record<ReasoningEffort, number> = {
   // Budget of 0 would throw for some thinking models,
