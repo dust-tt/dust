@@ -246,7 +246,7 @@ export default function WorkspaceSkills({
         <Head>
           <title>Dust - Manage Skills</title>
         </Head>
-        <div className="flex w-full flex-col gap-8 pb-8 pt-2 lg:pt-8">
+        <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
           <Page.Header
             title="Manage Skills"
             icon={SKILL_ICON}
