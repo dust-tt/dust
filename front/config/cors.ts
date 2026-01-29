@@ -11,6 +11,10 @@ const STATIC_ALLOWED_ORIGINS = [
   "https://office-addins.dust.tt",
   // Poke SPA (backoffice).
   "https://poke.dust.tt",
+  // Legacy poke (Next.js).
+  // TODO(2026-01-28 SPA): Remove once poke.dust.tt is fully rolled out.
+  "https://dust.tt",
+  "https://eu.dust.tt",
 ] as const;
 
 const ALLOWED_ORIGIN_PATTERNS = [
