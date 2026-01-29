@@ -30,9 +30,9 @@ import {
   upgradeProSubscriptionToBusiness,
 } from "@app/lib/plans/stripe";
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
@@ -365,7 +365,9 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     // Prevent subscribing if the new plan has less users allowed then the current one on the workspace
     if (newPlan.maxUsersInWorkspace !== -1) {
-      const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+      const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+        workspace.sId
+      );
       if (activeSeats > newPlan.maxUsersInWorkspace) {
         throw new Error(
           `Cannot subscribe to plan ${planCode}: new plan has less users allowed than currently in workspace.`

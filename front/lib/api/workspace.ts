@@ -6,7 +6,6 @@ import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
@@ -521,7 +520,9 @@ export async function checkSeatCountForWorkspace(
   }
   const { data: subscriptionItems } = stripeSubscription.items;
 
-  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
 
   for (const item of subscriptionItems) {
     const usageToReportRes = getUsageToReportForSubscriptionItem(item);

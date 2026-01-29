@@ -43,11 +43,11 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -1740,7 +1740,8 @@ async function isMessagesLimitReached(
   }
 
   // Checking rate limit
-  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({
