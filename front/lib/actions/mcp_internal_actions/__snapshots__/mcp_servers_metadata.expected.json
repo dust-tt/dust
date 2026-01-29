@@ -16912,14 +16912,24 @@
         }
       },
       {
+        "name": "list_ticket_fields",
+        "description": "Lists all available Zendesk ticket fields (system and custom) including their IDs, titles, and types. CRITICAL: Call this tool FIRST when searching for business-specific data - these are typically stored as CUSTOM FIELDS, not tags or standard fields. Returns field IDs needed for search_tickets queries.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {},
+          "type": "object"
+        }
+      },
+      {
         "name": "search_tickets",
-        "description": "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their details. You can search by status, priority, assignee, tags, and other fields. Query examples: 'status:open', 'priority:high', 'status:open priority:urgent', 'assignee:me', 'tags:bug'.",
+        "description": "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their details. You can search by status, priority, assignee, tags, custom fields, and other fields. IMPORTANT: Business-specific data are often stored in CUSTOM FIELDS, not tags. Use list_ticket_fields FIRST to discover custom field IDs, then search with: custom_field_{id}:\"exact_value\". Query examples: 'status:open', 'priority:high', 'assignee:me', 'tags:bug', 'custom_field_123456:\"ABC123\"'. Note: tags are simple labels, custom fields contain structured data.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
             "query": {
-              "description": "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' status:pending', 'assignee:123', 'tags:bug tags:critical'.Do not include 'type:ticket' as it is automatically added.",
+              "description": "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' status:pending', 'assignee:123', 'tags:bug tags:critical', 'custom_field_123456:\"value\"'. IMPORTANT: For business data, use custom_field_{id}:\"value\" syntax - call list_ticket_fields first to get the field ID. Do not include 'type:ticket' as it is automatically added.",
               "type": "string"
             },
             "sortBy": {
@@ -16952,6 +16962,7 @@
     "toolsStakes": {
       "draft_reply": "low",
       "get_ticket": "never_ask",
+      "list_ticket_fields": "never_ask",
       "search_tickets": "never_ask"
     }
   }
