@@ -229,6 +229,76 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this._mcpServerConfigurations;
   }
 
+  /**
+   * Get attached knowledge from the skill's data source configurations.
+   * Requires data source views to be fetched first.
+   */
+  async getAttachedKnowledge(
+    auth: Authenticator
+  ): Promise<SkillAttachedKnowledge[]> {
+    if (this.dataSourceConfigurations.length === 0) {
+      return [];
+    }
+
+    const dataSourceViewIds = uniq(
+      this.dataSourceConfigurations.map((c) => c.dataSourceViewId)
+    );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      dataSourceViewIds
+    );
+
+    const dataSourceViewMap = new Map(dataSourceViews.map((v) => [v.id, v]));
+
+    const attachedKnowledge: SkillAttachedKnowledge[] = [];
+
+    for (const config of this.dataSourceConfigurations) {
+      const dataSourceView = dataSourceViewMap.get(config.dataSourceViewId);
+      if (dataSourceView) {
+        for (const nodeId of config.parentsIn) {
+          attachedKnowledge.push({
+            dataSourceView,
+            nodeId,
+          });
+        }
+      }
+    }
+
+    return attachedKnowledge;
+  }
+
+  /**
+   * Compute the requestedSpaceIds from MCP server views and attached knowledge.
+   * This is the source of truth for which spaces a skill needs access to.
+   */
+  static async computeRequestedSpaceIds(
+    auth: Authenticator,
+    {
+      mcpServerViews,
+      attachedKnowledge,
+    }: {
+      mcpServerViews: MCPServerViewResource[];
+      attachedKnowledge: SkillAttachedKnowledge[];
+    }
+  ): Promise<ModelId[]> {
+    const mcpServerViewIds = mcpServerViews.map((v) => v.sId);
+    const spaceIdsFromMcpServerViews =
+      await MCPServerViewResource.listSpaceRequirementsByIds(
+        auth,
+        mcpServerViewIds
+      );
+
+    const spaceIdsFromAttachedKnowledge = attachedKnowledge.map(
+      (k) => k.dataSourceView.space.id
+    );
+
+    return uniq([
+      ...spaceIdsFromMcpServerViews,
+      ...spaceIdsFromAttachedKnowledge,
+    ]);
+  }
+
   get isAutoEnabled(): boolean {
     if (!this.globalSId) {
       return false;
@@ -760,65 +830,87 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   }
 
   /**
-   * List custom skills that have a specific space in their requestedSpaceIds.
-   * This is used during space deletion to find skills that need to be updated.
+   * List skills that use any of the given MCP server view IDs.
+   * Used during space deletion to find skills that need to be updated.
    */
-  static async listByRequestedSpaceId(
+  static async listByMCPServerViewIds(
     auth: Authenticator,
-    spaceId: ModelId
+    mcpServerViewIds: ModelId[]
   ): Promise<SkillResource[]> {
+    if (mcpServerViewIds.length === 0) {
+      return [];
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
-    // Query skill IDs where requestedSpaceIds array contains the given spaceId.
-    const skillsWithSpace = await this.model.findAll({
-      attributes: ["id"],
+    // Query skill IDs that have any of the given MCP server views.
+    const skillConfigs = await SkillMCPServerConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
       where: {
         workspaceId: workspace.id,
-        status: "active",
-        requestedSpaceIds: {
-          [Op.contains]: [spaceId],
+        mcpServerViewId: {
+          [Op.in]: mcpServerViewIds,
         },
       },
     });
 
-    if (skillsWithSpace.length === 0) {
+    if (skillConfigs.length === 0) {
       return [];
     }
 
-    // Use baseFetch to get full SkillResource objects.
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
     return this.baseFetch(auth, {
       where: {
         id: {
-          [Op.in]: skillsWithSpace.map((s) => s.id),
+          [Op.in]: skillIds,
         },
+        status: "active",
       },
       onlyCustom: true,
     });
   }
 
   /**
-   * Update the requestedSpaceIds for this skill.
-   * Used only during space deletion to remove a deleted space from skills.
-   * Note: In general, spaces should not be manipulated manually as they will be recomputed from tools and knowledge.
+   * List skills that use any of the given data source view IDs.
+   * Used during space deletion to find skills that need to be updated.
    */
-  async updateRequestedSpaceIds(
-    newSpaceIds: ModelId[],
-    { transaction }: { transaction?: Transaction }
-  ): Promise<Result<boolean, Error>> {
-    const updated = await SkillResource.model.update(
-      {
-        requestedSpaceIds: newSpaceIds,
-      },
-      {
-        where: {
-          workspaceId: this.workspaceId,
-          id: this.id,
-        },
-        transaction,
-      }
-    );
+  static async listByDataSourceViewIds(
+    auth: Authenticator,
+    dataSourceViewIds: ModelId[]
+  ): Promise<SkillResource[]> {
+    if (dataSourceViewIds.length === 0) {
+      return [];
+    }
 
-    return new Ok(updated[0] > 0);
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs that have any of the given data source views.
+    const skillConfigs = await SkillDataSourceConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        dataSourceViewId: {
+          [Op.in]: dataSourceViewIds,
+        },
+      },
+    });
+
+    if (skillConfigs.length === 0) {
+      return [];
+    }
+
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillIds,
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+    });
   }
 
   /**

@@ -9,10 +9,7 @@ import {
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
-import {
-  SkillConfigurationModel,
-  SkillMCPServerConfigurationModel,
-} from "@app/lib/models/skill";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
@@ -1051,17 +1048,11 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         space!
       );
 
-      // Create a skill with the space in requestedSpaceIds
+      // Create a skill with the space in requestedSpaceIds and the MCP server view
       const skill = await SkillFactory.create(adminAuth, {
         name: "Test Skill With Tool",
         requestedSpaceIds: [space!.id],
-      });
-
-      // Link the MCP server view to the skill
-      await SkillMCPServerConfigurationModel.create({
-        workspaceId: workspace.id,
-        skillConfigurationId: skill.id,
-        mcpServerViewId: serverView.id,
+        mcpServerViews: [serverView],
       });
 
       // Verify the skill has the space in its requestedSpaceIds

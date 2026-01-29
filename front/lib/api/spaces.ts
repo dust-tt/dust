@@ -15,6 +15,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -155,22 +156,74 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       { concurrency: 4 }
     );
 
-    // Update skills that have this space in their requestedSpaceIds.
-    const skillsWithSpace = await SkillResource.listByRequestedSpaceId(
-      auth,
-      space.id
-    );
+    // Get MCP server views and data source views from the space being deleted.
+    const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
+    const mcpServerViewIds = mcpServerViews.map((v) => v.id);
+    const dataSourceViewIds = dataSourceViews.map((v) => v.id);
 
-    await concurrentExecutor(
-      skillsWithSpace,
-      async (skill) => {
-        const newSpaceIds = skill.requestedSpaceIds.filter(
-          (id) => id !== space.id
+    // Find all skills that reference MCP server views or data source views from this space.
+    const [skillsWithMCPViews, skillsWithDataSourceViews] = await Promise.all([
+      SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
+      SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
+    ]);
+
+    // Merge and deduplicate skills.
+    const skillMap = new Map<number, SkillResource>();
+    for (const skill of [...skillsWithMCPViews, ...skillsWithDataSourceViews]) {
+      skillMap.set(skill.id, skill);
+    }
+    const skillsToUpdate = Array.from(skillMap.values());
+
+    // Create sets for quick lookup.
+    const mcpServerViewIdSet = new Set(mcpServerViewIds);
+    const dataSourceViewIdSet = new Set(dataSourceViewIds);
+
+    // Update each skill to remove MCP server views and attached knowledge from the deleted space.
+    // Note: updateSkill manages its own transaction, so we call it sequentially.
+    for (const skill of skillsToUpdate) {
+      // Filter out MCP server views from the deleted space.
+      const filteredMCPServerViews = skill.mcpServerViews.filter(
+        (v) => !mcpServerViewIdSet.has(v.id)
+      );
+
+      // Get attached knowledge and filter out those from the deleted space.
+      const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+      const filteredAttachedKnowledge = attachedKnowledge.filter(
+        (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
+      );
+
+      // Compute the new requestedSpaceIds from the filtered tools and knowledge.
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        auth,
+        {
+          mcpServerViews: filteredMCPServerViews,
+          attachedKnowledge: filteredAttachedKnowledge,
+        }
+      );
+
+      // Log an error if the deleted space is still in requestedSpaceIds.
+      if (requestedSpaceIds.includes(space.id)) {
+        logger.error(
+          {
+            skillId: skill.sId,
+            spaceId: space.sId,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          },
+          "Deleted space still present in skill requestedSpaceIds after filtering"
         );
-        await skill.updateRequestedSpaceIds(newSpaceIds, { transaction: t });
-      },
-      { concurrency: 4 }
-    );
+      }
+
+      await skill.updateSkill(auth, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: filteredMCPServerViews,
+        attachedKnowledge: filteredAttachedKnowledge,
+        requestedSpaceIds,
+      });
+    }
 
     // Update agents that have this space in their requestedSpaceIds.
     const agentsWithSpace = await AgentConfigurationModel.findAll({

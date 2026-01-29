@@ -11,6 +11,8 @@ import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFa
 import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 
@@ -731,132 +733,176 @@ describe("SkillResource", () => {
     });
   });
 
-  describe("listByRequestedSpaceId", () => {
-    it("should return skills that have a specific space in their requestedSpaceIds", async () => {
-      const space1 = await SpaceFactory.regular(testContext.workspace);
-      const space2 = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
-      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
-
-      // Create a skill with space1 in requestedSpaceIds.
-      const skillWithSpace1 = await SkillFactory.create(
-        testContext.authenticator,
-        {
-          name: "Skill With Space 1",
-          requestedSpaceIds: [space1.id],
-        }
-      );
-
-      // Create a skill with both spaces in requestedSpaceIds.
-      const skillWithBothSpaces = await SkillFactory.create(
-        testContext.authenticator,
-        {
-          name: "Skill With Both Spaces",
-          requestedSpaceIds: [space1.id, space2.id],
-        }
-      );
-
-      // Create a skill with only space2 in requestedSpaceIds.
-      await SkillFactory.create(testContext.authenticator, {
-        name: "Skill With Space 2 Only",
-        requestedSpaceIds: [space2.id],
-      });
-
-      // Create a skill with no requestedSpaceIds.
-      await SkillFactory.create(testContext.authenticator, {
-        name: "Skill With No Spaces",
-        requestedSpaceIds: [],
-      });
-
-      // List skills by space1.
-      const skillsWithSpace1 = await SkillResource.listByRequestedSpaceId(
-        testContext.authenticator,
-        space1.id
-      );
-
-      expect(skillsWithSpace1).toHaveLength(2);
-      const skillIds = skillsWithSpace1.map((s) => s.id);
-      expect(skillIds).toContain(skillWithSpace1.id);
-      expect(skillIds).toContain(skillWithBothSpaces.id);
-    });
-
-    it("should return empty array when no skills have the space", async () => {
+  describe("listByMCPServerViewIds", () => {
+    it("should return skills that use any of the given MCP server view IDs", async () => {
       const space = await SpaceFactory.regular(testContext.workspace);
       await GroupSpaceFactory.associate(space, testContext.globalGroup);
 
-      // Create a skill without this space.
+      const server = await RemoteMCPServerFactory.create(testContext.workspace);
+      const serverView = await MCPServerViewFactory.create(
+        testContext.workspace,
+        server.sId,
+        space
+      );
+
+      // Create a skill with the MCP server view
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With MCP",
+        requestedSpaceIds: [space.id],
+        mcpServerViews: [serverView],
+      });
+
+      // Create a skill without MCP server views
       await SkillFactory.create(testContext.authenticator, {
-        name: "Skill Without Space",
+        name: "Skill Without MCP",
         requestedSpaceIds: [],
       });
 
-      const skills = await SkillResource.listByRequestedSpaceId(
+      // Test that skills with the MCP server view are returned
+      const skillsWithMCP = await SkillResource.listByMCPServerViewIds(
         testContext.authenticator,
-        space.id
+        [serverView.id]
       );
+      expect(skillsWithMCP).toHaveLength(1);
+      expect(skillsWithMCP[0].id).toBe(skill1.id);
 
-      expect(skills).toHaveLength(0);
+      // Test with empty array returns empty
+      const emptyResult = await SkillResource.listByMCPServerViewIds(
+        testContext.authenticator,
+        []
+      );
+      expect(emptyResult).toHaveLength(0);
+
+      // Test with non-existent IDs returns empty
+      const nonExistentResult = await SkillResource.listByMCPServerViewIds(
+        testContext.authenticator,
+        [999999]
+      );
+      expect(nonExistentResult).toHaveLength(0);
     });
   });
 
-  describe("updateRequestedSpaceIds", () => {
-    it("should update the requestedSpaceIds for a skill", async () => {
-      const space1 = await SpaceFactory.regular(testContext.workspace);
-      const space2 = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
-      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+  describe("listByDataSourceViewIds", () => {
+    it("should return skills that use any of the given data source view IDs", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
 
-      const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill To Update",
-        requestedSpaceIds: [space1.id],
+      const dsv1 = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+      const dsv2 = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+      const skill1 = await SkillFactory.create(testContext.authenticator, {
+        name: "Skill With DSV1",
+        requestedSpaceIds: [space.id],
       });
 
-      // Verify initial state.
-      expect(skill.requestedSpaceIds).toEqual([space1.id]);
+      await createDataSourceConfiguration({
+        dataSourceView: dsv1,
+        parentsIn: ["node1"],
+        skillId: skill1.id,
+      });
 
-      // Update to include both spaces.
-      const result = await skill.updateRequestedSpaceIds(
-        [space1.id, space2.id],
-        {}
-      );
-      expect(result.isOk()).toBe(true);
+      // Create another skill without data source configuration
+      await SkillFactory.create(testContext.authenticator, {
+        name: "Skill Without DSV",
+        requestedSpaceIds: [],
+      });
 
-      // Fetch the skill again to verify the update.
-      const updatedSkill = await SkillResource.fetchByModelIdWithAuth(
+      // Test that skills with dsv1 are returned
+      const skillsWithDsv1 = await SkillResource.listByDataSourceViewIds(
         testContext.authenticator,
-        skill.id
+        [dsv1.id]
       );
-      expect(updatedSkill).not.toBeNull();
-      expect(updatedSkill!.requestedSpaceIds.map((id) => Number(id))).toEqual([
-        space1.id,
-        space2.id,
-      ]);
+      expect(skillsWithDsv1).toHaveLength(1);
+      expect(skillsWithDsv1[0].id).toBe(skill1.id);
+
+      // Test with non-existent ID returns empty
+      const emptyResult = await SkillResource.listByDataSourceViewIds(
+        testContext.authenticator,
+        [dsv2.id]
+      );
+      expect(emptyResult).toHaveLength(0);
+
+      // Test with empty array returns empty
+      const emptyArrayResult = await SkillResource.listByDataSourceViewIds(
+        testContext.authenticator,
+        []
+      );
+      expect(emptyArrayResult).toHaveLength(0);
     });
+  });
 
-    it("should remove a space from requestedSpaceIds", async () => {
-      const space1 = await SpaceFactory.regular(testContext.workspace);
-      const space2 = await SpaceFactory.regular(testContext.workspace);
-      await GroupSpaceFactory.associate(space1, testContext.globalGroup);
-      await GroupSpaceFactory.associate(space2, testContext.globalGroup);
+  describe("getAttachedKnowledge", () => {
+    it("should return attached knowledge from data source configurations", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+
+      const dsv = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
 
       const skill = await SkillFactory.create(testContext.authenticator, {
-        name: "Skill To Update",
-        requestedSpaceIds: [space1.id, space2.id],
+        name: "Skill With Knowledge",
+        requestedSpaceIds: [space.id],
       });
 
-      // Remove space2 from the skill.
-      const result = await skill.updateRequestedSpaceIds([space1.id], {});
-      expect(result.isOk()).toBe(true);
+      // Add data source configuration
+      await createDataSourceConfiguration({
+        dataSourceView: dsv,
+        parentsIn: ["node1", "node2"],
+        skillId: skill.id,
+      });
 
-      // Fetch the skill again to verify the update.
-      const updatedSkill = await SkillResource.fetchByModelIdWithAuth(
+      // Re-fetch the skill to get the updated data source configurations
+      const freshSkill = await SkillResource.fetchByModelIdWithAuth(
         testContext.authenticator,
         skill.id
       );
-      expect(updatedSkill).not.toBeNull();
-      expect(updatedSkill!.requestedSpaceIds.map((id) => Number(id))).toEqual([
-        space1.id,
-      ]);
+      expect(freshSkill).not.toBeNull();
+
+      const attachedKnowledge = await freshSkill!.getAttachedKnowledge(
+        testContext.authenticator
+      );
+
+      expect(attachedKnowledge).toHaveLength(2);
+      expect(attachedKnowledge[0].nodeId).toBe("node1");
+      expect(attachedKnowledge[1].nodeId).toBe("node2");
+      expect(attachedKnowledge[0].dataSourceView.id).toBe(dsv.id);
+    });
+  });
+
+  describe("computeRequestedSpaceIds", () => {
+    it("should compute space IDs from attached knowledge", async () => {
+      const space = await SpaceFactory.regular(testContext.workspace);
+      await GroupSpaceFactory.associate(space, testContext.globalGroup);
+
+      const dsv = await DataSourceViewFactory.folder(
+        testContext.workspace,
+        space,
+        testContext.user
+      );
+
+      const attachedKnowledge: SkillAttachedKnowledge[] = [
+        { dataSourceView: dsv, nodeId: "node1" },
+      ];
+
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        testContext.authenticator,
+        {
+          mcpServerViews: [],
+          attachedKnowledge,
+        }
+      );
+
+      expect(requestedSpaceIds).toContain(space.id);
     });
   });
 
