@@ -250,6 +250,19 @@ class ZendeskClient {
     return new Ok(result.value.ticket_fields.filter((f) => f.active));
   }
 
+  async listAllTicketFields(): Promise<Result<ZendeskTicketField[], Error>> {
+    const result = await this.request(
+      `ticket_fields.json`,
+      ZendeskTicketFieldsResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    return new Ok(result.value.ticket_fields.filter((f) => f.active));
+  }
+
   async getTicketComments(
     ticketId: number
   ): Promise<Result<ZendeskTicketComment[], Error>> {

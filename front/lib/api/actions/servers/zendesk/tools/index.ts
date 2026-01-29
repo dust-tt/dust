@@ -156,6 +156,39 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     ]);
   },
 
+  list_ticket_fields: async (_, { authInfo }) => {
+    const clientResult = getZendeskClient(authInfo);
+    if (clientResult.isErr()) {
+      return clientResult;
+    }
+    const client = clientResult.value;
+
+    const result = await client.listAllTicketFields();
+
+    if (result.isErr()) {
+      return new Err(
+        new MCPError(`Failed to list ticket fields: ${result.error.message}`, {
+          tracked: isTrackedError(result.error),
+        })
+      );
+    }
+
+    const fields = result.value;
+    const fieldSummaries = fields.map((f) => ({
+      id: f.id,
+      title: f.title,
+      type: f.type,
+      active: f.active,
+    }));
+
+    return new Ok([
+      {
+        type: "text" as const,
+        text: `Found ${fields.length} active ticket field(s):\n\n${JSON.stringify(fieldSummaries, null, 2)}`,
+      },
+    ]);
+  },
+
   draft_reply: async ({ ticketId, body }, { authInfo }) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
