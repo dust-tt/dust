@@ -5,6 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   Input,
+  Label,
   PlusIcon,
   Sheet,
   SheetContainer,
@@ -128,10 +129,8 @@ export const NewAPIKeyDialog = ({
                 )}
               </BaseFormFieldSection>
 
-              <div className="space-y-4">
-                <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-                  Default Space
-                </h3>
+              <div className="flex flex-col gap-2">
+                <Label>Default Space</Label>
                 <div>
                   <Button
                     label={GLOBAL_SPACE_NAME}
@@ -143,10 +142,8 @@ export const NewAPIKeyDialog = ({
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
-                  Add optional additional Space
-                </h3>
+              <div className="flex flex-col gap-2">
+                <Label>Add optional additional Space</Label>
                 <div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
