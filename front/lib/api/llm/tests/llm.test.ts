@@ -1,3 +1,4 @@
+import assert from "assert";
 import clone from "lodash/clone";
 import { describe, it, vi } from "vitest";
 
@@ -215,6 +216,8 @@ function getSupportedConversations({
     modelId,
     providerId,
   });
+  assert(modelConfig, `Model config not found for ${providerId} / ${modelId}`);
+
   if (modelConfig.supportsVision) {
     conversationsToTest.push(...TEST_VISION_CONVERSATIONS);
   }
