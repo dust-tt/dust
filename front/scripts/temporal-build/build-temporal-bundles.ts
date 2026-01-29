@@ -59,6 +59,8 @@ function getWorkerDirectory(workerName: WorkerName): string | null {
       return path.join(baseDir, "poke/temporal");
     case "production_checks":
       return path.join(baseDir, "temporal/production_checks");
+    case "project_journal_queue":
+      return path.join(baseDir, "temporal/project_journal_queue");
     case "relocation":
       return path.join(baseDir, "temporal/relocation");
     case "remote_tools_sync":
