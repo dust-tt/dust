@@ -36,10 +36,10 @@ makeScript(
 
     const lightWorkspace = renderLightWorkspaceType({ workspace });
 
-    const keyToRotate = await KeyResource.fetchByWorkspaceAndId(
-      lightWorkspace,
-      keyId
-    );
+    const keyToRotate = await KeyResource.fetchByWorkspaceAndId({
+      workspace: lightWorkspace,
+      id: keyId,
+    });
 
     if (!keyToRotate) {
       logger.error("Key not found.");

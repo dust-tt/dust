@@ -13,11 +13,14 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "./programmatic_usage_tracking";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-async function fetchKeyMonthlyCap(
-  keyId: ModelId,
-  workspace: LightWorkspaceType
-): Promise<number | null> {
-  const key = await KeyResource.fetchByWorkspaceAndId(workspace, keyId);
+async function fetchKeyMonthlyCap({
+  workspace,
+  keyId,
+}: {
+  workspace: LightWorkspaceType;
+  keyId: ModelId;
+}): Promise<number | null> {
+  const key = await KeyResource.fetchByWorkspaceAndId({ workspace, id: keyId });
 
   if (!key) {
     return null;
@@ -26,7 +29,7 @@ async function fetchKeyMonthlyCap(
   return key.monthlyCapMicroUsd;
 }
 
-const keyCapCacheResolver = (keyId: ModelId, _workspace: LightWorkspaceType) =>
+const keyCapCacheResolver = ({ keyId }: { keyId: ModelId }) =>
   `key-cap:${keyId}`;
 
 /**
@@ -61,7 +64,7 @@ async function getLast29DaysKeyUsageMicroUsd(
   keyId: ModelId,
   workspace: LightWorkspaceType
 ): Promise<Result<number, Error>> {
-  const key = await KeyResource.fetchByWorkspaceAndId(workspace, keyId);
+  const key = await KeyResource.fetchByWorkspaceAndId({ workspace, id: keyId });
 
   if (!key || !key.name) {
     return new Ok(0);
@@ -125,10 +128,13 @@ function getSecondsUntilMidnightUTC(): number {
  * Get usage from Redis cache, initializing from ES if missing.
  * Fails close: returns Err on Redis/ES errors to block API calls.
  */
-async function getKeyUsageMicroUsd(
-  keyId: ModelId,
-  workspace: LightWorkspaceType
-): Promise<Result<number, Error>> {
+async function getKeyUsageMicroUsd({
+  workspace,
+  keyId,
+}: {
+  workspace: LightWorkspaceType;
+  keyId: ModelId;
+}): Promise<Result<number, Error>> {
   const redisKey = getKeyUsageRedisKey(keyId);
 
   const redis = await runOnRedis(
@@ -209,13 +215,19 @@ export async function hasKeyReachedUsageCap(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const cap = await getKeyMonthlyCapCached(keyAuth.id, workspace);
+  const cap = await getKeyMonthlyCapCached({
+    workspace,
+    keyId: keyAuth.id,
+  });
 
   if (cap === null) {
     return false;
   }
 
-  const usageResult = await getKeyUsageMicroUsd(keyAuth.id, workspace);
+  const usageResult = await getKeyUsageMicroUsd({
+    workspace,
+    keyId: keyAuth.id,
+  });
 
   if (usageResult.isErr()) {
     logger.error(
@@ -262,13 +274,16 @@ export async function getRemainingKeyCapMicroUsd(
   }
 
   const workspace = auth.getNonNullableWorkspace();
-  const cap = await getKeyMonthlyCapCached(keyAuth.id, workspace);
+  const cap = await getKeyMonthlyCapCached({ workspace, keyId: keyAuth.id });
 
   if (cap === null) {
     return null;
   }
 
-  const usageResult = await getKeyUsageMicroUsd(keyAuth.id, workspace);
+  const usageResult = await getKeyUsageMicroUsd({
+    workspace,
+    keyId: keyAuth.id,
+  });
 
   if (usageResult.isErr()) {
     logger.error(
