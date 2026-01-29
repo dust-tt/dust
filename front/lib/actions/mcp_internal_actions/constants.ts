@@ -30,6 +30,7 @@ import { GMAIL_SERVER } from "@app/lib/api/actions/servers/gmail/metadata";
 import { GOOGLE_CALENDAR_SERVER } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { GOOGLE_DRIVE_SERVER } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { GOOGLE_SHEETS_SERVER } from "@app/lib/api/actions/servers/google_sheets/metadata";
+import { HTTP_CLIENT_SERVER } from "@app/lib/api/actions/servers/http_client/metadata";
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
@@ -805,19 +806,7 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "http_client",
-      version: "1.0.0",
-      description:
-        "Make HTTP requests to external APIs with optional Bearer token authentication.",
-      authorization: null,
-      icon: "ActionGlobeAltIcon",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelectionDescription:
-        "This is optional. If set, this secret will be used as a default Bearer token (Authorization header) for HTTP requests.",
-      developerSecretSelection: "optional",
-    },
+    metadata: HTTP_CLIENT_SERVER,
   },
   ashby: {
     id: 40,
