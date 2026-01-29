@@ -1546,26 +1546,44 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
       const workspace = auth.getNonNullableWorkspace();
 
-      await SkillDataSourceConfigurationModel.destroy({
+      // Delete agent-skill associations.
+      await AgentSkillModel.destroy({
         where: {
-          skillConfigurationId: this.id,
+          customSkillId: this.id,
           workspaceId: workspace.id,
         },
         transaction,
       });
 
+      const whereWorkspaceIdAndSkillId = {
+        skillConfigurationId: this.id,
+        workspaceId: workspace.id,
+      };
+
       // Delete the GroupSkillModel entry and the associated editor group.
       await GroupSkillModel.destroy({
-        where: {
-          skillConfigurationId: this.id,
-          workspaceId: workspace.id,
-        },
+        where: whereWorkspaceIdAndSkillId,
         transaction,
       });
 
       if (this.editorGroup) {
         await this.editorGroup.delete(auth, { transaction });
       }
+
+      await SkillDataSourceConfigurationModel.destroy({
+        where: whereWorkspaceIdAndSkillId,
+        transaction,
+      });
+
+      await SkillMCPServerConfigurationModel.destroy({
+        where: whereWorkspaceIdAndSkillId,
+        transaction,
+      });
+
+      await SkillVersionModel.destroy({
+        where: whereWorkspaceIdAndSkillId,
+        transaction,
+      });
 
       const affectedCount = await this.model.destroy({
         where: {

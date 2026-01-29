@@ -690,6 +690,45 @@ describe("SkillResource", () => {
       );
       expect(editorGroupsAfter).toHaveLength(0);
     });
+
+    it("should delete agent-skill links when deleting a skill", async () => {
+      const skillResource = await SkillFactory.create(
+        testContext.authenticator,
+        { name: "Skill With Agent Link" }
+      );
+
+      // Link the skill to an agent.
+      const agent = await AgentConfigurationFactory.createTestAgent(
+        testContext.authenticator,
+        { name: "Test Agent With Skill" }
+      );
+      await SkillFactory.linkToAgent(testContext.authenticator, {
+        skillId: skillResource.id,
+        agentConfigurationId: agent.id,
+      });
+
+      // Verify agent-skill link exists before deletion using Resource.
+      const skillsForAgentBefore = await SkillResource.listByAgentConfiguration(
+        testContext.authenticator,
+        agent
+      );
+      expect(skillsForAgentBefore.some((s) => s.id === skillResource.id)).toBe(
+        true
+      );
+
+      // Delete the skill.
+      const result = await skillResource.delete(testContext.authenticator);
+      expect(result.isOk()).toBe(true);
+
+      // Verify agent-skill link is deleted.
+      const skillsForAgentAfter = await SkillResource.listByAgentConfiguration(
+        testContext.authenticator,
+        agent
+      );
+      expect(skillsForAgentAfter.some((s) => s.id === skillResource.id)).toBe(
+        false
+      );
+    });
   });
 
   describe("deleteAllForWorkspace", () => {
