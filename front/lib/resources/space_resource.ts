@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { triggerProjectAddedAsMemberNotifications } from "@app/lib/notifications/workflows/project-added-as-member";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
@@ -28,6 +29,7 @@ import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
+import logger from "@app/logger/logger";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -573,7 +575,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const globalGroup = groupRes.value;
 
-    return withTransaction(async (t) => {
+    // For project spaces with manual management, track current members to identify newly added.
+    let currentMemberIds: Set<string> | undefined;
+    if (this.isProject() && params.managementMode === "manual") {
+      const currentMembers = await defaultSpaceGroup.getActiveMembers(auth);
+      currentMemberIds = new Set(currentMembers.map((m) => m.sId));
+    }
+
+    const result = await withTransaction(async (t) => {
       // Update managementMode if provided
       const { managementMode } = params;
 
@@ -753,6 +762,33 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       return new Ok(undefined);
     });
+
+    // After successful transaction, trigger notifications for newly added members (projects only).
+    if (
+      result.isOk() &&
+      this.isProject() &&
+      params.managementMode === "manual" &&
+      currentMemberIds
+    ) {
+      const newlyAddedUserIds = params.memberIds.filter(
+        (id) => !currentMemberIds.has(id)
+      );
+      if (newlyAddedUserIds.length > 0) {
+        void triggerProjectAddedAsMemberNotifications(auth, {
+          project: this,
+          addedUserIds: newlyAddedUserIds,
+        }).then((res) => {
+          if (res.isErr()) {
+            logger.error(
+              { error: res.error, projectId: this.sId },
+              "Failed to trigger project added as member notification"
+            );
+          }
+        });
+      }
+    }
+
+    return result;
   }
 
   private async removeGroup(
@@ -830,6 +866,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     if (addMemberRes.isErr()) {
       return addMemberRes;
+    }
+
+    // Trigger notifications for project spaces (don't await to avoid blocking).
+    if (this.isProject()) {
+      void triggerProjectAddedAsMemberNotifications(auth, {
+        project: this,
+        addedUserIds: userIds,
+      }).then((res) => {
+        if (res.isErr()) {
+          logger.error(
+            { error: res.error, projectId: this.sId },
+            "Failed to trigger project added as member notification"
+          );
+        }
+      });
     }
 
     return new Ok(users);
