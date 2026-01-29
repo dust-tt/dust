@@ -669,26 +669,44 @@ export async function processAndStoreFile(
     });
   }
 
-  if (content.type === "string") {
-    await pipeline(
-      Readable.from(content.value),
-      file.getWriteStream({ auth, version: "original" })
-    );
-  } else if (content.type === "readable") {
-    await pipeline(
-      content.value,
-      file.getWriteStream({ auth, version: "original" })
-    );
-  } else {
-    const r = await parseUploadRequest(
-      file,
-      content.value,
-      file.getWriteStream({ auth, version: "original" })
-    );
-    if (r.isErr()) {
-      await file.markAsFailed();
-      return r;
+  try {
+    if (content.type === "string") {
+      await pipeline(
+        Readable.from(content.value),
+        file.getWriteStream({ auth, version: "original" })
+      );
+    } else if (content.type === "readable") {
+      await pipeline(
+        content.value,
+        file.getWriteStream({ auth, version: "original" })
+      );
+    } else {
+      const r = await parseUploadRequest(
+        file,
+        content.value,
+        file.getWriteStream({ auth, version: "original" })
+      );
+      if (r.isErr()) {
+        await file.markAsFailed();
+        return r;
+      }
     }
+  } catch (err) {
+    await file.markAsFailed();
+    logger.error(
+      {
+        fileModelId: file.id,
+        workspaceId: auth.workspace()?.sId,
+        error: err,
+      },
+      "Failed to upload file to storage."
+    );
+
+    return new Err({
+      name: "dust_error",
+      code: "internal_server_error",
+      message: `Failed to upload file to storage.`,
+    });
   }
 
   const processingRes = await maybeApplyProcessing(auth, file);
