@@ -1,7 +1,13 @@
 import type { Fetcher } from "swr";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
-import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import {
+  emptyArray,
+  fetcher,
+  getErrorFromResponse,
+  useSWRWithDefaults,
+} from "@app/lib/swr/swr";
 import type {
   GetSuggestionsQuery,
   GetSuggestionsResponseBody,
@@ -58,6 +64,7 @@ export function usePatchAgentSuggestion({
   agentConfigurationId: string | null;
   workspaceId: string;
 }) {
+  const sendNotification = useSendNotification();
   const { mutateSuggestions } = useAgentSuggestions({
     agentConfigurationId,
     workspaceId,
@@ -87,12 +94,18 @@ export function usePatchAgentSuggestion({
       }
     );
 
-    if (res.ok) {
-      void mutateSuggestions();
-      return res.json();
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error updating suggestion",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
     }
 
-    return null;
+    void mutateSuggestions();
+    return res.json();
   };
 
   return { patchSuggestion };

@@ -269,60 +269,58 @@ export const CopilotSuggestionsProvider = ({
   );
 
   const acceptSuggestion = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const editor = editorRef.current;
       if (!editor) {
         return;
       }
 
-      editor.commands.acceptSuggestion(id);
-      setSuggestions((prev) => prev.filter((s) => s.id !== id));
-      void patchSuggestion(id, "approved");
+      const result = await patchSuggestion(id, "approved");
+      if (result) {
+        editor.commands.acceptSuggestion(id);
+        setSuggestions((prev) => prev.filter((s) => s.id !== id));
+      }
     },
     [patchSuggestion]
   );
 
   const rejectSuggestion = useCallback(
-    (id: string) => {
+    async (id: string) => {
       const editor = editorRef.current;
       if (!editor) {
         return;
       }
 
-      editor.commands.rejectSuggestion(id);
-      setSuggestions((prev) => prev.filter((s) => s.id !== id));
-      void patchSuggestion(id, "rejected");
+      const result = await patchSuggestion(id, "rejected");
+      if (result) {
+        editor.commands.rejectSuggestion(id);
+        setSuggestions((prev) => prev.filter((s) => s.id !== id));
+      }
     },
     [patchSuggestion]
   );
 
-  const acceptAllSuggestions = useCallback(() => {
+  const acceptAllSuggestions = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) {
       return;
     }
 
     for (const suggestion of suggestions) {
-      void patchSuggestion(suggestion.id, "approved");
+      await acceptSuggestion(suggestion.id);
     }
+  }, [acceptSuggestion, suggestions]);
 
-    editor.commands.acceptAllSuggestions();
-    setSuggestions([]);
-  }, [patchSuggestion, suggestions]);
-
-  const rejectAllSuggestions = useCallback(() => {
+  const rejectAllSuggestions = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) {
       return;
     }
 
     for (const suggestion of suggestions) {
-      void patchSuggestion(suggestion.id, "rejected");
+      await rejectSuggestion(suggestion.id);
     }
-
-    editor.commands.rejectAllSuggestions();
-    setSuggestions([]);
-  }, [patchSuggestion, suggestions]);
+  }, [rejectSuggestion, suggestions]);
 
   const hasPendingSuggestions = useCallback(() => {
     return suggestions.length > 0;
