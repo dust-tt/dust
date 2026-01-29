@@ -419,12 +419,11 @@ export function DatasourceRetrievalTreemapChart({
     });
   }, []);
 
-  const handleDocumentClick = useCallback((node: TreemapNode) => {
-    if (!node.sourceUrl) {
-      return;
+  const handleDocumentClick = (node: TreemapNode) => {
+    if (node.sourceUrl) {
+      window.open(node.sourceUrl, "_blank");
     }
-    window.open(node.sourceUrl, "_blank");
-  }, []);
+  };
 
   const makeTooltipRenderer = useCallback(
     (total: number) => (props: { payload?: { payload?: TreemapNode }[] }) => {
