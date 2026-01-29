@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
@@ -25,6 +25,11 @@ vi.mock("@app/lib/api/assistant/feedback", () => ({
 vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
   getAgentConfigurationIdFromContext: vi.fn(),
 }));
+
+// Reset mocks between tests to prevent interference.
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 function getToolByName(name: string) {
   const tool = TOOLS.find((t) => t.name === name);
@@ -603,7 +608,7 @@ describe("agent_copilot_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_prompt_editions");
+      const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
           suggestions: [{ oldString: "one more", newString: "exceeds limit" }],
