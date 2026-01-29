@@ -113,22 +113,7 @@ export default defineConfig(({ mode }) => {
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),
-    plugins: [
-      stubModulesPlugin(),
-      serveHtmlPlugin(htmlEntry),
-      react({
-        babel: {
-          plugins: [
-            [
-              "babel-plugin-react-compiler",
-              {
-                target: "18",
-              },
-            ],
-          ],
-        },
-      }),
-    ],
+    plugins: [stubModulesPlugin(), serveHtmlPlugin(htmlEntry), react()],
     define: {
       ...envVarDefines,
       // Fallback for any remaining process.env access
