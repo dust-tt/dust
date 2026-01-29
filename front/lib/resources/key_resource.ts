@@ -6,6 +6,7 @@ import type { Attributes, CreationAttributes, Transaction } from "sequelize";
 import { Op } from "sequelize";
 import { v4 as uuidv4 } from "uuid";
 
+import { invalidateKeyCapCache } from "@app/lib/api/key_cap_tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { GroupResource } from "@app/lib/resources/group_resource";
@@ -267,5 +268,6 @@ export class KeyResource extends BaseResource<KeyModel> {
     monthlyCapMicroUsd: number | null;
   }) {
     await this.update({ monthlyCapMicroUsd });
+    await invalidateKeyCapCache({ keyId: this.id });
   }
 }
