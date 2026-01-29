@@ -1,3 +1,4 @@
+export * from "./ActionCardBlock";
 export * from "./CodeBlock";
 export * from "./CodeBlockWithExtendedSupport";
 export * from "./ContentBlockWrapper";
