@@ -123,7 +123,7 @@ export function AgentMessageActions({
                   delimiter={' '}
                   animationDuration={1}
                   content={chainOfThought}
-                  isStreaming={true}
+                  streamingState="streaming"
                   forcedTextSize="text-sm"
                   textColor="text-muted-foreground dark:text-muted-foreground-night"
                   isLastMessage={false}

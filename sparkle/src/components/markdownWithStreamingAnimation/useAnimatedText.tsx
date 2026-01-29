@@ -1,7 +1,7 @@
 import { animate } from "framer-motion";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-// Regex to split text into individual characters (including newlines)
+export type StreamingState = "streaming" | "ended" | "cancelled";
 
 export interface AnimatedTextConfig {
   delimiter?: RegExp | string;
@@ -10,13 +10,18 @@ export interface AnimatedTextConfig {
 
 export function useAnimatedText(
   text: string,
-  shouldAnimate: boolean,
+  streamingState: StreamingState,
   animationDuration: number,
   delimiter: RegExp | string,
 ) {
   const [cursor, setCursor] = useState(0);
   const [startingCursor, setStartingCursor] = useState(0);
   const [prevText, setPrevText] = useState(text);
+  const [animationDone, setAnimationDone] = useState(true);
+
+  const controlsRef = useRef<ReturnType<typeof animate> | null>(null);
+  const streamingStateRef = useRef(streamingState);
+  streamingStateRef.current = streamingState;
 
   if (prevText !== text) {
     setPrevText(text);
@@ -24,21 +29,43 @@ export function useAnimatedText(
   }
 
   useEffect(() => {
-    if (shouldAnimate) {
+    if (streamingState === "streaming") {
+      setAnimationDone(false);
       const textParts = text.split(delimiter);
-      const controls = animate(startingCursor, textParts.length, {
+
+      controlsRef.current = animate(startingCursor, textParts.length, {
         duration: animationDuration,
         ease: "easeOut",
         onUpdate(latest: number) {
           setCursor(Math.floor(latest));
         },
+        onComplete() {
+          setAnimationDone(true);
+          controlsRef.current = null;
+        },
       });
-
-      return () => controls.stop();
     }
-  }, [startingCursor, text, shouldAnimate, delimiter, animationDuration]);
 
-  if (!shouldAnimate) {
+    return () => {
+      // Stop animation if:
+      // - Still streaming (text changed, need to restart)
+      // - Cancelled (user stopped generation, stop immediately)
+      // Don't stop if "ended" - let animation finish naturally
+      if (
+        streamingStateRef.current === "streaming" ||
+        streamingStateRef.current === "cancelled"
+      ) {
+        controlsRef.current?.stop();
+      }
+    };
+  }, [startingCursor, text, streamingState, delimiter, animationDuration]);
+
+  // Return full text immediately if cancelled
+  // Return full text if ended and animation is done
+  if (
+    streamingState === "cancelled" ||
+    (streamingState === "ended" && animationDone)
+  ) {
     return text;
   }
 

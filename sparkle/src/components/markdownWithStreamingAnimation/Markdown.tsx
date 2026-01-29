@@ -27,7 +27,10 @@ import {
   MemoTableHeadBlock,
   MemoTableHeaderBlock,
 } from "@sparkle/components/markdownWithStreamingAnimation/TableBlock";
-import { useAnimatedText } from "@sparkle/components/markdownWithStreamingAnimation/useAnimatedText";
+import {
+  type StreamingState,
+  useAnimatedText,
+} from "@sparkle/components/markdownWithStreamingAnimation/useAnimatedText";
 import {
   preserveLineBreaks,
   sanitizeContent,
@@ -258,7 +261,7 @@ const defaultAnimationDuration = 4;
 
 export function StreamingAnimationMarkdown({
   content,
-  isStreaming = false,
+  streamingState = "ended",
   textColor = "s-text-foreground dark:s-text-foreground-night",
   forcedTextSize,
   isLastMessage = false,
@@ -270,7 +273,7 @@ export function StreamingAnimationMarkdown({
   animationDuration = defaultAnimationDuration,
 }: {
   content: string;
-  isStreaming?: boolean;
+  streamingState?: StreamingState;
   textColor?: string;
   isLastMessage?: boolean;
   compactSpacing?: boolean; // When true, removes vertical padding from paragraph blocks for tighter spacing
@@ -291,7 +294,7 @@ export function StreamingAnimationMarkdown({
 
   const markdownContent = useAnimatedText(
     processedContent,
-    isStreaming,
+    streamingState,
     animationDuration,
     delimiter
   );
@@ -459,7 +462,7 @@ export function StreamingAnimationMarkdown({
         <MarkdownContentContext.Provider
           value={{
             content: processedContent,
-            isStreaming,
+            isStreaming: streamingState === "streaming",
             isLastMessage,
           }}
         >

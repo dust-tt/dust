@@ -1,3 +1,4 @@
+import type { StreamingState } from "@dust-tt/sparkle";
 import {
   ArrowPathIcon,
   Button,
@@ -101,7 +102,7 @@ interface AgentMessageProps {
   handleSubmit: (
     input: string,
     mentions: RichMention[],
-    contentFragments: ContentFragmentsType
+    contentFragments: ContentFragmentsType,
   ) => Promise<Result<undefined, DustError>>;
   enableExtendedActions: boolean;
 }
@@ -139,7 +140,7 @@ export function AgentMessage({
 
   const isTriggeredByCurrentUser = useMemo(
     () => triggeringUser?.sId === user.sId,
-    [triggeringUser, user.sId]
+    [triggeringUser, user.sId],
   );
 
   const { shouldStream } = useAgentMessageStream({
@@ -221,7 +222,7 @@ export function AgentMessage({
         sId,
         removeAllBlockedActionsForMessage,
         conversationId,
-      ]
+      ],
     ),
     streamId: `message-${sId}`,
     useFullChainOfThought: false,
@@ -231,6 +232,24 @@ export function AgentMessage({
   const isCancelled = agentMessage.status === "cancelled";
   const isCancelledOrDeleted = isDeleted || isCancelled;
   const cancelMessage = useCancelMessage({ owner, conversationId });
+
+  // Derive streamingState for animation control:
+  // - "streaming": actively receiving content
+  // - "cancelled": user stopped generation or error occurred (stop animation immediately)
+  // - "ended": streaming completed naturally (let animation finish)
+  const streamingState: StreamingState = useMemo(() => {
+    if (shouldStream) {
+      return "streaming";
+    }
+    if (
+      agentMessage.status === "cancelled" ||
+      agentMessage.status === "failed"
+    ) {
+      return "cancelled";
+    }
+
+    return "ended";
+  }, [shouldStream, agentMessage.status]);
 
   const references = useMemo(
     () =>
@@ -252,14 +271,14 @@ export function AgentMessage({
         }
         return acc;
       }, {}),
-    [agentMessage.citations]
+    [agentMessage.citations],
   );
 
   // GenerationContext: to know if we are generating or not.
   const generationContext = React.useContext(GenerationContext);
   if (!generationContext) {
     throw new Error(
-      "AgentMessage must be used within a GenerationContextProvider"
+      "AgentMessage must be used within a GenerationContextProvider",
     );
   }
   React.useEffect(() => {
@@ -287,7 +306,7 @@ export function AgentMessage({
         const activeRefEntry = activeReferences.find(
           (ar) =>
             ar.document.href === mdCitation.href &&
-            ar.document.title === mdCitation.title
+            ar.document.title === mdCitation.title,
         );
         if (activeRefEntry) {
           keyToIndexMap.set(key, activeRefEntry.index);
@@ -312,7 +331,7 @@ export function AgentMessage({
             return `[${resolvedIndices.join(",")}]`;
           }
           return _match;
-        }
+        },
       );
     }
 
@@ -320,7 +339,7 @@ export function AgentMessage({
       footnotesMarkdown = "\n\nReferences:\n";
       footnotesHtml = "<br/><br/><div>References:</div>";
       const sortedActiveReferences = [...activeReferences].sort(
-        (a, b) => a.index - b.index
+        (a, b) => a.index - b.index,
       );
       for (const ref of sortedActiveReferences) {
         footnotesMarkdown += `[${ref.index}] ${ref.document.href}\n`;
@@ -335,7 +354,7 @@ export function AgentMessage({
       new ClipboardItem({
         "text/plain": new Blob([markdownText], { type: "text/plain" }),
         "text/html": new Blob([htmlContent], { type: "text/html" }),
-      })
+      }),
     );
   }
 
@@ -344,7 +363,7 @@ export function AgentMessage({
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getClientFacingUrl(),
     )}#${agentMessage.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
@@ -377,7 +396,7 @@ export function AgentMessage({
         }}
         icon={StopIcon}
         className="text-muted-foreground"
-      />
+      />,
     );
   }
 
@@ -387,14 +406,15 @@ export function AgentMessage({
       (m) =>
         isUserMessage(m) &&
         isHandoverUserMessage(m) &&
-        m.agenticMessageData?.originMessageId === sId
+        m.agenticMessageData?.originMessageId === sId,
     );
 
   const parentAgentMessage = methods.data
     .get()
     .find(
       (m) =>
-        isMessageTemporayState(m) && m.sId === agentMessage.parentAgentMessageId
+        isMessageTemporayState(m) &&
+        m.sId === agentMessage.parentAgentMessageId,
     );
 
   const parentAgent =
@@ -481,7 +501,7 @@ export function AgentMessage({
       });
       setIsRetryHandlerProcessing(false);
     },
-    [retryMessage]
+    [retryMessage],
   );
 
   // Add feedback buttons first (thumbs up/down)
@@ -493,7 +513,7 @@ export function AgentMessage({
         owner={owner}
         agentConfigurationId={agentMessage.configuration.sId}
         isGlobalAgent={isGlobalAgent}
-      />
+      />,
     );
   }
 
@@ -555,7 +575,7 @@ export function AgentMessage({
           items={dropdownItems}
           align="end"
         />
-      </ButtonGroup>
+      </ButtonGroup>,
     );
   } else {
     if (shouldShowCopy) {
@@ -568,7 +588,7 @@ export function AgentMessage({
           onClick={handleCopyToClipboard}
           icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
           className="text-muted-foreground"
-        />
+        />,
       );
 
       if (enableExtendedActions) {
@@ -581,7 +601,7 @@ export function AgentMessage({
             onClick={handleCopyMessageLink}
             icon={LinkIcon}
             className="text-muted-foreground"
-          />
+          />,
         );
       }
     }
@@ -602,7 +622,7 @@ export function AgentMessage({
           icon={ArrowPathIcon}
           className="text-muted-foreground"
           disabled={isRetryHandlerProcessing || shouldStream}
-        />
+        />,
       );
     }
   }
@@ -611,7 +631,7 @@ export function AgentMessage({
 
   const citations = React.useMemo(
     () => getCitations({ activeReferences, owner, conversationId }),
-    [activeReferences, conversationId, owner]
+    [activeReferences, conversationId, owner],
   );
 
   const handleQuickReply = React.useCallback(
@@ -637,7 +657,7 @@ export function AgentMessage({
         });
       }
     },
-    [agentMessage.configuration, handleSubmit, sendNotification]
+    [agentMessage.configuration, handleSubmit, sendNotification],
   );
 
   const canMention = agentConfiguration.canRead;
@@ -672,7 +692,7 @@ export function AgentMessage({
       isArchived,
       parentAgent,
       agentMessage.status,
-    ]
+    ],
   );
 
   const timestamp = parentAgent
@@ -738,7 +758,7 @@ export function AgentMessage({
                 isLastMessage={isLastMessage}
                 agentMessage={agentMessage}
                 references={references}
-                  streaming={shouldStream}
+                  streamingState={streamingState}
                 activeReferences={activeReferences}
                 setActiveReferences={setActiveReferences}
                 triggeringUser={triggeringUser}
@@ -761,7 +781,7 @@ function AgentMessageContent({
   isLastMessage,
   agentMessage,
   references,
-  streaming,
+  streamingState,
   owner,
   conversationId,
   activeReferences,
@@ -780,13 +800,13 @@ function AgentMessageContent({
   }) => Promise<void>;
   agentMessage: MessageTemporaryState;
   references: { [key: string]: MCPReferenceCitation };
-    streaming: boolean;
+    streamingState: StreamingState;
   activeReferences: { index: number; document: MCPReferenceCitation }[];
   setActiveReferences: (
     references: {
       index: number;
       document: MCPReferenceCitation;
-    }[]
+    }[],
   ) => void;
   onQuickReplySend: (message: string) => Promise<void>;
 }) {
@@ -815,16 +835,16 @@ function AgentMessageContent({
       methods.data.map((m) =>
         isMessageTemporayState(m) && m.sId === sId
           ? {
-              ...m,
-              status: "created",
-              error: null,
-              // Reset the agent state to "acting" to allow for streaming to continue.
-              streaming: {
-                ...m.streaming,
-                agentState: "acting",
-              },
-            }
-          : m
+            ...m,
+            status: "created",
+            error: null,
+            // Reset the agent state to "acting" to allow for streaming to continue.
+            streaming: {
+              ...m.streaming,
+              agentState: "acting",
+            },
+          }
+          : m,
       );
 
       // Retry on the event's conversationId, which may be coming from a subagent.
@@ -842,13 +862,13 @@ function AgentMessageContent({
         messageId: sId,
       });
     },
-    [conversationId, methods.data, retryHandler, sId]
+    [conversationId, methods.data, retryHandler, sId],
   );
 
   // References logic.
   function updateActiveReferences(
     document: MCPReferenceCitation,
-    index: number
+    index: number,
   ) {
     const existingIndex = activeReferences.find((r) => r.index === index);
     if (!existingIndex) {
@@ -860,7 +880,7 @@ function AgentMessageContent({
     (toolId: string) => {
       void postFollowUp(toolId);
     },
-    [postFollowUp]
+    [postFollowUp],
   );
 
   const additionalMarkdownComponents: Components = React.useMemo(
@@ -869,7 +889,7 @@ function AgentMessageContent({
         owner,
         agentConfiguration.sId,
         conversationId,
-        sId
+        sId,
       ),
       sup: CiteBlock,
       quickReply: getQuickReplyPlugin(onQuickReplySend, isLastMessage),
@@ -883,7 +903,7 @@ function AgentMessageContent({
       onQuickReplySend,
       isLastMessage,
       handleToolSetupComplete,
-    ]
+    ],
   );
 
   // Auto-open interactive content drawer when interactive files are available.
@@ -946,7 +966,7 @@ function AgentMessageContent({
   // NOT plain text mentions or links, to avoid filtering out images from the grid.
   const markdownImageRegex = new RegExp(
     `!\\[.*?\\]\\([^)]*?(${FILE_ID_PATTERN})[^)]*?\\)`,
-    "g"
+    "g",
   );
   const matches = (agentMessage.content ?? "").matchAll(markdownImageRegex);
   const referencedFileIds = new Set([...matches].map((m) => m[1]));
@@ -954,7 +974,7 @@ function AgentMessageContent({
   // Get completed images that are not already referenced in the Markdown content.
   // Combine from actions (updated during streaming) and generatedFiles (available on reload).
   const filesFromActions = agentMessage.actions.flatMap(
-    (action) => action.generatedFiles
+    (action) => action.generatedFiles,
   );
   const filesFromMessage = agentMessage.generatedFiles;
 
@@ -968,7 +988,7 @@ function AgentMessageContent({
       }
       seenFileIds.add(file.fileId);
       return true;
-    }
+    },
   );
 
   const completedImages = allGeneratedFiles
@@ -980,7 +1000,7 @@ function AgentMessageContent({
     .filter(
       (file) =>
         !isSupportedImageContentType(file.contentType) &&
-        !isInteractiveContentFileContentType(file.contentType)
+        !isInteractiveContentFileContentType(file.contentType),
     );
 
   return (
@@ -1015,7 +1035,7 @@ function AgentMessageContent({
             <AgentMessageMarkdown
               content={sanitizeVisualizationContent(agentMessage.content)}
               owner={owner}
-              isStreaming={streaming}
+              streamingState={streamingState}
               isLastMessage={isLastMessage}
               additionalMarkdownComponents={additionalMarkdownComponents}
             />
