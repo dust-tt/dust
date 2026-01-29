@@ -16,11 +16,8 @@ import type {
   DataSourceViewType,
   WithAPIErrorResponse,
 } from "@app/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-  PatchDataSourceViewSchema,
-} from "@app/types";
+import { ConnectorsAPI, PatchDataSourceViewSchema } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type PatchDataSourceViewResponseBody = {
   dataSourceView: DataSourceViewType;
@@ -126,7 +123,7 @@ async function handler(
               },
             });
           default:
-            assertNever(r.error.code);
+            return assertNever(r.error.code);
         }
       }
 
