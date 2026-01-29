@@ -172,11 +172,17 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   // Suggestion tools
   suggest_prompt_editions: {
     description:
-      "Create one or more suggestions to modify the agent's instructions/prompt. Each suggestion specifies text to find and replace.",
+      "Create suggestions to modify the agent's instructions/prompt. " +
+      "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
+      "NEVER replace entire instruction blocks. " +
+      "Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
     schema: {
       suggestions: z
         .array(InstructionsSuggestionSchema)
-        .describe("Array of instruction modifications to suggest"),
+        .describe(
+          "Array of small, scoped instruction modifications. Each should target 1-3 lines max."
+        ),
       analysis: z
         .string()
         .optional()
@@ -190,7 +196,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_tools: {
     description:
-      "Suggest adding or removing tools from the agent's configuration.",
+      "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ToolsSuggestionSchema.describe(
         "The tool additions and/or deletions to suggest"
@@ -208,7 +214,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
   },
   suggest_skills: {
     description:
-      "Suggest adding or removing skills from the agent's configuration.",
+      "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: SkillsSuggestionSchema.describe(
         "The skill additions and/or deletions to suggest"
@@ -225,7 +231,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
   },
   suggest_model: {
-    description: "Suggest changing the agent's LLM model configuration.",
+    description:
+      "Suggest changing the agent's LLM model configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
     schema: {
       suggestion: ModelSuggestionSchema.describe(
         "The model configuration to suggest"

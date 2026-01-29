@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
-import type { ModelId } from "@app/types/shared/model_id";
 
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",
@@ -71,7 +70,7 @@ export type SuggestionPayload =
   | InstructionsSuggestionType
   | ModelSuggestionType;
 
-const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
+export const AgentSuggestionDataSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("tools"), suggestion: ToolsSuggestionSchema }),
   z.object({ kind: z.literal("skills"), suggestion: SkillsSuggestionSchema }),
   z.object({
@@ -87,19 +86,26 @@ export function parseAgentSuggestionData(data: unknown): AgentSuggestionData {
   return AgentSuggestionDataSchema.parse(data);
 }
 
-type BaseAgentSuggestionType = {
-  id: ModelId;
-  sId: string;
-  createdAt: number;
-  updatedAt: number;
-  agentConfigurationId: ModelId;
-  analysis: string | null;
-  state: AgentSuggestionState;
-  source: AgentSuggestionSource;
-};
+const BaseAgentSuggestionSchema = z.object({
+  id: z.number(),
+  sId: z.string(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+  agentConfigurationId: z.number(),
+  analysis: z.string().nullable(),
+  state: z.enum(AGENT_SUGGESTION_STATES),
+  source: z.enum(AGENT_SUGGESTION_SOURCES),
+});
+
+/**
+ * Full schema for agent suggestions including base fields and discriminated data.
+ */
+export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
+  AgentSuggestionDataSchema
+);
 
 /**
  * Discriminated union for agent suggestions based on "kind" field.
  * Use switch(suggestion.kind) to narrow the suggestion type.
  */
-export type AgentSuggestionType = BaseAgentSuggestionType & AgentSuggestionData;
+export type AgentSuggestionType = z.infer<typeof AgentSuggestionSchema>;

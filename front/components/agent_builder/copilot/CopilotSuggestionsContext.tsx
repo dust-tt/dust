@@ -14,6 +14,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useAgentSuggestions } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 export type CopilotSuggestionType = "instructions"; // Future: | "tool" | "skill".
 
@@ -46,9 +47,15 @@ export interface CopilotSuggestionsContextType {
   hasPendingSuggestions: () => boolean;
   getPendingSuggestions: () => CopilotSuggestion[];
   getCommittedInstructions: () => string;
+  backendSuggestions: AgentSuggestionType[];
+  getOrFetchSuggestion: (sId: string) => {
+    notFoundAfterFetch: boolean;
+    suggestion: AgentSuggestionType | null;
+  };
+  isSuggestionsLoading: boolean;
 }
 
-const CopilotSuggestionsContext = createContext<
+export const CopilotSuggestionsContext = createContext<
   CopilotSuggestionsContextType | undefined
 >(undefined);
 
@@ -88,13 +95,44 @@ export const CopilotSuggestionsProvider = ({
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
 
-  const { suggestions: backendSuggestions, isSuggestionsLoading } =
-    useAgentSuggestions({
-      agentConfigurationId,
-      disabled: !hasCopilot,
-      state: ["pending"],
-      workspaceId: owner.sId,
-    });
+  // Fetch all pending suggestions from the backend (all kinds).
+  const {
+    suggestions: backendSuggestions,
+    isSuggestionsLoading,
+    mutateSuggestions,
+  } = useAgentSuggestions({
+    agentConfigurationId,
+    disabled: !hasCopilot,
+    state: ["pending"],
+    workspaceId: owner.sId,
+  });
+
+  const requestedSuggestionsRef = useRef<Set<string>>(new Set());
+  const getOrFetchSuggestion = useCallback(
+    (
+      sId: string
+    ): {
+      notFoundAfterFetch: boolean;
+      suggestion: AgentSuggestionType | null;
+    } => {
+      const suggestion = backendSuggestions.find((s) => s.sId === sId);
+      if (suggestion) {
+        return { notFoundAfterFetch: false, suggestion };
+      }
+
+      if (!requestedSuggestionsRef.current.has(sId)) {
+        requestedSuggestionsRef.current.add(sId);
+        // Defer to avoid setState during render (called from directive's useMemo).
+        queueMicrotask(() => {
+          void mutateSuggestions();
+        });
+        return { notFoundAfterFetch: false, suggestion: null };
+      }
+
+      return { notFoundAfterFetch: true, suggestion: null };
+    },
+    [backendSuggestions, mutateSuggestions]
+  );
 
   const registerEditor = useCallback((editor: Editor) => {
     editorRef.current = editor;
@@ -299,9 +337,12 @@ export const CopilotSuggestionsProvider = ({
       acceptAllSuggestions,
       acceptSuggestion,
       addSuggestion,
+      backendSuggestions,
+      getOrFetchSuggestion,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
+      isSuggestionsLoading,
       registerEditor,
       rejectAllSuggestions,
       rejectSuggestion,
@@ -311,9 +352,12 @@ export const CopilotSuggestionsProvider = ({
       acceptAllSuggestions,
       acceptSuggestion,
       addSuggestion,
+      backendSuggestions,
+      getOrFetchSuggestion,
       getCommittedInstructions,
       getPendingSuggestions,
       hasPendingSuggestions,
+      isSuggestionsLoading,
       registerEditor,
       rejectAllSuggestions,
       rejectSuggestion,
