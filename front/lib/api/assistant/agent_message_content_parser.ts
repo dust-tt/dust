@@ -1,3 +1,4 @@
+import assert from "assert";
 import escapeRegExp from "lodash/escapeRegExp";
 
 import { getSupportedModelConfig } from "@app/lib/api/models";
@@ -299,12 +300,7 @@ export function getDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
-  if (!model) {
-    return {
-      delimiters: [],
-      incompleteDelimiterPatterns: [],
-    };
-  }
+  assert(model, "Model configuration not found in getDelimitersConfiguration");
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
@@ -331,13 +327,10 @@ export function getCoTDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
-  if (!model) {
-    return {
-      delimiters: CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.delimiters,
-      incompleteDelimiterPatterns:
-        CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION.incompleteDelimiterPatterns,
-    };
-  }
+  assert(
+    model,
+    "Model configuration not found in getCoTDelimitersConfiguration"
+  );
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
