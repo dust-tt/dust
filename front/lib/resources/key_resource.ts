@@ -17,8 +17,6 @@ import type { KeyType, ModelId, RoleType } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
 import { formatUserFullName, redactString } from "@app/types";
 
-import { invalidateKeyCapCache } from "../api/key_cap_tracking";
-
 export interface KeyAuthType {
   id: ModelId;
   name: string;
@@ -263,18 +261,11 @@ export class KeyResource extends BaseResource<KeyModel> {
     await this.update({ role: newRole });
   }
 
-  async updateMonthlyCap(
-    auth: Authenticator,
-    {
-      monthlyCapMicroUsd,
-    }: {
-      monthlyCapMicroUsd: number | null;
-    }
-  ) {
+  async updateMonthlyCap({
+    monthlyCapMicroUsd,
+  }: {
+    monthlyCapMicroUsd: number | null;
+  }) {
     await this.update({ monthlyCapMicroUsd });
-    await invalidateKeyCapCache({
-      workspace: auth.getNonNullableWorkspace(),
-      keyId: this.id,
-    });
   }
 }
