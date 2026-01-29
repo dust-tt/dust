@@ -22,6 +22,7 @@ import {
 import type {
   AppRouter,
   HeadProps,
+  ImageProps,
   RouterEvents,
   ScriptProps,
   TransitionOptions,
@@ -95,16 +96,32 @@ function urlToString(url: string | UrlObject): string {
 }
 
 /**
- * Create a no-op events object for SPA
- * In SPA mode, we don't have router events like Next.js
+ * Global event emitter for router events in SPA
+ * This mimics Next.js router events to work with NavigationLoadingContext
  */
-function createNoopEvents(): RouterEvents {
+type RouterEventCallback = (...args: unknown[]) => void;
+
+const routerEventListeners: Map<string, Set<RouterEventCallback>> = new Map();
+
+function createRouterEvents(): RouterEvents {
   return {
-    on: () => {},
-    off: () => {},
-    emit: () => {},
+    on: (event: string, callback: RouterEventCallback) => {
+      if (!routerEventListeners.has(event)) {
+        routerEventListeners.set(event, new Set());
+      }
+      routerEventListeners.get(event)!.add(callback);
+    },
+    off: (event: string, callback: RouterEventCallback) => {
+      routerEventListeners.get(event)?.delete(callback);
+    },
+    emit: (event: string, ...args: unknown[]) => {
+      routerEventListeners.get(event)?.forEach((callback) => callback(...args));
+    },
   };
 }
+
+// Singleton events object so all useAppRouter calls share the same listeners
+const routerEvents = createRouterEvents();
 
 export function useAppRouter(): AppRouter {
   const navigate = useSafeNavigate();
@@ -121,6 +138,17 @@ export function useAppRouter(): AppRouter {
       return () => window.removeEventListener("popstate", handlePopState);
     }
   }, [location]);
+
+  // Emit routeChangeComplete when location changes (for NavigationLoadingContext)
+  const locationKey = location?.key;
+  useEffect(() => {
+    if (locationKey) {
+      // Emit after a microtask to ensure new components have mounted
+      queueMicrotask(() => {
+        routerEvents.emit("routeChangeComplete", location?.pathname);
+      });
+    }
+  }, [locationKey, location?.pathname]);
 
   const push = useCallback(
     async (
@@ -193,9 +221,6 @@ export function useAppRouter(): AppRouter {
   // In SPA mode, router is always ready (no SSR hydration needed)
   const isReady = true;
 
-  // No-op events for SPA
-  const events = useMemo(() => createNoopEvents(), []);
-
   return {
     push,
     replace,
@@ -205,7 +230,7 @@ export function useAppRouter(): AppRouter {
     asPath: pathname + search,
     query,
     isReady,
-    events,
+    events: routerEvents,
     // beforePopState is a noop in SPA mode (not supported in React Router)
     // TODO: Check usage in AppContentLayout and remove it.
     beforePopState: () => {},
@@ -297,6 +322,33 @@ export function Script({ id, src, children }: ScriptProps) {
 export const LinkWrapper = ReactRouterLinkWrapper;
 
 /**
+ * Image component for SPA - renders a standard img element
+ * In Next.js this uses next/image for optimization, but in SPA we use a regular img
+ */
+export function Image({
+  width,
+  height,
+  src,
+  alt,
+  className,
+  sizes,
+  priority: _priority,
+  ...rest
+}: ImageProps) {
+  return (
+    <img
+      width={width}
+      height={height}
+      src={src}
+      alt={alt}
+      className={className}
+      sizes={sizes}
+      {...rest}
+    />
+  );
+}
+
+/**
  * Hook to get page context (auth data) in SPA
  * Uses React Router's outlet context
  */
@@ -342,4 +394,4 @@ export function useSearchParam(name: string): string | null {
   return searchParams.get(name);
 }
 
-export type { AppRouter, HeadProps, ScriptProps };
+export type { AppRouter, HeadProps, ImageProps, ScriptProps };
