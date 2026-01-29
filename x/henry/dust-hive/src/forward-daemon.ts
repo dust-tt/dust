@@ -91,6 +91,7 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
             close(upstream) {
               const clientSocket = upstream.data.upstream;
               if (clientSocket && !upstream.data.clientClosed) {
+                clientSocket.flush();
                 clientSocket.end();
               }
             },
@@ -144,6 +145,7 @@ function createForwarder(listenPort: number, targetPort: number, name: string) {
         const upstream = client.data.upstream;
         if (upstream) {
           upstream.data.clientClosed = true;
+          upstream.flush();
           upstream.end();
         }
       },
