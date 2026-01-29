@@ -6,8 +6,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { triggerProjectAddedAsMemberNotifications } from "@app/lib/notifications/workflows/project-added-as-member";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { auditLog } from "@app/logger/logger";
+import logger, { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -84,10 +86,22 @@ export async function handler(
         });
       }
 
-      const updateRes = await space.updatePermissions(
-        auth,
-        bodyValidation.right
-      );
+      // Track current members before update to identify newly added ones.
+      let currentMemberIds: Set<string> | undefined;
+      const body = bodyValidation.right;
+      if (space.isProject() && body.managementMode === "manual") {
+        const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
+          space,
+          filterOnManagementMode: true,
+        });
+        if (memberGroupSpaces.length === 1) {
+          const currentMembers =
+            await memberGroupSpaces[0].group.getActiveMembers(auth);
+          currentMemberIds = new Set(currentMembers.map((m) => m.sId));
+        }
+      }
+
+      const updateRes = await space.updatePermissions(auth, body);
       if (updateRes.isErr()) {
         switch (updateRes.error.code) {
           case "unauthorized":
@@ -175,6 +189,30 @@ export async function handler(
           },
           "[Security] Admin updated space permissions without being a member"
         );
+      }
+
+      // Trigger notifications for newly added members (projects only).
+      if (
+        space.isProject() &&
+        body.managementMode === "manual" &&
+        currentMemberIds
+      ) {
+        const newlyAddedUserIds = body.memberIds.filter(
+          (id) => !currentMemberIds.has(id)
+        );
+        if (newlyAddedUserIds.length > 0) {
+          void triggerProjectAddedAsMemberNotifications(auth, {
+            project: space.toJSON(),
+            addedUserIds: newlyAddedUserIds,
+          }).then((notifRes) => {
+            if (notifRes.isErr()) {
+              logger.error(
+                { error: notifRes.error, projectId: space.sId },
+                "Failed to trigger project added as member notification"
+              );
+            }
+          });
+        }
       }
 
       return res.status(200).json({ space: space.toJSON() });

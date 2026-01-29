@@ -8,8 +8,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { triggerProjectAddedAsMemberNotifications } from "@app/lib/notifications/workflows/project-added-as-member";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
@@ -175,6 +177,21 @@ async function handler(
       }
 
       const usersJson = updateRes.value.map((user) => user.toJSON());
+
+      // Trigger notifications for newly added members (projects only).
+      if (space.isProject()) {
+        void triggerProjectAddedAsMemberNotifications(auth, {
+          project: space.toJSON(),
+          addedUserIds: userIds,
+        }).then((notifRes) => {
+          if (notifRes.isErr()) {
+            logger.error(
+              { error: notifRes.error, projectId: space.sId },
+              "Failed to trigger project added as member notification"
+            );
+          }
+        });
+      }
 
       return res.status(200).json({
         space: space.toJSON(),

@@ -6,6 +6,7 @@ import type { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
 import { renderEmail } from "@app/lib/notifications/email-templates/default";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getSpaceRoute } from "@app/lib/utils/router";
 import type { Result, SpaceType } from "@app/types";
@@ -47,8 +48,6 @@ const getProjectDetails = async ({
       payload.workspaceId
     );
 
-    // Dynamic import to avoid circular dependency with space_resource.ts
-    const { SpaceResource } = await import("@app/lib/resources/space_resource");
     const project = await SpaceResource.fetchById(auth, payload.projectId);
 
     if (project) {
@@ -84,8 +83,6 @@ const shouldSkipProject = async ({
       payload.workspaceId
     );
 
-    // Dynamic import to avoid circular dependency with space_resource.ts
-    const { SpaceResource } = await import("@app/lib/resources/space_resource");
     const project = await SpaceResource.fetchById(auth, payload.projectId);
 
     if (!project) {
@@ -170,6 +167,10 @@ export const projectAddedAsMemberWorkflow = workflow(
   }
 );
 
+/**
+ * Trigger notifications for users added to a project.
+ * Should be called from API endpoints after successfully adding members.
+ */
 export const triggerProjectAddedAsMemberNotifications = async (
   auth: Authenticator,
   {
