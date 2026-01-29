@@ -1,4 +1,4 @@
-export const TRIAL_DURATION_DAYS = 15;
+export const TRIAL_DURATION_DAYS = 14;
 
 /**
  * When enabled, new workspaces without a subscription are directed to a phone
