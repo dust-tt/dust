@@ -120,7 +120,7 @@ export function AgentMessageActions({
                 <AnimatedText variant="primary">Thinking...</AnimatedText>
               ) : (
                 <StreamingAnimationMarkdown
-                  delimiter={' '}
+                  delimiter={" "}
                   animationDuration={1}
                   content={chainOfThought}
                   streamingState="streaming"
