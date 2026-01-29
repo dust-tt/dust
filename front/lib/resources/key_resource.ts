@@ -15,7 +15,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type { KeyType, ModelId, RoleType } from "@app/types";
 import type { LightWorkspaceType, Result } from "@app/types";
-import { formatUserFullName, isString, redactString } from "@app/types";
+import { formatUserFullName, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
@@ -94,24 +94,24 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
-  static async fetchByWorkspaceAndId(
-    workspace: LightWorkspaceType,
-    id: ModelId | string
-  ) {
-    const parsedId = isString(id) ? parseInt(id, 10) : id;
-
-    const key = await this.model.findOne({
-      where: {
-        id: parsedId,
-        workspaceId: workspace.id,
-      },
-    });
+  static async fetchByWorkspaceAndId({
+    workspace,
+    id,
+  }: {
+    workspace: LightWorkspaceType;
+    id: ModelId | string;
+  }) {
+    const key = await this.fetchByModelId(id);
 
     if (!key) {
       return null;
     }
 
-    return new this(KeyResource.model, key.get());
+    if (key.workspaceId !== workspace.id) {
+      return null;
+    }
+
+    return key;
   }
 
   static async fetchByName(auth: Authenticator, { name }: { name: string }) {
