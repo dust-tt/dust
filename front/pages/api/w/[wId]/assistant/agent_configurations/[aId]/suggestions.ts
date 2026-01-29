@@ -171,7 +171,7 @@ async function handler(
           },
         });
       }
-      if (suggestion.agentConfigurationSId !== agent.sId) {
+      if (suggestion.agentConfigurationId !== agent.id) {
         return apiError(req, res, {
           status_code: 400,
           api_error: {

@@ -40,16 +40,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
   static model: ModelStatic<AgentSuggestionModel> = AgentSuggestionModel;
 
   readonly editorsGroupId: ModelId | null;
-  readonly agentConfigurationSId: string;
   constructor(
     model: ModelStatic<AgentSuggestionModel>,
     blob: Attributes<AgentSuggestionModel>,
-    editorsGroupId: ModelId | null,
-    agentConfigurationSId: string
+    editorsGroupId: ModelId | null
   ) {
     super(AgentSuggestionModel, blob);
     this.editorsGroupId = editorsGroupId;
-    this.agentConfigurationSId = agentConfigurationSId;
   }
 
   /**
@@ -141,8 +138,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     return new this(
       AgentSuggestionModel,
       suggestion.get(),
-      editorsGroupId ?? null,
-      agentConfiguration.sId
+      editorsGroupId ?? null
     );
   }
 
@@ -192,12 +188,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
         const editorsGroupId = agentConfig
           ? (editorsGroupIdBySId.get(agentConfig.sId) ?? null)
           : null;
-        return new this(
-          AgentSuggestionModel,
-          suggestion.get(),
-          editorsGroupId,
-          agentConfig.sId
-        );
+        return new this(AgentSuggestionModel, suggestion.get(), editorsGroupId);
       })
     );
   }
