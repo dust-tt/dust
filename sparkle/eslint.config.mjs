@@ -5,6 +5,7 @@ import eslintConfigPrettier from "eslint-config-prettier";
 import importPlugin from "eslint-plugin-import";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import tseslint from "typescript-eslint";
+import reactYouMightNotNeedAnEffect from "eslint-plugin-react-you-might-not-need-an-effect";
 
 export default [
   // Ignores
@@ -80,6 +81,8 @@ export default [
       "simple-import-sort": simpleImportSort,
     },
   },
+
+  reactYouMightNotNeedAnEffect.configs.recommended,
 
   // Main rules
   {

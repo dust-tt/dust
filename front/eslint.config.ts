@@ -9,6 +9,7 @@ import unusedImports from "eslint-plugin-unused-imports";
 import tseslint from "typescript-eslint";
 import { defineConfig } from "eslint/config";
 import reactHooks from "eslint-plugin-react-hooks";
+import reactYouMightNotNeedAnEffect from "eslint-plugin-react-you-might-not-need-an-effect";
 
 const require = createRequire(import.meta.url);
 const dustPlugin = require("eslint-plugin-dust");
@@ -96,6 +97,7 @@ export default defineConfig(
 
   // react rules
   reactHooks.configs.flat.recommended,
+  reactYouMightNotNeedAnEffect.configs.recommended,
 
   // Main rules
   {
