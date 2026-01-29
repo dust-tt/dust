@@ -144,6 +144,35 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
 });
 
+export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
+  create_document: {
+    description: "Create a new Google Docs document in the user's Drive.",
+    schema: {
+      title: z.string().describe("The title of the new document."),
+    },
+    stake: "low",
+  },
+  create_spreadsheet: {
+    description: "Create a new Google Sheets spreadsheet in the user's Drive.",
+    schema: {
+      title: z.string().describe("The title of the new spreadsheet."),
+    },
+    stake: "low",
+  },
+  create_presentation: {
+    description: "Create a new Google Slides presentation in the user's Drive.",
+    schema: {
+      title: z.string().describe("The title of the new presentation."),
+    },
+    stake: "low",
+  },
+});
+
+const ALL_TOOLS_METADATA = {
+  ...GOOGLE_DRIVE_TOOLS_METADATA,
+  ...GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+};
+
 export const GOOGLE_DRIVE_SERVER = {
   serverInfo: {
     name: "google_drive",
@@ -158,12 +187,12 @@ export const GOOGLE_DRIVE_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/google-drive",
     instructions: null,
   },
-  tools: Object.values(GOOGLE_DRIVE_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(GOOGLE_DRIVE_TOOLS_METADATA).map((t) => [t.name, t.stake])
+    Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;
