@@ -13633,7 +13633,7 @@
     "name": "project_context_management",
     "tools": [
       {
-        "name": "add_project_file",
+        "name": "add_file",
         "description": "Add a new file to the project context. The file will be available to all conversations in this project. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13681,7 +13681,7 @@
         }
       },
       {
-        "name": "add_project_url",
+        "name": "add_url",
         "description": "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13722,7 +13722,7 @@
         }
       },
       {
-        "name": "edit_project_description",
+        "name": "edit_description",
         "description": "Edit the project description. This updates the project's description text.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13758,7 +13758,7 @@
         }
       },
       {
-        "name": "edit_project_url",
+        "name": "edit_url",
         "description": "Edit an existing URL in the project. You can change the name and/or the URL itself. Identify the URL to edit by its current name.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13802,7 +13802,7 @@
         }
       },
       {
-        "name": "list_project_files",
+        "name": "list_files",
         "description": "List all files in the project context. Returns file metadata including names, IDs, and content types.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13831,7 +13831,7 @@
         }
       },
       {
-        "name": "read_project_journal_entry",
+        "name": "read_journal_entry",
         "description": "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13864,7 +13864,7 @@
         }
       },
       {
-        "name": "update_project_file",
+        "name": "update_file",
         "description": "Update the content of an existing file in the project context. This replaces the entire file content. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13909,13 +13909,13 @@
       }
     ],
     "toolsStakes": {
-      "add_project_file": "high",
-      "add_project_url": "low",
-      "edit_project_description": "low",
-      "edit_project_url": "low",
-      "list_project_files": "never_ask",
-      "read_project_journal_entry": "never_ask",
-      "update_project_file": "high"
+      "add_file": "high",
+      "add_url": "low",
+      "edit_description": "low",
+      "edit_url": "low",
+      "list_files": "never_ask",
+      "read_journal_entry": "never_ask",
+      "update_file": "high"
     }
   },
   {

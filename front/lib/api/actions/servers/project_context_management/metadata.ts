@@ -12,7 +12,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_SERVER_NAME =
   "project_context_management" as const;
 
 export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
-  list_project_files: {
+  list_files: {
     description:
       "List all files in the project context. Returns file metadata including names, IDs, and content types.",
     schema: {
@@ -27,7 +27,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "List project files",
     },
   },
-  add_project_file: {
+  add_file: {
     description:
       "Add a new file to the project context. The file will be available to all conversations in this project. " +
       "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
@@ -62,7 +62,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Add project file",
     },
   },
-  update_project_file: {
+  update_file: {
     description:
       "Update the content of an existing file in the project context. This replaces the entire file content. " +
       "Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
@@ -91,7 +91,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Update project file",
     },
   },
-  edit_project_description: {
+  edit_description: {
     description:
       "Edit the project description. This updates the project's description text.",
     schema: {
@@ -109,7 +109,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Edit project description",
     },
   },
-  add_project_url: {
+  add_url: {
     description:
       "Add a new URL to the project. URLs are named links (e.g., documentation, repository, design files).",
     schema: {
@@ -128,7 +128,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Add project URL",
     },
   },
-  edit_project_url: {
+  edit_url: {
     description:
       "Edit an existing URL in the project. You can change the name and/or the URL itself. " +
       "Identify the URL to edit by its current name.",
@@ -153,7 +153,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Edit project URL",
     },
   },
-  read_project_journal_entry: {
+  read_journal_entry: {
     description:
       "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
     schema: {
