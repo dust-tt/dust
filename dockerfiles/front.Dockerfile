@@ -78,6 +78,9 @@ ENV NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL=$NEXT_PUBLIC_NOVU_WEBSOCKET_API_URL
 ENV CONTENTFUL_SPACE_ID=$CONTENTFUL_SPACE_ID
 ENV CONTENTFUL_ACCESS_TOKEN=$CONTENTFUL_ACCESS_TOKEN
 
+# Generate custom models TypeScript from JSON config (downloaded by CI)
+RUN npx tsx scripts/fetch-custom-models.ts
+
 # Build Next.js application and sitemap (front-nextjs only)
 # fake database URIs are needed because Sequelize will throw if the `url` parameter
 # is undefined, and `next build` imports the `models.ts` file while "Collecting page data"
