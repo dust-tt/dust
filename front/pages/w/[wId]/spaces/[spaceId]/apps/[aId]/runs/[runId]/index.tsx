@@ -14,32 +14,30 @@ import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useApp, useRunWithSpec } from "@app/lib/swr/apps";
-import { isString } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function AppRun() {
   const router = useRouter();
-  const { spaceId, aId, runId: runIdQuery } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
+  const runId = useRequiredPathParam("runId");
   const owner = useWorkspace();
   const { subscription, isAdmin, isBuilder } = useAuth();
 
-  const runId = isString(runIdQuery) ? runIdQuery : "";
-
-  const { app, isAppLoading } = useApp({
+  const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : "",
-    appId: isString(aId) ? aId : "",
-    disabled: !isString(spaceId) || !isString(aId),
+    spaceId,
+    appId: aId,
   });
 
-  const { run, spec, isRunLoading } = useRunWithSpec({
+  const { run, spec, isRunLoading, isRunError } = useRunWithSpec({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : "",
-    appId: isString(aId) ? aId : "",
+    spaceId,
+    appId: aId,
     runId,
-    disabled: !isString(spaceId) || !isString(aId) || !runId,
   });
 
   const [savedRunId, setSavedRunId] = useState<string | null | undefined>(null);
@@ -93,6 +91,16 @@ function AppRun() {
   };
 
   const pageIsLoading = isAppLoading || isRunLoading;
+
+  // Show 404 on error or if app/run not found after loading completes
+  if (isAppError || isRunError || (!pageIsLoading && (!app || !run))) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (pageIsLoading || !app || !run || !spec) {
     return (

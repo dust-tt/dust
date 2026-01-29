@@ -139,23 +139,27 @@ export function useDustAppSecrets(owner: LightWorkspaceType | null) {
 
 export function useRuns(
   owner: LightWorkspaceType,
-  app: AppType,
+  app: AppType | null,
   limit: number,
   offset: number,
   runType: RunRunType,
   wIdTarget: string | null
 ) {
   const runsFetcher: Fetcher<GetRunsResponseBody> = fetcher;
-  let url = `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
-  if (wIdTarget) {
-    url += `&wIdTarget=${wIdTarget}`;
+  const disabled = !app;
+  let url: string | null = null;
+  if (app) {
+    url = `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs?limit=${limit}&offset=${offset}&runType=${runType}`;
+    if (wIdTarget) {
+      url += `&wIdTarget=${wIdTarget}`;
+    }
   }
-  const { data, error } = useSWRWithDefaults(url, runsFetcher);
+  const { data, error } = useSWRWithDefaults(url, runsFetcher, { disabled });
 
   return {
     runs: data?.runs ?? emptyArray(),
     total: data ? data.total : 0,
-    isRunsLoading: !error && !data,
+    isRunsLoading: !disabled && !error && !data,
     isRunsError: error,
   };
 }

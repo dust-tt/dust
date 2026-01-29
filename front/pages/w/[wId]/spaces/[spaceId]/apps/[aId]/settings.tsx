@@ -12,31 +12,32 @@ import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { MODELS_STRING_MAX_LENGTH } from "@app/lib/utils";
 import type { APIError } from "@app/types";
-import { APP_NAME_REGEXP, isString } from "@app/types";
+import { APP_NAME_REGEXP } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function SettingsView() {
   const router = useRouter();
-  const { spaceId, aId } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
   const owner = useWorkspace();
   const { subscription, isBuilder } = useAuth();
 
   const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : null,
+    spaceId,
   });
 
-  const { app, isAppLoading } = useApp({
+  const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : "",
-    appId: isString(aId) ? aId : "",
-    disabled: !isString(spaceId) || !isString(aId),
+    spaceId,
+    appId: aId,
   });
 
   const [disable, setDisabled] = useState(true);
@@ -151,6 +152,16 @@ function SettingsView() {
   }, [isBuilder, app, space, router, owner.sId]);
 
   const isLoading = isSpaceInfoLoading || isAppLoading;
+
+  // Show 404 on error or if app not found after loading completes
+  if (isAppError || (!isLoading && !app)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (isLoading || !app || !space) {
     return (

@@ -111,7 +111,7 @@ function AppView() {
   const { subscription, isAdmin, isBuilder } = useAuth();
   const readOnly = !isBuilder;
 
-  const { app, isAppLoading } = useApp({
+  const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
     spaceId,
     appId: aId,
@@ -354,6 +354,16 @@ function AppView() {
       setCancelRequested(false);
     }
   };
+
+  // Show 404 on error or if app not found after loading completes
+  if (isAppError || (!isAppLoading && !app)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (isAppLoading || !app) {
     return (

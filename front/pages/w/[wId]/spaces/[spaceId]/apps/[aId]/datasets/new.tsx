@@ -28,7 +28,7 @@ function NewDatasetView() {
   const owner = useWorkspace();
   const { subscription, isBuilder } = useAuth();
 
-  const { app, isAppLoading } = useApp({
+  const { app, isAppLoading, isAppError } = useApp({
     workspaceId: owner.sId,
     spaceId,
     appId: aId,
@@ -36,8 +36,7 @@ function NewDatasetView() {
 
   const { datasets, isDatasetsLoading } = useDatasets({
     owner,
-    app: app!,
-    disabled: !app,
+    app,
   });
 
   const [disable, setDisabled] = useState(true);
@@ -113,6 +112,16 @@ function NewDatasetView() {
   };
 
   const isLoading = isAppLoading || isDatasetsLoading;
+
+  // Show 404 on error or if app not found after loading completes
+  if (isAppError || (!isLoading && !app)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (isLoading || !app) {
     return (

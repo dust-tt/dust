@@ -10,14 +10,14 @@ import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
-import { isString } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function Space() {
   const router = useRouter();
-  const { spaceId } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
   const owner = useWorkspace();
   const { subscription, isAdmin, isBuilder } = useAuth();
   const plan = subscription.plan;
@@ -29,7 +29,7 @@ function Space() {
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : null,
+    spaceId,
   });
 
   if (isSpaceInfoLoading || !space) {

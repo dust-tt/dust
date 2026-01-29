@@ -16,32 +16,33 @@ import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useRegisterUnloadHandlers } from "@app/lib/front";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { dustAppsListUrl } from "@app/lib/spaces";
 import { useApp } from "@app/lib/swr/apps";
 import { useDataset } from "@app/lib/swr/datasets";
 import type { DatasetSchema, DatasetType } from "@app/types";
-import { isString } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
 function ViewDatasetView() {
   const router = useRouter();
-  const { spaceId, aId, name } = router.query;
+  const spaceId = useRequiredPathParam("spaceId");
+  const aId = useRequiredPathParam("aId");
+  const name = useRequiredPathParam("name");
   const owner = useWorkspace();
   const { subscription, isBuilder } = useAuth();
   const readOnly = !isBuilder;
 
   const { app, isAppLoading } = useApp({
     workspaceId: owner.sId,
-    spaceId: isString(spaceId) ? spaceId : "",
-    appId: isString(aId) ? aId : "",
-    disabled: !isString(spaceId) || !isString(aId),
+    spaceId,
+    appId: aId,
   });
 
-  const { dataset, isDatasetLoading } = useDataset(
+  const { dataset, isDatasetLoading, isDatasetError } = useDataset(
     owner,
-    app!,
-    isString(name) ? name : undefined,
+    app,
+    name,
     true // showData
   );
 
@@ -134,6 +135,16 @@ function ViewDatasetView() {
   };
 
   const isLoading = isAppLoading || isDatasetLoading;
+
+  // Show 404 on error or if dataset not found after loading completes
+  if (isDatasetError || (!isLoading && app && !dataset)) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (isLoading || !app || !dataset || !updatedDataset) {
     return (
