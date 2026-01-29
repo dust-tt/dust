@@ -7,6 +7,7 @@ import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import type { UserMessageType } from "@app/types";
 import { removeNulls } from "@app/types";
 
 export type MCPServerDefinition = {
@@ -37,7 +38,10 @@ type WithDynamicInstructions<T extends BaseGlobalSkillDefinition> = T & {
   readonly instructions?: never;
   readonly fetchInstructions: (
     auth: Authenticator,
-    spaceIds: string[]
+    {
+      spaceIds,
+      userMessage,
+    }: { spaceIds: string[]; userMessage?: UserMessageType }
   ) => Promise<string>;
 };
 
