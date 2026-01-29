@@ -145,7 +145,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
         <div
           key={`message-id-${sId}`}
           ref={ref}
-          className={classNames("mx-auto min-w-60", "mb-4", "max-w-4xl")}
+          className={classNames("mx-auto min-w-60", "pb-4", "max-w-4xl")}
         >
           {isUserMessage(data) && (
             <UserMessage
