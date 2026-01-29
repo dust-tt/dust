@@ -99,6 +99,28 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     needsEnvSh: true,
     buildCommand: () => "./admin/dev_worker.sh",
   },
+  "front-spa-poke": {
+    cwd: "front-spa",
+    needsNvm: false,
+    needsEnvSh: true,
+    buildCommand: (env) => `npm run dev:poke -- --port ${env.ports.frontSpaPoke}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.frontSpaPoke}/`,
+    },
+    portKey: "frontSpaPoke",
+  },
+  "front-spa-app": {
+    cwd: "front-spa",
+    needsNvm: false,
+    needsEnvSh: true,
+    buildCommand: (env) => `npm run dev:app -- --port ${env.ports.frontSpaApp}`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.frontSpaApp}/`,
+    },
+    portKey: "frontSpaApp",
+  },
 };
 
 const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];

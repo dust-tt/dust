@@ -18,7 +18,7 @@ export const coolCommand = withEnvironment("cool", async (env) => {
 
   // Stop all services except SDK
   logger.step("Stopping services...");
-  for (const service of ALL_SERVICES.filter((s) => s !== "sdk")) {
+  for (const service of ALL_SERVICES.filter((s) => s !== "sdk" && s !== "sparkle")) {
     const stopped = await stopService(env.name, service);
     if (stopped) {
       logger.info(`  Stopped ${service}`);

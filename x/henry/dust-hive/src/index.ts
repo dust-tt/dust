@@ -11,6 +11,7 @@ import { forwardCommand, forwardStatusCommand, forwardStopCommand } from "./comm
 import { listCommand } from "./commands/list";
 import { logsCommand } from "./commands/logs";
 import { openCommand } from "./commands/open";
+import { refreshCommand } from "./commands/refresh";
 import { reloadCommand } from "./commands/reload";
 import { restartCommand } from "./commands/restart";
 import { seedConfigCommand } from "./commands/seed-config";
@@ -274,6 +275,12 @@ cli.command("doctor", "Check prerequisites (non-interactive)").action(async () =
 cli.command("cache", "Show binary cache status").action(async () => {
   await prepareAndRun(cacheCommand());
 });
+
+cli
+  .command("refresh [name]", "Restore node_modules links in worktree")
+  .action(async (name: string | undefined) => {
+    await prepareAndRun(refreshCommand(name));
+  });
 
 cli.command("forward status", "Show current forwarding status").action(async () => {
   await prepareAndRun(forwardStatusCommand());

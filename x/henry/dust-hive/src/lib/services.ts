@@ -7,6 +7,8 @@ export const ALL_SERVICES = [
   "oauth",
   "connectors",
   "front-workers",
+  "front-spa-poke",
+  "front-spa-app",
 ] as const;
 
 export type ServiceName = (typeof ALL_SERVICES)[number];

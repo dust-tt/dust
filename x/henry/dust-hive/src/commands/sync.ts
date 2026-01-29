@@ -22,13 +22,10 @@ import { findRepoRoot } from "../lib/paths";
 import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { loadSettings } from "../lib/settings";
-import { runNpmInstall } from "../lib/setup";
 
 export interface SyncOptions {
   force?: boolean;
 }
-
-type NpmDir = "sdks/js" | "front" | "connectors";
 
 // Pull latest from origin (with rebase)
 async function gitPull(repoRoot: string): Promise<{ success: boolean; error?: string }> {
@@ -44,6 +41,17 @@ async function gitPull(repoRoot: string): Promise<{ success: boolean; error?: st
     return { success: false, error: stderr.trim() };
   }
   return { success: true };
+}
+
+// Run npm install at root level
+async function runNpmInstall(repoRoot: string): Promise<boolean> {
+  const proc = Bun.spawn(["npm", "install"], {
+    cwd: repoRoot,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  await proc.exited;
+  return proc.exitCode === 0;
 }
 
 // Run bun install in a directory
@@ -121,28 +129,16 @@ async function checkMissingBinaries(repoRoot: string): Promise<Binary[]> {
   return missing;
 }
 
-// Determine which npm directories need updating based on lock file changes
-function getNpmDirsToUpdate(
-  npmDirs: { name: NpmDir; path: string }[],
-  npmHashes: { name: NpmDir; hash: string | null }[],
+// Check if npm install needs to run based on root lock file changes
+function needsNpmInstall(
+  rootLockHash: string | null,
   savedState: SyncState | null,
   force: boolean
-): { name: NpmDir; path: string }[] {
+): boolean {
   if (force || !savedState) {
-    return [...npmDirs];
+    return true;
   }
-
-  const dirsToUpdate: { name: NpmDir; path: string }[] = [];
-  for (const { name, hash } of npmHashes) {
-    const savedHash = savedState.npm[name];
-    if (hash !== savedHash) {
-      const dir = npmDirs.find((d) => d.name === name);
-      if (dir) {
-        dirsToUpdate.push(dir);
-      }
-    }
-  }
-  return dirsToUpdate;
+  return rootLockHash !== savedState.npm.root;
 }
 
 // Check if cargo build is needed
@@ -178,37 +174,22 @@ async function checkNeedsCargoBuild(
   return false;
 }
 
-// Run npm install for directories and return error if any fail
+// Run npm install at root level if needed
 async function updateNpmDependencies(
-  npmDirsToUpdate: { name: NpmDir; path: string }[]
+  repoRoot: string,
+  needsUpdate: boolean
 ): Promise<Result<void>> {
-  if (npmDirsToUpdate.length === 0) {
+  if (!needsUpdate) {
     logger.info("Node dependencies up to date (no changes detected)");
     return Ok(undefined);
   }
 
-  logger.step("Updating node dependencies...");
-  console.log();
-
-  const results = await Promise.all(
-    npmDirsToUpdate.map(async ({ name, path }) => {
-      logger.step(`  ${name}...`);
-      const success = await runNpmInstall(path);
-      if (success) {
-        logger.success(`  ${name} done`);
-      } else {
-        logger.error(`  ${name} failed`);
-      }
-      return { name, success };
-    })
-  );
-
-  const failed = results.filter((r) => !r.success);
-  if (failed.length > 0) {
-    return Err(new CommandError(`npm install failed in: ${failed.map((r) => r.name).join(", ")}`));
+  logger.step("Running npm install at root level...");
+  const success = await runNpmInstall(repoRoot);
+  if (!success) {
+    return Err(new CommandError("npm install failed at root level"));
   }
-  console.log();
-  logger.success(`Updated ${npmDirsToUpdate.length} node package(s)`);
+  logger.success("Node dependencies updated");
   return Ok(undefined);
 }
 
@@ -253,15 +234,13 @@ async function updateDustHive(dustHivePath: string, needsInstall: boolean): Prom
 
 // Build new sync state from current hashes
 function buildSyncState(
-  npmHashes: { name: NpmDir; hash: string | null }[],
+  rootLockHash: string | null,
   bunHash: string | null,
   headAfterPull: string | null
 ): SyncState {
   const npmState: SyncState["npm"] = {};
-  for (const { name, hash } of npmHashes) {
-    if (hash) {
-      npmState[name] = hash;
-    }
+  if (rootLockHash) {
+    npmState.root = rootLockHash;
   }
 
   const newState: SyncState = { npm: npmState };
@@ -333,32 +312,21 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   // Get current commit after pull
   const headAfterPull = await getHeadCommit(repoRoot);
 
-  // Define directories
-  const npmDirs: { name: NpmDir; path: string }[] = [
-    { name: "sdks/js", path: `${repoRoot}/sdks/js` },
-    { name: "front", path: `${repoRoot}/front` },
-    { name: "connectors", path: `${repoRoot}/connectors` },
-  ];
   const dustHiveDir = `${repoRoot}/x/henry/dust-hive`;
 
-  // Hash all lock files in parallel
-  const [npmHashes, bunHash] = await Promise.all([
-    Promise.all(
-      npmDirs.map(async ({ name, path }) => ({
-        name,
-        hash: await hashFile(`${path}/package-lock.json`),
-      }))
-    ),
+  // Hash lock files in parallel
+  const [rootLockHash, bunHash] = await Promise.all([
+    hashFile(`${repoRoot}/package-lock.json`),
     hashFile(`${dustHiveDir}/bun.lockb`),
   ]);
 
   // Determine what needs updating
-  const npmDirsToUpdate = getNpmDirsToUpdate(npmDirs, npmHashes, savedState, force);
+  const needsNpmUpdate = needsNpmInstall(rootLockHash, savedState, force);
   const needsCargoBuild = await checkNeedsCargoBuild(repoRoot, savedState, headAfterPull, force);
   const needsBunInstall = force || !savedState || bunHash !== savedState.bun;
 
-  // Run npm install for changed directories
-  const npmResult = await updateNpmDependencies(npmDirsToUpdate);
+  // Run npm ci at root level if needed
+  const npmResult = await updateNpmDependencies(repoRoot, needsNpmUpdate);
   if (!npmResult.ok) {
     return npmResult;
   }
@@ -376,7 +344,7 @@ export async function syncCommand(options: SyncOptions = {}): Promise<Result<voi
   }
 
   // Save new sync state
-  const newState = buildSyncState(npmHashes, bunHash, headAfterPull);
+  const newState = buildSyncState(rootLockHash, bunHash, headAfterPull);
   await saveSyncState(newState);
 
   // Install Claude Code skills and commands

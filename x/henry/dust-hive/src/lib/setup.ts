@@ -264,7 +264,7 @@ export async function installAllDependencies(
     }
   }
 
-  // Handle node_modules for front and connectors
+  // Handle node_modules for front, connectors, sparkle, and front-spa
   // With npm workspaces, most deps are hoisted to root. These only have local overrides.
   const workspaceProjects = [
     {
@@ -278,6 +278,18 @@ export async function installAllDependencies(
       name: "connectors",
       mainNodeModules: `${repoRoot}/connectors/node_modules`,
       dest: `${worktreePath}/connectors`,
+    },
+    {
+      key: "front" as const, // Uses same config as front
+      name: "sparkle",
+      mainNodeModules: `${repoRoot}/sparkle/node_modules`,
+      dest: `${worktreePath}/sparkle`,
+    },
+    {
+      key: "front" as const, // Uses same config as front
+      name: "front-spa",
+      mainNodeModules: `${repoRoot}/front-spa/node_modules`,
+      dest: `${worktreePath}/front-spa`,
     },
   ];
 

@@ -227,4 +227,6 @@ export const TAB_NAMES: Record<ServiceName, string> = {
   oauth: "oauth",
   connectors: "connectors",
   "front-workers": "workers",
+  "front-spa-poke": "spa-poke",
+  "front-spa-app": "spa-app",
 };
