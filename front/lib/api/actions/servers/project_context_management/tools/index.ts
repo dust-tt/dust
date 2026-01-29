@@ -78,7 +78,7 @@ export function createProjectContextManagementTools(
   const handlers: ToolHandlers<
     typeof PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA
   > = {
-    list_project_files: async ({ dustProject }) => {
+    list_files: async ({ dustProject }) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
@@ -135,7 +135,7 @@ export function createProjectContextManagementTools(
       }, "Failed to list project files");
     },
 
-    add_project_file: async (params) => {
+    add_file: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
           agentLoopContext,
@@ -251,7 +251,7 @@ export function createProjectContextManagementTools(
       }, "Failed to add file");
     },
 
-    update_project_file: async (params) => {
+    update_file: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
           agentLoopContext,
@@ -347,7 +347,7 @@ export function createProjectContextManagementTools(
       }, "Failed to update file");
     },
 
-    edit_project_description: async (params) => {
+    edit_description: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
           agentLoopContext,
@@ -395,7 +395,7 @@ export function createProjectContextManagementTools(
       }, "Failed to edit project description");
     },
 
-    add_project_url: async (params) => {
+    add_url: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
           agentLoopContext,
@@ -441,7 +441,7 @@ export function createProjectContextManagementTools(
       }, "Failed to add project URL");
     },
 
-    edit_project_url: async (params) => {
+    edit_url: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getWritableProjectContext(auth, {
           agentLoopContext,
@@ -523,7 +523,7 @@ export function createProjectContextManagementTools(
       }, "Failed to edit project URL");
     },
 
-    read_project_journal_entry: async (params) => {
+    read_journal_entry: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
           agentLoopContext,
