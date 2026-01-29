@@ -56,7 +56,7 @@ function isSmallButtonSize(
 // Define button styling with cva
 const buttonVariants = cva(
   cn(
-    "s-box-content s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
+    "s-inline-flex s-items-center s-justify-center s-whitespace-nowrap s-ring-offset-background s-transition-colors s-ring-inset s-select-none",
     "focus-visible:s-outline-none focus-visible:s-ring-2 focus-visible:s-ring-ring focus-visible:s-ring-offset-0",
     "dark:focus-visible:s-ring-0 dark:focus-visible:s-ring-offset-1"
   ),
@@ -64,6 +64,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: cn(
+          "s-border s-border-transparent",
           "s-bg-primary-800 dark:s-bg-primary-800-night",
           "s-text-primary-50 dark:s-text-primary-50-night",
           "hover:s-bg-primary-light dark:hover:s-bg-primary-dark-night",
@@ -71,6 +72,7 @@ const buttonVariants = cva(
           "disabled:s-bg-primary-muted disabled:s-text-highlight-50/60 dark:disabled:s-bg-primary-muted-night"
         ),
         highlight: cn(
+          "s-border s-border-transparent",
           "s-bg-highlight",
           "s-text-highlight-50",
           "hover:s-bg-highlight-light",
@@ -93,6 +95,7 @@ const buttonVariants = cva(
           "disabled:hover:s-text-primary-muted dark:disabled:hover:s-text-primary-muted-night"
         ),
         warning: cn(
+          "s-border s-border-transparent",
           "s-bg-warning",
           "s-text-warning-50",
           "hover:s-bg-warning-light",
@@ -410,9 +413,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const content = (
       <>
         {isLoading ? (
-          <div
-            className={loadingContainerVariants({ size })}
-          >
+          <div className={loadingContainerVariants({ size })}>
             <Spinner
               size={isSmallButtonSize(size) ? "xs" : iconSize}
               variant={(variant && spinnerVariantsMap[variant]) || "gray400"}
