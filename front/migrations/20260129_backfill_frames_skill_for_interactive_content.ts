@@ -99,7 +99,7 @@ async function backfillFramesSkillForWorkspace(
     return;
   }
 
-  let created = 0;
+  let enabledCount = 0;
   await concurrentExecutor(
     conversationsNeedingSkill,
     async (conversation) => {
@@ -120,13 +120,13 @@ async function backfillFramesSkillForWorkspace(
           agentConfigurationId: null,
           addedByUserId: null,
         });
-        created++;
+        enabledCount++;
       }
     },
     { concurrency: 8 }
   );
 
-  logger.info({ created }, "Backfill completed for workspace");
+  logger.info({ enabledCount }, "Backfill completed for workspace");
 }
 
 makeScript(
