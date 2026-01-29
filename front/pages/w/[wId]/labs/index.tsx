@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { LabsPage } from "@app/components/pages/workspace/labs";
+import { LabsPage } from "@app/components/pages/workspace/labs/LabsPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";

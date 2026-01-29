@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { TranscriptsPage } from "@app/components/pages/workspace/labs/transcripts";
+import { TranscriptsPage } from "@app/components/pages/workspace/labs/TranscriptsPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";

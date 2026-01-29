@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { MembersPage } from "@app/components/pages/workspace/members";
+import { MembersPage } from "@app/components/pages/workspace/MembersPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

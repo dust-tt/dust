@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { AnalyticsPage } from "@app/components/pages/workspace/analytics";
+import { AnalyticsPage } from "@app/components/pages/workspace/AnalyticsPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

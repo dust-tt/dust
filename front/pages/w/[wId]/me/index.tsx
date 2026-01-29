@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { ProfilePage } from "@app/components/pages/workspace/me";
+import { ProfilePage } from "@app/components/pages/workspace/ProfilePage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";

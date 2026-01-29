@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { SubscriptionPage } from "@app/components/pages/workspace/subscription";
+import { SubscriptionPage } from "@app/components/pages/workspace/subscription/SubscriptionPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

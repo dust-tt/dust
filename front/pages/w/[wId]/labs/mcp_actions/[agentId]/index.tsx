@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { AgentMCPActionsPage } from "@app/components/pages/workspace/labs/mcp_actions/agent-mcp-actions";
+import { AgentMCPActionsPage } from "@app/components/pages/workspace/labs/mcp_actions/AgentMCPActionsPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

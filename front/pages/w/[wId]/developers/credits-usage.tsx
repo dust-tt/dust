@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { CreditsUsagePage } from "@app/components/pages/workspace/developers/credits-usage";
+import { CreditsUsagePage } from "@app/components/pages/workspace/developers/CreditsUsagePage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

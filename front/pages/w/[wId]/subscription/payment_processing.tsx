@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { PaymentProcessingPage } from "@app/components/pages/workspace/subscription/payment-processing";
+import { PaymentProcessingPage } from "@app/components/pages/workspace/subscription/PaymentProcessingPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

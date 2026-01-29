@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { MCPActionsDashboardPage } from "@app/components/pages/workspace/labs/mcp_actions";
+import { MCPActionsDashboardPage } from "@app/components/pages/workspace/labs/mcp_actions/MCPActionsDashboardPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";

@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-import { APIKeysPage } from "@app/components/pages/workspace/developers/api-keys";
+import { APIKeysPage } from "@app/components/pages/workspace/developers/APIKeysPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
 import { appGetServerSidePropsForAdmin } from "@app/lib/auth/appServerSideProps";
