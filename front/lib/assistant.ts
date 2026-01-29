@@ -1,23 +1,11 @@
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import type {
   ModelConfigurationType,
   PlanType,
-  SupportedModel,
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { isProviderWhitelisted } from "@app/types";
-
-export function isLargeModel(model: unknown): model is SupportedModel {
-  const maybeSupportedModel = model as SupportedModel;
-  const m = getSupportedModelConfig(maybeSupportedModel);
-  if (m) {
-    return m.largeModel;
-  }
-
-  return false;
-}
 
 // Returns true if the model is available to the workspace, regardless of whether it is whitelisted or not.
 export function isModelAvailable(
