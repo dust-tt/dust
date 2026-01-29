@@ -19,6 +19,7 @@ import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
 } from "@app/lib/swr/assistants";
+import type { LightWorkspaceType } from "@app/types";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
 const DatasourceRetrievalTreemapChart = dynamic(
@@ -65,13 +66,13 @@ const UsageMetricsChart = dynamic(
 );
 
 interface AgentObservabilityProps {
-  workspaceId: string;
+  owner: LightWorkspaceType;
   agentConfigurationId: string;
   isCustomAgent: boolean;
 }
 
 export function AgentObservability({
-  workspaceId,
+  owner,
   agentConfigurationId,
   isCustomAgent,
 }: AgentObservabilityProps) {
@@ -80,7 +81,7 @@ export function AgentObservability({
   const isTimeRangeMode = mode === "timeRange";
 
   const { agentAnalytics, isAgentAnalyticsLoading } = useAgentAnalytics({
-    workspaceId,
+    workspaceId: owner.sId,
     agentConfigurationId,
     period,
     version:
@@ -96,7 +97,7 @@ export function AgentObservability({
 
   const { summaryText, isSummaryLoading, isSummaryError, refetchSummary } =
     useAgentObservabilitySummary({
-      workspaceId,
+      workspaceId: owner.sId,
       agentConfigurationId,
       days: period,
       disabled: !isTimeRangeMode,
@@ -107,7 +108,7 @@ export function AgentObservability({
       title="Insights"
       headerAction={
         <SharedObservabilityFilterSelector
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
@@ -226,37 +227,37 @@ export function AgentObservability({
 
       <TabContentChildSectionLayout title="Details">
         <UsageMetricsChart
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
         <Separator />
         <SourceChart
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
         <Separator />
         <LatencyChart
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
         <Separator />
         <DatasourceRetrievalTreemapChart
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
         <Separator />
         <ToolUsageChart
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />
         <Separator />
         <ToolExecutionTimeChart
-          workspaceId={workspaceId}
+          workspaceId={owner.sId}
           agentConfigurationId={agentConfigurationId}
           isCustomAgent={isCustomAgent}
         />

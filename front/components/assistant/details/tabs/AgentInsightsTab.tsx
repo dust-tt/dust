@@ -14,7 +14,7 @@ export function AgentInsightsTab({
   return (
     <ObservabilityProvider>
       <AgentObservability
-        workspaceId={owner.sId}
+        owner={owner}
         agentConfigurationId={agentConfiguration.sId}
         isCustomAgent={agentConfiguration.scope !== "global"}
       />
