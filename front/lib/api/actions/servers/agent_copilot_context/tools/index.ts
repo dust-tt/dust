@@ -30,7 +30,6 @@ import {
   Ok,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
-import type { AgentSuggestionKind } from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
@@ -43,6 +42,8 @@ const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
 const MAX_PENDING_INSTRUCTIONS_SUGGESTIONS = 10;
 const MAX_PENDING_TOOLS_SUGGESTIONS = 3;
 const MAX_PENDING_SKILLS_SUGGESTIONS = 2;
+
+type LimitedSuggestionKind = "instructions" | "tools" | "skills";
 
 interface KnowledgeDataSource {
   sId: string;
@@ -63,7 +64,7 @@ interface KnowledgeSpace {
   categories: KnowledgeCategoryData[];
 }
 
-function getMaxPendingSuggestions(kind: AgentSuggestionKind): number {
+function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
   switch (kind) {
     case "instructions":
       return MAX_PENDING_INSTRUCTIONS_SUGGESTIONS;
@@ -71,22 +72,16 @@ function getMaxPendingSuggestions(kind: AgentSuggestionKind): number {
       return MAX_PENDING_TOOLS_SUGGESTIONS;
     case "skills":
       return MAX_PENDING_SKILLS_SUGGESTIONS;
-    case "model":
-      // No limit for model suggestions (only one can be active at a time anyway)
-      return Infinity;
   }
 }
 
 async function checkPendingSuggestionLimit(
   auth: Authenticator,
   agentConfigurationId: string,
-  kind: AgentSuggestionKind,
+  kind: LimitedSuggestionKind,
   newSuggestionCount: number
 ): Promise<{ allowed: true } | { allowed: false; errorMessage: string }> {
   const maxAllowed = getMaxPendingSuggestions(kind);
-  if (maxAllowed === Infinity) {
-    return { allowed: true };
-  }
 
   const existingPendingSuggestions =
     await AgentSuggestionResource.listByAgentConfigurationId(
