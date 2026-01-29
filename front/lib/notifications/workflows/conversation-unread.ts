@@ -10,6 +10,10 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { Authenticator } from "@app/lib/auth";
+import {
+  getAgentsDataRetention,
+  getConversationsDataRetention,
+} from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { getNovuClient } from "@app/lib/notifications";
@@ -108,6 +112,8 @@ const ConversationDetailsSchema = z.object({
   workspaceName: z.string(),
   mentionedUserIds: z.array(z.string()),
   hasUnreadMessages: z.boolean(),
+  hasConversationRetentionPolicy: z.boolean(),
+  hasAgentRetentionPolicies: z.boolean(),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
@@ -180,6 +186,8 @@ const getConversationDetails = async ({
         mentionedUserIds: [],
         avatarUrl: undefined,
         hasUnreadMessages: false,
+        hasConversationRetentionPolicy: false,
+        hasAgentRetentionPolicies: false,
       });
     }
     auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -267,6 +275,18 @@ const getConversationDetails = async ({
     })
   );
 
+  const conversationsRetention = await getConversationsDataRetention(auth);
+  const hasConversationRetentionPolicy = conversationsRetention !== null;
+
+  const agentsRetention = await getAgentsDataRetention(auth);
+  const hasAgentRetentionPolicies = conversation.content.flat().some((msg) => {
+    if (msg.type !== "agent_message") {
+      return false;
+    }
+
+    return msg.configuration.sId in agentsRetention;
+  });
+
   return new Ok({
     subject,
     author,
@@ -276,6 +296,8 @@ const getConversationDetails = async ({
     workspaceName,
     mentionedUserIds,
     hasUnreadMessages,
+    hasConversationRetentionPolicy,
+    hasAgentRetentionPolicies,
   });
 };
 
@@ -691,6 +713,26 @@ export const conversationUnreadWorkflow = workflow(
               hasUnreadMessages: detailsResult.value.hasUnreadMessages,
             });
             if (shouldSkip) {
+              return;
+            }
+
+            if (detailsResult.value.hasConversationRetentionPolicy) {
+              conversations.push({
+                id: payload.conversationId,
+                title: detailsResult.value.subject,
+                summary:
+                  "Summary not generated due to data retention policy on conversations in this workspace.",
+              });
+              return;
+            }
+
+            if (detailsResult.value.hasAgentRetentionPolicies) {
+              conversations.push({
+                id: payload.conversationId,
+                title: detailsResult.value.subject,
+                summary:
+                  "Summary not generated due to data retention policy on agents in this conversation.",
+              });
               return;
             }
 
