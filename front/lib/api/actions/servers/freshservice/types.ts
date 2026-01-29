@@ -223,3 +223,27 @@ export const FRESHSERVICE_ERROR_MESSAGES = {
     "Invalid status. Must be 2 (Open), 3 (Pending), 4 (Resolved), or 5 (Closed).",
   API_ERROR: "API request failed",
 };
+
+// Default fields for list operations
+export const DEFAULT_TICKET_FIELDS_LIST = [
+  "id",
+  "subject",
+  "status",
+] as const satisfies ReadonlyArray<keyof FreshserviceTicket>;
+
+// Default fields for detail operations
+export const DEFAULT_TICKET_FIELDS_DETAIL = [
+  "id",
+  "subject",
+  "description_text",
+  "priority",
+  "status",
+  "requester_id",
+  "responder_id",
+  "department_id",
+  "group_id",
+  "type",
+  "created_at",
+  "updated_at",
+  "due_by",
+] as const satisfies ReadonlyArray<keyof FreshserviceTicket>;
