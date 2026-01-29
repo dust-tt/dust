@@ -34,6 +34,7 @@ import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/m
 import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
+import { MENTION_USERS_SERVER } from "@app/lib/api/actions/servers/mention_users/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
 import { MICROSOFT_EXCEL_SERVER } from "@app/lib/api/actions/servers/microsoft_excel/metadata";
 import { MICROSOFT_TEAMS_SERVER } from "@app/lib/api/actions/servers/microsoft_teams/metadata";
@@ -169,6 +170,7 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "primitive_types_debugger",
   "productboard",
   "common_utilities",
+  "mention_users",
   "jit_testing",
   "run_agent",
   "run_dust_app",
@@ -1003,6 +1005,7 @@ export const INTERNAL_MCP_SERVERS = {
     timeoutMs: undefined,
     metadata: COMMON_UTILITIES_SERVER,
   },
+
   front: {
     id: 1018,
     availability: "manual",
@@ -1089,6 +1092,17 @@ export const INTERNAL_MCP_SERVERS = {
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: 120000, // 2 minutes for command execution
+  },
+  mention_users: {
+    id: 1025,
+    availability: "auto_hidden_builder",
+    allowMultipleInstances: false,
+    isPreview: false,
+    isRestricted: undefined,
+    tools_arguments_requiring_approval: undefined,
+    tools_retry_policies: undefined,
+    timeoutMs: undefined,
+    metadata: MENTION_USERS_SERVER,
   },
   // Using satisfies here instead of: type to avoid TypeScript widening the type and breaking the type inference for AutoInternalMCPServerNameType.
 } satisfies {

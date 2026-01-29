@@ -6,8 +6,6 @@ import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
 export const COMMON_UTILITIES_SERVER_NAME = "common_utilities" as const;
-export const SEARCH_AVAILABLE_USERS_TOOL_NAME = "search_available_users";
-export const GET_MENTION_MARKDOWN_TOOL_NAME = "get_mention_markdown";
 
 const RANDOM_INTEGER_DEFAULT_MAX = 1_000_000;
 const MAX_WAIT_DURATION_MS = 3 * 60 * 1_000;
@@ -68,30 +66,6 @@ export const COMMON_UTILITIES_TOOLS_METADATA = createToolsRecord({
     description: "Perform mathematical operations.",
     schema: {
       expression: z.string().describe("The expression to evaluate. "),
-    },
-    stake: "never_ask",
-  },
-  [SEARCH_AVAILABLE_USERS_TOOL_NAME]: {
-    description: "Search for users that are available to the conversation.",
-    schema: {
-      searchTerm: z
-        .string()
-        .describe(
-          "A single search term to find users. Returns all the users that contain the search term in their name or description. Use an empty string to return all items."
-        ),
-    },
-    stake: "never_ask",
-  },
-  [GET_MENTION_MARKDOWN_TOOL_NAME]: {
-    description:
-      "Get the markdown directive to use to mention a user in a message.",
-    schema: {
-      mention: z
-        .object({
-          id: z.string(),
-          label: z.string(),
-        })
-        .describe("A mention to get the markdown directive for."),
     },
     stake: "never_ask",
   },
