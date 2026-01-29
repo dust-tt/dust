@@ -10,6 +10,7 @@ import { ZENDESK_TOOLS_METADATA } from "@app/lib/api/actions/servers/zendesk/met
 import {
   renderTicket,
   renderTicketComments,
+  renderTicketFields,
   renderTicketMetrics,
 } from "@app/lib/api/actions/servers/zendesk/rendering";
 import type { ZendeskUser } from "@app/lib/api/actions/servers/zendesk/types";
@@ -174,17 +175,11 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     }
 
     const fields = result.value;
-    const fieldSummaries = fields.map((f) => ({
-      id: f.id,
-      title: f.title,
-      type: f.type,
-      active: f.active,
-    }));
 
     return new Ok([
       {
         type: "text" as const,
-        text: `Found ${fields.length} active ticket field(s):\n\n${JSON.stringify(fieldSummaries, null, 2)}`,
+        text: renderTicketFields(fields),
       },
     ]);
   },

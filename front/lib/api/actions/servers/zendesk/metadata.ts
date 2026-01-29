@@ -37,20 +37,17 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   search_tickets: {
     description:
-      "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their " +
-      "details. You can search by status, priority, assignee, tags, custom fields, and other fields. " +
-      "IMPORTANT: Business-specific data are often stored in CUSTOM FIELDS, not tags. Use list_ticket_fields FIRST to discover custom field IDs, then " +
-      'search with: custom_field_{id}:"exact_value". ' +
-      "Query examples: 'status:open', 'priority:high', 'assignee:me', 'tags:bug', " +
-      "'custom_field_123456:\"ABC123\"'. Note: tags are simple labels, custom fields contain structured data.",
+      "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets with their details. " +
+      "Supports filtering by status, priority, type, assignee, tags, custom fields, dates, and text fields. " +
+      'Custom fields use syntax: custom_field_{id}:"exact_value". Tags are simple labels; business-specific data ' +
+      "are typically stored in custom fields. Use list_ticket_fields to discover available custom field IDs.",
     schema: {
       query: z
         .string()
         .describe(
-          "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' " +
-            "status:pending', 'assignee:123', 'tags:bug tags:critical', 'custom_field_123456:\"value\"'. " +
-            'IMPORTANT: For business data, use custom_field_{id}:"value" syntax - ' +
-            "call list_ticket_fields first to get the field ID. Do not include 'type:ticket' as it is automatically added."
+          "Search query using Zendesk query syntax. Supports field:value pairs for status, priority, type, assignee, tags, " +
+            'and custom_field_{id}:"value" for custom fields. Multiple conditions are combined with AND logic. ' +
+            "Do not include 'type:ticket' as it is automatically added."
         ),
       sortBy: z
         .enum(["updated_at", "created_at", "priority", "status", "ticket_type"])
@@ -67,9 +64,9 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   list_ticket_fields: {
     description:
-      "Lists all available Zendesk ticket fields (system and custom) including their IDs, titles, and types. " +
-      "CRITICAL: Call this tool FIRST when searching for business-specific data - these are typically stored as CUSTOM FIELDS, not tags or standard fields. " +
-      "Returns field IDs needed for search_tickets queries.",
+      "Lists all active Zendesk ticket fields (system and custom) including their IDs, titles, types, and status. " +
+      "Returns both standard fields (subject, priority, status) and custom fields created for organization-specific data. " +
+      'Field IDs are required for filtering by custom fields in search_tickets using custom_field_{id}:"value" syntax.',
     schema: {},
     stake: "never_ask",
   },
@@ -102,54 +99,7 @@ export const ZENDESK_SERVER = {
     },
     icon: "ZendeskLogo",
     documentationUrl: null,
-    instructions: `
-    ZENDESK SEARCH QUERY SYNTAX
-
-OPERATORS
-: (equal) < > <= >= (comparison) "" (exact) - (exclude) * (wildcard)
-
-TICKET PROPERTIES
-status:open|pending|hold|solved|closed
-priority:low|normal|high|urgent
-ticket_type:question|incident|problem|task
-created|updated|solved|due_date:{date|relative}
-assignee|requester|submitter|commenter|cc:{value|none|me}
-subject|description|comment:{term}
-tags:{tag}
-group|organization:{name|id|none}
-via:email|chat|phone|web|api|twitter|facebook|sms
-custom_field_{id}:{value|*}
-has_attachment:true|false
-brand:{name|id}
-form:{name}
-
-USER PROPERTIES
-name|email|phone:{value}
-role:admin|agent|end-user
-group|organization:{name}
-tags|notes|details:{text}
-external_id:{id}
-
-ORGANIZATION PROPERTIES
-name:{name}
-tags|notes|details:{text}
-external_id:{id}
-
-COMBINING QUERIES
-Space = AND logic
-Multiple same property = OR logic
-Use - for exclusion
-
-SORTING
-sort_by:created_at|updated_at|priority|status|ticket_type
-sort_order:asc|desc
-
-DATES
-Format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SSZ
-Relative: created>4hours, updated>7days
-
-LIMITS
-Max 1000 results per query`,
+    instructions: null,
   },
   tools: Object.values(ZENDESK_TOOLS_METADATA).map((t) => ({
     name: t.name,
