@@ -64,7 +64,7 @@ const router = createBrowserRouter(
         },
       ],
     },
-    { path: "*", element: <Navigate to="/" replace /> },
+    { path: "*", element: <Navigate to="/w/DevWkSpace/me" replace /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",
