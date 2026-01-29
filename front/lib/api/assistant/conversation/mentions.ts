@@ -677,7 +677,7 @@ export const createAgentMessages = async (
                     (spaceId) => spaceId !== conversation.spaceId
                   )
                 );
-                if (spaces.some((space) => !space.isOpen())) {
+                if (spaces.some((space) => !space.isGlobal())) {
                   // This create the mentions from the original user message.
                   // Not to be mixed with the mentions from the agent message (which will be filled later).
                   const mentionRow = await MentionModel.create(
