@@ -8,7 +8,7 @@ import {
 import type { ComponentType } from "react";
 
 import type { ConversationError } from "@app/types";
-import { isAPIErrorResponse } from "@app/types";
+import { isAPIErrorResponse } from "@app/types/error";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 interface ConversationErrorProps {
