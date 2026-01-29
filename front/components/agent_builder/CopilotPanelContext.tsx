@@ -41,7 +41,7 @@ Tool usage rules when creating suggestions:
 - \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
+Use \`suggest_*\` tools and **include their output verbatim in your response** - it renders as interactive cards. Add 1-2 sentences of context if needed.
 </dust_system>`;
 }
 
@@ -56,6 +56,8 @@ EXISTING agent.
 Based on gathered data, provide a brief summary:
 - If reinforced suggestions exist (source="reinforcement"), highlight them
 - If negative feedback patterns exist, mention the top issue
+- If pending suggestions exist from \`list_suggestions\`, output their directives to render them as cards:
+  For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 Then ask: "What would you like to improve?"
 
 ## STEP 3: After user responds, create suggestions
@@ -65,7 +67,7 @@ Tool usage rules when creating suggestions:
 - \`get_agent_insights\`: Only if you need additional information to improve the agent.
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
-Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max).
+Use \`suggest_*\` tools and **include their output verbatim in your response** - it renders as interactive cards. Add 1-2 sentences of context if needed.
 </dust_system>`;
 }
 

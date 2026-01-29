@@ -1,6 +1,7 @@
 import { Markdown } from "@dust-tt/sparkle";
 import React from "react";
 import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import {
   CiteBlock,
@@ -27,6 +28,7 @@ export const AgentMessageMarkdown = ({
   owner,
   content,
   additionalMarkdownComponents = {} as Components,
+  additionalMarkdownPlugins = [] as PluggableList,
   isLastMessage = false,
   isStreaming = false,
   isInstructions = false,
@@ -41,6 +43,7 @@ export const AgentMessageMarkdown = ({
   isStreaming?: boolean;
   isInstructions?: boolean;
   additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
   textColor?: string;
   compactSpacing?: boolean;
   forcedTextSize?: string;
@@ -64,8 +67,8 @@ export const AgentMessageMarkdown = ({
     [owner, additionalMarkdownComponents]
   );
 
-  const additionalMarkdownPlugins = React.useMemo(() => {
-    const directives = [
+  const markdownPlugins = React.useMemo(() => {
+    const baseDirectives = [
       agentMentionDirective,
       userMentionDirective,
       getCiteDirective(),
@@ -73,18 +76,19 @@ export const AgentMessageMarkdown = ({
       imgDirective,
       toolDirective,
       quickReplyDirective,
+      ...additionalMarkdownPlugins,
     ];
 
     return isInstructions
-      ? [...directives, instructionBlockDirective]
-      : directives;
-  }, [isInstructions]);
+      ? [...baseDirectives, instructionBlockDirective]
+      : baseDirectives;
+  }, [isInstructions, additionalMarkdownPlugins]);
 
   return (
     <Markdown
       content={processedContentIfIsInstructions}
       additionalMarkdownComponents={markdownComponents}
-      additionalMarkdownPlugins={additionalMarkdownPlugins}
+      additionalMarkdownPlugins={markdownPlugins}
       isLastMessage={isLastMessage}
       isStreaming={isStreaming}
       textColor={textColor}

@@ -1,5 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { useCopilotPanelContext } from "@app/components/agent_builder/CopilotPanelContext";
@@ -9,6 +11,10 @@ import ConversationSidePanelContent from "@app/components/assistant/conversation
 import { useConversationSidePanelContext } from "@app/components/assistant/conversation/ConversationSidePanelContext";
 import { ConversationViewer } from "@app/components/assistant/conversation/ConversationViewer";
 import { GenerationContextProvider } from "@app/components/assistant/conversation/GenerationContextProvider";
+import {
+  copilotSuggestionDirective,
+  getCopilotSuggestionPlugin,
+} from "@app/components/markdown/suggestion/CopilotSuggestionDirective";
 import { isFreeTrialPhonePlan } from "@app/lib/plans/plan_codes";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
@@ -73,6 +79,18 @@ function CopilotContent({
   isAdmin,
   clientSideMCPServerIds,
 }: CopilotContentProps) {
+  const additionalMarkdownComponents: Components = useMemo(
+    () =>
+      ({
+        agent_suggestion: getCopilotSuggestionPlugin(),
+      }) as Components, // We need to force cast here as we don't use native html tags.
+    []
+  );
+  const additionalMarkdownPlugins: PluggableList = useMemo(
+    () => [copilotSuggestionDirective],
+    []
+  );
+
   return (
     <>
       <div className={currentPanel ? "hidden" : "flex h-full flex-col"}>
@@ -93,6 +111,8 @@ function CopilotContent({
                 actionsToShow: [],
                 clientSideMCPServerIds,
               }}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
               key={conversation.sId}
             />
           )}
