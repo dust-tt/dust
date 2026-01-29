@@ -37,6 +37,9 @@ COPY /front-spa .
 WORKDIR /app/front
 COPY /front .
 
+# Generate custom models TypeScript from JSON config (downloaded by CI)
+RUN npx tsx scripts/fetch-custom-models.ts
+
 # Remove test files (shared optimization)
 RUN find . -name "*.test.ts" -delete
 RUN find . -name "*.test.tsx" -delete

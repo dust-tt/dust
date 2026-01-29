@@ -26,6 +26,11 @@ import {
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
 } from "./anthropic";
+// Custom models (generated at build time from GCS, empty in dev).
+import {
+  CUSTOM_MODEL_CONFIGS,
+  CUSTOM_MODEL_IDS,
+} from "./custom_models.generated";
 import {
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_CHAT_MODEL_ID,
@@ -130,7 +135,8 @@ import {
   GROK_4_MODEL_ID,
 } from "./xai";
 
-export const MODEL_IDS = [
+// Static model IDs (compile-time known, used for pricing maps).
+export const STATIC_MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
@@ -188,6 +194,12 @@ export const MODEL_IDS = [
   GROK_4_1_FAST_REASONING_MODEL_ID,
   NOOP_MODEL_ID,
 ] as const;
+
+// Type for static model IDs only (excludes custom models from GCS).
+export type StaticModelIdType = (typeof STATIC_MODEL_IDS)[number];
+
+// Combined model IDs: static + custom (custom models generated at build time from GCS).
+export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
 
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
@@ -254,5 +266,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
+  // Custom models (generated at build time from GCS).
+  ...CUSTOM_MODEL_CONFIGS,
 ];
 export default SUPPORTED_MODEL_CONFIGS;

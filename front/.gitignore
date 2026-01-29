@@ -42,3 +42,6 @@ public/spa/
 # cache
 .cache/
 .eslintcache
+
+# Build-time custom models config (downloaded by CI)
+custom-models.json

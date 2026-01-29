@@ -8,6 +8,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  custom_model_feature: {
+    description: "Access to custom models loaded from external config",
+    stage: "dust_only",
+  },
   dust_edge_global_agent: {
     description:
       "Access to dust-edge global agent that we use internally to test other models on dust",
