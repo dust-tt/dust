@@ -4,7 +4,7 @@ import { Stripe } from "stripe";
 import config from "@app/lib/api/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial";
+import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
 import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import {
   isEnterpriseReportUsage,
