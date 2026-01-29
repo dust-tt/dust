@@ -559,7 +559,6 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestions: [{ oldString: "old text", newString: "new text" }],
-          analysis: "Test analysis",
         },
         createTestExtra(authenticator)
       );
@@ -573,6 +572,51 @@ describe("agent_copilot_context tools", () => {
             /:agent_suggestion\[\]\{sId=\S+ kind=instructions\}/
           );
         }
+      }
+    });
+
+    it("returns error when exceeding pending suggestions limit", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create 10 pending instruction suggestions (the maximum allowed).
+      for (let i = 0; i < 10; i++) {
+        await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration,
+          {
+            suggestion: {
+              oldString: `old text ${i}`,
+              newString: `new text ${i}`,
+            },
+            state: "pending",
+          }
+        );
+      }
+
+      const { getAgentConfigurationIdFromContext } =
+        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_prompt_editions");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "one more", newString: "exceeds limit" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("exceed the limit");
+        expect(result.error.message).toContain("10");
+        expect(result.error.message).toContain("instructions");
+        expect(result.error.message).toContain("outdated");
       }
     });
   });
