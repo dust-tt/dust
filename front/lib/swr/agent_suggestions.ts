@@ -57,7 +57,7 @@ export function useAgentSuggestions({
   };
 }
 
-export function usePatchAgentSuggestion({
+export function usePatchAgentSuggestions({
   agentConfigurationId,
   workspaceId,
 }: {
@@ -72,11 +72,11 @@ export function usePatchAgentSuggestion({
     disabled: true,
   });
 
-  const patchSuggestion = async (
-    suggestionId: string,
+  const patchSuggestions = async (
+    suggestionIds: string[],
     state: PatchSuggestionRequestBody["state"]
   ): Promise<PatchSuggestionResponseBody | null> => {
-    if (!agentConfigurationId) {
+    if (!agentConfigurationId || suggestionIds.length === 0) {
       return null;
     }
 
@@ -88,7 +88,7 @@ export function usePatchAgentSuggestion({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          suggestionId,
+          suggestionIds,
           state,
         } satisfies PatchSuggestionRequestBody),
       }
@@ -98,7 +98,7 @@ export function usePatchAgentSuggestion({
       const errorData = await getErrorFromResponse(res);
       sendNotification({
         type: "error",
-        title: "Error updating suggestion",
+        title: "Error updating suggestions",
         description: `Error: ${errorData.message}`,
       });
       return null;
@@ -108,5 +108,5 @@ export function usePatchAgentSuggestion({
     return res.json();
   };
 
-  return { patchSuggestion };
+  return { patchSuggestions };
 }

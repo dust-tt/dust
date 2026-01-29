@@ -12,7 +12,7 @@ import { isString } from "@app/types";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 const PatchSuggestionRequestBodySchema = z.object({
-  suggestionId: z.string(),
+  suggestionIds: z.array(z.string()).min(1),
   state: z.enum(["approved", "rejected", "outdated"]),
 });
 
@@ -21,7 +21,7 @@ export type PatchSuggestionRequestBody = z.infer<
 >;
 
 export interface PatchSuggestionResponseBody {
-  suggestion: AgentSuggestionType;
+  suggestions: AgentSuggestionType[];
 }
 
 const StateSchema = z.enum(["pending", "approved", "rejected", "outdated"]);
@@ -156,35 +156,43 @@ async function handler(
         });
       }
 
-      const { suggestionId, state } = bodyValidation.data;
+      const { suggestionIds, state } = bodyValidation.data;
 
-      const suggestion = await AgentSuggestionResource.fetchById(
+      const suggestions = await AgentSuggestionResource.fetchByIds(
         auth,
-        suggestionId
+        suggestionIds
       );
-      if (!suggestion) {
+
+      if (suggestions.length !== suggestionIds.length) {
         return apiError(req, res, {
           status_code: 404,
           api_error: {
             type: "agent_suggestion_not_found",
-            message: "The agent suggestion was not found.",
-          },
-        });
-      }
-      if (suggestion.agentConfigurationId !== agent.id) {
-        return apiError(req, res, {
-          status_code: 400,
-          api_error: {
-            type: "invalid_request_error",
-            message:
-              "The agent suggestion does not belong to the specified agent configuration.",
+            message: "One or more agent suggestions were not found.",
           },
         });
       }
 
-      await suggestion.updateState(auth, state);
+      for (const suggestion of suggestions) {
+        if (suggestion.agentConfigurationId !== agent.id) {
+          return apiError(req, res, {
+            status_code: 400,
+            api_error: {
+              type: "invalid_request_error",
+              message:
+                "One or more agent suggestions do not belong to the specified agent configuration.",
+            },
+          });
+        }
+      }
 
-      return res.status(200).json({ suggestion: suggestion.toJSON() });
+      for (const suggestion of suggestions) {
+        await suggestion.updateState(auth, state);
+      }
+
+      return res
+        .status(200)
+        .json({ suggestions: suggestions.map((s) => s.toJSON()) });
     }
 
     default:

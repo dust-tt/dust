@@ -15,7 +15,7 @@ import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuild
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
   useAgentSuggestions,
-  usePatchAgentSuggestion,
+  usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
@@ -122,7 +122,7 @@ export const CopilotSuggestionsProvider = ({
     [mutateSuggestions]
   );
 
-  const { patchSuggestion } = usePatchAgentSuggestion({
+  const { patchSuggestions } = usePatchAgentSuggestions({
     agentConfigurationId,
     workspaceId: owner.sId,
   });
@@ -275,13 +275,13 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
-      const result = await patchSuggestion(id, "approved");
+      const result = await patchSuggestions([id], "approved");
       if (result) {
         editor.commands.acceptSuggestion(id);
         setSuggestions((prev) => prev.filter((s) => s.id !== id));
       }
     },
-    [patchSuggestion]
+    [patchSuggestions]
   );
 
   const rejectSuggestion = useCallback(
@@ -291,36 +291,42 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
-      const result = await patchSuggestion(id, "rejected");
+      const result = await patchSuggestions([id], "rejected");
       if (result) {
         editor.commands.rejectSuggestion(id);
         setSuggestions((prev) => prev.filter((s) => s.id !== id));
       }
     },
-    [patchSuggestion]
+    [patchSuggestions]
   );
 
   const acceptAllSuggestions = useCallback(async () => {
     const editor = editorRef.current;
-    if (!editor) {
+    if (!editor || suggestions.length === 0) {
       return;
     }
 
-    for (const suggestion of suggestions) {
-      await acceptSuggestion(suggestion.id);
+    const ids = suggestions.map((s) => s.id);
+    const result = await patchSuggestions(ids, "approved");
+    if (result) {
+      editor.commands.acceptAllSuggestions();
+      setSuggestions([]);
     }
-  }, [acceptSuggestion, suggestions]);
+  }, [patchSuggestions, suggestions]);
 
   const rejectAllSuggestions = useCallback(async () => {
     const editor = editorRef.current;
-    if (!editor) {
+    if (!editor || suggestions.length === 0) {
       return;
     }
 
-    for (const suggestion of suggestions) {
-      await rejectSuggestion(suggestion.id);
+    const ids = suggestions.map((s) => s.id);
+    const result = await patchSuggestions(ids, "rejected");
+    if (result) {
+      editor.commands.rejectAllSuggestions();
+      setSuggestions([]);
     }
-  }, [rejectSuggestion, suggestions]);
+  }, [patchSuggestions, suggestions]);
 
   const hasPendingSuggestions = useCallback(() => {
     return suggestions.length > 0;
