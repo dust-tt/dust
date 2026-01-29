@@ -102,7 +102,8 @@ const normalizeKey = (rawKey: string) => {
     : trimmed;
 };
 
-export interface KeyboardShortcutProps extends React.HTMLAttributes<HTMLSpanElement> {
+export interface KeyboardShortcutProps
+  extends React.HTMLAttributes<HTMLSpanElement> {
   shortcut: string;
 }
 
