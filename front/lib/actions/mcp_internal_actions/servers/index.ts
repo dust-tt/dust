@@ -10,7 +10,6 @@ import { default as httpClientServer } from "@app/lib/actions/mcp_internal_actio
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/actions/mcp_internal_actions/servers/jira";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
-import { default as runAgentServer } from "@app/lib/actions/mcp_internal_actions/servers/run_agent";
 import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actions/servers/salesforce";
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
@@ -55,6 +54,7 @@ import { default as outlookMailServer } from "@app/lib/api/actions/servers/outlo
 import { default as primitiveTypesDebuggerServer } from "@app/lib/api/actions/servers/primitive_types_debugger";
 import { default as projectContextManagementServer } from "@app/lib/api/actions/servers/project_context_management";
 import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/query_tables_v2";
+import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";

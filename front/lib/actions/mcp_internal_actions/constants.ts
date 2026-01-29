@@ -1,6 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import {
   FRESHSERVICE_SERVER_INSTRUCTIONS,
   JIRA_SERVER_INSTRUCTIONS,
@@ -50,6 +49,7 @@ import {
   QUERY_TABLES_V2_SERVER,
   TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
+import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
@@ -1118,19 +1118,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-    serverInfo: {
-      name: "run_agent",
-      version: "1.0.0",
-      description: "Run a child agent (agent as tool).",
-      icon: "ActionRobotIcon",
-      authorization: null,
-      documentationUrl: null,
-      instructions: null,
-    },
+    timeoutMs: RUN_AGENT_SERVER.timeoutMs,
+    metadata: RUN_AGENT_SERVER,
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
     id: 1009,
