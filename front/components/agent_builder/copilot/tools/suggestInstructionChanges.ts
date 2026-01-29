@@ -3,12 +3,12 @@ import { z } from "zod";
 
 import type {
   AddSuggestionResult,
-  CopilotSuggestion,
+  CopilotInstructionsSuggestion,
 } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 
 export interface SuggestInstructionChangesCallbacks {
   addSuggestion: (
-    suggestion: Omit<CopilotSuggestion, "id" | "matchPositions">,
+    suggestion: Omit<CopilotInstructionsSuggestion, "id" | "matchPositions">,
     expectedCount?: number
   ) => AddSuggestionResult;
 }

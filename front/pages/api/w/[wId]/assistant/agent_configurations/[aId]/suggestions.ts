@@ -188,9 +188,15 @@ async function handler(
 
       await AgentSuggestionResource.bulkUpdateState(auth, suggestions, state);
 
+      // Bulk update doesn't mutate the resources, so we need to refetch here.
+      const updatedSuggestions = await AgentSuggestionResource.fetchByIds(
+        auth,
+        suggestionIds
+      );
+
       return res
         .status(200)
-        .json({ suggestions: suggestions.map((s) => s.toJSON()) });
+        .json({ suggestions: updatedSuggestions.map((s) => s.toJSON()) });
     }
 
     default:

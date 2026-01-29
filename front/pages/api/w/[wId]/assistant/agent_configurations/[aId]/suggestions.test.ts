@@ -360,11 +360,21 @@ describe("PATCH /api/w/[wId]/assistant/agent_configurations/[aId]/suggestions", 
 
     const responseData = res._getJSONData();
     expect(responseData.suggestions).toHaveLength(2);
-    expect(responseData.suggestions.every((s: { state: string }) => s.state === "approved")).toBe(true);
+    expect(
+      responseData.suggestions.every(
+        (s: { state: string }) => s.state === "approved"
+      )
+    ).toBe(true);
 
     // Verify both were persisted.
-    const fetched1 = await AgentSuggestionResource.fetchById(authenticator, suggestion1.sId);
-    const fetched2 = await AgentSuggestionResource.fetchById(authenticator, suggestion2.sId);
+    const fetched1 = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion1.sId
+    );
+    const fetched2 = await AgentSuggestionResource.fetchById(
+      authenticator,
+      suggestion2.sId
+    );
     expect(fetched1?.state).toBe("approved");
     expect(fetched2?.state).toBe("approved");
   });

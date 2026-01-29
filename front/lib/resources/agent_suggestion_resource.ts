@@ -338,7 +338,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       "User does not have permission to edit this agent"
     );
 
-    await AgentSuggestionModel.update(
+    await this.model.update(
       { state },
       {
         where: {
