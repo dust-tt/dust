@@ -130,7 +130,7 @@ export const CopilotSuggestionsProvider = ({
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
-    state: ["pending"],
+    state: ["pending", "approved", "rejected"],
     workspaceId: owner.sId,
   });
 
