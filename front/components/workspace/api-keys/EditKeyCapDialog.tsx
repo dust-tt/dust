@@ -13,29 +13,18 @@ import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import {
+  dollarsToMicroUsd,
+  microUsdToDollarsString,
+  monthlyCapDollarsSchema,
+} from "@app/components/workspace/api-keys/utils";
 import type { KeyType } from "@app/types";
 
 const formSchema = z.object({
-  capValueDollars: z.string().refine(
-    (value) => {
-      if (value === "") {
-        return true;
-      }
-      const dollars = parseFloat(value);
-      return !/[a-zA-Z]/.test(value) && !isNaN(dollars) && dollars >= 0;
-    },
-    { message: "Cap must be a positive number" }
-  ),
+  capValueDollars: monthlyCapDollarsSchema,
 });
 
 type FormValues = z.infer<typeof formSchema>;
-
-function microUsdToDollarsString(microUsd: number | null): string {
-  if (microUsd === null) {
-    return "";
-  }
-  return (microUsd / 1_000_000).toString();
-}
 
 interface EditKeyCapDialogProps {
   keyData: KeyType;
@@ -69,11 +58,9 @@ export function EditKeyCapDialog({
   }, [keyData, reset]);
 
   const onSubmit = async (data: FormValues) => {
-    const monthlyCapMicroUsd =
-      data.capValueDollars === ""
-        ? null
-        : Math.round(parseFloat(data.capValueDollars) * 1_000_000);
-    await onSave(monthlyCapMicroUsd);
+    const dollars =
+      data.capValueDollars === "" ? null : parseFloat(data.capValueDollars);
+    await onSave(dollarsToMicroUsd(dollars));
   };
 
   return (
@@ -101,9 +88,6 @@ export function EditKeyCapDialog({
                   {...registerProps}
                   onChange={onChange}
                   placeholder="Leave empty for unlimited"
-                  type="number"
-                  min="0"
-                  step="0.01"
                   isError={!!errorMessage}
                   message={errorMessage}
                   messageStatus="error"

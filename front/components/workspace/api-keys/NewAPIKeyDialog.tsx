@@ -21,22 +21,17 @@ import { FormProvider, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
-import { prettifyGroupName } from "@app/components/workspace/api-keys/utils";
+import {
+  dollarsToMicroUsd,
+  monthlyCapDollarsSchema,
+  prettifyGroupName,
+} from "@app/components/workspace/api-keys/utils";
 import type { GroupType } from "@app/types";
 import { GLOBAL_SPACE_NAME } from "@app/types";
 
 const formSchema = z.object({
   name: z.string().min(1, "API key name is required"),
-  monthlyCapDollars: z.string().refine(
-    (value) => {
-      if (value === "") {
-        return true;
-      }
-      const dollars = parseFloat(value);
-      return !/[a-zA-Z]/.test(value) && !isNaN(dollars) && dollars >= 0;
-    },
-    { message: "Monthly cap must be a positive number" }
-  ),
+  monthlyCapDollars: monthlyCapDollarsSchema,
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -86,15 +81,13 @@ export const NewAPIKeyDialog = ({
   };
 
   const onSubmit = async (data: FormValues) => {
-    const monthlyCapMicroUsd =
-      data.monthlyCapDollars === ""
-        ? null
-        : Math.round(parseFloat(data.monthlyCapDollars) * 1_000_000);
+    const dollars =
+      data.monthlyCapDollars === "" ? null : parseFloat(data.monthlyCapDollars);
 
     await onCreate({
       name: data.name,
       group: restrictedGroup,
-      monthlyCapMicroUsd,
+      monthlyCapMicroUsd: dollarsToMicroUsd(dollars),
     });
     handleClose();
   };
@@ -187,9 +180,6 @@ export const NewAPIKeyDialog = ({
                     {...registerProps}
                     onChange={onChange}
                     placeholder="Leave empty for unlimited"
-                    type="number"
-                    min="0"
-                    step="0.01"
                     isError={!!errorMessage}
                     message={errorMessage}
                     messageStatus="error"
