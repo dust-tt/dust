@@ -11,11 +11,11 @@ import { AgentInstructionDiffExtension } from "@app/components/editor/extensions
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import {
   KNOWLEDGE_NODE_TYPE,
   KnowledgeNode,
 } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SlashCommandExtension } from "@app/components/editor/extensions/skill_builder/SlashCommandExtension";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;

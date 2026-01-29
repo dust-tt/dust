@@ -460,6 +460,7 @@ export function isOAuthConnectionType(
 
 // OAuth Providers utils
 
+// FIXME: Duplicated from lib/api.
 export function isValidZendeskSubdomain(s: unknown): s is string {
   return (
     typeof s === "string" && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(s)

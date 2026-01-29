@@ -5,8 +5,8 @@ import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
