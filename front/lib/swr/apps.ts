@@ -78,12 +78,14 @@ export function useApp({
 
 export function useSavedRunStatus(
   owner: LightWorkspaceType,
-  app: AppType,
+  app: AppType | null,
   refresh: (data: GetRunStatusResponseBody | undefined) => number
 ) {
   const runStatusFetcher: Fetcher<GetRunStatusResponseBody> = fetcher;
   const { data, error } = useSWRWithDefaults(
-    `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/saved/status`,
+    app
+      ? `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/saved/status`
+      : null,
     runStatusFetcher,
     {
       refreshInterval: refresh,
@@ -92,7 +94,7 @@ export function useSavedRunStatus(
 
   return {
     run: data ? data.run : null,
-    isRunLoading: !error && !data,
+    isRunLoading: !!app && !error && !data,
     isRunError: error,
   };
 }
@@ -205,9 +207,13 @@ export function useCancelRun({
   app,
 }: {
   owner: LightWorkspaceType;
-  app: AppType;
+  app: AppType | null;
 }) {
   const doCancel = async (runId: string): Promise<boolean> => {
+    if (!app) {
+      return false;
+    }
+
     try {
       const res = await clientFetch(
         `/api/w/${owner.sId}/spaces/${app.space.sId}/apps/${app.sId}/runs/${runId}/cancel`,

@@ -143,7 +143,7 @@ function AppView() {
     setSpecInitialized(true);
   }
 
-  const { run } = useSavedRunStatus(owner, app!, (data) => {
+  const { run } = useSavedRunStatus(owner, app, (data) => {
     if (data && data.run) {
       switch (data?.run.status.run) {
         case "running":
@@ -309,7 +309,7 @@ function AppView() {
     }, 0);
   };
 
-  const { doCancel } = useCancelRun({ owner, app: app! });
+  const { doCancel } = useCancelRun({ owner, app });
 
   const handleCancelRun = async () => {
     if (!run?.run_id || cancelRequested || !app) {
