@@ -168,7 +168,6 @@ pub mod oauth {
         pub mod slack;
         pub mod slack_tools;
         pub mod snowflake;
-        pub mod snowflake_keypair;
         pub mod ukg_ready;
         pub mod utils;
         pub mod vanta;
