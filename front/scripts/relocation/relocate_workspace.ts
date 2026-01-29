@@ -26,7 +26,7 @@ import { Authenticator } from "@app/lib/auth";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { makeScript } from "@app/scripts/helpers";
 import { launchWorkspaceRelocationWorkflow } from "@app/temporal/relocation/client";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const RELOCATION_STEPS = [
   "relocate",

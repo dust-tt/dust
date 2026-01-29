@@ -72,7 +72,7 @@ import { default as valtownServer } from "@app/lib/api/actions/servers/val_town"
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Check if we are in advanced search mode,

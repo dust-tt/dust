@@ -3,7 +3,6 @@ import {
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
-  assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -26,6 +25,7 @@ import {
   O3_MODEL_CONFIG,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentMetadata = {
   sId: string;

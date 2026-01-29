@@ -13,7 +13,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const BRACKET_1_USERS = 10;
 const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5

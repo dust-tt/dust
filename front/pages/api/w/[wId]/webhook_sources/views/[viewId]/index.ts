@@ -13,7 +13,8 @@ import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_v
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
 import { apiError } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookSourceViewType } from "@app/types/triggers/webhooks";
 
 const PatchWebhookSourceViewBodySchema = z.object({

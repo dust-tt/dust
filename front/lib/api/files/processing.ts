@@ -28,7 +28,6 @@ import {
   normalizeError,
 } from "@app/types";
 import {
-  assertNever,
   Err,
   extensionsForContentType,
   isSupportedDelimitedTextContentType,
@@ -37,6 +36,7 @@ import {
   Ok,
   TextExtraction,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const UPLOAD_DELAY_AFTER_CREATION_MS = 1000 * 60 * 1; // 1 minute.
 const CONVERSATION_IMG_MAX_SIZE_PIXELS = "1538";

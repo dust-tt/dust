@@ -38,12 +38,12 @@ import {
 } from "@app/temporal/labs/transcripts/client";
 import { REGISTERED_CHECKS } from "@app/temporal/production_checks/activities";
 import {
-  assertNever,
   ConnectorsAPI,
   isRoleType,
   removeNulls,
   SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // `cli` takes an object type and a command as first two arguments and then a list of arguments.
 const workspace = async (command: string, args: parseArgs.ParsedArgs) => {

@@ -27,7 +27,6 @@ import type {
   UserType,
 } from "@app/types";
 import {
-  assertNever,
   ConversationError,
   Err,
   getSmallWhitelistedModel,
@@ -51,6 +50,7 @@ import {
   makeNotificationPreferencesUserMetadata,
   NOTIFICATION_DELAY_OPTIONS,
 } from "@app/types/notification_preferences";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const ConversationUnreadPayloadSchema = z.object({
   workspaceId: z.string(),

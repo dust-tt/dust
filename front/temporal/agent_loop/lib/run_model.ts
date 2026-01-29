@@ -46,8 +46,9 @@ import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { getOutputFromLLMStream } from "@app/temporal/agent_loop/lib/get_output_from_llm";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { AgentActionsEvent, AgentMessageType, ModelId } from "@app/types";
-import { assertNever, isTextContent, removeNulls } from "@app/types";
+import { isTextContent, removeNulls } from "@app/types";
 import type { AgentLoopExecutionData } from "@app/types/assistant/agent_run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // This method is used by the multi-actions execution loop to pick the next
 // action to execute and generate its inputs.

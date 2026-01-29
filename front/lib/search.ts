@@ -6,7 +6,8 @@ import type {
   CoreAPISearchScope,
   Result,
 } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function getCoreViewTypeFilter(viewType: ContentNodesViewType) {
   switch (viewType) {

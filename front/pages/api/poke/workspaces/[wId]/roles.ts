@@ -11,7 +11,8 @@ import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { ActiveRoleSchema, assertNever } from "@app/types";
+import { ActiveRoleSchema } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type PostRoleUserResponseBody = {
   success: true;

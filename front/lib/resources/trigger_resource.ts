@@ -28,13 +28,7 @@ import {
   deleteTriggerSchedule,
 } from "@app/temporal/triggers/schedule/client";
 import type { ModelId, Result, UserType } from "@app/types";
-import {
-  assertNever,
-  Err,
-  errorToString,
-  normalizeError,
-  Ok,
-} from "@app/types";
+import { Err, errorToString, normalizeError, Ok } from "@app/types";
 import type {
   ScheduleConfig,
   TriggerExecutionMode,
@@ -42,6 +36,7 @@ import type {
   TriggerType,
   WebhookConfig,
 } from "@app/types/assistant/triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

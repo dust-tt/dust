@@ -2,9 +2,8 @@ import removeMarkdown from "remove-markdown";
 
 import { replaceContentNodeMarkdownWithQuotedTitle } from "@app/lib/content_nodes";
 import { replaceMentionsWithAt } from "@app/lib/mentions/format";
-
-import type { Result } from "../result";
-import { Err, Ok } from "../result";
+import type { Result } from "@app/types/shared/result";
+import { Err, Ok } from "@app/types/shared/result";
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode

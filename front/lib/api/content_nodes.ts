@@ -10,7 +10,7 @@ import type {
   CoreAPIContentNode,
   DataSourceViewType,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const NON_EXPANDABLE_NODES_MIME_TYPES = [
   INTERNAL_MIME_TYPES.GITHUB.DISCUSSIONS,

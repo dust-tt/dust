@@ -21,7 +21,8 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { assertNever, CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
+import { CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching

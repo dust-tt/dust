@@ -20,12 +20,13 @@ import type {
   ModelMessageTypeMultiActionsWithoutContentFragment,
   UserMessageTypeModel,
 } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { isString } from "@app/types";
 import type {
   AgentFunctionCallContentType,
   AgentReasoningContentType,
   AgentTextContentType,
 } from "@app/types/assistant/agent_message_content";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function userContentToParam(
   content: Content

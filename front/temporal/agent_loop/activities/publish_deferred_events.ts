@@ -4,7 +4,7 @@ import { publishConversationRelatedEvent } from "@app/lib/api/assistant/streamin
 import type { AgentMessageEvents } from "@app/lib/api/assistant/streaming/types";
 import { AgentMessageModel } from "@app/lib/models/agent/conversation";
 import type { DeferredEvent } from "@app/temporal/agent_loop/lib/deferred_events";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Activity to publish events that were deferred during tool execution.

@@ -23,7 +23,6 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import {
-  assertNever,
   Err,
   errorToString,
   isString,
@@ -36,6 +35,7 @@ import type {
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 

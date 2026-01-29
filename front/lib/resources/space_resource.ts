@@ -38,13 +38,13 @@ import type {
   SpaceType,
 } from "@app/types";
 import {
-  assertNever,
   Err,
   GLOBAL_SPACE_NAME,
   Ok,
   PROJECT_EDITOR_GROUP_PREFIX,
   removeNulls,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.

@@ -62,11 +62,11 @@ import type {
   SpaceType,
 } from "@app/types";
 import {
-  assertNever,
   defaultSelectionConfiguration,
   MIN_SEARCH_QUERY_SIZE,
   removeNulls,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const ONLY_ONE_SPACE_PER_SELECTION = true;
 const ITEMS_PER_PAGE = 50;

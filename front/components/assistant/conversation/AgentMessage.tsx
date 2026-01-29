@@ -84,11 +84,11 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   isGlobalAgentId,
   isInteractiveContentFileContentType,
   isSupportedImageContentType,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface AgentMessageProps {
   conversationId: string;

@@ -9,7 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const PostSpaceRequestBodySchema = t.intersection([
   t.type({

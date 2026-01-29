@@ -5,7 +5,7 @@ import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_s
 import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class MCPServerConnectionModel extends WorkspaceAwareModel<MCPServerConnectionModel> {
   declare createdAt: CreationOptional<Date>;

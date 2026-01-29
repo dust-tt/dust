@@ -38,13 +38,13 @@ import {
 } from "@app/temporal/labs/transcripts/utils/modjo";
 import type { AgentMessageType, UserMessageContext } from "@app/types";
 import {
-  assertNever,
   dustManagedCredentials,
   isEmptyString,
   isProviderWithDefaultWorkspaceConfiguration,
 } from "@app/types";
 import { Err } from "@app/types";
 import { CoreAPI } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 class TranscriptNonRetryableError extends Error {}
 
