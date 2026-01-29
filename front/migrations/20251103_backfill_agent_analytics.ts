@@ -208,6 +208,7 @@ async function backfillAgentAnalytics(
               agentMessageRow,
               agentAgentMessageRow,
               userModel: userUserMessageRow.user ?? null,
+              userMessageModel: userUserMessageRow,
               conversationRow,
               contextOrigin: userUserMessageRow.userContextOrigin ?? null,
             });

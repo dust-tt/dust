@@ -109,6 +109,8 @@ export type UserMessageContext = {
   clientSideMCPServerIds?: string[];
   selectedMCPServerViewIds?: string[];
   selectedSkillIds?: string[];
+  apiKeyName?: string | null;
+  authMethod?: string | null;
 };
 
 export type AgenticMessageData = {
