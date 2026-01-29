@@ -145,7 +145,7 @@ export async function createConversation(
       depth,
       triggerId,
       spaceId,
-      requestedSpaceIds: [],
+      requestedSpaceIds: spaceId ? [spaceId] : [],
       metadata: metadata ?? {},
     },
     space

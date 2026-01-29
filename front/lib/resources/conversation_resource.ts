@@ -113,6 +113,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       );
     }
 
+    // Add spaceId to the requestedSpaceIds if it is not already part of the requestedSpaceIds.
+    if (space && !blob.requestedSpaceIds.includes(space.id)) {
+      blob.requestedSpaceIds.push(space.id);
+    }
+
     const conversation = await this.model.create({
       ...blob,
       workspaceId: workspace.id,
@@ -178,9 +183,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const uniqueSpaceIds = uniq([
       // Include requestedSpaceIds from conversations.
       ...conversations.flatMap((c) => c.requestedSpaceIds),
-
-      // Include spaceId of the conversations if it exists.
-      ...conversations.flatMap((c) => c.spaceId ?? []),
     ]);
 
     // Only fetch spaces if there are any used spaces.
@@ -1369,7 +1371,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
   ) {
     return this.update(
       {
-        requestedSpaceIds,
+        requestedSpaceIds: uniq(requestedSpaceIds),
       },
       transaction
     );
@@ -1553,11 +1555,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: this.workspaceId,
       })
     );
-
-    // Add the main space (if any).
-    if (this.space) {
-      spaceIds.push(this.space.sId);
-    }
 
     return spaceIds;
   }
