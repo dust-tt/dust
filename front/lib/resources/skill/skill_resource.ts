@@ -66,6 +66,7 @@ import type {
 } from "@app/types";
 import {
   Err,
+  isGlobalAgentId,
   normalizeError,
   Ok,
   removeNulls,
@@ -772,8 +773,19 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
+    agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
   ): Promise<SkillResource[]> {
+    // For global agents, skills are defined in the config, not in the database.
+    if (
+      isGlobalAgentId(agentConfiguration.sId) &&
+      "skills" in agentConfiguration &&
+      agentConfiguration.skills?.length
+    ) {
+      return this.fetchByIds(auth, agentConfiguration.skills, {
+        agentConfiguration,
+      });
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -783,7 +795,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return this.fetchBySkillReferences(auth, agentSkills);
+    return this.fetchBySkillReferences(auth, agentSkills, { agentConfiguration });
   }
 
   static modelIdToSId({

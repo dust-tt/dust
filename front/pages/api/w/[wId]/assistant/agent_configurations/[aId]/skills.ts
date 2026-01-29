@@ -46,9 +46,19 @@ async function handler(
   switch (req.method) {
     case "GET": {
       if (isGlobalAgentId(agent.sId)) {
-        // TODO(skills 2025-12-09): Implement fetching skills for global agents.
+        const fullAgent = await getAgentConfiguration(auth, {
+          agentId: aId,
+          variant: "full",
+        });
+
+        if (!fullAgent?.skills?.length) {
+          return res.status(200).json({ skills: [] });
+        }
+
+        const skills = await SkillResource.fetchByIds(auth, fullAgent.skills);
+
         return res.status(200).json({
-          skills: [],
+          skills: skills.map((s) => s.toJSON(auth)),
         });
       }
 
