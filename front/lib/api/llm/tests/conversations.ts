@@ -18,8 +18,8 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
-import { safeParseJSON } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 

@@ -30,11 +30,8 @@ import type {
   SpecificationBlockType,
   SupportedFileContentType,
 } from "@app/types";
-import {
-  extensionsForContentType,
-  safeParseJSON,
-  SUPPORTED_MODEL_CONFIGS,
-} from "@app/types";
+import { extensionsForContentType, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const MIN_GENERATION_TOKENS = 2048;
 
