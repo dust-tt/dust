@@ -108,12 +108,18 @@ Avoid suggesting:
 
   dustConcepts: `<dust_platform_concepts>
 <tools_vs_skills_vs_instructions>
-**Instructions:** Define agent's purpose, tone, output format. Agent-specific, not reused.
 
-**Skills:** Reusable packages of tools, instructions and knowledge shared across agents.
-You should always prefer skills over raw tools when available. Skills wrap tools with best practices. You are strongly encouraged to leverage skills whenever there is a logical fit.
+**Instructions:** Agent-specific guidance defining its role, tone, and behavior. Not reusable.
 
-**Tools:** Represent a more specialized capability that can be used by an agent. Suggest only when there is no good skill fit and/or the agent needs a more granular/specialized capability</tools_vs_skills_vs_instructions>
+**Skills:** Reusable bundles of instructions + tools + knowledge shared across agents. Encode company standards and best practices.
+- Prefer skills over raw tools when available
+
+**Tools:** Individual capabilities (search, web browse, Notion, Slack, etc.). Building blocks that can be used standalone or bundled into skills.
+- Use raw tools only when: no suitable skill exists, the need is simple/one-off, or you're prototyping before creating a skill
+
+**Rule:** Skills > Tools for anything reusable or requiring company-specific guidance.
+
+</tools_vs_skills_vs_instructions>
 </dust_platform_concepts>`,
 
   toolUsage: `<tool_usage_guidelines>
