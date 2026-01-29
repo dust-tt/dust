@@ -18,6 +18,7 @@ import {
 } from "@app/lib/api/actions/servers/agent_router/metadata";
 import { ASHBY_SERVER } from "@app/lib/api/actions/servers/ashby/metadata";
 import { COMMON_UTILITIES_SERVER } from "@app/lib/api/actions/servers/common_utilities/metadata";
+import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metadata";
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
@@ -653,32 +654,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("confluence_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      // Read operations - never ask
-      get_current_user: "never_ask",
-      get_page: "never_ask",
-      get_pages: "never_ask",
-      get_spaces: "never_ask",
-
-      // Write operations - ask
-      create_page: "low",
-      update_page: "low",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "confluence",
-      version: "1.0.0",
-      description: "Retrieve page information.",
-      authorization: {
-        provider: "confluence_tools" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ConfluenceLogo",
-      documentationUrl: "https://docs.dust.tt/docs/confluence-tool",
-      instructions: null,
-    },
+    metadata: CONFLUENCE_SERVER,
   },
   speech_generator: {
     id: 34,
