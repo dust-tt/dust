@@ -15,6 +15,7 @@ export const ConversationsUnreadEmailTemplatePropsSchema = z.object({
     z.object({
       id: z.string(),
       title: z.string(),
+      summary: z.string().nullable(),
     })
   ),
 });
@@ -30,23 +31,26 @@ const ConversationsUnreadEmailTemplate = ({
 }: ConversationsUnreadEmailTemplateProps) => {
   return (
     <EmailLayout workspace={workspace}>
-      <h3>Hi {name},</h3>
+      <p>Hi {name},</p>
       <p>You have unread message(s) in the following conversations:</p>
-      <ul>
+      <div>
         {conversations.map((conversation) => (
-          <li key={conversation.id}>
-            <a
-              href={
-                process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
-                getConversationRoute(workspace.id, conversation.id)
-              }
-              target="_blank"
-            >
-              {conversation.title}
-            </a>
-          </li>
+          <div key={conversation.id}>
+            <h3>
+              <a
+                href={
+                  process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
+                  getConversationRoute(workspace.id, conversation.id)
+                }
+                target="_blank"
+              >
+                {conversation.title}
+              </a>
+            </h3>
+            {conversation.summary && <div>{conversation.summary}</div>}
+          </div>
         ))}
-      </ul>
+      </div>
     </EmailLayout>
   );
 };
