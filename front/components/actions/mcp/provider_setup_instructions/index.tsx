@@ -21,6 +21,26 @@ export function ProviderSetupInstructions({
   useCase,
 }: ProviderSetupInstructionsProps) {
   switch (provider) {
+    case "mcp_static": {
+      const redirectUri =
+        typeof window !== "undefined"
+          ? `${window.origin}/oauth/mcp_static/finalize`
+          : "/oauth/mcp_static/finalize";
+
+      return (
+        <div className="flex w-full items-start gap-2 rounded-lg border border-border-dark/50 bg-muted-background p-3 dark:border-border-dark-night/50 dark:bg-muted-background-night">
+          <Icon
+            visual={InformationCircleIcon}
+            size="sm"
+            className="mt-0.5 shrink-0 text-muted-foreground dark:text-muted-foreground-night"
+          />
+          <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+            Allow this redirect URI in your OAuth app:{" "}
+            <strong>{redirectUri}</strong>
+          </span>
+        </div>
+      );
+    }
     case "snowflake":
       return <SnowflakeSetupInstructions useCase={useCase} />;
     default:
