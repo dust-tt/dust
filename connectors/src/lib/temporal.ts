@@ -108,9 +108,9 @@ export async function getConnectorId(
 
     // Fallback to typedSearchAttributes if memo doesn't have connectorId.
     if (connectorId === null) {
-      connectorId = described.typedSearchAttributes?.get(
-        connectorIdSearchAttribute
-      ) ?? null;
+      connectorId =
+        described.typedSearchAttributes?.get(connectorIdSearchAttribute) ??
+        null;
     }
 
     if (connectorId !== null) {
