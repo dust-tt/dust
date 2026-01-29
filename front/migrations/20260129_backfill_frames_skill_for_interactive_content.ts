@@ -15,15 +15,6 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 
-/**
- * This migration finds all conversations that have used interactive content tools
- * (i.e., have files with contentType = 'application/vnd.dust.frame') and creates
- * ConversationSkill records to mimic the Frames skill being enabled.
- *
- * We use ShareableFileModel as the starting point since shareable file records
- * are only created for interactive content files (frames).
- */
-
 async function backfillFramesSkillForWorkspace(
   workspace: LightWorkspaceType,
   {
