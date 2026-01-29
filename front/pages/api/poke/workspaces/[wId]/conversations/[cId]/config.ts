@@ -64,7 +64,7 @@ async function handler(
       const conversationDataSource =
         await DataSourceResource.fetchByConversation(auth, cRes.value);
 
-      const temporalWorkspace = config.getTemporalConnectorsNamespace() ?? "";
+      const temporalWorkspace = config.getTemporalAgentNamespace() ?? "";
       return res.status(200).json({
         conversationDataSourceId: conversationDataSource?.sId ?? null,
         langfuseUiBaseUrl: config.getLangfuseUiBaseUrl() ?? null,
