@@ -2,7 +2,7 @@ import type {
   GongCall,
   GongCallTranscript,
   GongUser,
-} from "@app/lib/actions/mcp_internal_actions/servers/gong/client";
+} from "@app/lib/api/actions/servers/gong/client";
 
 function formatDuration(seconds: number | undefined): string {
   if (!seconds) {
