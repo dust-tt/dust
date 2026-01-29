@@ -1,6 +1,7 @@
 import logger from "@app/logger/logger";
 import type { ModelProviderIdType, ResponseFormat } from "@app/types";
-import { isString, ResponseFormatSchema, safeParseJSON } from "@app/types";
+import { isString, ResponseFormatSchema } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export async function* createAsyncGenerator<T>(items: T[]): AsyncGenerator<T> {
   for (const item of items) {

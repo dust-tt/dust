@@ -16,13 +16,9 @@ import type {
   SlackAutoReadPattern,
   WithAPIErrorResponse,
 } from "@app/types";
-import {
-  ConnectorsAPI,
-  CoreAPI,
-  isSlackAutoReadPatterns,
-  safeParseJSON,
-} from "@app/types";
+import { ConnectorsAPI, CoreAPI, isSlackAutoReadPatterns } from "@app/types";
 import type { InternalConnectorType } from "@app/types/connectors/connectors_api";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 export type FeaturesType = {
   slackBotEnabled: boolean;
   googleDrivePdfEnabled: boolean;

@@ -1,6 +1,6 @@
 import isObject from "lodash/isObject";
 
-import { safeParseJSON } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 export const parseToolArguments = (
   input: string,
