@@ -22,6 +22,7 @@ import { findRepoRoot } from "../lib/paths";
 import { checkMainRepoPreconditions } from "../lib/repo-preconditions";
 import { CommandError, Err, Ok, type Result } from "../lib/result";
 import { loadSettings } from "../lib/settings";
+import { runNpmInstall } from "../lib/setup";
 
 export interface SyncOptions {
   force?: boolean;
@@ -41,17 +42,6 @@ async function gitPull(repoRoot: string): Promise<{ success: boolean; error?: st
     return { success: false, error: stderr.trim() };
   }
   return { success: true };
-}
-
-// Run npm install at root level
-async function runNpmInstall(repoRoot: string): Promise<boolean> {
-  const proc = Bun.spawn(["npm", "install"], {
-    cwd: repoRoot,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  await proc.exited;
-  return proc.exitCode === 0;
 }
 
 // Run bun install in a directory

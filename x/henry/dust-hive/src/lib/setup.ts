@@ -184,8 +184,15 @@ async function copyUserConfigFiles(srcDir: string, destDir: string): Promise<voi
 }
 
 // Run npm install in a directory
-export async function runNpmInstall(dir: string): Promise<boolean> {
-  const proc = Bun.spawn(["npm", "install", "--prefer-offline"], {
+export async function runNpmInstall(
+  dir: string,
+  options?: { preferOffline?: boolean }
+): Promise<boolean> {
+  const args = ["install"];
+  if (options?.preferOffline) {
+    args.push("--prefer-offline");
+  }
+  const proc = Bun.spawn(["npm", ...args], {
     cwd: dir,
     stdout: "pipe",
     stderr: "pipe",
@@ -256,7 +263,9 @@ export async function installAllDependencies(
     }
   } else {
     logger.step("sdks/js: Installing dependencies...");
-    const success = await runNpmInstall(`${worktreePath}/sdks/js`);
+    const success = await runNpmInstall(`${worktreePath}/sdks/js`, {
+      preferOffline: true,
+    });
     if (!success) {
       failed.push("sdks/js");
     } else {
@@ -307,7 +316,7 @@ export async function installAllDependencies(
       }
     } else {
       logger.step(`${name}: Installing dependencies...`);
-      const success = await runNpmInstall(dest);
+      const success = await runNpmInstall(dest, { preferOffline: true });
       if (!success) {
         failed.push(name);
       } else {
