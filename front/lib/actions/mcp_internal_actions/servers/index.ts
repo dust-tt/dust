@@ -15,7 +15,6 @@ import { default as salesforceServer } from "@app/lib/actions/mcp_internal_actio
 import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as slabServer } from "@app/lib/actions/mcp_internal_actions/servers/slab";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
-import { default as valtownServer } from "@app/lib/actions/mcp_internal_actions/servers/valtown";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
 import {
@@ -69,6 +68,7 @@ import { default as speechGenerator } from "@app/lib/api/actions/servers/speech_
 import { default as statuspageServer } from "@app/lib/api/actions/servers/statuspage";
 import { default as toolsetsServer } from "@app/lib/api/actions/servers/toolsets";
 import { default as ukgReadyServer } from "@app/lib/api/actions/servers/ukg_ready";
+import { default as valtownServer } from "@app/lib/api/actions/servers/val_town";
 import { default as webSearchBrowseServer } from "@app/lib/api/actions/servers/web_search_browse";
 import { default as zendeskServer } from "@app/lib/api/actions/servers/zendesk";
 import type { Authenticator } from "@app/lib/auth";
