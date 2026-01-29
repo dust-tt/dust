@@ -63,6 +63,12 @@ export type ModelConfigurationType = {
   customAssistantFeatureFlag?: WhitelistableFeature;
 
   tokenizer: TokenizerConfig;
+
+  // Custom model overrides (for models with special API requirements)
+  customThinkingType?: "auto" | "enabled";
+  customBetas?: string[];
+  customOutputConfig?: Record<string, string>;
+  disablePrefill?: boolean;
 };
 
 export type ModelConfig = (typeof SUPPORTED_MODEL_CONFIGS)[number];

@@ -9,6 +9,7 @@ import {
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
 } from "@app/types";
+import { CUSTOM_MODEL_IDS } from "@app/types/assistant/models/custom_models.generated";
 
 export const ANTHROPIC_PROVIDER_ID = "anthropic";
 
@@ -20,6 +21,8 @@ export const ANTHROPIC_WHITELISTED_MODEL_IDS = [
   CLAUDE_4_5_SONNET_20250929_MODEL_ID,
   CLAUDE_4_OPUS_20250514_MODEL_ID,
   CLAUDE_4_SONNET_20250514_MODEL_ID,
+  // Custom Anthropic models (generated at build time from GCS)
+  ...CUSTOM_MODEL_IDS,
 ] as const;
 export type AnthropicWhitelistedModelId =
   (typeof ANTHROPIC_WHITELISTED_MODEL_IDS)[number];
@@ -31,9 +34,12 @@ const THINKING_OVERWRITES: Partial<LLMParameters> = {
   temperature: 1,
 };
 
-export const ANTHROPIC_MODEL_CONFIGS: Record<
-  AnthropicWhitelistedModelId,
-  { overwrites: Omit<LLMParameters, "modelId"> }
+// Config overwrites for static Anthropic models. Custom models use THINKING_OVERWRITES by default.
+const STATIC_ANTHROPIC_MODEL_CONFIGS: Partial<
+  Record<
+    AnthropicWhitelistedModelId,
+    { overwrites: Omit<LLMParameters, "modelId"> }
+  >
 > = {
   [CLAUDE_3_OPUS_2024029_MODEL_ID]: {
     overwrites: NON_THINKING_OVERWRITES,
@@ -63,9 +69,12 @@ export function overwriteLLMParameters(
     modelId: AnthropicWhitelistedModelId;
   }
 ): LLMParameters & { modelId: AnthropicWhitelistedModelId } {
+  // Custom models default to THINKING_OVERWRITES
+  const config = STATIC_ANTHROPIC_MODEL_CONFIGS[llmParameters.modelId];
+  const overwrites = config?.overwrites ?? THINKING_OVERWRITES;
   return {
     ...llmParameters,
-    ...ANTHROPIC_MODEL_CONFIGS[llmParameters.modelId].overwrites,
+    ...overwrites,
   };
 }
 

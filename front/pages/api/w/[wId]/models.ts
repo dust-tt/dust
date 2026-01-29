@@ -10,6 +10,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { apiError } from "@app/logger/withlogging";
 import type { ModelConfigurationType, WithAPIErrorResponse } from "@app/types";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 
 export type GetAvailableModelsResponseType = {
   models: ModelConfigurationType[];
@@ -27,7 +28,9 @@ async function handler(
   switch (req.method) {
     case "GET":
       const featureFlags = await getFeatureFlags(owner);
-      const models: ModelConfigurationType[] = USED_MODEL_CONFIGS.filter((m) =>
+      // Include both standard models and custom models (from GCS at build time)
+      const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
+      const models: ModelConfigurationType[] = allUsedModels.filter((m) =>
         isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
       );
       const reasoningModels: ModelConfigurationType[] =
