@@ -3,16 +3,11 @@ import {
   FREE_TRIAL_PHONE_PLAN_CODE,
   isOldFreePlan,
 } from "@app/lib/plans/plan_codes";
+import {
+  PHONE_TRIAL_ENABLED,
+  TRIAL_DURATION_DAYS,
+} from "@app/lib/plans/trial/constants";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
-
-const TRIAL_DURATION_DAYS = 15;
-
-/**
- * When enabled, new workspaces without a subscription are directed to a phone
- * verification trial flow instead of the credit card paywall.
- * Set to `true` to enable phone trial for all new users.
- */
-export const PHONE_TRIAL_ENABLED = true;
 
 /**
  * Checks if a workspace is eligible for the trial page.
