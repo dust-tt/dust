@@ -165,7 +165,7 @@ describe("AgentSuggestionResource", () => {
     });
   });
 
-  describe("updateState", () => {
+  describe("bulkUpdateState", () => {
     it.each<"approved" | "rejected" | "outdated">([
       "approved",
       "rejected",
@@ -183,7 +183,11 @@ describe("AgentSuggestionResource", () => {
 
         expect(suggestion.state).toBe("pending");
 
-        await suggestion.updateState(authenticator, newState);
+        await AgentSuggestionResource.bulkUpdateState(
+          authenticator,
+          [suggestion],
+          newState
+        );
 
         const fetched = await AgentSuggestionResource.fetchById(
           authenticator,
@@ -192,6 +196,36 @@ describe("AgentSuggestionResource", () => {
         expect(fetched?.state).toBe(newState);
       }
     );
+
+    it("should update multiple suggestions at once", async () => {
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "old1", newString: "new1" } }
+      );
+      const suggestion2 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { suggestion: { oldString: "old2", newString: "new2" } }
+      );
+
+      await AgentSuggestionResource.bulkUpdateState(
+        authenticator,
+        [suggestion1, suggestion2],
+        "approved"
+      );
+
+      const fetched1 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion1.sId
+      );
+      const fetched2 = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion2.sId
+      );
+      expect(fetched1?.state).toBe("approved");
+      expect(fetched2?.state).toBe("approved");
+    });
 
     it("should fail to update state when user is not an editor of the agent", async () => {
       const suggestion = await AgentSuggestionFactory.createInstructions(
@@ -211,7 +245,11 @@ describe("AgentSuggestionResource", () => {
       );
 
       await expect(
-        suggestion.updateState(otherAuthenticator, "approved")
+        AgentSuggestionResource.bulkUpdateState(
+          otherAuthenticator,
+          [suggestion],
+          "approved"
+        )
       ).rejects.toThrow("User does not have permission to edit this agent");
     });
   });
@@ -374,7 +412,11 @@ describe("AgentSuggestionResource", () => {
         agentConfiguration
       );
 
-      await pending.updateState(authenticator, "approved");
+      await AgentSuggestionResource.bulkUpdateState(
+        authenticator,
+        [pending],
+        "approved"
+      );
 
       const pendingSuggestions =
         await AgentSuggestionResource.listByAgentConfigurationId(
@@ -458,7 +500,11 @@ describe("AgentSuggestionResource", () => {
         agentConfiguration
       );
 
-      await instructions1.updateState(authenticator, "approved");
+      await AgentSuggestionResource.bulkUpdateState(
+        authenticator,
+        [instructions1],
+        "approved"
+      );
 
       const results = await AgentSuggestionResource.listByAgentConfigurationId(
         authenticator,

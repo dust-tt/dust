@@ -186,9 +186,7 @@ async function handler(
         }
       }
 
-      for (const suggestion of suggestions) {
-        await suggestion.updateState(auth, state);
-      }
+      await AgentSuggestionResource.bulkUpdateState(auth, suggestions, state);
 
       return res
         .status(200)
