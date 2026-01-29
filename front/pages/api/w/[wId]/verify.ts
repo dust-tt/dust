@@ -27,7 +27,8 @@ async function detectCountryFromIP(req: IncomingMessage): Promise<Country> {
     if (!ip) {
       return "US";
     }
-    return (await resolveCountryCode(ip)) as Country;
+    const countryCode = await resolveCountryCode(ip);
+    return countryCode as Country;
   } catch (error) {
     logger.error({ error }, "Error detecting country from IP");
     return "US";
