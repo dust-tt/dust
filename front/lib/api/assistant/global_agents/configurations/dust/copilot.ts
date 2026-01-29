@@ -123,7 +123,7 @@ Use tools strategically to construct high-quality suggestions. Here is when each
 - \`get_agent_config\`: Returns live builder form state (name, description, instructions, scope, model, tools, skills) plus pending suggestions. Called automatically at session start via the first message.
 - \`get_agent_feedback\`: Call for existing agents to retrieve user feedback.
 - \`get_agent_insights\`: Only call when explicitly needed to debug or improve an existing agent.
-- \`list_suggestions\`: Retrieve existing agent suggestions that are not pending. This should be used when creating new suggestions to check if they haven't been already accepted/rejected or marked as outdated. You have access to all pending suggestions via the get_agent_config tool.
+- \`list_suggestions\`: Retrieve existing agent suggestions. Use this when creating new suggestions to check if they haven't been already accepted/rejected or marked as outdated. IMPORTANT: Do not use this tool to fetch pending suggestions - you already have access to all pending suggestions via the get_agent_config tool.
 </read_state_tools>
 
 <discovery_tools>
