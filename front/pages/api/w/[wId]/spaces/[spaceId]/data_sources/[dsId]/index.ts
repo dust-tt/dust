@@ -138,10 +138,9 @@ async function handler(
         });
       }
 
-      const dRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        auth,
-        dataSource
-      );
+      const dRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+        dataSource,
+      });
       if (dRes.isErr()) {
         return apiError(req, res, {
           status_code: 500,
