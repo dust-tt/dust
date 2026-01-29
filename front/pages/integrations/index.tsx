@@ -1,4 +1,9 @@
-import { Button, Chip, MagnifyingGlassIcon, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  Chip,
+  MagnifyingGlassIcon,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import type { GetStaticProps, InferGetStaticPropsType } from "next";
 import Head from "next/head";
 import Link from "next/link";
@@ -6,7 +11,6 @@ import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 import { useCallback, useMemo } from "react";
 
-import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
 import type {
   IntegrationBase,
   IntegrationCategory,
@@ -15,6 +19,7 @@ import {
   buildIntegrationRegistry,
   getAllCategories,
 } from "@app/components/home/content/Integration/utils/integrationRegistry";
+import { FinalCTASection } from "@app/components/home/content/shared/FinalCTASection";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -40,18 +45,19 @@ function serializeIntegration(integration: IntegrationBase): IntegrationBase {
   };
 }
 
-export const getStaticProps: GetStaticProps<IntegrationsPageProps> =
-  async () => {
-    const integrations = buildIntegrationRegistry();
-    const categories = getAllCategories();
+export const getStaticProps: GetStaticProps<
+  IntegrationsPageProps
+> = async () => {
+  const integrations = buildIntegrationRegistry();
+  const categories = getAllCategories();
 
-    return {
-      props: {
-        integrations: integrations.map(serializeIntegration),
-        categories,
-      },
-    };
+  return {
+    props: {
+      integrations: integrations.map(serializeIntegration),
+      categories,
+    },
   };
+};
 
 const CATEGORY_LABELS: Record<IntegrationCategory, string> = {
   communication: "Communication",
@@ -111,13 +117,15 @@ function IntegrationCard({ integration }: { integration: IntegrationBase }) {
   return (
     <Link
       href={`/integrations/${integration.slug}`}
-      className="rounded-lg border border-border bg-card p-6 transition-all hover:border-primary hover:shadow-md"
+      className="bg-card rounded-lg border border-border p-6 transition-all hover:border-primary hover:shadow-md"
     >
       <div className="flex items-start gap-4">
         <ResourceAvatar icon={IconComponent} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-foreground">{integration.name}</h3>
+            <h3 className="font-semibold text-foreground">
+              {integration.name}
+            </h3>
             {integration.isPreview && (
               <span className="rounded-full bg-info-100 px-2 py-0.5 text-[10px] font-medium text-info-800">
                 Preview
@@ -213,10 +221,8 @@ export default function IntegrationsPage({
 
   // Group integrations by category
   const integrationsByCategory = useMemo(() => {
-    const grouped: Record<IntegrationCategory, IntegrationBase[]> = {} as Record<
-      IntegrationCategory,
-      IntegrationBase[]
-    >;
+    const grouped: Record<IntegrationCategory, IntegrationBase[]> =
+      {} as Record<IntegrationCategory, IntegrationBase[]>;
 
     for (const integration of searchFilteredIntegrations) {
       if (!grouped[integration.category]) {
@@ -338,7 +344,9 @@ export default function IntegrationsPage({
                 <Chip
                   key={category}
                   label={CATEGORY_LABELS[category]}
-                  color={selectedCategory === category ? "highlight" : undefined}
+                  color={
+                    selectedCategory === category ? "highlight" : undefined
+                  }
                   className={
                     selectedCategory === category
                       ? undefined
@@ -360,12 +368,14 @@ export default function IntegrationsPage({
                 {CATEGORY_LABELS[selectedCategory]}
               </H2>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {integrationsByCategory[selectedCategory]?.map((integration) => (
-                  <IntegrationCard
-                    key={integration.slug}
-                    integration={integration}
-                  />
-                ))}
+                {integrationsByCategory[selectedCategory]?.map(
+                  (integration) => (
+                    <IntegrationCard
+                      key={integration.slug}
+                      integration={integration}
+                    />
+                  )
+                )}
               </div>
               {(!integrationsByCategory[selectedCategory] ||
                 integrationsByCategory[selectedCategory].length === 0) && (

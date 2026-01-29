@@ -2,8 +2,8 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
-import { FAQSection } from "@app/components/home/content/Competitor/FAQSection";
-import { FinalCTASection } from "@app/components/home/content/Competitor/FinalCTASection";
+import { FAQSection } from "@app/components/home/content/shared/FAQSection";
+import { FinalCTASection } from "@app/components/home/content/shared/FinalCTASection";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -12,7 +12,11 @@ import { IntegrationHeroSection } from "./sections/IntegrationHeroSection";
 import { RelatedIntegrationsSection } from "./sections/RelatedIntegrationsSection";
 import { ToolsSection } from "./sections/ToolsSection";
 import { UseCasesSection } from "./sections/UseCasesSection";
-import type { IntegrationBase, IntegrationFAQItem, IntegrationPageConfig } from "./types";
+import type {
+  IntegrationBase,
+  IntegrationFAQItem,
+  IntegrationPageConfig,
+} from "./types";
 import {
   getDefaultSEOMetaDescription,
   getDefaultSEOSubtitle,

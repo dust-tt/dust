@@ -2,21 +2,23 @@ import type { IntegrationCategory } from "../types";
 
 // SEO-optimized title patterns by category
 // These target long-tail search queries like "AI assistant for [tool]"
-const SEO_TITLE_PATTERNS: Record<IntegrationCategory, (name: string) => string> =
-  {
-    crm: (name) => `AI Sales Assistant for ${name}`,
-    support: (name) => `AI Customer Support for ${name}`,
-    communication: (name) => `AI Assistant for ${name}`,
-    productivity: (name) => `AI-Powered ${name} Automation`,
-    development: (name) => `AI Coding Assistant for ${name}`,
-    data: (name) => `Query ${name} with AI`,
-    email: (name) => `AI Email Assistant for ${name}`,
-    calendar: (name) => `AI Calendar Management with ${name}`,
-    storage: (name) => `AI Document Assistant for ${name}`,
-    security: (name) => `AI Security Assistant for ${name}`,
-    ai: (name) => `${name} AI Integration`,
-    transcripts: (name) => `AI Meeting Assistant for ${name}`,
-  };
+const SEO_TITLE_PATTERNS: Record<
+  IntegrationCategory,
+  (name: string) => string
+> = {
+  crm: (name) => `AI Sales Assistant for ${name}`,
+  support: (name) => `AI Customer Support for ${name}`,
+  communication: (name) => `AI Assistant for ${name}`,
+  productivity: (name) => `AI-Powered ${name} Automation`,
+  development: (name) => `AI Coding Assistant for ${name}`,
+  data: (name) => `Query ${name} with AI`,
+  email: (name) => `AI Email Assistant for ${name}`,
+  calendar: (name) => `AI Calendar Management with ${name}`,
+  storage: (name) => `AI Document Assistant for ${name}`,
+  security: (name) => `AI Security Assistant for ${name}`,
+  ai: (name) => `${name} AI Integration`,
+  transcripts: (name) => `AI Meeting Assistant for ${name}`,
+};
 
 // SEO-optimized subtitle patterns by category
 const SEO_SUBTITLE_PATTERNS: Record<
