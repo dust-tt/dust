@@ -263,7 +263,7 @@
         }
       },
       {
-        "name": "suggest_prompt_editions",
+        "name": "suggest_prompt_edits",
         "description": "Create suggestions to modify the agent's instructions/prompt. CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. NEVER replace entire instruction blocks. Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
@@ -449,7 +449,7 @@
       "get_available_tools": "never_ask",
       "list_suggestions": "never_ask",
       "suggest_model": "never_ask",
-      "suggest_prompt_editions": "never_ask",
+      "suggest_prompt_edits": "never_ask",
       "suggest_skills": "never_ask",
       "suggest_tools": "never_ask",
       "update_suggestions_state": "never_ask"

@@ -523,7 +523,7 @@ describe("agent_copilot_context tools", () => {
   });
 
   // Suggestion tools tests
-  describe("suggest_prompt_editions", () => {
+  describe("suggest_prompt_edits", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
@@ -531,7 +531,7 @@ describe("agent_copilot_context tools", () => {
         await import("@app/lib/api/actions/servers/agent_copilot_helpers");
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
-      const tool = getToolByName("suggest_prompt_editions");
+      const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
           suggestions: [{ oldString: "old text", newString: "new text" }],
@@ -555,7 +555,7 @@ describe("agent_copilot_context tools", () => {
         agentConfiguration.sId
       );
 
-      const tool = getToolByName("suggest_prompt_editions");
+      const tool = getToolByName("suggest_prompt_edits");
       const result = await tool.handler(
         {
           suggestions: [{ oldString: "old text", newString: "new text" }],

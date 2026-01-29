@@ -170,7 +170,7 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
   },
   // Suggestion tools
-  suggest_prompt_editions: {
+  suggest_prompt_edits: {
     description:
       "Create suggestions to modify the agent's instructions/prompt. " +
       "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
@@ -190,8 +190,8 @@ export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Suggesting prompt editions",
-      done: "Suggest prompt editions",
+      running: "Suggesting prompt edits",
+      done: "Suggest prompt edits",
     },
   },
   suggest_tools: {
