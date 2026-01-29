@@ -20,7 +20,7 @@ import { apiError } from "@app/logger/withlogging";
 import type {
   AgentsUsageType,
   SpaceType,
-  UserType,
+  SpaceUserType,
   WithAPIErrorResponse,
 } from "@app/types";
 import {
@@ -40,8 +40,8 @@ export type GetSpaceResponseBody = {
     canWrite: boolean;
     canRead: boolean;
     isMember: boolean;
+    members: SpaceUserType[];
     isEditor: boolean;
-    members: (UserType & { isEditor?: boolean; joinedAt?: string })[];
   };
 };
 
@@ -150,10 +150,7 @@ async function handler(
           ?.set(membership.userId, membership.startAt.toDateString());
       }
 
-      const currentMembers: (UserType & {
-        isEditor?: boolean;
-        joinedAt?: string;
-      })[] = uniqBy(
+      const currentMembers: SpaceUserType[] = uniqBy(
         (
           await concurrentExecutor(
             groupsToProcess,
