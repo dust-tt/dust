@@ -6,7 +6,7 @@ import {
   finalizeUriForProvider,
   getStringFromQuery,
 } from "@app/lib/api/oauth/utils";
-import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
+import type { ExtraConfigType } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class GongOAuthProvider implements BaseOAuthStrategyProvider {
