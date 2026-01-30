@@ -84,10 +84,10 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
       return;
     }
     const addMark = node.marks.find(
-      (m) => m.type.name === "suggestionAddition",
+      (m) => m.type.name === "suggestionAddition"
     );
     const deletionMark = node.marks.find(
-      (m) => m.type.name === "suggestionDeletion",
+      (m) => m.type.name === "suggestionDeletion"
     );
     const mark = addMark ?? deletionMark;
     if (mark) {
@@ -106,10 +106,10 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
 // Find the suggestionId of the suggestion block containing the cursor.
 function getSelectedSuggestionId(
   nodes: SuggestionNode[],
-  cursorPos: number,
+  cursorPos: number
 ): string | null {
   const cursorNode = nodes.find(
-    (n) => cursorPos >= n.from && cursorPos <= n.to,
+    (n) => cursorPos >= n.from && cursorPos <= n.to
   );
   return cursorNode?.suggestionId ?? null;
 }
@@ -152,9 +152,9 @@ const suggestionHighlightPlugin = new Plugin({
         Decoration.inline(node.from, node.to, {
           class: getSuggestionClass(
             node.isAdd,
-            selectedId !== null && node.suggestionId === selectedId,
+            selectedId !== null && node.suggestionId === selectedId
           ),
-        }),
+        })
       );
 
       return DecorationSet.create(state.doc, decorations);
@@ -208,7 +208,7 @@ function extractCommittedText(node: JSONContent): string {
     // Addition marks are suggested additions not yet accepted, exclude them.
     // All other text (including deletion marks which are original text) is included.
     const hasAdditionMark = node.marks?.some(
-      (mark) => mark.type === "suggestionAddition",
+      (mark) => mark.type === "suggestionAddition"
     );
 
     return hasAdditionMark ? "" : (node.text ?? "");
@@ -372,7 +372,7 @@ export const InstructionSuggestionExtension = Extension.create({
           if (modified) {
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
-                (id: string) => id !== suggestionId,
+                (id: string) => id !== suggestionId
               );
           }
 
@@ -391,7 +391,7 @@ export const InstructionSuggestionExtension = Extension.create({
           if (modified) {
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
-                (id: string) => id !== suggestionId,
+                (id: string) => id !== suggestionId
               );
           }
 
@@ -436,7 +436,7 @@ function processSuggestionMarks(
   state: EditorState,
   tr: Transaction,
   suggestionId: string,
-  config: SuggestionMarkConfig,
+  config: SuggestionMarkConfig
 ): boolean {
   const { doc, schema } = state;
   const operations: SuggestionOperation[] = [];
@@ -451,7 +451,7 @@ function processSuggestionMarks(
       (mark) =>
         (mark.type.name === "suggestionDeletion" ||
           mark.type.name === "suggestionAddition") &&
-        mark.attrs.suggestionId === suggestionId,
+        mark.attrs.suggestionId === suggestionId
     );
 
     if (!matchingMark) {
@@ -481,7 +481,7 @@ function processSuggestionMarks(
       tr.removeMark(
         op.pos,
         op.pos + op.nodeSize,
-        schema.marks[config.markToKeep],
+        schema.marks[config.markToKeep]
       );
     }
   }
