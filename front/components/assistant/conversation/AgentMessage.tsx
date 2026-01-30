@@ -698,7 +698,7 @@ export function AgentMessage({
           name={agentConfiguration.name}
           timestamp={timestamp}
           completionStatus={
-            isCancelledOrDeleted ? undefined : (
+            isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
             )
           }
@@ -721,7 +721,7 @@ export function AgentMessage({
           name={agentConfiguration.name}
           timestamp={timestamp}
           completionStatus={
-            isCancelledOrDeleted ? undefined : (
+            isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
             )
           }
@@ -734,28 +734,26 @@ export function AgentMessage({
           {isDeleted ? (
             <DeletedMessage />
           ) : (
-            <>
-              <AgentMessageContent
-                onQuickReplySend={handleQuickReply}
-                owner={owner}
-                conversationId={conversationId}
-                retryHandler={retryHandler}
-                isLastMessage={isLastMessage}
-                agentMessage={agentMessage}
-                references={references}
-                streaming={shouldStream}
-                lastTokenClassification={
-                  agentMessage.streaming.agentState === "thinking"
-                    ? "tokens"
-                    : null
-                }
-                activeReferences={activeReferences}
-                setActiveReferences={setActiveReferences}
-                triggeringUser={triggeringUser}
-                additionalMarkdownComponents={additionalMarkdownComponents}
-                additionalMarkdownPlugins={additionalMarkdownPlugins}
-              />
-            </>
+            <AgentMessageContent
+              onQuickReplySend={handleQuickReply}
+              owner={owner}
+              conversationId={conversationId}
+              retryHandler={retryHandler}
+              isLastMessage={isLastMessage}
+              agentMessage={agentMessage}
+              references={references}
+              streaming={shouldStream}
+              lastTokenClassification={
+                agentMessage.streaming.agentState === "thinking"
+                  ? "tokens"
+                  : null
+              }
+              activeReferences={activeReferences}
+              setActiveReferences={setActiveReferences}
+              triggeringUser={triggeringUser}
+              additionalMarkdownComponents={additionalMarkdownComponents}
+              additionalMarkdownPlugins={additionalMarkdownPlugins}
+            />
           )}
         </ConversationMessageContent>
         {!isCancelledOrDeleted &&
