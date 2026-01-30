@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import React, {
+import {
   createContext,
   useCallback,
   useContext,
@@ -64,13 +64,6 @@ export const AgentBuilderSessionProvider = ({
             initialConversationId: storedConversation,
           };
         }
-
-        // New session
-        return {
-          sessionId: uuidv4(),
-          isResumedSession: false,
-          initialConversationId: null,
-        };
       }
       return {
         sessionId: uuidv4(),

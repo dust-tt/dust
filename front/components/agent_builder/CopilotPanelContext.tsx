@@ -1,9 +1,15 @@
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useAgentBuilderSessionContext } from "@app/components/agent_builder/AgentBuilderSessionContext";
 import { useCopilotFirstMessage } from "@app/hooks/useCopilotFirstMessage";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSearchParam } from "@app/lib/platform";
+import {
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+  trackEvent,
+} from "@app/lib/tracking";
 import { GLOBAL_AGENTS_SID } from "@app/types/assistant/assistant";
 import type { ConversationType } from "@app/types/assistant/conversation";
 import type { TemplateInfo } from "@app/types/assistant/templates";
@@ -16,13 +22,6 @@ import {
   useRef,
   useState,
 } from "react";
-
-import { useAgentBuilderSessionContext } from "@app/components/agent_builder/AgentBuilderSessionContext";
-import {
-  trackEvent,
-  TRACKING_ACTIONS,
-  TRACKING_AREAS,
-} from "@app/lib/tracking";
 
 interface CopilotPanelContextType {
   conversation: ConversationType | null;
@@ -174,6 +173,7 @@ export const CopilotPanelProvider = ({
     copilotAgentId,
     createConversationWithMessage,
     getFirstMessage,
+    isNewAgent,
     useCase,
     sendNotification,
     sessionId,

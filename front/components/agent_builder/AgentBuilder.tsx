@@ -58,9 +58,9 @@ import { useSlackChannelsLinkedWithAgent } from "@app/lib/swr/assistants";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { emptyArray, useFetcher } from "@app/lib/swr/swr";
 import {
-  trackEvent,
   TRACKING_ACTIONS,
   TRACKING_AREAS,
+  trackEvent,
 } from "@app/lib/tracking";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
@@ -589,7 +589,8 @@ export default function AgentBuilder({
                 assistantTemplate
                   ? {
                       templateId: assistantTemplate.sId,
-                      copilotInstructions: assistantTemplate.copilotInstructions,
+                      copilotInstructions:
+                        assistantTemplate.copilotInstructions,
                     }
                   : undefined
               }
