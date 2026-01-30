@@ -209,6 +209,7 @@ export const InternalPostConversationsRequestBodySchema = t.intersection([
   }),
   t.partial({
     metadata: ConversationMetadataSchema,
+    skipToolsValidation: t.boolean,
   }),
 ]);
 
