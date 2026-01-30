@@ -1,11 +1,9 @@
 import type { Meta } from "@storybook/react";
 import React from "react";
-import type { Components } from "react-markdown";
 
 import {
   ArrowPathIcon,
   ActionCardBlock,
-  actionCardDirective,
   Avatar,
   BoltIcon,
   Button,
@@ -17,13 +15,11 @@ import {
   ConversationContainer,
   ConversationMessage,
   DiffBlock,
+  EyeIcon,
   GithubIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   Icon,
-  Collapsible,
-  CollapsibleTrigger,
-  CollapsibleContent,
   Markdown,
   PencilSquareIcon,
   SlackLogo,
@@ -102,7 +98,7 @@ export const ConversationExample = () => {
             ]}
           >
             <Markdown content={example} />
-            <DiffBlock content={diffExample} onApply={() => {}} />
+            <DiffBlock changes={diffExample} />
           </ConversationMessage>
 
           <ConversationMessage
@@ -144,7 +140,7 @@ const example = `
 
 This is a paragraph with **bold** text and *italic* text. This is \`code\` block:
 \`\`\`
-Block 
+Block
 \`\`\`
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
@@ -158,7 +154,7 @@ Demo of a list, showcasing our pets of the month:
 - Anakine
 - Goose
 
-Ordered list: 
+Ordered list:
 1. Soupinou
 2. Chawarma
 3. Chalom
@@ -197,14 +193,16 @@ footnote [^1]
 
 `;
 
-const diffExample = `@@ -1,6 +1,7 @@
- import { sum } from "./math";
--const total = items.length;
-+const total = items.filter(Boolean).length;
- export const average = (items: number[]) => {
--  return total / items.length;
-+  return total / Math.max(items.length, 1);
- };`;
+const diffExample = [
+  {
+    old: "const total = items.length;",
+    new: "const total = items.filter(Boolean).length;",
+  },
+  {
+    old: "return total / items.length;",
+    new: "return total / Math.max(items.length, 1);",
+  },
+];
 
 export const ConversationHandoffExample = () => {
   return (
@@ -305,21 +303,6 @@ Occasional system crashes when presented with empty food bowl. Single whisker ma
 `;
 
 export const ConversationWithActions = () => {
-  const diffStart = "[[diff]]";
-  const diffEnd = "[[/diff]]";
-  const actionCardExampleWithInvite = getActionCardExampleWithInvite();
-  const hasDiffBlock =
-    actionCardExampleWithInvite.includes(diffStart) &&
-    actionCardExampleWithInvite.includes(diffEnd);
-  const [beforeDiff, rest = ""] = hasDiffBlock
-    ? actionCardExampleWithInvite.split(diffStart)
-    : [actionCardExampleWithInvite, ""];
-  const [diffContent, afterDiff = ""] = hasDiffBlock
-    ? rest.split(diffEnd)
-    : ["", ""];
-  const trimmedBefore = beforeDiff.trim();
-  const trimmedAfter = afterDiff.trim();
-
   return (
     <div className="s-flex s-w-full s-justify-center s-gap-6">
       <ConversationContainer>
@@ -356,21 +339,107 @@ export const ConversationWithActions = () => {
           timestamp="14:31"
         >
           <div className="s-flex s-flex-col s-gap-3">
-            {trimmedBefore ? (
-              <Markdown
-                content={trimmedBefore}
-                additionalMarkdownComponents={actionCardComponents}
-                additionalMarkdownPlugins={actionCardPlugins}
+            <Markdown content="Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?" />
+            <ActionCardBlock
+              title="Update agent instructions"
+              acceptedTitle="Instructions updated"
+              rejectedTitle="Instructions update rejected"
+              cardVariant="highlight"
+              collapsible
+              collapsibleLabel="Suggestion details"
+              size="auto"
+              visual={
+                <Avatar
+                  size="sm"
+                  icon={PencilSquareIcon}
+                  backgroundColor="s-bg-purple-100"
+                />
+              }
+              actions={
+                <Button
+                  variant="outline"
+                  size="sm"
+                  label="Show"
+                  icon={EyeIcon}
+                />
+              }
+            >
+              <DiffBlock
+                changes={[
+                  {
+                    old: "Keep responses short and formal. Avoid unnecessary details and stick to the essential information only.",
+                    new: "Keep responses friendly and concise. Feel free to add helpful context when it improves clarity for the reader.",
+                  },
+                  {
+                    old: "Do not include personal greetings or sign-offs. Start directly with the answer to maintain a professional tone throughout.",
+                    new: "Add a short welcome line for new hires. Personalize the greeting when possible to make them feel valued and included.",
+                  },
+                  {
+                    new: "Include links to relevant documentation and internal resources. This helps users find additional information on their own.",
+                  },
+                ]}
               />
-            ) : null}
-            {hasDiffBlock ? <DiffBlock content={diffContent.trim()} /> : null}
-            {trimmedAfter ? (
-              <Markdown
-                content={trimmedAfter}
-                additionalMarkdownComponents={actionCardComponents}
-                additionalMarkdownPlugins={actionCardPlugins}
-              />
-            ) : null}
+            </ActionCardBlock>
+            <ActionCardBlock
+              title="Update agent name and avatar"
+              acceptedTitle="Agent name and avatar updated"
+              rejectedTitle="Agent name and avatar update rejected"
+              applyLabel="Update"
+              rejectLabel="Reject"
+              cardVariant="highlight"
+              collapsible
+              visual={
+                <Avatar size="sm" emoji="👋" backgroundColor="s-bg-blue-100" />
+              }
+              description={
+                'Set the agent name to "Concise Researcher" and update the avatar to a clean, blue icon for better clarity in the workspace.'
+              }
+            />
+            <ActionCardBlock
+              title="Add Gmail tool"
+              acceptedTitle="Gmail tool added"
+              rejectedTitle="Gmail tool addition rejected"
+              applyLabel="Add"
+              rejectLabel="Reject"
+              cardVariant="highlight"
+              state="disabled"
+              visual={
+                <Avatar
+                  size="sm"
+                  icon={GmailLogo}
+                  backgroundColor="s-bg-white"
+                />
+              }
+              description="Enable the Gmail tool so the agent can read and send emails when users ask to draft replies."
+            />
+            <ActionCardBlock
+              title="Remove Slack tool"
+              acceptedTitle="Slack tool removed"
+              rejectedTitle="Slack tool removal rejected"
+              applyLabel="Remove"
+              rejectLabel="Reject"
+              cardVariant="warning"
+              visual={
+                <Avatar
+                  size="sm"
+                  icon={SlackLogo}
+                  backgroundColor="s-bg-white"
+                />
+              }
+              description="Disable the Slack tool to prevent the agent from posting or reading channel messages by default."
+            />
+            <ActionCardBlock
+              title="Invite editors"
+              acceptedTitle="Editors invited"
+              rejectedTitle="Invite editors rejected"
+              avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin"
+              avatarEmojis="👩‍💻,🧑‍🔧,👩‍🎨,🧑‍💼"
+              avatarIsRounded
+              applyLabel="Invite"
+              rejectLabel="Skip"
+              cardVariant="highlight"
+              description="Add four editors to collaborate on this agent."
+            />
             <ActionCardBlock
               title="Agent wants to use Gmail"
               acceptedTitle="Gmail request approved"
@@ -387,19 +456,7 @@ export const ConversationWithActions = () => {
                   backgroundColor="s-bg-white"
                 />
               }
-              description={
-                <Collapsible>
-                  <CollapsibleTrigger
-                    label="See details"
-                    variant={"secondary"}
-                  />
-                  <CollapsibleContent>
-                    <div className="s-text-sm s-text-muted-foreground">
-                      Details about the action
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              }
+              description="Details about the action"
             />
           </div>
         </ConversationMessage>
@@ -407,35 +464,3 @@ export const ConversationWithActions = () => {
     </div>
   );
 };
-
-const actionCardComponents = {
-  action_card: ActionCardBlock,
-} as Components;
-const actionCardPlugins = [actionCardDirective];
-
-const inviteEditorsCard = `::::action_card{title="Invite editors" acceptedTitle="Editors invited" rejectedTitle="Invite editors rejected" avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin" avatarEmojis="👩‍💻,🧑‍🔧,👩‍🎨,🧑‍💼" avatarIsRounded="true" applyLabel="Invite" rejectLabel="Skip" applyOnClick="" rejectOnClick="" cardVariant="highlight"}
-Add four editors to collaborate on this agent.
-::::`;
-
-const getActionCardExampleWithInvite = () =>
-  `${actionCardExample}\n\n${inviteEditorsCard}`;
-
-const actionCardExample = `Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?
-
-[[diff]]
-- Keep responses short and formal.
-+ Keep responses friendly and concise.
-+ Add a short welcome line for new hires.
-[[/diff]]
-
-:::action_card{title="Update agent name and avatar" acceptedTitle="Agent name and avatar updated" rejectedTitle="Agent name and avatar update rejected" avatarEmoji="👋" avatarBackgroundColor="s-bg-blue-100" applyLabel="Update" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight"}
-Set the agent name to "Concise Researcher" and update the avatar to a clean, blue icon for better clarity in the workspace.
-:::
-
-:::action_card{title="Add Gmail tool" acceptedTitle="Gmail tool added" rejectedTitle="Gmail tool addition rejected" avatarIcon="GmailLogo" avatarBackgroundColor="s-bg-white" applyLabel="Add" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="highlight" state="disabled"}
-Enable the Gmail tool so the agent can read and send emails when users ask to draft replies.
-:::
-
-:::action_card{title="Remove Slack tool" acceptedTitle="Slack tool removed" rejectedTitle="Slack tool removal rejected" avatarIcon="SlackLogo" avatarBackgroundColor="s-bg-white" applyLabel="Remove" rejectLabel="Reject" applyOnClick="" rejectOnClick="" cardVariant="warning"}
-Disable the Slack tool to prevent the agent from posting or reading channel messages by default.
-:::`;

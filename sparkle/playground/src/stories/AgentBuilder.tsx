@@ -38,8 +38,6 @@ import {
   ListItemSection,
   ListOrdered2Icon,
   DiffBlock,
-  ActionCardBlock,
-  actionCardDirective,
   Markdown,
   QuoteTextIcon,
   Separator,
@@ -77,7 +75,9 @@ import {
 } from "react";
 import type { Components } from "react-markdown";
 
-import { customColors } from "@sparkle/lib/colors";
+import { customColors } from "@dust-tt/sparkle/lib/colors";
+
+import type { DiffChange } from "@dust-tt/sparkle";
 
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -93,6 +93,40 @@ import {
   mockSuggestionChanges,
   mockUsers,
 } from "../data";
+import {
+  ActionCardBlock,
+  actionCardDirective,
+} from "../components/ActionCardBlock";
+
+function parseDiffString(content: string): DiffChange[] {
+  const lines = content.split("\n").filter((line) => line.trim());
+  const changes: DiffChange[] = [];
+  let currentOld: string | undefined;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ")) {
+      if (currentOld) {
+        changes.push({ old: currentOld });
+      }
+      currentOld = trimmed.slice(2);
+    } else if (trimmed.startsWith("+ ")) {
+      const newText = trimmed.slice(2);
+      if (currentOld) {
+        changes.push({ old: currentOld, new: newText });
+        currentOld = undefined;
+      } else {
+        changes.push({ new: newText });
+      }
+    }
+  }
+
+  if (currentOld) {
+    changes.push({ old: currentOld });
+  }
+
+  return changes;
+}
 
 type MetadataRowProps = {
   label: string;
@@ -134,9 +168,10 @@ export default function AgentBuilder() {
     agent?.description || ""
   );
   const actionCardComponents: Components = useMemo(
-    () => ({
-      action_card: ActionCardBlock,
-    }),
+    () =>
+      ({
+        action_card: ActionCardBlock,
+      }) as Components,
     []
   );
   const actionCardPlugins = useMemo(() => [actionCardDirective], []);
@@ -1042,7 +1077,7 @@ export default function AgentBuilder() {
                                   additionalMarkdownPlugins={actionCardPlugins}
                                 />
                               ) : null}
-                              <DiffBlock content={diffContent.trim()} />
+                              <DiffBlock changes={parseDiffString(diffContent)} />
                               {trimmedAfter ? (
                                 <Markdown
                                   content={trimmedAfter}
@@ -1167,7 +1202,6 @@ export default function AgentBuilder() {
                   return (
                     <ListItem
                       key={space.id}
-                      interactive={true}
                       itemsAlignment="center"
                       onClick={() => toggleSpace(space.id)}
                       className={
@@ -1209,7 +1243,6 @@ export default function AgentBuilder() {
                   return (
                     <ListItem
                       key={space.id}
-                      interactive={true}
                       itemsAlignment="center"
                       onClick={() => toggleSpace(space.id)}
                       className={

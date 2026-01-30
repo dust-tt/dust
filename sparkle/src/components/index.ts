@@ -80,7 +80,7 @@ export {
   DialogTitle,
   DialogTrigger,
 } from "./Dialog";
-export { DiffBlock } from "./DiffBlock";
+export { DiffBlock, type DiffChange } from "./DiffBlock";
 export type {
   DropdownMenuFilterOption,
   DropdownMenuItemProps,

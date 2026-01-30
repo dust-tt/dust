@@ -1,15 +1,8 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { ArrowRightIcon } from "@sparkle/icons";
-
 import { cn } from "../lib/utils";
-import { Button } from "./Button";
 import { ContentBlockWrapper } from "./markdown/ContentBlockWrapper";
-
-const DIFF_LINE_SPLIT_REGEX = /\n/;
-const DIFF_ADD_PREFIX = "+";
-const DIFF_REMOVE_PREFIX = "-";
 
 const diffLineVariants = cva("s-rounded s-px-1", {
   variants: {
@@ -17,41 +10,27 @@ const diffLineVariants = cva("s-rounded s-px-1", {
       add: "s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800 dark:s-text-highlight-800-night",
       remove:
         "s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 dark:s-text-warning-800-night s-line-through",
-      neutral: "s-text-foreground dark:s-text-foreground-night",
     },
-  },
-  defaultVariants: {
-    type: "neutral",
   },
 });
 
+export type DiffChange = {
+  old?: string;
+  new?: string;
+};
+
 type DiffBlockProps = {
-  content: string;
-  onApply?: () => void;
+  changes: DiffChange[];
+  actions?: React.ReactNode;
   className?: string;
 };
 
-export function DiffBlock({ content, onApply, className }: DiffBlockProps) {
-  const lines = content.split(DIFF_LINE_SPLIT_REGEX);
-
+export function DiffBlock({ changes, actions, className }: DiffBlockProps) {
   return (
     <ContentBlockWrapper
       className={cn("s-w-full", className)}
       buttonDisplay="inside"
-      displayActions="always"
-      actions={
-        <Button
-          size="xs"
-          variant="primary"
-          label="Apply"
-          icon={ArrowRightIcon}
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            onApply?.();
-          }}
-        />
-      }
+      actions={actions}
     >
       <div
         className={cn(
@@ -60,21 +39,25 @@ export function DiffBlock({ content, onApply, className }: DiffBlockProps) {
           "s-text-foreground dark:s-text-foreground-night"
         )}
       >
-        <div className="s-space-y-1 s-font-mono s-text-sm">
-          {lines.map((line, index) => {
-            const trimmed = line.trimStart();
-            const isAddition = trimmed.startsWith(DIFF_ADD_PREFIX);
-            const isRemoval = trimmed.startsWith(DIFF_REMOVE_PREFIX);
-            const lineClasses = diffLineVariants({
-              type: isAddition ? "add" : isRemoval ? "remove" : "neutral",
-            });
-
-            return (
-              <div key={`${index}-${line}`} className="s-whitespace-pre-wrap">
-                <span className={lineClasses}>{line}</span>
-              </div>
-            );
-          })}
+        <div className="s-space-y-4 s-font-mono s-text-sm">
+          {changes.map((change, index) => (
+            <div key={index} className="s-space-y-0.5">
+              {change.old && (
+                <div className="s-whitespace-pre-wrap">
+                  <span className={diffLineVariants({ type: "remove" })}>
+                    {change.old}
+                  </span>
+                </div>
+              )}
+              {change.new && (
+                <div className="s-whitespace-pre-wrap">
+                  <span className={diffLineVariants({ type: "add" })}>
+                    {change.new}
+                  </span>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
     </ContentBlockWrapper>
