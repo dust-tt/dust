@@ -5,31 +5,43 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import logger from "@app/logger/logger";
 import type {
+  AgentConfigurationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
 } from "@app/types";
+import { isGlobalAgentId } from "@app/types";
 
 /**
- * Get the skill_management MCP server if agent has configured skills.
- * Only available with "skills" feature flag.
+ * Get the skill_management MCP server if the agent has configured skills.
  */
 export async function getSkillManagementServer(
   auth: Authenticator,
-  agentConfiguration: LightAgentConfigurationType,
+  agentConfiguration: AgentConfigurationType,
   conversation: ConversationWithoutContentType
 ): Promise<ServerSideMCPServerConfigurationType | null> {
   const owner = auth.getNonNullableWorkspace();
 
-  // Check if agent has any skills configured.
-  const skillCount = await AgentSkillModel.count({
-    where: {
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId: owner.id,
-    },
-  });
+  // For global agents, check if skills are defined in the config.
+  // Ideally, we would want to take in input an AgentResource that would have bundled the logic
+  // about loading skills and exposes a unified interface.
+  if (isGlobalAgentId(agentConfiguration.sId)) {
+    if (
+      !agentConfiguration.skills?.length ||
+      agentConfiguration.skills.length === 0
+    ) {
+      return null;
+    }
+  } else {
+    // For non-global agents, check if there are skills configured on the agent.
+    const skillCount = await AgentSkillModel.count({
+      where: {
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+      },
+    });
 
-  if (skillCount === 0) {
-    return null;
+    if (skillCount === 0) {
+      return null;
+    }
   }
 
   const skillManagementView =
