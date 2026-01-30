@@ -19,7 +19,6 @@ import type {
   RichMentionWithStatus,
   UserType,
 } from "@app/types";
-import { isProjectConversation } from "@app/types";
 
 interface MentionValidationRequiredProps {
   triggeringUser: UserType | null;
