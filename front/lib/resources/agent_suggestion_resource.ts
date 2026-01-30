@@ -8,7 +8,6 @@ import type {
 } from "sequelize";
 import { Op } from "sequelize";
 
-import { pruneSuggestions as pruneSuggestionsImpl } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -18,12 +17,7 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  ModelId,
-  Result,
-} from "@app/types";
+import type { LightAgentConfigurationType, ModelId, Result } from "@app/types";
 import { Err, Ok, removeNulls } from "@app/types";
 import type {
   AgentSuggestionKind,
@@ -395,25 +389,5 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       source: this.source,
       ...suggestionData,
     };
-  }
-
-  /**
-   * Prunes pending suggestions that can no longer be applied to the agent.
-   * This should be called after saving an agent configuration to mark
-   * outdated suggestions.
-   *
-   * Runs pruning checks in parallel for each suggestion kind.
-   */
-  static async pruneSuggestions(
-    auth: Authenticator,
-    agentConfiguration: AgentConfigurationType
-  ): Promise<void> {
-    const pendingSuggestions = await this.listByAgentConfigurationId(
-      auth,
-      agentConfiguration.sId,
-      { states: ["pending"] }
-    );
-
-    await pruneSuggestionsImpl(auth, agentConfiguration, pendingSuggestions);
   }
 }

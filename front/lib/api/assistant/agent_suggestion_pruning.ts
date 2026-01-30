@@ -466,3 +466,23 @@ function computeChangedRange(
 
   return { start: changedStart, end: Math.max(changedStart, changedEnd) };
 }
+
+/**
+ * Prunes pending suggestions for an agent configuration.
+ * Fetches pending suggestions and marks outdated ones.
+ *
+ * This should be called after saving an agent configuration.
+ */
+export async function pruneSuggestionsForAgent(
+  auth: Authenticator,
+  agentConfiguration: AgentConfigurationType
+): Promise<void> {
+  const pendingSuggestions =
+    await AgentSuggestionResource.listByAgentConfigurationId(
+      auth,
+      agentConfiguration.sId,
+      { states: ["pending"] }
+    );
+
+  await pruneSuggestions(auth, agentConfiguration, pendingSuggestions);
+}
