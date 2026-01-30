@@ -1,7 +1,6 @@
 import { Page, Spinner } from "@dust-tt/sparkle";
 import React, { useEffect } from "react";
 
-import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
 import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
@@ -69,7 +68,6 @@ export function SpacePage() {
   return (
     <SpaceLayout pageProps={pageProps} useBackendSearch>
       <Page.Vertical gap="xl" align="stretch">
-        <SpaceJournalEntry owner={owner} space={space} />
         <SpaceCategoriesList
           owner={owner}
           canWriteInSpace={canWriteInSpace}
