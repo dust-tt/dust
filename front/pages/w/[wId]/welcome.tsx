@@ -22,8 +22,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import type { ComponentType, ReactElement } from "react";
-import { useMemo, useState } from "react";
-import useSWR from "swr";
+import { useEffect, useMemo, useState } from "react";
 
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
@@ -33,13 +32,12 @@ import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { useAppRouter, useSearchParam } from "@app/lib/platform";
-import { fetcher } from "@app/lib/swr/swr";
 import { usePatchUser } from "@app/lib/swr/user";
+import { useWelcomeData } from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import type { EmailProviderType } from "@app/lib/utils/email_provider_detection";
 import { getConversationRoute } from "@app/lib/utils/router";
 import { getStoredUTMParams } from "@app/lib/utils/utm";
-import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { WorkspaceType } from "@app/types";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import { FAVORITE_PLATFORM_OPTIONS } from "@app/types/favorite_platforms";
@@ -305,14 +303,9 @@ function Welcome() {
   const { patchUser } = usePatchUser();
   const conversationId = useSearchParam("cId");
 
-  // Fetch welcome data (isFirstAdmin, emailProvider) from API.
-  const { data: welcomeData } = useSWR<GetWelcomeResponseBody>(
-    `/api/w/${workspace.sId}/welcome`,
-    fetcher
-  );
+  const { welcomeData, isFirstAdmin, emailProvider, isWelcomeDataLoading } =
+    useWelcomeData({ workspaceId: workspace.sId });
 
-  const isFirstAdmin = welcomeData?.isFirstAdmin ?? false;
-  const emailProvider = welcomeData?.emailProvider ?? "other";
   const showFavoritePlatformsStep = isFirstAdmin;
 
   const [step, setStep] = useState<1 | 2>(1);
@@ -326,6 +319,14 @@ function Welcome() {
   >(new Set());
   const [showErrors, setShowErrors] = useState(false);
   const [platformsInitialized, setPlatformsInitialized] = useState(false);
+
+  // Initialize selectedPlatforms once emailProvider is loaded.
+  useEffect(() => {
+    if (welcomeData && !platformsInitialized) {
+      setSelectedPlatforms(getInitialSelectedPlatforms(emailProvider));
+      setPlatformsInitialized(true);
+    }
+  }, [welcomeData, platformsInitialized, emailProvider]);
 
   const validateForm = (data: FormData): FormErrors => {
     const errors: FormErrors = {};
@@ -376,14 +377,8 @@ function Welcome() {
     await router.push(getConversationRoute(workspace.sId, "new", queryParams));
   });
 
-  // Initialize selectedPlatforms once emailProvider is loaded.
-  if (welcomeData && !platformsInitialized) {
-    setSelectedPlatforms(getInitialSelectedPlatforms(emailProvider));
-    setPlatformsInitialized(true);
-  }
-
   // Show loading while fetching welcome data.
-  if (!welcomeData) {
+  if (isWelcomeDataLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner />

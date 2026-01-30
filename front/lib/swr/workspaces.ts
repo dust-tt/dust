@@ -13,8 +13,11 @@ import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/sea
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
 import type { GetSubscriptionsResponseBody } from "@app/pages/api/w/[wId]/subscriptions";
 import type { GetSubscriptionPricingResponseBody } from "@app/pages/api/w/[wId]/subscriptions/pricing";
+import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { GetSubscriptionTrialInfoResponseBody } from "@app/pages/api/w/[wId]/subscriptions/trial-info";
 import type { GetWorkspaceVerifiedDomainsResponseBody } from "@app/pages/api/w/[wId]/verified-domains";
+import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
+import type { GetWelcomeResponseBody } from "@app/pages/api/w/[wId]/welcome";
 import type { GetWorkspaceAnalyticsResponse } from "@app/pages/api/w/[wId]/workspace-analytics";
 import type { LightWorkspaceType, WhitelistableFeature } from "@app/types";
 
@@ -344,5 +347,59 @@ export function useWorkspaceAuthContext({
     isBuilder: data?.isBuilder ?? false,
     isAuthContextLoading: !error && !data && !disabled,
     isAuthContextError: error,
+  };
+}
+
+export function useSubscriptionStatus({
+  workspaceId,
+}: {
+  workspaceId: string;
+}) {
+  const statusFetcher: Fetcher<GetSubscriptionStatusResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/subscriptions/status`,
+    statusFetcher
+  );
+
+  return {
+    shouldRedirect: data?.shouldRedirect ?? false,
+    redirectUrl: data?.redirectUrl ?? null,
+    isSubscriptionStatusLoading: !error && !data,
+    isSubscriptionStatusError: error,
+  };
+}
+
+export function useWelcomeData({ workspaceId }: { workspaceId: string }) {
+  const welcomeFetcher: Fetcher<GetWelcomeResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/welcome`,
+    welcomeFetcher
+  );
+
+  return {
+    welcomeData: data ?? null,
+    isFirstAdmin: data?.isFirstAdmin ?? false,
+    emailProvider: data?.emailProvider ?? "other",
+    isWelcomeDataLoading: !error && !data,
+    isWelcomeDataError: error,
+  };
+}
+
+export function useVerifyData({ workspaceId }: { workspaceId: string }) {
+  const verifyFetcher: Fetcher<GetVerifyResponseBody> = fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/verify`,
+    verifyFetcher
+  );
+
+  return {
+    verifyData: data ?? null,
+    isEligibleForTrial: data?.isEligibleForTrial ?? false,
+    initialCountryCode: data?.initialCountryCode ?? "US",
+    isVerifyDataLoading: !error && !data,
+    isVerifyDataError: error,
   };
 }
