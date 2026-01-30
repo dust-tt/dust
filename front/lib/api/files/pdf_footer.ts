@@ -30,11 +30,12 @@ export const PDF_FOOTER_HTML = `<!DOCTYPE html>
       font-size: 10px;
       color: #6B7280;
       margin: 0;
-      padding: 0 20px;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
+      padding: 0;
+      width: 100%;
       height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       -webkit-print-color-adjust: exact;
     }
     .footer-content {
