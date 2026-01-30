@@ -573,7 +573,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     const globalGroup = groupRes.value;
 
-    const result = await withTransaction(async (t) => {
+    return withTransaction(async (t) => {
       // Update managementMode if provided
       const { managementMode } = params;
 
@@ -753,8 +753,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
       return new Ok(undefined);
     });
-
-    return result;
   }
 
   private async removeGroup(
