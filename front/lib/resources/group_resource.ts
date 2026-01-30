@@ -1066,6 +1066,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
   async dangerouslyAddMembers(
     auth: Authenticator,
     {
@@ -1188,6 +1191,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
   async dangerouslyAddMember(
     auth: Authenticator,
     {
@@ -1215,6 +1221,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
   async dangerouslyRemoveMembers(
     auth: Authenticator,
     {
@@ -1319,6 +1328,9 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
   async dangerouslyRemoveMember(
     auth: Authenticator,
     {
@@ -1464,7 +1476,10 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
   
-async dangerouslySetMembers(
+  /**
+   * WARNING: Permissions are not checked inside this function and must be checked before calling it.
+   */
+  async dangerouslySetMembers(
     auth: Authenticator,
     {
       users,

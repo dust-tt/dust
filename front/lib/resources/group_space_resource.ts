@@ -79,7 +79,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     const requestedPermissions = await this.requestedPermissions();
     if (
       !auth.canWrite(requestedPermissions) &&
-      !users.every((user) => !this.space.canAddMember(auth, user.sId))
+      !users.every((user) => this.space.canAddMember(auth, user.sId))
     ) {
       return new Err(
         new DustError(
@@ -124,7 +124,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     const requestedPermissions = await this.requestedPermissions();
     if (
       !auth.canWrite(requestedPermissions) &&
-      !users.every((user) => !this.space.canRemoveMember(auth, user.sId))
+      !users.every((user) => this.space.canRemoveMember(auth, user.sId))
     ) {
       return new Err(
         new DustError(
@@ -172,8 +172,8 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     const requestedPermissions = await this.requestedPermissions();
     if (
       !auth.canWrite(requestedPermissions) &&
-      !users.every((user) => !this.space.canAddMember(auth, user.sId)) &&
-      !users.every((user) => !this.space.canRemoveMember(auth, user.sId))
+      !users.every((user) => this.space.canAddMember(auth, user.sId)) &&
+      !users.every((user) => this.space.canRemoveMember(auth, user.sId))
     ) {
       return new Err(
         new DustError(
