@@ -89,7 +89,7 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
     const deletionMark = node.marks.find(
       (m) => m.type.name === "suggestionDeletion",
     );
-    const mark = addMark || deletionMark;
+    const mark = addMark ?? deletionMark;
     if (mark) {
       nodes.push({
         from: pos,
