@@ -2,6 +2,12 @@ import { createParser } from "eventsource-parser";
 import type { z } from "zod";
 
 import { normalizeError } from "./error_utils";
+import { AgentsAPI } from "./high_level/agents";
+import { ConversationsAPI } from "./high_level/conversations";
+import type { ResolvedRetryOptions } from "./high_level/retry";
+import { DEFAULT_RETRY_OPTIONS, resolveRetryOptions } from "./high_level/retry";
+import type { DustAPIOptions } from "./high_level/types";
+import { isRecord } from "./type_utils";
 import type {
   AgentActionSpecificEvent,
   AgentActionSuccessEvent,
@@ -102,6 +108,7 @@ import {
 } from "./types";
 
 export * from "./error_utils";
+export * from "./high_level";
 export * from "./internal_mime_types";
 export * from "./mcp_transport";
 export * from "./output_schemas";
@@ -112,6 +119,45 @@ interface DustResponse {
   ok: boolean;
   url: string;
   body: ReadableStream<Uint8Array> | string;
+}
+
+const DEFAULT_API_URL = "https://dust.tt";
+
+function createNoopLogger(): LoggerInterface {
+  const noop = (_args: Record<string, unknown>, _message: string) => {};
+  return {
+    error: noop,
+    info: noop,
+    trace: noop,
+    warn: noop,
+  };
+}
+
+function getEnvApiKey(): string | undefined {
+  const maybeGlobal: unknown = globalThis;
+  if (!isRecord(maybeGlobal)) {
+    return undefined;
+  }
+  const maybeProcess = maybeGlobal["process"];
+  if (!isRecord(maybeProcess)) {
+    return undefined;
+  }
+  const maybeEnv = maybeProcess["env"];
+  if (!isRecord(maybeEnv)) {
+    return undefined;
+  }
+  const apiKey = maybeEnv["DUST_API_KEY"];
+  if (typeof apiKey === "string" && apiKey.length > 0) {
+    return apiKey;
+  }
+  return undefined;
+}
+
+function isDustAPIOptions(value: unknown): value is DustAPIOptions {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value["workspaceId"] === "string";
 }
 
 // Detects whether an error corresponds to a terminated/aborted stream.
@@ -207,6 +253,9 @@ export class DustAPI {
   _credentials: DustAPICredentials;
   _logger: LoggerInterface;
   _urlOverride: string | undefined | null;
+  _retryOptions: ResolvedRetryOptions;
+  agents: AgentsAPI;
+  conversations: ConversationsAPI;
 
   /**
    * @param credentials DustAPICrededentials
@@ -218,11 +267,48 @@ export class DustAPI {
     credentials: DustAPICredentials,
     logger: LoggerInterface,
     urlOverride?: string | undefined | null
+  );
+  constructor(options: DustAPIOptions);
+  constructor(
+    configOrOptions: { url: string } | DustAPIOptions,
+    credentials?: DustAPICredentials,
+    logger?: LoggerInterface,
+    urlOverride?: string | undefined | null
   ) {
-    this._url = config.url;
-    this._credentials = credentials;
-    this._logger = logger;
-    this._urlOverride = urlOverride;
+    if (isDustAPIOptions(configOrOptions)) {
+      const apiKeyValue = configOrOptions.apiKey ?? getEnvApiKey();
+      const apiKey =
+        typeof apiKeyValue === "function"
+          ? apiKeyValue
+          : (apiKeyValue ?? (() => null));
+
+      this._url = configOrOptions.url ?? DEFAULT_API_URL;
+      this._credentials = {
+        workspaceId: configOrOptions.workspaceId,
+        apiKey,
+        extraHeaders: configOrOptions.extraHeaders,
+      };
+      this._logger = configOrOptions.logger ?? createNoopLogger();
+      this._urlOverride = configOrOptions.urlOverride;
+      this._retryOptions = resolveRetryOptions(DEFAULT_RETRY_OPTIONS, {
+        maxRetries: configOrOptions.maxRetries,
+        retryDelay: configOrOptions.retryDelay,
+      });
+    } else {
+      if (!credentials) {
+        throw new Error(
+          "DustAPI credentials are required when using the legacy constructor."
+        );
+      }
+      this._url = configOrOptions.url;
+      this._credentials = credentials;
+      this._logger = logger ?? createNoopLogger();
+      this._urlOverride = urlOverride;
+      this._retryOptions = resolveRetryOptions(DEFAULT_RETRY_OPTIONS);
+    }
+
+    this.agents = new AgentsAPI(this);
+    this.conversations = new ConversationsAPI(this);
   }
 
   workspaceId(): string {
@@ -231,6 +317,17 @@ export class DustAPI {
 
   setWorkspaceId(workspaceId: string) {
     this._credentials.workspaceId = workspaceId;
+  }
+
+  getRetryOptions(): ResolvedRetryOptions {
+    return {
+      maxRetries: this._retryOptions.maxRetries,
+      retryDelay: {
+        initialMs: this._retryOptions.retryDelay.initialMs,
+        maxMs: this._retryOptions.retryDelay.maxMs,
+        multiplier: this._retryOptions.retryDelay.multiplier,
+      },
+    };
   }
 
   apiUrl(): string {

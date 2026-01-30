@@ -16,10 +16,7 @@
   "types": "dist/index.d.ts",
   "module": "dist/client.esm.js",
   "typings": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
+  "files": ["dist", "src"],
   "scripts": {
     "build": "npm run build:types && npm run build:bundle",
     "build:types": "tsc",
@@ -67,9 +64,7 @@
   },
   "watch": {
     "build": {
-      "patterns": [
-        "src"
-      ],
+      "patterns": ["src"],
       "extensions": "ts",
       "ignore": ""
     }

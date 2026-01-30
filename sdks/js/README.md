@@ -25,7 +25,51 @@ Import and initialize a client using an **workspace api key** or an OAuth **acce
 
 Note: we use the Result pattern to handle errors ([see more](https://velocidadescape.com/js/result-pattern-try-catch/)).
 
-### Setup
+### Quickstart (High-level API)
+
+```js
+import { DustAPI } from "@dust-tt/client";
+
+const dust = new DustAPI({
+  workspaceId: "YOUR_WORKSPACE_ID",
+  apiKey: process.env.DUST_API_KEY,
+});
+
+const response = await dust.agents.sendMessage({
+  agentId: "YOUR_AGENT_ID",
+  message: "Hello!",
+});
+
+console.log(response.text);
+```
+
+High-level methods throw typed errors (e.g. `DustAuthenticationError`, `DustRateLimitError`).
+Wrap calls in `try/catch` if you need custom handling.
+
+### Streaming
+
+```js
+const stream = dust.agents
+  .streamMessage({
+    agentId: "YOUR_AGENT_ID",
+    message: "Write a short poem about the ocean.",
+  })
+  .on("text", (delta) => process.stdout.write(delta))
+  .on("action", (action) => {
+    // Tool call or action metadata
+  })
+  .on("chainOfThought", (delta) => {
+    // Optional reasoning stream (if available)
+  })
+  .on("error", (error) => {
+    // Typed errors (DustAPIError)
+  });
+
+const final = await stream.finalMessage();
+console.log(final.text);
+```
+
+### Setup (Low-level Result-based API)
 
 ```js
 import { DustAPI } from "@dust-tt/client";
@@ -38,7 +82,7 @@ const dustAPI = new DustAPI(
     workspaceId: "YOUR_WORKSPACE_ID",
     apiKey: "YOUR_API_KEY_OR_ACCESS_TOKEN",
   },
-  console
+  console,
 );
 ```
 
