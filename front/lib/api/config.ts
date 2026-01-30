@@ -3,12 +3,6 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
-// Body parser limit for document upsert endpoints. This must accommodate the largest allowed
-// document text content (MAX_LARGE_DOCUMENT_TXT_LEN = 5MB in connectors) plus JSON serialization
-// overhead. JSON encoding can expand content significantly due to escaping of special characters
-// (newlines, quotes, backslashes, Unicode). We use 16MB to handle worst-case ~3x expansion.
-export const DOCUMENT_UPSERT_BODY_PARSER_LIMIT = "16mb";
-
 const config = {
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the

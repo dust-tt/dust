@@ -32,8 +32,8 @@ import {
   validateUrl,
 } from "@app/types";
 
-// Next.js config must use literal values (cannot be statically analyzed otherwise).
-// If wishing to change this value, see DOCUMENT_UPSERT_BODY_PARSER_LIMIT in lib/api/config.ts.
+// Next.js config requires literal values (static analysis). 16MB accommodates 5MB document content
+// (MAX_LARGE_DOCUMENT_TXT_LEN in connectors) plus ~3x JSON encoding overhead for escaping.
 export const config = {
   api: {
     bodyParser: {
