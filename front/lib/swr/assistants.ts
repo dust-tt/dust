@@ -1185,7 +1185,7 @@ export function useAgentDatasourceRetrievalDocuments({
   version?: string;
   mcpServerConfigIds: string[] | null;
   // For servers without config IDs (like data_sources_file_system), use name.
-  mcpServerName?: string | null;
+  mcpServerName: string | null;
   dataSourceId: string | null;
   limit?: number;
   disabled?: boolean;
@@ -1194,6 +1194,7 @@ export function useAgentDatasourceRetrievalDocuments({
   const hasConfigIds = mcpServerConfigIds && mcpServerConfigIds.length > 0;
   // Allow query if we have either config IDs or server name.
   const isDisabled =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     disabled || (!hasConfigIds && !mcpServerName) || !dataSourceId;
 
   const params = new URLSearchParams({ days: days.toString() });
