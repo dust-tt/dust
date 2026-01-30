@@ -3,13 +3,22 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { Warehouse } from "@app/lib/actions/mcp_internal_actions/servers/databricks/types";
-import { WarehouseSchema } from "@app/lib/actions/mcp_internal_actions/servers/databricks/types";
 import { untrustedFetch } from "@app/lib/egress/server";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { isString } from "@app/types/shared/utils/general";
+
+export const WarehouseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  cluster_size: z.string(),
+  auto_stop_mins: z.number(),
+  enable_photon: z.boolean(),
+  enable_serverless_compute: z.boolean(),
+  state: z.string(),
+});
+export type Warehouse = z.infer<typeof WarehouseSchema>;
 
 function getWorkspaceUrl(authInfo?: AuthInfo): string | null {
   if (!authInfo?.extra) {
@@ -83,7 +92,6 @@ async function databricksApiCall<T extends z.ZodTypeAny>(
   return new Ok(parseResult.data);
 }
 
-// List SQL warehouses
 export async function listWarehouses(
   accessToken: string,
   workspaceUrl: string
@@ -129,4 +137,15 @@ export async function withAuth({
   }
 
   return action(accessToken, workspaceUrl);
+}
+
+export function renderWarehouse(warehouse: Warehouse): string {
+  let text = `- **${warehouse.name}** (ID: ${warehouse.id})`;
+  text += `\n  - State: ${warehouse.state}`;
+  text += `\n  - Cluster Size: ${warehouse.cluster_size}`;
+  text += `\n  - Auto Stop: ${warehouse.auto_stop_mins} minutes`;
+  if (warehouse.enable_photon) {
+    text += `\n  - Photon: Enabled`;
+  }
+  return text;
 }

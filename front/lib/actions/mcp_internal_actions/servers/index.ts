@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import { default as databricksServer } from "@app/lib/actions/mcp_internal_actions/servers/databricks";
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
@@ -26,6 +25,7 @@ import { default as confluenceServer } from "@app/lib/api/actions/servers/conflu
 import { default as conversationFilesServer } from "@app/lib/api/actions/servers/conversation_files";
 import { default as dataSourcesFileSystemServer } from "@app/lib/api/actions/servers/data_sources_file_system";
 import { default as dataWarehousesServer } from "@app/lib/api/actions/servers/data_warehouses";
+import { default as databricksServer } from "@app/lib/api/actions/servers/databricks";
 import { default as extractDataServer } from "@app/lib/api/actions/servers/extract_data";
 import { default as fileGenerationServer } from "@app/lib/api/actions/servers/file_generation";
 import { default as freshserviceServer } from "@app/lib/api/actions/servers/freshservice";
