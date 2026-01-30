@@ -1,6 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
@@ -8,6 +9,7 @@ import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import {
   useAgentConfiguration,
   useAssistantTemplate,
@@ -16,26 +18,25 @@ import {
   useFeatureFlags,
   useWorkspaceAuthContext,
 } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 import type {
   AgentConfigurationScope,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder, isString } from "@app/types";
+import { isBuilder } from "@app/types";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);
 }
 
-function resolveBuilderFlow(value: unknown): BuilderFlow {
-  if (isString(value) && isBuilderFlow(value)) {
+function resolveBuilderFlow(value: string | null): BuilderFlow {
+  if (value && isBuilderFlow(value)) {
     return value;
   }
   return "personal_assistants";
 }
 
-function FullPageSpinner() {
+function FullPageSpinner(): JSX.Element {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -43,25 +44,20 @@ function FullPageSpinner() {
   );
 }
 
-export default function CreateAgentPage() {
-  const { isReady, query } = useRouter();
+export default function CreateAgentPage(): JSX.Element {
+  const workspaceId = useRequiredPathParam("wId");
 
-  if (!isReady) {
-    return null;
-  }
-
-  if (!isString(query.wId)) {
-    return <Custom404 />;
-  }
-
-  return <CreateAgentAuthGate workspaceId={query.wId} />;
+  return <CreateAgentAuthGate workspaceId={workspaceId} />;
 }
 
 interface CreateAgentAuthGateProps {
   workspaceId: string;
 }
 
-function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
+function CreateAgentAuthGate({
+  workspaceId,
+}: CreateAgentAuthGateProps): JSX.Element {
+  const router = useRouter();
   const {
     owner,
     user,
@@ -76,7 +72,8 @@ function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
   }
 
   if (isAuthContextError || !owner || !subscription || !user) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -94,7 +91,8 @@ function CreateAgentFeatureGate({
   owner,
   user,
   isAdmin,
-}: CreateAgentFeatureGateProps) {
+}: CreateAgentFeatureGateProps): JSX.Element {
+  const router = useRouter();
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -108,7 +106,8 @@ function CreateAgentFeatureGate({
     !isBuilder(owner);
 
   if (isRestrictedFromAgentCreation) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -126,16 +125,11 @@ function CreateAgentContent({
   owner,
   user,
   isAdmin,
-}: CreateAgentContentProps) {
+}: CreateAgentContentProps): JSX.Element {
   const router = useRouter();
-  const templateId = isString(router.query.templateId)
-    ? router.query.templateId
-    : null;
-  const duplicateAgentId = isString(router.query.duplicate)
-    ? router.query.duplicate
-    : null;
-
-  const flow = resolveBuilderFlow(router.query.flow);
+  const templateId = useSearchParam("templateId");
+  const duplicateAgentId = useSearchParam("duplicate");
+  const flow = resolveBuilderFlow(useSearchParam("flow"));
 
   const {
     assistantTemplate,
@@ -168,7 +162,8 @@ function CreateAgentContent({
     }
 
     if (isAgentConfigurationError || !duplicateAgentConfiguration) {
-      return <Custom404 />;
+      void router.replace("/404");
+      return <FullPageSpinner />;
     }
   }
 
@@ -178,7 +173,8 @@ function CreateAgentContent({
     }
 
     if (isAssistantTemplateError || !assistantTemplate) {
-      return <Custom404 />;
+      void router.replace("/404");
+      return <FullPageSpinner />;
     }
   }
 
@@ -204,6 +200,8 @@ function CreateAgentContent({
   );
 }
 
-CreateAgentPage.getLayout = (page: React.ReactElement) => {
+function getLayout(page: ReactElement): ReactElement {
   return <AppRootLayout>{page}</AppRootLayout>;
-};
+}
+
+CreateAgentPage.getLayout = getLayout;

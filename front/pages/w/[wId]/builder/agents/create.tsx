@@ -10,7 +10,7 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
@@ -20,27 +20,22 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import {
   useFeatureFlags,
   useWorkspaceAuthContext,
 } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import Custom404 from "@app/pages/404";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
   WorkspaceType,
   WhitelistableFeature,
 } from "@app/types";
-import {
-  isBuilder,
-  isString,
-  isTemplateTagCodeArray,
-  TEMPLATES_TAGS_CONFIG,
-} from "@app/types";
+import { isBuilder, isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
-function FullPageSpinner() {
+function FullPageSpinner(): JSX.Element {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -48,25 +43,20 @@ function FullPageSpinner() {
   );
 }
 
-export default function CreateAgentPage() {
-  const { isReady, query } = useRouter();
+export default function CreateAgentPage(): JSX.Element {
+  const workspaceId = useRequiredPathParam("wId");
 
-  if (!isReady) {
-    return null;
-  }
-
-  if (!isString(query.wId)) {
-    return <Custom404 />;
-  }
-
-  return <CreateAgentAuthGate workspaceId={query.wId} />;
+  return <CreateAgentAuthGate workspaceId={workspaceId} />;
 }
 
 interface CreateAgentAuthGateProps {
   workspaceId: string;
 }
 
-function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
+function CreateAgentAuthGate({
+  workspaceId,
+}: CreateAgentAuthGateProps): JSX.Element {
+  const router = useRouter();
   const {
     owner,
     subscription,
@@ -80,7 +70,8 @@ function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
   }
 
   if (isAuthContextError || !owner || !subscription || !user) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -96,7 +87,8 @@ interface CreateAgentFeatureGateProps {
 function CreateAgentFeatureGate({
   owner,
   subscription,
-}: CreateAgentFeatureGateProps) {
+}: CreateAgentFeatureGateProps): JSX.Element {
+  const router = useRouter();
   const { featureFlags, hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -110,7 +102,8 @@ function CreateAgentFeatureGate({
     !isBuilder(owner);
 
   if (isRestrictedFromAgentCreation) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -132,18 +125,13 @@ function CreateAgentContent({
   owner,
   subscription,
   hasFeature,
-}: CreateAgentContentProps) {
+}: CreateAgentContentProps): JSX.Element {
   const router = useRouter();
+  const selectedTemplateId = useSearchParam("templateId");
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
-  const initialTemplateId = isString(router.query.templateId)
-    ? router.query.templateId
-    : null;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    initialTemplateId
-  );
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
@@ -180,7 +168,6 @@ function CreateAgentContent({
   }, [assistantTemplates, selectedTags, searchTerm]);
 
   const openTemplateModal = async (templateId: string) => {
-    setSelectedTemplateId(templateId);
     await router.replace(
       { pathname: router.pathname, query: { wId: owner.sId, templateId } },
       undefined,
@@ -189,7 +176,6 @@ function CreateAgentContent({
   };
 
   const closeTemplateModal = async () => {
-    setSelectedTemplateId(null);
     await removeParamFromRouter(router, "templateId");
   };
 
@@ -315,6 +301,8 @@ function CreateAgentContent({
   );
 }
 
-CreateAgentPage.getLayout = (page: React.ReactElement) => {
+function getLayout(page: ReactElement): ReactElement {
   return <AppRootLayout>{page}</AppRootLayout>;
-};
+}
+
+CreateAgentPage.getLayout = getLayout;

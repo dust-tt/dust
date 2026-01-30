@@ -1,21 +1,21 @@
 import { Spinner } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useWorkspaceAuthContext } from "@app/lib/swr/workspaces";
-import Custom404 from "@app/pages/404";
 import type {
   LightAgentConfigurationType,
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isString } from "@app/types";
 
-function FullPageSpinner() {
+function FullPageSpinner(): JSX.Element {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -23,20 +23,11 @@ function FullPageSpinner() {
   );
 }
 
-export default function EditAgentPage() {
-  const { isReady, query } = useRouter();
+export default function EditAgentPage(): JSX.Element {
+  const workspaceId = useRequiredPathParam("wId");
+  const agentId = useRequiredPathParam("aId");
 
-  if (!isReady) {
-    return null;
-  }
-
-  if (!isString(query.wId) || !isString(query.aId)) {
-    return <Custom404 />;
-  }
-
-  return (
-    <EditAgentAuthGate workspaceId={query.wId} agentId={query.aId} />
-  );
+  return <EditAgentAuthGate workspaceId={workspaceId} agentId={agentId} />;
 }
 
 interface EditAgentAuthGateProps {
@@ -44,7 +35,11 @@ interface EditAgentAuthGateProps {
   agentId: string;
 }
 
-function EditAgentAuthGate({ workspaceId, agentId }: EditAgentAuthGateProps) {
+function EditAgentAuthGate({
+  workspaceId,
+  agentId,
+}: EditAgentAuthGateProps): JSX.Element {
+  const router = useRouter();
   const {
     owner,
     user,
@@ -59,7 +54,8 @@ function EditAgentAuthGate({ workspaceId, agentId }: EditAgentAuthGateProps) {
   }
 
   if (isAuthContextError || !owner || !subscription || !user) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -84,7 +80,8 @@ function EditAgentLoader({
   user,
   isAdmin,
   agentId,
-}: EditAgentLoaderProps) {
+}: EditAgentLoaderProps): JSX.Element {
+  const router = useRouter();
   const {
     agentConfiguration,
     isAgentConfigurationLoading,
@@ -99,11 +96,13 @@ function EditAgentLoader({
   }
 
   if (isAgentConfigurationError || !agentConfiguration) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   if (!agentConfiguration.canEdit && !isAdmin) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -128,7 +127,7 @@ function EditAgentContent({
   owner,
   user,
   isAdmin,
-}: EditAgentContentProps) {
+}: EditAgentContentProps): JSX.Element {
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
@@ -152,6 +151,8 @@ function EditAgentContent({
   );
 }
 
-EditAgentPage.getLayout = (page: React.ReactElement) => {
+function getLayout(page: ReactElement): ReactElement {
   return <AppRootLayout>{page}</AppRootLayout>;
-};
+}
+
+EditAgentPage.getLayout = getLayout;

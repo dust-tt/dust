@@ -14,7 +14,7 @@ import {
 } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -27,6 +27,7 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useFeatureFlags,
@@ -37,7 +38,6 @@ import {
   getAgentSearchString,
   subFilter,
 } from "@app/lib/utils";
-import Custom404 from "@app/pages/404";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
@@ -45,7 +45,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder, isString } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS = [
@@ -87,7 +87,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
   );
 }
 
-function FullPageSpinner() {
+function FullPageSpinner(): JSX.Element {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -95,18 +95,10 @@ function FullPageSpinner() {
   );
 }
 
-export default function WorkspaceAssistantsPage() {
-  const { isReady, query } = useRouter();
+export default function WorkspaceAssistantsPage(): JSX.Element {
+  const workspaceId = useRequiredPathParam("wId");
 
-  if (!isReady) {
-    return null;
-  }
-
-  if (!isString(query.wId)) {
-    return <Custom404 />;
-  }
-
-  return <WorkspaceAssistantsAuthGate workspaceId={query.wId} />;
+  return <WorkspaceAssistantsAuthGate workspaceId={workspaceId} />;
 }
 
 interface WorkspaceAssistantsAuthGateProps {
@@ -115,7 +107,8 @@ interface WorkspaceAssistantsAuthGateProps {
 
 function WorkspaceAssistantsAuthGate({
   workspaceId,
-}: WorkspaceAssistantsAuthGateProps) {
+}: WorkspaceAssistantsAuthGateProps): JSX.Element {
+  const router = useRouter();
   const {
     owner,
     subscription,
@@ -129,7 +122,8 @@ function WorkspaceAssistantsAuthGate({
   }
 
   if (isAuthContextError || !owner || !subscription || !user) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -151,7 +145,8 @@ function WorkspaceAssistantsFeatureGate({
   owner,
   subscription,
   user,
-}: WorkspaceAssistantsFeatureGateProps) {
+}: WorkspaceAssistantsFeatureGateProps): JSX.Element {
+  const router = useRouter();
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -165,7 +160,8 @@ function WorkspaceAssistantsFeatureGate({
     !isBuilder(owner);
 
   if (isRestrictedFromAgentCreation) {
-    return <Custom404 />;
+    void router.replace("/404");
+    return <FullPageSpinner />;
   }
 
   return (
@@ -190,7 +186,7 @@ function WorkspaceAssistantsContent({
   subscription,
   user,
   featureFlags,
-}: WorkspaceAssistantsContentProps) {
+}: WorkspaceAssistantsContentProps): JSX.Element {
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -504,6 +500,8 @@ function WorkspaceAssistantsContent({
   );
 }
 
-WorkspaceAssistantsPage.getLayout = (page: React.ReactElement) => {
+function getLayout(page: ReactElement): ReactElement {
   return <AppRootLayout>{page}</AppRootLayout>;
-};
+}
+
+WorkspaceAssistantsPage.getLayout = getLayout;
