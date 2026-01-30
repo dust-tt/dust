@@ -27,6 +27,7 @@ interface InviteUsersScreenProps {
   title?: string;
   actionLabel?: string;
   initialSelectedUserIds?: string[];
+  initialEditorUserIds?: string[];
   hasMultipleSelect?: boolean;
 }
 
@@ -38,6 +39,7 @@ export function InviteUsersScreen({
   title,
   actionLabel = "Invite",
   initialSelectedUserIds,
+  initialEditorUserIds,
   hasMultipleSelect = false,
 }: InviteUsersScreenProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
@@ -57,11 +59,20 @@ export function InviteUsersScreen({
     const initialSelection = initialSelectedUserIds ?? [];
     setSelectedUserIds(new Set(initialSelection));
     if (hasMultipleSelect) {
-      setEditorUserIds(new Set(initialSelection));
+      const initialEditors = new Set(initialEditorUserIds ?? []);
+      const filteredEditors = Array.from(initialEditors).filter((userId) =>
+        initialSelection.includes(userId),
+      );
+      setEditorUserIds(new Set(filteredEditors));
     } else {
       setEditorUserIds(new Set());
     }
-  }, [initialSelectedUserIds, isOpen, hasMultipleSelect]);
+  }, [
+    initialSelectedUserIds,
+    initialEditorUserIds,
+    isOpen,
+    hasMultipleSelect,
+  ]);
 
   // Filter users based on search text
   const filteredUsers = useMemo(() => {

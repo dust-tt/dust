@@ -1679,6 +1679,17 @@ function DustMain() {
           setInviteSpaceId(null);
         }}
         onInvite={handleInviteUsersComplete}
+        actionLabel="Save"
+        initialSelectedUserIds={
+          inviteSpaceId && spaceMembers.has(inviteSpaceId)
+            ? spaceMembers.get(inviteSpaceId)
+            : []
+        }
+        initialEditorUserIds={
+          inviteSpaceId && spaceEditors.has(inviteSpaceId)
+            ? spaceEditors.get(inviteSpaceId)
+            : []
+        }
         hasMultipleSelect={true}
       />
       <Sheet

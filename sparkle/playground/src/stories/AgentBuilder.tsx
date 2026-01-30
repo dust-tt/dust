@@ -1239,6 +1239,7 @@ export default function AgentBuilder() {
         title="Select editors"
         actionLabel="Save"
         initialSelectedUserIds={selectedEditorIdList}
+        initialEditorUserIds={selectedEditorIdList}
         hasMultipleSelect={true}
         onClose={() => setIsInviteEditorsOpen(false)}
         onInvite={(_selectedUserIds, editorUserIds) => {
