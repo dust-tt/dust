@@ -1,11 +1,11 @@
 import type { Result } from "@dust-tt/client";
 import { assertNever } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
-import fs from "fs";
+import fs from "node:fs";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 import PQueue from "p-queue";
-import readline from "readline";
+import readline from "node:readline";
 
 import { getConnectorManager } from "@connectors/connectors";
 import { confluence } from "@connectors/connectors/confluence/lib/cli";
@@ -436,7 +436,7 @@ export const batch = async ({
     }
 
     default:
-      throw new Error("Unknown batch command: " + command);
+      throw new Error(`Unknown batch command: ${command}`);
   }
 };
 
@@ -530,7 +530,7 @@ export const temporal = async ({
         });
         logger.info(
           { qRes },
-          "[Admin] Queue has " + qRes.pollers?.length + " pollers"
+          `[Admin] Queue has ${qRes.pollers?.length} pollers`
         );
         queuesAndPollers.push({
           queue: q,

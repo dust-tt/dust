@@ -101,7 +101,7 @@ export async function retrievePermissions({
       return new Err(
         new ConnectorManagerError(
           "RATE_LIMIT_ERROR",
-          `Slack rate limit error when retrieving content nodes.`
+          "Slack rate limit error when retrieving content nodes."
         )
       );
     }
@@ -118,7 +118,7 @@ export async function retrievePermissions({
       return new Err(
         new ConnectorManagerError(
           "EXTERNAL_OAUTH_TOKEN_ERROR",
-          `Slack account inactive when retrieving permissions.`
+          "Slack account inactive when retrieving permissions."
         )
       );
     }

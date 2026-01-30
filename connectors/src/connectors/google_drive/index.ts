@@ -191,7 +191,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
           {
             error: e,
           },
-          `Error checking Google domain of user who is updating the connector - lets update the connector regardless`
+          "Error checking Google domain of user who is updating the connector - lets update the connector regardless"
         );
       }
 
@@ -435,7 +435,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
         } else {
           // Return the list of remote folders inside a parent folder.
           const drive = await getDriveClient(authCredentials);
-          let nextPageToken: string | undefined = undefined;
+          let nextPageToken: string | undefined ;
           let remoteFolders: drive_v3.Schema$File[] = [];
           // Depending on the view the user is requesting, the way of querying changes.
           // The "Shared with me" view requires to look for folders
@@ -445,7 +445,7 @@ export class GoogleDriveConnectorManager extends BaseConnectorManager<null> {
             parentInternalId ===
             getInternalId(GOOGLE_DRIVE_SHARED_WITH_ME_VIRTUAL_ID)
           ) {
-            gdriveQuery += ` and sharedWithMe=true`;
+            gdriveQuery += " and sharedWithMe=true";
           } else {
             gdriveQuery += ` and '${parentDriveId}' in parents`;
           }

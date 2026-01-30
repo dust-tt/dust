@@ -86,7 +86,7 @@ export async function fullSyncWorkflow({
   });
 
   if (startSyncTs === undefined) {
-    startSyncTs = new Date().getTime();
+    startSyncTs = Date.now();
   }
 
   // Temp to clean up the running workflows state
@@ -98,7 +98,7 @@ export async function fullSyncWorkflow({
     await populateDeltas(connectorId, nodeIdsToSync);
   }
 
-  let nextPageLink: string | undefined = undefined;
+  let nextPageLink: string | undefined ;
 
   while (nodeIdsToSync.length > 0) {
     // First, delete any nodes that were removed
@@ -187,7 +187,7 @@ export async function incrementalSyncWorkflow({
   const nodeIdsToSync = await getRootNodesToSync(connectorId);
   const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
 
-  const startSyncTs = new Date().getTime();
+  const startSyncTs = Date.now();
   for (const nodeId of Object.keys(groupedItems)) {
     await syncDeltaForRootNodesInDrive({
       connectorId,
@@ -212,7 +212,7 @@ export async function incrementalSyncWorkflowV2({
 
   const groupedItems = await groupRootItemsByDriveId(nodeIdsToSync);
 
-  const startSyncTs = new Date().getTime();
+  const startSyncTs = Date.now();
   for (const nodeId of Object.keys(groupedItems)) {
     // Step 1: Fetch delta data and upload to GCS
     const { gcsFilePath } = await fetchDeltaForRootNodesInDrive({
@@ -278,7 +278,7 @@ export async function microsoftGarbageCollectionWorkflow({
 }: {
   connectorId: number;
 }) {
-  const startGarbageCollectionTs = new Date().getTime();
+  const startGarbageCollectionTs = Date.now();
   let idCursor: number | null = 0;
   while (idCursor !== null) {
     idCursor = await microsoftGarbageCollectionActivity({

@@ -93,7 +93,7 @@ export class GongAPIError extends Error {
       errors = [body];
     }
 
-    return new this(
+    return new GongAPIError(
       `Gong API responded with status: ${response.status} on ${endpoint}`,
       {
         type: "http_response_error",
@@ -117,7 +117,7 @@ export class GongAPIError extends Error {
     connectorId: ModelId;
     pathErrors: string[];
   }) {
-    return new this("Response validation failed", {
+    return new GongAPIError("Response validation failed", {
       type: "validation_error",
       endpoint,
       connectorId,

@@ -23,7 +23,7 @@ export function internalIdFromTypeAndPath({
   const stringId =
     nodeType === "sites-root" ? nodeType : `${nodeType}/${itemAPIPath}`;
   // encode to base64url so the internal id is URL-friendly
-  return "microsoft-" + Buffer.from(stringId).toString("base64url");
+  return `microsoft-${Buffer.from(stringId).toString("base64url")}`;
 }
 
 export function typeAndPathFromInternalId(internalId: string): {

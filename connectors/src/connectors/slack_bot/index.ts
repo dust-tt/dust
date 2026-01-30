@@ -139,14 +139,14 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
         );
 
         // Revoke the token if no other slack connector is active on the same slackTeamId.
-        if (configurations.length == 0) {
+        if (configurations.length === 0) {
           logger.info(
             {
               connectorId: c.id,
               slackTeamId: newTeamId,
               connectionId: connectionId,
             },
-            `Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]`
+            "Attempting Slack app deactivation [updateSlackConnector/team_id_mismatch]"
           );
           const uninstallRes = await uninstallSlack(
             connectionId,
@@ -163,7 +163,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
               slackTeamId: newTeamId,
               connectionId: connectionId,
             },
-            `Deactivated Slack app [updateSlackConnector/team_id_mismatch]`
+            "Deactivated Slack app [updateSlackConnector/team_id_mismatch]"
           );
         } else {
           logger.info(
@@ -171,7 +171,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
               slackTeamId: newTeamId,
               activeConfigurations: configurations.length,
             },
-            `Skipping deactivation of the Slack app [updateSlackConnector/team_id_mismatch]`
+            "Skipping deactivation of the Slack app [updateSlackConnector/team_id_mismatch]"
           );
         }
 
@@ -220,14 +220,14 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
     );
 
     // We deactivate our connections only if we are the only live slack connection for this team.
-    if (configurations.length == 1) {
+    if (configurations.length === 1) {
       logger.info(
         {
           connectorId: connector.id,
           slackTeamId: configuration.slackTeamId,
           connectionId: connector.connectionId,
         },
-        `Attempting Slack app deactivation [cleanupSlackConnector]`
+        "Attempting Slack app deactivation [cleanupSlackConnector]"
       );
 
       try {
@@ -251,7 +251,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           connectorId: connector.id,
           slackTeamId: configuration.slackTeamId,
         },
-        `Deactivated Slack app [cleanupSlackConnector]`
+        "Deactivated Slack app [cleanupSlackConnector]"
       );
     } else {
       logger.info(
@@ -260,7 +260,7 @@ export class SlackBotConnectorManager extends BaseConnectorManager<SlackConfigur
           slackTeamId: configuration.slackTeamId,
           activeConfigurations: configurations.length - 1,
         },
-        `Skipping deactivation of the Slack app [cleanupSlackConnector]`
+        "Skipping deactivation of the Slack app [cleanupSlackConnector]"
       );
     }
 

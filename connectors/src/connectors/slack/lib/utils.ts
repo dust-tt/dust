@@ -28,7 +28,7 @@ export function getWeekEnd(date: Date): Date {
 
 export const timeAgoFrom = (millisSinceEpoch: number) => {
   // return the duration elapsed from the given time to now in human readable format (using seconds, minutes, days)
-  const now = new Date().getTime();
+  const now = Date.now();
   const diff = now - millisSinceEpoch;
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
@@ -37,21 +37,21 @@ export const timeAgoFrom = (millisSinceEpoch: number) => {
   const months = Math.floor(days / 30);
   const years = Math.floor(days / 365);
   if (years > 0) {
-    return years + "y";
+    return `${years}y`;
   }
   if (months > 0) {
-    return months + "m";
+    return `${months}m`;
   }
   if (days > 0) {
-    return days + "d";
+    return `${days}d`;
   }
   if (hours > 0) {
-    return hours + "h";
+    return `${hours}h`;
   }
   if (minutes > 0) {
-    return minutes + "m";
+    return `${minutes}m`;
   }
-  return seconds + "s";
+  return `${seconds}s`;
 };
 
 export type SlackChannelInternalId = string;

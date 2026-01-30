@@ -39,7 +39,7 @@ async function acquireTenantSpecificToken(): Promise<string> {
  */
 export const getTenantSpecificToken: () => Promise<string> = cacheWithRedis(
   acquireTenantSpecificToken,
-  () => `teams-bot-token`,
+  () => "teams-bot-token",
   {
     ttlMs: 50 * 60 * 1000, // 50 minutes
   }
@@ -60,7 +60,7 @@ async function withRetry<T>(
     if (axios.isAxiosError(error) && error.response?.status === 429) {
       if (retryCount < maxRetries) {
         // Exponential backoff: 500ms, 1000ms, 2000ms
-        const backoffMs = 500 * Math.pow(2, retryCount);
+        const backoffMs = 500 * 2 ** retryCount;
         await new Promise((resolve) => setTimeout(resolve, backoffMs));
         return withRetry(operation, retryCount + 1, maxRetries);
       }

@@ -85,7 +85,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
     new Set(slackChannelIds.filter((id) => !foundSlackChannelIds.has(id)))
   );
 
-  const slackClient = await getSlackClient(parseInt(connectorId));
+  const slackClient = await getSlackClient(parseInt(connectorId, 10));
 
   await withTransaction(async (t) => {
     if (missingSlackChannelIds.length) {
@@ -94,7 +94,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
           try {
             const remoteChannel = await getChannelById(
               slackClient,
-              parseInt(connectorId),
+              parseInt(connectorId, 10),
               slackChannelId
             );
 
@@ -105,7 +105,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
             }
             return await SlackChannelModel.create(
               {
-                connectorId: parseInt(connectorId),
+                connectorId: parseInt(connectorId, 10),
                 slackChannelId,
                 slackChannelName: remoteChannel.name,
                 agentConfigurationId,
@@ -156,7 +156,7 @@ const _patchSlackChannelsLinkedWithAgentHandler = async (
       )
       .map((slackChannelId) =>
         launchJoinChannelWorkflow(
-          parseInt(connectorId),
+          parseInt(connectorId, 10),
           slackChannelId,
           "join-only"
         )
@@ -221,7 +221,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
     return apiError(req, res, {
       api_error: {
         type: "invalid_request_error",
-        message: `Missing required parameters: connector_id`,
+        message: "Missing required parameters: connector_id",
       },
       status_code: 400,
     });
@@ -239,7 +239,7 @@ const _getSlackChannelsLinkedWithAgentHandler = async (
   res.status(200).json({
     slackChannels: slackChannels.map((c) => ({
       slackChannelId: c.slackChannelId,
-      slackChannelName: "#" + c.slackChannelName,
+      slackChannelName: `#${c.slackChannelName}`,
       // We know that agentConfigurationId is not null because of the where clause above
 
       agentConfigurationId: c.agentConfigurationId!,

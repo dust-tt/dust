@@ -5,8 +5,8 @@ import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
 import { WorkflowNotFoundError } from "@temporalio/client";
 import * as _ from "lodash";
-import { Readable } from "stream";
-import { pipeline } from "stream/promises";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { parser } from "stream-json";
 import Assembler from "stream-json/Assembler";
 
@@ -436,7 +436,7 @@ export async function populateDeltas(connectorId: ModelId, nodeIds: string[]) {
       );
 
       if (!node) {
-        logger.warn({ nodeId }, `Node not found while saving delta, skipping`);
+        logger.warn({ nodeId }, "Node not found while saving delta, skipping");
       } else {
         await node.update({ deltaLink });
       }
@@ -524,7 +524,7 @@ export async function markNodeAsSeen(connectorId: ModelId, internalId: string) {
         connectorId,
         internalId,
       },
-      `[MarkNodeAsSeen] Node not found, skipping`
+      "[MarkNodeAsSeen] Node not found, skipping"
     );
 
     return;
@@ -568,7 +568,7 @@ export async function syncFiles({
         connectorId,
         parentInternalId,
       },
-      `[SyncFiles] Node not found, skipping`
+      "[SyncFiles] Node not found, skipping"
     );
 
     return {
@@ -598,7 +598,7 @@ export async function syncFiles({
       connectorId,
       parent,
     },
-    `[SyncFiles] Start sync`
+    "[SyncFiles] Start sync"
   );
   const client = await getMicrosoftClient(connector.connectionId);
 
@@ -653,7 +653,7 @@ export async function syncFiles({
         parent,
         count,
       },
-      `[SyncFiles] Successful sync.`
+      "[SyncFiles] Successful sync."
     );
 
     // do not update folders that were already seen
@@ -873,7 +873,7 @@ export async function syncDeltaForRootNodesInDrive({
           return (await getItem(
             logger,
             client,
-            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+            `${typeAndPathFromInternalId(rootNodeId).itemAPIPath}?$select=id`
           )) as { id: string };
         } catch (error) {
           if (isItemNotFoundError(error)) {
@@ -1002,7 +1002,7 @@ export async function syncDeltaForRootNodesInDrive({
         const blob = itemToMicrosoftNode(type, item);
 
         if (rootNodeIds.includes(blob.internalId)) {
-          blob.name = blob.name + ` (${extractPath(item)})`;
+          blob.name = `${blob.name} (${extractPath(item)})`;
         }
 
         const existingResource = await MicrosoftNodeResource.fetchByInternalId(
@@ -1084,13 +1084,13 @@ export async function syncDeltaForRootNodesInDrive({
         folders++;
       }
     } else {
-      throw new Error(`Unexpected: driveItem is neither file nor folder`);
+      throw new Error("Unexpected: driveItem is neither file nor folder");
     }
   }
 
   await concurrentExecutor(
     nodes,
-    (node) => node && node.update({ deltaLink }),
+    (node) => node?.update({ deltaLink }),
     { concurrency: 5 }
   );
 
@@ -1224,7 +1224,7 @@ export async function fetchDeltaForRootNodesInDrive({
           return (await getItem(
             logger,
             client,
-            typeAndPathFromInternalId(rootNodeId).itemAPIPath + "?$select=id"
+            `${typeAndPathFromInternalId(rootNodeId).itemAPIPath}?$select=id`
           )) as { id: string };
         } catch (error) {
           if (isItemNotFoundError(error)) {
@@ -1567,7 +1567,7 @@ export async function microsoftDeletionActivity({
         connectorId,
         nodeId
       );
-      if (node && node.parentInternalId) {
+      if (node?.parentInternalId) {
         return [];
       }
 
@@ -1871,7 +1871,7 @@ async function isOutsideRootNodes({
     ) {
       return false;
     }
-  } catch (error) {
+  } catch (_error) {
     logger.error(
       {
         driveItem,
@@ -2185,7 +2185,7 @@ export async function processDeltaChangesFromGCS({
         const blob = itemToMicrosoftNode(type, item);
 
         if (rootNodeIds.includes(blob.internalId)) {
-          blob.name = blob.name + ` (${extractPath(item)})`;
+          blob.name = `${blob.name} (${extractPath(item)})`;
         }
 
         const existingResource = await MicrosoftNodeResource.fetchByInternalId(
@@ -2267,7 +2267,7 @@ export async function processDeltaChangesFromGCS({
         folders++;
       }
     } else {
-      throw new Error(`Unexpected: driveItem is neither file nor folder`);
+      throw new Error("Unexpected: driveItem is neither file nor folder");
     }
   }
 
@@ -2278,7 +2278,7 @@ export async function processDeltaChangesFromGCS({
   );
   await concurrentExecutor(
     nodes,
-    (node) => node && node.update({ deltaLink }),
+    (node) => node?.update({ deltaLink }),
     { concurrency: 5 }
   );
 

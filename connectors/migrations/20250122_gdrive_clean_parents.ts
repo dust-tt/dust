@@ -57,7 +57,7 @@ async function migrateConnector(
   logger.info({ numberOfFiles: files.length }, "Found files");
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
-  const startTimeTs = new Date().getTime();
+  const startTimeTs = Date.now();
 
   const chunks = _.chunk(files, 1024);
 

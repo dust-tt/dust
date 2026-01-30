@@ -30,7 +30,7 @@ function extractTimestampFromTitle(
 
   const date = new Date(year, month, day);
 
-  if (isNaN(date.getTime())) {
+  if (Number.isNaN(date.getTime())) {
     throw new Error(`Invalid date format in title ${gongTranscript.title}`);
   }
 

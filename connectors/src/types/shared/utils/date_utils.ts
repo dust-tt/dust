@@ -1,3 +1,3 @@
 export function isValidDate(date: Date) {
-  return !isNaN(date.valueOf());
+  return !Number.isNaN(date.valueOf());
 }

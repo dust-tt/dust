@@ -529,7 +529,7 @@ export async function githubEnsureCodeSyncEnabledActivity({
     },
   });
 
-  if (githubCodeRepository && githubCodeRepository.skipReason) {
+  if (githubCodeRepository?.skipReason) {
     logger.info(
       { skipReason: githubCodeRepository.skipReason },
       "Repository skipped, not syncing."

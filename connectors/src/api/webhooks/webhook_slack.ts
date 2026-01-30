@@ -471,7 +471,7 @@ const _webhookSlackAPIHandler = async (
                 user: event.user,
                 slackTeamId: teamId,
               },
-              `Successfully processed Slack Webhook`
+              "Successfully processed Slack Webhook"
             );
             return res.status(200).send();
           }
@@ -614,7 +614,7 @@ const _webhookSlackAPIHandler = async (
               {
                 type: event.type,
               },
-              `Successfully processed Slack Webhook`
+              "Successfully processed Slack Webhook"
             );
             return res.status(200).send();
           }

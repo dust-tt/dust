@@ -92,7 +92,7 @@ export async function syncGongTranscript({
   const minutes = Math.floor(
     (transcriptMetadata.metaData.duration % 3600) / 60
   );
-  const callDuration = `${hours} hours ${minutes < 10 ? "0" + minutes : minutes} minutes`;
+  const callDuration = `${hours} hours ${minutes < 10 ? `0${minutes}` : minutes} minutes`;
 
   let markdownContent = `Meeting title: ${title}\n\nDate: ${createdAtDate.toISOString()}\n\nDuration: ${callDuration}\n\n`;
 

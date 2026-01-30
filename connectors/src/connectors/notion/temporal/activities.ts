@@ -230,7 +230,7 @@ export async function fetchDatabaseChildPages({
     });
   }
 
-  const isExistingDatabase = notionDbModel && notionDbModel.lastUpsertedRunTs;
+  const isExistingDatabase = notionDbModel?.lastUpsertedRunTs;
 
   if (
     // If `returnUpToDatePageIdsForExistingDatabase` is true, we always return all the pages.
@@ -1236,7 +1236,7 @@ export async function deletePageOrDatabaseIfArchived({
           objectType,
           error: result.error,
         },
-        `Failed to send deletion crawl signal (archived/inaccessible)`
+        "Failed to send deletion crawl signal (archived/inaccessible)"
       );
       throw result.error;
     }
@@ -1244,7 +1244,7 @@ export async function deletePageOrDatabaseIfArchived({
       {
         objectType,
       },
-      `Sent deletion crawl signal (archived/inaccessible)`
+      "Sent deletion crawl signal (archived/inaccessible)"
     );
   }
 }
@@ -1472,7 +1472,7 @@ export async function updateParentsFields({
     notionDatabaseIds,
     runTimestamp.toString(),
     async () => heartbeat(),
-    parentsLastUpdatedAt == 0
+    parentsLastUpdatedAt === 0
   );
 
   localLogger.info({ nbUpdated, nextCursors }, "Updated parents fields.");
@@ -1849,7 +1849,7 @@ export async function cacheBlockChildren({
       // to detect linked databases when we enumerate blocks.
       if (
         block.type === "child_database" &&
-        block.child_database.title == "Untitled"
+        block.child_database.title === "Untitled"
       ) {
         localLogger.info(
           { blockId: block.id },
@@ -2371,7 +2371,7 @@ export async function renderAndUpsertPageFromCache({
     );
   }
 
-  const upsertTs: number = new Date().getTime();
+  const upsertTs: number = Date.now();
 
   const createdAt = new Date(pageCacheEntry.createdTime);
   const updatedAt = new Date(pageCacheEntry.lastEditedTime);
@@ -2884,7 +2884,7 @@ async function renderPageSection({
       b.blockType === "heading_2" ||
       b.blockType === "heading_3"
     ) {
-      renderedBlock = "\n" + renderedBlock;
+      renderedBlock = `\n${renderedBlock}`;
     }
 
     // Prefix for depths 0 and 1, and only if children
@@ -2935,7 +2935,7 @@ async function renderPageSection({
     return blockSection;
   };
 
-  const topLevelBlocks = adaptedBlocksByParentId["root"] || [];
+  const topLevelBlocks = adaptedBlocksByParentId.root || [];
   topLevelBlocks.sort((a, b) => a.indexInParent - b.indexInParent);
   for (const block of topLevelBlocks) {
     renderedPageSection.sections.push(await renderBlockSection(block, 0));
@@ -3504,7 +3504,7 @@ export async function getNextDatabaseToUpsert({
   });
 
   if (notionDatabases.length) {
-    return notionDatabases[0]!.notionDatabaseId;
+    return notionDatabases[0]?.notionDatabaseId;
   }
 
   // Otherwise, look if we have notion DBs that were upserted more than DATABASE_PROCESSING_INTERVAL_MS ago.
@@ -3537,7 +3537,7 @@ export async function getNextDatabaseToUpsert({
   });
 
   if (notionDatabases.length) {
-    return notionDatabases[0]!.notionDatabaseId;
+    return notionDatabases[0]?.notionDatabaseId;
   }
 
   // Otherwise, we don't update any DBs for now.

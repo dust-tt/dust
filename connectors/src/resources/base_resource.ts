@@ -37,13 +37,13 @@ export abstract class BaseResource<M extends Model> {
   ): Promise<T | null> {
     const parsedId = typeof id === "string" ? parseInt(id, 10) : id;
 
-    const blob = await this.model.findByPk(parsedId);
+    const blob = await BaseResource.model.findByPk(parsedId);
     if (!blob) {
       return null;
     }
 
     // Use `.get` to extract model attributes, omitting Sequelize instance metadata.
-    const r = new this(this.model, blob.get());
+    const r = new BaseResource(BaseResource.model, blob.get());
     await r.postFetchHook();
     return r;
   }

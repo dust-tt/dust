@@ -2,10 +2,10 @@
  * Move a given percentage of the remaining webcrawler to firecrawl
  */
 
-import fs from "fs";
+import fs from "node:fs";
 import { makeScript } from "scripts/helpers";
 import { Op } from "sequelize";
-import { promisify } from "util";
+import { promisify } from "node:util";
 import z from "zod";
 
 import { WebCrawlerConfigurationModel } from "@connectors/lib/models/webcrawler";

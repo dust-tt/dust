@@ -1,6 +1,6 @@
 import { Parser } from "htmlparser2";
-import type { Readable } from "stream";
-import { Transform } from "stream";
+import type { Readable } from "node:stream";
+import { Transform } from "node:stream";
 
 interface ParserState {
   insidePage: boolean;
@@ -81,7 +81,7 @@ export function transformStream(
         if (state.insidePage) {
           // Replaces &#13; (carriage return) with nothing, and trims the text.
           // Append a space to keep some spacing between tokens
-          state.currentPageBuffer += text.replace("&#13;", "").trim() + " ";
+          state.currentPageBuffer += `${text.replace("&#13;", "").trim()} `;
         }
       },
 

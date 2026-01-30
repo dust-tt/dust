@@ -1,10 +1,10 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
-import assert from "assert";
+import assert from "node:assert";
 import gunzip from "gunzip-maybe";
 import PQueue from "p-queue";
-import type { Readable } from "stream";
-import { pipeline } from "stream/promises";
+import type { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import * as tar from "tar-stream";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
@@ -428,7 +428,7 @@ export async function extractGitHubTarballToGCS(
         isRetryableStreamError(error) &&
         attempt < MAX_TARBALL_EXTRACTION_RETRIES - 1
       ) {
-        const delay = TARBALL_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+        const delay = TARBALL_RETRY_BASE_DELAY_MS * 2 ** attempt;
         childLogger.warn(
           {
             error,

@@ -76,7 +76,7 @@ export class ActivityInboundLogInterceptor
     next: Next<ActivityInboundCallsInterceptor, "execute">
   ): Promise<unknown> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let error: Error | any = undefined;
+    let error: Error | any ;
     const startTime = new Date();
     const tags = [
       `activity_name:${this.context.info.activityType}`,
@@ -190,7 +190,7 @@ export class ActivityInboundLogInterceptor
             workflowRunId: this.context.info.workflowExecution.runId,
             attempt: this.context.info.attempt,
             activityStartTime: startTime.toISOString(),
-            elapsedMs: new Date().getTime() - startTime.getTime(),
+            elapsedMs: Date.now()- startTime.getTime(),
             connectorId,
             workspaceId,
             dataSourceId,
@@ -219,7 +219,7 @@ export class ActivityInboundLogInterceptor
                 workspaceId,
                 dataSourceId,
               },
-              `Stopping connector manager because of expired token.`
+              "Stopping connector manager because of expired token."
             );
           } else {
             await syncFailed(connectorId, "workspace_quota_exceeded");
@@ -229,7 +229,7 @@ export class ActivityInboundLogInterceptor
                 workspaceId,
                 dataSourceId,
               },
-              `Stopping connector manager because of quota exceeded for the workspace.`
+              "Stopping connector manager because of quota exceeded for the workspace."
             );
           }
 
@@ -249,7 +249,7 @@ export class ActivityInboundLogInterceptor
                 workspaceId,
                 dataSourceId,
               },
-              `Connector manager not found for connector`
+              "Connector manager not found for connector"
             );
           }
         }
@@ -258,7 +258,7 @@ export class ActivityInboundLogInterceptor
       throw err;
     } finally {
       clearTimeout(startToCloseTimer);
-      const durationMs = new Date().getTime() - startTime.getTime();
+      const durationMs = Date.now()- startTime.getTime();
       if (error) {
         let errorType = "unhandled_internal_activity_error";
         if (error instanceof DustConnectorWorkflowError) {

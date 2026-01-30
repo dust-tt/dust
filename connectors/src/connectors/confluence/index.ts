@@ -324,7 +324,7 @@ export class ConfluenceConnectorManager extends BaseConnectorManager<null> {
         return new Err(
           new ConnectorManagerError(
             "RATE_LIMIT_ERROR",
-            `Confluence rate limit error when retrieving content nodes.`
+            "Confluence rate limit error when retrieving content nodes."
           )
         );
       }

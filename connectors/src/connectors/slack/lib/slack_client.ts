@@ -77,7 +77,7 @@ export async function getSlackClient(
   connectorIdOrAccessToken: string | ModelId,
   options?: SlackClientOptions
 ): Promise<WebClient> {
-  let slackAccessToken: string | undefined = undefined;
+  let slackAccessToken: string | undefined ;
   if (typeof connectorIdOrAccessToken === "number") {
     const connector = await ConnectorResource.fetchById(
       connectorIdOrAccessToken
@@ -164,7 +164,7 @@ export type SlackUserInfo = {
 
 export const getSlackUserInfoMemoized = cacheWithRedis(
   _getSlackUserInfo,
-  (connectorId, slackClient, userId) =>
+  (connectorId, _slackClient, userId) =>
     `slack-userid2name-${connectorId}-${userId}`,
   {
     ttlMs: 60 * 60 * 1000,

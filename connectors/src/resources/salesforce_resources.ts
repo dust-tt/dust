@@ -29,7 +29,7 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
     SalesforceConfigurationModel;
 
   constructor(
-    model: ModelStatic<SalesforceConfigurationModel>,
+    _model: ModelStatic<SalesforceConfigurationModel>,
     blob: Attributes<SalesforceConfigurationModel>
   ) {
     super(SalesforceConfigurationModel, blob);
@@ -46,7 +46,7 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, configuration.get());
+    return new SalesforceConfigurationResource(SalesforceConfigurationResource.model, configuration.get());
   }
 
   static async fetchByConnectorId(
@@ -55,13 +55,13 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
     const configuration = await SalesforceConfigurationModel.findOne({
       where: { connectorId },
     });
-    return configuration && new this(this.model, configuration.get());
+    return configuration && new SalesforceConfigurationResource(SalesforceConfigurationResource.model, configuration.get());
   }
 
   static async fetchByConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, SalesforceConfigurationResource>> {
-    const blobs = await this.model.findAll({
+    const blobs = await SalesforceConfigurationResource.model.findAll({
       where: {
         connectorId: connectorIds,
       },
@@ -69,7 +69,7 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
 
     return blobs.reduce(
       (acc, blob) => {
-        acc[blob.connectorId] = new this(this.model, blob.get());
+        acc[blob.connectorId] = new SalesforceConfigurationResource(SalesforceConfigurationResource.model, blob.get());
         return acc;
       },
       {} as Record<ModelId, SalesforceConfigurationResource>
@@ -80,7 +80,7 @@ export class SalesforceConfigurationResource extends BaseResource<SalesforceConf
     connectorId: number,
     transaction?: Transaction
   ): Promise<void> {
-    await this.model.destroy({ where: { connectorId }, transaction });
+    await SalesforceConfigurationResource.model.destroy({ where: { connectorId }, transaction });
   }
 
   async postFetchHook(): Promise<void> {
@@ -117,7 +117,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
     SalesforceSyncedQueryModel;
 
   constructor(
-    model: ModelStatic<SalesforceSyncedQueryModel>,
+    _model: ModelStatic<SalesforceSyncedQueryModel>,
     blob: Attributes<SalesforceSyncedQueryModel>
   ) {
     super(SalesforceSyncedQueryModel, blob);
@@ -135,7 +135,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
     connectorId: ModelId,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    await this.model.destroy({
+    await SalesforceSyncedQueryResource.model.destroy({
       where: { connectorId },
       transaction,
     });
@@ -174,7 +174,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, brand.get());
+    return new SalesforceSyncedQueryResource(SalesforceSyncedQueryResource.model, brand.get());
   }
 
   static async fetchByConnector(
@@ -183,7 +183,7 @@ export class SalesforceSyncedQueryResource extends BaseResource<SalesforceSynced
     const syncedQueries = await SalesforceSyncedQueryModel.findAll({
       where: { connectorId: connector.id },
     });
-    return syncedQueries.map((brand) => new this(this.model, brand.get()));
+    return syncedQueries.map((brand) => new SalesforceSyncedQueryResource(SalesforceSyncedQueryResource.model, brand.get()));
   }
 
   async updateLastSeenModifiedAt(lastSeenModifiedDate: Date | null) {

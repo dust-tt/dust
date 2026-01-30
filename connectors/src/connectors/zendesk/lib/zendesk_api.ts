@@ -158,7 +158,7 @@ export class ZendeskClient {
       let jsonResponse;
       try {
         jsonResponse = await rawResponse.json();
-      } catch (e) {
+      } catch (_e) {
         statsDClient.increment("zendesk_api.requests.error.count", 1, tags);
         throw new ZendeskApiError(
           "Error parsing Zendesk API response",

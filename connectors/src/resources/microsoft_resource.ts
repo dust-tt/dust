@@ -32,7 +32,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     MicrosoftConfigurationModel;
 
   constructor(
-    model: ModelStatic<MicrosoftConfigurationModel>,
+    _model: ModelStatic<MicrosoftConfigurationModel>,
     blob: Attributes<MicrosoftConfigurationModel>
   ) {
     super(MicrosoftConfigurationModel, blob);
@@ -46,18 +46,18 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
     blob: WithCreationAttributes<MicrosoftConfigurationModel>,
     transaction: Transaction
   ): Promise<MicrosoftConfigurationResource> {
-    const config = await this.model.create(
+    const config = await MicrosoftConfigurationResource.model.create(
       {
         ...blob,
       },
       { transaction }
     );
 
-    return new this(this.model, config.get());
+    return new MicrosoftConfigurationResource(MicrosoftConfigurationResource.model, config.get());
   }
 
   static async fetchByConnectorId(connectorId: ModelId) {
-    const blob = await this.model.findOne({
+    const blob = await MicrosoftConfigurationResource.model.findOne({
       where: {
         connectorId: connectorId,
       },
@@ -66,13 +66,13 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
       return null;
     }
 
-    return new this(this.model, blob.get());
+    return new MicrosoftConfigurationResource(MicrosoftConfigurationResource.model, blob.get());
   }
 
   static async fetchByConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, MicrosoftConfigurationResource>> {
-    const blobs = await this.model.findAll({
+    const blobs = await MicrosoftConfigurationResource.model.findAll({
       where: {
         connectorId: connectorIds,
       },
@@ -80,7 +80,7 @@ export class MicrosoftConfigurationResource extends BaseResource<MicrosoftConfig
 
     return blobs.reduce(
       (acc, blob) => {
-        acc[blob.connectorId] = new this(this.model, blob.get());
+        acc[blob.connectorId] = new MicrosoftConfigurationResource(MicrosoftConfigurationResource.model, blob.get());
         return acc;
       },
       {} as Record<ModelId, MicrosoftConfigurationResource>
@@ -139,7 +139,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   static model: ModelStatic<MicrosoftRootModel> = MicrosoftRootModel;
 
   constructor(
-    model: ModelStatic<MicrosoftRootModel>,
+    _model: ModelStatic<MicrosoftRootModel>,
     blob: Attributes<MicrosoftRootModel>
   ) {
     super(MicrosoftRootModel, blob);
@@ -151,14 +151,14 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
 
   static async makeNew(blob: WithCreationAttributes<MicrosoftRootModel>) {
     const resource = await MicrosoftRootModel.create(blob);
-    return new this(this.model, resource.get());
+    return new MicrosoftRootResource(MicrosoftRootResource.model, resource.get());
   }
 
   static async batchMakeNew(
     blobs: WithCreationAttributes<MicrosoftRootModel>[]
   ) {
     const resources = await MicrosoftRootModel.bulkCreate(blobs);
-    return resources.map((resource) => new this(this.model, resource.get()));
+    return resources.map((resource) => new MicrosoftRootResource(MicrosoftRootResource.model, resource.get()));
   }
 
   static async batchDelete({
@@ -188,7 +188,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
       },
     });
 
-    return resources.map((resource) => new this(this.model, resource.get()));
+    return resources.map((resource) => new MicrosoftRootResource(MicrosoftRootResource.model, resource.get()));
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
@@ -203,7 +203,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
   }
 
   static async fetchByInternalId(connectorId: ModelId, internalId: string) {
-    const blob = await this.model.findOne({
+    const blob = await MicrosoftRootResource.model.findOne({
       where: {
         connectorId,
         internalId,
@@ -213,7 +213,7 @@ export class MicrosoftRootResource extends BaseResource<MicrosoftRootModel> {
     if (!blob) {
       return null;
     }
-    return new this(this.model, blob.get());
+    return new MicrosoftRootResource(MicrosoftRootResource.model, blob.get());
   }
 
   toJSON(): {
@@ -240,7 +240,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
   static model: ModelStatic<MicrosoftNodeModel> = MicrosoftNodeModel;
 
   constructor(
-    model: ModelStatic<MicrosoftNodeModel>,
+    _model: ModelStatic<MicrosoftNodeModel>,
     blob: Attributes<MicrosoftNodeModel>
   ) {
     super(MicrosoftNodeModel, blob);
@@ -252,23 +252,23 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
 
   static async makeNew(blob: WithCreationAttributes<MicrosoftNodeModel>) {
     const resource = await MicrosoftNodeModel.create(blob);
-    return new this(this.model, resource.get());
+    return new MicrosoftNodeResource(MicrosoftNodeResource.model, resource.get());
   }
 
   static async upsert(blob: WithCreationAttributes<MicrosoftNodeModel>) {
     const [resource] = await MicrosoftNodeModel.upsert(blob);
-    return new this(this.model, resource.get());
+    return new MicrosoftNodeResource(MicrosoftNodeResource.model, resource.get());
   }
 
   static async batchMakeNew(
     blobs: WithCreationAttributes<MicrosoftNodeModel>[]
   ) {
     const resources = await MicrosoftNodeModel.bulkCreate(blobs);
-    return resources.map((resource) => new this(this.model, resource.get()));
+    return resources.map((resource) => new MicrosoftNodeResource(MicrosoftNodeResource.model, resource.get()));
   }
 
   static async fetchByInternalId(connectorId: ModelId, internalId: string) {
-    const blob = await this.model.findOne({
+    const blob = await MicrosoftNodeResource.model.findOne({
       where: {
         connectorId,
         internalId,
@@ -277,28 +277,28 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     if (!blob) {
       return null;
     }
-    return new this(this.model, blob.get());
+    return new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get());
   }
 
   static async fetchNodesWithoutParents(connectorId: ModelId) {
-    const blobs = await this.model.findAll({
+    const blobs = await MicrosoftNodeResource.model.findAll({
       where: {
         connectorId,
         parentInternalId: null,
       },
     });
-    return blobs.map((blob) => new this(this.model, blob.get()));
+    return blobs.map((blob) => new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get()));
   }
 
   static async fetchByInternalIds(connectorId: ModelId, internalIds: string[]) {
-    const blobs = await this.model.findAll({
+    const blobs = await MicrosoftNodeResource.model.findAll({
       where: {
         connectorId,
         internalId: internalIds,
       },
     });
 
-    return blobs.map((blob) => new this(this.model, blob.get()));
+    return blobs.map((blob) => new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get()));
   }
 
   async fetchChildren(nodeTypes?: MicrosoftNodeType[]) {
@@ -362,7 +362,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     connectorId: ModelId,
     node: MicrosoftNode
   ): Promise<MicrosoftNodeResource> {
-    const res = await this.batchUpdateOrCreate(connectorId, [node]);
+    const res = await MicrosoftNodeResource.batchUpdateOrCreate(connectorId, [node]);
 
     if (res.length !== 1 || !res[0]) {
       throw new Error(
@@ -457,7 +457,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     pageSize: number;
     idCursor: ModelId;
   }): Promise<MicrosoftNodeResource[]> {
-    const blobs = await this.model.findAll({
+    const blobs = await MicrosoftNodeResource.model.findAll({
       where: {
         connectorId,
         id: {
@@ -468,7 +468,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
       order: [["id", "ASC"]],
     });
 
-    return blobs.map((blob) => new this(this.model, blob.get()));
+    return blobs.map((blob) => new MicrosoftNodeResource(MicrosoftNodeResource.model, blob.get()));
   }
 
   /** String representation of this node and its descendants in treeLike fashion */
@@ -476,7 +476,7 @@ export class MicrosoftNodeResource extends BaseResource<MicrosoftNodeModel> {
     const childrenStrings = await Promise.all(
       (await this.fetchChildren()).map(async (c) => c.treeString(level + 1))
     );
-    const hyphens = "\n" + "-".repeat(level * 2);
+    const hyphens = `\n${"-".repeat(level * 2)}`;
 
     return `${this.name}${this.nodeType === "folder" ? "/" : ""}${childrenStrings.length > 0 ? hyphens + childrenStrings.join(hyphens) : ""}`;
   }

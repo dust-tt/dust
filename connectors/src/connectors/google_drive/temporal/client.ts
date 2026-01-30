@@ -97,7 +97,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
           workspaceId: dataSourceConfig.workspaceId,
           workflowId,
         },
-        `Terminated existing workflow and started fresh full sync.`
+        "Terminated existing workflow and started fresh full sync."
       );
       return new Ok(workflowId);
     } else {
@@ -133,7 +133,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
           foldersAdded: addedFolderIds.length,
           foldersRemoved: removedFolderIds.length,
         },
-        `Sent signalWithStart to workflow.`
+        "Sent signalWithStart to workflow."
       );
 
       return new Ok(workflowId);
@@ -145,7 +145,7 @@ export async function launchGoogleDriveFullSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -187,7 +187,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
         workspaceId: connector.workspaceId,
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -197,7 +197,7 @@ export async function launchGoogleDriveIncrementalSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -224,7 +224,7 @@ export async function launchGoogleGarbageCollector(
       }
     }
     await client.workflow.start(googleDriveGarbageCollectorWorkflow, {
-      args: [connector.id, new Date().getTime()],
+      args: [connector.id, Date.now()],
       taskQueue: GDRIVE_INCREMENTAL_SYNC_QUEUE_NAME,
       workflowId: workflowId,
       searchAttributes: {
@@ -238,7 +238,7 @@ export async function launchGoogleGarbageCollector(
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -247,7 +247,7 @@ export async function launchGoogleGarbageCollector(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -291,7 +291,7 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -300,7 +300,7 @@ export async function launchGoogleFixParentsConsistencyWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }

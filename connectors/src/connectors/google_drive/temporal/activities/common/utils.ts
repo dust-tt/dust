@@ -45,7 +45,7 @@ export async function deleteFile(googleDriveFile: GoogleDriveFilesModel) {
       driveFileId: googleDriveFile.driveFileId,
       connectorId,
     },
-    `Deleting Google Drive file.`
+    "Deleting Google Drive file."
   );
 
   await internalDeleteFile(connector, googleDriveFile);
@@ -60,7 +60,7 @@ export async function getDrives(
   }
   const drive = await getDriveClient(connector.connectionId);
 
-  let nextPageToken: string | undefined | null = undefined;
+  let nextPageToken: string | undefined | null ;
   const authCredentials = await getAuthObject(connector.connectionId);
   const drives: LightGoogleDrive[] = [];
   const myDriveId = await getMyDriveIdCached(authCredentials);
@@ -110,7 +110,7 @@ export async function getSyncPageToken(
     return last.syncToken;
   }
   const driveClient = await getDriveClient(connector.connectionId);
-  let lastSyncToken = undefined;
+  let lastSyncToken ;
   if (!lastSyncToken) {
     let opts: { supportsAllDrives: boolean; driveId?: string } = {
       // For userspace, the driveId must be undefined.

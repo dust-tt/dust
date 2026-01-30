@@ -71,7 +71,7 @@ export async function throttleWithRedis<T>(
   const throttleRes = await throttle({
     rateLimit,
     canBeIgnored,
-    now: new Date().getTime(),
+    now: Date.now(),
     acquireLock,
     releaseLock,
     getTimestamps,

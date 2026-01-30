@@ -32,8 +32,7 @@ makeScript(
     const result = await syncSpreadSheet(
       authCredentials,
       connectorId,
-      spreadsheetData,
-      new Date().getTime(),
+      spreadsheetData,Date.now(),
       logger
     );
 

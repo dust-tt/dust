@@ -44,7 +44,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
   static model: ModelStatic<GongConfigurationModel> = GongConfigurationModel;
 
   constructor(
-    model: ModelStatic<GongConfigurationModel>,
+    _model: ModelStatic<GongConfigurationModel>,
     blob: Attributes<GongConfigurationModel>
   ) {
     super(GongConfigurationModel, blob);
@@ -61,7 +61,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, configuration.get());
+    return new GongConfigurationResource(GongConfigurationResource.model, configuration.get());
   }
 
   async postFetchHook(): Promise<void> {
@@ -100,7 +100,7 @@ export class GongConfigurationResource extends BaseResource<GongConfigurationMod
       return null;
     }
 
-    return new this(this.model, configuration.get());
+    return new GongConfigurationResource(GongConfigurationResource.model, configuration.get());
   }
 
   async setTrackersEnabled(trackersEnabled: boolean): Promise<void> {
@@ -200,14 +200,14 @@ export class GongUserResource extends BaseResource<GongUserModel> {
   static model: ModelStatic<GongUserModel> = GongUserModel;
 
   constructor(
-    model: ModelStatic<GongUserModel>,
+    _model: ModelStatic<GongUserModel>,
     blob: Attributes<GongUserModel>
   ) {
     super(GongUserModel, blob);
   }
 
   static async makeNew(
-    connector: ConnectorResource,
+    _connector: ConnectorResource,
     blob: GongUserBlob,
     transaction?: Transaction
   ): Promise<GongUserResource> {
@@ -216,7 +216,7 @@ export class GongUserResource extends BaseResource<GongUserModel> {
       transaction && { transaction }
     );
 
-    return new this(this.model, user.get());
+    return new GongUserResource(GongUserResource.model, user.get());
   }
 
   static async batchCreate(
@@ -233,7 +233,7 @@ export class GongUserResource extends BaseResource<GongUserModel> {
       }
     );
 
-    return users.map((user) => new this(this.model, user.get()));
+    return users.map((user) => new GongUserResource(GongUserResource.model, user.get()));
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
@@ -275,14 +275,14 @@ export class GongUserResource extends BaseResource<GongUserModel> {
       where: { connectorId: connector.id, gongId: gongUserIds },
     });
 
-    return users.map((user) => new this(this.model, user.get()));
+    return users.map((user) => new GongUserResource(GongUserResource.model, user.get()));
   }
 
   static async fetchByGongUserId(
     connector: ConnectorResource,
     { gongUserId }: { gongUserId: string }
   ): Promise<GongUserResource | null> {
-    const [user] = await this.fetchByGongUserIds(connector, {
+    const [user] = await GongUserResource.fetchByGongUserIds(connector, {
       gongUserIds: [gongUserId],
     });
 
@@ -302,7 +302,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
   static model: ModelStatic<GongTranscriptModel> = GongTranscriptModel;
 
   constructor(
-    model: ModelStatic<GongTranscriptModel>,
+    _model: ModelStatic<GongTranscriptModel>,
     blob: Attributes<GongTranscriptModel>
   ) {
     super(GongTranscriptModel, blob);
@@ -319,7 +319,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, configuration.get());
+    return new GongTranscriptResource(GongTranscriptResource.model, configuration.get());
   }
 
   async postFetchHook(): Promise<void> {
@@ -358,7 +358,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       },
     });
 
-    return transcripts.map((t) => new this(this.model, t.get()));
+    return transcripts.map((t) => new GongTranscriptResource(GongTranscriptResource.model, t.get()));
   }
 
   static async fetchByCallId(
@@ -375,7 +375,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       return null;
     }
 
-    return new this(this.model, transcript.get());
+    return new GongTranscriptResource(GongTranscriptResource.model, transcript.get());
   }
 
   static async fetchOutdated(
@@ -402,7 +402,7 @@ export class GongTranscriptResource extends BaseResource<GongTranscriptModel> {
       },
       limit,
     });
-    return transcripts.map((t) => new this(this.model, t.get()));
+    return transcripts.map((t) => new GongTranscriptResource(GongTranscriptResource.model, t.get()));
   }
 
   static async batchDelete(

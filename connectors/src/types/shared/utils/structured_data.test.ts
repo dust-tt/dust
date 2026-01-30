@@ -1,6 +1,6 @@
 import * as Path from "node:path";
 
-import fs from "fs";
+import fs from "node:fs";
 import { describe, expect, it } from "vitest";
 
 import { decodeBuffer } from "@connectors/connectors/shared/file";
@@ -97,7 +97,7 @@ Alice,30,Paris
 Alice;30;Paris
 Bob;25;London`;
 
-    const utf16Buffer = Buffer.from("\uFEFF" + csvContent, "utf16le");
+    const utf16Buffer = Buffer.from(`\uFEFF${csvContent}`, "utf16le");
     const utf16String = utf16Buffer.toString("utf16le");
 
     const result = await parseAndStringifyCsv(utf16String);

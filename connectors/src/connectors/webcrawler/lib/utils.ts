@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { hash as blake3 } from "blake3";
 import { NonRetryableError } from "crawlee";
-import dns from "dns";
+import dns from "node:dns";
 
 import type {
   WebCrawlerFolderModel,
@@ -116,7 +116,7 @@ export function normalizeFolderUrl(url: string) {
 
   if (parsed.search.length > 0) {
     // Replace the leading ? with a /
-    result += "/" + parsed.search.slice(1);
+    result += `/${parsed.search.slice(1)}`;
   }
 
   return result;

@@ -289,7 +289,7 @@ export async function retrieveChildrenNodes({
     connector.id
   );
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(

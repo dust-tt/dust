@@ -1,4 +1,4 @@
-import assert from "assert";
+import assert from "node:assert";
 
 import { clearOrganizationCache } from "@connectors/connectors/zendesk/lib/in_memory_cache";
 import { syncArticle } from "@connectors/connectors/zendesk/lib/sync_article";
@@ -85,7 +85,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -137,7 +137,7 @@ export async function syncZendeskArticleUpdateBatchActivity({
             userId: article.author_id,
           });
 
-      if (section && section.category_id) {
+      if (section?.category_id) {
         let category = await ZendeskCategoryResource.fetchByCategoryId({
           connectorId,
           brandId,
@@ -230,7 +230,7 @@ export async function syncZendeskTicketUpdateBatchActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   const loggerArgs = {

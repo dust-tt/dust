@@ -16,7 +16,7 @@ export const withLogging = (handler: any) => {
     try {
       await handler(req, res);
     } catch (err) {
-      const elapsed = new Date().getTime() - now.getTime();
+      const elapsed = Date.now()- now.getTime();
       logger.error(
         {
           method: req.method,
@@ -33,8 +33,8 @@ export const withLogging = (handler: any) => {
       const tags = [
         `method:${req.method}`,
         // `url:${req.url}`,
-        `status_code:500`,
-        `error_type:unhandled_internal_server_error`,
+        "status_code:500",
+        "error_type:unhandled_internal_server_error",
       ];
 
       statsDClient.increment("api_errors.count", 1, tags);
@@ -54,7 +54,7 @@ export const withLogging = (handler: any) => {
       return;
     }
 
-    const elapsed = new Date().getTime() - now.getTime();
+    const elapsed = Date.now()- now.getTime();
 
     const tags = [
       `method:${req.method}`,

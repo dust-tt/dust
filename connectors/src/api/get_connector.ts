@@ -106,7 +106,7 @@ const _getConnectors = async (
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Expecting connector_id to be passed as query parameters`,
+        message: "Expecting connector_id to be passed as query parameters",
       },
     });
   }
@@ -117,7 +117,7 @@ const _getConnectors = async (
       status_code: 400,
       api_error: {
         type: "invalid_request_error",
-        message: `Salesforce is not supported in this endpoint`,
+        message: "Salesforce is not supported in this endpoint",
       },
     });
   }

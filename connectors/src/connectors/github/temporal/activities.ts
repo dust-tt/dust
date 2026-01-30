@@ -170,7 +170,7 @@ async function renderIssue(
       "Fetching GitHub issue comments result page."
     );
 
-    let comments = undefined;
+    let comments ;
     try {
       comments = await getIssueCommentsPage(
         connector,
@@ -257,7 +257,7 @@ export async function githubUpsertIssueActivity(
       connectorId: connector.id,
     },
   });
-  if (existingIssue && existingIssue.skipReason) {
+  if (existingIssue?.skipReason) {
     logger.info("Issue skipped.");
     return;
   }

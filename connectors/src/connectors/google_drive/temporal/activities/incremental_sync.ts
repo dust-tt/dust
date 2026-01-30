@@ -117,7 +117,7 @@ export async function incrementalSync(
     }
 
     if (changesRes.data.changes === undefined) {
-      throw new Error(`changes list is undefined`);
+      throw new Error("changes list is undefined");
     }
 
     if (changesRes.data.changes.length > 0) {
@@ -125,7 +125,7 @@ export async function incrementalSync(
         {
           nbChanges: changesRes.data.changes.length,
         },
-        `Got changes.`
+        "Got changes."
       );
     }
 
@@ -305,7 +305,7 @@ export async function incrementalSync(
         {
           error: e.message,
         },
-        `Looks like we lost access to this drive. Skipping`
+        "Looks like we lost access to this drive. Skipping"
       );
       return undefined;
     } else if (
@@ -318,7 +318,7 @@ export async function incrementalSync(
           error: e instanceof Error ? e.message : "Unknown error",
           driveId,
         },
-        `Shared drive not found. Skipping`
+        "Shared drive not found. Skipping"
       );
       return undefined;
     } else {

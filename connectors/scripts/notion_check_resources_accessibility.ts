@@ -22,7 +22,7 @@
  * 5. Return immediately with a link to the Temporal UI
  */
 import { Storage } from "@google-cloud/storage";
-import { readFile } from "fs/promises";
+import { readFile } from "node:fs/promises";
 import { makeScript } from "scripts/helpers";
 
 import { QUEUE_NAME } from "@connectors/connectors/notion/temporal/config";

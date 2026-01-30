@@ -20,16 +20,16 @@ beforeEach(async (c) => {
   namespace.set("transaction", transaction);
 
   // @ts-expect-error - storing context in the test context
-  c["namespace"] = namespace;
+  c.namespace = namespace;
   // @ts-expect-error - storing context in the test context
-  c["context"] = context;
+  c.context = context;
   // @ts-expect-error - storing context in the test context
-  c["transaction"] = transaction;
+  c.transaction = transaction;
 });
 
 afterEach(async (c2) => {
   // @ts-expect-error - storing context in the test context
-  c2["transaction"].rollback();
+  c2.transaction.rollback();
   // @ts-expect-error - storing context in the test context
-  c2["namespace"].exit(c2["context"]);
+  c2.namespace.exit(c2.context);
 });

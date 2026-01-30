@@ -1,6 +1,6 @@
 import type { Result } from "@dust-tt/client";
 import { Ok } from "@dust-tt/client";
-import { promises as fs } from "fs";
+import { promises as fs } from "node:fs";
 import { makeScript } from "scripts/helpers";
 
 import { apiConfig } from "@connectors/lib/api/config";
@@ -117,7 +117,7 @@ async function migrateAllGithubConnections(
     }
   }
 
-  logger.info(`Done migrating GitHub connectors.`);
+  logger.info("Done migrating GitHub connectors.");
 }
 
 makeScript(

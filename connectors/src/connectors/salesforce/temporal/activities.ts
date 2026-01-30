@@ -52,7 +52,7 @@ function documentIdForSyncedQuery(
   record: Record
 ): string {
   if (!record.Id || typeof record.Id !== "string") {
-    throw new Error(`Salesforce Record must have a valid Id field.`);
+    throw new Error("Salesforce Record must have a valid Id field.");
   }
   return `salesforce-synced-query-document-${connectorId}-${queryId}-${record.Id}`;
 }

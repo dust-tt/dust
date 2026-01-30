@@ -129,7 +129,7 @@ export async function syncConversation({
       folderId: folderInternalId,
       parents: [folderInternalId],
       parentId: null,
-      title: `Conversations`,
+      title: "Conversations",
       mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONVERSATION_FOLDER,
     });
 

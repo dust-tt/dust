@@ -13,7 +13,7 @@ makeScript({}, async ({ execute }, logger) => {
   await concurrentExecutor(
     connectors,
     async (connector) => {
-      const folderId = `notion-syncing`;
+      const folderId = "notion-syncing";
       if (execute) {
         await upsertDataSourceFolder({
           dataSourceConfig: dataSourceConfigFromConnector(connector),

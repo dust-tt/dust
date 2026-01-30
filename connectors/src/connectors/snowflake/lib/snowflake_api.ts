@@ -191,13 +191,13 @@ export async function connectToSnowflake(
       // Use proxy if defined to have all requests coming from the same IP.
       proxyHost: process.env.PROXY_HOST,
       proxyPort: process.env.PROXY_PORT
-        ? parseInt(process.env.PROXY_PORT)
+        ? parseInt(process.env.PROXY_PORT, 10)
         : undefined,
       proxyUser: process.env.PROXY_USER_NAME,
       proxyPassword: process.env.PROXY_USER_PASSWORD,
 
       retryTimeout: process.env.SNOWFLAKE_RETRY_TIMEOUT
-        ? parseInt(process.env.SNOWFLAKE_RETRY_TIMEOUT)
+        ? parseInt(process.env.SNOWFLAKE_RETRY_TIMEOUT, 10)
         : 15,
     };
 
@@ -259,7 +259,7 @@ export async function connectToSnowflake(
 
     const connection = await new Promise<Connection>((resolve, reject) => {
       const connectTimeoutMs = process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS
-        ? parseInt(process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS)
+        ? parseInt(process.env.SNOWFLAKE_CONNECT_TIMEOUT_MS, 10)
         : 15000;
 
       const conn = snowflake.createConnection(connectionOptions);
@@ -287,6 +287,7 @@ export async function connectToSnowflake(
             reject(e instanceof Error ? e : new Error(String(e)));
           }
         },
+        Number.
         isNaN(connectTimeoutMs) ? 15000 : connectTimeoutMs
       );
 
@@ -483,7 +484,7 @@ export const useWarehouse = async ({
     return new Err(
       new Error(
         `Snowflake warehouse check failed: USE WAREHOUSE "${warehouse}". ` +
-          `The configured warehouse may not exist or is not accessible. ` +
+          "The configured warehouse may not exist or is not accessible. " +
           `Original error: ${e.message}`
       )
     );
@@ -757,7 +758,7 @@ async function _executeQuery(
           sqlText,
           complete: (
             err: SnowflakeError | undefined,
-            stmt: RowStatement,
+            _stmt: RowStatement,
             rows: SnowflakeRows | undefined
           ) => {
             if (err) {

@@ -99,7 +99,7 @@ export function getLoggerArgs(
       workflowRunId: ctx.info.workflowExecution.runId,
       activityId: ctx.info.activityId,
     });
-  } catch (e) {
+  } catch (_e) {
     // Cannot read context, ignore
   }
   return effectiveArgs;

@@ -133,7 +133,7 @@ export async function isAppMentionMessage(
     const botUserId = await getBotUserIdMemoized(slackClient, connector.id);
 
     return message.includes(`<@${botUserId}>`);
-  } catch (error) {
+  } catch (_error) {
     // If we can't determine, default to false
     return false;
   }

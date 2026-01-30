@@ -21,7 +21,7 @@ export class DustProjectConfigurationResource extends BaseResource<DustProjectCo
     DustProjectConfigurationModel;
 
   constructor(
-    model: ModelStatic<DustProjectConfigurationModel>,
+    _model: ModelStatic<DustProjectConfigurationModel>,
     blob: Attributes<DustProjectConfigurationModel>
   ) {
     super(DustProjectConfigurationModel, blob);

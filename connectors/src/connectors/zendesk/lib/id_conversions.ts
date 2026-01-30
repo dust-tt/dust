@@ -75,7 +75,7 @@ export function getTicketInternalId({
  */
 function _getIdFromInternal(internalId: string, prefix: string): number | null {
   return internalId.startsWith(prefix)
-    ? parseInt(internalId.replace(prefix, ""))
+    ? parseInt(internalId.replace(prefix, ""), 10)
     : null;
 }
 

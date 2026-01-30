@@ -1,7 +1,7 @@
 import { stringify } from "csv-stringify/sync";
 import { Parser } from "htmlparser2";
-import type { Readable } from "stream";
-import { Transform } from "stream";
+import type { Readable } from "node:stream";
+import { Transform } from "node:stream";
 
 // TODO: Magic string copied from front/files.ts, find a way to share this
 const TABLE_PREFIX = "TABLE:";

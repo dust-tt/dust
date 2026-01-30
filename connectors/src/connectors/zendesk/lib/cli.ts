@@ -182,7 +182,7 @@ export const zendesk = async ({
     case "count-tickets": {
       const brandId = args.brandId ?? null;
       if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
+        throw new Error("Missing --brandId argument");
       }
       const { retentionPeriodDays } = configuration;
 
@@ -268,7 +268,7 @@ export const zendesk = async ({
       const brandId = args.brandId ?? null;
       const ticketId = args.ticketId ?? null;
       if (!ticketId) {
-        throw new Error(`Missing --ticketId argument`);
+        throw new Error("Missing --ticketId argument");
       }
 
       let ticketOnDb = null;
@@ -307,7 +307,7 @@ export const zendesk = async ({
     case "fetch-brand": {
       const brandId = args.brandId ?? null;
       if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
+        throw new Error("Missing --brandId argument");
       }
 
       const brand = await zendeskClient.fetchBrand({
@@ -358,7 +358,7 @@ export const zendesk = async ({
     case "resync-brand-metadata": {
       const brandId = args.brandId ?? null;
       if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
+        throw new Error("Missing --brandId argument");
       }
       await syncZendeskBrandActivity({
         connectorId: connectorId,
@@ -370,11 +370,11 @@ export const zendesk = async ({
     case "sync-ticket": {
       const brandId = args.brandId ?? null;
       if (!brandId) {
-        throw new Error(`Missing --brandId argument`);
+        throw new Error("Missing --brandId argument");
       }
       const ticketId = args.ticketId ?? null;
       if (!ticketId) {
-        throw new Error(`Missing --ticketId argument`);
+        throw new Error("Missing --ticketId argument");
       }
 
       const brandSubdomain = await zendeskClient.getBrandSubdomain({

@@ -35,7 +35,7 @@ export class ConnectorBaseModel<M extends Model> extends BaseModel<M> {
     };
 
     const { relationship = "hasMany", ...restOptions } = options;
-    const model = super.init(attrs, restOptions);
+    const model = BaseModel.init(attrs, restOptions);
 
     if (relationship === "hasOne") {
       ConnectorModel.hasOne(model, {

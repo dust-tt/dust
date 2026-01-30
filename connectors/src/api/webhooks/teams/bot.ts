@@ -170,8 +170,8 @@ export async function botAnswerMessage(
     },
   };
 
-  let conversation: ConversationPublicType | undefined = undefined;
-  let userMessage: UserMessageType | undefined = undefined;
+  let conversation: ConversationPublicType | undefined ;
+  let userMessage: UserMessageType | undefined ;
 
   if (lastMicrosoftBotMessage?.dustConversationId) {
     // Check conversation existence (it might have been deleted between two messages).
@@ -348,7 +348,7 @@ async function streamAgentResponse({
   let finalResponse = "";
   let finalFormattedContent = "";
   let finalFootnotes: MessageFootnotes = [];
-  let agentMessageSuccess = undefined;
+  let agentMessageSuccess ;
   let lastUpdateTime = Date.now();
   let chainOfThought = "";
   let agentState = "thinking";

@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import type { NextFunction, Request, Response } from "express";
 
 import logger from "@connectors/logger/logger";
@@ -44,7 +44,7 @@ const _authMiddlewareAPI = (
   res: Response<ConnectorsAPIErrorResponse>,
   next: NextFunction
 ) => {
-  if (!req.headers["authorization"]) {
+  if (!req.headers.authorization) {
     return apiError(req, res, {
       api_error: {
         type: "authorization_error",
@@ -53,7 +53,7 @@ const _authMiddlewareAPI = (
       status_code: 401,
     });
   }
-  const authorization = req.headers["authorization"];
+  const authorization = req.headers.authorization;
   if (typeof authorization !== "string") {
     return apiError(req, res, {
       api_error: {
@@ -122,7 +122,7 @@ const _authMiddlewareWebhooksGithub = (
   next: NextFunction
 ) => {
   if (!req.path.split("/").includes(DUST_CONNECTORS_WEBHOOKS_SECRET)) {
-    logger.error({ path: req.path }, `Invalid webhook secret`);
+    logger.error({ path: req.path }, "Invalid webhook secret");
     return apiError(req, res, {
       api_error: {
         type: "not_found",
@@ -168,7 +168,7 @@ const _authMiddlewareWebhooksGithub = (
   if (Array.isArray(signatureHeader)) {
     logger.error(
       { signatureHeader },
-      `Unexpected x-hub-signature-256 header format`
+      "Unexpected x-hub-signature-256 header format"
     );
     return apiError(req, res, {
       api_error: {
@@ -187,7 +187,7 @@ const _authMiddlewareWebhooksGithub = (
   ) {
     logger.error(
       { signatureHeader, computedSignature },
-      `x-hub-signature-256 header does not match computed signature`
+      "x-hub-signature-256 header does not match computed signature"
     );
     return apiError(req, res, {
       api_error: {
@@ -207,7 +207,7 @@ const _authMiddlewareWebhooksIntercom = (
   next: NextFunction
 ) => {
   if (!req.path.split("/").includes(DUST_CONNECTORS_WEBHOOKS_SECRET)) {
-    logger.error({ path: req.path }, `Invalid webhook secret`);
+    logger.error({ path: req.path }, "Invalid webhook secret");
     return apiError(req, res, {
       api_error: {
         type: "not_found",
@@ -261,7 +261,7 @@ const _authMiddlewareWebhooksIntercom = (
     if (Array.isArray(signatureHeader)) {
       logger.error(
         { signatureHeader },
-        `Unexpected x-hub-signature header format`
+        "Unexpected x-hub-signature header format"
       );
       return apiError(req, res, {
         api_error: {
@@ -280,7 +280,7 @@ const _authMiddlewareWebhooksIntercom = (
     ) {
       logger.error(
         { signatureHeader, computedSignature },
-        `x-hub-signature header does not match computed signature`
+        "x-hub-signature header does not match computed signature"
       );
       return apiError(req, res, {
         api_error: {

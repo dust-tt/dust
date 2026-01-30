@@ -48,7 +48,7 @@ export const salesforce = async ({
   }
 
   if (connector.type !== "salesforce") {
-    throw new Error(`Connector is not of type salesforce`);
+    throw new Error("Connector is not of type salesforce");
   }
 
   const connCredRes = await getConnectorAndCredentials(connector.id);

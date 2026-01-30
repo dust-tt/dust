@@ -459,7 +459,7 @@ export async function sendDeletionCrawlSignal(
   if (!validated) {
     return new Err(
       new Error(
-        `Invalid deletion crawl signal arguments: ` +
+        "Invalid deletion crawl signal arguments: " +
           `connectorId=${connectorId}, resourceId="${resourceId}", resourceType="${resourceType}"`
       )
     );

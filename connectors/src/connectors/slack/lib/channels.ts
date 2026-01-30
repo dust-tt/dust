@@ -2,7 +2,7 @@ import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import type { WebClient } from "@slack/web-api";
 import type { Channel } from "@slack/web-api/dist/types/response/ConversationsInfoResponse";
-import assert from "assert";
+import assert from "node:assert";
 import { Op } from "sequelize";
 
 import { isSlackWebAPIPlatformError } from "@connectors/connectors/slack/lib/errors";
@@ -309,7 +309,7 @@ export async function joinChannelWithRetries(
  */
 export const getChannels = cacheWithRedis(
   _getChannelsUncached,
-  (slackClient, connectorId, joinedOnly) =>
+  (_slackClient, connectorId, joinedOnly) =>
     `slack-channels-${connectorId}-${joinedOnly}`,
   {
     ttlMs: 5 * 60 * 1000,
@@ -327,7 +327,7 @@ export const getChannels = cacheWithRedis(
  */
 export const getJoinedChannels = cacheWithRedis(
   _getJoinedChannelsUncached,
-  (slackClient, connectorId) => `slack-joined-channels-${connectorId}`,
+  (_slackClient, connectorId) => `slack-joined-channels-${connectorId}`,
   {
     ttlMs: 5 * 60 * 1000,
   }
@@ -351,7 +351,7 @@ async function _getTypedJoinedChannelsUncached(
   }
 ): Promise<Channel[]> {
   const allChannels = [];
-  let nextCursor: string | undefined = undefined;
+  let nextCursor: string | undefined ;
   let nbCalls = 0;
 
   do {
@@ -456,7 +456,7 @@ async function _getTypedChannelsUncached(
   types: "public_channel" | "private_channel"
 ): Promise<Channel[]> {
   const allChannels = [];
-  let nextCursor: string | undefined = undefined;
+  let nextCursor: string | undefined ;
   let nbCalls = 0;
   do {
     reportSlackUsage({
@@ -497,7 +497,7 @@ async function _getTypedChannelsUncached(
       );
     }
     for (const channel of c.channels) {
-      if (channel && channel.id) {
+      if (channel?.id) {
         if (!joinedOnly || channel.is_member) {
           allChannels.push(channel);
         }

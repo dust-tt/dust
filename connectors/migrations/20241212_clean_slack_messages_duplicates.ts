@@ -53,7 +53,7 @@ makeScript({}, async ({ execute }) => {
           if (!counts[0]) {
             throw new Error(`No results for ${countQuery}`);
           }
-          if (counts[0].count != total - 1) {
+          if (counts[0].count !== total - 1) {
             throw new Error(
               `Expected to delete ${total - 1} but would deleted ${counts[0].count}`
             );

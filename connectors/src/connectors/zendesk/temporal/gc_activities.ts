@@ -138,7 +138,7 @@ export async function removeMissingArticleBatchActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);

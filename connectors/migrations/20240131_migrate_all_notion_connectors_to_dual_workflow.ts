@@ -8,7 +8,7 @@ async function main() {
 
 main()
   .then(() => {
-    console.error("\x1b[32m%s\x1b[0m", `Done`);
+    console.error("\x1b[32m%s\x1b[0m", "Done");
     process.exit(0);
   })
   .catch((err) => {

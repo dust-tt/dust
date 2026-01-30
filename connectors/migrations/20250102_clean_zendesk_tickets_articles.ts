@@ -116,7 +116,7 @@ makeScript(
     switch (resourceType) {
       case "tickets": {
         for (const connector of connectors) {
-          logger.info({ connectorId: connector.id }, `MIGRATING`);
+          logger.info({ connectorId: connector.id }, "MIGRATING");
           await cleanTickets(
             connector,
             logger.child({ connectorId: connector.id }),
@@ -127,7 +127,7 @@ makeScript(
       }
       case "articles": {
         for (const connector of connectors) {
-          logger.info({ connectorId: connector.id }, `MIGRATING`);
+          logger.info({ connectorId: connector.id }, "MIGRATING");
           await cleanArticles(
             connector,
             logger.child({ connectorId: connector.id }),

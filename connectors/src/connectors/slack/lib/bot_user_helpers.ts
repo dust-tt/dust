@@ -30,7 +30,7 @@ async function getBotUserId(
     throw new Error(`Failed to fetch auth info: ${authRes.error}`);
   }
   if (!authRes.user_id) {
-    throw new Error(`Failed to fetch auth info: user_id is undefined`);
+    throw new Error("Failed to fetch auth info: user_id is undefined");
   }
 
   return authRes.user_id;
@@ -38,7 +38,7 @@ async function getBotUserId(
 
 export const getBotUserIdMemoized = cacheWithRedis(
   getBotUserId,
-  (slackClient, connectorId) => connectorId.toString(),
+  (_slackClient, connectorId) => connectorId.toString(),
   {
     ttlMs: 60 * 10 * 1000,
   }

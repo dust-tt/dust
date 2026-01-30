@@ -12,8 +12,8 @@ import type { AxiosRequestConfig, AxiosResponse } from "axios";
 import type { AxiosError } from "axios";
 import axios from "axios";
 import tracer from "dd-trace";
-import http from "http";
-import https from "https";
+import http from "node:http";
+import https from "node:https";
 import type { Branded, IntBrand } from "io-ts";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown, gfmToMarkdown } from "mdast-util-gfm";
@@ -105,9 +105,9 @@ async function _upsertDataSourceDocument({
   parentId,
 }: UpsertDataSourceDocumentParams) {
   return tracer.trace(
-    `connectors`,
+    "connectors",
     {
-      resource: `upsertToDatasource`,
+      resource: "upsertToDatasource",
     },
     async (span) => {
       span?.setTag("documentId", documentId);
@@ -177,7 +177,7 @@ async function _upsertDataSourceDocument({
           dustRequestConfig
         );
       } catch (e) {
-        const elapsed = new Date().getTime() - now.getTime();
+        const elapsed = Date.now()- now.getTime();
         if (axios.isAxiosError(e) && e.config?.data) {
           e.config.data = "[REDACTED]";
         }
@@ -196,7 +196,7 @@ async function _upsertDataSourceDocument({
         throw e;
       }
 
-      const elapsed = new Date().getTime() - now.getTime();
+      const elapsed = Date.now()- now.getTime();
 
       if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
         statsDClient.increment(
@@ -510,8 +510,8 @@ export async function renderPrefixSection({
       .join("") + targetContent;
 
   return {
-    prefix: targetContent ? targetPrefix + "...\n" : targetPrefix,
-    content: targetContent ? "..." + targetContent : null,
+    prefix: targetContent ? `${targetPrefix}...\n` : targetPrefix,
+    content: targetContent ? `...${targetContent}` : null,
     sections: [],
   };
 }
@@ -644,7 +644,7 @@ export async function renderDocumentTitleAndContent({
   lastEditor = lastEditor
     ? safeSubstring(lastEditor, 0, MAX_AUTHOR_CHAR_LENGTH)
     : undefined;
-  if (title && title.trim()) {
+  if (title?.trim()) {
     title = `$title: ${safeSubstring(title, 0)}\n`;
   } else {
     title = null;
@@ -895,7 +895,7 @@ export async function upsertDataSourceRemoteTable({
       dustRequestConfig
     );
   } catch (e) {
-    const elapsed = new Date().getTime() - now.getTime();
+    const elapsed = Date.now()- now.getTime();
     statsDClient.increment(
       "data_source_table_upserts_error.count",
       1,
@@ -941,7 +941,7 @@ export async function upsertDataSourceRemoteTable({
     throw new Error("Upload attempt finished without a response");
   }
 
-  const elapsed = new Date().getTime() - now.getTime();
+  const elapsed = Date.now()- now.getTime();
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
     statsDClient.increment(
@@ -1127,7 +1127,7 @@ export async function upsertDataSourceTableFromCsv({
       }
     )();
   } catch (e) {
-    const elapsed = new Date().getTime() - now.getTime();
+    const elapsed = Date.now()- now.getTime();
     statsDClient.increment(
       "data_source_structured_data_upserts_error.count",
       1,
@@ -1174,7 +1174,7 @@ export async function upsertDataSourceTableFromCsv({
     throw new Error("Error uploading table to Dust.");
   }
 
-  const elapsed = new Date().getTime() - now.getTime();
+  const elapsed = Date.now()- now.getTime();
 
   if (dustRequestResult.status >= 200 && dustRequestResult.status < 300) {
     statsDClient.increment(
@@ -1277,7 +1277,7 @@ export async function deleteDataSourceTableRow({
       dustRequestConfig
     );
   } catch (e) {
-    const elapsed = new Date().getTime() - now.getTime();
+    const elapsed = Date.now()- now.getTime();
     statsDClient.increment(
       "data_source_structured_data_deletes_error.count",
       1,
@@ -1292,7 +1292,7 @@ export async function deleteDataSourceTableRow({
     throw e;
   }
 
-  const elapsed = new Date().getTime() - now.getTime();
+  const elapsed = Date.now()- now.getTime();
 
   if (dustRequestResult.status === 404) {
     localLogger.info("Table doesn't exist on Dust. Ignoring.");
@@ -1416,7 +1416,7 @@ export async function deleteDataSourceTable({
       dustRequestConfig
     );
   } catch (e) {
-    const elapsed = new Date().getTime() - now.getTime();
+    const elapsed = Date.now()- now.getTime();
     statsDClient.increment(
       "data_source_structured_data_deletes_error.count",
       1,
@@ -1431,7 +1431,7 @@ export async function deleteDataSourceTable({
     throw e;
   }
 
-  const elapsed = new Date().getTime() - now.getTime();
+  const elapsed = Date.now()- now.getTime();
 
   if (dustRequestResult.status === 404) {
     localLogger.info("Table doesn't exist on Dust. Ignoring.");

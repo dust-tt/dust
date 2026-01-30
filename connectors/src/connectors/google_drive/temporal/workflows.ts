@@ -80,14 +80,14 @@ export async function googleDriveFullSync({
 }) {
   if (!startSyncTs) {
     await syncStarted(connectorId);
-    startSyncTs = new Date().getTime();
+    startSyncTs = Date.now();
   }
 
   // Running the incremental sync workflow before the full sync to populate the
   // Google Drive sync tokens.
   await populateSyncTokens(connectorId);
 
-  let nextPageToken: string | undefined = undefined;
+  let nextPageToken: string | undefined ;
 
   if (!foldersToBrowse.length) {
     foldersToBrowse = await getFoldersToSync(connectorId);
@@ -197,7 +197,7 @@ export async function googleDriveIncrementalSync(
 ) {
   if (!startSyncTs) {
     await syncStarted(connectorId);
-    startSyncTs = new Date().getTime();
+    startSyncTs = Date.now();
   }
 
   if (drivesToSync === undefined) {
@@ -322,7 +322,7 @@ export async function googleDriveFixParentsConsistencyWorkflow(
   execute: boolean
 ) {
   let fromId = 0;
-  const startTs = new Date().getTime();
+  const startTs = Date.now();
   do {
     fromId = await fixParentsConsistencyActivity({
       connectorId,
@@ -356,7 +356,7 @@ export async function googleDriveFolderSync({
     foldersToBrowse = [rootFolderId];
   }
 
-  let nextPageToken: string | undefined = undefined;
+  let nextPageToken: string | undefined ;
 
   foldersToBrowse = uniq(foldersToBrowse);
 
@@ -431,7 +431,7 @@ export async function googleDriveFullSyncV2({
   // Initialize sync timestamp
   if (!startSyncTs) {
     await syncStarted(connectorId);
-    startSyncTs = new Date().getTime();
+    startSyncTs = Date.now();
   }
 
   // Populate sync tokens before starting
@@ -504,7 +504,7 @@ export async function googleDriveFullSyncV2({
 
     while (!syncCompleted) {
       await sleep("30 seconds");
-      if (syncCompleted) break;
+      if (syncCompleted) { break; }
 
       // Count total files synced so far in this run
       const totalFilesSynced = await getFilesCountForSync(
@@ -718,7 +718,7 @@ export async function googleDriveIncrementalSyncV2(
 ) {
   if (!startSyncTs) {
     await syncStarted(connectorId);
-    startSyncTs = new Date().getTime();
+    startSyncTs = Date.now();
   }
 
   // Get drives to sync

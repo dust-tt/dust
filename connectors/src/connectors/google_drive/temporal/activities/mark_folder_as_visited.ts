@@ -34,7 +34,7 @@ export async function markFolderAsVisited(
   if (!file) {
     getActivityLogger(connector).info(
       { driveFileId },
-      `Google Drive File unexpectedly not found (got 404)`
+      "Google Drive File unexpectedly not found (got 404)"
     );
     // We got a 404 on this folder, we skip it.
     return;

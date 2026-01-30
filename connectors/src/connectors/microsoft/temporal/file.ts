@@ -462,7 +462,7 @@ export async function syncOneFile({
           {
             documentLen: documentLength,
           },
-          `Document is empty or too big to be upserted. Skipping.`
+          "Document is empty or too big to be upserted. Skipping."
         );
         if (fileResource) {
           await fileResource.delete();
@@ -516,7 +516,7 @@ export async function getParents({
  * per-sync basis (given by startSyncTs) */
 const getParentId = cacheWithRedis(
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async (connectorId: ModelId, internalId: string, startSyncTs: number) => {
+  async (connectorId: ModelId, internalId: string, _startSyncTs: number) => {
     const node = await MicrosoftNodeResource.fetchByInternalId(
       connectorId,
       internalId
@@ -575,7 +575,7 @@ export async function deleteFolder({
       folder,
       reason,
     },
-    `Deleting Microsoft folder.`
+    "Deleting Microsoft folder."
   );
 
   const root = await MicrosoftRootResource.fetchByInternalId(
@@ -621,7 +621,7 @@ export async function deleteFile({
     return false;
   }
 
-  logger.info({ connectorId, file }, `Deleting Microsoft file.`);
+  logger.info({ connectorId, file }, "Deleting Microsoft file.");
 
   if (
     file.mimeType ===
@@ -701,7 +701,7 @@ export async function recursiveNodeDeletion({
     await updateDescendantsParentsInCore({
       folder: node,
       dataSourceConfig,
-      startSyncTs: new Date().getTime(),
+      startSyncTs: Date.now(),
     });
 
     return [];

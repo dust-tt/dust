@@ -290,7 +290,7 @@ async function handleMessage(
       context,
       createErrorAdaptiveCard({
         error: result.error.message,
-        workspaceId: connector!.workspaceId,
+        workspaceId: connector?.workspaceId,
       })
     );
   }

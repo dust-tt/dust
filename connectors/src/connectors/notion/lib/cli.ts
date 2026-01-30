@@ -742,6 +742,6 @@ export const notion = async ({
     }
 
     default:
-      throw new Error("Unknown notion command: " + command);
+      throw new Error(`Unknown notion command: ${command}`);
   }
 };

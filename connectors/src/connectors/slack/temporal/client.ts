@@ -73,7 +73,7 @@ export async function launchSlackSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started Slack sync workflow.`
+      "Started Slack sync workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -83,7 +83,7 @@ export async function launchSlackSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting the Slack sync.`
+      "Failed starting the Slack sync."
     );
     return new Err(normalizeError(e));
   }
@@ -117,7 +117,7 @@ export async function launchSlackSyncOneThreadWorkflow(
       messageTs: threadTs,
     },
   });
-  if (thread && thread.skipReason) {
+  if (thread?.skipReason) {
     logger.info(
       {
         connectorId,
@@ -193,7 +193,7 @@ export async function launchSlackSyncOneMessageWorkflow(
       messageTs: threadTs,
     },
   });
-  if (thread && thread.skipReason) {
+  if (thread?.skipReason) {
     logger.info(
       {
         connectorId,
@@ -208,7 +208,7 @@ export async function launchSlackSyncOneMessageWorkflow(
 
   const client = await getTemporalClient();
 
-  const messageTs = parseInt(threadTs as string) * 1000;
+  const messageTs = parseInt(threadTs as string, 10) * 1000;
   const weekStartTsMs = getWeekStart(new Date(messageTs)).getTime();
   const workflowId = syncOneMessageDebouncedWorkflowId(
     connectorId,
@@ -278,7 +278,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
       {
         workflowId,
       },
-      `Started slackGarbageCollector workflow.`
+      "Started slackGarbageCollector workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -287,7 +287,7 @@ export async function launchSlackGarbageCollectWorkflow(connectorId: ModelId) {
         workflowId,
         error: e,
       },
-      `Failed starting slackGarbageCollector workflow.`
+      "Failed starting slackGarbageCollector workflow."
     );
     return new Err(normalizeError(e));
   }

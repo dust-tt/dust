@@ -12,7 +12,7 @@ import type {
   ConversationsHistoryResponse,
   MessageElement,
 } from "@slack/web-api/dist/types/response/ConversationsHistoryResponse";
-import assert from "assert";
+import assert from "node:assert";
 import { Op, Sequelize } from "sequelize";
 
 import { findMatchingChannelPatterns } from "@connectors/connectors/slack/auto_read_channel";
@@ -441,11 +441,11 @@ export async function syncNonThreaded({
 
   const slackClient = await getSlackClient(connectorId);
 
-  let hasMore: boolean | undefined = undefined;
+  let hasMore: boolean | undefined ;
   let latestTsSec = endTsSec;
   const seenMessagesTs = new Set<string>();
   do {
-    let c: ConversationsHistoryResponse | undefined = undefined;
+    let c: ConversationsHistoryResponse | undefined ;
     try {
       reportSlackUsage({
         connectorId,
@@ -502,7 +502,7 @@ export async function syncNonThreaded({
 
     for (const message of c.messages) {
       if (message.ts) {
-        latestTsSec = parseInt(message.ts);
+        latestTsSec = parseInt(message.ts, 10);
       }
       const isIndexable = await shouldIndexSlackMessage(
         slackConfiguration,
@@ -612,9 +612,9 @@ async function processAndUpsertNonThreadedMessages({
   );
 
   const firstMessage = messages[0];
-  let sourceUrl: string | undefined = undefined;
+  let sourceUrl: string | undefined ;
 
-  if (firstMessage && firstMessage.ts) {
+  if (firstMessage?.ts) {
     const { ts } = firstMessage;
 
     reportSlackUsage({
@@ -837,7 +837,7 @@ export async function syncThread(
       channelName,
       channelId,
       threadTs,
-      delayMs: new Date().getTime() - now.getTime(),
+      delayMs: Date.now()- now.getTime(),
     },
     "syncThread.getRepliesFromThread.done"
   );
@@ -869,9 +869,9 @@ export async function syncThread(
   );
 
   const firstMessage = allMessages[0];
-  let sourceUrl: string | undefined = undefined;
+  let sourceUrl: string | undefined ;
 
-  if (firstMessage && firstMessage.ts) {
+  if (firstMessage?.ts) {
     const { ts } = firstMessage;
 
     reportSlackUsage({
@@ -923,7 +923,7 @@ export async function syncThread(
       messageTs: threadTs,
     },
   });
-  if (firstMessageObject && firstMessageObject.skipReason) {
+  if (firstMessageObject?.skipReason) {
     logger.info(
       {
         connectorId,
@@ -1030,7 +1030,7 @@ function getTagsForPage({
   ];
   if (threadTs) {
     tags.push(`threadId:${threadTs}`);
-    const threadDate = new Date(parseInt(threadTs) * 1000);
+    const threadDate = new Date(parseInt(threadTs, 10) * 1000);
     const dateForTitle = formatDateForThreadTitle(threadDate);
     tags.push(`title:${channelName}-thread-${dateForTitle}`);
   } else {
@@ -1485,7 +1485,7 @@ export async function autoReadChannelActivity(
   );
 
   const firstError = results.find((r) => r.isErr());
-  if (firstError && firstError.isErr()) {
+  if (firstError?.isErr()) {
     throw firstError.error;
   }
 

@@ -41,7 +41,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
 
   // TODO(2024-02-20 flav): Delete Model from the constructor, once `update` has been migrated.
   constructor(
-    model: ModelStatic<ConnectorModel>,
+    _model: ModelStatic<ConnectorModel>,
     blob: Attributes<ConnectorModel>
   ) {
     super(ConnectorModel, blob);
@@ -75,7 +75,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         { transaction: t }
       );
 
-      const connectorRes = new this(ConnectorModel, connector.get());
+      const connectorRes = new ConnectorResource(ConnectorModel, connector.get());
 
       const configuration = await connectorRes.strategy.makeNew(
         connector.id,
@@ -116,7 +116,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     ).fetchConfigurationsbyConnectorIds(blobs.map((c) => c.id));
 
     const connectors = blobs.map((b: ConnectorModel) => {
-      const c = new this(this.model, b.get());
+      const c = new ConnectorResource(ConnectorResource.model, b.get());
       c._configuration = configurations[b.id] ?? null;
       return c;
     });
@@ -140,7 +140,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       return null;
     }
 
-    const c = new this(this.model, blob.get());
+    const c = new ConnectorResource(ConnectorResource.model, blob.get());
     await c.postFetchHook();
     return c;
   }
@@ -159,7 +159,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
       return null;
     }
 
-    const c = new this(this.model, blob.get());
+    const c = new ConnectorResource(ConnectorResource.model, blob.get());
     await c.postFetchHook();
     return c;
   }
@@ -172,7 +172,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     const parsedIds = ids
       .map((id) => {
         const parsed = typeof id === "string" ? parseInt(id, 10) : id;
-        if (isNaN(parsed)) {
+        if (Number.isNaN(parsed)) {
           logger.error(
             { originalId: id, type },
             "Received invalid connector ID (NaN)"
@@ -180,7 +180,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
         }
         return parsed;
       })
-      .filter((id) => !isNaN(id));
+      .filter((id) => !Number.isNaN(id));
 
     if (parsedIds.length === 0) {
       return [];
@@ -201,7 +201,7 @@ export class ConnectorResource extends BaseResource<ConnectorModel> {
     ).fetchConfigurationsbyConnectorIds(blobs.map((c) => c.id));
 
     return blobs.map((b: ConnectorModel) => {
-      const c = new this(this.model, b.get());
+      const c = new ConnectorResource(ConnectorResource.model, b.get());
       c._configuration = configurations[b.id] ?? null;
       return c;
     });

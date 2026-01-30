@@ -330,7 +330,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
         return new Ok(nodes);
       } else {
         const { type, repoId } = matchGithubInternalIdType(parentInternalId);
-        if (isNaN(repoId)) {
+        if (Number.isNaN(repoId)) {
           return new Err(
             new ConnectorManagerError(
               "INVALID_PARENT_INTERNAL_ID",
@@ -611,7 +611,7 @@ export class GithubConnectorManager extends BaseConnectorManager<null> {
 
   async setPermissions(): Promise<Result<void, Error>> {
     return new Err(
-      new Error(`Setting Github connector permissions is not implemented yet.`)
+      new Error("Setting Github connector permissions is not implemented yet.")
     );
   }
 

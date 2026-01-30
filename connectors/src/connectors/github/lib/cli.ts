@@ -75,7 +75,7 @@ export const github = async ({
         throw new Error("Missing --repo argument");
       }
 
-      logger.info("[Admin] Resyncing repo " + args.owner + "/" + args.repo);
+      logger.info(`[Admin] Resyncing repo ${args.owner}/${args.repo}`);
 
       const octokit = await getOctokit(connector);
 
@@ -117,7 +117,7 @@ export const github = async ({
       }
 
       logger.info(
-        "[Admin] Resyncing repo code " + args.owner + "/" + args.repo
+        `[Admin] Resyncing repo code ${args.owner}/${args.repo}`
       );
 
       const octokit = await getOctokit(connector);
@@ -203,8 +203,8 @@ export const github = async ({
         connector.id,
         `${args.repoLogin}`,
         `${args.repoName}`,
-        parseInt(`${args.repoId}`),
-        parseInt(`${args.issueNumber}`)
+        parseInt(`${args.repoId}`, 10),
+        parseInt(`${args.issueNumber}`, 10)
       );
 
       return { success: true };
@@ -256,7 +256,7 @@ export const github = async ({
         connector.id,
         githubCodeRepository.repoLogin,
         githubCodeRepository.repoName,
-        parseInt(githubCodeRepository.repoId)
+        parseInt(githubCodeRepository.repoId, 10)
       );
 
       return { success: true };

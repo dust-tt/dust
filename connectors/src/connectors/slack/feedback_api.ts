@@ -58,7 +58,7 @@ export async function submitFeedbackToAPI({
 
     const connectorWId = connector.workspaceId;
 
-    let userEmail: string | undefined = undefined;
+    let userEmail: string | undefined ;
     try {
       const slackClient = await getSlackClient(connector.id);
       const slackUserInfo = await getSlackUserInfoMemoized(

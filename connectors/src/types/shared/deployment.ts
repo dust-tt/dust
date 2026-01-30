@@ -1,5 +1,5 @@
 import type { LoggerInterface } from "@dust-tt/client";
-import * as child_process from "child_process";
+import * as child_process from "node:child_process";
 
 const { SLACK_USER_OPERATION_BOT_TOKEN, NODE_ENV } = process.env;
 
@@ -25,7 +25,7 @@ export async function sendInitDbMessage({
 
   try {
     commitId = child_process.execSync("git rev-parse HEAD").toString().trim();
-  } catch (error) {
+  } catch (_error) {
     logger.error({}, "Failed to get commit id");
   }
 

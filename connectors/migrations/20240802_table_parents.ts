@@ -182,7 +182,7 @@ export async function notionTables(
 
     await updateParents({
       dataSourceConfig,
-      tableId: "notion-" + notionDatabaseId,
+      tableId: `notion-${notionDatabaseId}`,
       parents,
       execute,
       logger,

@@ -13,7 +13,7 @@ const _POSSIBLE_DELIMITERS = [",", ";", "\t"];
 async function guessDelimiter(
   csv: string
 ): Promise<{ delimiter: string | undefined; oneLineCsv: boolean }> {
-  let delimiter: string | undefined = undefined;
+  let delimiter: string | undefined ;
   let delimiterColsCount = 0;
   let oneLineCsv = false;
 
@@ -35,7 +35,7 @@ async function guessDelimiter(
           break;
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // Ignore error.
       continue;
     }

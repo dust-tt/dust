@@ -249,7 +249,7 @@ export function createThinkingAdaptiveCard(): Partial<Activity> {
           body: [
             {
               type: "TextBlock",
-              text: `Thinking...`,
+              text: "Thinking...",
               wrap: true,
               color: "Accent",
             },

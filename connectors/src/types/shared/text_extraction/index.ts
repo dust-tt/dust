@@ -7,7 +7,7 @@ import { isLeft } from "fp-ts/Either";
 import { Parser } from "htmlparser2";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
-import { Readable } from "stream";
+import { Readable } from "node:stream";
 
 import { withRetries } from "../retries";
 import type { RequestInitWithDuplex } from "../utils/streams";
@@ -311,7 +311,7 @@ export class TextExtraction {
           ontext(text) {
             // If we are inside a page, append the text to the current page content.
             if (insidePage) {
-              currentPageContent += text.trim() + " ";
+              currentPageContent += `${text.trim()} `;
             }
           },
           onclosetag() {

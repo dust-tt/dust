@@ -24,7 +24,7 @@ export async function formatConversationForUpsert({
     // Only take the last version of each rank
     const msg = versions[versions.length - 1];
 
-    if (!msg) continue;
+    if (!msg) { continue; }
 
     let prefix: string | null = null;
     let content: string | null = null;
@@ -34,24 +34,24 @@ export async function formatConversationForUpsert({
       const userName = msg.user?.fullName || msg.user?.username || "User";
       const userEmail = msg.user?.email || "Unknown";
       prefix = `>> User (${userName}, ${userEmail}) [${dateStr}]:\n`;
-      content = msg.content ? msg.content + "\n" : "\n";
+      content = msg.content ? `${msg.content}\n` : "\n";
     } else if (msg.type === "agent_message") {
       const agentName = msg.configuration?.name || "Assistant";
       prefix = `>> Assistant (${agentName}) [${dateStr}]:\n`;
 
       if (msg.content) {
-        content = msg.content + "\n";
+        content = `${msg.content}\n`;
       } else {
         logger.warn({ msg }, "Agent message has no content");
         content = "\n";
       }
     } else if (msg.type === "content_fragment") {
       prefix = `>> Content Fragment [${dateStr}]:\n`;
-      content = "ID: " + msg.contentFragmentId + "\n";
-      content += "Content-Type: " + msg.contentType + "\n";
-      content += "Title: " + msg.title + "\n";
-      content += "Version: " + msg.version + "\n";
-      content += "Source URL: " + msg.sourceUrl + "\n";
+      content = `ID: ${msg.contentFragmentId}\n`;
+      content += `Content-Type: ${msg.contentType}\n`;
+      content += `Title: ${msg.title}\n`;
+      content += `Version: ${msg.version}\n`;
+      content += `Source URL: ${msg.sourceUrl}\n`;
     }
 
     if (prefix !== null && content !== null) {
