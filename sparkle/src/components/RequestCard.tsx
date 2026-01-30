@@ -89,9 +89,9 @@ export const RequestCard = React.forwardRef<HTMLDivElement, RequestCardProps>(
         </div>
 
         {description && (
-          <p className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
+          <div className="s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
             {description}
-          </p>
+          </div>
         )}
 
         {details && (
