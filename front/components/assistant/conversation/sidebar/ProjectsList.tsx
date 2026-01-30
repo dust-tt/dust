@@ -7,6 +7,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { SpaceType, WorkspaceType } from "@app/types";
@@ -14,6 +15,7 @@ import type { SpaceType, WorkspaceType } from "@app/types";
 interface ProjectsListProps {
   owner: WorkspaceType;
   summary: GetBySpacesSummaryResponseBody["summary"];
+  titleFilter: string;
 }
 
 const ProjectListItem = memo(
@@ -65,7 +67,11 @@ const ProjectListItem = memo(
 
 ProjectListItem.displayName = "ProjectListItem";
 
-export function ProjectsList({ owner, summary }: ProjectsListProps) {
+export function ProjectsList({
+  owner,
+  summary,
+  titleFilter,
+}: ProjectsListProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -78,9 +84,21 @@ export function ProjectsList({ owner, summary }: ProjectsListProps) {
     return null;
   }
 
+  const filteredSummary = titleFilter
+    ? summary.filter(({ space }) =>
+        subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(space.name).toLowerCase()
+        )
+      )
+    : summary;
+  if (filteredSummary.length === 0) {
+    return null;
+  }
+
   return (
     <>
-      {summary.map(({ space, unreadConversations }) => (
+      {filteredSummary.map(({ space, unreadConversations }) => (
         <ProjectListItem
           key={space.sId}
           space={space}
