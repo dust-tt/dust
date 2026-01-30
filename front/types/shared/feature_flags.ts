@@ -242,6 +242,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Google Docs/Sheets/Slides write capabilities via drive.file scope",
     stage: "dust_only",
   },
+  gong_tool: {
+    description: "Gong MCP tool for sales conversation analytics",
+    stage: "dust_only",
+  },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagStage = "dust_only" | "rolling_out" | "on_demand";
