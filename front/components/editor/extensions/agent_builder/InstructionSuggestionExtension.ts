@@ -37,6 +37,7 @@ export const SuggestionAdditionMark = Mark.create({
           "suggestion-addition s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800",
         "data-suggestion-id": HTMLAttributes.suggestionId,
         title: `Suggestion: ${HTMLAttributes.suggestionId}`,
+        contenteditable: "false",
       },
       [
         "span",
@@ -81,6 +82,7 @@ export const SuggestionDeletionMark = Mark.create({
           "suggestion-deletion s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 s-line-through",
         "data-suggestion-id": HTMLAttributes.suggestionId,
         title: `Suggestion: ${HTMLAttributes.suggestionId}`,
+        contenteditable: "false",
       },
       [
         "span",
