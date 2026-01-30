@@ -307,7 +307,10 @@ export function TriggerViewsSheet({
                 ? "Cancel"
                 : "Close",
             variant: "outline",
-            onClick: handleCancel,
+            onClick:
+              currentPageId !== TRIGGERS_SHEET_PAGE_IDS.SELECTION
+                ? handleCancel
+                : handleSheetClose,
           }}
           rightButton={{
             label: "Save",
