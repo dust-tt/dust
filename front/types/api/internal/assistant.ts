@@ -37,7 +37,12 @@ export const MessageBaseSchema = t.type({
   ]),
 });
 
-export const InternalPostMessagesRequestBodySchema = MessageBaseSchema;
+export const InternalPostMessagesRequestBodySchema = t.intersection([
+  MessageBaseSchema,
+  t.partial({
+    skipToolsValidation: t.boolean,
+  }),
+]);
 
 const ContentFragmentBaseSchema = t.intersection([
   t.type({
