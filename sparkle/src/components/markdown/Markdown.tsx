@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo } from "react";
 import type { Components } from "react-markdown";
-import ReactMarkdown, { type ReactMarkdownProps } from "react-markdown";
+import ReactMarkdown from "react-markdown";
+import type { ReactMarkdownProps } from "react-markdown/lib/complex-types";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
@@ -10,8 +11,7 @@ import { visit } from "unist-util-visit";
 
 import { Checkbox, Chip } from "@sparkle/components";
 import { BlockquoteBlock } from "@sparkle/components/markdown/BlockquoteBlock";
-import { CodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
-import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
+import { MemoCodeBlockWithExtendedSupport } from "@sparkle/components/markdown/CodeBlockWithExtendedSupport";
 import {
   markdownHeaderClasses,
   MemoH1Block,
@@ -31,6 +31,7 @@ import {
 import { MarkdownContentContext } from "@sparkle/components/markdown/MarkdownContentContext";
 import { MemoParagraphBlock } from "@sparkle/components/markdown/ParagraphBlock";
 import { MemoPreBlock } from "@sparkle/components/markdown/PreBlock";
+import { safeRehypeKatex } from "@sparkle/components/markdown/safeRehypeKatex";
 import {
   MemoTableBlock,
   MemoTableBodyBlock,
@@ -233,7 +234,7 @@ export function Markdown({
       hr: () => (
         <div className="s-my-6 s-border-b s-border-primary-150 dark:s-border-primary-150-night" />
       ),
-      code: CodeBlockWithExtendedSupport,
+      code: MemoCodeBlockWithExtendedSupport,
       ...additionalMarkdownComponents,
     };
   }, [textColor, compactSpacing, additionalMarkdownComponents]);
