@@ -94,7 +94,7 @@ export function useCopilotMCPServer({
         registerGetAgentConfigTool(mcpServer, {
           getFormValues,
           getPendingSuggestions: suggestionsContextRef.current
-            ? () => suggestionsContextRef.current!.getPendingSuggestions()
+            ? () => suggestionsContextRef.current!.suggestions
             : undefined,
           getCommittedInstructions: suggestionsContextRef.current
             ? () => suggestionsContextRef.current!.getCommittedInstructions()
