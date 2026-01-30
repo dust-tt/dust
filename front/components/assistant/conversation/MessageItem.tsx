@@ -185,9 +185,7 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
 
               // :warning: make sure to use the index in the key, as the mention.id is the userId
 
-              // "pending" is deprecated but kept for migration compatibility
               if (
-                mention.status === "pending" ||
                 mention.status === "pending_conversation_access" ||
                 mention.status === "pending_project_membership"
               ) {

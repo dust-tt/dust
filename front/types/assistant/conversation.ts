@@ -117,7 +117,6 @@ export type AgenticMessageData = {
 };
 
 export type RichMentionWithStatus =
-  | (RichMention & { dismissed: boolean; status: "pending" }) // DEPRECATED: kept for migration
   | (RichMention & {
       dismissed: boolean;
       status: "pending_conversation_access";

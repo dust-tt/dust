@@ -1097,9 +1097,7 @@ export async function validateUserMention(
     userMessages: [],
     agentMessages: [],
   };
-  // "pending" is deprecated but kept for migration compatibility
   const isPendingStatus = (status: MentionStatusType): boolean =>
-    status === "pending" ||
     status === "pending_conversation_access" ||
     status === "pending_project_membership";
 
