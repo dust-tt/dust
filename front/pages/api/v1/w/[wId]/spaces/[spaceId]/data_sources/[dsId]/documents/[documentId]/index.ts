@@ -8,9 +8,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { fromError } from "zod-validation-error";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import apiConfig, {
-  DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
-} from "@app/lib/api/config";
+import apiConfig from "@app/lib/api/config";
 import { UNTITLED_TITLE } from "@app/lib/api/content_nodes";
 import { computeWorkspaceOverallSizeCached } from "@app/lib/api/data_sources";
 import type { Authenticator } from "@app/lib/auth";
@@ -34,10 +32,12 @@ import {
   validateUrl,
 } from "@app/types";
 
+// Next.js config must use literal values (cannot be statically analyzed otherwise).
+// If wishing to change this value, see DOCUMENT_UPSERT_BODY_PARSER_LIMIT in lib/api/config.ts.
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
+      sizeLimit: "16mb",
     },
   },
 };
