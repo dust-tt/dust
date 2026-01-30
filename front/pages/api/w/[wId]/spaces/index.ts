@@ -68,16 +68,6 @@ async function handler(
       let spaces: SpaceResource[] = [];
 
       if (role && role === "admin") {
-        if (!auth.isAdmin()) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message:
-                "Only users that are `admins` can see all spaces in the workspace.",
-            },
-          });
-        }
         if (kind && kind === "system") {
           const systemSpace =
             await SpaceResource.fetchWorkspaceSystemSpace(auth);
