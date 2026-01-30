@@ -21,7 +21,7 @@ function getSpaBaseUrl(): string | undefined {
     : undefined;
 }
 
-function getApiBaseUrl(): string | undefined {
+export function getApiBaseUrl(): string | undefined {
   // Use custom resolver if set, otherwise fall back to SPA build-time URL.
   return baseUrlResolver ? baseUrlResolver() : getSpaBaseUrl();
 }
