@@ -1,7 +1,15 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
-import { diffWords } from "diff";
+
+// TODO(2026-01-30: Copilot) Generate a short label from suggestion ID for debugging.
+function getSuggestionLabel(suggestionId: string | null): string {
+  if (!suggestionId) {
+    return "?";
+  }
+  // Take last 4 chars of the ID for a short identifier.
+  return suggestionId.slice(-4);
+}
 
 // Mark for additions (blue background).
 export const SuggestionAdditionMark = Mark.create({
@@ -20,6 +28,7 @@ export const SuggestionAdditionMark = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
+    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
     return [
       "span",
       {
@@ -27,8 +36,21 @@ export const SuggestionAdditionMark = Mark.create({
         class:
           "suggestion-addition s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800",
         "data-suggestion-id": HTMLAttributes.suggestionId,
+        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
       },
-      0,
+      [
+        "span",
+        {},
+        0, // Content placeholder.
+      ],
+      [
+        "sup",
+        {
+          class:
+            "s-ml-0.5 s-text-[9px] s-font-mono s-text-highlight-500 s-select-none",
+        },
+        label,
+      ],
     ];
   },
 });
@@ -50,6 +72,7 @@ export const SuggestionDeletionMark = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
+    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
     return [
       "span",
       {
@@ -57,8 +80,22 @@ export const SuggestionDeletionMark = Mark.create({
         class:
           "suggestion-deletion s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 s-line-through",
         "data-suggestion-id": HTMLAttributes.suggestionId,
+        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
       },
-      0,
+      [
+        "span",
+        {},
+        0, // Content placeholder.
+      ],
+      [
+        "sup",
+        {
+          class:
+            "s-ml-0.5 s-text-[9px] s-font-mono s-text-warning-500 s-select-none s-no-underline",
+          style: "text-decoration: none;",
+        },
+        label,
+      ],
     ];
   },
 });
@@ -218,39 +255,37 @@ export const InstructionSuggestionExtension = Extension.create({
             return false;
           }
 
-          // Normalize replacement too for consistent diff.
+          // Normalize replacement too.
           const normalizedReplacement = replacement.replace(/\s+$/, "");
 
-          // Build diff parts using normalized strings.
-          const diffParts = diffWords(normalizedFind, normalizedReplacement);
+          // Simple approach: show old text (red/strikethrough) then new text (blue).
+          // No word-level diffing, users accept/reject the whole suggestion.
+          const deletionMark = schema.marks.suggestionDeletion.create({
+            suggestionId: id,
+          });
+          const additionMark = schema.marks.suggestionAddition.create({
+            suggestionId: id,
+          });
 
-          // Create content nodes with marks for the diff.
-          const nodes: ReturnType<typeof schema.text>[] = [];
-          for (const part of diffParts) {
-            if (part.added) {
-              const mark = schema.marks.suggestionAddition.create({
-                suggestionId: id,
-              });
-              nodes.push(schema.text(part.value, [mark]));
-            } else if (part.removed) {
-              const mark = schema.marks.suggestionDeletion.create({
-                suggestionId: id,
-              });
-              nodes.push(schema.text(part.value, [mark]));
-            } else {
-              nodes.push(schema.text(part.value));
-            }
-          }
-
-          // Apply the transaction: delete old text and insert new nodes.
+          // Apply the transaction: replace old text with [old marked as deletion] + [new marked as addition].
           if (dispatch) {
             tr.delete(from, to);
 
-            // Insert nodes at the deletion position.
             let insertPos = from;
-            for (const node of nodes) {
-              tr.insert(insertPos, node);
-              insertPos += node.nodeSize;
+
+            // Insert old text with deletion mark (if not empty).
+            if (normalizedFind.length > 0) {
+              const deletionNode = schema.text(normalizedFind, [deletionMark]);
+              tr.insert(insertPos, deletionNode);
+              insertPos += deletionNode.nodeSize;
+            }
+
+            // Insert new text with addition mark (if not empty).
+            if (normalizedReplacement.length > 0) {
+              const additionNode = schema.text(normalizedReplacement, [
+                additionMark,
+              ]);
+              tr.insert(insertPos, additionNode);
             }
 
             dispatch(tr);
