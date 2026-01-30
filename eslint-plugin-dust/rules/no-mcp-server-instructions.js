@@ -1,7 +1,5 @@
 "use strict";
 
-const INSTRUCTIONS_COMMENT_PREFIX = "MCP INSTRUCTIONS:";
-
 function isNullLiteral(node) {
   return node.type === "Literal" && node.value === null;
 }
@@ -26,7 +24,7 @@ function findInstructionsProperty(serverInfoNode) {
     (prop) =>
       prop.type === "Property" &&
       prop.key.type === "Identifier" &&
-      prop.key.name === "instructions",
+      prop.key.name === "instructions"
   );
 }
 
@@ -43,14 +41,13 @@ module.exports = {
     type: "suggestion",
     docs: {
       description:
-        "Require explanatory comment when INTERNAL_MCP_SERVERS items have non-null instructions",
+        "Disallow non-null instructions in INTERNAL_MCP_SERVERS",
     },
     schema: [],
   },
 
   create: function (context) {
     let inInternalMcpServers = false;
-    const sourceCode = context.sourceCode || context.getSourceCode();
 
     return {
       VariableDeclarator(node) {
@@ -78,22 +75,15 @@ module.exports = {
           return;
         }
 
-        const comments = sourceCode.getCommentsBefore(instructionsProp);
-        const hasExplanatoryComment = comments.some((comment) =>
-          comment.value.trim().startsWith(INSTRUCTIONS_COMMENT_PREFIX),
-        );
-
-        if (!hasExplanatoryComment) {
-          context.report({
-            node: instructionsProp,
-            message:
-              "Instructions in INTERNAL_MCP_SERVERS need to be avoided. " +
-              "Tools should be self-explanatory and straightforward to use: avoid coupling " +
-              '(e.g., "always use tool A before B", should be bundled in tool B itself). ' +
-              "Proper design eliminates the need for server-level instructions, preventing " +
-              "context bloat and instruction clashes.",
-          });
-        }
+        context.report({
+          node: instructionsProp,
+          message:
+            "Instructions in INTERNAL_MCP_SERVERS need to be avoided. " +
+            "Tools should be self-explanatory and straightforward to use: avoid coupling " +
+            '(e.g., "always use tool A before B", should be bundled in tool B itself). ' +
+            "Proper design eliminates the need for server-level instructions, preventing " +
+            "context bloat and instruction clashes.",
+        });
       },
     };
   },
