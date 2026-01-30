@@ -204,17 +204,8 @@ export async function storeAgentAnalytics(
     const keyResource = await KeyResource.fetchByModelId(storedKeyId);
     if (keyResource) {
       apiKeyName = keyResource.name;
-    } else {
-      logger.warn(
-        { storedKeyId },
-        "Could not find key for stored ID, falling back to auth context"
-      );
-      apiKeyName = auth.key()?.name;
     }
-  } else {
-    apiKeyName = auth.key()?.name;
   }
-
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
