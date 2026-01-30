@@ -43,6 +43,8 @@ import {
   ArrowUpOnSquareIcon,
   UserGroupIcon,
   TrashIcon,
+  XMarkIcon,
+  CheckIcon,
 } from "@dust-tt/sparkle";
 import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -334,6 +336,7 @@ export function GroupConversationView({
     space.description ?? "",
   );
   const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editorIds, setEditorIds] = useState<string[]>(editorUserIds);
   const [isPublic, setIsPublic] = useState(
     spacePublicSettings?.get(space.id) ?? space.isPublic ?? true,
   );
@@ -622,8 +625,13 @@ export function GroupConversationView({
     setIsEditingName(false);
     setRoomDescription(space.description ?? "");
     setIsEditingDescription(false);
+    setEditorIds(editorUserIds);
     setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
   }, [space.id, space.name, spacePublicSettings, space.isPublic]);
+
+  useEffect(() => {
+    setEditorIds(editorUserIds);
+  }, [editorUserIds]);
 
   // Reset data sources when space changes
   useEffect(() => {
@@ -682,6 +690,15 @@ export function GroupConversationView({
       setSelectedMemberIdToRemove(null);
     }
     setRemoveMemberDialogOpen(false);
+  };
+
+  const toggleMemberEditor = (userId: string) => {
+    setEditorIds((prev) => {
+      if (prev.includes(userId)) {
+        return prev.filter((id) => id !== userId);
+      }
+      return [...prev, userId];
+    });
   };
 
   // Format date for display
@@ -833,7 +850,7 @@ export function GroupConversationView({
         },
         cell: (info) => {
           const userId = info.getValue() as string;
-          return editorUserIds.includes(userId) ? (
+          return editorIds.includes(userId) ? (
             <DataTable.CellContent>
               <Chip size="xs" color="green" label="editor" />
             </DataTable.CellContent>
@@ -865,6 +882,18 @@ export function GroupConversationView({
             menuItems={[
               {
                 kind: "item",
+                icon: editorIds.includes(info.row.original.userId)
+                  ? XMarkIcon
+                  : CheckIcon,
+                label: editorIds.includes(info.row.original.userId)
+                  ? "Remove from editors"
+                  : "Set as editor",
+                onClick: () => {
+                  toggleMemberEditor(info.row.original.userId);
+                },
+              },
+              {
+                kind: "item",
                 label: "Remove from Room",
                 icon: TrashIcon,
                 variant: "warning",
@@ -878,7 +907,7 @@ export function GroupConversationView({
         ),
       },
     ],
-    [editorUserIds],
+    [editorIds],
   );
 
   // Filter members based on search text
@@ -1314,7 +1343,7 @@ export function GroupConversationView({
                 <div className="s-flex s-items-center s-gap-2">
                   <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
                   <Button
-                    label="Invite"
+                    label="Manage"
                     variant="outline"
                     icon={UserGroupIcon}
                     onClick={() => onInviteMembers?.()}
