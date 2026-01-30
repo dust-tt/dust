@@ -1077,7 +1077,9 @@ export default function AgentBuilder() {
                                   additionalMarkdownPlugins={actionCardPlugins}
                                 />
                               ) : null}
-                              <DiffBlock changes={parseDiffString(diffContent)} />
+                              <DiffBlock
+                                changes={parseDiffString(diffContent)}
+                              />
                               {trimmedAfter ? (
                                 <Markdown
                                   content={trimmedAfter}

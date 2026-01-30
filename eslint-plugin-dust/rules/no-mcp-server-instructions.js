@@ -40,8 +40,7 @@ module.exports = {
   meta: {
     type: "suggestion",
     docs: {
-      description:
-        "Disallow non-null instructions in INTERNAL_MCP_SERVERS",
+      description: "Disallow non-null instructions in INTERNAL_MCP_SERVERS",
     },
     schema: [],
   },
