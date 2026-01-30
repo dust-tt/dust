@@ -6,6 +6,7 @@ import {
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
+  ContentMessageInline,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
@@ -1059,9 +1060,9 @@ function AgentMessageContent({
         </div>
       )}
       {agentMessage.status === "cancelled" && (
-        <div className="text-faint dark:text-faint-night">
-          Message generation was interrupted
-        </div>
+        <ContentMessageInline icon={StopIcon} variant="primary">
+          Message generation was interrupted.
+        </ContentMessageInline>
       )}
     </div>
   );
