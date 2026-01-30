@@ -9,6 +9,7 @@ import {
 } from "vitest";
 
 import { destroyConversation } from "@app/lib/api/assistant/conversation/destroy";
+import { createSpaceAndGroup } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import {
   ConversationModel,
@@ -895,8 +896,9 @@ describe("listConversationsForUser", () => {
 
   it("should return conversations with populated participation data", async () => {
     // First, get the raw participation data from the database to compare
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
     const participation = await ConversationParticipantModel.findOne({
       where: {
         conversationId: (await ConversationResource.fetchById(
@@ -916,7 +918,7 @@ describe("listConversationsForUser", () => {
     const conversationData = userConversations[0].toJSON();
 
     // Verify participation data is used in toJSON.
-    expect(conversationData.unread).toBe(participation.unread);
+    expect(conversationData.unread).toBe(false);
     expect(conversationData.actionRequired).toBe(participation.actionRequired);
 
     // Verify other fields are present.
@@ -1004,8 +1006,9 @@ describe("listConversationsForUser", () => {
 
   describe("onlyUnread filter", () => {
     it("should return only unread conversations when onlyUnread is true", async () => {
-      const { ConversationParticipantModel } =
-        await import("@app/lib/models/agent/conversation");
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
 
       // Create two more conversations
       const unreadConvo = await ConversationFactory.create(adminAuth, {
@@ -1033,7 +1036,7 @@ describe("listConversationsForUser", () => {
 
       // Mark the original conversation as read
       await ConversationParticipantModel.update(
-        { unread: false },
+        { lastReadAt: new Date() },
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
@@ -1048,7 +1051,7 @@ describe("listConversationsForUser", () => {
 
       // Mark unreadConvo as unread
       await ConversationParticipantModel.update(
-        { unread: true },
+        { lastReadAt: dateFromDaysAgo(3) },
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
@@ -1063,7 +1066,7 @@ describe("listConversationsForUser", () => {
 
       // Mark readConvo as read
       await ConversationParticipantModel.update(
-        { unread: false },
+        { lastReadAt: new Date() },
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
@@ -1107,8 +1110,9 @@ describe("listConversationsForUser", () => {
 
     it("should return empty array when onlyUnread is true but user has no unread conversations", async () => {
       // Mark all conversations as read
-      const { ConversationParticipantModel } =
-        await import("@app/lib/models/agent/conversation");
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
 
       const conversation = await ConversationResource.fetchById(
         adminAuth,
@@ -1117,7 +1121,7 @@ describe("listConversationsForUser", () => {
       assert(conversation, "Conversation not found");
 
       await ConversationParticipantModel.update(
-        { unread: false },
+        { lastReadAt: new Date() },
         {
           where: {
             conversationId: conversation.id,
@@ -1148,10 +1152,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create a new conversation and add user as participant
-      const spaceConvo = await ConversationFactory.create(adminAuth, {
+      const spaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1159,17 +1166,6 @@ describe("listConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: spaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
 
       // Test with kind: "private"
       const privateConversations =
@@ -1196,10 +1192,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create a new conversation and add user as participant
-      const spaceConvo = await ConversationFactory.create(adminAuth, {
+      const spaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1207,17 +1206,6 @@ describe("listConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: spaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
 
       // Test with kind: "space"
       const spaceConversations =
@@ -1244,10 +1232,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create a new conversation and add user as participant
-      const spaceConvo = await ConversationFactory.create(adminAuth, {
+      const spaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1255,17 +1246,6 @@ describe("listConversationsForUser", () => {
         action: "posted",
         user: userAuth.getNonNullableUser().toJSON(),
       });
-
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: spaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
 
       // Test with default parameters (should default to kind: "private")
       const defaultConversations =
@@ -1282,8 +1262,9 @@ describe("listConversationsForUser", () => {
 
   describe("combined filters", () => {
     it("should filter by both onlyUnread and kind when both are specified", async () => {
-      const { ConversationParticipantModel } =
-        await import("@app/lib/models/agent/conversation");
+      const { ConversationParticipantModel } = await import(
+        "@app/lib/models/agent/conversation"
+      );
 
       // Create a space
       const space = await SpaceFactory.regular(workspace);
@@ -1294,10 +1275,13 @@ describe("listConversationsForUser", () => {
       });
       assert(addMembersRes.isOk(), "Failed to add user to space");
 
+      await userAuth.refresh();
+
       // Create unread space conversation
-      const unreadSpaceConvo = await ConversationFactory.create(adminAuth, {
+      const unreadSpaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1306,21 +1290,11 @@ describe("listConversationsForUser", () => {
         user: userAuth.getNonNullableUser().toJSON(),
       });
 
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: unreadSpaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
-
       // Create read space conversation
-      const readSpaceConvo = await ConversationFactory.create(adminAuth, {
+      const readSpaceConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
+        spaceId: space.id,
       });
 
       await ConversationResource.upsertParticipation(userAuth, {
@@ -1329,19 +1303,8 @@ describe("listConversationsForUser", () => {
         user: userAuth.getNonNullableUser().toJSON(),
       });
 
-      // Update the conversation to have a spaceId (making it a space conversation)
-      await ConversationModel.update(
-        { spaceId: space.id },
-        {
-          where: {
-            id: readSpaceConvo.id,
-            workspaceId: workspace.id,
-          },
-        }
-      );
-
       // Create unread private conversation
-      const unreadPrivateConvo = await ConversationFactory.create(adminAuth, {
+      const unreadPrivateConvo = await ConversationFactory.create(userAuth, {
         agentConfigurationId: agents[0].sId,
         messagesCreatedAt: [dateFromDaysAgo(1)],
       });
@@ -1367,11 +1330,11 @@ describe("listConversationsForUser", () => {
 
       // Mark unreadSpaceConvo as unread
       await ConversationParticipantModel.update(
-        { unread: true },
+        { lastReadAt: dateFromDaysAgo(2) },
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
-              adminAuth,
+              userAuth,
               unreadSpaceConvo.sId
             ))!.id,
             workspaceId: userAuth.getNonNullableWorkspace().id,
@@ -1382,11 +1345,11 @@ describe("listConversationsForUser", () => {
 
       // Mark readSpaceConvo as read
       await ConversationParticipantModel.update(
-        { unread: false },
+        { lastReadAt: new Date() },
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
-              adminAuth,
+              userAuth,
               readSpaceConvo.sId
             ))!.id,
             workspaceId: userAuth.getNonNullableWorkspace().id,
@@ -1397,7 +1360,7 @@ describe("listConversationsForUser", () => {
 
       // Mark unreadPrivateConvo as unread
       await ConversationParticipantModel.update(
-        { unread: true },
+        { lastReadAt: null },
         {
           where: {
             conversationId: (await ConversationResource.fetchById(
@@ -2010,6 +1973,102 @@ describe("Space Handling", () => {
         (c) => c.sId === testSId
       );
       expect(foundConversation).toBe(false);
+    });
+  });
+
+  describe("restricted project space access", () => {
+    it("should not allow a user not in a restricted project space to fetch a conversation in that space", async () => {
+      // Create a workspace
+      const workspace = await WorkspaceFactory.basic();
+
+      // Set up default spaces (global, system, conversations) for the workspace first
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await SpaceFactory.defaults(internalAdminAuth);
+
+      // Create an admin user to create the project space
+      const adminUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, adminUser, {
+        role: "admin",
+      });
+      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        adminUser.sId,
+        workspace.sId
+      );
+
+      // Create a user who will be a member of the project space
+      const memberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, memberUser, {
+        role: "user",
+      });
+      const memberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        memberUser.sId,
+        workspace.sId
+      );
+
+      // Create a restricted project space using admin auth
+      const projectSpaceResult = await createSpaceAndGroup(adminAuth, {
+        name: "Restricted Project Space",
+        isRestricted: true,
+        spaceKind: "project",
+        managementMode: "manual",
+        memberIds: [],
+      });
+
+      expect(projectSpaceResult.isOk()).toBe(true);
+      if (!projectSpaceResult.isOk()) {
+        throw new Error("Failed to create restricted project space");
+      }
+      const projectSpace = projectSpaceResult.value;
+
+      // Add the member user to the project space
+      const addMemberResult = await projectSpace.addMembers(adminAuth, {
+        userIds: [memberUser.sId],
+      });
+      expect(addMemberResult.isOk()).toBe(true);
+
+      // Reload the authenticator to get updated group memberships
+      await memberAuth.refresh();
+
+      // Reload the space to get updated group memberships
+      const reloadedProjectSpace = await SpaceResource.fetchById(
+        memberAuth,
+        projectSpace.sId
+      );
+      expect(reloadedProjectSpace).not.toBeNull();
+
+      // Create a conversation with the project space id using the member user
+      const conversation = await ConversationResource.makeNew(
+        memberAuth,
+        {
+          title: "Test conversation in restricted project",
+          sId: generateRandomModelSId(),
+          spaceId: reloadedProjectSpace!.id,
+          requestedSpaceIds: [],
+        },
+        reloadedProjectSpace!
+      );
+
+      // Create another user in the same workspace who is NOT part of the project space
+      const nonMemberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, nonMemberUser, {
+        role: "user",
+      });
+      const nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        nonMemberUser.sId,
+        workspace.sId
+      );
+
+      // Try to fetch the conversation with the non-member user's authenticator
+      // This should fail (return null) because the user is not part of the restricted project space
+      const fetchedConversation = await ConversationResource.fetchById(
+        nonMemberAuth,
+        conversation.sId
+      );
+
+      // The conversation should not be accessible to the non-member user
+      expect(fetchedConversation).toBeNull();
     });
   });
 
@@ -3018,296 +3077,6 @@ describe("Space Handling", () => {
   });
 });
 
-describe("markAsUnreadForOtherParticipants", () => {
-  let auth: Authenticator;
-  let user1Auth: Authenticator;
-  let user2Auth: Authenticator;
-  let user3Auth: Authenticator;
-  let conversation: ConversationWithoutContentType;
-  let agents: LightAgentConfigurationType[];
-  let conversationId: string;
-
-  beforeEach(async () => {
-    const workspace = await WorkspaceFactory.basic();
-    // Ensure default groups exist
-    await GroupResource.makeDefaultsForWorkspace(workspace);
-    const user = await UserFactory.basic();
-    auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user.sId,
-      workspace.sId
-    );
-    agents = await setupTestAgents(workspace, user);
-
-    // Create additional users
-    const user1 = await UserFactory.basic();
-    const user2 = await UserFactory.basic();
-    const user3 = await UserFactory.basic();
-    await MembershipFactory.associate(workspace, user1, { role: "user" });
-    await MembershipFactory.associate(workspace, user2, { role: "user" });
-    await MembershipFactory.associate(workspace, user3, { role: "user" });
-
-    user1Auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user1.sId,
-      workspace.sId
-    );
-    user2Auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user2.sId,
-      workspace.sId
-    );
-    user3Auth = await Authenticator.fromUserIdAndWorkspaceId(
-      user3.sId,
-      workspace.sId
-    );
-
-    conversation = await ConversationFactory.create(auth, {
-      agentConfigurationId: agents[0].sId,
-      messagesCreatedAt: [dateFromDaysAgo(5)],
-    });
-    conversationId = conversation.sId;
-
-    // Add all users as participants
-    await ConversationResource.upsertParticipation(user1Auth, {
-      conversation,
-      action: "posted",
-      user: user1Auth.getNonNullableUser().toJSON(),
-    });
-    await ConversationResource.upsertParticipation(user2Auth, {
-      conversation,
-      action: "posted",
-      user: user2Auth.getNonNullableUser().toJSON(),
-    });
-    await ConversationResource.upsertParticipation(user3Auth, {
-      conversation,
-      action: "posted",
-      user: user3Auth.getNonNullableUser().toJSON(),
-    });
-  });
-
-  afterEach(async () => {
-    await destroyConversation(auth, { conversationId });
-  });
-
-  it("should not update rows that are already unread", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
-
-    const conversationResource = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    assert(conversationResource, "Conversation resource not found");
-
-    // Set user1 and user2 to unread: true, user3 to unread: false
-    await ConversationParticipantModel.update(
-      { unread: true },
-      {
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: user1Auth.getNonNullableUser().id,
-        },
-      }
-    );
-    await ConversationParticipantModel.update(
-      { unread: true },
-      {
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: user2Auth.getNonNullableUser().id,
-        },
-      }
-    );
-    await ConversationParticipantModel.update(
-      { unread: false },
-      {
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: user3Auth.getNonNullableUser().id,
-        },
-      }
-    );
-
-    // Get the updatedAt timestamps before calling markAsUnreadForOtherParticipants
-    const participant1Before = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user1Auth.getNonNullableUser().id,
-      },
-    });
-    const participant2Before = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user2Auth.getNonNullableUser().id,
-      },
-    });
-    const participant3Before = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user3Auth.getNonNullableUser().id,
-      },
-    });
-
-    assert(participant1Before, "Participant 1 not found");
-    assert(participant2Before, "Participant 2 not found");
-    assert(participant3Before, "Participant 3 not found");
-
-    const updatedAt1Before = participant1Before.updatedAt.getTime();
-    const updatedAt2Before = participant2Before.updatedAt.getTime();
-    const updatedAt3Before = participant3Before.updatedAt.getTime();
-
-    // Wait a bit to ensure updatedAt would change if updated
-    await new Promise((resolve) => setTimeout(resolve, 10));
-
-    // Call markAsUnreadForOtherParticipants
-    const result = await ConversationResource.markAsUnreadForOtherParticipants(
-      auth,
-      {
-        conversation,
-      }
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      // Should only update 1 row (user3, who had unread: false)
-      expect(result.value[0]).toBe(1);
-    }
-
-    // Verify user1 (already unread: true) was NOT updated
-    const participant1After = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user1Auth.getNonNullableUser().id,
-      },
-    });
-    assert(participant1After, "Participant 1 not found after update");
-    expect(participant1After.unread).toBe(true);
-    expect(participant1After.updatedAt.getTime()).toBe(updatedAt1Before);
-
-    // Verify user2 (already unread: true) was NOT updated
-    const participant2After = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user2Auth.getNonNullableUser().id,
-      },
-    });
-    assert(participant2After, "Participant 2 not found after update");
-    expect(participant2After.unread).toBe(true);
-    expect(participant2After.updatedAt.getTime()).toBe(updatedAt2Before);
-
-    // Verify user3 (unread: false) WAS updated to unread: true
-    const participant3After = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user3Auth.getNonNullableUser().id,
-      },
-    });
-    assert(participant3After, "Participant 3 not found after update");
-    expect(participant3After.unread).toBe(true);
-    expect(participant3After.updatedAt.getTime()).toBeGreaterThan(
-      updatedAt3Before
-    );
-  });
-
-  it("should update only participants with unread: false when excludedUser is provided", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
-
-    const conversationResource = await ConversationResource.fetchById(
-      auth,
-      conversationId
-    );
-    assert(conversationResource, "Conversation resource not found");
-
-    // Set user1 to unread: true, user2 and user3 to unread: false
-    await ConversationParticipantModel.update(
-      { unread: true },
-      {
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: user1Auth.getNonNullableUser().id,
-        },
-      }
-    );
-    await ConversationParticipantModel.update(
-      { unread: false },
-      {
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: user2Auth.getNonNullableUser().id,
-        },
-      }
-    );
-    await ConversationParticipantModel.update(
-      { unread: false },
-      {
-        where: {
-          conversationId: conversationResource.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: user3Auth.getNonNullableUser().id,
-        },
-      }
-    );
-
-    // Call markAsUnreadForOtherParticipants with excludedUser (user1)
-    const result = await ConversationResource.markAsUnreadForOtherParticipants(
-      auth,
-      {
-        conversation,
-        excludedUser: user1Auth.getNonNullableUser().toJSON(),
-      }
-    );
-
-    expect(result.isOk()).toBe(true);
-    if (result.isOk()) {
-      // Should update 2 rows (user2 and user3, who had unread: false)
-      expect(result.value[0]).toBe(2);
-    }
-
-    // Verify user1 (excluded) remains unchanged
-    const participant1After = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user1Auth.getNonNullableUser().id,
-      },
-    });
-    assert(participant1After, "Participant 1 not found after update");
-    expect(participant1After.unread).toBe(true);
-
-    // Verify user2 (unread: false, not excluded) was updated
-    const participant2After = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user2Auth.getNonNullableUser().id,
-      },
-    });
-    assert(participant2After, "Participant 2 not found after update");
-    expect(participant2After.unread).toBe(true);
-
-    // Verify user3 (unread: false, not excluded) was updated
-    const participant3After = await ConversationParticipantModel.findOne({
-      where: {
-        conversationId: conversationResource.id,
-        workspaceId: auth.getNonNullableWorkspace().id,
-        userId: user3Auth.getNonNullableUser().id,
-      },
-    });
-    assert(participant3After, "Participant 3 not found after update");
-    expect(participant3After.unread).toBe(true);
-  });
-});
-
 describe("markAsActionRequired", () => {
   let auth: Authenticator;
   let conversation: ConversationWithoutContentType;
@@ -3335,8 +3104,9 @@ describe("markAsActionRequired", () => {
   });
 
   it("should set actionRequired to true for the user's participant", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
 
     // Create a participant first
     await ConversationResource.upsertParticipation(auth, {
@@ -3380,8 +3150,9 @@ describe("markAsActionRequired", () => {
   });
 
   it("should update actionRequired even when it's already true", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
 
     // Create a participant with actionRequired already set to true
     await ConversationResource.upsertParticipation(auth, {
@@ -3432,8 +3203,9 @@ describe("markAsActionRequired", () => {
   });
 
   it("should only update the specific user's participant", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
     const workspace = auth.getNonNullableWorkspace();
 
     await GroupResource.makeDefaultsForWorkspace(workspace);
@@ -4046,8 +3818,9 @@ describe("ConversationResource.isConversationCreator", () => {
   });
 
   it("should return error when conversation has no participants", async () => {
-    const { ConversationParticipantModel } =
-      await import("@app/lib/models/agent/conversation");
+    const { ConversationParticipantModel } = await import(
+      "@app/lib/models/agent/conversation"
+    );
 
     const conversationResource = await ConversationResource.fetchById(
       auth,

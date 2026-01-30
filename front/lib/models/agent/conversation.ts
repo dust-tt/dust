@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
+  ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
   ParticipantActionType,
@@ -27,6 +28,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
+  declare metadata: CreationOptional<ConversationMetadata>;
 
   declare requestedSpaceIds: number[];
 
@@ -74,6 +76,11 @@ ConversationModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    metadata: {
+      type: DataTypes.JSONB,
+      allowNull: false,
+      defaultValue: {},
     },
   },
   {
@@ -134,8 +141,9 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   declare updatedAt: CreationOptional<Date>;
 
   declare action: ParticipantActionType;
-  declare unread: boolean;
+  declare unread?: boolean;
   declare actionRequired: boolean;
+  declare lastReadAt: Date | null;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
@@ -168,6 +176,10 @@ ConversationParticipantModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
+    },
+    lastReadAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {
@@ -779,7 +791,8 @@ MessageReactionModel.belongsTo(UserModel, {
 });
 
 export type MentionStatusType =
-  | "pending" // Waiting for user input
+  | "pending_conversation_access" // Waiting for user input to invite to conversation
+  | "pending_project_membership" // Waiting for user input to add to project (mentioning user is project editor)
   | "approved" // Auto or manually approved
   | "rejected" // Auto or manually rejected
   | "user_restricted_by_conversation_access" // The conversation access is restricted to the user (the conversation uses at least one space that the user doesn't have access to)

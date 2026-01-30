@@ -9,6 +9,12 @@ import type { ResourceSId } from "@app/lib/resources/string_ids";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { removeNulls } from "@app/types";
 
+export type MCPServerDefinition = {
+  name: AutoInternalMCPServerNameType;
+  childAgentId?: string;
+  serverNameOverride?: string;
+};
+
 interface BaseGlobalSkillDefinition {
   readonly agentFacingDescription: string;
   readonly userFacingDescription: string;
@@ -16,7 +22,7 @@ interface BaseGlobalSkillDefinition {
   readonly sId: string;
   readonly version: number;
   readonly icon: string;
-  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
+  readonly mcpServers?: MCPServerDefinition[];
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isAutoEnabled?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;

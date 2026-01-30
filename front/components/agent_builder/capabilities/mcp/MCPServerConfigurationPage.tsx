@@ -7,6 +7,7 @@ import { ChildAgentSection } from "@app/components/agent_builder/capabilities/sh
 import { DustAppSection } from "@app/components/agent_builder/capabilities/shared/DustAppSection";
 import { JsonSchemaSection } from "@app/components/agent_builder/capabilities/shared/JsonSchemaSection";
 import { NameSection } from "@app/components/agent_builder/capabilities/shared/NameSection";
+import { ProjectSection } from "@app/components/agent_builder/capabilities/shared/ProjectSection";
 import { SecretSection } from "@app/components/agent_builder/capabilities/shared/SecretSection";
 import { TimeFrameSection } from "@app/components/agent_builder/capabilities/shared/TimeFrameSection";
 import type { MCPServerViewTypeWithLabel } from "@app/components/shared/tools_picker/MCPServerViewsContext";
@@ -46,6 +47,7 @@ export function MCPServerConfigurationPage({
           <TimeFrameSection actionType="search" />
         )}
         {requirements.requiresDustAppConfiguration && <DustAppSection />}
+        {requirements.requiresDustProjectConfiguration && <ProjectSection />}
         {requirements.developerSecretSelection && (
           <SecretSection
             customDescription={

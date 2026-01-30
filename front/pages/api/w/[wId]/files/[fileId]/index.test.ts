@@ -73,7 +73,7 @@ vi.mock("@app/lib/api/data_sources", () => ({
 }));
 
 // Mock the file processing functions
-vi.mock("@app/lib/api/files/upload", () => ({
+vi.mock("@app/lib/api/files/processing", () => ({
   processAndStoreFile: vi.fn().mockResolvedValue({
     isErr: () => false,
     value: {},
@@ -531,8 +531,9 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should process conversation file and upsert to data source", async () => {
-    const { processAndUpsertToDataSource } =
-      await import("@app/lib/api/files/upsert");
+    const { processAndUpsertToDataSource } = await import(
+      "@app/lib/api/files/upsert"
+    );
 
     const { req, res, workspace, user, authenticator } =
       await createPrivateApiMockRequest({

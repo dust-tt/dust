@@ -199,8 +199,8 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             clearAllDraftsFromUser();
 
             datadogLogs.clearUser();
-            window.DD_RUM.onReady(() => {
-              window.DD_RUM.clearUser();
+            window.DD_RUM?.onReady(() => {
+              window.DD_RUM?.clearUser();
             });
             window.location.href = "/api/workos/logout";
           }}

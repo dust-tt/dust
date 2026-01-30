@@ -97,7 +97,7 @@ export function AttachmentCitation({
           >
             {isImage ? (
               <CitationImage
-                imgSrc={`${attachmentCitation.sourceUrl}?action=view`}
+                imgSrc={`${attachmentCitation.sourceUrl}?action=view&version=processed`}
                 title={attachmentCitation.title}
                 downloadUrl={attachmentCitation.sourceUrl ?? undefined}
                 onClose={attachmentCitation.onRemove}

@@ -14,6 +14,7 @@ import {
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
+  Toolbar,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -25,7 +26,7 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -88,7 +89,11 @@ function UserMessageEditor({
       />
 
       <BubbleMenu editor={editor} className="hidden sm:flex">
-        <Toolbar editor={editor} className="hidden sm:inline-flex" />
+        {editor && (
+          <Toolbar className="hidden sm:inline-flex">
+            <ToolBarContent editor={editor} />
+          </Toolbar>
+        )}
       </BubbleMenu>
 
       <div className="flex justify-end gap-2">
@@ -491,7 +496,7 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="xs"
+              size="icon-xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(

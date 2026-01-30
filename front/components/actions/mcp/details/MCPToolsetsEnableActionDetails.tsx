@@ -4,12 +4,14 @@ import { ActionDetailsWrapper } from "@app/components/actions/ActionDetailsWrapp
 import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
 
 export function MCPToolsetsEnableActionDetails({
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
-      actionName={viewType === "conversation" ? "Enabled tool" : "Enable tool"}
+      displayContext={displayContext}
+      actionName={
+        displayContext === "conversation" ? "Enabled tool" : "Enable tool"
+      }
       visual={BoltIcon}
     />
   );

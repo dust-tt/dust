@@ -10,7 +10,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface PatchSpaceMembersResponseBody {
   space: SpaceType;
@@ -25,10 +25,12 @@ const PatchSpaceMembersRequestBodySchema = t.intersection([
     t.type({
       memberIds: t.array(t.string),
       managementMode: t.literal("manual"),
+      editorIds: t.array(t.string),
     }),
     t.type({
       groupIds: t.array(t.string),
       managementMode: t.literal("group"),
+      editorGroupIds: t.array(t.string),
     }),
   ]),
 ]);

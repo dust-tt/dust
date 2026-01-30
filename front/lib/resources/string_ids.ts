@@ -67,6 +67,9 @@ export const RESOURCES_PREFIX = {
 
   // Project metadata.
   project_metadata: "pmd",
+
+  // Project journal entries.
+  project_journal_entry: "pje",
 } as const;
 
 export const CROSS_WORKSPACE_RESOURCES_WORKSPACE_ID: ModelId = 0;

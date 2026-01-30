@@ -20,6 +20,7 @@ import { FeatureFlagsDataTable } from "@app/components/poke/features/table";
 import { GroupDataTable } from "@app/components/poke/groups/table";
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
   PokeAlert,
   PokeAlertDescription,
@@ -33,19 +34,19 @@ import {
 } from "@app/components/poke/subscriptions/table";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { WorkspaceInfoTable } from "@app/components/poke/workspace/table";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { usePokeDataRetention } from "@app/poke/swr/data_retention";
 import { usePokeWorkspaceInfo } from "@app/poke/swr/workspace_info";
-import type { WorkspaceSegmentationType, WorkspaceType } from "@app/types";
+import type { WorkspaceSegmentationType } from "@app/types";
 import { isString } from "@app/types";
 
-interface WorkspacePageProps {
-  owner: WorkspaceType;
-}
+export function WorkspacePage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(owner.name ?? "Workspace");
 
-export function WorkspacePage({ owner }: WorkspacePageProps) {
   const router = useAppRouter();
 
   const {

@@ -11,8 +11,9 @@ import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
-  // assembled:
-  //   "/customers/how-assembled-cut-knowledge-retrieval-time-by-hundreds-of-hours-with-dust",
+  assembled: "/customers/part-1-assembled-ai-operating-system",
+  backmarket:
+    "/customers/back-markets-fraud-team-builds-ai-detection-system-in-one-week-contributing",
   blueground: "/customers/customer-support-blueground",
   clay: "/customers/clay-scaling-gtme-team",
   doctolib:
@@ -41,7 +42,7 @@ const LOGO_SETS = {
     us: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "kyriba", src: "/static/landing/logos/gray/kyriba.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
@@ -57,7 +58,7 @@ const LOGO_SETS = {
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
@@ -71,7 +72,7 @@ const LOGO_SETS = {
     us: [
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "assembled", src: "/static/landing/logos/gray/assembled.svg" },
       { name: "laurel", src: "/static/landing/logos/gray/laurel.svg" },
       { name: "patch", src: "/static/landing/logos/gray/patch.svg" },
@@ -87,7 +88,7 @@ const LOGO_SETS = {
       { name: "backmarket", src: "/static/landing/logos/gray/backmarket.svg" },
       { name: "blueground", src: "/static/landing/logos/gray/blueground.svg" },
       { name: "clay", src: "/static/landing/logos/gray/clay.svg" },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      //  { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "doctolib", src: "/static/landing/logos/gray/doctolib.svg" },
       { name: "malt", src: "/static/landing/logos/gray/malt.svg" },
       { name: "vanta", src: "/static/landing/logos/gray/vanta.svg" },
@@ -104,7 +105,7 @@ const LOGO_SETS = {
         name: "contentsquare",
         src: "/static/landing/logos/gray/contentsquare.svg",
       },
-      { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" },
+      // { name: "cursor", src: "/static/landing/logos/gray/cursor.svg" }, -- temporary
       { name: "persona", src: "/static/landing/logos/gray/persona.svg" },
       { name: "spendesk", src: "/static/landing/logos/gray/spendesk.svg" },
       { name: "watershed", src: "/static/landing/logos/gray/watershed.svg" },

@@ -1,22 +1,21 @@
 import assert from "assert";
 import uniq from "lodash/uniq";
+import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import {
-  getAgentConfigurations,
-  updateAgentRequirements,
-} from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -33,20 +32,24 @@ import type { AgentsUsageType, Result } from "@app/types";
 import {
   Err,
   Ok,
+  PROJECT_EDITOR_GROUP_PREFIX,
   PROJECT_GROUP_PREFIX,
-  removeNulls,
   SPACE_GROUP_PREFIX,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export async function softDeleteSpaceAndLaunchScrubWorkflow(
   auth: Authenticator,
   space: SpaceResource,
   force?: boolean
 ) {
-  assert(auth.isAdmin(), "Only admins can delete spaces.");
   assert(
     space.isRegular() || space.isProject(),
     "Cannot delete spaces that are not regular or project."
+  );
+  assert(
+    space.canAdministrate(auth),
+    "Only project editors or workspace admins can delete project spaces."
   );
 
   const usages: AgentsUsageType[] = [];
@@ -153,69 +156,108 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       { concurrency: 4 }
     );
 
-    if (force) {
-      const agentIds = uniq(
-        usages.flatMap((u) => u.agents).map((agent) => agent.sId)
-      );
-      const agentConfigurations = await getAgentConfigurations(auth, {
-        agentIds,
-        variant: "full",
-      });
-      const agentConfigurationsById = new Map(
-        agentConfigurations.map((config) => [config.sId, config])
-      );
+    // Get MCP server views and data source views from the space being deleted.
+    const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
+    const mcpServerViewIds = mcpServerViews.map((v) => v.id);
+    const dataSourceViewIds = dataSourceViews.map((v) => v.id);
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
+    // Find all skills that reference MCP server views or data source views from this space.
+    const [skillsWithMCPViews, skillsWithDataSourceViews] = await Promise.all([
+      SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
+      SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
+    ]);
 
-      await concurrentExecutor(
-        agentIds,
-        async (agentId) => {
-          const agentConfig = agentConfigurationsById.get(agentId);
-          if (!agentConfig) {
-            logger.error(
-              {
-                agentId,
-                workspaceId: auth.getNonNullableWorkspace().sId,
-              },
-              "Agent configuration not found for space soft delete"
-            );
-            return;
-          }
-
-          let skills: SkillResource[] = [];
-          if (featureFlags.includes("skills")) {
-            skills = await SkillResource.listByAgentConfiguration(
-              auth,
-              agentConfig
-            );
-          }
-
-          // Get the required group IDs from the agent's actions
-          const requirements =
-            await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions: agentConfig.actions,
-              skills,
-              ignoreSpaces: [space],
-            });
-
-          const res = await updateAgentRequirements(
-            auth,
-            {
-              agentModelId: agentConfig.id,
-              newSpaceIds: requirements.requestedSpaceIds,
-            },
-            { transaction: t }
-          );
-
-          if (res.isErr()) {
-            throw res.error;
-          }
-        },
-        { concurrency: 4 }
-      );
+    // Merge and deduplicate skills.
+    const skillMap = new Map<number, SkillResource>();
+    for (const skill of [...skillsWithMCPViews, ...skillsWithDataSourceViews]) {
+      skillMap.set(skill.id, skill);
     }
+    const skillsToUpdate = Array.from(skillMap.values());
+
+    // Create sets for quick lookup.
+    const mcpServerViewIdSet = new Set(mcpServerViewIds);
+    const dataSourceViewIdSet = new Set(dataSourceViewIds);
+
+    // Update each skill to remove MCP server views and attached knowledge from the deleted space.
+    // Note: updateSkill manages its own transaction, so we call it sequentially.
+    for (const skill of skillsToUpdate) {
+      // Filter out MCP server views from the deleted space.
+      const filteredMCPServerViews = skill.mcpServerViews.filter(
+        (v) => !mcpServerViewIdSet.has(v.id)
+      );
+
+      // Get attached knowledge and filter out those from the deleted space.
+      const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+      const filteredAttachedKnowledge = attachedKnowledge.filter(
+        (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
+      );
+
+      // Compute the new requestedSpaceIds from the filtered tools and knowledge.
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        auth,
+        {
+          mcpServerViews: filteredMCPServerViews,
+          attachedKnowledge: filteredAttachedKnowledge,
+        }
+      );
+
+      // Log an error if the deleted space is still in requestedSpaceIds.
+      if (requestedSpaceIds.includes(space.id)) {
+        logger.error(
+          {
+            skillId: skill.sId,
+            spaceId: space.sId,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          },
+          "Deleted space still present in skill requestedSpaceIds after filtering"
+        );
+      }
+
+      await skill.updateSkill(auth, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: filteredMCPServerViews,
+        attachedKnowledge: filteredAttachedKnowledge,
+        requestedSpaceIds,
+      });
+    }
+
+    // Update agents that have this space in their requestedSpaceIds.
+    const agentsWithSpace = await AgentConfigurationModel.findAll({
+      attributes: ["id", "requestedSpaceIds"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        requestedSpaceIds: {
+          [Op.contains]: [space.id],
+        },
+      },
+    });
+
+    await concurrentExecutor(
+      agentsWithSpace,
+      async (agent) => {
+        const newSpaceIds = agent.requestedSpaceIds.filter(
+          (id) => id !== space.id
+        );
+        const res = await updateAgentRequirements(
+          auth,
+          {
+            agentModelId: agent.id,
+            newSpaceIds,
+          },
+          { transaction: t }
+        );
+
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
 
     // Finally, soft delete the space.
     const res = await space.delete(auth, { hardDelete: false, transaction: t });
@@ -339,9 +381,25 @@ export async function createSpaceAndGroup(
 ): Promise<
   Result<
     SpaceResource,
-    DustError<"limit_reached" | "space_already_exists" | "internal_error">
+    DustError<
+      | "limit_reached"
+      | "space_already_exists"
+      | "internal_error"
+      | "unauthorized"
+    >
   >
 > {
+  // Check permissions based on space kind
+  // Projects can be created by any workspace member
+  // Regular spaces require admin permissions
+  if (params.spaceKind !== "project" && !auth.isAdmin()) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Only users that are `admins` can create regular spaces."
+      )
+    );
+  }
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
@@ -363,8 +421,14 @@ export async function createSpaceAndGroup(
       );
     }
 
-    const { name, isRestricted, spaceKind } = params;
-    const managementMode = isRestricted ? params.managementMode : "manual";
+    const { name, isRestricted, spaceKind, managementMode } = params;
+    if (spaceKind === "regular" && !isRestricted) {
+      assert(
+        managementMode === "manual",
+        "Unrestricted regular spaces must use manual management mode."
+      );
+    }
+
     const nameAvailable = await SpaceResource.isNameAvailable(auth, name, t);
     if (!nameAvailable) {
       return new Err(
@@ -377,21 +441,24 @@ export async function createSpaceAndGroup(
 
     const membersGroup = await GroupResource.makeNew(
       {
-        name: `${SPACE_GROUP_PREFIX} ${name}`,
+        name: `${spaceKind === "project" ? PROJECT_GROUP_PREFIX : SPACE_GROUP_PREFIX} ${name}`,
         workspaceId: owner.id,
         kind: "regular",
       },
       { transaction: t }
     );
 
-    const globalGroupRes = isRestricted
-      ? null
-      : await GroupResource.fetchWorkspaceGlobalGroup(auth);
-
-    const memberGroups = removeNulls([
-      membersGroup,
-      globalGroupRes?.isOk() ? globalGroupRes.value : undefined,
-    ]);
+    let globalGroup: GroupResource | null = null;
+    if (!isRestricted) {
+      const globalGroupRes =
+        await GroupResource.fetchWorkspaceGlobalGroup(auth);
+      assert(globalGroupRes.isOk(), "Failed to fetch the global group.");
+      globalGroup = globalGroupRes.value;
+      assert(
+        globalGroup !== null,
+        "Global group must exist for non-restricted spaces."
+      );
+    }
 
     // Create the editor group for projects and add the creator
     const editorGroups: GroupResource[] = [];
@@ -399,7 +466,7 @@ export async function createSpaceAndGroup(
       const creator = auth.getNonNullableUser();
       const editorGroup = await GroupResource.makeNew(
         {
-          name: `${PROJECT_GROUP_PREFIX} ${name}`,
+          name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
           workspaceId: owner.id,
           kind: "space_editors",
         },
@@ -415,64 +482,89 @@ export async function createSpaceAndGroup(
         managementMode,
         workspaceId: owner.id,
       },
-      { members: memberGroups, editors: editorGroups },
+      { members: [membersGroup], editors: editorGroups },
       t
     );
 
-    // Handle member-based space creation
-    if ("memberIds" in params && params.memberIds) {
-      const users = (await UserResource.fetchByIds(params.memberIds)).map(
-        (user) => user.toJSON()
+    if (!isRestricted) {
+      // Set the global group as viewer for non-restricted project spaces
+      assert(globalGroup, "Global group must exist");
+      await GroupSpaceModel.create(
+        {
+          kind: space.isProject() ? "project_viewer" : "member",
+          groupId: globalGroup.id,
+          vaultId: space.id,
+          workspaceId: owner.id,
+        },
+        {
+          transaction: t,
+        }
       );
-      const groupsResult = await membersGroup.addMembers(auth, {
-        users,
-        transaction: t,
-      });
-      if (groupsResult.isErr()) {
-        logger.error(
-          {
-            error: groupsResult.error,
-          },
-          "The space cannot be created - group members could not be added"
-        );
-
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
-        );
-      }
     }
 
-    // Handle group-based space creation
-    if ("groupIds" in params && params.groupIds.length > 0) {
-      // For group-based spaces, we need to associate the selected groups with the space
-      const selectedGroupsResult = await GroupResource.fetchByIds(
-        auth,
-        params.groupIds
-      );
-      if (selectedGroupsResult.isErr()) {
-        logger.error(
-          {
-            error: selectedGroupsResult.error,
-          },
-          "The space cannot be created - failed to fetch groups"
+    // Handle member-based space creation
+    switch (managementMode) {
+      case "manual":
+        if (spaceKind === "project") {
+          assert(
+            params.memberIds.length === 0,
+            "Cannot add members to projects on creation."
+          );
+          break;
+        }
+        // Add members to the member group in regular spaces
+        const users = (await UserResource.fetchByIds(params.memberIds)).map(
+          (user) => user.toJSON()
         );
-        return new Err(
-          new DustError("internal_error", "The space cannot be created.")
-        );
-      }
+        const groupsResult = await membersGroup.addMembers(auth, {
+          users,
+          transaction: t,
+        });
+        if (groupsResult.isErr()) {
+          logger.error(
+            {
+              error: groupsResult.error,
+            },
+            "Failed to add members to the member group"
+          );
+          return new Err(
+            new DustError("internal_error", "The space cannot be created.")
+          );
+        }
+        break;
 
-      const selectedGroups = selectedGroupsResult.value;
-      for (const selectedGroup of selectedGroups) {
-        await GroupSpaceModel.create(
-          {
-            groupId: selectedGroup.id,
-            vaultId: space.id,
-            workspaceId: space.workspaceId,
-            kind: "member",
-          },
-          { transaction: t }
-        );
-      }
+      // Handle group-based space creation
+      case "group":
+        // For group-based spaces, we need to associate the selected groups with the space
+        if (params.groupIds.length > 0) {
+          const selectedGroupsResult = await GroupResource.fetchByIds(
+            auth,
+            params.groupIds
+          );
+          if (selectedGroupsResult.isErr()) {
+            logger.error(
+              {
+                error: selectedGroupsResult.error,
+              },
+              "The space cannot be created - failed to fetch groups"
+            );
+            return new Err(
+              new DustError("internal_error", "The space cannot be created.")
+            );
+          }
+
+          const selectedGroups = selectedGroupsResult.value;
+          for (const selectedGroup of selectedGroups) {
+            await GroupSpaceMemberResource.makeNew(auth, {
+              group: selectedGroup,
+              space,
+              transaction: t,
+            });
+          }
+        }
+        break;
+      default:
+        assertNever(managementMode);
     }
 
     // Create empty project metadata for project spaces

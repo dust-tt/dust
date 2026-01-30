@@ -19,16 +19,16 @@ import type {
   LLMParameters,
   LLMStreamParameters,
 } from "@app/lib/api/llm/types/options";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { RunResource } from "@app/lib/resources/run_resource";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type {
+  ModelConfigurationType,
   ModelIdType,
   ModelProviderIdType,
   ReasoningEffort,
-  SUPPORTED_MODEL_CONFIGS,
 } from "@app/types";
 import { AGENT_CREATIVITY_LEVEL_TEMPERATURES } from "@app/types";
 import type { Content } from "@app/types/assistant/generation";
@@ -59,7 +59,7 @@ function buildDefaultTraceInput(
 
 export abstract class LLM {
   protected modelId: ModelIdType;
-  protected modelConfig: (typeof SUPPORTED_MODEL_CONFIGS)[number];
+  protected modelConfig: ModelConfigurationType;
   protected temperature: number | null;
   protected reasoningEffort: ReasoningEffort | null;
   protected responseFormat: string | null;
@@ -88,10 +88,14 @@ export abstract class LLM {
     }: LLMParameters
   ) {
     this.modelId = modelId;
-    this.modelConfig = getSupportedModelConfig({
+    const modelConfig = getSupportedModelConfig({
       modelId: this.modelId,
       providerId,
     });
+    if (!modelConfig) {
+      throw new Error(`Model config not found for ${modelId}/${providerId}`);
+    }
+    this.modelConfig = modelConfig;
     this.temperature = temperature;
     this.reasoningEffort = reasoningEffort;
     this.responseFormat = responseFormat;

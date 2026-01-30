@@ -15,80 +15,76 @@ import { useUser } from "@app/lib/swr/user";
 import type { ConversationType } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
-function buildCopilotSystemPrompt(): string {
+function buildNewAgentInitMessage(): string {
   return `<dust_system>
-You are the Dust Agent Copilot, an expert assistant helping users build and improve their Dust agents.
+NEW agent - no suggestions/feedback/insights.
 
-## YOUR ROLE
+## STEP 1: Gather context
+You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
+This tool must be called at session start to ensure you have the latest state.
 
-You help users optimize their agents by:
-1. Analyzing the current agent configuration (instructions, model, tools, skills)
-2. Reviewing user feedback and usage insights
-3. Suggesting actionable improvements
+The response includes:
+- Agent settings (name, description, scope, model, tools, skills)
+- Instructions: The committed instructions text (without pending suggestions)
+- pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
-## CRITICAL RULES
+You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
+This tool must be called at session start to ensure you have the latest state.
 
-1. **Always start by gathering context** - Use your tools to understand the agent before making suggestions
-2. **Be specific and actionable** - Don't give vague advice. Reference actual configuration details.
-3. **Prioritize high-impact changes** - Focus on improvements that will meaningfully affect agent performance
-4. **Respect user intent** - Understand what the agent is meant to do before suggesting changes
+## STEP 2: Suggest use cases
+Based on:
+- Current form state (get_agent_config result)
+- User's job function and preferred platforms (from your instructions)
 
-## AVAILABLE TOOLS
+Provide 2-3 specific agent use case suggestions as bullet points. Example:
+"I can help you build agents for your work in [role/team]. A few ideas:
 
-You have access to these tools to gather information:
+• **Meeting prep agent** - pulls prospect info from CRM before calls
+• **Follow-up drafter** - generates personalized emails based on call notes  
+• **Competitive intel** - monitors competitor news and surfaces updates
 
-### Agent State
-- **get_agent_info**: Get the current agent's name, description, instructions, model settings, tools, and skills
+Pick one to start, or tell me what you're thinking."
 
-### Context & Analytics
-- **get_available_models**: List available models the agent could use
-- **get_available_skills**: List skills that could be added to the agent
-- **get_available_tools**: List tools (MCP servers) that could be added
-- **get_agent_feedback**: Get user feedback (thumbs up/down with comments)
-- **get_agent_insights**: Get usage analytics (active users, conversations, feedback stats)
+## STEP 3: After user responds, create suggestions
+Tool usage rules when creating suggestions:
+- \`get_available_skills\`: Call FIRST. Bias towards skills.
+- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
-## YOUR FIRST MESSAGE
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
 
-**Immediately use your tools** to analyze the agent. Start with:
-1. Call \`get_agent_info\` to understand the current configuration
-2. Call \`get_agent_feedback\` to see what users are saying
-3. Call \`get_agent_insights\` to understand usage patterns
+Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
+</dust_system>`;
+}
 
-Then provide a concise analysis with:
-- A brief summary of what the agent does
-- 2-3 specific improvement suggestions based on your findings
-- Ask if the user wants to dive deeper into any area
+function buildExistingAgentInitMessage(): string {
+  return `<dust_system>
+EXISTING agent.
 
-## IMPROVEMENT AREAS TO CONSIDER
+## STEP 1: Gather context
+You MUST call these tools simultaneously in the same tool call round:
+1. \`get_agent_config\` - to retrieve the current agent configuration and any pending suggestions
+3. \`get_agent_feedback\` - to retrieve feedback for the current version
 
-When analyzing an agent, consider:
+CRITICAL: All tools must be called together in parallel, not sequentially. Make all tool calls in your first response to minimize latency.
 
-**Instructions**
-- Are they clear and specific?
-- Do they handle edge cases?
-- Is the tone appropriate for the use case?
+## STEP 2: Provide context & prompt action
+Based on gathered data, provide a brief summary:
+- If reinforced suggestions exist (source="reinforcement"), highlight them
+- If negative feedback patterns exist, mention the top issue
+- If pending suggestions exist from \`get_agent_config\`, output their directives to render them as cards:
+  CRITICAL: For each suggestion, output: \`:agent_suggestion[]{sId=<sId> kind=<kind>}\`
 
-**Model Selection**
-- Is the model appropriate for the task complexity?
-- Would a different model provide better cost/performance tradeoff?
+## STEP 3: After user responds, create suggestions
+Tool usage rules when creating suggestions:
+- \`get_available_skills\`: Call FIRST. Bias towards skills.
+- \`get_available_tools\`: Only if clearly needed. If the desired agent is not specialized but meant to be multi-purpose, suggest "Discover Tools" skill instead.
+- \`get_agent_insights\`: Only if you need additional information to improve the agent.
+- \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
-**Tools & Skills**
-- Are the right tools enabled for the agent's purpose?
-- Are there missing capabilities that would help?
-- Are there unused tools that could be removed?
+Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
 
-**Based on Feedback**
-- What are users complaining about?
-- What's working well that should be preserved?
-- Are there patterns in negative feedback?
-
-## RESPONSE STYLE
-
-- Be direct and helpful
-- Use bullet points for actionable suggestions
-- When suggesting instruction changes, provide example text
-- Always explain WHY a change would help
-
+Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
 }
 
@@ -98,6 +94,7 @@ interface CopilotPanelContextType {
   creationFailed: boolean;
   startConversation: () => Promise<void>;
   resetConversation: () => void;
+  clientSideMCPServerIds: string[];
 }
 
 const CopilotPanelContext = createContext<CopilotPanelContextType | undefined>(
@@ -116,10 +113,18 @@ export const useCopilotPanelContext = () => {
 
 interface CopilotPanelProviderProps {
   children: ReactNode;
+  targetAgentConfigurationId: string | null;
+  targetAgentConfigurationVersion: number;
+  clientSideMCPServerIds: string[];
+  isNewAgent: boolean;
 }
 
 export const CopilotPanelProvider = ({
   children,
+  targetAgentConfigurationId,
+  targetAgentConfigurationVersion,
+  clientSideMCPServerIds,
+  isNewAgent,
 }: CopilotPanelProviderProps) => {
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
@@ -138,23 +143,33 @@ export const CopilotPanelProvider = ({
   });
 
   const startConversation = useCallback(async () => {
-    if (hasStartedRef.current) {
+    if (hasStartedRef.current || !targetAgentConfigurationId) {
       return;
     }
     hasStartedRef.current = true;
 
     setIsCreatingConversation(true);
 
-    const systemPrompt = buildCopilotSystemPrompt();
+    const firstMessagePrompt = isNewAgent
+      ? buildNewAgentInitMessage()
+      : buildExistingAgentInitMessage();
 
     const result = await createConversationWithMessage({
       messageData: {
-        input: systemPrompt,
-        mentions: [{ configurationId: GLOBAL_AGENTS_SID.DUST }],
+        input: firstMessagePrompt,
+        mentions: [{ configurationId: GLOBAL_AGENTS_SID.COPILOT }],
         contentFragments: { uploaded: [], contentNodes: [] },
         origin: "agent_copilot",
+        clientSideMCPServerIds,
       },
-      visibility: "unlisted",
+      // TODO(copilot 2026-01-23): same visibility as the 'Preview' tab conversation.
+      // We should rename it.
+      visibility: "test",
+      metadata: {
+        copilotTargetAgentConfigurationId: targetAgentConfigurationId,
+        copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
+      },
+      skipToolsValidation: true,
     });
 
     if (result.isOk()) {
@@ -169,7 +184,14 @@ export const CopilotPanelProvider = ({
     }
 
     setIsCreatingConversation(false);
-  }, [createConversationWithMessage, sendNotification]);
+  }, [
+    clientSideMCPServerIds,
+    createConversationWithMessage,
+    isNewAgent,
+    sendNotification,
+    targetAgentConfigurationId,
+    targetAgentConfigurationVersion,
+  ]);
 
   const resetConversation = useCallback(() => {
     hasStartedRef.current = false;
@@ -184,8 +206,10 @@ export const CopilotPanelProvider = ({
       creationFailed,
       startConversation,
       resetConversation,
+      clientSideMCPServerIds,
     }),
     [
+      clientSideMCPServerIds,
       conversation,
       isCreatingConversation,
       creationFailed,

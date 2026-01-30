@@ -19,6 +19,7 @@ import {
 import { ensureConversationTitle } from "@app/lib/api/assistant/conversation/title";
 import {
   makeAgentMentionsRateLimitKeyForWorkspace,
+  makeKeyCapRateLimitKey,
   makeMessageRateLimitKeyForWorkspace,
   makeProgrammaticUsageRateLimitKeyForWorkspace,
 } from "@app/lib/api/assistant/rate_limits";
@@ -27,8 +28,9 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
+import { getRemainingKeyCapMicroUsd } from "@app/lib/api/key_cap_tracking";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
-import { getSupportedModelConfig } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -41,11 +43,11 @@ import {
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationUnreadNotifications } from "@app/lib/notifications/workflows/conversation-unread";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
 import { ContentFragmentResource } from "@app/lib/resources/content_fragment_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize, statsDClient } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
@@ -67,6 +69,7 @@ import type {
   ContentFragmentInputWithContentNode,
   ContentFragmentInputWithFileIdType,
   ContentFragmentType,
+  ConversationMetadata,
   ConversationType,
   ConversationVisibility,
   ConversationWithoutContentType,
@@ -79,7 +82,6 @@ import type {
   UserMessageType,
 } from "@app/types";
 import {
-  assertNever,
   ConversationError,
   Err,
   isAgentMention,
@@ -93,7 +95,11 @@ import {
   removeNulls,
   toMentionType,
 } from "@app/types";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
 const PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE = 3;
@@ -110,12 +116,14 @@ export async function createConversation(
     depth = 0,
     triggerId,
     spaceId,
+    metadata,
   }: {
     title: string | null;
     visibility: ConversationVisibility;
     depth?: number;
     triggerId?: ModelId | null;
     spaceId: ModelId | null;
+    metadata?: ConversationMetadata;
   }
 ): Promise<ConversationType> {
   const owner = auth.getNonNullableWorkspace();
@@ -140,7 +148,8 @@ export async function createConversation(
       depth,
       triggerId,
       spaceId,
-      requestedSpaceIds: [],
+      requestedSpaceIds: spaceId ? [spaceId] : [],
+      metadata: metadata ?? {},
     },
     space
   );
@@ -154,6 +163,7 @@ export async function createConversation(
     title: conversation.title,
     depth: conversation.depth,
     content: [],
+    lastReadMs: Date.now(),
     unread: false,
     actionRequired: false,
     hasError: false,
@@ -161,6 +171,7 @@ export async function createConversation(
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,
+    metadata: conversation.metadata,
   };
 }
 
@@ -594,7 +605,7 @@ export async function postUserMessage(
     const featureFlags = await getFeatureFlags(owner);
     const supportedModelConfig = getSupportedModelConfig(agentConfig.model);
     if (
-      supportedModelConfig.featureFlag &&
+      supportedModelConfig?.featureFlag &&
       !featureFlags.includes(supportedModelConfig.featureFlag)
     ) {
       return new Err({
@@ -655,13 +666,6 @@ export async function postUserMessage(
       transaction: t,
     });
 
-    // Mark the conversation as unread for all participants except the user.
-    await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-      conversation,
-      excludedUser: user?.toJSON(),
-      transaction: t,
-    });
-
     const { agentMessages, richMentions: agentRichMentions } =
       await createAgentMessages(auth, {
         conversation,
@@ -685,6 +689,12 @@ export async function postUserMessage(
     };
 
     await ConversationResource.markAsUpdated(auth, { conversation, t });
+
+    // Mark the conversation as read for the current user.
+    await ConversationResource.markAsReadForAuthUser(auth, {
+      conversation,
+      transaction: t,
+    });
 
     return {
       userMessage,
@@ -925,13 +935,6 @@ export async function editUserMessage(
         transaction: t,
       });
 
-      // Mark the conversation as unread for all participants except the user.
-      await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-        conversation,
-        excludedUser: user?.toJSON(),
-        transaction: t,
-      });
-
       const richMentions = await createUserMentions(auth, {
         mentions,
         message: userMessageWithoutMentions,
@@ -998,6 +1001,12 @@ export async function editUserMessage(
           agentMessages,
         };
       }
+
+      // Mark the conversation as read for the current user.
+      await ConversationResource.markAsReadForAuthUser(auth, {
+        conversation,
+        transaction: t,
+      });
 
       const userMessage = {
         ...userMessageWithoutMentions,
@@ -1308,7 +1317,10 @@ export async function postNewContentFragment(
   }
 
   // Project conversations only allow content fragments from the project space or the global space.
-  if (conversation.spaceId && isContentFragmentInputWithContentNode(cf)) {
+  if (
+    isProjectConversation(conversation) &&
+    isContentFragmentInputWithContentNode(cf)
+  ) {
     const dsView = await DataSourceViewResource.fetchById(
       auth,
       cf.nodeDataSourceViewId
@@ -1613,6 +1625,109 @@ async function checkMessagesLimit(
   return new Ok(undefined);
 }
 
+// For programmatic usage, apply credit-based rate limiting.
+// This prevents close-to-0 credit attacks where many messages are sent simultaneously
+// before token usage is computed. Rate limit is based on total credit amount in dollars.
+async function checkProgrammaticUsageRateLimit(
+  auth: Authenticator
+): Promise<MessageLimit> {
+  const owner = auth.getNonNullableWorkspace();
+  const activeCredits = await CreditResource.listActive(auth);
+
+  // Calculate total remaining credits in dollars (micro USD / 1,000,000).
+  const totalRemainingCreditsDollars =
+    activeCredits.reduce(
+      (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
+      0
+    ) / 1_000_000;
+
+  // Minimum of 1 to allow at least some messages even with very low credits.
+  const maxMessagesPerMinute = Math.max(
+    1,
+    Math.floor(
+      totalRemainingCreditsDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
+    )
+  );
+
+  const remainingMessages = await rateLimiter({
+    key: makeProgrammaticUsageRateLimitKeyForWorkspace(owner),
+    maxPerTimeframe: maxMessagesPerMinute,
+    timeframeSeconds: 60,
+    logger,
+  });
+
+  if (remainingMessages <= 0) {
+    logger.info(
+      {
+        workspaceId: owner.sId,
+        totalRemainingCreditsDollars,
+      },
+      "Pre-emptive rate limit triggered for programmatic usage."
+    );
+
+    statsDClient.increment(
+      "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
+      1,
+      { workspace_id: owner.sId }
+    );
+
+    return {
+      isLimitReached: true,
+      limitType: "rate_limit_error",
+    };
+  }
+
+  // Per-key rate limiting for keys with a cap.
+  // Prevents close-to-0 cap attacks where many messages are sent simultaneously.
+  const remainingCapMicroUsd = await getRemainingKeyCapMicroUsd(auth);
+  if (remainingCapMicroUsd !== null) {
+    const keyAuth = auth.key();
+    if (keyAuth) {
+      const remainingCapDollars = remainingCapMicroUsd / 1_000_000;
+      const keyMaxMessagesPerMinute = Math.max(
+        1,
+        Math.floor(
+          remainingCapDollars / PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
+        )
+      );
+
+      const keyRemainingMessages = await rateLimiter({
+        key: makeKeyCapRateLimitKey(keyAuth.id),
+        maxPerTimeframe: keyMaxMessagesPerMinute,
+        timeframeSeconds: 60,
+        logger,
+      });
+
+      if (keyRemainingMessages <= 0) {
+        logger.info(
+          {
+            workspaceId: owner.sId,
+            keyId: keyAuth.id,
+            remainingCapDollars,
+          },
+          "Pre-emptive rate limit triggered for key cap."
+        );
+
+        statsDClient.increment(
+          "assistant.rate_limiter.key_cap.credit_based_limit_triggered",
+          1,
+          { workspace_id: owner.sId }
+        );
+
+        return {
+          isLimitReached: true,
+          limitType: "rate_limit_error",
+        };
+      }
+    }
+  }
+
+  return {
+    isLimitReached: false,
+    limitType: null,
+  };
+}
+
 async function isMessagesLimitReached(
   auth: Authenticator,
   {
@@ -1626,64 +1741,13 @@ async function isMessagesLimitReached(
   const owner = auth.getNonNullableWorkspace();
   const plan = auth.getNonNullablePlan();
 
-  // For programmatic usage, apply credit-based rate limiting.
-  // This prevents close-to-0 credit attacks where many messages are sent simultaneously
-  // before token usage is computed. Rate limit is based on total credit amount in dollars.
   if (isProgrammaticUsage(auth, { userMessageOrigin: context.origin })) {
-    const activeCredits = await CreditResource.listActive(auth);
-
-    // Calculate total remaining credits in dollars (micro USD / 1,000,000).
-    const totalRemainingCreditsDollars =
-      activeCredits.reduce(
-        (sum, c) => sum + (c.initialAmountMicroUsd - c.consumedAmountMicroUsd),
-        0
-      ) / 1_000_000;
-
-    // Minimum of 1 to allow at least some messages even with very low credits.
-    const maxMessagesPerMinute = Math.max(
-      1,
-      Math.floor(
-        totalRemainingCreditsDollars /
-          PROGRAMMATIC_RATE_LIMIT_DOLLARS_PER_MESSAGE
-      )
-    );
-
-    const remainingMessages = await rateLimiter({
-      key: makeProgrammaticUsageRateLimitKeyForWorkspace(owner),
-      maxPerTimeframe: maxMessagesPerMinute,
-      timeframeSeconds: 60,
-      logger,
-    });
-
-    if (remainingMessages <= 0) {
-      logger.info(
-        {
-          workspaceId: owner.sId,
-          totalRemainingCreditsDollars,
-        },
-        "Pre-emptive rate limit triggered for programmatic usage."
-      );
-
-      statsDClient.increment(
-        "assistant.rate_limiter.programmatic_usage.credit_based_limit_triggered",
-        1,
-        { workspace_id: owner.sId }
-      );
-
-      return {
-        isLimitReached: true,
-        limitType: "rate_limit_error",
-      };
-    }
-
-    return {
-      isLimitReached: false,
-      limitType: null,
-    };
+    return checkProgrammaticUsageRateLimit(auth);
   }
 
   // Checking rate limit
-  const activeSeats = await countActiveSeatsInWorkspaceCached(owner.sId);
+  const activeSeats =
+    await MembershipResource.countActiveSeatsInWorkspaceCached(owner.sId);
 
   const userMessagesLimit = 10 * activeSeats;
   const remainingMessages = await rateLimiter({

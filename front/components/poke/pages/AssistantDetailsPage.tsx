@@ -18,22 +18,20 @@ import { JsonViewer } from "@textea/json-viewer";
 import { AgentOverviewTable } from "@app/components/poke/assistants/AgentOverviewTable";
 import { ConversationAgentDataTable } from "@app/components/poke/conversation/agent_table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { TriggerDataTable } from "@app/components/poke/triggers/table";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { decodeSqids } from "@app/lib/utils";
 import { usePokeAgentDetails } from "@app/poke/swr/agent_details";
-import type { WorkspaceType } from "@app/types";
 import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
-interface AssistantDetailsPageProps {
-  owner: WorkspaceType;
-  aId: string;
-}
+export function AssistantDetailsPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Assistants`);
 
-export function AssistantDetailsPage({
-  owner,
-  aId,
-}: AssistantDetailsPageProps) {
+  const aId = useRequiredPathParam("aId");
   const { isDark } = useTheme();
 
   const {

@@ -1,15 +1,13 @@
-import { Op } from "sequelize";
-
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import {
   AgentMessageModel,
-  ConversationParticipantModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
-import { UserModel } from "@app/lib/resources/storage/models/user";
+import { UserResource } from "@app/lib/resources/user_resource";
 import type {
   AgentParticipantType,
   ConversationParticipantsType,
@@ -21,23 +19,7 @@ import type {
 import { ConversationError, Err, formatUserFullName, Ok } from "@app/types";
 
 async function fetchAllUsersById(userIds: ModelId[]) {
-  const users = (
-    await UserModel.findAll({
-      attributes: [
-        "id",
-        "sId",
-        "firstName",
-        "lastName",
-        "imageUrl",
-        "username",
-      ],
-      where: {
-        id: {
-          [Op.in]: userIds,
-        },
-      },
-    })
-  ).filter((u) => u !== null) as UserModel[];
+  const users = await UserResource.fetchByModelIds(userIds);
 
   return users.map((u) => ({
     id: u.id,
@@ -142,13 +124,10 @@ export async function fetchConversationParticipants(
   );
 
   // We fetch users participants from the conversation participants table
-  const participants = await ConversationParticipantModel.findAll({
-    where: {
-      conversationId: conversation.id,
-      workspaceId: owner.id,
-    },
-    order: [["createdAt", "ASC"]],
-  });
+  const participants = await ConversationResource.listParticipantDetails(
+    auth,
+    conversation
+  );
   const userIds = participants.map((p) => p.userId);
   const creatorId = userIds[0]; // The current participant who was added first in the conversation is considered as the creator
 

@@ -8,7 +8,8 @@ import type {
   MaxMessagesTimeframeType,
   Result,
 } from "@app/types";
-import { assertNever, Err, normalizeError, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class RateLimitError extends Error {}
 

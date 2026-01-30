@@ -1,11 +1,13 @@
 import { faker } from "@faker-js/faker";
 import { expect } from "vitest";
 
-import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { PlanModel } from "@app/lib/models/plan";
 import { PRO_PLAN_SEAT_29_CODE } from "@app/lib/plans/plan_codes";
 import { upsertProPlans } from "@app/lib/plans/pro_plans";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
+import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { WorkspaceType } from "@app/types";
 
@@ -22,17 +24,23 @@ export class WorkspaceFactory {
     const newPlan = await PlanModel.findOne({
       where: { code: PRO_PLAN_SEAT_29_CODE },
     });
+    if (!newPlan) {
+      throw new Error(`Plan ${PRO_PLAN_SEAT_29_CODE} not found`);
+    }
     const now = new Date();
 
-    await SubscriptionModel.create({
-      sId: generateRandomModelSId(),
-      workspaceId: workspace.id,
-      planId: newPlan?.id,
-      status: "active",
-      startDate: now,
-      stripeSubscriptionId: null,
-      endDate: null,
-    });
+    await SubscriptionResource.makeNew(
+      {
+        sId: generateRandomModelSId(),
+        workspaceId: workspace.id,
+        planId: newPlan.id,
+        status: "active",
+        startDate: now,
+        stripeSubscriptionId: null,
+        endDate: null,
+      },
+      renderPlanFromModel({ plan: newPlan })
+    );
 
     return {
       ...renderLightWorkspaceType({ workspace }),

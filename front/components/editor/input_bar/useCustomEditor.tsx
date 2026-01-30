@@ -7,15 +7,12 @@ import { StarterKit } from "@tiptap/starter-kit";
 import { useEffect, useMemo } from "react";
 
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { DataSourceLinkExtension } from "@app/components/editor/extensions/input_bar/DataSourceLinkExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
 import { PastedAttachmentExtension } from "@app/components/editor/extensions/input_bar/PastedAttachmentExtension";
 import { URLDetectionExtension } from "@app/components/editor/extensions/input_bar/URLDetectionExtension";
 import { URLStorageExtension } from "@app/components/editor/extensions/input_bar/URLStorageExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { BlockquoteExtension } from "@app/components/editor/input_bar/BlockquoteExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { emojiPluginKey } from "@app/components/editor/input_bar/emojiSuggestion";
@@ -202,13 +199,25 @@ export const buildEditorExtensions = ({
       hardBreak: false, // Disable the built-in Shift+Enter. We handle it ourselves in the keymap extension
       strike: false,
       link: false, // Disable built-in Link extension, using custom LinkExtension instead
-      paragraph: false, // Disable built-in paragraph, use custom EmptyLineParagraphExtension instead
+      paragraph: {
+        HTMLAttributes: {
+          class: markdownStyles.paragraph(),
+        },
+      },
       heading: {
         levels: [1],
       },
       blockquote: false, // Disable default blockquote, we use a custom one
-      orderedList: false, // Disable default orderedList, we use custom OrderedListExtension
-      listItem: false, // Disable default listItem, we use custom ListItemExtension
+      orderedList: {
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      },
+      listItem: {
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
+      },
       // Markdown styles configuration.
       code: {
         HTMLAttributes: {
@@ -224,24 +233,6 @@ export const buildEditorExtensions = ({
         HTMLAttributes: {
           class: markdownStyles.unorderedList(),
         },
-      },
-    }),
-    // Custom ordered list and list item extensions to preserve start attribute
-    OrderedListExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.orderedList(),
-      },
-    }),
-    ListItemExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.list(),
-      },
-    }),
-    // Custom paragraph extension to preserve empty lines in markdown
-    // See: https://github.com/ueberdosis/tiptap/issues/7269
-    EmptyLineParagraphExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.paragraph(),
       },
     }),
     BlockquoteExtension.configure({

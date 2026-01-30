@@ -16,10 +16,12 @@ import type {
 } from "@app/types";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types";
 
+// Next.js config must use literal values (cannot be statically analyzed otherwise).
+// If wishing to change this value, see DOCUMENT_UPSERT_BODY_PARSER_LIMIT in lib/api/config.ts.
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: "8mb",
+      sizeLimit: "16mb",
     },
   },
 };

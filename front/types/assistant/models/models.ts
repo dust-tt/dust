@@ -26,6 +26,11 @@ import {
   CLAUDE_4_SONNET_20250514_MODEL_ID,
   CLAUDE_4_SONNET_DEFAULT_MODEL_CONFIG,
 } from "./anthropic";
+// Custom models (generated at build time from GCS, empty in dev).
+import {
+  CUSTOM_MODEL_CONFIGS,
+  CUSTOM_MODEL_IDS,
+} from "./custom_models.generated";
 import {
   DEEPSEEK_CHAT_MODEL_CONFIG,
   DEEPSEEK_CHAT_MODEL_ID,
@@ -41,7 +46,6 @@ import {
   FIREWORKS_KIMI_K2_INSTRUCT_MODEL_ID,
 } from "./fireworks";
 import {
-  GEMINI_2_5_FLASH_IMAGE_MODEL_ID,
   GEMINI_2_5_FLASH_LITE_MODEL_CONFIG,
   GEMINI_2_5_FLASH_LITE_MODEL_ID,
   GEMINI_2_5_FLASH_MODEL_CONFIG,
@@ -50,6 +54,7 @@ import {
   GEMINI_2_5_PRO_MODEL_ID,
   GEMINI_3_FLASH_MODEL_CONFIG,
   GEMINI_3_FLASH_MODEL_ID,
+  GEMINI_3_PRO_IMAGE_MODEL_ID,
   GEMINI_3_PRO_MODEL_CONFIG,
   GEMINI_3_PRO_MODEL_ID,
 } from "./google_ai_studio";
@@ -130,7 +135,8 @@ import {
   GROK_4_MODEL_ID,
 } from "./xai";
 
-export const MODEL_IDS = [
+// Static model IDs (compile-time known, used for pricing maps).
+export const STATIC_MODEL_IDS = [
   GPT_3_5_TURBO_MODEL_ID,
   GPT_4_TURBO_MODEL_ID,
   GPT_4O_MODEL_ID,
@@ -189,13 +195,19 @@ export const MODEL_IDS = [
   NOOP_MODEL_ID,
 ] as const;
 
+// Type for static model IDs only (excludes custom models from GCS).
+export type StaticModelIdType = (typeof STATIC_MODEL_IDS)[number];
+
+// Combined model IDs: static + custom (custom models generated at build time from GCS).
+export const MODEL_IDS = [...STATIC_MODEL_IDS, ...CUSTOM_MODEL_IDS] as const;
+
 export const isModelId = (modelId: string): modelId is ModelIdType =>
   MODEL_IDS.includes(modelId as ModelIdType);
 
 export const ModelIdCodec = ioTsEnum<(typeof MODEL_IDS)[number]>(MODEL_IDS);
 
 // Image generation model IDs (internal-only, not user-selectable)
-export const IMAGE_MODEL_IDS = [GEMINI_2_5_FLASH_IMAGE_MODEL_ID] as const;
+export const IMAGE_MODEL_IDS = [GEMINI_3_PRO_IMAGE_MODEL_ID] as const;
 
 export type ImageModelIdType = (typeof IMAGE_MODEL_IDS)[number];
 export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
@@ -254,5 +266,7 @@ export const SUPPORTED_MODEL_CONFIGS: ModelConfigurationType[] = [
   GROK_4_1_FAST_REASONING_MODEL_CONFIG,
   GROK_4_1_FAST_NON_REASONING_MODEL_CONFIG,
   NOOP_MODEL_CONFIG,
+  // Custom models (generated at build time from GCS).
+  ...CUSTOM_MODEL_CONFIGS,
 ];
 export default SUPPORTED_MODEL_CONFIGS;

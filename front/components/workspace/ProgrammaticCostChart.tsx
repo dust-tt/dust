@@ -58,6 +58,8 @@ export interface BaseProgrammaticCostChartProps {
   isProgrammaticCostError: boolean;
   groupBy: GroupByType | undefined;
   setGroupBy: (groupBy: GroupByType | undefined) => void;
+  groupByCount: number;
+  setGroupByCount: (count: number) => void;
   filter: Partial<Record<GroupByType, string[]>>;
   setFilter: React.Dispatch<
     React.SetStateAction<Partial<Record<GroupByType, string[]>>>
@@ -81,13 +83,21 @@ const GROUP_BY_TYPE_OPTIONS: {
 }[] = [
   { value: "agent", label: "By Agent" },
   { value: "origin", label: "By Source" },
-  { value: "apiKey", label: "By Api Key" },
+  { value: "apiKey", label: "By API Key" },
 ];
 
 const GROUP_BY_OPTIONS: {
   value: "global" | GroupByType;
   label: string;
 }[] = [{ value: "global", label: "Global" }, ...GROUP_BY_TYPE_OPTIONS];
+
+const TOP_K_OPTIONS = [
+  { value: 5, label: "Top 5" },
+  { value: 10, label: "Top 10" },
+  { value: 15, label: "Top 15" },
+  { value: 20, label: "Top 20" },
+  { value: 30, label: "Top 30" },
+];
 
 function getColorClassName(
   groupBy: GroupByType | undefined,
@@ -198,6 +208,8 @@ export function BaseProgrammaticCostChart({
   isProgrammaticCostError,
   groupBy,
   setGroupBy,
+  groupByCount,
+  setGroupByCount,
   filter,
   setFilter,
   selectedPeriod,
@@ -637,6 +649,30 @@ export function BaseProgrammaticCostChart({
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          {groupBy && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  label={
+                    TOP_K_OPTIONS.find((opt) => opt.value === groupByCount)
+                      ?.label ?? "Top 5"
+                  }
+                  size="xs"
+                  variant="outline"
+                  isSelect
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {TOP_K_OPTIONS.map((option) => (
+                  <DropdownMenuItem
+                    key={option.value}
+                    label={option.label}
+                    onClick={() => setGroupByCount(option.value)}
+                  />
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       }
       bottomControls={
@@ -782,6 +818,7 @@ export function ProgrammaticCostChart({
   billingCycleStartDay,
 }: ProgrammaticCostChartProps) {
   const [groupBy, setGroupBy] = useState<GroupByType | undefined>(undefined);
+  const [groupByCount, setGroupByCount] = useState<number>(5);
   const [filter, setFilter] = useState<Partial<Record<GroupByType, string[]>>>(
     {}
   );
@@ -811,6 +848,7 @@ export function ProgrammaticCostChart({
     selectedPeriod,
     billingCycleStartDay,
     groupBy,
+    groupByCount,
     filter,
   });
 
@@ -821,6 +859,8 @@ export function ProgrammaticCostChart({
       isProgrammaticCostError={!!isProgrammaticCostError}
       groupBy={groupBy}
       setGroupBy={setGroupBy}
+      groupByCount={groupByCount}
+      setGroupByCount={setGroupByCount}
       filter={filter}
       setFilter={setFilter}
       selectedPeriod={selectedPeriod}

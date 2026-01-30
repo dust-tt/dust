@@ -1,4 +1,6 @@
 import uniq from "lodash/uniq";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import type { InputBarContainerProps } from "@app/components/assistant/conversation/input_bar/InputBarContainer";
 import type { ToolNotificationEvent } from "@app/lib/actions/mcp";
@@ -78,8 +80,11 @@ export type VirtuosoMessageListContext = {
     actionsToShow: InputBarContainerProps["actions"];
     resetConversation: () => void;
     clientSideMCPServerIds?: string[];
+    skipToolsValidation?: boolean;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
 };
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {
@@ -113,10 +118,6 @@ export const isMessageTemporayState = (
 
 export const getMessageDate = (msg: VirtuosoMessage): Date =>
   new Date(msg.created);
-
-export const isProjectConversation = (
-  conversation: ConversationWithoutContentType
-): boolean => !!conversation.spaceId;
 
 export const makeInitialMessageStreamState = (
   message: LightAgentMessageType | LightAgentMessageWithActionsType

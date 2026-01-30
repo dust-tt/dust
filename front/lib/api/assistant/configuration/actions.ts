@@ -1,12 +1,13 @@
 import assert from "assert";
 import type { Transaction } from "sequelize";
 
-import { DEFAULT_WEBSEARCH_ACTION_NAME } from "@app/lib/actions/constants";
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { UnsavedMCPServerConfigurationType } from "@app/lib/actions/types/agent";
 import { isServerSideMCPServerConfiguration } from "@app/lib/actions/types/guards";
+import { WEB_SEARCH_BROWSE_SERVER_NAME } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import type {
   DataSourceConfiguration,
+  ProjectConfiguration,
   TableDataSourceConfiguration,
 } from "@app/lib/api/assistant/configuration/types";
 import type { Authenticator } from "@app/lib/auth";
@@ -15,9 +16,11 @@ import {
   AgentChildAgentConfigurationModel,
   AgentMCPServerConfigurationModel,
 } from "@app/lib/models/agent/actions/mcp";
+import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import logger from "@app/logger/logger";
@@ -62,7 +65,7 @@ export async function createAgentActionConfiguration(
         // to the action name
         name:
           serverName !== action.name &&
-          serverName !== DEFAULT_WEBSEARCH_ACTION_NAME
+          serverName !== WEB_SEARCH_BROWSE_SERVER_NAME
             ? action.name
             : null,
         singleToolDescriptionOverride:
@@ -94,6 +97,13 @@ export async function createAgentActionConfiguration(
         mcpConfig,
       });
     }
+    // Creating the ProjectConfiguration if configured
+    if (action.dustProject) {
+      await createProjectConfiguration(auth, t, {
+        projectConfiguration: action.dustProject,
+        mcpConfig,
+      });
+    }
 
     return new Ok({
       id: mcpConfig.id,
@@ -110,6 +120,7 @@ export async function createAgentActionConfiguration(
       additionalConfiguration: action.additionalConfiguration,
       dustAppConfiguration: action.dustAppConfiguration,
       secretName: action.secretName,
+      dustProject: action.dustProject,
       jsonSchema: action.jsonSchema,
     });
   });
@@ -289,5 +300,46 @@ async function createChildAgentConfiguration(
       workspaceId: auth.getNonNullableWorkspace().id,
     },
     { transaction: t }
+  );
+}
+
+async function createProjectConfiguration(
+  auth: Authenticator,
+  t: Transaction,
+  {
+    projectConfiguration,
+    mcpConfig,
+  }: {
+    projectConfiguration: ProjectConfiguration;
+    mcpConfig: AgentMCPServerConfigurationModel;
+  }
+) {
+  const owner = auth.getNonNullableWorkspace();
+
+  // Fetch space by its sId to get the numeric ID.
+  const space = await SpaceResource.fetchById(
+    auth,
+    projectConfiguration.projectId
+  );
+
+  if (!space) {
+    logger.warn(
+      {
+        projectId: projectConfiguration.projectId,
+      },
+      "createProjectConfiguration: project not found"
+    );
+    return;
+  }
+
+  return AgentProjectConfigurationModel.create(
+    {
+      projectId: space.id,
+      mcpServerConfigurationId: mcpConfig.id,
+      workspaceId: owner.id,
+    },
+    {
+      transaction: t,
+    }
   );
 }

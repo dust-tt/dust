@@ -7,6 +7,10 @@ import { useRef } from "react";
 import { Button } from "@sparkle/components/Button";
 import { Chip } from "@sparkle/components/Chip";
 import { Icon } from "@sparkle/components/Icon";
+import {
+  KeyboardShortcut,
+  KeyboardShortcutProps,
+} from "@sparkle/components/KeyboardShortcut";
 import { LinkWrapper, LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import { ScrollArea } from "@sparkle/components/ScrollArea";
 import { SearchInput, SearchInputProps } from "@sparkle/components/SearchInput";
@@ -80,10 +84,7 @@ export const menuStyleClasses = {
     "-s-mx-1 s-my-1 s-h-px",
     "s-bg-separator dark:s-bg-separator-night"
   ),
-  shortcut: cn(
-    "s-ml-auto s-text-xs s-tracking-widest",
-    "s-text-primary-400 dark:s-text-primary-400-night"
-  ),
+  shortcut: "s-ml-auto",
 };
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -243,9 +244,8 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName;
 
-interface DropdownMenuContentProps extends React.ComponentPropsWithoutRef<
-  typeof DropdownMenuPrimitive.Content
-> {
+interface DropdownMenuContentProps
+  extends React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> {
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
   dropdownHeaders?: React.ReactNode;
@@ -488,10 +488,8 @@ const DropdownMenuRadioItem = React.forwardRef<
 ));
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName;
 
-interface DropdownMenuTagItemProps extends Omit<
-  DropdownMenuItemProps,
-  "label" | "icon" | "onClick"
-> {
+interface DropdownMenuTagItemProps
+  extends Omit<DropdownMenuItemProps, "label" | "icon" | "onClick"> {
   label: string;
   size?: React.ComponentProps<typeof Chip>["size"];
   color?: React.ComponentProps<typeof Chip>["color"];
@@ -592,12 +590,32 @@ const DropdownMenuSeparator = React.forwardRef<
 ));
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName;
 
+type DropdownMenuShortcutProps = React.HTMLAttributes<HTMLSpanElement> & {
+  shortcut?: KeyboardShortcutProps["shortcut"];
+};
+
 const DropdownMenuShortcut = ({
   className,
+  shortcut,
+  children,
   ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
+}: DropdownMenuShortcutProps) => {
+  const resolvedShortcut = shortcut ?? "";
+
+  if (!resolvedShortcut && children) {
+    return (
+      <span className={cn(className)} {...props}>
+        {children}
+      </span>
+    );
+  }
+
   return (
-    <span className={cn(menuStyleClasses.shortcut, className)} {...props} />
+    <KeyboardShortcut
+      shortcut={resolvedShortcut}
+      className={cn(menuStyleClasses.shortcut, className)}
+      {...props}
+    />
   );
 };
 DropdownMenuShortcut.displayName = "DropdownMenuShortcut";

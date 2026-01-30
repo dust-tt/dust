@@ -18,8 +18,9 @@ const config: KnipConfig = {
     "@typescript-eslint/parser",
     "@dust-tt/client",
     "@eslint/js",
-    "lint-staged",
     "pino-pretty",
+    "danger",
+    "tsconfig-paths-webpack-plugin",
   ],
   paths: {
     "@connectors/*": ["./src/*"],

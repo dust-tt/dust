@@ -141,7 +141,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const hasSpaceConversations = hasFeature("projects");
 
-  const { summary, mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const {
+    summary,
+    isLoading: isSummaryLoading,
+    mutate: mutateSpaceSummary,
+  } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: !hasSpaceConversations },
   });
@@ -175,8 +179,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
     useProjectsSectionCollapsed();
-
-  const hasSkills = hasFeature("skills");
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
@@ -368,7 +370,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             ) : null
           }
         >
-          {summary.length > 0 ? (
+          {isSummaryLoading ? (
+            <div className="flex items-center justify-center">
+              <Spinner size="xs" />
+            </div>
+          ) : summary.length > 0 ? (
             <ProjectsList owner={owner} summary={summary} />
           ) : (
             <NavigationListItem
@@ -387,6 +393,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     setIsCreateProjectModalOpen,
     isProjectsSectionCollapsed,
     setProjectsSectionCollapsed,
+    isSummaryLoading,
   ]);
 
   const conversationsList = useMemo(() => {
@@ -587,7 +594,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         />
                       </>
                     )}
-                    {hasSkills && isBuilder(owner) && (
+                    {isBuilder(owner) && (
                       <>
                         <DropdownMenuLabel>Skills</DropdownMenuLabel>
                         <DropdownMenuItem

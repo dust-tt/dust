@@ -84,8 +84,15 @@ async function handler(
         });
       }
 
-      const { title, visibility, spaceId, message, contentFragments } =
-        bodyValidation.right;
+      const {
+        title,
+        visibility,
+        spaceId,
+        message,
+        contentFragments,
+        metadata,
+        skipToolsValidation,
+      } = bodyValidation.right;
 
       if (message?.context.clientSideMCPServerIds) {
         const hasServerAccess = await concurrentExecutor(
@@ -129,6 +136,7 @@ async function handler(
         title,
         visibility,
         spaceId: spaceModelId,
+        metadata,
       });
 
       const newContentFragments: ContentFragmentType[] = [];
@@ -254,8 +262,7 @@ async function handler(
             clientSideMCPServerIds:
               message.context.clientSideMCPServerIds ?? [],
           },
-          // For now we never skip tools when interacting with agents from the web client.
-          skipToolsValidation: false,
+          skipToolsValidation: skipToolsValidation ?? false,
         });
         if (messageRes.isErr()) {
           return apiError(req, res, messageRes.error);

@@ -12,6 +12,7 @@ import {
   ClipboardIcon,
   ConversationContainer,
   ConversationMessage,
+  DiffBlock,
   GithubIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -93,6 +94,7 @@ export const ConversationExample = () => {
             ]}
           >
             <Markdown content={example} />
+            <DiffBlock content={diffExample} onApply={() => {}} />
           </ConversationMessage>
 
           <ConversationMessage
@@ -186,6 +188,15 @@ footnote [^1]
 | October 31  | 19                    | 10                   |
 
 `;
+
+const diffExample = `@@ -1,6 +1,7 @@
+ import { sum } from "./math";
+-const total = items.length;
++const total = items.filter(Boolean).length;
+ export const average = (items: number[]) => {
+-  return total / items.length;
++  return total / Math.max(items.length, 1);
+ };`;
 
 export const ConversationHandoffExample = () => {
   return (

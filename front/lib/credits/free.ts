@@ -13,7 +13,8 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const BRACKET_1_USERS = 10;
 const BRACKET_1_MICRO_USD_PER_USER = 5_000_000; // $5
@@ -25,11 +26,29 @@ const BRACKET_3_MICRO_USD_PER_USER = 1_000_000; // $1
 const TRIAL_CREDIT_MICRO_USD = 5_000_000; // $5
 
 const MONTHLY_BILLING_CYCLE_SECONDS = 30 * 24 * 60 * 60; // ~30 days
+const YEARLY_BILLING_CYCLE_SECONDS = 365 * 24 * 60 * 60; // ~365 days
 
 // 5 days
 const USER_COUNT_CUTOFF = 5 * 24 * 60 * 60 * 1000;
 
 type CustomerPaymentStatus = "paying" | "not_paying" | "trialing";
+
+function getBillingInterval(
+  stripeSubscription: Stripe.Subscription
+): "month" | "year" {
+  const item = stripeSubscription.items.data[0];
+  if (!item?.price.recurring) {
+    logger.error(
+      {
+        panic: true,
+        stripeSubscriptionId: stripeSubscription.id,
+      },
+      "Unexpected: Cannot have a non-recurring item in a subscription"
+    );
+    return "month";
+  }
+  return item.price.recurring.interval === "year" ? "year" : "month";
+}
 
 /**
  * Returns true if
@@ -109,12 +128,16 @@ export async function getCustomerPaymentStatus(
     return "paying";
   }
 
+  const billingInterval = getBillingInterval(stripeSubscription);
+  const lookbackSeconds =
+    billingInterval === "year"
+      ? YEARLY_BILLING_CYCLE_SECONDS + MONTHLY_BILLING_CYCLE_SECONDS // ~13 months
+      : MONTHLY_BILLING_CYCLE_SECONDS * 2; // ~60 days
+
   const paidInvoices = await getSubscriptionInvoices({
     subscriptionId: stripeSubscription.id,
     status: "paid",
-    createdSinceDate: new Date(
-      Date.now() - MONTHLY_BILLING_CYCLE_SECONDS * 2 * 1000
-    ),
+    createdSinceDate: new Date(Date.now() - lookbackSeconds * 1000),
   });
 
   if (paidInvoices && paidInvoices.length > 0) {

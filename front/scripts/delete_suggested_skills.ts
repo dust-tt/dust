@@ -1,15 +1,5 @@
-import type { Transaction } from "sequelize";
-
 import { Authenticator } from "@app/lib/auth";
-import {
-  SkillConfigurationModel,
-  SkillDataSourceConfigurationModel,
-  SkillMCPServerConfigurationModel,
-  SkillVersionModel,
-} from "@app/lib/models/skill";
-import { GroupSkillModel } from "@app/lib/models/skill/group_skill";
-import { GroupResource } from "@app/lib/resources/group_resource";
-import { frontSequelize } from "@app/lib/resources/storage";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
@@ -47,12 +37,13 @@ async function deleteSuggestedSkills(
     "Found workspace"
   );
 
-  // Find all suggested skills
-  const suggestedSkills = await SkillConfigurationModel.findAll({
-    where: {
-      workspaceId: workspace.id,
-      status: "suggested",
-    },
+  // Create an internal admin authenticator for the workspace
+  const auth = await Authenticator.internalAdminForWorkspace(workspace.sId);
+
+  // Find all suggested skills using the resource layer
+  const suggestedSkills = await SkillResource.listByWorkspace(auth, {
+    status: "suggested",
+    onlyCustom: true,
   });
 
   logger.info(
@@ -74,162 +65,27 @@ async function deleteSuggestedSkills(
   for (const skill of suggestedSkills) {
     try {
       logger.info(
-        { skillId: skill.id, skillName: skill.name },
+        { skillModelId: skill.id, skillName: skill.name },
         execute ? "Deleting suggested skill" : "Would delete skill (dry run)"
       );
 
       if (execute) {
-        // Create an internal admin authenticator for the workspace
-        const auth = await Authenticator.internalAdminForWorkspace(
-          workspace.sId
+        const deleteResult = await skill.delete(auth);
+        if (deleteResult.isErr()) {
+          throw deleteResult.error;
+        }
+
+        logger.info(
+          { skillModelId: skill.id, skillName: skill.name },
+          "Successfully deleted suggested skill and all related resources"
         );
-
-        // Use a transaction to ensure all deletions succeed or all are rolled back
-        await frontSequelize.transaction(async (transaction: Transaction) => {
-          // Find the editor group linked to this skill
-          const groupSkillLinks = await GroupSkillModel.findAll({
-            where: {
-              skillConfigurationId: skill.id,
-              workspaceId: workspace.id,
-            },
-            transaction,
-          });
-
-          logger.info(
-            {
-              skillId: skill.id,
-              skillName: skill.name,
-              groupCount: groupSkillLinks.length,
-            },
-            "Found group-skill links to delete"
-          );
-
-          // Delete all group-skill links
-          for (const groupSkillLink of groupSkillLinks) {
-            logger.info(
-              {
-                skillId: skill.id,
-                skillName: skill.name,
-                groupId: groupSkillLink.groupId,
-              },
-              "Deleting group-skill link"
-            );
-            await groupSkillLink.destroy({ transaction });
-          }
-
-          // Delete the associated editor groups
-          for (const groupSkillLink of groupSkillLinks) {
-            // Fetch the group to delete it
-            const group = await GroupResource.fetchByModelId(
-              groupSkillLink.groupId
-            );
-
-            if (group) {
-              logger.info(
-                {
-                  skillId: skill.id,
-                  skillName: skill.name,
-                  groupId: group.id,
-                  groupName: group.name,
-                },
-                "Deleting editor group"
-              );
-
-              // Delete the group
-              const deleteResult = await group.delete(auth, { transaction });
-              if (deleteResult.isErr()) {
-                throw deleteResult.error;
-              }
-            } else {
-              logger.warn(
-                {
-                  skillId: skill.id,
-                  skillName: skill.name,
-                  groupId: groupSkillLink.groupId,
-                },
-                "Group not found, already deleted"
-              );
-            }
-          }
-
-          // Delete data source configurations
-          const deletedDataSourceConfigs =
-            await SkillDataSourceConfigurationModel.destroy({
-              where: {
-                skillConfigurationId: skill.id,
-                workspaceId: workspace.id,
-              },
-              transaction,
-            });
-
-          logger.info(
-            {
-              skillId: skill.id,
-              skillName: skill.name,
-              deletedDataSourceConfigs,
-            },
-            "Deleted data source configurations"
-          );
-
-          // Delete MCP server configurations
-          const deletedMcpConfigs =
-            await SkillMCPServerConfigurationModel.destroy({
-              where: {
-                skillConfigurationId: skill.id,
-                workspaceId: workspace.id,
-              },
-              transaction,
-            });
-
-          logger.info(
-            {
-              skillId: skill.id,
-              skillName: skill.name,
-              deletedMcpConfigs,
-            },
-            "Deleted MCP server configurations"
-          );
-
-          // Delete skill versions
-          const deletedVersions = await SkillVersionModel.destroy({
-            where: {
-              skillConfigurationId: skill.id,
-              workspaceId: workspace.id,
-            } as any,
-            transaction,
-          });
-
-          logger.info(
-            {
-              skillId: skill.id,
-              skillName: skill.name,
-              deletedVersions,
-            },
-            "Deleted skill versions"
-          );
-
-          // Finally, delete the skill configuration itself
-          await skill.destroy({ transaction });
-
-          logger.info(
-            {
-              skillId: skill.id,
-              skillName: skill.name,
-              deletedDataSourceConfigs,
-              deletedMcpConfigs,
-              deletedVersions,
-              deletedGroups: groupSkillLinks.length,
-            },
-            "Successfully deleted suggested skill and all related resources"
-          );
-        });
       }
 
       successCount++;
     } catch (error) {
       logger.error(
         {
-          skillId: skill.id,
+          skillModelId: skill.id,
           skillName: skill.name,
           error,
         },

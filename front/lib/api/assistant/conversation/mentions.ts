@@ -58,11 +58,11 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   Err,
   isAgentMention,
   isAgentMessageType,
   isContentFragmentType,
+  isProjectConversation,
   isRichUserMention,
   isUserMention,
   isUserMessageType,
@@ -70,6 +70,7 @@ import {
   removeNulls,
   toMentionType,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { getConversation } from "./fetch";
 
@@ -129,6 +130,22 @@ async function isUserMemberOfSpace(
   }
 
   return space.isMember(userAuth);
+}
+
+/**
+ * Check if the current user can add members to a project space.
+ * TODO: remove when dedicated method is merged in space
+ */
+async function canCurrentUserAddProjectMembers(
+  auth: Authenticator,
+  spaceId: string
+): Promise<boolean> {
+  const space = await SpaceResource.fetchById(auth, spaceId);
+  if (!space) {
+    return false;
+  }
+
+  return space.isEditor(auth);
 }
 
 export const createUserMentions = async (
@@ -195,18 +212,34 @@ export const createUserMentions = async (
         }
 
         // Auto approve mentions for users who are members of the conversation's project space.
-        if (!autoApprove && conversation.spaceId) {
+        if (!autoApprove && isProjectConversation(conversation)) {
           autoApprove = await isUserMemberOfSpace(auth, {
             userId: user.sId,
             spaceId: conversation.spaceId,
           });
         }
 
-        const status: MentionStatusType = !canAccess
-          ? "user_restricted_by_conversation_access"
-          : autoApprove
-            ? "approved"
-            : "pending";
+        // TODO: Alternative approach would be to always set pending_project_membership for
+        // project conversations and decide at render time whether to show "add to project"
+        // (for editors) or "request access" (for non-editors). This would require building
+        // a request access flow. See https://github.com/dust-tt/dust/issues/20852
+        let status: MentionStatusType;
+        if (!canAccess) {
+          status = "user_restricted_by_conversation_access";
+        } else if (autoApprove) {
+          status = "approved";
+        } else if (conversation.spaceId) {
+          // Project conversation: check if current user can add members
+          const canAddMember = await canCurrentUserAddProjectMembers(
+            auth,
+            conversation.spaceId
+          );
+          status = canAddMember
+            ? "pending_project_membership"
+            : "user_restricted_by_conversation_access";
+        } else {
+          status = "pending_conversation_access";
+        }
 
         const mentionModel = await MentionModel.create(
           {
@@ -662,7 +695,7 @@ export const createAgentMessages = async (
             }
 
             // In case of Project's conversation, we need to check if the agent configuration is using only the project spaces or public spaces, otherwise we reject the mention and do not create the agent message.
-            if (conversation.spaceId) {
+            if (isProjectConversation(conversation)) {
               // Check to skip heavy work if the agent configuration is only using the project space.
               if (
                 configuration.requestedSpaceIds.some(
@@ -676,7 +709,7 @@ export const createAgentMessages = async (
                     (spaceId) => spaceId !== conversation.spaceId
                   )
                 );
-                if (spaces.some((space) => !space.isOpen())) {
+                if (spaces.some((space) => !space.isGlobal())) {
                   // This create the mentions from the original user message.
                   // Not to be mixed with the mentions from the agent message (which will be filled later).
                   const mentionRow = await MentionModel.create(
@@ -926,7 +959,7 @@ export async function validateUserMention(
   const isApproval = approvalState === "approved";
 
   // For project conversations, add user to project space first when approving.
-  if (conversation.spaceId && isApproval) {
+  if (isProjectConversation(conversation) && isApproval) {
     const space = await SpaceResource.fetchById(auth, conversation.spaceId);
     if (!space) {
       return new Err({
@@ -1064,6 +1097,10 @@ export async function validateUserMention(
     userMessages: [],
     agentMessages: [],
   };
+  const isPendingStatus = (status: MentionStatusType): boolean =>
+    status === "pending_conversation_access" ||
+    status === "pending_project_membership";
+
   // Find all pending mentions for the same user on conversation messages latest versions.
   for (const messageVersions of conversation.content) {
     const latestMessage = messageVersions[messageVersions.length - 1];
@@ -1072,7 +1109,7 @@ export async function validateUserMention(
       latestMessage.visibility !== "deleted" &&
       !isContentFragmentType(latestMessage) &&
       latestMessage.richMentions.some(
-        (m) => m.status === "pending" && m.id === userId
+        (m) => isPendingStatus(m.status) && m.id === userId
       )
     ) {
       const mentionModel = await MentionModel.findOne({
@@ -1140,7 +1177,7 @@ export async function validateUserMention(
       conversation,
       action: "subscribed",
       user: user.toJSON(),
-      unread: true,
+      lastReadAt: null,
     });
 
     if (status === "added") {

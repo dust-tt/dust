@@ -28,6 +28,18 @@ export const LATENCY_LEGEND = [
   { key: "median", label: "Median" },
 ] as const;
 
+export const TOOL_EXECUTION_TIME_PALETTE = {
+  avgLatencyMs: "text-blue-500 dark:text-blue-500-night",
+  p50LatencyMs: "text-violet-500 dark:text-violet-500-night",
+  p95LatencyMs: "text-orange-500 dark:text-orange-500-night",
+} as const;
+
+export const TOOL_EXECUTION_TIME_LEGEND = [
+  { key: "avgLatencyMs", label: "Average" },
+  { key: "p50LatencyMs", label: "P50" },
+  { key: "p95LatencyMs", label: "P95" },
+] as const;
+
 export const COST_PALETTE = {
   costMicroUsd: "text-blue-400 dark:text-blue-400-night",
   totalCredits: "text-orange-400 dark:text-orange-400-night",

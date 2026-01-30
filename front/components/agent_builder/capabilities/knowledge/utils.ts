@@ -16,10 +16,8 @@ import {
 } from "@app/components/agent_builder/types";
 import type { BuilderAction } from "@app/components/shared/tools_picker/types";
 import { getMCPServerNameForTemplateAction } from "@app/lib/actions/mcp_helper";
-import {
-  DATA_WAREHOUSE_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
-} from "@app/lib/actions/mcp_internal_actions/constants";
+import { DATA_WAREHOUSE_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
 import type { TemplateActionPreset } from "@app/types";
 

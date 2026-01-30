@@ -13,17 +13,12 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import type { AppType, RunConfig, RunType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const cleanUpConfig = (config: RunConfig) => {
   if (!config) {
@@ -118,8 +113,9 @@ export function ViewAppAPIModal({
               <Page.P>
                 <ul className="text-gray-500">
                   <li>
-                    spaceId:{" "}
-                    <span className="font-bold">{app.space.sId}</span>{" "}
+                    spaceId: <span className="font-bold">
+                      {app.space.sId}
+                    </span>{" "}
                   </li>
                   <li>
                     appId: <span className="font-bold">{app.sId}</span>
@@ -134,7 +130,7 @@ export function ViewAppAPIModal({
                 Use the following cURL command to run the app{" "}
                 <span className="italic">{app.name}</span>:
               </Page.P>
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("run")}`}

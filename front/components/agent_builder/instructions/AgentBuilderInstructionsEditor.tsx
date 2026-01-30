@@ -12,19 +12,19 @@ import { useController } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { SuggestionBubbleMenu } from "@app/components/agent_builder/copilot/SuggestionBubbleMenu";
 import { BlockInsertDropdown } from "@app/components/agent_builder/instructions/BlockInsertDropdown";
 import { InstructionTipsPopover } from "@app/components/agent_builder/instructions/InstructionsTipsPopover";
 import { useBlockInsertDropdown } from "@app/components/agent_builder/instructions/useBlockInsertDropdown";
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { BlockInsertExtension } from "@app/components/editor/extensions/agent_builder/BlockInsertExtension";
-import { HeadingExtension } from "@app/components/editor/extensions/agent_builder/HeadingExtension";
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
+import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
+import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -81,15 +81,29 @@ export function AgentBuilderInstructionsEditor({
   const suggestionHandler = blockDropdown.suggestionOptions;
   const initialContentSetRef = useRef(false);
 
+  const suggestionsContext = useCopilotSuggestions();
+
   const extensions = useMemo(() => {
     const extensions: Extensions = [
       Markdown,
       StarterKit.configure({
         heading: false, // we use a custom one, see below
-        paragraph: false, // we use custom EmptyLineParagraphExtension instead
         hardBreak: false, // we use custom EmptyLineParagraphExtension instead
-        orderedList: false, // we use custom OrderedListExtension instead
-        listItem: false, // we use custom ListItemExtension instead
+        paragraph: {
+          HTMLAttributes: {
+            class: markdownStyles.paragraph(),
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: markdownStyles.orderedList(),
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: markdownStyles.list(),
+          },
+        },
         link: false, // we use custom LinkExtension instead
         bulletList: {
           HTMLAttributes: {
@@ -113,27 +127,10 @@ export function AgentBuilderInstructionsEditor({
           },
         },
       }),
-      // Custom ordered list and list item extensions to preserve start attribute
-      OrderedListExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.orderedList(),
-        },
-      }),
-      ListItemExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.list(),
-        },
-      }),
-      // Custom paragraph extension to preserve empty lines in markdown
-      // See: https://github.com/ueberdosis/tiptap/issues/7269
-      EmptyLineParagraphExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.paragraph(),
-        },
-      }),
       KeyboardShortcutsExtension,
       InstructionBlockExtension,
       AgentInstructionDiffExtension,
+      InstructionSuggestionExtension,
       BlockInsertExtension.configure({
         suggestion: suggestionHandler,
       }),
@@ -247,6 +244,11 @@ export function AgentBuilderInstructionsEditor({
     // Mark as set immediately to prevent race conditions
     initialContentSetRef.current = true;
 
+    // Register the editor with the suggestions context if available.
+    if (suggestionsContext) {
+      suggestionsContext.registerEditor(editor);
+    }
+
     // Use requestAnimationFrame to ensure DOM is fully ready
     // This fixes "Applying a mismatched transaction" error in Safari/iOS
     requestAnimationFrame(() => {
@@ -356,6 +358,7 @@ export function AgentBuilderInstructionsEditor({
     <div className="flex h-full flex-col gap-1">
       <div className="relative p-px">
         <EditorContent editor={editor} />
+        {editor && <SuggestionBubbleMenu editor={editor} />}
         <div className="absolute bottom-2 right-2">
           <InstructionTipsPopover owner={owner} />
         </div>

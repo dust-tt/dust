@@ -48,6 +48,21 @@
       }
     },
     {
+      "name": "front-spa",
+      "path": "front-spa",
+      "settings": {
+        "typescript.preferences.useLabelDetailsInCompletion": true,
+        "typescript.preferences.includePackageJsonAutoImports": "off",
+        "typescript.experimental.useTsgo": true,
+        "files.exclude": {
+          "**/node_modules": true,
+          "**/dist": true,
+          "**/.next": true,
+          "**/workers-build": true
+        }
+      }
+    },
+    {
       "name": "connectors",
       "path": "connectors",
       "settings": {

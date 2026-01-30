@@ -10,6 +10,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 const DEFAULT_EXPIRATION_DAYS = 5;
 const CONCURRENCY = 16;
@@ -133,7 +134,7 @@ async function addFreeCredits(
   );
 
   if (wId) {
-    const workspace = await WorkspaceModel.findOne({ where: { sId: wId } });
+    const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${wId}`);
     }
@@ -217,7 +218,7 @@ async function removeFreeCredits(
   }
 
   if (wId) {
-    const workspace = await WorkspaceModel.findOne({ where: { sId: wId } });
+    const workspace = await WorkspaceResource.fetchById(wId);
     if (!workspace) {
       throw new Error(`Workspace not found: ${wId}`);
     }

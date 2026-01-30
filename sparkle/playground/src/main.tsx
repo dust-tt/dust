@@ -1,4 +1,4 @@
-import "../../dist/sparkle.css";
+import "../../src/styles/tailwind.css";
 import "./index.css";
 
 import React from "react";

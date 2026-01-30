@@ -32,6 +32,16 @@ export interface ServiceConfig {
 
 // Service registry - defines how each service runs
 export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
+  sparkle: {
+    cwd: "sparkle",
+    needsNvm: true,
+    needsEnvSh: false,
+    buildCommand: () => "npm run watch",
+    readinessCheck: {
+      type: "file",
+      path: (env) => `${getWorktreeDir(env.name)}/sparkle/dist/esm/index.js`,
+    },
+  },
   sdk: {
     cwd: "sdks/js",
     needsNvm: true,
@@ -89,6 +99,28 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     needsEnvSh: true,
     buildCommand: () => "./admin/dev_worker.sh",
   },
+  "front-spa-poke": {
+    cwd: "front-spa",
+    needsNvm: false,
+    needsEnvSh: true,
+    buildCommand: (env) => `npm run dev:poke -- --port ${env.ports.frontSpaPoke} --host 127.0.0.1`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.frontSpaPoke}/`,
+    },
+    portKey: "frontSpaPoke",
+  },
+  "front-spa-app": {
+    cwd: "front-spa",
+    needsNvm: false,
+    needsEnvSh: true,
+    buildCommand: (env) => `npm run dev:app -- --port ${env.ports.frontSpaApp} --host 127.0.0.1`,
+    readinessCheck: {
+      type: "http",
+      url: (ports) => `http://localhost:${ports.frontSpaApp}/`,
+    },
+    portKey: "frontSpaApp",
+  },
 };
 
 const registryKeys = Object.keys(SERVICE_REGISTRY) as ServiceName[];
@@ -102,8 +134,10 @@ if (missingKeys.length > 0 || extraKeys.length > 0) {
   );
 }
 
-// Services to start during warm (all services except SDK, which starts at spawn)
-export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter((service) => service !== "sdk");
+// Services to start during warm (all services except sparkle and SDK, which start at spawn)
+export const WARM_SERVICES: ServiceName[] = ALL_SERVICES.filter(
+  (service) => service !== "sparkle" && service !== "sdk"
+);
 
 // Build the full shell command for a service
 // Note: For Rust services, cargo run is used with a symlinked target directory

@@ -23,6 +23,7 @@ export function getDefaultConfiguration(
     timeFrame: null,
     additionalConfiguration: {},
     dustAppConfiguration: null,
+    dustProject: null,
     jsonSchema: null,
     _jsonSchemaString: null,
     secretName: null,

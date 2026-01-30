@@ -275,8 +275,7 @@ const ConnectMenuConfig: MenuConfig = {
     },
     {
       title: "Become a Partner",
-      href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
-      isExternal: true,
+      href: "/home/partner",
     },
   ],
 };
@@ -432,8 +431,7 @@ export const menuConfig: DocsConfig = {
         },
         {
           title: "Become a Partner",
-          href: "https://share-eu1.hsforms.com/2FctvfmFxRQqllduT_JmlTA2dzwm3",
-          isExternal: true,
+          href: "/home/partner",
         },
       ],
     },

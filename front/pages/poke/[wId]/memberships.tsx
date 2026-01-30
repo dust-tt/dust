@@ -1,32 +1,17 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { MembershipsPage } from "@app/components/poke/pages/MembershipsPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { WorkspaceType } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSideProps } from "@app/lib/auth/pokeServerSideProps";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: WorkspaceType;
-}>(async (_context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
+export const getServerSideProps = pokeGetServerSideProps;
 
-  return {
-    props: {
-      owner,
-    },
-  };
-});
+const Page = MembershipsPage as PageWithLayout;
 
-export default function MembershipsPageNextJS({
-  owner,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <MembershipsPage owner={owner} />;
-}
-
-MembershipsPageNextJS.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: WorkspaceType }
-) => {
-  return <PokeLayout title={`${owner.name} - Memberships`}>{page}</PokeLayout>;
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return <PokeLayout authContext={pageProps}>{page}</PokeLayout>;
 };
+
+export default Page;

@@ -10,7 +10,8 @@ import type { ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPServerConfigurationResource extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
+export interface AgentMCPServerConfigurationResource
+  extends ReadonlyAttributesType<AgentMCPServerConfigurationModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPServerConfigurationModel> {
@@ -39,6 +40,29 @@ export class AgentMCPServerConfigurationResource extends BaseResource<AgentMCPSe
         workspaceId,
         id: {
           [Op.in]: modelIds,
+        },
+      },
+    });
+
+    return configs.map((c) => new this(this.model, c.get()));
+  }
+
+  static async fetchByIds(
+    auth: Authenticator,
+    sIds: string[]
+  ): Promise<AgentMCPServerConfigurationResource[]> {
+    const workspaceId = auth.getNonNullableWorkspace().id;
+    const uniqueSIds = Array.from(new Set(sIds));
+
+    if (uniqueSIds.length === 0) {
+      return [];
+    }
+
+    const configs = await this.model.findAll({
+      where: {
+        workspaceId,
+        sId: {
+          [Op.in]: uniqueSIds,
         },
       },
     });

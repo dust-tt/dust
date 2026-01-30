@@ -12,18 +12,12 @@ WORKDIR /dust
 
 COPY . .
 
-# Api client dependencies
-RUN cd sdks/js && npm ci
-
-# Connectors dependencies
-RUN cd connectors && npm ci
-
-# Front dependencies
-RUN cd front && npm ci
-
-# Now copy the rest of the code
+# Install dependencies
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci
 
 RUN cd sdks/js && npm run build
+
+RUN cd sparkle && npm run build
 
 RUN cd connectors && npm run build
 

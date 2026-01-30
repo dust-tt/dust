@@ -15,7 +15,7 @@ import type {
   RichMention,
   UserMention,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * Regular expression for parsing agent mention strings.

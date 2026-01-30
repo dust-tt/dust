@@ -7,6 +7,7 @@ import type {
 } from "@app/lib/api/analytics/programmatic_cost";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
+import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
 import type { GetWorkspaceSeatsCountResponseBody } from "@app/pages/api/w/[wId]/seats/count";
@@ -161,6 +162,7 @@ export function useFeatureFlags({
 export function useWorkspaceProgrammaticCost({
   workspaceId,
   groupBy,
+  groupByCount,
   selectedPeriod,
   billingCycleStartDay,
   filter,
@@ -168,6 +170,7 @@ export function useWorkspaceProgrammaticCost({
 }: {
   workspaceId: string;
   groupBy?: GroupByType;
+  groupByCount?: number;
   selectedPeriod?: string;
   billingCycleStartDay: number;
   filter?: Partial<Record<GroupByType, string[]>>;
@@ -182,6 +185,9 @@ export function useWorkspaceProgrammaticCost({
   }
   if (groupBy) {
     queryParams.set("groupBy", groupBy);
+  }
+  if (groupByCount !== undefined) {
+    queryParams.set("groupByCount", groupByCount.toString());
   }
   if (filter && Object.keys(filter).length > 0) {
     queryParams.set("filter", JSON.stringify(filter));
@@ -316,5 +322,32 @@ export function useWorkspaceSeatsCount({
     isSeatsCountLoading: !error && !data && !disabled,
     isSeatsCountError: error,
     mutateSeatsCount: mutate,
+  };
+}
+
+export function useWorkspaceAuthContext({
+  workspaceId,
+  disabled,
+}: {
+  workspaceId: string;
+  disabled?: boolean;
+}) {
+  const authContextFetcher: Fetcher<GetWorkspaceAuthContextResponseType> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/auth-context`,
+    authContextFetcher,
+    { disabled }
+  );
+
+  return {
+    owner: data?.workspace ?? null,
+    subscription: data?.subscription ?? null,
+    user: data?.user ?? null,
+    isAdmin: data?.isAdmin ?? false,
+    isBuilder: data?.isBuilder ?? false,
+    isAuthContextLoading: !error && !data && !disabled,
+    isAuthContextError: error,
   };
 }

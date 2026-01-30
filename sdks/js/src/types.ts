@@ -25,7 +25,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "noop"
 >();
 
-const ModelLLMIdSchema = FlexibleEnumSchema<
+type KnownModelLLMId =
   | "gpt-3.5-turbo"
   | "gpt-4-turbo"
   | "gpt-4o-2024-08-06"
@@ -82,8 +82,12 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop" // Noop
->();
+  | "noop"; // Noop
+
+// Cast to allow custom/unknown model IDs while preserving autocomplete.
+const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
+  KnownModelLLMId | (string & {})
+>;
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
 
@@ -204,6 +208,7 @@ export const supportedImageFileFormats = {
   "image/gif": [".gif"],
   "image/webp": [".webp"],
   "image/svg+xml": [".svg"],
+  "image/bmp": [".bmp"],
 } as const;
 
 export const supportedAudioFileFormats = {
@@ -227,13 +232,13 @@ type ImageContentType = keyof typeof supportedImageFileFormats;
 type AudioContentType = keyof typeof supportedAudioFileFormats;
 
 const supportedOtherContentTypes = Object.keys(
-  supportedOtherFileFormats
+  supportedOtherFileFormats,
 ) as OtherContentType[];
 const supportedImageContentTypes = Object.keys(
-  supportedImageFileFormats
+  supportedImageFileFormats,
 ) as ImageContentType[];
 const supportedAudioContentTypes = Object.keys(
-  supportedAudioFileFormats
+  supportedAudioFileFormats,
 ) as AudioContentType[];
 
 export const supportedFileExtensions = [
@@ -274,27 +279,27 @@ const ActionGeneratedFileContentTypeSchema = z.union([
 ]);
 
 export function isSupportedFileContentType(
-  contentType: string
+  contentType: string,
 ): contentType is SupportedFileContentType {
   return supportedUploadableContentType.includes(
-    contentType as SupportedFileContentType
+    contentType as SupportedFileContentType,
   );
 }
 
 export function isSupportedPlainTextContentType(
-  contentType: string
+  contentType: string,
 ): contentType is OtherContentType {
   return supportedOtherContentTypes.includes(contentType as OtherContentType);
 }
 
 export function isSupportedImageContentType(
-  contentType: string
+  contentType: string,
 ): contentType is ImageContentType {
   return supportedImageContentTypes.includes(contentType as ImageContentType);
 }
 
 export function isSupportedAudioContentType(
-  contentType: string
+  contentType: string,
 ): contentType is AudioContentType {
   return supportedAudioContentTypes.includes(contentType as AudioContentType);
 }
@@ -387,7 +392,7 @@ const ConnectorProvidersSchema = FlexibleEnumSchema<
 export type ConnectorProvider = z.infer<typeof ConnectorProvidersSchema>;
 
 export const isConnectorProvider = (
-  provider: string
+  provider: string,
 ): provider is ConnectorProvider =>
   ConnectorProvidersSchema.safeParse(provider).success;
 
@@ -416,14 +421,14 @@ const DataSourceTypeSchema = z.object({
 export type DataSourceType = z.infer<typeof DataSourceTypeSchema>;
 
 export function isFolder(
-  ds: DataSourceType
+  ds: DataSourceType,
 ): ds is DataSourceType & { connectorProvider: null } {
   // If there is no connectorProvider, it's a folder.
   return !ds.connectorProvider;
 }
 
 export function isWebsite(
-  ds: DataSourceType
+  ds: DataSourceType,
 ): ds is DataSourceType & { connectorProvider: "webcrawler" } {
   return ds.connectorProvider === "webcrawler";
 }
@@ -483,7 +488,7 @@ const CoreAPITableSchema = z.array(
     name: z.string(),
     value_type: z.enum(["int", "float", "text", "bool", "datetime"]),
     possible_values: z.array(z.string()).nullable().optional(),
-  })
+  }),
 );
 
 const CoreAPITablePublicSchema = z.object({
@@ -569,7 +574,7 @@ const RunTypeSchema = z.object({
     z.tuple([
       z.tuple([BlockTypeSchema, z.string()]),
       z.array(z.array(TraceTypeSchema)),
-    ])
+    ]),
   ),
   results: z
     .array(
@@ -577,8 +582,8 @@ const RunTypeSchema = z.object({
         z.object({
           value: z.unknown().nullable().optional(),
           error: z.string().nullable().optional(),
-        })
-      )
+        }),
+      ),
     )
     .nullable()
     .optional(),
@@ -645,7 +650,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
-  | "agent_tool_outputs_analytics"
+  | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
   | "claude_4_5_opus_feature"
@@ -663,8 +668,10 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
+  | "dust_next_global_agent"
   | "fireworks_new_model_feature"
   | "front_tool"
+  | "google_drive_write_enabled"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
@@ -679,16 +686,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
-  | "phone_trial_paywall"
   | "restrict_agents_publishing"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
   | "salesloft_tool"
+  | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "skills_similar_display"
-  | "skills"
   | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
@@ -696,7 +701,6 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "slideshow"
   | "snowflake_tool"
   | "statuspage_tool"
-  | "ukg_ready_mcp"
   | "usage_data_api"
   | "xai_feature"
 >();
@@ -1047,7 +1051,7 @@ const AgentMessageTypeSchema = z.object({
     z.object({
       step: z.number(),
       content: z.string(),
-    })
+    }),
   ),
   error: z
     .object({
@@ -1065,7 +1069,7 @@ export function isAgentMessage(
     | AgentMessagePublicType
     | ContentFragmentType
     | null
-    | undefined
+    | undefined,
 ): message is AgentMessagePublicType {
   return AgentMessageTypeSchema.safeParse(message).success;
 }
@@ -1112,7 +1116,7 @@ export const ConversationSchema = ConversationWithoutContentSchema.extend({
       z.array(UserMessageSchema),
       z.array(AgentMessageTypeSchema),
       z.array(ContentFragmentSchema),
-    ])
+    ]),
   ),
   url: z.string(),
 });
@@ -1133,11 +1137,11 @@ const ConversationMessageReactionsSchema = z.array(
             userId: ModelIdSchema.nullable(),
             username: z.string(),
             fullName: z.string().nullable(),
-          })
+          }),
         ),
-      })
+      }),
     ),
-  })
+  }),
 );
 
 export type ConversationMessageReactionsType = z.infer<
@@ -1220,7 +1224,7 @@ const NotificationStoreResourceContentSchema = z.object({
           uri: z.string(),
         })
         .passthrough(),
-    }) // Allow additional properties
+    }), // Allow additional properties
   ),
 });
 
@@ -1348,7 +1352,7 @@ const ToolErrorEventSchema = z.object({
 export type ToolErrorEvent = z.infer<typeof ToolErrorEventSchema>;
 
 export function isMCPServerPersonalAuthRequiredError(
-  error: ToolErrorEvent["error"]
+  error: ToolErrorEvent["error"],
 ) {
   return (
     error.code === "mcp_server_personal_authentication_required" &&
@@ -1655,8 +1659,8 @@ export const DustAppRunBlockExecutionEventSchema = z.object({
           value: z.unknown().nullable(),
           error: z.string().nullable(),
           meta: z.unknown().nullable(),
-        })
-      )
+        }),
+      ),
     ),
   }),
 });
@@ -1806,7 +1810,7 @@ const DatasetSchema = z.object({
         key: z.string(),
         type: DatasetSchemaEntryType,
         description: z.string().nullable(),
-      })
+      }),
     )
     .nullable()
     .optional(),
@@ -2031,7 +2035,7 @@ export const PublicPostMessagesRequestBodySchema = z.intersection(
       blocking: z.boolean().optional(),
       skipToolsValidation: z.boolean().optional(),
     })
-    .partial()
+    .partial(),
 );
 
 export type PublicPostMessagesRequestBody = z.infer<
@@ -2129,7 +2133,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
           .object({
             blocking: z.boolean().optional(),
           })
-          .partial()
+          .partial(),
       ),
       z.undefined(),
     ]),
@@ -2155,7 +2159,7 @@ export const PublicPostConversationsRequestBodySchema = z.intersection(
       blocking: z.boolean().optional(),
       skipToolsValidation: z.boolean().optional(),
     })
-    .partial()
+    .partial(),
 );
 
 export type PublicPostConversationsRequestBody = z.infer<
@@ -2308,7 +2312,7 @@ const FrontDataSourceDocumentSectionSchema: z.ZodSchema<FrontDataSourceDocumentS
       prefix: z.string().nullable(),
       content: z.string().nullable(),
       sections: z.array(FrontDataSourceDocumentSectionSchema),
-    })
+    }),
   );
 
 export const PostDataSourceDocumentRequestSchema = z.object({
@@ -2465,9 +2469,9 @@ export const UpsertTableRowsRequestSchema = z.object({
               epoch: z.number(),
             }),
           ])
-          .nullable()
+          .nullable(),
       ),
-    })
+    }),
   ),
   truncate: z.boolean().optional(),
 });
@@ -2648,7 +2652,7 @@ const DateSchema = z
   .string()
   .refine(
     (s): s is string => /^\d{4}-(0[1-9]|1[0-2])(-([0-2]\d|3[01]))?$/.test(s),
-    "YYYY-MM or YYYY-MM-DD"
+    "YYYY-MM or YYYY-MM-DD",
   );
 
 const IncludeInactiveSchema = z.preprocess((value) => {
@@ -2808,7 +2812,7 @@ export const MeResponseSchema = z.object({
       organizations: WorkOSOrganizationSchema.array().optional(),
       origin: MembershipOriginType.optional(),
       selectedWorkspace: z.string().optional(),
-    })
+    }),
   ),
 });
 
@@ -2840,7 +2844,7 @@ export function assertNever(x: never): never {
   throw new Error(
     `${
       typeof x === "object" ? JSON.stringify(x) : x
-    } is not of type never. This should never happen.`
+    } is not of type never. This should never happen.`,
   );
 }
 
@@ -2853,7 +2857,7 @@ type ConnectorProviderDocumentType =
   | "document";
 
 export function getProviderFromRetrievedDocument(
-  document: RetrievalDocumentPublicType
+  document: RetrievalDocumentPublicType,
 ): ConnectorProviderDocumentType {
   if (document.dataSourceView) {
     if (document.dataSourceView.dataSource.connectorProvider === "webcrawler") {
@@ -2865,7 +2869,7 @@ export function getProviderFromRetrievedDocument(
 }
 
 export function getTitleFromRetrievedDocument(
-  document: RetrievalDocumentPublicType
+  document: RetrievalDocumentPublicType,
 ): string {
   const provider = getProviderFromRetrievedDocument(document);
 
@@ -2891,7 +2895,7 @@ export const AppsCheckRequestSchema = z.object({
     z.object({
       appId: z.string(),
       appHash: z.string(),
-    })
+    }),
   ),
 });
 
@@ -2903,7 +2907,7 @@ export const AppsCheckResponseSchema = z.object({
       appId: z.string(),
       appHash: z.string(),
       deployed: z.boolean(),
-    })
+    }),
   ),
 });
 
@@ -3124,7 +3128,7 @@ const MCPServerTypeSchema = z.object({
     .object({
       provider: OAuthProviderSchema,
       supported_use_cases: z.array(
-        z.enum(["personal_actions", "platform_actions"])
+        z.enum(["personal_actions", "platform_actions"]),
       ),
       scope: z.string().optional(),
     })
@@ -3134,7 +3138,7 @@ const MCPServerTypeSchema = z.object({
       name: z.string(),
       description: z.string(),
       inputSchema: z.any().optional(),
-    })
+    }),
   ),
   availability: z.enum(["manual", "auto", "auto_hidden_builder"]),
   allowMultipleInstances: z.boolean(),
@@ -3190,7 +3194,7 @@ const TextSearchBodySchema = z.intersection(
     query: z.string(),
     nodeIds: z.undefined().optional(),
     searchSourceUrls: z.boolean().optional(),
-  })
+  }),
 );
 
 const NodeIdSearchBodySchema = z.intersection(
@@ -3198,7 +3202,7 @@ const NodeIdSearchBodySchema = z.intersection(
   z.object({
     nodeIds: z.array(z.string()),
     query: z.undefined().optional(),
-  })
+  }),
 );
 
 export const SearchRequestBodySchema = z.union([
@@ -3230,7 +3234,7 @@ export const ContentNodeWithParentSchema = z.intersection(
   z.object({
     parentsInternalIds: z.array(z.string()).optional(),
     parentTitle: z.string().optional().nullable(),
-  })
+  }),
 );
 
 export const DataSourceContentNodeSchema = z.intersection(
@@ -3238,7 +3242,7 @@ export const DataSourceContentNodeSchema = z.intersection(
   z.object({
     dataSource: DataSourceTypeSchema,
     dataSourceViews: DataSourceViewSchema.array(),
-  })
+  }),
 );
 
 export type DataSourceContentNodeType = z.infer<
@@ -3249,7 +3253,7 @@ export const DataSourceViewContentNodeSchema = z.intersection(
   ContentNodeWithParentSchema,
   z.object({
     dataSourceView: DataSourceViewSchema,
-  })
+  }),
 );
 
 export type DataSourceViewContentNodeType = z.infer<

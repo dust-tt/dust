@@ -16,7 +16,7 @@ import { CHART_HEIGHT } from "@app/components/agent_builder/observability/consta
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { RoundedTopBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
+import { RoundedBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
 import type {
   ChartDatum,
   ToolChartModeType,
@@ -183,7 +183,7 @@ export function ToolUsageChart({
             className={getIndexedColor(toolName, topTools)}
             name={toolName}
             shape={
-              <RoundedTopBarShape toolName={toolName} stackOrder={topTools} />
+              <RoundedBarShape seriesKey={toolName} stackOrderKeys={topTools} />
             }
             onMouseEnter={() => setHoveredTool(toolName)}
             onMouseLeave={() => setHoveredTool(null)}

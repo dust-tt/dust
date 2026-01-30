@@ -309,7 +309,7 @@ export default function WorkspaceAssistants({
         agentId={detailedAgentId}
         onClose={() => setDetailedAgentId(null)}
       />
-      <div className="flex w-full flex-col gap-8 pt-2 lg:pt-8">
+      <div className="flex w-full flex-col gap-8 pb-4 pt-2 lg:pt-8">
         <Page.Header title="Manage Agents" icon={ContactsRobotIcon} />
         <Page.Vertical gap="md" align="stretch">
           <div className="flex flex-row gap-2">

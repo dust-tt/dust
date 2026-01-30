@@ -15,7 +15,8 @@ import type {
   UserTypeWithWorkspaces,
   WithAPIErrorResponse,
 } from "@app/types";
-import { assertNever, isMembershipRoleType } from "@app/types";
+import { isMembershipRoleType } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type GetMemberResponseBody = {
   member: {

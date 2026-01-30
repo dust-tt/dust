@@ -269,29 +269,48 @@ export const GenerateImageInputSchema = z.object({
   prompt: z
     .string()
     .max(4000)
-    .describe(
-      "A text description of the desired image. The maximum length is 32000 characters."
-    ),
-  name: z
+    .describe("A text description of the desired image."),
+  outputName: z
     .string()
     .max(64)
     .describe(
       "The filename that will be used to save the generated image. Must be 64 characters or less."
     ),
-  quality: z
-    .enum(["auto", "low", "medium", "high"])
+  referenceImages: z
+    .array(z.string())
+    .max(14)
     .optional()
-    .default("auto")
     .describe(
-      "The quality of the generated image. Must be one of auto, low, medium, or high. Auto" +
-        " will automatically choose the best quality for the size."
+      "Optional file IDs of reference images from conversation attachments.\n" +
+        "- For object inclusion: up to 6 images to reproduce objects with high fidelity\n" +
+        "- For human consistency: up to 5 images to maintain character appearance\n" +
+        "- Maximum 14 total reference images can be combined\n" +
+        "- Supported formats: PNG, JPEG, WebP, HEIC, HEIF\n\n"
     ),
-  size: z
-    .enum(["1024x1024", "1536x1024", "1024x1536"])
+  aspectRatio: z
+    .enum([
+      "1:1",
+      "3:2",
+      "2:3",
+      "3:4",
+      "4:3",
+      "4:5",
+      "5:4",
+      "9:16",
+      "16:9",
+      "21:9",
+    ])
     .optional()
-    .default("1024x1024")
+    .default("1:1")
     .describe(
-      "The size of the generated image. Must be one of 1024x1024, 1536x1024, or 1024x1536"
+      "The aspect ratio of the generated image. Must be one of 1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, or 21:9."
+    ),
+  quality: z
+    .enum(["low", "medium", "high"])
+    .optional()
+    .default("low")
+    .describe(
+      "Output resolution: low (1K/1024px), medium (2K/2048px), or high (4K/4096px)."
     ),
 });
 
@@ -303,39 +322,13 @@ export function isGenerateImageInputType(
   return GenerateImageInputSchema.safeParse(input).success;
 }
 
-export const EditImageInputSchema = z.object({
-  imageFileId: z
-    .string()
-    .describe(
-      "The ID of the image file to edit (e.g. fil_abc1234) from conversation attachments. Must be a valid image file (PNG, JPEG, etc.)."
-    ),
-  editPrompt: z
-    .string()
-    .max(4000)
-    .describe(
-      "A text description of the desired edits. Be specific about what should change and what should remain unchanged. The maximum length is 4000 characters."
-    ),
-  outputName: z
-    .string()
-    .max(64)
-    .describe(
-      "The filename that will be used to save the edited image. Must be 64 characters or less."
-    ),
-  quality: z
-    .enum(["auto", "low", "medium", "high"])
-    .optional()
-    .default("auto")
-    .describe(
-      "The quality of the edited image. Must be one of auto, low, medium, or high. Auto" +
-        " will automatically choose the best quality."
-    ),
-  aspectRatio: z
-    .enum(["1:1", "3:2", "2:3"])
-    .optional()
-    .describe(
-      "Optional aspect ratio override for the edited image. If not specified, preserves the" +
-        " original image's aspect ratio. Must be one of 1:1, 3:2, or 2:3."
-    ),
+// Kept for backward compatibility with existing actions in conversations.
+const EditImageInputSchema = z.object({
+  imageFileId: z.string(),
+  editPrompt: z.string().max(4000),
+  outputName: z.string().max(64),
+  quality: z.enum(["auto", "low", "medium", "high"]).optional().default("auto"),
+  aspectRatio: z.enum(["1:1", "3:2", "2:3"]).optional(),
 });
 export type EditImageInputType = z.infer<typeof EditImageInputSchema>;
 

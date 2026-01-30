@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 20.x
           cache: "npm"
-          cache-dependency-path: ./cli/package-lock.json
+          cache-dependency-path: ./package-lock.json
           registry-url: "https://registry.npmjs.org"
 
       - name: Upgrade npm for OIDC support

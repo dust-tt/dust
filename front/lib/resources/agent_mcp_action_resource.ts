@@ -11,7 +11,10 @@ import { Op } from "sequelize";
 import type { BlockedToolExecution } from "@app/lib/actions/mcp";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
-import { getInternalMCPServerNameFromSId } from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  getInternalMCPServerNameFromSId,
+  getInternalMCPServerToolDisplayLabels,
+} from "@app/lib/actions/mcp_internal_actions/constants";
 import { isToolGeneratedFile } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { hideFileFromActionOutput } from "@app/lib/actions/mcp_utils";
 import type { ToolExecutionStatus } from "@app/lib/actions/statuses";
@@ -43,6 +46,7 @@ import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Err, isString, normalizeError, Ok, removeNulls } from "@app/types";
@@ -52,10 +56,16 @@ import type {
 } from "@app/types/actions";
 import type { AgentFunctionCallContentType } from "@app/types/assistant/agent_message_content";
 
+// Batch size for fetching output items to avoid loading too many large rows at once.
+const OUTPUT_ITEMS_BATCH_SIZE = 32;
+
+const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
+
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
+export interface AgentMCPActionResource
+  extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
@@ -554,20 +564,27 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
   ): Promise<Map<number, AgentMCPActionOutputItemModel[]>> {
     const workspaceId = auth.getNonNullableWorkspace().id;
 
-    const outputItems = await AgentMCPActionOutputItemModel.findAll({
-      where: {
-        workspaceId,
-        agentMCPActionId: {
-          [Op.in]: actionIds,
-        },
-      },
-    });
+    // Batch queries to avoid loading too many large (potentially TOASTed) rows at once.
+    const batches = _.chunk(actionIds, OUTPUT_ITEMS_BATCH_SIZE);
+    const batchResults = await concurrentExecutor(
+      batches,
+      async (batchActionIds) =>
+        AgentMCPActionOutputItemModel.findAll({
+          where: {
+            workspaceId,
+            agentMCPActionId: {
+              [Op.in]: batchActionIds,
+            },
+          },
+        }),
+      { concurrency: FETCH_OUTPUT_ITEMS_CONCURRENCY }
+    );
 
     const outputItemsByActionId = new Map<
       number,
       AgentMCPActionOutputItemModel[]
     >();
-    for (const item of outputItems) {
+    for (const item of batchResults.flat()) {
       const existing = outputItemsByActionId.get(item.agentMCPActionId);
       if (existing) {
         existing.push(item);
@@ -667,6 +684,15 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       "Action linked to a non-function call step content."
     );
 
+    const internalMCPServerName = this.metadata.internalMCPServerName;
+    const toolName = this.toolConfiguration.originalName;
+
+    const displayLabels = internalMCPServerName
+      ? (getInternalMCPServerToolDisplayLabels(internalMCPServerName)?.[
+          toolName
+        ] ?? null)
+      : null;
+
     return {
       id: this.id,
       sId: this.sId,
@@ -676,13 +702,14 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
       citationsAllocated: this.citationsAllocated,
       functionCallName: this.functionCallName,
       functionCallId: this.stepContent.value.value.id,
-      internalMCPServerName: this.metadata.internalMCPServerName,
-      toolName: this.toolConfiguration.originalName,
+      internalMCPServerName,
+      toolName,
       mcpServerId: this.metadata.mcpServerId,
       params: this.augmentedInputs,
       status: this.status,
       step: this.stepContent.step,
       executionDurationMs: this.executionDurationMs,
+      displayLabels,
     };
   }
 

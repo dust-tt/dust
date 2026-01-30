@@ -1,13 +1,8 @@
 import config from "@app/lib/api/config";
 import { createPlugin } from "@app/lib/api/poke/types";
 import logger, { auditLog } from "@app/logger/logger";
-import {
-  assertNever,
-  ConnectorsAPI,
-  Err,
-  mapToEnumValues,
-  Ok,
-} from "@app/types";
+import { ConnectorsAPI, Err, mapToEnumValues, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const OPERATIONS = [
   "PAUSE: pause the connector",

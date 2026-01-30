@@ -29,6 +29,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -37,8 +38,8 @@ import {
   isCreditPurchaseInvoice,
   isEnterpriseSubscription,
 } from "@app/lib/plans/stripe";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { CreditResource } from "@app/lib/resources/credit_resource";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
@@ -52,7 +53,8 @@ import { apiError, withLogging } from "@app/logger/withlogging";
 import { launchScheduleWorkspaceScrubWorkflow } from "@app/temporal/scrub_workspace/client";
 import { launchWorkOSWorkspaceSubscriptionCreatedWorkflow } from "@app/temporal/workos_events_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type GetResponseBody = {
   success: boolean;
@@ -286,7 +288,7 @@ async function handler(
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-              await SubscriptionModel.create(
+              await SubscriptionResource.makeNew(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
@@ -296,13 +298,15 @@ async function handler(
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                 },
-                { transaction: t }
+                renderPlanFromModel({ plan }),
+                t
               );
             });
             if (userId) {
-              const workspaceSeats = await countActiveSeatsInWorkspace(
-                workspace.sId
-              );
+              const workspaceSeats =
+                await MembershipResource.countActiveSeatsInWorkspace(
+                  workspace.sId
+                );
               await ServerSideTracking.trackSubscriptionCreated({
                 userId,
                 workspace: renderLightWorkspaceType({ workspace }),

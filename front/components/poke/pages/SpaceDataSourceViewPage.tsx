@@ -3,21 +3,19 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 import { DataSourceViewSelector } from "@app/components/data_source_view/DataSourceViewSelector";
 import { ViewDataSourceViewTable } from "@app/components/poke/data_source_views/view";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeDataSourceViewDetails } from "@app/poke/swr/data_source_view_details";
 import type { DataSourceViewContentNodesProps } from "@app/poke/swr/data_source_views";
 import { usePokeDataSourceViewContentNodes } from "@app/poke/swr/data_source_views";
-import type { LightWorkspaceType } from "@app/types";
 import { defaultSelectionConfiguration } from "@app/types";
 
-interface SpaceDataSourceViewPageProps {
-  owner: LightWorkspaceType;
-  dsvId: string;
-}
+export function SpaceDataSourceViewPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Data Source View`);
 
-export function SpaceDataSourceViewPage({
-  owner,
-  dsvId,
-}: SpaceDataSourceViewPageProps) {
+  const dsvId = useRequiredPathParam("dsvId");
   const {
     data: dataSourceViewDetails,
     isLoading,

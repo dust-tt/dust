@@ -23,7 +23,7 @@ type IsNever<T> = [T] extends [never] ? true : false;
 export type JsonSerializable<T> =
   IsNever<Exclude<RecursiveJsonSerializable<T>, T>> extends true ? T : never;
 
-type CacheableFunction<T, Args extends unknown[]> = (
+export type CacheableFunction<T, Args extends unknown[]> = (
   ...args: Args
 ) => Promise<T>;
 

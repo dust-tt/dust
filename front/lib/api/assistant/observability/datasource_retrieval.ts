@@ -11,12 +11,13 @@ import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import type { ConnectorProvider } from "@app/types";
+import { asDisplayName } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
 
 export type DatasourceRetrievalData = {
-  mcpServerConfigId: string;
-  mcpServerConfigName?: string;
+  mcpServerConfigIds: string[];
+  mcpServerDisplayName: string;
   mcpServerName: string;
   count: number;
   datasources: {
@@ -25,6 +26,21 @@ export type DatasourceRetrievalData = {
     count: number;
     connectorProvider?: ConnectorProvider;
   }[];
+};
+
+type DatasourceAggregation = {
+  dataSourceId: string;
+  displayName: string;
+  count: number;
+  connectorProvider?: ConnectorProvider;
+};
+
+type ToolAggregation = {
+  mcpServerConfigIds: Set<string>;
+  mcpServerDisplayName: string;
+  mcpServerName: string;
+  count: number;
+  datasources: Map<string, DatasourceAggregation>;
 };
 
 type TermBucket = {
@@ -39,13 +55,14 @@ type StringTermBucket = {
 
 type DatasourceBucket = StringTermBucket;
 
-type McpServerConfigBucket = TermBucket & {
+// Aggregation bucket for mcp_server_name with nested config IDs and datasources.
+type McpServerNameBucket = StringTermBucket & {
+  by_mcp_server_config?: estypes.AggregationsMultiBucketAggregateBase<TermBucket>;
   by_datasource?: estypes.AggregationsMultiBucketAggregateBase<DatasourceBucket>;
-  by_mcp_server_name?: estypes.AggregationsMultiBucketAggregateBase<StringTermBucket>;
 };
 
 type DatasourceRetrievalAggs = {
-  by_mcp_server_config?: estypes.AggregationsMultiBucketAggregateBase<McpServerConfigBucket>;
+  by_mcp_server_name?: estypes.AggregationsMultiBucketAggregateBase<McpServerNameBucket>;
 };
 
 export async function fetchDatasourceRetrievalMetrics(
@@ -68,18 +85,20 @@ export async function fetchDatasourceRetrievalMetrics(
     version,
   });
 
+  // Aggregate by mcp_server_name (always present), then sub-aggregate by config ID.
+  // This handles servers like data_sources_file_system that don't have config IDs.
   const aggs: Record<string, estypes.AggregationsAggregationContainer> = {
-    by_mcp_server_config: {
+    by_mcp_server_name: {
       terms: {
-        field: "mcp_server_configuration_id",
+        field: "mcp_server_name",
         size: 20,
         order: { _count: "desc" },
       },
       aggs: {
-        by_mcp_server_name: {
+        by_mcp_server_config: {
           terms: {
-            field: "mcp_server_name",
-            size: 1,
+            field: "mcp_server_configuration_id",
+            size: 10,
           },
         },
         by_datasource: {
@@ -113,19 +132,25 @@ export async function fetchDatasourceRetrievalMetrics(
     never,
     DatasourceRetrievalAggs
   >;
-  const mcpServerConfigBuckets = bucketsToArray<McpServerConfigBucket>(
-    response.aggregations?.by_mcp_server_config?.buckets
+  const mcpServerNameBuckets = bucketsToArray<McpServerNameBucket>(
+    response.aggregations?.by_mcp_server_name?.buckets
   );
 
-  // Filtering out JIT MCP servers
+  // Collect all config model IDs from all name buckets (for external servers).
   const configModelIds = Array.from(
-    new Set(mcpServerConfigBuckets.map((b) => b.key))
-  ).filter((id) => Number.isFinite(id) && id > 0);
+    new Set(
+      mcpServerNameBuckets.flatMap((bucket) =>
+        bucketsToArray<TermBucket>(bucket.by_mcp_server_config?.buckets)
+          .map((b) => b.key)
+          .filter((id) => Number.isFinite(id) && id > 0)
+      )
+    )
+  );
 
   // Collect all unique data source IDs from all buckets.
   const allDataSourceIds = Array.from(
     new Set(
-      mcpServerConfigBuckets.flatMap((bucket) =>
+      mcpServerNameBuckets.flatMap((bucket) =>
         bucketsToArray<DatasourceBucket>(bucket.by_datasource?.buckets).map(
           (ds) => ds.key
         )
@@ -151,38 +176,98 @@ export async function fetchDatasourceRetrievalMetrics(
   );
   const dataSourceBySId = new Map(dataSources.map((ds) => [ds.sId, ds]));
 
-  const data: DatasourceRetrievalData[] = mcpServerConfigBuckets.map(
-    (mcpConfigBucket) => {
-      const datasourceBuckets = bucketsToArray<DatasourceBucket>(
-        mcpConfigBucket.by_datasource?.buckets
-      );
+  const groupedByToolName = new Map<string, ToolAggregation>();
 
-      const mcpServerNameBuckets = bucketsToArray<StringTermBucket>(
-        mcpConfigBucket.by_mcp_server_name?.buckets
-      );
-
-      const config = serverConfigByModelId.get(mcpConfigBucket.key);
-      const mcpServerName = mcpServerNameBuckets[0]?.key ?? "unknown";
-
-      return {
-        mcpServerConfigId: config?.sId ?? "unknown",
-        mcpServerConfigName: config?.name ?? undefined,
-        mcpServerName,
-        count: mcpConfigBucket.doc_count,
-        datasources: datasourceBuckets.map((dsBucket) => {
-          const dataSource = dataSourceBySId.get(dsBucket.key);
-          return {
-            dataSourceId: dsBucket.key,
-            displayName: dataSource
-              ? getDisplayNameForDataSource(dataSource.toJSON())
-              : dsBucket.key,
-            count: dsBucket.doc_count,
-            connectorProvider: dataSource?.connectorProvider ?? undefined,
-          };
-        }),
-      };
+  function getOrCreateToolGroup({
+    mcpServerDisplayName,
+    mcpServerName,
+  }: {
+    mcpServerDisplayName: string;
+    mcpServerName: string;
+  }): ToolAggregation {
+    const existing = groupedByToolName.get(mcpServerDisplayName);
+    if (existing) {
+      if (existing.mcpServerName === "unknown" && mcpServerName !== "unknown") {
+        existing.mcpServerName = mcpServerName;
+      }
+      return existing;
     }
-  );
+
+    const group: ToolAggregation = {
+      mcpServerConfigIds: new Set<string>(),
+      mcpServerDisplayName,
+      mcpServerName,
+      count: 0,
+      datasources: new Map(),
+    };
+    groupedByToolName.set(mcpServerDisplayName, group);
+    return group;
+  }
+
+  for (const nameBucket of mcpServerNameBuckets) {
+    const mcpServerName = nameBucket.key;
+    const datasourceBuckets = bucketsToArray<DatasourceBucket>(
+      nameBucket.by_datasource?.buckets
+    );
+    const configBuckets = bucketsToArray<TermBucket>(
+      nameBucket.by_mcp_server_config?.buckets
+    );
+
+    // For display name, try to get it from the first config (if any).
+    // For servers without configs (like data_sources_file_system), use the server name.
+    const firstConfig =
+      configBuckets.length > 0
+        ? serverConfigByModelId.get(configBuckets[0].key)
+        : null;
+    const mcpServerDisplayName =
+      asDisplayName(firstConfig?.name) || mcpServerName;
+
+    const group = getOrCreateToolGroup({
+      mcpServerDisplayName,
+      mcpServerName,
+    });
+
+    // Add all config sIds for this server name.
+    // For servers without configs (like data_sources_file_system), this will be empty.
+    for (const configBucket of configBuckets) {
+      const config = serverConfigByModelId.get(configBucket.key);
+      if (config) {
+        group.mcpServerConfigIds.add(config.sId);
+      }
+    }
+
+    group.count += nameBucket.doc_count;
+
+    for (const dsBucket of datasourceBuckets) {
+      const existing = group.datasources.get(dsBucket.key);
+      if (existing) {
+        existing.count += dsBucket.doc_count;
+      } else {
+        const dataSource = dataSourceBySId.get(dsBucket.key);
+        const displayName = dataSource
+          ? getDisplayNameForDataSource(dataSource.toJSON())
+          : dsBucket.key;
+        group.datasources.set(dsBucket.key, {
+          dataSourceId: dsBucket.key,
+          displayName,
+          count: dsBucket.doc_count,
+          connectorProvider: dataSource?.connectorProvider ?? undefined,
+        });
+      }
+    }
+  }
+
+  const data: DatasourceRetrievalData[] = Array.from(groupedByToolName.values())
+    .map((group) => ({
+      mcpServerConfigIds: Array.from(group.mcpServerConfigIds).sort(),
+      mcpServerDisplayName: group.mcpServerDisplayName,
+      mcpServerName: group.mcpServerName,
+      count: group.count,
+      datasources: Array.from(group.datasources.values()).sort(
+        (a, b) => b.count - a.count
+      ),
+    }))
+    .sort((a, b) => b.count - a.count);
 
   return new Ok(data);
 }

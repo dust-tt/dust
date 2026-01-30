@@ -4,6 +4,7 @@ import {
   Chip,
   cn,
   TextIcon,
+  Toolbar,
   VoicePicker,
 } from "@dust-tt/sparkle";
 import type { Editor } from "@tiptap/react";
@@ -19,15 +20,14 @@ import React, {
 } from "react";
 
 import { AgentPicker } from "@app/components/assistant/AgentPicker";
+import { CapabilitiesPicker } from "@app/components/assistant/CapabilitiesPicker";
 import { InputBarAttachmentsPicker } from "@app/components/assistant/conversation/input_bar/InputBarAttachmentsPicker";
 import { InputBarContext } from "@app/components/assistant/conversation/input_bar/InputBarContext";
 import {
   getDisplayNameFromPastedFileId,
   getPastedFileName,
 } from "@app/components/assistant/conversation/input_bar/pasted_utils";
-import { MobileToolbar } from "@app/components/assistant/conversation/input_bar/toolbar/MobileToolbar";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
-import { ToolsPicker } from "@app/components/assistant/ToolsPicker";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import type { CustomEditorProps } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
 import useHandleMentions from "@app/components/editor/input_bar/useHandleMentions";
@@ -44,6 +44,7 @@ import { getSkillIcon } from "@app/lib/skill";
 import { useSpaces, useSpacesSearch } from "@app/lib/swr/spaces";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import { classNames } from "@app/lib/utils";
+import { getManageSkillsRoute } from "@app/lib/utils/router";
 import type {
   ConversationWithoutContentType,
   DataSourceViewContentNode,
@@ -54,15 +55,16 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   getSupportedFileExtensions,
+  isBuilder,
   normalizeError,
   toRichAgentMentionType,
 } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const INPUT_BAR_ACTIONS = [
-  "tools",
+  "capabilities",
   "attachment",
   "agents-list",
   "agents-list-with-actions",
@@ -601,7 +603,11 @@ const InputBarContainer = ({
           )}
         />
         <BubbleMenu editor={editor ?? undefined} className="hidden sm:flex">
-          <Toolbar editor={editor} className="hidden sm:inline-flex" />
+          {editor && (
+            <Toolbar className="hidden sm:inline-flex">
+              <ToolBarContent editor={editor} />
+            </Toolbar>
+          )}
         </BubbleMenu>
         <div className="flex w-full flex-col py-1.5 sm:pb-2">
           <div className="mb-1 flex flex-wrap items-center px-2">
@@ -612,6 +618,12 @@ const InputBarContainer = ({
                   size="xs"
                   label={skill.name}
                   icon={getSkillIcon(skill.icon)}
+                  href={
+                    isBuilder(owner)
+                      ? getManageSkillsRoute(owner.sId, skill.sId)
+                      : undefined
+                  }
+                  target="_blank"
                   className="m-0.5 hidden bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:flex"
                   onRemove={
                     disableInput
@@ -624,6 +636,12 @@ const InputBarContainer = ({
                 <Chip
                   size="xs"
                   icon={getSkillIcon(skill.icon)}
+                  href={
+                    isBuilder(owner)
+                      ? getManageSkillsRoute(owner.sId, skill.sId)
+                      : undefined
+                  }
+                  target="_blank"
                   className="m-0.5 flex bg-background text-foreground dark:bg-background-night dark:text-foreground-night md:hidden"
                   onRemove={
                     disableInput
@@ -667,9 +685,9 @@ const InputBarContainer = ({
             ))}
           </div>
           <div className="relative flex w-full items-center justify-between">
-            {!isRecording && (
-              <MobileToolbar
-                editor={editor}
+            {!isRecording && editor && (
+              <Toolbar
+                variant="overlay"
                 className={cn(
                   "sm:hidden",
                   isToolbarOpen
@@ -680,7 +698,9 @@ const InputBarContainer = ({
                   e.stopPropagation();
                   setIsToolbarOpen(false);
                 }}
-              />
+              >
+                <ToolBarContent editor={editor} />
+              </Toolbar>
             )}
             <div
               className={cn(
@@ -727,8 +747,8 @@ const InputBarContainer = ({
                       />
                     </>
                   )}
-                  {actions.includes("tools") && (
-                    <ToolsPicker
+                  {actions.includes("capabilities") && (
+                    <CapabilitiesPicker
                       owner={owner}
                       selectedMCPServerViews={selectedMCPServerViews}
                       onSelect={onMCPServerViewSelect}

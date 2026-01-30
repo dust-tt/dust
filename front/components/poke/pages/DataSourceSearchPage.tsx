@@ -1,21 +1,20 @@
 import { Input, Spinner } from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { getDisplayNameForDocument } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { classNames, timeAgoFrom } from "@app/lib/utils";
 import { usePokeDataSourceDetails } from "@app/poke/swr/data_source_details";
-import type { DocumentType, LightWorkspaceType } from "@app/types";
+import type { DocumentType } from "@app/types";
 
-interface DataSourceSearchPageProps {
-  owner: LightWorkspaceType;
-  dsId: string;
-}
+export function DataSourceSearchPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Search`);
 
-export function DataSourceSearchPage({
-  owner,
-  dsId,
-}: DataSourceSearchPageProps) {
+  const dsId = useRequiredPathParam("dsId");
   const [searchQuery, setSearchQuery] = useState("");
   const [tagsIn, setTagsIn] = useState("");
   const [tagsNotIn, setTagsNotIn] = useState("");

@@ -10,10 +10,10 @@ import {
   PlusIcon,
   XCircleIcon,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import TextareaAutosize from "react-textarea-autosize";
 
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import { useSendNotification } from "@app/hooks/useNotification";
 import type { DatasetDataType } from "@app/lib/datasets";
 import {
@@ -29,11 +29,6 @@ import type {
   DatasetType,
   DatasetViewType,
 } from "@app/types";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
 
 const defaultData = [
   {
@@ -618,7 +613,7 @@ export default function DatasetView({
                             {datasetKeys.length > 1 ? (
                               <>
                                 <Button
-                                  size="mini"
+                                  size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={XCircleIcon}
@@ -629,7 +624,7 @@ export default function DatasetView({
                                 />
 
                                 <Button
-                                  size="mini"
+                                  size="icon"
                                   variant="ghost"
                                   className="text-muted-foreground"
                                   icon={PlusCircleIcon}
@@ -752,7 +747,7 @@ export default function DatasetView({
                           )}
                         >
                           {datasetTypes[datasetKeys.indexOf(k)] === "json" ? (
-                            <CodeEditor
+                            <SuspensedCodeEditor
                               data-color-mode={
                                 theme === "dark" ? "dark" : "light"
                               }
@@ -798,7 +793,7 @@ export default function DatasetView({
                         {datasetData.length > 1 ? (
                           <Button
                             icon={XCircleIcon}
-                            size="mini"
+                            size="icon"
                             variant="ghost"
                             onClick={() => {
                               handleDeleteEntry(i);
@@ -807,7 +802,7 @@ export default function DatasetView({
                         ) : null}
                         <Button
                           icon={PlusCircleIcon}
-                          size="mini"
+                          size="icon"
                           variant="ghost"
                           onClick={() => {
                             handleNewEntry(i);

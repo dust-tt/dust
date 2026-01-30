@@ -117,7 +117,11 @@ export type AgenticMessageData = {
 };
 
 export type RichMentionWithStatus =
-  | (RichMention & { dismissed: boolean; status: "pending" })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "pending_conversation_access";
+    })
+  | (RichMention & { dismissed: boolean; status: "pending_project_membership" })
   | (RichMention & { dismissed: boolean; status: "approved" })
   | (RichMention & { dismissed: boolean; status: "rejected" })
   | (RichMention & {
@@ -175,6 +179,11 @@ export type AgentMessageStatus =
   | "succeeded"
   | "failed"
   | "cancelled";
+
+export const AGENT_MESSAGE_STATUSES_TO_TRACK: AgentMessageStatus[] = [
+  "succeeded",
+  "cancelled",
+];
 
 export interface CitationType {
   description?: string;
@@ -278,6 +287,8 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
+export type ConversationMetadata = Record<string, unknown>;
+
 /**
  * A lighter version of Conversation without the content (for menu display).
  */
@@ -286,6 +297,7 @@ export type ConversationWithoutContentType = {
   created: number;
   updated: number;
   unread: boolean;
+  lastReadMs: number | null;
   actionRequired: boolean;
   hasError: boolean;
   sId: string;
@@ -293,6 +305,7 @@ export type ConversationWithoutContentType = {
   spaceId: string | null;
   triggerId: string | null;
   depth: number;
+  metadata: ConversationMetadata;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];
@@ -307,6 +320,10 @@ export type ConversationType = ConversationWithoutContentType & {
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
+
+export const isProjectConversation = <T extends ConversationWithoutContentType>(
+  conversation: T
+): conversation is T & { spaceId: string } => !!conversation.spaceId;
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
 

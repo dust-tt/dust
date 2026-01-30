@@ -44,14 +44,8 @@ import type {
   Result,
   UserType,
 } from "@app/types";
-import {
-  assertNever,
-  CoreAPI,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { CoreAPI, Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { UserResource } from "./user_resource";
 
@@ -87,7 +81,8 @@ function isAllowedSearchColumn(column: string): column is AllowedSearchColumns {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface DataSourceViewResource extends ReadonlyAttributesType<DataSourceViewModel> {}
+export interface DataSourceViewResource
+  extends ReadonlyAttributesType<DataSourceViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class DataSourceViewResource extends ResourceWithSpace<DataSourceViewModel> {
   static model: ModelStatic<DataSourceViewModel> = DataSourceViewModel;

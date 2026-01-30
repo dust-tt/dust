@@ -426,7 +426,7 @@ describe("dismissMention", () => {
         conversation,
       });
 
-      // Verify mention was created with pending status (not restricted)
+      // Verify mention was created with pending_conversation_access status (not restricted)
       const mentionInDb = await MentionModel.findOne({
         where: {
           workspaceId: workspace.id,
@@ -435,7 +435,7 @@ describe("dismissMention", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
+      expect(mentionInDb?.status).toBe("pending_conversation_access");
       expect(mentionInDb?.dismissed).toBe(false);
 
       // Try to dismiss the mention (should not dismiss because it's not restricted)
@@ -971,6 +971,7 @@ describe("validateAction", () => {
       mcpServerViewId: "test-server-view",
       dustAppConfiguration: null,
       secretName: null,
+      dustProject: null,
       internalMCPServerId: null,
       availability: "auto",
       permission: "low",

@@ -63,16 +63,17 @@ const config = {
     esmExternals: false,
     instrumentationHook: true,
     // Ensure dd-trace and other dependencies are included in standalone build.
+    // Paths are relative to front/ directory. With npm workspaces, deps are hoisted to root node_modules.
     outputFileTracingIncludes: {
       "/**": [
-        "./node_modules/dd-trace/**/*",
-        "./node_modules/@datadog/**/*",
+        "../node_modules/dd-trace/**/*",
+        "../node_modules/@datadog/**/*",
         // Include entire Redux ecosystem to avoid issues with partial inclusion.
-        "./node_modules/redux/**/*",
-        "./node_modules/@reduxjs/**/*",
-        "./node_modules/immer/**/*",
-        "./node_modules/reselect/**/*",
-        "./node_modules/redux-thunk/**/*",
+        "../node_modules/redux/**/*",
+        "../node_modules/@reduxjs/**/*",
+        "../node_modules/immer/**/*",
+        "../node_modules/reselect/**/*",
+        "../node_modules/redux-thunk/**/*",
       ],
     },
   },
@@ -407,35 +408,58 @@ const config = {
       });
     }
 
-    return [
+    const result = [
       {
         source: "/:path*", // Match all paths
         headers,
       },
     ];
+
+    // Note: CORS headers for API routes are handled dynamically by middleware.ts
+    // In development, the middleware echoes back the request origin, allowing
+    // any localhost port (3010, 3011, etc.) to work.
+
+    return result;
   },
   async rewrites() {
-    return [
-      // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
-      // endpoints on the public API.
-      {
-        source: "/api/v1/w/:wId/vaults/:vId/:path*",
-        destination: "/api/v1/w/:wId/spaces/:vId/:path*",
-      },
-      {
-        source: "/api/v1/w/:wId/vaults",
-        destination: "/api/v1/w/:wId/spaces",
-      },
-      // Posthog tracking - endpoint name called "subtle1"
-      {
-        source: "/subtle1/static/:path*",
-        destination: "https://eu-assets.i.posthog.com/static/:path*",
-      },
-      {
-        source: "/subtle1/:path*",
-        destination: "https://eu.i.posthog.com/:path*",
-      },
-    ];
+    return {
+      beforeFiles: [
+        // SPA catch-all: serve index.html for all /spa/* routes (client-side routing)
+        // This must be beforeFiles to take precedence over static file serving
+        {
+          source: "/spa/:path*",
+          destination: "/spa/poke.html",
+          has: [
+            {
+              type: "header",
+              key: "accept",
+              value: ".*text/html.*",
+            },
+          ],
+        },
+      ],
+      afterFiles: [
+        // Legacy endpoint rewrite to maintain compatibility for users still hitting `/vaults/`
+        // endpoints on the public API.
+        {
+          source: "/api/v1/w/:wId/vaults/:vId/:path*",
+          destination: "/api/v1/w/:wId/spaces/:vId/:path*",
+        },
+        {
+          source: "/api/v1/w/:wId/vaults",
+          destination: "/api/v1/w/:wId/spaces",
+        },
+        // Posthog tracking - endpoint name called "subtle1"
+        {
+          source: "/subtle1/static/:path*",
+          destination: "https://eu-assets.i.posthog.com/static/:path*",
+        },
+        {
+          source: "/subtle1/:path*",
+          destination: "https://eu.i.posthog.com/:path*",
+        },
+      ],
+    };
   },
   webpack(config, { dev, isServer }) {
     if (process.env.BUILD_WITH_SOURCE_MAPS === "true" && !dev) {
@@ -516,7 +540,7 @@ const config = {
         test: /\.js$/,
         use: ["source-map-loader"],
         enforce: "pre",
-        include: [path.resolve(__dirname, "node_modules/@dust-tt/sparkle")],
+        include: [path.resolve(__dirname, "../node_modules/@dust-tt/sparkle")],
       });
     }
     return config;

@@ -3,9 +3,8 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  AGENT_MEMORY_SERVER_NAME,
   getInternalMCPServerInfo,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
@@ -72,7 +71,7 @@ export function makeMCPToolExit({
 
 export function isJITMCPServerView(view: MCPServerViewType): boolean {
   return (
-    !isInternalMCPServerOfName(view.server.sId, AGENT_MEMORY_SERVER_NAME) &&
+    !matchesInternalMCPServerName(view.server.sId, "agent_memory") &&
     // Only tools that do not require any configuration can be enabled directly in a conversation.
     getMCPServerRequirements(view).noRequirement
   );

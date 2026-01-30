@@ -2,6 +2,7 @@ import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -13,8 +14,10 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { assertNever, Err, Ok } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
   setupUri({
@@ -150,7 +153,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ): Promise<RelatedCredential | undefined> {
+  ): Promise<Result<RelatedCredential, OAuthError> | undefined> {
     if (useCase !== "connection") {
       return undefined;
     }
@@ -168,13 +171,13 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
 
     // Note: we don't store the signing secret as it's not needed for OAuth connections.
     // It is only used for webhook validation
-    return {
+    return new Ok({
       content: {
         client_id,
         client_secret,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
-    };
+    });
   }
 
   async getUpdatedExtraConfig(

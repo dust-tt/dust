@@ -56,6 +56,7 @@ describe("EventCoalescer", () => {
       executionDurationMs: null,
       generatedFiles: [],
       output: null,
+      displayLabels: null,
     },
   });
 

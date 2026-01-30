@@ -13,7 +13,8 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import type { Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type CreatePAYGCreditError = {
   error_type: "already_exists" | "invalid_discount" | "unknown";

@@ -34,6 +34,7 @@ import type { GetSpaceDataSourceViewsResponseBody } from "@app/pages/api/w/[wId]
 import type { GetDataSourceViewResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_source_views/[dsvId]";
 import type { PostSpaceDataSourceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/data_sources";
 import type { PatchSpaceMembersRequestBodyType } from "@app/pages/api/w/[wId]/spaces/[spaceId]/members";
+import type { GetProjectJournalEntriesResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]/project_journal_entries";
 import type {
   GetProjectMetadataResponseBody,
   PatchProjectMetadataResponseBody,
@@ -135,6 +136,8 @@ export function useSpaceInfo({
 
   return {
     spaceInfo: data ? data.space : null,
+    canWriteInSpace: data?.space.canWrite ?? false,
+    canReadInSpace: data?.space.isMember ?? false,
     mutateSpaceInfo: mutate,
     isSpaceInfoLoading: !error && !data && !disabled,
     isSpaceInfoError: error,
@@ -164,6 +167,7 @@ export function useSpaceDataSourceView({
 
   return {
     dataSourceView: data?.dataSourceView,
+    connector: data?.connector ?? null,
     isDataSourceViewLoading: !disabled && !error && !data,
     isDataSourceViewError: error,
     mutate,
@@ -423,27 +427,35 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const url = `/api/w/${owner.sId}/spaces`;
     let res;
+    let body: PostSpaceRequestBodyType;
 
     if (managementMode === "manual") {
       const { memberIds } = params;
 
-      // Must have memberIds for manual management mode
-      if (isRestricted && (!memberIds || memberIds.length < 1)) {
+      // Must have memberIds for manual management mode, except for projects
+      // where the backend handles adding the creator to the editor group
+      if (
+        spaceKind !== "project" &&
+        isRestricted &&
+        (!memberIds || memberIds.length < 1)
+      ) {
         return null;
       }
+
+      body = {
+        name,
+        memberIds,
+        managementMode,
+        isRestricted,
+        spaceKind,
+      };
 
       res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name,
-          memberIds,
-          managementMode,
-          isRestricted,
-          spaceKind,
-        } as PostSpaceRequestBodyType),
+        body: JSON.stringify(body),
       });
     } else if (managementMode === "group") {
       const { groupIds } = params;
@@ -453,17 +465,20 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
         return null;
       }
 
+      body = {
+        name,
+        groupIds,
+        managementMode,
+        isRestricted,
+        spaceKind,
+      };
+
       res = await clientFetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          name,
-          isRestricted,
-          groupIds,
-          managementMode,
-        }),
+        body: JSON.stringify(body),
       });
     } else {
       return null;
@@ -546,7 +561,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             isRestricted,
             managementMode,
             memberIds: params.memberIds,
-          }),
+            editorIds: params.editorIds,
+          } satisfies PatchSpaceMembersRequestBodyType),
         })
       );
     } else if (managementMode === "group") {
@@ -561,7 +577,8 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
             isRestricted,
             managementMode,
             groupIds: params.groupIds,
-          }),
+            editorGroupIds: params.editorGroupIds,
+          } satisfies PatchSpaceMembersRequestBodyType),
         })
       );
     }
@@ -945,4 +962,75 @@ export function useUpdateProjectMetadata({
     const response: PatchProjectMetadataResponseBody = await res.json();
     return response.projectMetadata;
   };
+}
+
+export function useProjectJournalEntries({
+  workspaceId,
+  spaceId,
+  limit = 1,
+  disabled = false,
+}: {
+  workspaceId: string;
+  spaceId: string | null;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const journalEntriesFetcher: Fetcher<GetProjectJournalEntriesResponseBody> =
+    fetcher;
+
+  const { data, error, mutate } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/spaces/${spaceId}/project_journal_entries?limit=${limit}`,
+    journalEntriesFetcher,
+    { disabled: disabled || spaceId === null }
+  );
+
+  return {
+    journalEntries: data?.entries ?? emptyArray(),
+    latestJournalEntry: data?.entries?.[0] ?? null,
+    isJournalEntriesLoading: !error && !data && !disabled,
+    isJournalEntriesError: error,
+    mutateJournalEntries: mutate,
+  };
+}
+
+export function useGenerateProjectJournalEntry({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+
+  const doGenerate = async () => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${spaceId}/project_journal_entries/generate`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (res.ok) {
+      sendNotification({
+        type: "success",
+        title: "Generating journal entry",
+        description:
+          "Your journal entry is being generated. Refresh the page in a moment to see the result.",
+      });
+      return true;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error generating journal entry",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+  };
+
+  return doGenerate;
 }

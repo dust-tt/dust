@@ -14,6 +14,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       "List all databases accessible to the authenticated Snowflake user.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing databases",
+      done: "List databases",
+    },
   },
   list_schemas: {
     description: "List all schemas within a specified Snowflake database.",
@@ -23,6 +27,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the database to list schemas from."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing schemas",
+      done: "List schemas",
+    },
   },
   list_tables: {
     description:
@@ -34,6 +42,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the schema to list tables from."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing tables",
+      done: "List tables",
+    },
   },
   describe_table: {
     description:
@@ -44,6 +56,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
       table: z.string().describe("The name of the table to describe."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Describing table",
+      done: "Describe table",
+    },
   },
   query: {
     description:
@@ -75,6 +91,10 @@ export const SNOWFLAKE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Executing query",
+      done: "Execute query",
+    },
   },
 });
 
@@ -86,7 +106,7 @@ export const SNOWFLAKE_SERVER = {
       "Execute read-only SQL queries and browse schema in Snowflake.",
     authorization: {
       provider: "snowflake",
-      supported_use_cases: ["personal_actions"],
+      supported_use_cases: ["personal_actions", "platform_actions"],
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",
@@ -97,6 +117,7 @@ export const SNOWFLAKE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SNOWFLAKE_TOOLS_METADATA).map((t) => [t.name, t.stake])

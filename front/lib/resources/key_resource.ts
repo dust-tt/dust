@@ -19,12 +19,13 @@ import { formatUserFullName, redactString } from "@app/types";
 
 export interface KeyAuthType {
   id: ModelId;
-  name: string | null;
+  name: string;
   isSystem: boolean;
   role: RoleType;
   monthlyCapMicroUsd: number | null;
 }
 
+export const DEFAULT_SYSTEM_KEY_NAME = "DustSystemKey";
 export const SECRET_KEY_PREFIX = "sk-";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
@@ -93,10 +94,13 @@ export class KeyResource extends BaseResource<KeyModel> {
     return new this(KeyResource.model, key.get());
   }
 
-  static async fetchByWorkspaceAndId(
-    workspace: LightWorkspaceType,
-    id: ModelId | string
-  ) {
+  static async fetchByWorkspaceAndId({
+    workspace,
+    id,
+  }: {
+    workspace: LightWorkspaceType;
+    id: ModelId | string;
+  }) {
     const key = await this.fetchByModelId(id);
 
     if (!key) {
@@ -110,11 +114,15 @@ export class KeyResource extends BaseResource<KeyModel> {
     return key;
   }
 
-  static async fetchByName(auth: Authenticator, { name }: { name: string }) {
+  static async fetchByName(
+    auth: Authenticator,
+    { name, onlyActive }: { name: string; onlyActive?: boolean }
+  ) {
     const key = await this.model.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         name: name,
+        ...(onlyActive ? { status: "active" } : {}),
       },
     });
 

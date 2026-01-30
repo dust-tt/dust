@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -41,7 +41,9 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const seatsCount = await countActiveSeatsInWorkspace(owner.sId);
+      const seatsCount = await MembershipResource.countActiveSeatsInWorkspace(
+        owner.sId
+      );
       return res.status(200).json({ seatsCount });
     }
 

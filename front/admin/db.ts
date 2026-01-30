@@ -9,6 +9,7 @@ import {
 } from "@app/lib/models/agent/actions/mcp";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
 import { MCPServerViewModel } from "@app/lib/models/agent/actions/mcp_server_view";
+import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { RemoteMCPServerModel } from "@app/lib/models/agent/actions/remote_mcp_server";
 import { RemoteMCPServerToolMetadataModel } from "@app/lib/models/agent/actions/remote_mcp_server_tool_metadata";
 import { AgentTablesQueryConfigurationTableModel } from "@app/lib/models/agent/actions/tables_query";
@@ -85,6 +86,7 @@ import { MembershipModel } from "@app/lib/resources/storage/models/membership";
 import { OnboardingTaskModel } from "@app/lib/resources/storage/models/onboarding_tasks";
 import { PluginRunModel } from "@app/lib/resources/storage/models/plugin_runs";
 import { ProgrammaticUsageConfigurationModel } from "@app/lib/resources/storage/models/programmatic_usage_configurations";
+import { ProjectJournalEntryModel } from "@app/lib/resources/storage/models/project_journal_entry";
 import { ProjectMetadataModel } from "@app/lib/resources/storage/models/project_metadata";
 import {
   RunModel,
@@ -172,6 +174,7 @@ async function main() {
   await AgentTablesQueryConfigurationTableModel.sync({ alter: true });
 
   await AgentDataSourceConfigurationModel.sync({ alter: true });
+  await AgentProjectConfigurationModel.sync({ alter: true });
 
   await UserMessageModel.sync({ alter: true });
   await AgentMessageModel.sync({ alter: true });
@@ -211,6 +214,8 @@ async function main() {
   await WorkspaceVerificationAttemptModel.sync({ alter: true });
 
   await AgentSuggestionModel.sync({ alter: true });
+
+  await ProjectJournalEntryModel.sync({ alter: true });
 
   process.exit(0);
 }

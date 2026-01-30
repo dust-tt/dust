@@ -19,6 +19,7 @@ const {
   markNodeAsSeen,
   populateDeltas,
   groupRootItemsByDriveId,
+  isMicrosoftFullSyncRunning,
 } = proxyActivities<typeof activities>({
   startToCloseTimeout: "30 minutes",
 });
@@ -202,7 +203,10 @@ export async function incrementalSyncWorkflowV2({
 }: {
   connectorId: ModelId;
 }) {
-  await syncStarted(connectorId);
+  const fullSyncRunning = await isMicrosoftFullSyncRunning(connectorId);
+  if (!fullSyncRunning) {
+    await syncStarted(connectorId);
+  }
 
   const nodeIdsToSync = await getRootNodesToSync(connectorId);
 
@@ -259,7 +263,9 @@ export async function incrementalSyncWorkflowV2({
     }
   }
 
-  await syncSucceeded(connectorId);
+  if (!fullSyncRunning) {
+    await syncSucceeded(connectorId);
+  }
 
   await sleep("5 minutes");
   await continueAsNew<typeof incrementalSyncWorkflow>({

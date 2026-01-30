@@ -14,8 +14,8 @@ import { Ok } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 import { frameContentType } from "@app/types/files";
 
-// Mock the upload module.
-vi.mock("@app/lib/api/files/upload", () => ({
+// Mock the processing module.
+vi.mock("@app/lib/api/files/processing", () => ({
   processAndStoreFile: vi.fn(),
 }));
 
@@ -201,7 +201,9 @@ describe("FileResource", () => {
       });
 
       // Mock processAndStoreFile to return success.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
         await file.markAsReady();
@@ -325,7 +327,9 @@ describe("FileResource", () => {
       });
 
       // Mock processAndStoreFile to return an error.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const { Err } = await import("@app/types");
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockResolvedValue(
@@ -375,7 +379,9 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: "conv-1" },
       });
 
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
         await file.markAsReady();

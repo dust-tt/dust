@@ -55,7 +55,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -69,6 +68,7 @@ import {
   sectionFullText,
   validateUrl,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { ConversationResource } from "../resources/conversation_resource";
 

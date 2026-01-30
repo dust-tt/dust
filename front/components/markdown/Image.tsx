@@ -1,21 +1,15 @@
-import { InteractiveImageGrid } from "@dust-tt/sparkle";
+import { Citation, CitationImage } from "@dust-tt/sparkle";
 import React from "react";
 import { visit } from "unist-util-visit";
 
+import { FILE_ID_REGEX } from "@app/lib/files";
 import {
   getFileProcessedUrl,
   getProcessedFileDownloadUrl,
+  useFileMetadata,
 } from "@app/lib/swr/files";
 import type { LightWorkspaceType } from "@app/types";
-import { FILE_FORMATS } from "@app/types/files";
-
-const IMAGE_EXTENSIONS = Array.from(
-  new Set(
-    Object.values(FILE_FORMATS)
-      .filter((format) => format.cat === "image")
-      .flatMap((format) => format.exts)
-  )
-);
+import { isSupportedImageContentType } from "@app/types/files";
 
 interface ImgProps {
   src: string;
@@ -23,23 +17,16 @@ interface ImgProps {
   owner: LightWorkspaceType;
 }
 export function Img({ src, alt, owner }: ImgProps) {
-  if (!src) {
-    return null;
-  }
+  const matches = src?.match(FILE_ID_REGEX);
+  const fileId = matches?.length === 1 ? matches[0] : null;
 
-  const matches = src.match(/\bfil_[A-Za-z0-9]{10,}\b/g);
-  if (!matches || matches.length !== 1) {
-    return null;
-  }
+  const { fileMetadata, isFileMetadataLoading } = useFileMetadata({
+    fileId,
+    owner,
+  });
 
-  // Check if this is actually an image file by checking the extension in the alt text.
-  // Default is true for backward compatibility when no alt text is provided.
-  if (alt) {
-    const altLower = alt.toLowerCase();
-    const isImageFile = IMAGE_EXTENSIONS.some((ext) => altLower.endsWith(ext));
-    if (!isImageFile) {
-      return null;
-    }
+  if (!src || !fileId) {
+    return null;
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
@@ -47,23 +34,39 @@ export function Img({ src, alt, owner }: ImgProps) {
     return null;
   }
 
-  const viewSuffix = getFileProcessedUrl(owner, matches[0]);
-  const downloadSuffix = getProcessedFileDownloadUrl(owner, matches[0]);
+  const viewSuffix = getFileProcessedUrl(owner, fileId);
+  const downloadSuffix = getProcessedFileDownloadUrl(owner, fileId);
   const viewURL = new URL(viewSuffix, baseUrl);
   const downloadURL = new URL(downloadSuffix, baseUrl);
 
+  // Show loading state while fetching metadata.
+  if (isFileMetadataLoading) {
+    return (
+      <Citation containerClassName="s-aspect-square s-w-48">
+        <CitationImage
+          imgSrc={viewURL.toString()}
+          downloadUrl={downloadURL.toString()}
+          title={alt || "Loading..."}
+          isLoading={true}
+        />
+      </Citation>
+    );
+  }
+
+  // Check content type from file metadata instead of filename extension.
+  if (!fileMetadata || !isSupportedImageContentType(fileMetadata.contentType)) {
+    return null;
+  }
+
   return (
-    <InteractiveImageGrid
-      images={[
-        {
-          imageUrl: viewURL.toString(),
-          downloadUrl: downloadURL.toString(),
-          alt: alt ? alt : "",
-          title: alt ? alt : "",
-          isLoading: false,
-        },
-      ]}
-    />
+    <Citation containerClassName="s-aspect-square s-w-48">
+      <CitationImage
+        imgSrc={viewURL.toString()}
+        downloadUrl={downloadURL.toString()}
+        title={fileMetadata.fileName}
+        alt={alt || fileMetadata.fileName}
+      />
+    </Citation>
   );
 }
 

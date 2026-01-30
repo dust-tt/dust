@@ -2,9 +2,11 @@
   "name": "connectors",
   "version": "0.1.0",
   "scripts": {
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "lint": "eslint .",
+    "format": "npm run format:lefthook -- .",
+    "format:lefthook": "biome format --write",
+    "format:check": "biome check --formatter-enabled=true --linter-enabled=false .",
+    "lint": "npm run lint:lefthook -- .",
+    "lint:lefthook": "eslint",
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",
@@ -97,6 +99,7 @@
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.13",
     "@types/eslint": "^8.56.10",
     "@types/gunzip-maybe": "^1.4.2",
     "@types/lodash": "^4.17.7",
@@ -117,20 +120,10 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "knip": "^5.80.0",
-    "lint-staged": "^16.1.6",
-    "prettier": "^3.7.4",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.48.0",
     "vitest": "^4.0.16"
-  },
-  "lint-staged": {
-    "**/*.{js,jsx,ts,tsx,json,css,scss,md,yaml,yml}": [
-      "prettier --check"
-    ],
-    "**/*.{js,jsx,ts,tsx}": [
-      "eslint"
-    ]
   }
 }

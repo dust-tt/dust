@@ -4,9 +4,9 @@ import {
   isOperator,
   isVariadicOperation,
 } from "@app/lib/matcher/types";
-import { assertNever } from "@app/types";
 import type { Result } from "@app/types/shared/result";
 import { Err, Ok } from "@app/types/shared/result";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import type { LogicalOp, MatcherExpression, Operation } from "./types";
 

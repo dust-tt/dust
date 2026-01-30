@@ -220,10 +220,13 @@ export const MAIN_SESSION_NAME = "dust-hive-main";
  * Tab display names (shorter names for better display in tab bar)
  */
 export const TAB_NAMES: Record<ServiceName, string> = {
+  sparkle: "sparkle",
   sdk: "sdk",
   front: "front",
   core: "core",
   oauth: "oauth",
   connectors: "connectors",
   "front-workers": "workers",
+  "front-spa-poke": "spa-poke",
+  "front-spa-app": "spa-app",
 };

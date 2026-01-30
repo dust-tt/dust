@@ -13,27 +13,23 @@ import { BaseResource } from "@app/lib/resources/base_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
-import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
-import { WebhookSourcesViewResource } from "@app/lib/resources/webhook_sources_view_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import { normalizeWebhookIcon } from "@app/lib/webhookSource";
-import logger from "@app/logger/logger";
 import type { ModelId, Result } from "@app/types";
 import { Ok, redactString } from "@app/types";
 import type {
   WebhookSourceForAdminType as WebhookSourceForAdminType,
   WebhookSourceType,
 } from "@app/types/triggers/webhooks";
-import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
 const SECRET_REDACTION_COOLDOWN_IN_MINUTES = 10;
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebhookSourceResource extends ReadonlyAttributesType<WebhookSourceModel> {}
+export interface WebhookSourceResource
+  extends ReadonlyAttributesType<WebhookSourceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
   static model: ModelStatic<WebhookSourceModel> = WebhookSourceModel;
@@ -165,9 +161,21 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
     await this.update({ secret });
   }
 
+  /**
+   * Low-level delete that only removes this webhook source record.
+   * Use deleteWebhookSource from lib/api/webhook_source.ts for full deletion
+   * including views, triggers, and webhook requests.
+   */
   async delete(
     auth: Authenticator,
-    { transaction }: { transaction?: Transaction | undefined } = {}
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<Result<undefined, Error>> {
+    return this.hardDelete(auth, { transaction });
+  }
+
+  async hardDelete(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
     const canAdministrate =
       await SpaceResource.canAdministrateSystemSpace(auth);
@@ -176,68 +184,14 @@ export class WebhookSourceResource extends BaseResource<WebhookSourceModel> {
       "The user is not authorized to delete a webhook source"
     );
 
-    const owner = auth.getNonNullableWorkspace();
-
-    if (this.provider && this.remoteMetadata && this.oauthConnectionId) {
-      const service = WEBHOOK_PRESETS[this.provider].webhookService;
-      const result = await service.deleteWebhooks({
-        auth,
-        connectionId: this.oauthConnectionId,
-        remoteMetadata: this.remoteMetadata,
-      });
-
-      if (result.isErr()) {
-        logger.error(
-          { error: result.error },
-          `Failed to delete remote webhook on ${this.provider}`
-        );
-      }
-      // Continue with local deletion even if remote deletion fails
-    }
-
-    // Find all webhook sources views for this webhook source
-    const webhookSourceViews =
-      await WebhookSourcesViewResource.listByWebhookSourceForInternalProcessing(
-        auth,
-        this.id
-      );
-
-    // Delete all triggers for each webhook source view
-    for (const webhookSourceView of webhookSourceViews) {
-      const triggers = await TriggerResource.listByWebhookSourceViewId(
-        auth,
-        webhookSourceView.id
-      );
-      for (const trigger of triggers) {
-        await trigger.delete(auth, { transaction });
-      }
-    }
-
-    // Directly delete the WebhookSourceViewModel to avoid a circular dependency.
-    await WebhookSourcesViewModel.destroy({
-      where: {
-        workspaceId: auth.getNonNullableWorkspace().id,
-        webhookSourceId: this.id,
-      },
-      // Use 'hardDelete: true' to ensure the record is permanently deleted from the database,
-      // bypassing the soft deletion in place.
-      hardDelete: true,
-      transaction,
-    });
-
-    // Directly delete the webhook requests associated with this webhook source
-    await WebhookRequestResource.deleteByWebhookSourceId(auth, this.id, {
-      transaction,
-    });
-
-    // Then delete the webhook source itself
     await WebhookSourceModel.destroy({
       where: {
         id: this.id,
-        workspaceId: owner.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
     });
+
     return new Ok(undefined);
   }
 

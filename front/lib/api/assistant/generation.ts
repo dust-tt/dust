@@ -1,23 +1,25 @@
 import moment from "moment-timezone";
 
 import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
   DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
   DEFAULT_CONVERSATION_SEARCH_ACTION_NAME,
   ENABLE_SKILL_TOOL_NAME,
-  GET_MENTION_MARKDOWN_TOOL_NAME,
-  SEARCH_AVAILABLE_USERS_TOOL_NAME,
   TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type { ServerToolsAndInstructions } from "@app/lib/actions/mcp_actions";
-import { SKILL_MANAGEMENT_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
 import {
-  isMCPConfigurationForInternalNotion,
-  isMCPConfigurationForInternalSlack,
-  isMCPConfigurationForInternalWebsearch,
-  isMCPConfigurationForRunAgent,
-  isMCPConfigurationWithDataSource,
+  INTERNAL_SERVERS_WITH_WEBSEARCH,
+  SKILL_MANAGEMENT_SERVER_NAME,
+} from "@app/lib/actions/mcp_internal_actions/constants";
+import {
+  areDataSourcesConfigured,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
+import {
+  GET_MENTION_MARKDOWN_TOOL_NAME,
+  SEARCH_AVAILABLE_USERS_TOOL_NAME,
+} from "@app/lib/api/actions/servers/common_utilities/metadata";
+import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { citationMetaPrompt } from "@app/lib/api/assistant/citations";
 import type { Authenticator } from "@app/lib/auth";
 import type { SkillResource } from "@app/lib/resources/skill/skill_resource";
@@ -27,7 +29,6 @@ import type {
   LightAgentConfigurationType,
   ModelConfigurationType,
   UserMessageType,
-  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
@@ -118,7 +119,6 @@ function constructToolsSection({
   serverToolsAndInstructions,
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
@@ -126,7 +126,6 @@ function constructToolsSection({
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -178,11 +177,8 @@ function constructToolsSection({
     toolServersPrompt +=
       "Each server provides a list of tools made available to the agent.\n";
     for (const serverData of serverToolsAndInstructions) {
-      if (
-        featureFlags.includes("skills") &&
-        areInstructionsAlreadyIncludedInSkillSection(serverData)
-      ) {
-        // When skills feature flag is enabled, prevent interactive_content and deep_dive server instructions
+      if (areInstructionsAlreadyIncludedInSkillSection(serverData)) {
+        // Prevent interactive_content and deep_dive server instructions
         // from being duplicated in the prompt if they are already included in the skills section.
         continue;
       }
@@ -233,16 +229,10 @@ function getEnabledSkillInstructions(
 function constructSkillsSection({
   enabledSkills,
   equippedSkills,
-  featureFlags,
 }: {
   enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
   equippedSkills: SkillResource[];
-  featureFlags: WhitelistableFeature[];
 }): string {
-  if (!featureFlags.includes("skills")) {
-    return "";
-  }
-
   let skillsSection =
     "\n## SKILLS\n" +
     "Skills are modular capabilities that extend your abilities for specific tasks. " +
@@ -301,7 +291,7 @@ function constructAttachmentsSection(): string {
     "Attachments may originate from the user directly or from tool outputs. " +
     "These tags indicate when the file was attached but often do not contain the full contents (it may contain a small snippet or description of the file).\n" +
     "Three flags indicate how an attachment can be used:\n\n" +
-    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
+    `- isIncludable: attachment contents can be retrieved directly, using conversation tool \`${CONVERSATION_CAT_FILE_ACTION_NAME}\`;\n` +
     `- isQueryable: attachment contents are tabular data that can be queried alongside other queryable conversation files' tabular data using \`${DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME}\`;\n` +
     `- isSearchable: attachment contents are available for semantic search, i.e. when semantically searching conversation files' content, using \`${DEFAULT_CONVERSATION_SEARCH_ACTION_NAME}\`,` +
     " contents of this attachment will be considered in the search.\n" +
@@ -328,15 +318,17 @@ export function constructGuidelinesSection({
 
   const canRetrieveDocuments = agentConfiguration.actions.some(
     (action) =>
-      isMCPConfigurationWithDataSource(action) ||
-      isMCPConfigurationForInternalWebsearch(action) ||
-      isMCPConfigurationForRunAgent(action) ||
-      isMCPConfigurationForInternalSlack(action) ||
-      isMCPConfigurationForInternalNotion(action)
+      areDataSourcesConfigured(action) ||
+      INTERNAL_SERVERS_WITH_WEBSEARCH.some((n) =>
+        isServerSideMCPServerConfigurationWithName(action, n)
+      ) ||
+      isServerSideMCPServerConfigurationWithName(action, "run_agent") ||
+      isServerSideMCPServerConfigurationWithName(action, "slack") ||
+      isServerSideMCPServerConfigurationWithName(action, "notion")
   );
 
   const isUsingRunAgent = agentConfiguration.actions.some((action) =>
-    isMCPConfigurationForRunAgent(action)
+    isServerSideMCPServerConfigurationWithName(action, "run_agent")
   );
 
   if (canRetrieveDocuments) {
@@ -356,8 +348,8 @@ export function constructGuidelinesSection({
 
   guidelinesSection +=
     "\n## RENDERING MARKDOWN IMAGES\n" +
-    'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history.' +
-    'Also always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
+    'When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding `<attachment id="{FILE_ID}" type... title...>` tag in the conversation history. ' +
+    'Also, always use the file title which can similarly be extracted from the same `<attachment id... type... title="{TITLE}">` tag in the conversation history.' +
     "\nEvery image markdown should follow this pattern ![{TITLE}]({FILE_ID}).\n";
 
   const isSlackOrTeams =
@@ -367,17 +359,34 @@ export function constructGuidelinesSection({
   if (!isSlackOrTeams) {
     guidelinesSection +=
       `\n## MENTIONING USERS\n` +
-      "You have the abillity to mention users in a message using the markdown directive." +
-      '\nUsers can also refer to mention as "ping".' +
-      `\nUse the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` tool to search for users that are available to the conversation.` +
-      `\nUse the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tool to get the markdown directive to use to mention a user in a message.` +
-      "\nImportant:" +
-      "\n - In conversation with more than one user talking, always answer to users by prefixing your message with their markdown mention directive in order to address them directly, avoid confusion and ensure users are happy." +
-      "\n - Use the markdown directive only when you want to ping the user, if you just want to refer to them, use their name only.";
+      'You can notify users in this conversation by mentioning them (also called "pinging").\n' +
+      "\n### CRITICAL: You MUST use the tools - DO NOT guess the format\n" +
+      "User mentions require a specific markdown format that is DIFFERENT from agent mentions.\n" +
+      "Attempting to guess or construct the format manually WILL FAIL and the user will NOT be notified.\n" +
+      "\n### How to mention a user (required 2-step process):\n" +
+      `1. Call \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` with a search term (or empty string "" to list all users)\n` +
+      `   - Returns JSON array with user info: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]\n` +
+      `   - Extract the "id" and "label" fields from the user you want to mention\n` +
+      `2. Call \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` with the exact id and label from step 1\n` +
+      `   - Pass: { mention: { id: "user_123", label: "John Doe" } }\n` +
+      `   - Returns the correct mention string to include directly in your response\n` +
+      "\n### Format distinction (for reference only - NEVER construct manually):\n" +
+      "- Agent mentions: `:mention[Name]{sId=agent_id}` (no suffix)\n" +
+      "- User mentions: `:mention_user[Name]{sId=user_id}` (note the `_user` suffix)\n" +
+      "- The `_user` suffix is critical - wrong format = no notification sent\n" +
+      "\n### Common mistakes to AVOID:\n" +
+      "❌ WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)\n" +
+      "❌ WRONG: `@John Doe` (only works in Slack/Teams, not web)\n" +
+      "❌ WRONG: Trying to construct the format yourself without tools\n" +
+      `✓ CORRECT: Always use ${SEARCH_AVAILABLE_USERS_TOOL_NAME} + ${GET_MENTION_MARKDOWN_TOOL_NAME}\n` +
+      "\n### When to mention users:\n" +
+      "- In multi-user conversations, prefix your response with a mention to address specific users directly\n" +
+      "- Only use mentions when you want to ping/notify the user (they receive a notification)\n" +
+      "- To simply refer to someone without notifying them, use their name as plain text";
   } else {
     guidelinesSection +=
       `\n## MENTIONING USERS\n` +
-      "You have the abillity to mention users in a message using the markdown directive." +
+      "You have the ability to mention users in a message using the markdown directive." +
       '\nUsers can also refer to mention as "ping".' +
       `\nDo not use the \`${SEARCH_AVAILABLE_USERS_TOOL_NAME}\` or the \`${GET_MENTION_MARKDOWN_TOOL_NAME}\` tools to mention users.\n` +
       "\nUse a simple @username to mention users in your messages in this conversation.";
@@ -432,9 +441,9 @@ function constructInstructionsSection({
 /**
  * Generation of the prompt for agents with multiple actions.
  *
- * `agentsList` is passed by caller so that if there's an {ASSISTANTS_LIST} in
+ * `agentsList` is passed by the caller so that if there's an {ASSISTANTS_LIST} in
  * the instructions, it can be replaced appropriately. The Extract action
- * doesn't need that replacement, and needs to avoid a dependency on
+ * doesn't need that replacement and needs to avoid a dependency on
  * getAgentConfigurations here, so it passes null.
  */
 export function constructPromptMultiActions(
@@ -451,7 +460,6 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions,
     enabledSkills,
     equippedSkills,
-    featureFlags,
   }: {
     userMessage: UserMessageType;
     agentConfiguration: AgentConfigurationType;
@@ -464,7 +472,6 @@ export function constructPromptMultiActions(
     serverToolsAndInstructions?: ServerToolsAndInstructions[];
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
-    featureFlags: WhitelistableFeature[];
   }
 ) {
   const owner = auth.workspace();
@@ -486,12 +493,10 @@ export function constructPromptMultiActions(
       serverToolsAndInstructions,
       enabledSkills,
       equippedSkills,
-      featureFlags,
     }),
     constructSkillsSection({
       enabledSkills,
       equippedSkills,
-      featureFlags,
     }),
     constructAttachmentsSection(),
     constructPastedContentSection(),

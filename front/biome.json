@@ -29,6 +29,26 @@
       "!.yalc/**/*.{js,jsx,ts,tsx}"
     ]
   },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "attributePosition": "auto",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "expand": "auto",
+    "useEditorconfig": true,
+    "includes": [
+      "**",
+      "!**/.next",
+      "!public/swagger.json",
+      "!**/node_modules",
+      "!**/.yalc"
+    ]
+  },
   "linter": {
     "rules": {
       "recommended": false,
@@ -41,6 +61,9 @@
       "correctness": {
         "recommended": false
       },
+      "nursery": {
+        "noImportCycles": "error"
+      },
       "performance": {
         "recommended": false
       },
@@ -52,10 +75,81 @@
       },
       "suspicious": {
         "recommended": false
-      },
-      "nursery": {
-        "noImportCycles": "warn"
       }
     }
-  }
+  },
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "trailingCommas": "es5",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "quoteStyle": "double",
+      "attributePosition": "auto",
+      "bracketSpacing": true
+    }
+  },
+  "html": {
+    "formatter": {
+      "indentScriptAndStyle": false,
+      "selfCloseVoidElements": "always"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "lib/actions/configuration/mcp.ts",
+        "lib/actions/mcp_cached_metadata.ts",
+        "lib/actions/mcp_internal_actions/index.ts",
+        "lib/actions/mcp_internal_actions/servers/index.ts",
+        "lib/actions/mcp_internal_actions/servers/interactive_content/index.ts",
+        "lib/actions/mcp_internal_actions/servers/interactive_content/template_utils.ts",
+        "lib/actions/mcp_metadata.ts",
+        "lib/api/actions/servers/agent_copilot_agent_state/index.ts",
+        "lib/api/actions/servers/agent_copilot_agent_state/tools/index.ts",
+        "lib/api/actions/servers/agent_copilot_context/index.ts",
+        "lib/api/actions/servers/agent_copilot_context/tools/index.ts",
+        "lib/api/actions/servers/skill_management/index.ts",
+        "lib/api/actions/servers/skill_management/tools/index.ts",
+        "lib/api/assistant/configuration/actions.ts",
+        "lib/api/assistant/configuration/agent.ts",
+        "lib/api/assistant/configuration/helpers.ts",
+        "lib/api/assistant/feedback.ts",
+        "lib/api/assistant/global_agents/configurations/anthropic.ts",
+        "lib/api/assistant/global_agents/configurations/dust/deep-dive.ts",
+        "lib/api/assistant/global_agents/configurations/dust/dust.ts",
+        "lib/api/assistant/global_agents/configurations/google.ts",
+        "lib/api/assistant/global_agents/configurations/helper.ts",
+        "lib/api/assistant/global_agents/configurations/mistral.ts",
+        "lib/api/assistant/global_agents/configurations/openai.ts",
+        "lib/api/assistant/global_agents/global_agents.ts",
+        "lib/api/assistant/global_agents/tools.ts",
+        "lib/api/assistant/permissions.ts",
+        "lib/api/assistant/skill_actions.ts",
+        "lib/resources/agent_suggestion_resource.ts",
+        "lib/resources/internal_mcp_server_in_memory_resource.ts",
+        "lib/resources/mcp_server_view_resource.ts",
+        "lib/resources/skill/global/discover_tools.ts",
+        "lib/resources/skill/global/go_deep.ts",
+        "lib/resources/skill/global/registry.ts",
+        "lib/resources/skill/skill_resource.ts"
+      ],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noImportCycles": "off"
+          }
+        }
+      }
+    }
+  ]
 }

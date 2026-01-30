@@ -179,6 +179,7 @@ const getTableColumns = ({
               items: editors.map((editor) => ({
                 name: editor.fullName,
                 visual: editor.image,
+                isRounded: true,
               })),
               nbVisibleItems: 4,
             }}

@@ -27,11 +27,11 @@ import type {
   WithAPIErrorResponse,
 } from "@app/types";
 import {
-  assertNever,
   CoreAPI,
   credentialsFromProviders,
   dustManagedCredentials,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const config = {
   api: {
@@ -549,5 +549,6 @@ async function handler(
 
 export default withPublicAPIAuthentication(
   // Check read on the workspace authenticator - for public space, everybody can read
-  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } })
+  withResourceFetchingFromRoute(handler, { space: { requireCanRead: true } }),
+  { allowSystemKeyBypassBuilderCheck: true }
 );

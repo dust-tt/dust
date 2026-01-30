@@ -10,18 +10,16 @@ import type { MCPToolType } from "@app/lib/api/mcp";
 export const AGENT_COPILOT_AGENT_STATE_TOOL_NAME =
   "agent_copilot_agent_state" as const;
 
-// Key used to store the agent configuration version in additionalConfiguration.
-export const AGENT_CONFIGURATION_VERSION_KEY = "agentConfigurationVersion";
-
-// Re-export the AGENT_CONFIGURATION_ID_KEY for convenience.
-export { AGENT_CONFIGURATION_ID_KEY } from "@app/lib/api/actions/servers/agent_copilot_context/metadata";
-
 export const AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
   get_agent_info: {
     description:
       "Get detailed information about the current agent configuration, including name, description, instructions, model settings, and the IDs of all skills and tools currently used by the agent.",
     schema: {},
     stake: "never_ask" as MCPToolStakeLevelType,
+    displayLabels: {
+      running: "Getting agent info",
+      done: "Get agent info",
+    },
   },
 });
 
@@ -38,6 +36,7 @@ export const AGENT_COPILOT_AGENT_STATE_TOOLS: MCPToolType[] = (
   inputSchema: zodToJsonSchema(
     z.object(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].schema)
   ) as JSONSchema,
+  displayLabels: AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].displayLabels,
 }));
 
 export const AGENT_COPILOT_AGENT_STATE_TOOL_STAKES: Record<

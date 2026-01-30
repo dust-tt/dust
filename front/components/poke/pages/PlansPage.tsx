@@ -19,6 +19,7 @@ import {
   toPlanType,
   useEditingPlan,
 } from "@app/components/poke/plans/form";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { clientFetch } from "@app/lib/egress/client";
 import { usePokePlans } from "@app/lib/swr/poke";
@@ -26,6 +27,8 @@ import type { PlanTypeSchema } from "@app/pages/api/poke/plans";
 import type { PlanType } from "@app/types";
 
 export function PlansPage() {
+  useSetPokePageTitle("Plans");
+
   const { mutate } = useSWRConfig();
 
   const sendNotification = useSendNotification();

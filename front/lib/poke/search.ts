@@ -1,3 +1,5 @@
+import { validate as validateUuid } from "uuid";
+
 import config from "@app/lib/api/config";
 import {
   findWorkspaceByWorkOSOrganizationId,
@@ -11,6 +13,7 @@ import {
 } from "@app/lib/poke/utils";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { FileResource } from "@app/lib/resources/file_resource";
 import { getResourceNameAndIdFromSId } from "@app/lib/resources/string_ids";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import logger from "@app/logger/logger";
@@ -26,7 +29,7 @@ async function searchPokeWorkspaces(
       {
         id: workspaceInfos.id,
         name: workspaceInfos.name,
-        link: `${config.getClientFacingUrl()}/poke/${workspaceInfos.sId}`,
+        link: `${config.getPokeAppUrl()}/${workspaceInfos.sId}`,
         type: "Workspace",
       },
     ];
@@ -39,7 +42,7 @@ async function searchPokeWorkspaces(
       return workspaces.map((w) => ({
         id: w.id,
         name: w.name,
-        link: `${config.getClientFacingUrl()}/poke/${w.sId}`,
+        link: `${config.getPokeAppUrl()}/${w.sId}`,
         type: "Workspace",
       }));
     }
@@ -53,7 +56,7 @@ async function searchPokeWorkspaces(
         {
           id: workspaceByOrgId.id,
           name: workspaceByOrgId.name,
-          link: `${config.getClientFacingUrl()}/poke/${workspaceByOrgId.sId}`,
+          link: `${config.getPokeAppUrl()}/${workspaceByOrgId.sId}`,
           type: "Workspace",
         },
       ];
@@ -90,7 +93,7 @@ async function searchConnectorModelId(
         {
           id: parseInt(connector.id, 10),
           name: `${workspace.name}'s ${asDisplayName(connector.type)}`,
-          link: `${config.getClientFacingUrl()}/poke/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
+          link: `${config.getPokeAppUrl()}/${connector.workspaceId}/data_sources/${connector.dataSourceId}`,
           type: "Connector",
         },
       ];
@@ -120,6 +123,36 @@ async function searchPokeConnectors(
   return [];
 }
 
+async function searchPokeFrames(searchTerm: string): Promise<PokeItemBase[]> {
+  // Share tokens are UUIDs.
+  if (!validateUuid(searchTerm)) {
+    return [];
+  }
+
+  const res = await FileResource.fetchByShareTokenWithContent(searchTerm);
+  if (!res) {
+    return [];
+  }
+
+  const { file } = res;
+
+  const [workspace] = await WorkspaceResource.fetchByModelIds([
+    file.workspaceId,
+  ]);
+  if (!workspace) {
+    return [];
+  }
+
+  return [
+    {
+      id: file.id,
+      name: `Frame (token: ${searchTerm.slice(0, 8)}...)`,
+      link: `${config.getPokeAppUrl()}/${workspace.sId}/files/${file.sId}`,
+      type: "Frame",
+    },
+  ];
+}
+
 export async function searchPokeResources(
   auth: Authenticator,
   searchTerm: string
@@ -129,11 +162,11 @@ export async function searchPokeResources(
     return searchPokeResourcesBySId(auth, resourceInfo);
   }
 
-  // Fallback to handle resources without the cool sId format.
   return (
     await Promise.all([
       searchPokeWorkspaces(searchTerm),
       searchPokeConnectors(searchTerm),
+      searchPokeFrames(searchTerm),
     ])
   ).flat();
 }

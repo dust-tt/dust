@@ -3,7 +3,6 @@ import {
   DEEP_DIVE_NAME,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
-  assertNever,
   CLAUDE_3_5_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_7_SONNET_DEFAULT_MODEL_CONFIG,
   CLAUDE_3_HAIKU_DEFAULT_MODEL_CONFIG,
@@ -26,6 +25,7 @@ import {
   O3_MODEL_CONFIG,
 } from "@app/types";
 import { DUST_AVATAR_URL } from "@app/types/assistant/avatar";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentMetadata = {
   sId: string;
@@ -280,6 +280,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust but running OpenAI models.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_NEXT:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT,
+        name: "dust-next",
+        description:
+          "Same as dust but running a custom model for internal testing.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST:
       return {
         sId: GLOBAL_AGENTS_SID.DUST,
@@ -318,6 +326,13 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "A agent that plans research tasks.",
         pictureUrl:
           "https://dust.tt/static/systemavatar/dust-task_avatar_full.png",
+      };
+    case GLOBAL_AGENTS_SID.COPILOT:
+      return {
+        sId: GLOBAL_AGENTS_SID.COPILOT,
+        name: "copilot",
+        description: "An agent that suggest improvements for another agent.",
+        pictureUrl: DUST_AVATAR_URL,
       };
     case GLOBAL_AGENTS_SID.NOOP:
       return {

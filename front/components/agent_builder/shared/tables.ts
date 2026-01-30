@@ -11,7 +11,8 @@ import type {
   LightContentNode,
   LightWorkspaceType,
 } from "@app/types";
-import { assertNever, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export function getTableIdForContentNode(
   dataSource: DataSourceType,

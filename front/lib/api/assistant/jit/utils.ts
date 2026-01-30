@@ -15,7 +15,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import logger from "@app/logger/logger";
 import type { ConversationWithoutContentType } from "@app/types";
-import { CoreAPI } from "@app/types";
+import { CoreAPI, isProjectConversation } from "@app/types";
 
 export async function getTablesFromMultiSheetSpreadsheet(
   auth: Authenticator,
@@ -67,7 +67,7 @@ export async function getProjectContextDataSourceView(
   auth: Authenticator,
   conversation: ConversationWithoutContentType
 ): Promise<DataSourceViewResource | null> {
-  if (!conversation.spaceId) {
+  if (!isProjectConversation(conversation)) {
     // Conversation not in a space (private conversation).
     return null;
   }

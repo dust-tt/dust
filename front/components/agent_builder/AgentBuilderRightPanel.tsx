@@ -3,6 +3,7 @@ import {
   Button,
   ListCheckIcon,
   MagicIcon,
+  RobotIcon,
   ScrollArea,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
@@ -67,7 +68,7 @@ function PanelHeader({
                   <TabsTrigger
                     value="copilot"
                     label="Copilot"
-                    icon={MagicIcon}
+                    icon={RobotIcon}
                     onClick={() => onTabChange("copilot")}
                   />
                 )}
@@ -131,7 +132,7 @@ function CollapsedTabs({
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
       {hasCopilot && (
         <Button
-          icon={MagicIcon}
+          icon={RobotIcon}
           variant="ghost"
           size="sm"
           tooltip="Copilot"
@@ -176,14 +177,12 @@ interface ExpandedContentProps {
   selectedTab: AgentBuilderRightPanelTabType;
   agentConfigurationSId?: string;
   hasCopilot: boolean;
-  clientSideMCPServerId?: string;
 }
 
 function ExpandedContent({
   selectedTab,
   agentConfigurationSId,
   hasCopilot,
-  clientSideMCPServerId,
 }: ExpandedContentProps) {
   const { assistantTemplate, setPresetActionToAdd } = useAgentBuilderContext();
 
@@ -202,7 +201,7 @@ function ExpandedContent({
       )}
       {selectedTab === "preview" && (
         <div className="min-h-0 flex-1">
-          <AgentBuilderPreview clientSideMCPServerId={clientSideMCPServerId} />
+          <AgentBuilderPreview />
         </div>
       )}
       <ObservabilityProvider>
@@ -241,12 +240,10 @@ function ExpandedContent({
 
 interface AgentBuilderRightPanelProps {
   agentConfigurationSId?: string;
-  clientSideMCPServerId?: string;
 }
 
 export function AgentBuilderRightPanel({
   agentConfigurationSId,
-  clientSideMCPServerId,
 }: AgentBuilderRightPanelProps) {
   const { isPreviewPanelOpen, setIsPreviewPanelOpen } =
     usePreviewPanelContext();
@@ -290,7 +287,6 @@ export function AgentBuilderRightPanel({
           selectedTab={selectedTab}
           agentConfigurationSId={agentConfigurationSId}
           hasCopilot={hasCopilot}
-          clientSideMCPServerId={clientSideMCPServerId}
         />
       ) : (
         <CollapsedTabs

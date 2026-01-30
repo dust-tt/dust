@@ -2,6 +2,7 @@ import type { ParsedUrlQuery } from "querystring";
 import querystring from "querystring";
 
 import config from "@app/lib/api/config";
+import type { OAuthError } from "@app/lib/api/oauth";
 import type {
   BaseOAuthStrategyProvider,
   RelatedCredential,
@@ -14,10 +15,13 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import { OAuthAPI } from "@app/types";
+import type { Result } from "@app/types";
+import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     clientId,
@@ -78,7 +82,7 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
       userId: string;
       useCase: OAuthUseCase;
     }
-  ): Promise<RelatedCredential> {
+  ): Promise<Result<RelatedCredential, OAuthError>> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -93,10 +97,12 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          throw new Error(
-            "Failed to find MCP server connection: " +
-              mcpServerConnectionRes.error.message
-          );
+          return new Err({
+            code: "credential_retrieval_failed",
+            message:
+              "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message,
+          });
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -104,31 +110,35 @@ export class GmailOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          throw new Error(
-            "Failed to get connection metadata: " + connectionRes.error.message
-          );
+          return new Err({
+            code: "credential_retrieval_failed",
+            message:
+              "Failed to get connection metadata: " +
+              connectionRes.error.message,
+            oAuthAPIError: connectionRes.error,
+          });
         }
         const connection = connectionRes.value.connection;
         const connectionId = connection.connection_id;
 
-        return {
+        return new Ok({
           content: {
             from_connection_id: connectionId,
           },
           metadata: { workspace_id: workspaceId, user_id: userId },
-        };
+        });
       }
     }
 
     const { client_secret } = extraConfig;
 
-    return {
+    return new Ok({
       content: {
         client_secret: client_secret,
         client_id: extraConfig.client_id,
       },
       metadata: { workspace_id: workspaceId, user_id: userId },
-    };
+    });
   }
 
   async getUpdatedExtraConfig(

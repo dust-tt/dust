@@ -6,7 +6,7 @@ import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
   removeWorkOSOrganizationDomainFromOrganization,
-} from "@app/lib/api/workos/organization";
+} from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -27,7 +27,8 @@ import { Err, normalizeError, Ok } from "@app/types";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource
+  extends ReadonlyAttributesType<WorkspaceModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {
@@ -81,7 +82,7 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
   }
 
   static async fetchByIds(wIds: string[]): Promise<WorkspaceResource[]> {
-    const workspaces = await WorkspaceModel.findAll({
+    const workspaces = await this.model.findAll({
       where: {
         sId: {
           [Op.in]: wIds,
@@ -91,12 +92,25 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
   }
 
-  static async fetchByDomain(
-    domain: string
-  ): Promise<WorkspaceResource | null> {
+  static async fetchModelIdsByIds(wIds: string[]): Promise<ModelId[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        sId: {
+          [Op.in]: wIds,
+        },
+      },
+    });
+    return workspaces.map((w) => w.id);
+  }
+
+  private static async fetchWorkspaceAndDomainInfo(domain: string): Promise<{
+    workspace: WorkspaceResource;
+    domainInfo: WorkspaceDomain;
+  } | null> {
     const workspaceDomain = await this.workspaceDomainModel.findOne({
       where: { domain },
-      // WORKSPACE_ISOLATION_BYPASS: Use to search for existing workspaces by domain.
+      // WORKSPACE_ISOLATION_BYPASS: Looking up which workspace owns a domain requires cross-workspace query.
       dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
@@ -108,7 +122,36 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
       where: { id: workspaceDomain.workspaceId },
     });
 
-    return workspace ? new this(this.model, workspace.get()) : null;
+    if (!workspace) {
+      return null;
+    }
+
+    return {
+      workspace: new this(this.model, workspace.get()),
+      domainInfo: {
+        domain: workspaceDomain.domain,
+        domainAutoJoinEnabled: workspaceDomain.domainAutoJoinEnabled,
+      },
+    };
+  }
+
+  static async fetchByDomain(
+    domain: string
+  ): Promise<WorkspaceResource | null> {
+    const result = await this.fetchWorkspaceAndDomainInfo(domain);
+    return result?.workspace ?? null;
+  }
+
+  static async fetchByDomainWithInfo(domain: string): Promise<{
+    workspace: WorkspaceResource;
+    domainInfo: WorkspaceDomain;
+  } | null> {
+    return this.fetchWorkspaceAndDomainInfo(domain);
+  }
+
+  static async isDomainAutoJoinEnabled(domain: string): Promise<boolean> {
+    const result = await this.fetchWorkspaceAndDomainInfo(domain);
+    return result?.domainInfo.domainAutoJoinEnabled ?? false;
   }
 
   static async fetchByWorkOSOrganizationId(
@@ -120,9 +163,31 @@ export class WorkspaceResource extends BaseResource<WorkspaceModel> {
     return workspace ? new this(this.model, workspace.get()) : null;
   }
 
-  static async listAll(): Promise<WorkspaceResource[]> {
-    const workspaces = await this.model.findAll();
+  static async listAll(order?: "ASC" | "DESC"): Promise<WorkspaceResource[]> {
+    const workspaces = await this.model.findAll({
+      ...(order && { order: [["id", order]] }),
+    });
     return workspaces.map((workspace) => new this(this.model, workspace.get()));
+  }
+
+  static async listAllModelIds(order?: "ASC" | "DESC"): Promise<ModelId[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id"],
+      ...(order && { order: [["id", order]] }),
+    });
+    return workspaces.map((w) => w.id);
+  }
+
+  static async listModelIdsWithConversationsRetention(): Promise<ModelId[]> {
+    const workspaces = await this.model.findAll({
+      attributes: ["id"],
+      where: {
+        conversationsRetentionDays: {
+          [Op.not]: null,
+        },
+      },
+    });
+    return workspaces.map((w) => w.id);
   }
 
   async updateSegmentation(segmentation: WorkspaceSegmentationType) {

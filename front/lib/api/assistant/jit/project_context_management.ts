@@ -6,6 +6,7 @@ import { getFeatureFlags } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import type { ConversationWithoutContentType } from "@app/types";
+import { isProjectConversation } from "@app/types";
 
 /**
  * Get the project_context_management MCP server for managing project files.
@@ -18,7 +19,10 @@ export async function getProjectContextManagementServer(
   const owner = auth.getNonNullableWorkspace();
   const featureFlags = await getFeatureFlags(owner);
 
-  if (!featureFlags.includes("projects") || !conversation.spaceId) {
+  if (
+    !featureFlags.includes("projects") ||
+    !isProjectConversation(conversation)
+  ) {
     return null;
   }
 
@@ -45,6 +49,7 @@ export async function getProjectContextManagementServer(
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: mcpServerView.sId,
     dustAppConfiguration: null,

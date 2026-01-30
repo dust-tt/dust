@@ -35,6 +35,8 @@ export type SpaceCategoryInfo = {
 export type GetSpaceResponseBody = {
   space: SpaceType & {
     categories: { [key: string]: SpaceCategoryInfo };
+    canWrite: boolean;
+    canRead: boolean;
     isMember: boolean;
     members: UserType[];
   };
@@ -129,6 +131,8 @@ async function handler(
         space: {
           ...space.toJSON(),
           categories,
+          canWrite: space.canWrite(auth),
+          canRead: space.canRead(auth),
           isMember: space.canRead(auth),
           members: currentMembers.map((member) => member.toJSON()),
         },

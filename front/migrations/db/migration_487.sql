@@ -1,3 +1,5 @@
+-- DON'T RUN THIS - IT'S NOT MANDATORY in dev
+
 -- Migration created on Jan 21, 2026
 -- Transform urls from array to array of objects with description and url
 -- Before: ["url1", "url2"]

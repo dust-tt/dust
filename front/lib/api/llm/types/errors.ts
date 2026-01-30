@@ -2,7 +2,8 @@ import type { LLMEvent } from "@app/lib/api/llm/types/events";
 import { EventError } from "@app/lib/api/llm/types/events";
 import type { LLMClientMetadata } from "@app/lib/api/llm/types/options";
 import type { AgentErrorCategory, ModelProviderIdType } from "@app/types";
-import { assertNever, normalizeError } from "@app/types";
+import { normalizeError } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type LLMErrorType =
   // LLM errors
@@ -10,6 +11,7 @@ export type LLMErrorType =
   | "refusal_error"
   | "maximum_length"
   | "terminated_error"
+  | "llm_timeout_error"
   // HTTP errors
   | "rate_limit_error"
   | "overloaded_error"
@@ -299,6 +301,9 @@ export const getUserFacingLLMErrorMessage = (
     case "unknown_error": {
       return "An unexpected error occurred. Please try again or contact support if the issue persists.";
     }
+    case "llm_timeout_error": {
+      return `${userFacingProvider} is unresponsive. Please try again.`;
+    }
     default: {
       assertNever(type);
     }
@@ -318,6 +323,7 @@ export const LLM_ERROR_TYPE_TO_CATEGORY: Record<
   refusal_error: "unknown_error",
   maximum_length: "context_window_exceeded",
   terminated_error: "retryable_model_error",
+  llm_timeout_error: "retryable_model_error",
 
   // HTTP errors - rate limiting and overload
   rate_limit_error: "retryable_model_error",

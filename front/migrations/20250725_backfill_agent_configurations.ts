@@ -11,6 +11,7 @@ import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { Logger } from "@app/logger/logger";
 import { makeScript } from "@app/scripts/helpers";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 interface AgentUpdateStats {
   total: number;
@@ -215,9 +216,7 @@ makeScript(
 
     if (workspaceId) {
       // Process specific workspace
-      const workspace = await WorkspaceModel.findOne({
-        where: { sId: workspaceId },
-      });
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
       if (!workspace) {
         throw new Error(`Workspace ${workspaceId} not found`);
       }

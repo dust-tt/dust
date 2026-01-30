@@ -3,7 +3,8 @@ import type { MCPToolConfigurationType } from "@app/lib/actions/mcp";
 import { isServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import type { Authenticator } from "@app/lib/auth";
 import type { AgentMessageType } from "@app/types";
-import { assertNever, isNumberOrBoolean, isString } from "@app/types";
+import { isNumberOrBoolean, isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export interface ToolInputContext {
   agentId: string;

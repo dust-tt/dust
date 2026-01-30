@@ -3,8 +3,8 @@ import sortBy from "lodash/sortBy";
 import { useCallback, useMemo, useState } from "react";
 
 import { KnowledgeChip } from "@app/components/editor/extensions/skill_builder/KnowledgeChip";
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
-import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
+import { isFullKnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import { SkillInstructionsReadOnlyEditor } from "@app/components/skills/SkillInstructionsReadOnlyEditor";
 import {
   getMcpServerViewDescription,

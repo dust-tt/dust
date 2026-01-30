@@ -6,9 +6,9 @@ import { GroupResource } from "@app/lib/resources/group_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 
 export async function createWorkspace(session: SessionWithUser) {
@@ -88,24 +88,23 @@ export async function createWorkspaceInternal({
 export async function findWorkspaceWithVerifiedDomain(user: {
   email: string;
   email_verified: boolean;
-}): Promise<WorkspaceHasDomainModel | null> {
+}): Promise<{
+  workspace: WorkspaceResource;
+  domainAutoJoinEnabled: boolean;
+} | null> {
   if (!user.email_verified) {
     return null;
   }
 
   const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne({
-    where: {
-      domain: userEmailDomain,
-    },
-    include: [
-      {
-        model: WorkspaceModel,
-        as: "workspace",
-        required: true,
-      },
-    ],
-  });
+  const result = await WorkspaceResource.fetchByDomainWithInfo(userEmailDomain);
 
-  return workspaceWithVerifiedDomain;
+  if (!result) {
+    return null;
+  }
+
+  return {
+    workspace: result.workspace,
+    domainAutoJoinEnabled: result.domainInfo.domainAutoJoinEnabled,
+  };
 }

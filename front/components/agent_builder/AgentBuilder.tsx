@@ -16,7 +16,9 @@ import { AgentBuilderLayout } from "@app/components/agent_builder/AgentBuilderLa
 import { AgentBuilderLeftPanel } from "@app/components/agent_builder/AgentBuilderLeftPanel";
 import { AgentBuilderRightPanel } from "@app/components/agent_builder/AgentBuilderRightPanel";
 import { AgentCreatedDialog } from "@app/components/agent_builder/AgentCreatedDialog";
+import { CopilotSuggestionsProvider } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { useCopilotMCPServer } from "@app/components/agent_builder/copilot/useMCPServer";
+import { CopilotPanelProvider } from "@app/components/agent_builder/CopilotPanelContext";
 import { useDataSourceViewsContext } from "@app/components/agent_builder/DataSourceViewsContext";
 import {
   PersonalConnectionRequiredDialog,
@@ -94,13 +96,12 @@ export default function AgentBuilder({
   const { owner, user, assistantTemplate } = useAgentBuilderContext();
   const { supportedDataSourceViews } = useDataSourceViewsContext();
   const { mcpServerViews } = useMCPServerViewsContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const router = useAppRouter();
   const sendNotification = useSendNotification(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatedDialogOpen, setIsCreatedDialogOpen] = useState(false);
-  const [pendingAgentSId, setPendingAgentSId] = useState<string | null>(null);
+  const [pendingAgentId, setPendingAgentId] = useState<string | null>(null);
 
   const { actions, isActionsLoading } = useAgentConfigurationActions(
     owner.sId,
@@ -117,7 +118,7 @@ export default function AgentBuilder({
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationId: agentConfigurationIdForSkills ?? "",
-    disabled: !hasFeature("skills") || !agentConfigurationIdForSkills,
+    disabled: !agentConfigurationIdForSkills,
   });
 
   const { editors } = useEditors({
@@ -301,7 +302,7 @@ export default function AgentBuilder({
   // Create pending agent on mount for NEW agents only
   useEffect(() => {
     // Only create pending agent for new agents (not editing or duplicating)
-    if (agentConfiguration || duplicateAgentId || pendingAgentSId) {
+    if (agentConfiguration || duplicateAgentId || pendingAgentId) {
       return;
     }
 
@@ -313,7 +314,7 @@ export default function AgentBuilder({
         );
         if (response.ok) {
           const data = await response.json();
-          setPendingAgentSId(data.sId);
+          setPendingAgentId(data.sId);
         } else {
           datadogLogger.error(
             { status: response.status },
@@ -328,7 +329,7 @@ export default function AgentBuilder({
       }
     };
     void createPendingAgent();
-  }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentSId]);
+  }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {
@@ -344,7 +345,7 @@ export default function AgentBuilder({
       // For editing, pass the existing agent's sId
       const effectiveAgentConfigurationId = duplicateAgentId
         ? null
-        : (agentConfiguration?.sId ?? pendingAgentSId ?? null);
+        : (agentConfiguration?.sId ?? pendingAgentId ?? null);
 
       const result = await submitAgentBuilderForm({
         user,
@@ -477,22 +478,30 @@ export default function AgentBuilder({
       : `Edit agent @${agentConfiguration.name}`
     : "Create new agent";
 
+  // Only load suggestions when not duplicating an existing agent.
+  const suggestionsAgentId = duplicateAgentId
+    ? null
+    : (agentConfiguration?.sId ?? pendingAgentId ?? null);
+
   return (
     <AgentBuilderFormContext.Provider value={form}>
       <FormProvider form={form} asForm={false}>
-        <AgentBuilderContent
-          agentConfiguration={agentConfiguration}
-          title={title}
-          handleCancel={handleCancel}
-          saveLabel={saveLabel}
-          handleSave={handleSave}
-          isSaveDisabled={isSaveDisabled}
-          isActionsLoading={isActionsLoading}
-          isTriggersLoading={isTriggersLoading}
-          dialogProps={dialogProps}
-          isCreatedDialogOpen={isCreatedDialogOpen}
-          setIsCreatedDialogOpen={setIsCreatedDialogOpen}
-        />
+        <CopilotSuggestionsProvider agentConfigurationId={suggestionsAgentId}>
+          <AgentBuilderContent
+            agentConfiguration={agentConfiguration}
+            pendingAgentId={pendingAgentId}
+            title={title}
+            handleCancel={handleCancel}
+            saveLabel={saveLabel}
+            handleSave={handleSave}
+            isSaveDisabled={isSaveDisabled}
+            isTriggersLoading={isTriggersLoading}
+            dialogProps={dialogProps}
+            isCreatedDialogOpen={isCreatedDialogOpen}
+            setIsCreatedDialogOpen={setIsCreatedDialogOpen}
+            isNewAgent={!!duplicateAgentId || !agentConfiguration}
+          />
+        </CopilotSuggestionsProvider>
       </FormProvider>
     </AgentBuilderFormContext.Provider>
   );
@@ -503,12 +512,12 @@ export default function AgentBuilder({
  */
 interface AgentBuilderContentProps {
   agentConfiguration?: LightAgentConfigurationType;
+  pendingAgentId: string | null;
   title: string;
   handleCancel: () => Promise<void>;
   saveLabel: string;
   handleSave: () => void;
   isSaveDisabled: boolean;
-  isActionsLoading: boolean;
   isTriggersLoading: boolean;
   dialogProps: {
     mcpServerViewsWithPersonalConnections: ReturnType<
@@ -520,20 +529,22 @@ interface AgentBuilderContentProps {
   };
   isCreatedDialogOpen: boolean;
   setIsCreatedDialogOpen: (open: boolean) => void;
+  isNewAgent: boolean;
 }
 
 function AgentBuilderContent({
   agentConfiguration,
+  pendingAgentId,
   title,
   handleCancel,
   saveLabel,
   handleSave,
   isSaveDisabled,
-  isActionsLoading,
   isTriggersLoading,
   dialogProps,
   isCreatedDialogOpen,
   setIsCreatedDialogOpen,
+  isNewAgent,
 }: AgentBuilderContentProps) {
   const { owner } = useAgentBuilderContext();
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
@@ -578,17 +589,26 @@ function AgentBuilderContent({
             }}
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
             agentConfigurationId={agentConfiguration?.sId || null}
-            isActionsLoading={isActionsLoading}
             isTriggersLoading={isTriggersLoading}
           />
         }
         rightPanel={
-          <ConversationSidePanelProvider>
-            <AgentBuilderRightPanel
-              agentConfigurationSId={agentConfiguration?.sId}
-              clientSideMCPServerId={clientSideMCPServerId}
-            />
-          </ConversationSidePanelProvider>
+          <CopilotPanelProvider
+            targetAgentConfigurationId={
+              agentConfiguration?.sId ?? pendingAgentId ?? null
+            }
+            targetAgentConfigurationVersion={agentConfiguration?.version ?? 0}
+            clientSideMCPServerIds={
+              clientSideMCPServerId ? [clientSideMCPServerId] : []
+            }
+            isNewAgent={isNewAgent}
+          >
+            <ConversationSidePanelProvider>
+              <AgentBuilderRightPanel
+                agentConfigurationSId={agentConfiguration?.sId}
+              />
+            </ConversationSidePanelProvider>
+          </CopilotPanelProvider>
         }
       />
     </>

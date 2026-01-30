@@ -4,6 +4,11 @@ import { fromError } from "zod-validation-error";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  listWorkspaceConnectedMCPServerIds,
+  oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
+  withWorkspaceConnectionRequirement,
+} from "@app/lib/api/mcp_oauth_prerequisites";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -97,9 +102,44 @@ async function handler(
             query.availabilities.includes(v.server.availability)
         );
 
+      // Some OAuth providers require a workspace-level connection before users
+      // can set up personal connections. We enrich the authorization info so the
+      // client can block the OAuth popup and show an inline error instead.
+      // The DB query is only made when at least one server in the list needs it.
+      const needsWorkspaceConnectionEnrichment = flattenedServerViews.some(
+        (v) =>
+          v.server.authorization !== null &&
+          oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
+            v.server.authorization.provider
+          )
+      );
+
+      if (!needsWorkspaceConnectionEnrichment) {
+        return res.status(200).json({
+          success: true,
+          serverViews: flattenedServerViews,
+        });
+      }
+
+      const workspaceConnectedMCPServerIds =
+        await listWorkspaceConnectedMCPServerIds(auth);
+
       return res.status(200).json({
         success: true,
-        serverViews: flattenedServerViews,
+        serverViews: flattenedServerViews.map((serverView) => ({
+          ...serverView,
+          server: {
+            ...serverView.server,
+            authorization: withWorkspaceConnectionRequirement(
+              serverView.server.authorization,
+              {
+                isWorkspaceConnected: workspaceConnectedMCPServerIds.has(
+                  serverView.server.sId
+                ),
+              }
+            ),
+          },
+        })),
       });
     }
     default: {

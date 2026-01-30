@@ -1,6 +1,6 @@
 import type { Authenticator } from "@app/lib/auth";
 import { computeEffectiveMessageLimit } from "@app/lib/plans/usage/limits";
-import { countActiveSeatsInWorkspaceCached } from "@app/lib/plans/usage/seats";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import {
   getTimeframeSecondsFromLiteral,
   rateLimiter,
@@ -23,7 +23,8 @@ export async function checkWebhookRequestForRateLimit(
   const { maxMessages, maxMessagesTimeframe } = plan.limits.assistant;
 
   if (maxMessages !== -1) {
-    const activeSeats = await countActiveSeatsInWorkspaceCached(workspace.sId);
+    const activeSeats =
+      await MembershipResource.countActiveSeatsInWorkspaceCached(workspace.sId);
     const effectiveMaxMessages = computeEffectiveMessageLimit({
       planCode: plan.code,
       maxMessages,

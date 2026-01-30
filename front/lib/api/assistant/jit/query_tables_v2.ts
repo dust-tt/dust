@@ -1,10 +1,8 @@
 import assert from "assert";
 
-import {
-  DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME,
-  DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-} from "@app/lib/actions/constants";
+import { DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import { CONVERSATION_LIST_FILES_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import type { TableDataSourceConfiguration } from "@app/lib/api/assistant/configuration/types";
 import type { ConversationAttachmentType } from "@app/lib/api/assistant/conversation/attachments";
 import {
@@ -112,13 +110,14 @@ export async function getQueryTablesServer(
     sId: generateRandomModelSId(),
     type: "mcp_server_configuration",
     name: DEFAULT_CONVERSATION_QUERY_TABLES_ACTION_NAME,
-    description: `The tables associated with the 'queryable' conversation files as returned by \`${DEFAULT_CONVERSATION_LIST_FILES_ACTION_NAME}\``,
+    description: `The tables associated with the 'queryable' conversation files as returned by \`${CONVERSATION_LIST_FILES_ACTION_NAME}\``,
     dataSources: null,
     tables,
     childAgentId: null,
     timeFrame: null,
     jsonSchema: null,
     secretName: null,
+    dustProject: null,
     additionalConfiguration: {},
     mcpServerViewId: queryTablesView.sId,
     dustAppConfiguration: null,

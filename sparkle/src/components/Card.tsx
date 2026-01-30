@@ -1,7 +1,8 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { Button, MiniButtonProps } from "@sparkle/components/Button";
+import type { IconOnlyButtonProps } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import {
   noHrefLink,
@@ -90,7 +91,8 @@ interface CardLinkProps extends CommonProps, LinkWrapperProps {
 }
 
 interface CardButtonProps
-  extends CommonProps, React.ButtonHTMLAttributes<HTMLDivElement> {
+  extends CommonProps,
+    React.ButtonHTMLAttributes<HTMLDivElement> {
   href?: never;
   target?: never;
   rel?: never;
@@ -176,13 +178,15 @@ interface CardPropsBase {
 }
 
 interface CardPropsWithLink
-  extends CardPropsBase, Omit<CardLinkProps, keyof CardPropsBase> {
+  extends CardPropsBase,
+    Omit<CardLinkProps, keyof CardPropsBase> {
   href: string;
   onClick?: never;
 }
 
 interface CardPropsWithButton
-  extends CardPropsBase, Omit<CardButtonProps, keyof CardPropsBase> {
+  extends CardPropsBase,
+    Omit<CardButtonProps, keyof CardPropsBase> {
   href?: never;
 }
 
@@ -227,7 +231,7 @@ CardActions.displayName = "CardActions";
 
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
-  MiniButtonProps
+  IconOnlyButtonProps
 >(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
   return (
     <Button

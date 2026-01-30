@@ -3,7 +3,7 @@
 Activates some feature flags and creates the following:
 
 - 1 skill (Poem Writer) and 3 suggested skills
-- 1 custom agent (Haiku Poet)
+- 1 custom agent (HaikuPoet) with the Poem Writer skill linked
 - 5 conversations (3 with custom agent, 2 with Dust global agent)
 - 1 restricted space (with the user added as member)
 - 2 MCP tools:

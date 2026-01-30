@@ -22,8 +22,8 @@ import type {
   DataSourceViewContentNode,
   SpaceType,
 } from "@app/types";
-import { isConnectorProvider } from "@app/types";
-import { assertNever } from "@app/types";
+import { isConnectorProvider } from "@app/types/data_source";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import {
   CHANNEL_INTERNAL_MIME_TYPES,
@@ -31,6 +31,15 @@ import {
   FILE_INTERNAL_MIME_TYPES,
   SPREADSHEET_INTERNAL_MIME_TYPES,
 } from "./content_nodes_constants";
+
+const CONTENT_NODE_MENTION_REGEX =
+  /:content_node_mention\[([^\]]+)](\{url=([^}]+)})?/;
+
+export function replaceContentNodeMarkdownWithQuotedTitle(markdown: string) {
+  return markdown.replace(CONTENT_NODE_MENTION_REGEX, (_match, title) => {
+    return `"${title}"`;
+  });
+}
 
 export function getDocumentIcon(provider: string | null | undefined) {
   if (provider && isConnectorProvider(provider)) {

@@ -17,7 +17,6 @@ import { useSendNotification } from "@app/hooks/useNotification";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import { useCreateSpace } from "@app/lib/swr/spaces";
-import { useUser } from "@app/lib/swr/user";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { LightWorkspaceType } from "@app/types";
 
@@ -37,7 +36,6 @@ export function CreateProjectModal({
   const [isRestricted, setIsRestricted] = useState(false);
 
   const doCreate = useCreateSpace({ owner });
-  const { user } = useUser();
   const router = useAppRouter();
 
   const sendNotification = useSendNotification();
@@ -74,7 +72,7 @@ export function CreateProjectModal({
       name: trimmedName,
       isRestricted,
       managementMode: "manual",
-      memberIds: user?.sId ? [user.sId] : [],
+      memberIds: [],
       spaceKind: "project",
     });
 
@@ -97,7 +95,6 @@ export function CreateProjectModal({
     handleClose,
     sendNotification,
     mutateSpaceSummary,
-    user,
     router,
     owner.sId,
   ]);

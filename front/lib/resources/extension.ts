@@ -9,6 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { ExtensionConfigurationModel } from "@app/lib/models/extension";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { makeSId } from "@app/lib/resources/string_ids";
 import type { ExtensionConfigurationType, ModelId, Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
@@ -16,10 +17,11 @@ import { Err, normalizeError, Ok } from "@app/types";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ExtensionConfigurationResource extends ReadonlyAttributesType<ExtensionConfigurationModel> {}
+export interface ExtensionConfigurationResource
+  extends ReadonlyAttributesType<ExtensionConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ExtensionConfigurationResource extends BaseResource<ExtensionConfigurationModel> {
-  static model: ModelStatic<ExtensionConfigurationModel> =
+  static model: ModelStaticWorkspaceAware<ExtensionConfigurationModel> =
     ExtensionConfigurationModel;
 
   constructor(
@@ -118,6 +120,9 @@ export class ExtensionConfigurationResource extends BaseResource<ExtensionConfig
       where: {
         workspaceId: workspaceIds,
       },
+      // WORKSPACE_ISOLATION_BYPASS: exceptional case where we need to fetch the blacklistedDomains \
+      // across multiple workspaces in the login flow.
+      dangerouslyBypassWorkspaceIsolationSecurity: true,
     });
 
     return configs.map(

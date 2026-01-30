@@ -22,8 +22,9 @@ import type {
   PluginResourceTarget,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok, safeParseJSON } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import type { PluginRunType } from "@app/types/poke/plugins";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 import type { UserResource } from "./user_resource";
 
@@ -65,7 +66,8 @@ function trimPluginRunResultOrError(result: PluginResponse | string) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface PluginRunResource extends ReadonlyAttributesType<PluginRunModel> {}
+export interface PluginRunResource
+  extends ReadonlyAttributesType<PluginRunModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class PluginRunResource extends BaseResource<PluginRunModel> {
   static model: ModelStatic<PluginRunModel> = PluginRunModel;

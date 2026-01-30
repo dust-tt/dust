@@ -9,7 +9,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const PostSpaceRequestBodySchema = t.intersection([
   t.type({
@@ -68,16 +68,6 @@ async function handler(
       let spaces: SpaceResource[] = [];
 
       if (role && role === "admin") {
-        if (!auth.isAdmin()) {
-          return apiError(req, res, {
-            status_code: 403,
-            api_error: {
-              type: "workspace_auth_error",
-              message:
-                "Only users that are `admins` can see all spaces in the workspace.",
-            },
-          });
-        }
         if (kind && kind === "system") {
           const systemSpace =
             await SpaceResource.fetchWorkspaceSystemSpace(auth);
@@ -97,15 +87,6 @@ async function handler(
       });
 
     case "POST":
-      if (!auth.isAdmin()) {
-        return apiError(req, res, {
-          status_code: 403,
-          api_error: {
-            type: "workspace_auth_error",
-            message: "Only users that are `admins` can administrate spaces.",
-          },
-        });
-      }
       const bodyValidation = PostSpaceRequestBodySchema.decode(req.body);
 
       if (isLeft(bodyValidation)) {
@@ -120,7 +101,9 @@ async function handler(
         });
       }
 
-      const spaceRes = await createSpaceAndGroup(auth, bodyValidation.right);
+      const requestBody = bodyValidation.right;
+
+      const spaceRes = await createSpaceAndGroup(auth, requestBody);
       if (spaceRes.isErr()) {
         switch (spaceRes.error.code) {
           case "limit_reached":
@@ -146,6 +129,15 @@ async function handler(
               api_error: {
                 type: "internal_server_error",
                 message: spaceRes.error.message,
+              },
+            });
+          case "unauthorized":
+            return apiError(req, res, {
+              status_code: 403,
+              api_error: {
+                type: "workspace_auth_error",
+                message:
+                  "Only users that are `admins` can create regular spaces.",
               },
             });
           default:

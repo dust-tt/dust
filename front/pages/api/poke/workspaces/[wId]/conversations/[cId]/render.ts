@@ -12,8 +12,8 @@ import { getJITServers } from "@app/lib/api/assistant/jit_actions";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
 import { getSkillServers } from "@app/lib/api/assistant/skill_actions";
 import { withSessionAuthenticationForPoke } from "@app/lib/api/auth_wrappers";
-import { getSupportedModelConfig } from "@app/lib/assistant";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/api/models";
+import { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
@@ -247,10 +247,6 @@ async function handler(
           })
         : null;
 
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-
       const prompt = constructPromptMultiActions(auth, {
         userMessage,
         agentConfiguration,
@@ -263,7 +259,6 @@ async function handler(
         serverToolsAndInstructions,
         enabledSkills,
         equippedSkills,
-        featureFlags,
       });
 
       // Build tool specifications to estimate tokens for tool definitions (names + schemas only).

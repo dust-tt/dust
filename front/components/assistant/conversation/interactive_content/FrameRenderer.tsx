@@ -9,6 +9,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   EyeIcon,
   FullscreenExitIcon,
@@ -27,6 +30,7 @@ import { InteractiveContentHeader } from "@app/components/assistant/conversation
 import { useDesktopNavigation } from "@app/components/navigation/DesktopNavigationContext";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { clientFetch } from "@app/lib/egress/client";
 import { isUsingConversationFiles } from "@app/lib/files";
 import { useVisualizationRevert } from "@app/lib/swr/conversations";
 import { useFileContent, useFileMetadata } from "@app/lib/swr/files";
@@ -50,6 +54,8 @@ function ExportContentDropdown({
   fileContent,
 }: ExportContentDropdownProps) {
   const sendNotification = useSendNotification();
+  const [isExportingPdf, setIsExportingPdf] = useState(false);
+
   const exportAsPng = () => {
     if (fileContent) {
       const imgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+)["']/gi;
@@ -71,6 +77,59 @@ function ExportContentDropdown({
       datadogLogs.logger.info(
         "Failed to export content as PNG: No iframe content window found"
       );
+    }
+  };
+
+  const exportAsPdf = async (orientation: "portrait" | "landscape") => {
+    if (isExportingPdf) {
+      return;
+    }
+
+    setIsExportingPdf(true);
+    try {
+      const response = await clientFetch(
+        `/api/w/${owner.sId}/files/${fileId}/export/pdf`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ orientation }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Get the PDF blob and trigger download.
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+
+      // Get filename from Content-Disposition header or use default.
+      const contentDisposition = response.headers.get("Content-Disposition");
+      const filenameMatch = contentDisposition?.match(/filename="([^"]+)"/);
+      link.download = filenameMatch?.[1] ?? "frame.pdf";
+
+      link.click();
+      URL.revokeObjectURL(url);
+
+      sendNotification({
+        title: "PDF exported",
+        type: "success",
+        description: "Your PDF has been downloaded.",
+      });
+    } catch (error) {
+      console.error("PDF export failed:", error);
+      sendNotification({
+        title: "PDF Export Failed",
+        type: "error",
+        description: "An error occurred while generating the PDF.",
+      });
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
@@ -96,17 +155,25 @@ function ExportContentDropdown({
         <Button
           icon={ArrowDownOnSquareIcon}
           isSelect
-          label="Download"
+          label={isExportingPdf ? "Exporting..." : "Export"}
           variant="ghost"
+          disabled={isExportingPdf}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent>
-        <DropdownMenuItem onClick={exportAsPng}>
-          Download as PNG
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={downloadAsCode}>
-          Download as template
-        </DropdownMenuItem>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger disabled={isExportingPdf} label="PDF" />
+          <DropdownMenuSubContent>
+            <DropdownMenuItem onClick={() => exportAsPdf("portrait")}>
+              Portrait
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportAsPdf("landscape")}>
+              Landscape
+            </DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem onClick={exportAsPng}>PNG</DropdownMenuItem>
+        <DropdownMenuItem onClick={downloadAsCode}>Template</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

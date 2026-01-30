@@ -1,15 +1,14 @@
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import { addWorkOSOrganizationDomain } from "@app/lib/api/workos/organization";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
-  addWorkOSOrganizationDomain,
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
-} from "@app/lib/api/workos/organization";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+} from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain } from "@app/lib/utils";
 import type { Result } from "@app/types";
 import { Err, mapToEnumValues, Ok } from "@app/types";
@@ -17,12 +16,12 @@ import { Err, mapToEnumValues, Ok } from "@app/types";
 async function handleAddDomain(
   auth: Authenticator,
   { domain }: { domain: string },
-  existingDomain: WorkspaceHasDomainModel | null
+  existingDomainWorkspace: WorkspaceResource | null
 ): Promise<Result<PluginResponse, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  if (existingDomain) {
-    if (existingDomain.workspaceId === workspace.id) {
+  if (existingDomainWorkspace) {
+    if (existingDomainWorkspace.id === workspace.id) {
       return new Ok({
         display: "text",
         value: `Domain ${domain} is already authorized for this workspace.`,
@@ -30,7 +29,7 @@ async function handleAddDomain(
     }
     return new Err(
       new Error(
-        `This domain is already authorized for workspace ${existingDomain.workspace.sId}.`
+        `This domain is already authorized for workspace ${existingDomainWorkspace.sId}.`
       )
     );
   }
@@ -76,11 +75,11 @@ async function handleAddDomain(
 export async function handleRemoveDomain(
   auth: Authenticator,
   { domain }: { domain: string },
-  existingDomain: WorkspaceHasDomainModel | null
+  existingDomainWorkspace: WorkspaceResource | null
 ): Promise<Result<PluginResponse, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  if (!existingDomain || existingDomain.workspaceId !== workspace.id) {
+  if (!existingDomainWorkspace || existingDomainWorkspace.id !== workspace.id) {
     return new Err(
       new Error(`Domain ${domain} is not authorized for this workspace.`)
     );
@@ -141,21 +140,13 @@ export const addAuthorizedDomain = createPlugin({
     }
 
     // Check if domain exists in any workspace.
-    const existingDomain = await WorkspaceHasDomainModel.findOne({
-      where: { domain },
-      include: [
-        {
-          model: WorkspaceModel,
-          as: "workspace",
-          required: true,
-        },
-      ],
-    });
+    const existingDomainWorkspace =
+      await WorkspaceResource.fetchByDomain(domain);
 
     if (operation[0] === "add") {
-      return handleAddDomain(auth, { domain }, existingDomain);
+      return handleAddDomain(auth, { domain }, existingDomainWorkspace);
     } else {
-      return handleRemoveDomain(auth, { domain }, existingDomain);
+      return handleRemoveDomain(auth, { domain }, existingDomainWorkspace);
     }
   },
 });
