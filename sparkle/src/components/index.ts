@@ -142,6 +142,8 @@ export { ListGroup, ListItem, ListItemSection } from "./ListItem";
 export { LoadingBlock } from "./LoadingBlock";
 export * from "./markdown";
 export { markdownStyles } from "./markdown/styles";
+export type { StreamingState } from "./markdownWithStreamingAnimation";
+export { StreamingAnimationMarkdown } from "./markdownWithStreamingAnimation";
 export { MessageCard } from "./MessageCard";
 export type {
   MultiPageDialogFooterProps,
