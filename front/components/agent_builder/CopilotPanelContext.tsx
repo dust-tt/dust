@@ -165,6 +165,7 @@ export const CopilotPanelProvider = ({
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
       },
+      skipToolsValidation: true,
     });
 
     if (result.isOk()) {

@@ -80,6 +80,7 @@ export type VirtuosoMessageListContext = {
     actionsToShow: InputBarContainerProps["actions"];
     resetConversation: () => void;
     clientSideMCPServerIds?: string[];
+    skipToolsValidation?: boolean;
   };
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
   additionalMarkdownComponents?: Components;
