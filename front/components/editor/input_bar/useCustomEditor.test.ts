@@ -64,7 +64,7 @@ describe("buildEditorExtensions", () => {
         "console.log('Hello, world!');\n" +
         "```\n" +
         "\n" +
-        "<br>"
+        "&nbsp;"
     );
   });
 
@@ -151,6 +151,6 @@ describe("buildEditorExtensions", () => {
     expect(result).toBe(`- hello
 - world
 
-<br>`);
+&nbsp;`);
   });
 });
