@@ -45,13 +45,17 @@ const NOW_MS = NOW * 1000;
 function makeSubscription(
   currentPeriodStart: number,
   startDate: number,
-  status: Stripe.Subscription.Status = "active"
+  status: Stripe.Subscription.Status = "active",
+  interval: "month" | "year" = "month"
 ): Stripe.Subscription {
   return {
     id: "sub_123",
     current_period_start: currentPeriodStart,
     start_date: startDate,
     status,
+    items: {
+      data: [{ price: { recurring: { interval } } }],
+    },
   } as Stripe.Subscription;
 }
 
@@ -186,6 +190,54 @@ describe("checkCustomerStatus", () => {
       );
       expect(result).toBe("paying");
       expect(getSubscriptionInvoices).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("yearly subscriptions", () => {
+    beforeEach(() => {
+      vi.mocked(isEnterpriseSubscription).mockReturnValue(false);
+    });
+
+    it("returns 'paying' for yearly subscription with payment 6 months ago", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+        makeInvoice(NOW - MONTH_SECONDS * 6),
+      ]);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS, "active", "year")
+      );
+      expect(result).toBe("paying");
+    });
+
+    it("returns 'paying' for yearly subscription with payment 12 months ago", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([
+        makeInvoice(NOW - YEAR_SECONDS),
+      ]);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS, "active", "year")
+      );
+      expect(result).toBe("paying");
+    });
+
+    it("uses ~13 month lookback for yearly subscriptions", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+      await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS, "active", "year")
+      );
+      expect(getSubscriptionInvoices).toHaveBeenCalledWith({
+        subscriptionId: "sub_123",
+        status: "paid",
+        createdSinceDate: new Date(
+          NOW * 1000 - (YEAR_SECONDS + MONTH_SECONDS) * 1000
+        ),
+      });
+    });
+
+    it("returns 'not_paying' for yearly subscription with no invoices in lookback period", async () => {
+      vi.mocked(getSubscriptionInvoices).mockResolvedValue([]);
+      const result = await getCustomerPaymentStatus(
+        makeSubscription(NOW, NOW - YEAR_SECONDS * 2, "active", "year")
+      );
+      expect(result).toBe("not_paying");
     });
   });
 });
