@@ -9,6 +9,7 @@ import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getSpaceRoute } from "@app/lib/utils/router";
+import logger from "@app/logger/logger";
 import type { Result, SpaceType } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
@@ -251,3 +252,30 @@ export const triggerProjectAddedAsMemberNotifications = async (
 
   return new Ok(undefined);
 };
+
+/**
+ * Fire-and-forget helper to trigger project member notifications.
+ * The notification is sent asynchronously and errors are logged but don't block the caller.
+ */
+export function notifyProjectMembersAdded(
+  auth: Authenticator,
+  {
+    project,
+    addedUserIds,
+  }: {
+    project: SpaceType;
+    addedUserIds: string[];
+  }
+): void {
+  void triggerProjectAddedAsMemberNotifications(auth, {
+    project,
+    addedUserIds,
+  }).then((notifRes) => {
+    if (notifRes.isErr()) {
+      logger.error(
+        { error: notifRes.error, projectId: project.sId },
+        "Failed to trigger project added as member notification"
+      );
+    }
+  });
+}

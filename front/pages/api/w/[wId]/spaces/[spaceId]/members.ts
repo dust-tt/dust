@@ -6,10 +6,10 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
-import { triggerProjectAddedAsMemberNotifications } from "@app/lib/notifications/workflows/project-added-as-member";
+import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import logger, { auditLog } from "@app/logger/logger";
+import { auditLog } from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { SpaceType, WithAPIErrorResponse } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
@@ -201,16 +201,9 @@ export async function handler(
           (id) => !currentMemberIds.has(id)
         );
         if (newlyAddedUserIds.length > 0) {
-          void triggerProjectAddedAsMemberNotifications(auth, {
+          notifyProjectMembersAdded(auth, {
             project: space.toJSON(),
             addedUserIds: newlyAddedUserIds,
-          }).then((notifRes) => {
-            if (notifRes.isErr()) {
-              logger.error(
-                { error: notifRes.error, projectId: space.sId },
-                "Failed to trigger project added as member notification"
-              );
-            }
           });
         }
       }
