@@ -5,6 +5,7 @@ import type { Octokit } from "octokit";
 import {
   isBadCredentials,
   isGithubRequestErrorNotFound,
+  isTransientNetworkError,
   RepositoryNotFoundError,
 } from "@connectors/connectors/github/lib/errors";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
@@ -51,6 +52,12 @@ export async function getRepoInfo(
     }
     if (isBadCredentials(err)) {
       throw new ExternalOAuthTokenError(err);
+    }
+    if (isTransientNetworkError(err)) {
+      logger.warn(
+        { err, repoLogin, repoName },
+        "Transient network error fetching repository info, will be retried."
+      );
     }
     throw err;
   }
