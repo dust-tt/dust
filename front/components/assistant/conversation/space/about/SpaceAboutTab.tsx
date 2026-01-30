@@ -18,6 +18,7 @@ import {
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { EditorsSheet } from "@app/components/shared/EditorsSheet";
 import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBody";
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import {
@@ -64,7 +65,7 @@ function ProjectUrlsSection({ disabled }: ProjectUrlsSectionProps) {
         handleAddUrl();
       }
     },
-    [handleAddUrl]
+    [handleAddUrl],
   );
 
   return (
@@ -170,6 +171,7 @@ interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: SpaceType;
   initialMembers: UserType[];
+  initialEditors: UserType[];
   initialGroups: GroupType[];
   initialManagementMode: "manual" | "group";
   initialIsRestricted: boolean;
@@ -180,21 +182,25 @@ export function SpaceAboutTab({
   owner,
   space,
   initialMembers,
+  initialEditors,
   initialGroups,
   initialManagementMode,
   initialIsRestricted,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
   const [managementType, setManagementType] = useState<"manual" | "group">(
-    initialManagementMode
+    initialManagementMode,
   );
   const [selectedMembers, setSelectedMembers] =
     useState<UserType[]>(initialMembers);
+  const [selectedEditors, setSelectedEditors] =
+    useState<UserType[]>(initialEditors);
   const [selectedGroups, setSelectedGroups] =
     useState<GroupType[]>(initialGroups);
   const [isSaving, setIsSaving] = useState(false);
 
   const [isRestricted, setIsRestricted] = useState(initialIsRestricted);
+  const isProject = space.kind === "project";
 
   // Project metadata form
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
@@ -236,6 +242,17 @@ export function SpaceAboutTab({
       return true;
     }
 
+    // Check if editors changed (for projects).
+    if (isProject) {
+      const currentEditorIds = selectedEditors.map((e) => e.sId).sort();
+      const initialEditorIds = initialEditors.map((e) => e.sId).sort();
+      if (
+        JSON.stringify(currentEditorIds) !== JSON.stringify(initialEditorIds)
+      ) {
+        return true;
+      }
+    }
+
     if (managementType === "manual") {
       const currentMemberIds = selectedMembers.map((m) => m.sId).sort();
       const initialMemberIds = initialMembers.map((m) => m.sId).sort();
@@ -254,14 +271,21 @@ export function SpaceAboutTab({
     initialManagementMode,
     selectedMembers,
     initialMembers,
+    selectedEditors,
+    initialEditors,
     selectedGroups,
     initialGroups,
     isRestricted,
     initialIsRestricted,
+    isProject,
   ]);
 
   const canSave = useMemo(() => {
     if (!hasChanges) {
+      return false;
+    }
+    // Projects must have at least one editor.
+    if (isProject && selectedEditors.length === 0) {
       return false;
     }
     if (managementType === "manual" && selectedMembers.length === 0) {
@@ -271,7 +295,14 @@ export function SpaceAboutTab({
       return false;
     }
     return true;
-  }, [hasChanges, managementType, selectedMembers, selectedGroups]);
+  }, [
+    hasChanges,
+    managementType,
+    selectedMembers,
+    selectedGroups,
+    selectedEditors,
+    isProject,
+  ]);
 
   const onSaveMetadata = form.handleSubmit(async (data) => {
     setIsSavingMetadata(true);
@@ -290,7 +321,7 @@ export function SpaceAboutTab({
       await doUpdate(space, {
         isRestricted,
         groupIds: selectedGroups.map((group) => group.sId),
-        editorGroupIds: [], // todo(projects): handle editor groups in the UI
+        editorGroupIds: [], // TODO: Handle editor groups in the UI when needed.
         managementMode: "group",
         name: space.name,
       });
@@ -298,7 +329,7 @@ export function SpaceAboutTab({
       await doUpdate(space, {
         isRestricted,
         memberIds: selectedMembers.map((member) => member.sId),
-        editorIds: [], // todo(projects): handle editors in the UI
+        editorIds: selectedEditors.map((editor) => editor.sId),
         managementMode: "manual",
         name: space.name,
       });
@@ -312,6 +343,7 @@ export function SpaceAboutTab({
     planAllowsSCIM,
     selectedGroups,
     selectedMembers,
+    selectedEditors,
     isRestricted,
     space,
   ]);
@@ -361,6 +393,32 @@ export function SpaceAboutTab({
       </FormProvider>
 
       <div className="border-t pt-4" />
+
+      {isProject && (
+        <div className="flex flex-col gap-y-2">
+          <div>
+            <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+              Editors
+            </h3>
+            <p className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+              Editors can add content, manage settings, and invite others to
+              this project.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {selectedEditors.length} editor
+              {selectedEditors.length !== 1 ? "s" : ""}
+            </span>
+            <EditorsSheet
+              owner={owner}
+              editors={selectedEditors}
+              onEditorsChange={setSelectedEditors}
+              description="Select users who can manage this project"
+            />
+          </div>
+        </div>
+      )}
 
       <RestrictedAccessHeader
         isRestricted={isRestricted}

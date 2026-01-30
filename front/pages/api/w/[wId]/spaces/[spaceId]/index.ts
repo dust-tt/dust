@@ -39,6 +39,7 @@ export type GetSpaceResponseBody = {
     canRead: boolean;
     isMember: boolean;
     members: UserType[];
+    editors: UserType[];
   };
 };
 
@@ -52,18 +53,18 @@ async function handler(
     WithAPIErrorResponse<GetSpaceResponseBody | PatchSpaceResponseBody>
   >,
   auth: Authenticator,
-  { space }: { space: SpaceResource }
+  { space }: { space: SpaceResource },
 ): Promise<void> {
   switch (req.method) {
     case "GET": {
       const dataSourceViews = await DataSourceViewResource.listBySpace(
         auth,
-        space
+        space,
       );
       const apps = await AppResource.listBySpace(auth, space);
       const actions = await MCPServerViewResource.listBySpace(auth, space);
       const actionsCount = actions.filter(
-        (a) => a.toJSON().server.availability === "manual"
+        (a) => a.toJSON().server.availability === "manual",
       ).length;
 
       const categories: { [key: string]: SpaceCategoryInfo } = {};
@@ -77,7 +78,7 @@ async function handler(
         };
 
         const dataSourceViewsInCategory = dataSourceViews.filter(
-          (view) => view.toJSON().category === category
+          (view) => view.toJSON().category === category,
         );
 
         // As the usage call is expensive, we only call it if there are views in the category
@@ -97,7 +98,7 @@ async function handler(
               ].usage.agents.concat(usage.agents);
               categories[category].usage.agents = uniqBy(
                 categories[category].usage.agents,
-                "sId"
+                "sId",
               );
             }
           }
@@ -121,10 +122,25 @@ async function handler(
               includeAllMembers
                 ? group.getAllMembers(auth)
                 : group.getActiveMembers(auth),
-            { concurrency: 10 }
+            { concurrency: 10 },
           )
         ).flat(),
-        "sId"
+        "sId",
+      );
+
+      // Get editors from space_editors groups (for projects).
+      const currentEditors = uniqBy(
+        (
+          await concurrentExecutor(
+            space.groups.filter((g) => g.kind === "space_editors"),
+            (group) =>
+              includeAllMembers
+                ? group.getAllMembers(auth)
+                : group.getActiveMembers(auth),
+            { concurrency: 10 },
+          )
+        ).flat(),
+        "sId",
       );
 
       return res.status(200).json({
@@ -135,6 +151,7 @@ async function handler(
           canRead: space.canRead(auth),
           isMember: space.canRead(auth),
           members: currentMembers.map((member) => member.toJSON()),
+          editors: currentEditors.map((editor) => editor.toJSON()),
         },
       });
     }
@@ -169,7 +186,7 @@ async function handler(
       if (content) {
         const currentViews = await DataSourceViewResource.listBySpace(
           auth,
-          space
+          space,
         );
 
         const viewByDataSourceId = currentViews.reduce<
@@ -189,7 +206,7 @@ async function handler(
             // Create a new view.
             const dataSource = await DataSourceResource.fetchById(
               auth,
-              dataSourceConfig.dataSourceId
+              dataSourceConfig.dataSourceId,
             );
             if (dataSource) {
               const dataSourceViewRes =
@@ -197,7 +214,7 @@ async function handler(
                   auth,
                   space,
                   dataSource,
-                  dataSourceConfig.parentsIn
+                  dataSourceConfig.parentsIn,
                 );
 
               if (dataSourceViewRes.isErr()) {
@@ -248,7 +265,7 @@ async function handler(
         const deleteRes = await softDeleteSpaceAndLaunchScrubWorkflow(
           auth,
           space,
-          shouldForce
+          shouldForce,
         );
         if (deleteRes.isErr()) {
           return apiError(req, res, {
@@ -286,5 +303,5 @@ async function handler(
 export default withSessionAuthenticationForWorkspace(
   withResourceFetchingFromRoute(handler, {
     space: { requireCanReadOrAdministrate: true },
-  })
+  }),
 );
