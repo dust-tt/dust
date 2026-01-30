@@ -84,10 +84,10 @@ function collectSuggestionNodes(state: EditorState) {
       return;
     }
     const addMark = node.marks.find(
-      (m) => m.type.name === "suggestionAddition"
+      (m) => m.type.name === "suggestionAddition",
     );
     const removeMark = node.marks.find(
-      (m) => m.type.name === "suggestionDeletion"
+      (m) => m.type.name === "suggestionDeletion",
     );
     if (addMark || removeMark) {
       nodes.push({
@@ -121,7 +121,7 @@ function getSuggestionBlockRange(state: EditorState): {
   }
 
   const cursorNode = allSuggestionNodes.find(
-    (n) => from >= n.from && from <= n.to
+    (n) => from >= n.from && from <= n.to,
   );
 
   if (!cursorNode) {
@@ -130,7 +130,7 @@ function getSuggestionBlockRange(state: EditorState): {
 
   // Find all contiguous nodes with the same suggestionId.
   const blockNodes = allSuggestionNodes.filter(
-    (n) => n.suggestionId === cursorNode.suggestionId
+    (n) => n.suggestionId === cursorNode.suggestionId,
   );
 
   if (blockNodes.length === 0) {
@@ -189,7 +189,7 @@ const suggestionHighlightPlugin = new Plugin({
         decorations.push(
           Decoration.inline(node.from, node.to, {
             class: className,
-          })
+          }),
         );
       }
 
@@ -244,7 +244,7 @@ function extractCommittedText(node: JSONContent): string {
     // Addition marks are suggested additions not yet accepted, exclude them.
     // All other text (including deletion marks which are original text) is included.
     const hasAdditionMark = node.marks?.some(
-      (mark) => mark.type === "suggestionAddition"
+      (mark) => mark.type === "suggestionAddition",
     );
 
     return hasAdditionMark ? "" : (node.text ?? "");
@@ -408,7 +408,7 @@ export const InstructionSuggestionExtension = Extension.create({
           if (modified) {
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
-                (id: string) => id !== suggestionId
+                (id: string) => id !== suggestionId,
               );
           }
 
@@ -427,7 +427,7 @@ export const InstructionSuggestionExtension = Extension.create({
           if (modified) {
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
-                (id: string) => id !== suggestionId
+                (id: string) => id !== suggestionId,
               );
           }
 
@@ -472,7 +472,7 @@ function processSuggestionMarks(
   state: EditorState,
   tr: Transaction,
   suggestionId: string,
-  config: SuggestionMarkConfig
+  config: SuggestionMarkConfig,
 ): boolean {
   const { doc, schema } = state;
   const operations: SuggestionOperation[] = [];
@@ -487,7 +487,7 @@ function processSuggestionMarks(
       (mark) =>
         (mark.type.name === "suggestionDeletion" ||
           mark.type.name === "suggestionAddition") &&
-        mark.attrs.suggestionId === suggestionId
+        mark.attrs.suggestionId === suggestionId,
     );
 
     if (!matchingMark) {
@@ -517,7 +517,7 @@ function processSuggestionMarks(
       tr.removeMark(
         op.pos,
         op.pos + op.nodeSize,
-        schema.marks[config.markToKeep]
+        schema.marks[config.markToKeep],
       );
     }
   }
