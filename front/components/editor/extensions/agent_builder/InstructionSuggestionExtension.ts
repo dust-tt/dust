@@ -68,38 +68,34 @@ export const SuggestionDeletionMark = Mark.create({
   },
 });
 
+interface SuggestionNode {
+  from: number;
+  to: number;
+  isAdd: boolean;
+  suggestionId: string | null;
+}
+
 // Collect all suggestion-marked nodes in the document.
-function collectSuggestionNodes(state: EditorState) {
-  const nodes: Array<{
-    from: number;
-    to: number;
-    text: string;
-    isAdd: boolean;
-    isRemove: boolean;
-    suggestionId: string | null;
-  }> = [];
+function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
+  const nodes: SuggestionNode[] = [];
 
   state.doc.descendants((node, pos) => {
     if (!node.isText) {
       return;
     }
     const addMark = node.marks.find(
-      (m) => m.type.name === "suggestionAddition",
+      (m) => m.type.name === "suggestionAddition"
     );
-    const removeMark = node.marks.find(
-      (m) => m.type.name === "suggestionDeletion",
+    const deletionMark = node.marks.find(
+      (m) => m.type.name === "suggestionDeletion"
     );
-    if (addMark || removeMark) {
+    const mark = addMark || deletionMark;
+    if (mark) {
       nodes.push({
         from: pos,
         to: pos + node.nodeSize,
-        text: node.text || "",
         isAdd: !!addMark,
-        isRemove: !!removeMark,
-        suggestionId:
-          (addMark?.attrs.suggestionId as string) ||
-          (removeMark?.attrs.suggestionId as string) ||
-          null,
+        suggestionId: (mark.attrs.suggestionId as string) || null,
       });
     }
   });
@@ -107,91 +103,59 @@ function collectSuggestionNodes(state: EditorState) {
   return nodes;
 }
 
-// Get the contiguous block of suggestion nodes around the cursor.
-function getSuggestionBlockRange(state: EditorState): {
-  start: number;
-  end: number;
-  suggestionId: string | null;
-} | null {
-  const { from } = state.selection;
-  const allSuggestionNodes = collectSuggestionNodes(state);
-
-  if (allSuggestionNodes.length === 0) {
-    return null;
-  }
-
-  const cursorNode = allSuggestionNodes.find(
-    (n) => from >= n.from && from <= n.to,
+// Find the suggestionId of the suggestion block containing the cursor.
+function getSelectedSuggestionId(
+  nodes: SuggestionNode[],
+  cursorPos: number
+): string | null {
+  const cursorNode = nodes.find(
+    (n) => cursorPos >= n.from && cursorPos <= n.to
   );
-
-  if (!cursorNode) {
-    return null;
-  }
-
-  // Find all contiguous nodes with the same suggestionId.
-  const blockNodes = allSuggestionNodes.filter(
-    (n) => n.suggestionId === cursorNode.suggestionId,
-  );
-
-  if (blockNodes.length === 0) {
-    return null;
-  }
-
-  blockNodes.sort((a, b) => a.from - b.from);
-
-  return {
-    start: blockNodes[0].from,
-    end: blockNodes[blockNodes.length - 1].to,
-    suggestionId: cursorNode.suggestionId,
-  };
+  return cursorNode?.suggestionId ?? null;
 }
 
-// CSS classes for selected vs unselected suggestion states.
-const ADDITION_SELECTED =
-  "rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200";
-const ADDITION_UNSELECTED =
-  "rounded bg-blue-50 dark:bg-blue-900/20 text-gray-500 dark:text-gray-400";
-const DELETION_SELECTED =
-  "rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 line-through";
-const DELETION_UNSELECTED =
-  "rounded bg-red-50 dark:bg-red-900/20 text-gray-500 dark:text-gray-400 line-through";
+// CSS classes for suggestion states: [isAdd][isSelected].
+const SUGGESTION_CLASSES = {
+  addSelected:
+    "rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+  addUnselected:
+    "rounded bg-blue-50 dark:bg-blue-900/20 text-gray-500 dark:text-gray-400",
+  deleteSelected:
+    "rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 line-through",
+  deleteUnselected:
+    "rounded bg-red-50 dark:bg-red-900/20 text-gray-500 dark:text-gray-400 line-through",
+};
+
+function getSuggestionClass(isAdd: boolean, isSelected: boolean): string {
+  if (isAdd) {
+    return isSelected
+      ? SUGGESTION_CLASSES.addSelected
+      : SUGGESTION_CLASSES.addUnselected;
+  }
+  return isSelected
+    ? SUGGESTION_CLASSES.deleteSelected
+    : SUGGESTION_CLASSES.deleteUnselected;
+}
 
 // ProseMirror plugin that applies decorations based on cursor position.
 const suggestionHighlightPlugin = new Plugin({
   key: new PluginKey("suggestionHighlight"),
   props: {
     decorations(state) {
-      const range = getSuggestionBlockRange(state);
-      const allSuggestionNodes = collectSuggestionNodes(state);
-
-      if (allSuggestionNodes.length === 0) {
+      const nodes = collectSuggestionNodes(state);
+      if (nodes.length === 0) {
         return null;
       }
 
-      const decorations: Decoration[] = [];
-      const selectedStart = range?.start ?? -1;
-      const selectedEnd = range?.end ?? -1;
-      const selectedSuggestionId = range?.suggestionId ?? null;
-
-      for (const node of allSuggestionNodes) {
-        // A node is selected if it belongs to the same suggestion as the cursor.
-        const isSelected =
-          selectedSuggestionId !== null &&
-          node.suggestionId === selectedSuggestionId;
-
-        let className: string;
-        if (node.isAdd) {
-          className = isSelected ? ADDITION_SELECTED : ADDITION_UNSELECTED;
-        } else {
-          className = isSelected ? DELETION_SELECTED : DELETION_UNSELECTED;
-        }
-
-        decorations.push(
-          Decoration.inline(node.from, node.to, {
-            class: className,
-          }),
-        );
-      }
+      const selectedId = getSelectedSuggestionId(nodes, state.selection.from);
+      const decorations = nodes.map((node) =>
+        Decoration.inline(node.from, node.to, {
+          class: getSuggestionClass(
+            node.isAdd,
+            selectedId !== null && node.suggestionId === selectedId
+          ),
+        })
+      );
 
       return DecorationSet.create(state.doc, decorations);
     },
