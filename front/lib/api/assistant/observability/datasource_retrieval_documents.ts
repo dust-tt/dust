@@ -51,8 +51,8 @@ type DatasourceRetrievalDocumentsAggs = {
 const CORE_SEARCH_NODES_BATCH_SIZE = 200;
 
 function chunkArray<T>(items: T[], batchSize: number): T[][] {
-  if (batchSize <= 0) {
-    return [items];
+  if (items.length === 0 || batchSize <= 0) {
+    return items.length === 0 ? [] : [items];
   }
 
   const batches: T[][] = [];
@@ -131,6 +131,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     days,
     version,
     mcpServerConfigIds,
+    mcpServerName,
     dataSourceId,
     limit = 50,
   }: {
@@ -138,24 +139,29 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     days?: number;
     version?: string;
     mcpServerConfigIds: string[];
+    // For servers without config IDs (like data_sources_file_system), use name instead.
+    mcpServerName?: string;
     dataSourceId: string;
     limit?: number;
   }
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const mcpServerConfigs = await AgentMCPServerConfigurationResource.fetchByIds(
-    auth,
-    mcpServerConfigIds
-  );
-
-  if (mcpServerConfigs.length === 0) {
+  // Need at least one filter: either by config IDs or by server name.
+  if (mcpServerConfigIds.length === 0 && !mcpServerName) {
     return new Ok({ documents: [], groups: [], total: 0 });
   }
 
-  const mcpServerConfigModelIds = Array.from(
-    new Set(mcpServerConfigs.map((config) => config.id))
-  );
+  // Fetch configs by sId (only for servers with real config IDs).
+  const mcpServerConfigs =
+    mcpServerConfigIds.length > 0
+      ? await AgentMCPServerConfigurationResource.fetchByIds(
+          auth,
+          mcpServerConfigIds
+        )
+      : [];
+
+  const mcpServerConfigModelIds = mcpServerConfigs.map((config) => config.id);
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: workspace.sId,
@@ -164,13 +170,27 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     version,
   });
 
+  // Build server filter: by config IDs OR by server name.
+  const serverFilters: estypes.QueryDslQueryContainer[] = [];
+  if (mcpServerConfigModelIds.length > 0) {
+    serverFilters.push({
+      terms: { mcp_server_configuration_id: mcpServerConfigModelIds },
+    });
+  }
+  if (mcpServerName) {
+    serverFilters.push({
+      term: { mcp_server_name: mcpServerName },
+    });
+  }
+
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         baseQuery,
         {
-          terms: {
-            mcp_server_configuration_id: mcpServerConfigModelIds,
+          bool: {
+            should: serverFilters,
+            minimum_should_match: 1,
           },
         },
         {
