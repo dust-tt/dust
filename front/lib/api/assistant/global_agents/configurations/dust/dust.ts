@@ -6,7 +6,6 @@ import {
   AGENT_ROUTER_SERVER_NAME,
   SUGGEST_AGENTS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/agent_router/metadata";
-import { DEEP_DIVE_NAME } from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import {
   getCompanyDataAction,
   getCompanyDataWarehousesAction,
@@ -464,27 +463,6 @@ function _getDustLikeGlobalAgent(
     })
   );
 
-  if (deepDiveMCPServerView) {
-    actions.push({
-      id: -1,
-      sId: agentId + "-deep-dive",
-      type: "mcp_server_configuration",
-      name: "deep_dive" satisfies InternalMCPServerNameType,
-      description: `Handoff the query to the @${DEEP_DIVE_NAME} agent`,
-      mcpServerViewId: deepDiveMCPServerView.sId,
-      internalMCPServerId: deepDiveMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    });
-  }
-
   if (hasAgentMemory) {
     actions.push({
       id: -1,
@@ -515,7 +493,7 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
-    skills: ["frames"],
+    skills: ["frames", "go-deep"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }
