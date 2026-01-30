@@ -1,5 +1,6 @@
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
+import { IndexPage } from "@spa/app/pages/IndexPage";
 import {
   createBrowserRouter,
   Navigate,
@@ -48,6 +49,7 @@ import { RunsPage } from "@dust-tt/front/components/pages/spaces/apps/RunsPage";
 
 const router = createBrowserRouter(
   [
+    { path: "/", element: <IndexPage /> },
     {
       path: "/w/:wId",
       element: <WorkspacePage />,
@@ -147,7 +149,7 @@ const router = createBrowserRouter(
         { path: "spaces/:spaceId/apps/:aId/runs/:runId", element: <RunPage /> },
       ],
     },
-    { path: "*", element: <Navigate to="/w/DevWkSpace/me" replace /> },
+    { path: "*", element: <Navigate to="/" replace /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",
