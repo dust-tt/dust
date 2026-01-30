@@ -12,7 +12,13 @@ import {
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
-export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
+export const CARD_VARIANTS = [
+  "primary",
+  "secondary",
+  "tertiary",
+  "highlight",
+  "warning",
+] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
@@ -41,6 +47,18 @@ const cardVariants = cva(
           "s-bg-muted-background",
           "s-border-border/0",
           "dark:s-bg-muted-background-night",
+          "dark:s-border-border-night/0"
+        ),
+        highlight: cn(
+          "s-bg-highlight-50",
+          "s-border-border/0",
+          "dark:s-bg-highlight-50-night",
+          "dark:s-border-border-night/0"
+        ),
+        warning: cn(
+          "s-bg-warning-50",
+          "s-border-border/0",
+          "dark:s-bg-warning-50-night",
           "dark:s-border-border-night/0"
         ),
         secondary: cn(
