@@ -224,13 +224,13 @@ export function AgentDetails({
 
   return (
     <Sheet open={!!agentId} onOpenChange={onClose}>
-      <SheetContent size="lg" className="outline-none pb-4">
+      <SheetContent size="xl" className="outline-none pb-4">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>
         {isAgentConfigurationLoading ? (
           <div className="flex h-full w-full items-center justify-center">
-            <Spinner size="xl" />
+            <Spinner size="lg" />
           </div>
         ) : (
           <>
