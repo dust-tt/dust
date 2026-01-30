@@ -54,6 +54,7 @@ async function handler(
   }
 
   const { select: selectParam, current } = req.query;
+  const spaceId = conversationRes.space?.sId;
 
   const { query: queryParam } = req.query;
   const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
@@ -76,6 +77,7 @@ async function handler(
     conversationId,
     select,
     current: current === "true",
+    spaceId,
   });
 
   return res.status(200).json({ suggestions });
