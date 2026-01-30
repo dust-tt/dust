@@ -435,42 +435,6 @@ export const MemoCodeBlockWithExtendedSupport = memo(
               variant={"outline"}
               label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
               icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
-              onClick={() => {
-                const newValue = !showPrettyJson;
-                setShowPrettyJson(newValue);
-                setPrettyJsonPreference(newValue);
-              }}
-              tooltip={
-                showPrettyJson ? "Switch to Raw JSON" : "Switch to Pretty View"
-              }
-            />
-          }
-          displayActions="hover"
-          buttonDisplay="inside"
-        >
-          {showPrettyJson ? (
-            <PrettyJsonViewer data={parsedJson} />
-          ) : (
-            <CodeBlock className={className} inline={inline}>
-              {children}
-            </CodeBlock>
-          )}
-        </ContentBlockWrapper>
-      );
-    }
-
-    if (parsedJson !== null) {
-      return (
-        <ContentBlockWrapper
-          content={validChildrenContent}
-          getContentToDownload={getContentToDownload}
-          actions={
-            <Button
-              className="s-font-sans"
-              size="xs"
-              variant={"outline"}
-              label={showPrettyJson ? "Raw JSON" : "Pretty JSON"}
-              icon={showPrettyJson ? CommandLineIcon : SparklesIcon}
               onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.preventDefault();
                 e.stopPropagation();
