@@ -10,6 +10,9 @@
 
 import * as fs from "fs";
 import * as path from "path";
+import { z } from "zod";
+
+import { ModelConfigurationSchema } from "@app/types/assistant/models/types";
 
 // Local file path (downloaded by GH action before Docker build).
 const LOCAL_JSON_PATH = path.join(__dirname, "../custom-models.json");
@@ -18,52 +21,24 @@ const OUTPUT_PATH = path.join(
   "../types/assistant/models/custom_models.generated.ts"
 );
 
-interface CustomModelConfig {
-  modelId: string;
-  providerId: string;
-  displayName: string;
-  contextSize: number;
-  recommendedTopK: number;
-  recommendedExhaustiveTopK: number;
-  largeModel: boolean;
-  description: string;
-  shortDescription: string;
-  isLegacy: boolean;
-  isLatest: boolean;
-  generationTokensCount: number;
-  supportsVision: boolean;
-  minimumReasoningEffort: string;
-  maximumReasoningEffort: string;
-  defaultReasoningEffort: string;
-  tokenizer: { type: string; base?: string };
-  nativeReasoningMetaPrompt?: string;
-  formattingMetaPrompt?: string;
-  toolUseMetaPrompt?: string;
-  tokenCountAdjustment?: number;
-  useNativeLightReasoning?: boolean;
-  supportsResponseFormat?: boolean;
-  supportsPromptCaching?: boolean;
-  featureFlag?: string;
-  customAssistantFeatureFlag?: string;
-  customThinkingType?: string;
-  customBetas?: string[];
-  customOutputConfig?: Record<string, string>;
-  disablePrefill?: boolean;
-}
+const CustomModelsFileSchema = z.object({
+  version: z.number().optional(),
+  models: z.array(ModelConfigurationSchema),
+});
 
-interface CustomModelsFile {
-  version?: number;
-  models: CustomModelConfig[];
-}
+type CustomModelConfig = z.infer<typeof ModelConfigurationSchema>;
 
 function parseModelsFile(content: string): CustomModelConfig[] | null {
   try {
-    const parsed: CustomModelsFile = JSON.parse(content);
-    if (!parsed.models || !Array.isArray(parsed.models)) {
-      console.warn("Invalid custom models file format");
+    const json = JSON.parse(content);
+    const result = CustomModelsFileSchema.safeParse(json);
+
+    if (!result.success) {
+      console.error("Validation failed:", result.error.format());
       return null;
     }
-    return parsed.models;
+
+    return result.data.models;
   } catch (err) {
     console.warn("Failed to parse custom models JSON:", err);
     return null;
