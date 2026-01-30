@@ -1,8 +1,8 @@
 import {
   ChatBubbleBottomCenterTextIcon,
   Dialog,
+  DialogContainer,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -40,11 +40,11 @@ export function AgentCreatedDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Agent {agentHandle} has been created!</DialogTitle>
-          <DialogDescription>
-            You can now use {agentHandle} in conversations. Start a chat or keep
-            editing this agent.
-          </DialogDescription>
         </DialogHeader>
+        <DialogContainer>
+          You can now use {agentHandle} in conversations. Start a chat or keep
+          editing this agent.
+        </DialogContainer>
         <DialogFooter
           leftButtonProps={{
             label: "Keep editing",

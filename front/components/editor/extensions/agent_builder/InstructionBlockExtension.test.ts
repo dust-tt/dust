@@ -52,7 +52,7 @@ hello
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with headings to markdown", () => {
@@ -95,7 +95,7 @@ hello
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with code blocks to markdown", () => {
@@ -151,7 +151,7 @@ code block
         "\n" +
         "</instructions>\n" +
         "\n" +
-        "<br>"
+        "&nbsp;"
     );
   });
 
@@ -180,11 +180,11 @@ code block
     const result = editor.getMarkdown();
     expect(result).toBe(`<instructions>
 
-<br>
+&nbsp;
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with mentions", () => {
@@ -231,7 +231,7 @@ code block
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block with _", () => {
@@ -260,7 +260,7 @@ code block
 
 </instructions_toto>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should serialize instruction block to markdown with paragraph then list", () => {
@@ -359,7 +359,7 @@ Toto:
 
 </instructions>
 
-<br>`);
+&nbsp;`);
   });
 
   it("should work on deep-nested instruction blocks with NBSP", () => {
@@ -391,6 +391,6 @@ Toto:
 
 </prompt>
 
-<br>`);
+&nbsp;`);
   });
 });

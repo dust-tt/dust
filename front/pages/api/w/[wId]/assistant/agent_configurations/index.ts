@@ -10,6 +10,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
@@ -487,6 +488,12 @@ export async function createOrUpgradeAgentConfiguration({
     ...agentConfigurationRes.value,
     actions: actionConfigs,
   };
+
+  // Prune outdated suggestions after saving an existing agent.
+  // This must happen after skills/tools are added to the new version.
+  if (agentConfigurationId) {
+    await pruneSuggestionsForAgent(auth, agentConfiguration);
+  }
 
   // We are not tracking draft agents
   if (agentConfigurationRes.value.status === "active") {

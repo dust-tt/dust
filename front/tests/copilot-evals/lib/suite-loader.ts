@@ -1,4 +1,7 @@
-import type { CategorizedTestCase, TestSuite } from "./types";
+import type {
+  CategorizedTestCase,
+  TestSuite,
+} from "@app/tests/copilot-evals/lib/types";
 
 /**
  * Filter test cases from suites based on criteria.

@@ -15,6 +15,12 @@ function stubModulesPlugin(): Plugin {
     // Assert: minimal stub for Node.js assert module
     assert:
       "function assert(value, message) { if (!value) throw new Error(message || 'Assertion failed'); } assert.ok = assert; assert.strictEqual = (a, b, msg) => { if (a !== b) throw new Error(msg || `Expected ${a} to strictly equal ${b}`); }; assert.deepStrictEqual = assert.strictEqual; export default assert; export { assert };",
+    // Crypto: minimal stub for Node.js crypto module (server-only functions)
+    crypto:
+      "export const createHmac = () => { throw new Error('createHmac is not available in browser'); }; export const timingSafeEqual = () => { throw new Error('timingSafeEqual is not available in browser'); }; export default { createHmac, timingSafeEqual };",
+    // Child process: minimal stub for Node.js child_process module
+    child_process:
+      "export const execSync = () => { throw new Error('execSync is not available in browser'); }; export const exec = () => { throw new Error('exec is not available in browser'); }; export const spawn = () => { throw new Error('spawn is not available in browser'); }; export default { execSync, exec, spawn };",
   };
 
   // Stubs for resolved file paths (after @dust-tt/front alias is applied)

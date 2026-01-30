@@ -28,18 +28,22 @@ The response includes:
 - Instructions: The committed instructions text (without pending suggestions)
 - pendingSuggestions: Array of suggestions that have been made but not yet accepted/rejected by the user
 
+You MUST call \`get_agent_config\` to retrieve the current agent configuration and any pending suggestions.
+This tool must be called at session start to ensure you have the latest state.
+
 ## STEP 2: Suggest use cases
 Based on:
 - Current form state (get_agent_config result)
 - User's job function and preferred platforms (from your instructions)
 
 Provide 2-3 specific agent use case suggestions as bullet points. Example:
-"Based on your role in Sales:
-• Meeting prep agent - summarizes prospect info from CRM before calls
-• Follow-up drafter - generates personalized follow-up emails
-• Competitive intel - monitors competitor news and updates"
+"I can help you build agents for your work in [role/team]. A few ideas:
 
-End with: "Pick one, or tell me what you have in mind."
+• **Meeting prep agent** - pulls prospect info from CRM before calls
+• **Follow-up drafter** - generates personalized emails based on call notes  
+• **Competitive intel** - monitors competitor news and surfaces updates
+
+Pick one to start, or tell me what you're thinking."
 
 ## STEP 3: After user responds, create suggestions
 Tool usage rules when creating suggestions:
@@ -165,6 +169,7 @@ export const CopilotPanelProvider = ({
         copilotTargetAgentConfigurationId: targetAgentConfigurationId,
         copilotTargetAgentConfigurationVersion: targetAgentConfigurationVersion,
       },
+      skipToolsValidation: true,
     });
 
     if (result.isOk()) {

@@ -163,12 +163,19 @@ impl Provider for SalesforceConnectionProvider {
             .as_str()
             .ok_or_else(|| anyhow!("Missing `access_token` in response from Salesforce"))?;
 
-        // Salesforce refresh tokens don't expire and stay the same
+        // If Salesforce has Refresh Token Rotation enabled on the Connected App,
+        // the refresh response contains a new refresh_token and the old one is
+        // invalidated. We must persist the new one when present.
+        let updated_refresh_token = raw_json["refresh_token"]
+            .as_str()
+            .map(|s| s.to_string())
+            .unwrap_or(refresh_token);
+
         Ok(RefreshResult {
             access_token: access_token.to_string(),
             // We don't know the expiry time, so we use 15 minutes as a default
             access_token_expiry: Some(utils::now() + 15 * 60 * 1000),
-            refresh_token: Some(refresh_token),
+            refresh_token: Some(updated_refresh_token),
             raw_json,
         })
     }

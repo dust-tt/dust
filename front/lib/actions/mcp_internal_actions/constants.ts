@@ -1,6 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
-import { SALESFORCE_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/instructions";
 import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -19,6 +18,7 @@ import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metad
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
@@ -51,10 +51,13 @@ import {
 } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { RUN_AGENT_SERVER } from "@app/lib/api/actions/servers/run_agent/metadata";
 import { RUN_DUST_APP_SERVER } from "@app/lib/api/actions/servers/run_dust_app/metadata";
+import { SALESFORCE_SERVER } from "@app/lib/api/actions/servers/salesforce/metadata";
+import { SALESLOFT_SERVER } from "@app/lib/api/actions/servers/salesloft/metadata";
 import { SANDBOX_SERVER } from "@app/lib/api/actions/servers/sandbox/metadata";
 import { SCHEDULES_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/schedules_management/metadata";
 import { SEARCH_SERVER } from "@app/lib/api/actions/servers/search/metadata";
 import { SKILL_MANAGEMENT_SERVER } from "@app/lib/api/actions/servers/skill_management/metadata";
+import { SLAB_SERVER } from "@app/lib/api/actions/servers/slab/metadata";
 import { SLACK_BOT_SERVER } from "@app/lib/api/actions/servers/slack_bot/metadata";
 import { SLACK_PERSONAL_SERVER } from "@app/lib/api/actions/servers/slack_personal/metadata";
 import { SNOWFLAKE_SERVER } from "@app/lib/api/actions/servers/snowflake/metadata";
@@ -64,6 +67,7 @@ import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metad
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
+import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -345,32 +349,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !isAvailable;
     },
     isPreview: false,
-    tools_stakes: {
-      execute_read_query: "never_ask",
-      list_objects: "never_ask",
-      describe_object: "never_ask",
-      list_attachments: "never_ask",
-      read_attachment: "never_ask",
-      update_object: "high",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "salesforce",
-      version: "1.0.0",
-      description: "Salesforce tools.",
-      authorization: {
-        provider: "salesforce" as const,
-        supported_use_cases: ["personal_actions", "platform_actions"] as const,
-      },
-      icon: "SalesforceLogo",
-      documentationUrl: "https://docs.dust.tt/docs/salesforce",
-      // Predates the introduction of the rule, would require extensive work to improve, already
-      // widely adopted.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: SALESFORCE_SERVER_INSTRUCTIONS,
-    },
+    metadata: SALESFORCE_SERVER,
   },
   gmail: {
     id: 15,
@@ -777,25 +759,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("salesloft_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      get_current_user: "never_ask",
-      get_cadences: "never_ask",
-      get_tasks: "never_ask",
-      get_actions: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "salesloft",
-      version: "1.0.0",
-      description: "Access Salesloft cadences, tasks, and actions.",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-      developerSecretSelection: "required",
-    },
+    metadata: SALESLOFT_SERVER,
   },
   zendesk: {
     id: 42,
@@ -817,24 +784,10 @@ export const INTERNAL_MCP_SERVERS = {
     },
     isPreview: true,
     requiresBearerToken: true,
-    tools_stakes: {
-      search_posts: "never_ask",
-      get_post_contents: "never_ask",
-      get_topics: "never_ask",
-      get_post_metadata: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "slab",
-      version: "1.0.0",
-      description: "Search and read from your Slab knowledge base",
-      authorization: null,
-      icon: "ActionDocumentTextIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: SLAB_SERVER,
   },
   vanta: {
     id: 44,
@@ -842,38 +795,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_tests: "never_ask",
-      list_test_entities: "never_ask",
-      list_controls: "never_ask",
-      list_control_tests: "never_ask",
-      list_control_documents: "never_ask",
-      list_documents: "never_ask",
-      list_document_resources: "never_ask",
-      list_integrations: "never_ask",
-      list_integration_resources: "never_ask",
-      list_frameworks: "never_ask",
-      list_framework_controls: "never_ask",
-      list_people: "never_ask",
-      list_risks: "never_ask",
-      list_vulnerabilities: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "vanta",
-      version: "1.0.0",
-      description:
-        "Review compliance posture powered by Vanta's security platform.",
-      authorization: {
-        provider: "vanta" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "VantaLogo",
-      documentationUrl: "https://docs.dust.tt/docs/vanta",
-      instructions: null,
-    },
+    metadata: VANTA_SERVER,
   },
   databricks: {
     id: 45,
@@ -883,25 +808,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("databricks_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_warehouses: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "databricks",
-      version: "1.0.0",
-      description:
-        "Execute SQL queries and manage databases in Databricks SQL.",
-      authorization: {
-        provider: "databricks" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ActionTableIcon",
-      documentationUrl: "https://docs.dust.tt/docs/databricks",
-      instructions: null,
-    },
+    metadata: DATABRICKS_SERVER,
   },
   productboard: {
     id: 46,

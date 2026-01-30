@@ -476,6 +476,7 @@ export async function createAgentConfiguration(
               "status",
               "authorId",
               "workspaceId",
+              "createdAt",
             ],
             order: [["version", "DESC"]],
             transaction: t,
@@ -498,6 +499,17 @@ export async function createAgentConfiguration(
           // Otherwise: archive old versions and bump version
           if (existingAgent.status === "pending") {
             if (existingAgent.authorId === user.id) {
+              const timeToCreationMs =
+                Date.now() - existingAgent.createdAt.getTime();
+              logger.info(
+                {
+                  agentId: existingAgent.sId,
+                  workspaceId: owner.sId,
+                  timeToCreationMs,
+                },
+                "Agent created from pending status"
+              );
+
               // Delete the pending agent - we'll create a fresh one with version 0
               await AgentConfigurationModel.destroy({
                 where: {

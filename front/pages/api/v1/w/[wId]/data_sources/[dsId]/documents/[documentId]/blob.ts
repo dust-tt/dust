@@ -2,9 +2,7 @@ import type { GetDocumentBlobResponseType } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import apiConfig, {
-  DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
-} from "@app/lib/api/config";
+import apiConfig from "@app/lib/api/config";
 import type { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import logger from "@app/logger/logger";
@@ -12,10 +10,12 @@ import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { CoreAPI } from "@app/types";
 
+// Next.js config must use literal values (cannot be statically analyzed otherwise).
+// If wishing to change this value, see DOCUMENT_UPSERT_BODY_PARSER_LIMIT in lib/api/config.ts.
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
+      sizeLimit: "16mb",
     },
   },
 };

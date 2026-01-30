@@ -791,7 +791,8 @@ MessageReactionModel.belongsTo(UserModel, {
 });
 
 export type MentionStatusType =
-  | "pending" // Waiting for user input
+  | "pending_conversation_access" // Waiting for user input to invite to conversation
+  | "pending_project_membership" // Waiting for user input to add to project (mentioning user is project editor)
   | "approved" // Auto or manually approved
   | "rejected" // Auto or manually rejected
   | "user_restricted_by_conversation_access" // The conversation access is restricted to the user (the conversation uses at least one space that the user doesn't have access to)

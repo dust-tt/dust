@@ -30,6 +30,8 @@ function hasNotionWorkspaceId(obj: unknown): obj is NotionOAuthResponse {
 }
 
 export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     useCase,

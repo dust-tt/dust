@@ -66,6 +66,7 @@ import type {
 } from "@app/types";
 import {
   Err,
+  isGlobalAgentId,
   normalizeError,
   Ok,
   removeNulls,
@@ -133,7 +134,8 @@ export interface SkillAttachedKnowledge {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillResource extends ReadonlyAttributesType<SkillConfigurationModel> {}
+export interface SkillResource
+  extends ReadonlyAttributesType<SkillConfigurationModel> {}
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -772,8 +774,47 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
+    agentConfiguration: AgentConfigurationType
   ): Promise<SkillResource[]> {
+    const refs = await this.getSkillReferencesForAgent(
+      auth,
+      agentConfiguration
+    );
+
+    if (refs.length === 0) {
+      return [];
+    }
+
+    return this.fetchBySkillReferences(auth, refs, { agentConfiguration });
+  }
+
+  /**
+   * Returns skill references for an agent configuration.
+   * For global agents, returns references from the config's skills field.
+   * For non-global agents, queries the database.
+   * TODO(2026-01-30 agent-resource): move this to an AgentResource that would bundle the logic
+   *   about loading skills and will expose a unified interface.
+   */
+  static async getSkillReferencesForAgent(
+    auth: Authenticator,
+    agentConfiguration: AgentConfigurationType
+  ): Promise<
+    {
+      customSkillId: ModelId | null;
+      globalSkillId: string | null;
+    }[]
+  > {
+    // For global agents, skills are defined in the config, not in the database.
+    if (
+      isGlobalAgentId(agentConfiguration.sId) &&
+      "skills" in agentConfiguration
+    ) {
+      return (agentConfiguration.skills ?? []).map((globalSkillId) => ({
+        customSkillId: null,
+        globalSkillId,
+      }));
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -783,7 +824,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return this.fetchBySkillReferences(auth, agentSkills);
+    return agentSkills.map((s) => ({
+      customSkillId: s.customSkillId,
+      globalSkillId: s.globalSkillId,
+    }));
   }
 
   static modelIdToSId({
@@ -1778,18 +1822,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<Result<void, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const agentSkill = await AgentSkillModel.findOne({
-      where: {
-        ...this.skillReference,
-        workspaceId: workspace.id,
-        agentConfigurationId: agentConfiguration.id,
-      },
-    });
+    const refs = await SkillResource.getSkillReferencesForAgent(
+      auth,
+      agentConfiguration
+    );
 
-    if (!agentSkill) {
+    const hasSkill = refs.some(
+      (ref) =>
+        (ref.globalSkillId !== null && ref.globalSkillId === this.globalSId) ||
+        (ref.customSkillId !== null && ref.customSkillId === this.id)
+    );
+
+    if (!hasSkill) {
       return new Err(
         new Error(
-          `Skill ${this.name} was not added to agent ${agentConfiguration.name}.`
+          `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
         )
       );
     }

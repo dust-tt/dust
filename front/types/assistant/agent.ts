@@ -2,6 +2,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -162,6 +163,7 @@ export type LightAgentConfigurationType = {
 export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are performed.
   actions: MCPServerConfigurationType[];
+  skills?: GlobalSkillId[];
 };
 
 export interface TemplateAgentConfigurationType {

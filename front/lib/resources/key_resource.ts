@@ -114,11 +114,15 @@ export class KeyResource extends BaseResource<KeyModel> {
     return key;
   }
 
-  static async fetchByName(auth: Authenticator, { name }: { name: string }) {
+  static async fetchByName(
+    auth: Authenticator,
+    { name, onlyActive }: { name: string; onlyActive?: boolean }
+  ) {
     const key = await this.model.findOne({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
         name: name,
+        ...(onlyActive ? { status: "active" } : {}),
       },
     });
 

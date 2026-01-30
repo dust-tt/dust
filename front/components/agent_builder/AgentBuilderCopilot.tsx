@@ -110,6 +110,7 @@ function CopilotContent({
                 resetConversation,
                 actionsToShow: [],
                 clientSideMCPServerIds,
+                skipToolsValidation: true,
               }}
               additionalMarkdownComponents={additionalMarkdownComponents}
               additionalMarkdownPlugins={additionalMarkdownPlugins}

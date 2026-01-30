@@ -14,7 +14,8 @@ import { Ok } from "@app/types";
 import type { VerificationStatus } from "@app/types/workspace_verification";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceVerificationAttemptResource extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
+export interface WorkspaceVerificationAttemptResource
+  extends ReadonlyAttributesType<WorkspaceVerificationAttemptModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceVerificationAttemptResource extends BaseResource<WorkspaceVerificationAttemptModel> {
   static model: ModelStaticWorkspaceAware<WorkspaceVerificationAttemptModel> =
@@ -127,7 +128,9 @@ export class WorkspaceVerificationAttemptResource extends BaseResource<Workspace
 
   async markVerified({
     transaction,
-  }: { transaction?: Transaction } = {}): Promise<void> {
+  }: {
+    transaction?: Transaction;
+  } = {}): Promise<void> {
     if (this.verifiedAt) {
       throw new Error("Verification attempt already marked as verified");
     }

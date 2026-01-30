@@ -13,8 +13,7 @@ WORKDIR /dust
 COPY . .
 
 # Install dependencies
-RUN npm ci
-
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci
 
 RUN cd sdks/js && npm run build
 

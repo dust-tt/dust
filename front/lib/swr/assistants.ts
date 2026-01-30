@@ -1174,6 +1174,7 @@ export function useAgentDatasourceRetrievalDocuments({
   days = DEFAULT_PERIOD_DAYS,
   version,
   mcpServerConfigIds,
+  mcpServerName,
   dataSourceId,
   limit = 50,
   disabled,
@@ -1183,25 +1184,31 @@ export function useAgentDatasourceRetrievalDocuments({
   days?: number;
   version?: string;
   mcpServerConfigIds: string[] | null;
+  // For servers without config IDs (like data_sources_file_system), use name.
+  mcpServerName: string | null;
   dataSourceId: string | null;
   limit?: number;
   disabled?: boolean;
 }) {
   const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
+  const hasConfigIds = mcpServerConfigIds && mcpServerConfigIds.length > 0;
+  // Allow query if we have either config IDs or server name.
   const isDisabled =
-    !!disabled ||
-    !mcpServerConfigIds ||
-    mcpServerConfigIds.length === 0 ||
-    !dataSourceId;
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    disabled || (!hasConfigIds && !mcpServerName) || !dataSourceId;
+
   const params = new URLSearchParams({ days: days.toString() });
   if (version) {
     params.set("version", version);
   }
-  if (mcpServerConfigIds) {
+  if (hasConfigIds) {
     params.set(
       "mcpServerConfigIds",
       [...new Set(mcpServerConfigIds)].join(",")
     );
+  }
+  if (mcpServerName) {
+    params.set("mcpServerName", mcpServerName);
   }
   if (dataSourceId) {
     params.set("dataSourceId", dataSourceId);

@@ -27,7 +27,8 @@ import type {
 import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentSuggestionResource extends ReadonlyAttributesType<AgentSuggestionModel> {}
+export interface AgentSuggestionResource
+  extends ReadonlyAttributesType<AgentSuggestionModel> {}
 
 /**
  * Resource for managing agent suggestions.

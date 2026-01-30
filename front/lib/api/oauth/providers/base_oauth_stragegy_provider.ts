@@ -14,6 +14,15 @@ export type RelatedCredential = {
 };
 
 export interface BaseOAuthStrategyProvider {
+  /**
+   * When true, personal auth setup (useCase: "personal_actions") requires a
+   * workspace-level MCP server connection to already exist.
+   *
+   * This is used to gate client-side UX (avoid opening the OAuth popup only to
+   * immediately fail server-side).
+   */
+  requiresWorkspaceConnectionForPersonalAuth?: boolean;
+
   setupUri: ({
     connection,
     useCase,

@@ -17,12 +17,14 @@ import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
+import config from "@app/lib/api/config";
 import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { SupportedFileContentType } from "@app/types";
 import {
@@ -566,6 +568,60 @@ export function createProjectContextManagementTools(
           })
         );
       }, "Failed to read project journal entries");
+    },
+
+    get_information: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const owner = auth.getNonNullableWorkspace();
+
+        // Fetch project metadata
+        const metadata = await ProjectMetadataResource.fetchBySpace(
+          auth,
+          space
+        );
+
+        // Fetch files
+        const files = await FileResource.listByProject(auth, {
+          projectId: space.sId,
+        });
+
+        const fileList = files
+          .filter((file) => isSupportedFileContentType(file.contentType))
+          .map((file) => ({
+            fileId: file.sId,
+            fileName: file.fileName,
+            contentType: file.contentType,
+          }));
+
+        // Construct project URL
+        const projectPath = getSpaceConversationsRoute(owner.sId, space.sId);
+        const projectUrl = `${config.getClientFacingUrl()}${projectPath}`;
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            project: {
+              spaceId: space.sId,
+              name: space.name,
+              url: projectUrl,
+              description: metadata?.description ?? null,
+              contextUrls: metadata?.urls ?? [],
+              fileCount: files.length,
+              files: fileList,
+            },
+            message: "Successfully retrieved project information",
+          })
+        );
+      }, "Failed to get project information");
     },
   };
 

@@ -4,7 +4,6 @@ import { Op, QueryTypes, Sequelize } from "sequelize";
 
 import { getInternalMCPServerNameAndWorkspaceId } from "@app/lib/actions/mcp_internal_actions/constants";
 import config from "@app/lib/api/config";
-import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import {
   ConversationModel,
@@ -12,8 +11,6 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
-import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { getFrontReplicaDbConnection } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -808,29 +805,4 @@ function generateCsvFromQueryResult(
       date: (value) => value.toISOString(),
     },
   });
-}
-
-/**
- * Check if a workspace is active during a trial based on the following conditions:
- *   - Existence of a connected data source
- *   - Existence of a custom agent
- *   - A conversation occurred within the past 7 days
- */
-export async function checkWorkspaceActivity(auth: Authenticator) {
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const hasDataSource =
-    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
-
-  const hasCreatedAssistant = await AgentConfigurationModel.findOne({
-    where: { workspaceId: auth.getNonNullableWorkspace().id },
-  });
-
-  const hasRecentConversation =
-    (await ConversationResource.countForWorkspace(auth, {
-      updatedSince: sevenDaysAgo.getTime(),
-    })) > 0;
-
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }

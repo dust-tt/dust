@@ -9,8 +9,6 @@ import { useEffect, useMemo, useRef } from "react";
 
 import { AgentInstructionDiffExtension } from "@app/components/editor/extensions/agent_builder/AgentInstructionDiffExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import {
   KNOWLEDGE_NODE_TYPE,
   KnowledgeNode,
@@ -26,8 +24,16 @@ export function buildSkillInstructionsExtensions(
   const baseExtensions: Extensions = [
     Markdown,
     StarterKit.configure({
-      orderedList: false,
-      listItem: false,
+      orderedList: {
+        HTMLAttributes: {
+          class: markdownStyles.orderedList(),
+        },
+      },
+      listItem: {
+        HTMLAttributes: {
+          class: markdownStyles.list(),
+        },
+      },
       bulletList: {
         HTMLAttributes: {
           class: markdownStyles.unorderedList(),
@@ -59,16 +65,6 @@ export function buildSkillInstructionsExtensions(
       },
     }),
     KnowledgeNode,
-    OrderedListExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.orderedList(),
-      },
-    }),
-    ListItemExtension.configure({
-      HTMLAttributes: {
-        class: markdownStyles.list(),
-      },
-    }),
   ];
 
   if (!isReadOnly) {

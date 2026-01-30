@@ -20,65 +20,23 @@ import {
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
-type CopilotSuggestionType = "instructions" | "tools" | "skills" | "model";
-
-interface BaseCopilotSuggestion {
-  id: string;
-  type: CopilotSuggestionType;
-}
-
-export interface CopilotInstructionsSuggestion extends BaseCopilotSuggestion {
-  type: "instructions";
-  find: string;
-  replacement: string;
-  matchPositions: Array<{ start: number; end: number }>;
-}
-
-interface CopilotToolSuggestion extends BaseCopilotSuggestion {
-  type: "tools";
-  // other properties TBD
-}
-
-interface CopilotSkillSuggestion extends BaseCopilotSuggestion {
-  type: "skills";
-  // other properties TBD
-}
-
-interface CopilotModelSuggestion extends BaseCopilotSuggestion {
-  type: "model";
-  // other properties TBD
-}
-
-export type CopilotSuggestion =
-  | CopilotInstructionsSuggestion
-  | CopilotToolSuggestion
-  | CopilotSkillSuggestion
-  | CopilotModelSuggestion;
-
-export interface AddSuggestionResult {
-  success: boolean;
-  error?: string;
-  matchCount?: number;
-}
-
 export interface CopilotSuggestionsContextType {
-  suggestions: CopilotSuggestion[];
-  addSuggestion: (
-    suggestion: Omit<CopilotInstructionsSuggestion, "id" | "matchPositions">,
-    expectedCount?: number
-  ) => AddSuggestionResult;
-  acceptSuggestion: (id: string) => void;
-  rejectSuggestion: (id: string) => void;
-  acceptAllSuggestions: () => void;
-  rejectAllSuggestions: () => void;
-  registerEditor: (editor: Editor) => void;
-  getPendingSuggestions: () => CopilotSuggestion[];
-  getCommittedInstructions: () => string;
-  backendSuggestions: AgentSuggestionType[];
+  // Backend suggestions fetched via SWR.
+  suggestions: AgentSuggestionType[];
   getSuggestion: (sId: string) => AgentSuggestionType | null;
   triggerRefetch: () => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
+
+  // Editor registration for applying instruction suggestions.
+  registerEditor: (editor: Editor) => void;
+  getCommittedInstructions: () => string;
+
+  // Actions on suggestions.
+  acceptSuggestion: (sId: string) => void;
+  rejectSuggestion: (sId: string) => void;
+  acceptAllInstructionSuggestions: () => void;
+  rejectAllInstructionSuggestions: () => void;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -100,20 +58,11 @@ interface CopilotSuggestionsProviderProps {
   agentConfigurationId: string | null;
 }
 
-let suggestionIdCounter = 0;
-
-// TODO(2026-01-26 Copilot): Use ID from the backend.
-function generateSuggestionId(): string {
-  suggestionIdCounter += 1;
-  return `suggestion-${Date.now()}-${suggestionIdCounter}`;
-}
-
 export const CopilotSuggestionsProvider = ({
   children,
   agentConfigurationId,
 }: CopilotSuggestionsProviderProps) => {
   const { owner } = useAgentBuilderContext();
-  const [suggestions, setSuggestions] = useState<CopilotSuggestion[]>([]);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
@@ -121,9 +70,9 @@ export const CopilotSuggestionsProvider = ({
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
 
-  // Fetch all pending suggestions from the backend (all kinds).
+  // Fetch all suggestions from the backend.
   const {
-    suggestions: backendSuggestions,
+    suggestions,
     isSuggestionsLoading,
     isSuggestionsValidating,
     mutateSuggestions,
@@ -135,8 +84,8 @@ export const CopilotSuggestionsProvider = ({
   });
 
   const getSuggestion = useCallback(
-    (sId: string) => backendSuggestions.find((s) => s.sId === sId) ?? null,
-    [backendSuggestions]
+    (sId: string) => suggestions.find((s) => s.sId === sId) ?? null,
+    [suggestions]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
@@ -153,8 +102,7 @@ export const CopilotSuggestionsProvider = ({
   const registerEditor = useCallback((editor: Editor) => {
     editorRef.current = editor;
 
-    // Wait for the editor content to be set (happens in a RAF in the editor component).
-    // Use a small delay to ensure content is fully loaded.
+    // Wait for the editor content to be set.
     const checkEditorReady = () => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -168,7 +116,7 @@ export const CopilotSuggestionsProvider = ({
     checkEditorReady();
   }, []);
 
-  // Apply backend suggestions when editor is ready and suggestions are loaded.
+  // Apply pending instruction suggestions to the editor when they arrive from backend.
   useEffect(() => {
     const editor = editorRef.current;
 
@@ -181,207 +129,129 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
-    for (const backendSuggestion of backendSuggestions) {
-      if (backendSuggestion.state !== "pending") {
-        continue;
-      }
-      if (backendSuggestion.kind !== "instructions") {
-        // We only need to apply the instructions suggestions in the editor.
-        // Simply add the other kinds of pending suggestions to the context
-        // to make them available for copilot agent.
-        setSuggestions((prev) => [
-          ...prev,
-          {
-            id: backendSuggestion.sId,
-            type: backendSuggestion.kind,
-          },
-        ]);
-        continue;
-      }
-      if (appliedSuggestionsRef.current.has(backendSuggestion.sId)) {
+    for (const suggestion of suggestions) {
+      // Only apply pending instruction suggestions.
+      if (
+        suggestion.state !== "pending" ||
+        suggestion.kind !== "instructions"
+      ) {
         continue;
       }
 
-      const { oldString, newString } = backendSuggestion.suggestion;
+      // Don't re-apply suggestions that are already in the editor.
+      if (appliedSuggestionsRef.current.has(suggestion.sId)) {
+        continue;
+      }
+
+      const { oldString, newString } = suggestion.suggestion;
 
       const applied = editor.commands.applySuggestion({
-        id: backendSuggestion.sId,
+        id: suggestion.sId,
         find: oldString,
         replacement: newString,
       });
 
       if (applied) {
-        appliedSuggestionsRef.current.add(backendSuggestion.sId);
-        setSuggestions((prev) => [
-          ...prev,
-          {
-            id: backendSuggestion.sId,
-            type: "instructions",
-            find: oldString,
-            replacement: newString,
-            matchPositions: [],
-          },
-        ]);
+        appliedSuggestionsRef.current.add(suggestion.sId);
       }
     }
-  }, [backendSuggestions, isSuggestionsLoading, isEditorReady]);
-
-  const addSuggestion = useCallback(
-    (
-      suggestion: Omit<CopilotInstructionsSuggestion, "id" | "matchPositions">,
-      expectedCount?: number
-    ): AddSuggestionResult => {
-      const editor = editorRef.current;
-      if (!editor) {
-        return { success: false, error: "Editor not registered" };
-      }
-
-      // Get the committed text (without existing suggestion marks).
-      const committedText = getCommittedTextContent(editor);
-
-      // Find all occurrences of the find text.
-      const matchPositions: Array<{ start: number; end: number }> = [];
-      let searchStart = 0;
-      let index = committedText.indexOf(suggestion.find, searchStart);
-
-      while (index !== -1) {
-        matchPositions.push({
-          start: index,
-          end: index + suggestion.find.length,
-        });
-        searchStart = index + 1;
-        index = committedText.indexOf(suggestion.find, searchStart);
-      }
-
-      if (matchPositions.length === 0) {
-        return {
-          success: false,
-          error: `Could not find "${suggestion.find}" in the instructions.`,
-          matchCount: 0,
-        };
-      }
-
-      // Check expected count before applying.
-      if (
-        expectedCount !== undefined &&
-        matchPositions.length !== expectedCount
-      ) {
-        return {
-          success: false,
-          error: `Expected ${expectedCount} match(es) but found ${matchPositions.length}. Please provide a more specific "find" text.`,
-          matchCount: matchPositions.length,
-        };
-      }
-
-      const id = generateSuggestionId();
-      const newSuggestion: CopilotInstructionsSuggestion = {
-        ...suggestion,
-        id,
-        matchPositions,
-      };
-
-      // Apply the suggestion to the editor (creates marks).
-      const applied = editor.commands.applySuggestion({
-        id,
-        find: suggestion.find,
-        replacement: suggestion.replacement,
-      });
-
-      if (!applied) {
-        return {
-          success: false,
-          error: "Failed to apply suggestion to editor.",
-        };
-      }
-
-      setSuggestions((prev) => [...prev, newSuggestion]);
-
-      return { success: true, matchCount: matchPositions.length };
-    },
-    []
-  );
+  }, [suggestions, isSuggestionsLoading, isEditorReady]);
 
   const acceptSuggestion = useCallback(
-    async (id: string) => {
+    async (sId: string) => {
       const editor = editorRef.current;
       if (!editor) {
         return;
       }
 
-      const result = await patchSuggestions([id], "approved");
-      if (!result || !(result.suggestions.length > 0)) {
+      const suggestion = suggestions.find((s) => s.sId === sId);
+      if (!suggestion) {
         return;
       }
 
-      if (result.suggestions[0].kind === "instructions") {
-        editor.commands.acceptSuggestion(id);
+      const result = await patchSuggestions([sId], "approved");
+      if (!result || result.suggestions.length === 0) {
+        return;
       }
-      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+
+      if (suggestion.kind === "instructions") {
+        editor.commands.acceptSuggestion(sId);
+        appliedSuggestionsRef.current.delete(sId);
+      }
     },
-    [patchSuggestions]
+    [patchSuggestions, suggestions]
   );
 
   const rejectSuggestion = useCallback(
-    async (id: string) => {
+    async (sId: string) => {
       const editor = editorRef.current;
       if (!editor) {
         return;
       }
 
-      const result = await patchSuggestions([id], "rejected");
-      if (!result || !(result.suggestions.length > 0)) {
+      const suggestion = suggestions.find((s) => s.sId === sId);
+      if (!suggestion) {
         return;
       }
 
-      if (result.suggestions[0].kind === "instructions") {
-        editor.commands.rejectSuggestion(id);
+      const result = await patchSuggestions([sId], "rejected");
+      if (!result || result.suggestions.length === 0) {
+        return;
       }
-      setSuggestions((prev) => prev.filter((s) => s.id !== id));
+
+      if (suggestion.kind === "instructions") {
+        editor.commands.rejectSuggestion(sId);
+        appliedSuggestionsRef.current.delete(sId);
+      }
     },
-    [patchSuggestions]
+    [patchSuggestions, suggestions]
   );
 
-  /*
-   * Batch operations are only on instructions suggestions
-   */
-  const acceptAllSuggestions = useCallback(async () => {
+  const acceptAllInstructionSuggestions = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) {
       return;
     }
 
-    const ids = suggestions
-      .filter((s) => s.type === "instructions")
-      .map((s) => s.id);
-    const result = await patchSuggestions(ids, "approved");
+    const instructionSuggestionIds = suggestions
+      .filter((s) => s.kind === "instructions" && s.state === "pending")
+      .map((s) => s.sId);
+
+    if (instructionSuggestionIds.length === 0) {
+      return;
+    }
+
+    const result = await patchSuggestions(instructionSuggestionIds, "approved");
     if (result) {
       editor.commands.acceptAllSuggestions();
-      setSuggestions((prev) => prev.filter((s) => s.type === "instructions"));
+      for (const sId of instructionSuggestionIds) {
+        appliedSuggestionsRef.current.delete(sId);
+      }
     }
   }, [patchSuggestions, suggestions]);
 
-  /*
-   * Batch operations are only on instructions suggestions
-   */
-  const rejectAllSuggestions = useCallback(async () => {
+  const rejectAllInstructionSuggestions = useCallback(async () => {
     const editor = editorRef.current;
     if (!editor) {
       return;
     }
 
-    const ids = suggestions
-      .filter((s) => s.type === "instructions")
-      .map((s) => s.id);
-    const result = await patchSuggestions(ids, "rejected");
+    const instructionSuggestionIds = suggestions
+      .filter((s) => s.kind === "instructions" && s.state === "pending")
+      .map((s) => s.sId);
+
+    if (instructionSuggestionIds.length === 0) {
+      return;
+    }
+
+    const result = await patchSuggestions(instructionSuggestionIds, "rejected");
     if (result) {
       editor.commands.rejectAllSuggestions();
-      setSuggestions((prev) => prev.filter((s) => s.type === "instructions"));
+      for (const sId of instructionSuggestionIds) {
+        appliedSuggestionsRef.current.delete(sId);
+      }
     }
   }, [patchSuggestions, suggestions]);
-
-  const getPendingSuggestions = useCallback(() => {
-    return suggestions;
-  }, [suggestions]);
 
   const getCommittedInstructions = useCallback(() => {
     const editor = editorRef.current;
@@ -394,35 +264,29 @@ export const CopilotSuggestionsProvider = ({
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
       suggestions,
-      acceptAllSuggestions,
-      acceptSuggestion,
-      addSuggestion,
-      backendSuggestions,
       getSuggestion,
       triggerRefetch,
-      getCommittedInstructions,
-      getPendingSuggestions,
       isSuggestionsLoading,
       isSuggestionsValidating,
       registerEditor,
-      rejectAllSuggestions,
+      getCommittedInstructions,
+      acceptSuggestion,
       rejectSuggestion,
+      acceptAllInstructionSuggestions,
+      rejectAllInstructionSuggestions,
     }),
     [
       suggestions,
-      acceptAllSuggestions,
-      acceptSuggestion,
-      addSuggestion,
-      backendSuggestions,
       getSuggestion,
       triggerRefetch,
-      getCommittedInstructions,
-      getPendingSuggestions,
       isSuggestionsLoading,
       isSuggestionsValidating,
       registerEditor,
-      rejectAllSuggestions,
+      getCommittedInstructions,
+      acceptSuggestion,
       rejectSuggestion,
+      acceptAllInstructionSuggestions,
+      rejectAllInstructionSuggestions,
     ]
   );
 

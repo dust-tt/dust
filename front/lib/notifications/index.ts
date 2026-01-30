@@ -1,4 +1,4 @@
-import { Novu } from "@novu/node";
+import { Novu } from "@novu/api";
 import { createHmac } from "crypto";
 
 import type { UserTypeWithWorkspaces } from "@app/types";
@@ -15,11 +15,11 @@ export const getNovuClient = async (): Promise<Novu> => {
   }
 
   const config = {
-    apiKey: process.env.NOVU_SECRET_KEY,
-    backendUrl: process.env.NEXT_PUBLIC_NOVU_API_URL,
+    secretKey: process.env.NOVU_SECRET_KEY,
+    serverURL: process.env.NEXT_PUBLIC_NOVU_API_URL,
   };
 
-  return new Novu(process.env.NOVU_SECRET_KEY, config);
+  return new Novu(config);
 };
 
 export const getSubscriberHash = async (

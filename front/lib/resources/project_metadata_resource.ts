@@ -10,7 +10,8 @@ import type { ModelId, ProjectMetadataType, Result } from "@app/types";
 import { Ok } from "@app/types";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ProjectMetadataResource extends ReadonlyAttributesType<ProjectMetadataModel> {}
+export interface ProjectMetadataResource
+  extends ReadonlyAttributesType<ProjectMetadataModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ProjectMetadataResource extends BaseResource<ProjectMetadataModel> {

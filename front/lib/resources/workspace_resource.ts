@@ -6,7 +6,7 @@ import {
   listWorkOSOrganizationsWithDomain,
   removeWorkOSOrganizationDomain,
   removeWorkOSOrganizationDomainFromOrganization,
-} from "@app/lib/api/workos/organization";
+} from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
 import type { ResourceLogJSON } from "@app/lib/resources/base_resource";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -27,7 +27,8 @@ import { Err, normalizeError, Ok } from "@app/types";
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WorkspaceResource extends ReadonlyAttributesType<WorkspaceModel> {}
+export interface WorkspaceResource
+  extends ReadonlyAttributesType<WorkspaceModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WorkspaceResource extends BaseResource<WorkspaceModel> {

@@ -1549,7 +1549,7 @@ describe("createUserMentions", () => {
       pictureUrl:
         mentionedUserJson.image ?? "/static/humanavatar/anonymous.png",
       description: mentionedUserJson.email,
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1618,13 +1618,13 @@ describe("createUserMentions", () => {
       id: user1.sId,
       type: "user",
       label: user1Json.fullName,
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(user2Mention).toMatchObject({
       id: user2.sId,
       type: "user",
       label: user2Json.fullName,
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(user1Mention!)).toBe(true);
     expect(isRichUserMention(user2Mention!)).toBe(true);
@@ -1738,7 +1738,7 @@ describe("createUserMentions", () => {
     expect(result[0]).toMatchObject({
       id: mentionedUser.sId,
       type: "user",
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1795,7 +1795,7 @@ describe("createUserMentions", () => {
     expect(result[0]).toMatchObject({
       id: mentionedUser.sId,
       type: "user",
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1844,7 +1844,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1857,7 +1857,7 @@ describe("createUserMentions", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
+      expect(mentionInDb?.status).toBe("pending_conversation_access");
     });
 
     it("should always auto approve mentions for existing participants", async () => {
@@ -1944,7 +1944,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -2151,7 +2151,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -2254,7 +2254,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -2435,7 +2435,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
 
@@ -2448,7 +2448,7 @@ describe("createUserMentions", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
+      expect(mentionInDb?.status).toBe("pending_conversation_access");
       expect(mentionInDb?.status).not.toBe(
         "user_restricted_by_conversation_access"
       );
@@ -3565,12 +3565,12 @@ describe("validateUserMention", () => {
       });
     });
 
-    // Create the mention with status "pending"
+    // Create the mention with status "pending_conversation_access"
     await MentionModel.create({
       messageId: userMessage.id,
       userId: mentionedUser.id,
       workspaceId: workspace.id,
-      status: "pending",
+      status: "pending_conversation_access",
     });
 
     // Verify the mentioned user is not a participant yet
@@ -3635,12 +3635,12 @@ describe("validateUserMention", () => {
       });
     });
 
-    // Create the mention with status "pending"
+    // Create the mention with status "pending_conversation_access"
     await MentionModel.create({
       messageId: userMessage.id,
       userId: mentionedUser.id,
       workspaceId: workspace.id,
-      status: "pending",
+      status: "pending_conversation_access",
     });
 
     // Reject the mention
@@ -3726,12 +3726,12 @@ describe("validateUserMention", () => {
         });
       });
 
-      // Create the mention with status "pending"
+      // Create the mention with status "pending_project_membership"
       await MentionModel.create({
         messageId: userMessage.id,
         userId: mentionedUser.id,
         workspaceId: workspace.id,
-        status: "pending",
+        status: "pending_project_membership",
       });
 
       const mentionedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(

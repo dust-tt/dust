@@ -88,7 +88,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   vanta: new VantaOAuthProvider(),
 };
 
-function getProviderStrategy(
+export function getProviderStrategy(
   provider: OAuthProvider
 ): BaseOAuthStrategyProvider {
   return _PROVIDER_STRATEGIES[provider];

@@ -216,25 +216,25 @@ export const triggerConversationAddedAsParticipantNotification = async (
       conversationId: conversation.sId,
       userThatAddedYouId: userThatAddedYou.sId,
     };
-    const r = await novuClient.trigger(
-      CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID,
-      {
-        to: {
-          subscriberId: addedUserId,
-          email: addedUser.email,
-          firstName: addedUser.firstName ?? undefined,
-          lastName: addedUser.lastName ?? undefined,
-        },
-        payload,
-      }
-    );
-    if (r.status <= 200 && r.status >= 300) {
+
+    const r = await novuClient.trigger({
+      workflowId: CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID,
+      to: {
+        subscriberId: addedUserId,
+        email: addedUser.email,
+        firstName: addedUser.firstName ?? undefined,
+        lastName: addedUser.lastName ?? undefined,
+      },
+      payload,
+    });
+    if (r.result.error?.length) {
+      const eventErrors = r.result.error.join(", ");
       return new Err({
         name: "dust_error",
         code: "internal_error",
         message:
           "Failed to trigger conversation added as participant notification",
-        cause: r.statusText,
+        cause: eventErrors,
       });
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars

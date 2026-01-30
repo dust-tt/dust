@@ -531,8 +531,9 @@ describe("POST /api/w/[wId]/files/[fileId]", () => {
   });
 
   it("should process conversation file and upsert to data source", async () => {
-    const { processAndUpsertToDataSource } =
-      await import("@app/lib/api/files/upsert");
+    const { processAndUpsertToDataSource } = await import(
+      "@app/lib/api/files/upsert"
+    );
 
     const { req, res, workspace, user, authenticator } =
       await createPrivateApiMockRequest({

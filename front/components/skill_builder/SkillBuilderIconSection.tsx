@@ -28,7 +28,7 @@ export function SkillBuilderIconSection() {
   const selectedIconName =
     toActionIconKey(iconField.value) ??
     (DEFAULT_ICON.name as keyof typeof ActionIcons);
-  const IconComponent = ActionIcons[selectedIconName] || DEFAULT_ICON;
+  const IconComponent = ActionIcons[selectedIconName] ?? DEFAULT_ICON;
 
   const closePopover = () => {
     setIsPopoverOpen(false);

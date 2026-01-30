@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY viz/package.json ./viz/
 
-RUN npm ci -w viz
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w viz
 
 WORKDIR /app/viz
 COPY /viz .

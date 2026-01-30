@@ -3,7 +3,6 @@ import * as reporter from "io-ts-reporters";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { DOCUMENT_UPSERT_BODY_PARSER_LIMIT } from "@app/lib/api/config";
 import { upsertDocument } from "@app/lib/api/data_sources";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -17,10 +16,12 @@ import type {
 } from "@app/types";
 import { PostDataSourceDocumentRequestBodySchema } from "@app/types";
 
+// Next.js config must use literal values (cannot be statically analyzed otherwise).
+// If wishing to change this value, see DOCUMENT_UPSERT_BODY_PARSER_LIMIT in lib/api/config.ts.
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
+      sizeLimit: "16mb",
     },
   },
 };

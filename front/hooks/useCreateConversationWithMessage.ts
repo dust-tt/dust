@@ -28,10 +28,11 @@ export function useCreateConversationWithMessage({
   return useCallback(
     async ({
       messageData,
-      visibility = "unlisted",
-      title,
-      spaceId,
       metadata,
+      skipToolsValidation = false,
+      spaceId,
+      title,
+      visibility = "unlisted",
     }: {
       messageData: {
         input: string;
@@ -46,6 +47,7 @@ export function useCreateConversationWithMessage({
       title?: string;
       spaceId?: string | null;
       metadata?: ConversationMetadata;
+      skipToolsValidation?: boolean;
     }): Promise<Result<ConversationType, SubmitMessageError>> => {
       if (!user) {
         return new Err({
@@ -71,6 +73,7 @@ export function useCreateConversationWithMessage({
           visibility,
           spaceId: spaceId ?? null,
           metadata,
+          skipToolsValidation,
           message: {
             content: input,
             context: {
