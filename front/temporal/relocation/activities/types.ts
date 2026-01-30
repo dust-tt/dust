@@ -25,6 +25,7 @@ export interface ReadTableChunkParams {
   tableName: string;
   workspaceId: string;
   fileName?: string;
+  userIdMappingPath?: string | null;
 }
 
 export const CORE_API_CONCURRENCY_LIMIT = 48;
