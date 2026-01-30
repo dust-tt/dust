@@ -33,7 +33,6 @@ import { ContentFragmentModel } from "@app/lib/resources/storage/models/content_
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import type { ModelStaticWorkspaceAware } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
-import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { withTransaction } from "@app/lib/utils/sql_utils";
@@ -238,12 +237,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     );
 
     return spaceBasedAccessible;
-  }
-
-  static triggerIdToSId(triggerId: number | null, workspaceId: number) {
-    return triggerId != null
-      ? TriggerResource.modelIdToSId({ id: triggerId, workspaceId })
-      : null;
   }
 
   get triggerSId(): string | null {
