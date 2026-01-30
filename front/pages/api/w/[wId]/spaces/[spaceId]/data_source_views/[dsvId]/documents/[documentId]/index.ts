@@ -1,9 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import apiConfig, {
-  DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
-} from "@app/lib/api/config";
+import apiConfig from "@app/lib/api/config";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -12,10 +10,12 @@ import { apiError } from "@app/logger/withlogging";
 import type { CoreAPIDocument, WithAPIErrorResponse } from "@app/types";
 import { CoreAPI } from "@app/types";
 
+// Next.js config must use literal values (cannot be statically analyzed otherwise).
+// If wishing to change this value, see DOCUMENT_UPSERT_BODY_PARSER_LIMIT in lib/api/config.ts.
 export const config = {
   api: {
     bodyParser: {
-      sizeLimit: DOCUMENT_UPSERT_BODY_PARSER_LIMIT,
+      sizeLimit: "16mb",
     },
   },
 };
