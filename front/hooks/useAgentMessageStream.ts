@@ -160,6 +160,7 @@ export function useAgentMessageStream({
           return;
 
         case "tool_personal_auth_required":
+        case "tool_file_auth_required":
         case "tool_approve_execution":
           break;
 
