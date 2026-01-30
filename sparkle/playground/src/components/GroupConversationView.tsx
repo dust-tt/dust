@@ -330,6 +330,10 @@ export function GroupConversationView({
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [roomDescription, setRoomDescription] = useState(
+    space.description ?? "",
+  );
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [isPublic, setIsPublic] = useState(
     spacePublicSettings?.get(space.id) ?? space.isPublic ?? true,
   );
@@ -616,6 +620,8 @@ export function GroupConversationView({
   useEffect(() => {
     setRoomName(space.name);
     setIsEditingName(false);
+    setRoomDescription(space.description ?? "");
+    setIsEditingDescription(false);
     setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
   }, [space.id, space.name, spacePublicSettings, space.isPublic]);
 
@@ -1237,6 +1243,41 @@ export function GroupConversationView({
                         onClick={() => {
                           setRoomName(space.name);
                           setIsEditingName(false);
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+              <div className="s-flex s-w-full s-flex-col s-gap-2">
+                <h3 className="s-heading-lg">Description</h3>
+                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+                  <Input
+                    value={roomDescription}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setRoomDescription(e.target.value);
+                      setIsEditingDescription(
+                        e.target.value !== (space.description ?? ""),
+                      );
+                    }}
+                    placeholder="Enter room description"
+                    containerClassName="s-flex-1"
+                  />
+                  {isEditingDescription && (
+                    <>
+                      <Button
+                        label="Save"
+                        variant="highlight"
+                        onClick={() => {
+                          setIsEditingDescription(false);
+                        }}
+                      />
+                      <Button
+                        label="Cancel"
+                        variant="outline"
+                        onClick={() => {
+                          setRoomDescription(space.description ?? "");
+                          setIsEditingDescription(false);
                         }}
                       />
                     </>
