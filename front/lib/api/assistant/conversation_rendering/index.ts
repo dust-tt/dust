@@ -60,6 +60,7 @@ export async function renderConversationForModel(
     {
       modelConversation: ModelConversationTypeMultiActions;
       tokensUsed: number;
+      prunedContext: boolean;
     },
     Error
   >
@@ -112,6 +113,17 @@ export async function renderConversationForModel(
       currentInteraction,
       availableTokens
     );
+    if (currentInteraction.prunedContext) {
+      logger.warn(
+        {
+          workspaceId: conversation.owner.sId,
+          conversationId: conversation.sId,
+          currentInteractionTokens,
+          availableTokens,
+        },
+        "Last tool result was pruned to fit in context window."
+      );
+    }
     currentInteractionTokens = getInteractionTokenCount(currentInteraction);
     if (currentInteractionTokens > availableTokens) {
       logger.error(
@@ -209,6 +221,8 @@ export async function renderConversationForModel(
         message.role !== "content_fragment"
     );
 
+  const prunedContext = currentInteraction.prunedContext ?? false;
+
   logger.info(
     {
       workspaceId: conversation.owner.sId,
@@ -217,6 +231,7 @@ export async function renderConversationForModel(
       promptToken: promptCount,
       tokensUsed,
       messageSelected: finalMessages.length,
+      prunedContext,
       elapsed: Date.now() - now,
     },
     "[ASSISTANT_TRACE] renderConversationForModelEnhanced"
@@ -227,6 +242,7 @@ export async function renderConversationForModel(
       messages: finalMessages,
     },
     tokensUsed,
+    prunedContext,
   });
 }
 

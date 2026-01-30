@@ -10,10 +10,12 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  ExclamationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
   StopIcon,
+  Tooltip,
   TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -90,6 +92,22 @@ import {
   isSupportedImageContentType,
 } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+
+function PrunedContextChip() {
+  return (
+    <Tooltip
+      label="Some tool results were removed to keep this conversation within its context size limit. The answer may be less accurate or miss details."
+      trigger={
+        <Chip
+          label="Answer may be inaccurate"
+          size="xs"
+          color="golden"
+          icon={ExclamationCircleIcon}
+        />
+      }
+    />
+  );
+}
 
 interface AgentMessageProps {
   conversationId: string;
@@ -215,6 +233,7 @@ export function AgentMessage({
           case "tool_error":
           case "tool_notification":
           case "tool_params":
+          case "agent_context_pruned":
             // Do nothing
             break;
           default:
@@ -697,6 +716,11 @@ export function AgentMessage({
         <ConversationMessageTitle
           name={agentConfiguration.name}
           timestamp={timestamp}
+          infoChip={
+            (agentMessage.prunedContext ?? false) ? (
+              <PrunedContextChip />
+            ) : undefined
+          }
           completionStatus={
             isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
@@ -720,6 +744,11 @@ export function AgentMessage({
           className="hidden @sm:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
+          infoChip={
+            (agentMessage.prunedContext ?? false) ? (
+              <PrunedContextChip />
+            ) : undefined
+          }
           completionStatus={
             isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
