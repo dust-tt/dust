@@ -47,6 +47,11 @@ module.exports = {
   },
 
   create: function (context) {
+    const filename = context.filename || context.getFilename();
+    if (!filename.endsWith("constants.ts")) {
+      return {};
+    }
+
     let inInternalMcpServers = false;
 
     return {
