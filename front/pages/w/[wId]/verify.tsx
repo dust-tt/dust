@@ -2,7 +2,6 @@ import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
 import type { ReactElement } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Country } from "react-phone-number-input";
-import useSWR from "swr";
 
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
@@ -20,8 +19,7 @@ import {
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
 import { useAppRouter } from "@app/lib/platform";
-import { fetcher } from "@app/lib/swr/swr";
-import type { GetVerifyResponseBody } from "@app/pages/api/w/[wId]/verify";
+import { useVerifyData } from "@app/lib/swr/workspaces";
 
 type Step = "phone" | "code";
 
@@ -32,11 +30,12 @@ function Verify() {
   const { workspace } = useAuth();
   const router = useAppRouter();
 
-  // Fetch verify data (isEligibleForTrial, initialCountryCode) from API.
-  const { data: verifyData } = useSWR<GetVerifyResponseBody>(
-    `/api/w/${workspace.sId}/verify`,
-    fetcher
-  );
+  const {
+    verifyData,
+    isEligibleForTrial,
+    initialCountryCode,
+    isVerifyDataLoading,
+  } = useVerifyData({ workspaceId: workspace.sId });
 
   const [step, setStep] = useState<Step>("phone");
   const [isLoading, setIsLoading] = useState(false);
@@ -51,10 +50,12 @@ function Verify() {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Initialize countryCode once data is loaded.
-  if (verifyData && !countryInitialized) {
-    setCountryCode(verifyData.initialCountryCode);
-    setCountryInitialized(true);
-  }
+  useEffect(() => {
+    if (verifyData && !countryInitialized) {
+      setCountryCode(initialCountryCode);
+      setCountryInitialized(true);
+    }
+  }, [verifyData, countryInitialized, initialCountryCode]);
 
   useEffect(() => {
     // Note: This is a temporary solution, needs to be replaced when we properly validate the phone.
@@ -244,7 +245,7 @@ function Verify() {
   };
 
   // Show loading while fetching verify data.
-  if (!verifyData) {
+  if (isVerifyDataLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner />
@@ -253,7 +254,7 @@ function Verify() {
   }
 
   // Redirect to subscribe if not eligible for trial.
-  if (!verifyData.isEligibleForTrial) {
+  if (!isEligibleForTrial) {
     void router.replace(`/w/${workspace.sId}/subscribe`);
     return (
       <div className="flex h-screen items-center justify-center">

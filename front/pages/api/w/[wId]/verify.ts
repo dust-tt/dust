@@ -1,6 +1,7 @@
 import type { IncomingMessage } from "http";
 import type { NextApiRequest, NextApiResponse } from "next";
 import type { Country } from "react-phone-number-input";
+import { isSupportedCountry } from "react-phone-number-input";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
@@ -10,6 +11,8 @@ import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
+
+const DEFAULT_COUNTRY: Country = "US";
 
 export type GetVerifyResponseBody = {
   isEligibleForTrial: boolean;
@@ -25,13 +28,16 @@ async function detectCountryFromIP(req: IncomingMessage): Promise<Country> {
       : req.socket.remoteAddress;
 
     if (!ip) {
-      return "US";
+      return DEFAULT_COUNTRY;
     }
     const countryCode = await resolveCountryCode(ip);
-    return countryCode as Country;
+    if (isSupportedCountry(countryCode)) {
+      return countryCode;
+    }
+    return DEFAULT_COUNTRY;
   } catch (error) {
     logger.error({ error }, "Error detecting country from IP");
-    return "US";
+    return DEFAULT_COUNTRY;
   }
 }
 

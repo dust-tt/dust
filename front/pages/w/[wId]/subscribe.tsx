@@ -2,7 +2,6 @@ import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
 import type { ReactElement } from "react";
 import React, { useEffect } from "react";
-import useSWR from "swr";
 
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
@@ -17,11 +16,12 @@ import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
 import { useAppRouter } from "@app/lib/platform";
-import { fetcher } from "@app/lib/swr/swr";
 import { useUser } from "@app/lib/swr/user";
-import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import {
+  useSubscriptionStatus,
+  useWorkspaceSubscriptions,
+} from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { GetSubscriptionStatusResponseBody } from "@app/pages/api/w/[wId]/subscriptions/status";
 import type { BillingPeriod } from "@app/types";
 
 export const getServerSideProps = appGetServerSidePropsPaywallWhitelisted;
@@ -74,19 +74,17 @@ function Subscribe() {
   );
 
   // Check if we need to redirect to trial-ended page.
-  const { data: statusData } = useSWR<GetSubscriptionStatusResponseBody>(
-    `/api/w/${workspace.sId}/subscriptions/status`,
-    fetcher
-  );
+  const { shouldRedirect, redirectUrl, isSubscriptionStatusLoading } =
+    useSubscriptionStatus({ workspaceId: workspace.sId });
 
   useEffect(() => {
-    if (statusData?.shouldRedirect && statusData.redirectUrl) {
-      void router.replace(statusData.redirectUrl);
+    if (shouldRedirect && redirectUrl) {
+      void router.replace(redirectUrl);
     }
-  }, [statusData, router]);
+  }, [shouldRedirect, redirectUrl, router]);
 
   // Show loading while checking redirect.
-  if (!statusData) {
+  if (isSubscriptionStatusLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner />
