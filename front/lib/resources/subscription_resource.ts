@@ -890,11 +890,10 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
     return newPlan;
   }
 
-  async markAsEnded(transaction?: Transaction) {
-    const endedStatus = this.stripeSubscriptionId
-      ? "ended_backend_only"
-      : "ended";
-
+  async markAsEnded(
+    endedStatus: "ended" | "ended_backend_only",
+    transaction?: Transaction
+  ) {
     const now = new Date();
 
     await this.update(
@@ -963,10 +962,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
     if (activeSubscription) {
       // End the subscription.
-      await activeSubscription.markAsEnded();
+      const endedStatus = activeSubscription.stripeSubscriptionId
+        ? "ended_backend_only"
+        : "ended";
+      await activeSubscription.markAsEnded(endedStatus);
 
       // Notify Stripe that we ended the subscription if the subscription was a paid one.
-      if (activeSubscription?.stripeSubscriptionId) {
+      if (activeSubscription.stripeSubscriptionId) {
         await cancelSubscriptionImmediately({
           stripeSubscriptionId: activeSubscription.stripeSubscriptionId,
         });

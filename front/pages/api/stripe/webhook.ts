@@ -270,7 +270,7 @@ async function handler(
               }
 
               if (activeSubscription) {
-                await activeSubscription.markAsEnded(t);
+                await activeSubscription.markAsEnded("ended", t);
               }
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
@@ -1213,14 +1213,14 @@ async function handler(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = ended_backend_only. Ending the subscription without deleting any data"
               );
-              await matchingSubscription.markAsEnded();
+              await matchingSubscription.markAsEnded("ended");
               break;
             case "active":
               logger.info(
                 { event },
                 "[Stripe Webhook] Received customer.subscription.deleted event with the subscription status = active. Ending the subscription and deleting some workspace data"
               );
-              await matchingSubscription.markAsEnded();
+              await matchingSubscription.markAsEnded("ended");
 
               const workspace = await WorkspaceResource.fetchByModelId(
                 matchingSubscription.workspaceId
