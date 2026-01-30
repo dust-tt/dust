@@ -19,8 +19,8 @@ import { FileFactory } from "@app/tests/utils/FileFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import type {
+  AgentConfigurationType,
   ConversationType,
-  LightAgentConfigurationType,
   WorkspaceType,
 } from "@app/types";
 
@@ -45,7 +45,7 @@ describe("getJITServers", () => {
   let workspace: WorkspaceType;
   let conversationsSpace: SpaceResource;
   let conversation: ConversationType;
-  let agentConfig: LightAgentConfigurationType;
+  let agentConfig: AgentConfigurationType;
 
   beforeEach(async () => {
     const setup = await createResourceTest({ role: "admin" });

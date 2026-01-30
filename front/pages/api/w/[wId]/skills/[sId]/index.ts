@@ -209,12 +209,6 @@ async function handler(
         });
       }
 
-      const spaceIdsFromMcpServerViews =
-        await MCPServerViewResource.listSpaceRequirementsByIds(
-          auth,
-          mcpServerViewIds
-        );
-
       // Validate all data source views from attached knowledge exist and user has access.
       const { attachedKnowledge } = body;
       const dataSourceViewIds = uniq(
@@ -246,14 +240,13 @@ async function handler(
         })
       );
 
-      const spaceIdsFromAttachedKnowledge = dataSourceViews.map(
-        (dsv) => dsv.space.id
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        auth,
+        {
+          mcpServerViews,
+          attachedKnowledge: attachedKnowledgeWithDataSourceViews,
+        }
       );
-
-      const requestedSpaceIds = uniq([
-        ...spaceIdsFromMcpServerViews,
-        ...spaceIdsFromAttachedKnowledge,
-      ]);
 
       // When saving a suggested skill, automatically activate it.
       const shouldActivate = skillResource.status === "suggested";

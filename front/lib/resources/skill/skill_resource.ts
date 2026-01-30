@@ -66,6 +66,7 @@ import type {
 } from "@app/types";
 import {
   Err,
+  isGlobalAgentId,
   normalizeError,
   Ok,
   removeNulls,
@@ -133,7 +134,8 @@ export interface SkillAttachedKnowledge {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface SkillResource extends ReadonlyAttributesType<SkillConfigurationModel> {}
+export interface SkillResource
+  extends ReadonlyAttributesType<SkillConfigurationModel> {}
 
 /**
  * SkillResource handles both custom (database-backed) and global (code-defined)
@@ -227,6 +229,76 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   get mcpServerConfigurations(): SkillMCPServerConfiguration[] {
     return this._mcpServerConfigurations;
+  }
+
+  /**
+   * Get attached knowledge from the skill's data source configurations.
+   * Requires data source views to be fetched first.
+   */
+  async getAttachedKnowledge(
+    auth: Authenticator
+  ): Promise<SkillAttachedKnowledge[]> {
+    if (this.dataSourceConfigurations.length === 0) {
+      return [];
+    }
+
+    const dataSourceViewIds = uniq(
+      this.dataSourceConfigurations.map((c) => c.dataSourceViewId)
+    );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      dataSourceViewIds
+    );
+
+    const dataSourceViewMap = new Map(dataSourceViews.map((v) => [v.id, v]));
+
+    const attachedKnowledge: SkillAttachedKnowledge[] = [];
+
+    for (const config of this.dataSourceConfigurations) {
+      const dataSourceView = dataSourceViewMap.get(config.dataSourceViewId);
+      if (dataSourceView) {
+        for (const nodeId of config.parentsIn) {
+          attachedKnowledge.push({
+            dataSourceView,
+            nodeId,
+          });
+        }
+      }
+    }
+
+    return attachedKnowledge;
+  }
+
+  /**
+   * Compute the requestedSpaceIds from MCP server views and attached knowledge.
+   * This is the source of truth for which spaces a skill needs access to.
+   */
+  static async computeRequestedSpaceIds(
+    auth: Authenticator,
+    {
+      mcpServerViews,
+      attachedKnowledge,
+    }: {
+      mcpServerViews: MCPServerViewResource[];
+      attachedKnowledge: SkillAttachedKnowledge[];
+    }
+  ): Promise<ModelId[]> {
+    const mcpServerViewIds = mcpServerViews.map((v) => v.sId);
+    const spaceIdsFromMcpServerViews =
+      await MCPServerViewResource.listSpaceRequirementsByIds(
+        auth,
+        mcpServerViewIds
+      );
+
+    const spaceIdsFromAttachedKnowledge = attachedKnowledge.map(
+      (k) => k.dataSourceView.space.id
+    );
+
+    return uniq([
+      ...spaceIdsFromMcpServerViews,
+      ...spaceIdsFromAttachedKnowledge,
+    ]);
   }
 
   get isAutoEnabled(): boolean {
@@ -702,8 +774,47 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType
+    agentConfiguration: AgentConfigurationType
   ): Promise<SkillResource[]> {
+    const refs = await this.getSkillReferencesForAgent(
+      auth,
+      agentConfiguration
+    );
+
+    if (refs.length === 0) {
+      return [];
+    }
+
+    return this.fetchBySkillReferences(auth, refs, { agentConfiguration });
+  }
+
+  /**
+   * Returns skill references for an agent configuration.
+   * For global agents, returns references from the config's skills field.
+   * For non-global agents, queries the database.
+   * TODO(2026-01-30 agent-resource): move this to an AgentResource that would bundle the logic
+   *   about loading skills and will expose a unified interface.
+   */
+  static async getSkillReferencesForAgent(
+    auth: Authenticator,
+    agentConfiguration: AgentConfigurationType
+  ): Promise<
+    {
+      customSkillId: ModelId | null;
+      globalSkillId: string | null;
+    }[]
+  > {
+    // For global agents, skills are defined in the config, not in the database.
+    if (
+      isGlobalAgentId(agentConfiguration.sId) &&
+      "skills" in agentConfiguration
+    ) {
+      return (agentConfiguration.skills ?? []).map((globalSkillId) => ({
+        customSkillId: null,
+        globalSkillId,
+      }));
+    }
+
     const workspace = auth.getNonNullableWorkspace();
 
     const agentSkills = await AgentSkillModel.findAll({
@@ -713,7 +824,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return this.fetchBySkillReferences(auth, agentSkills);
+    return agentSkills.map((s) => ({
+      customSkillId: s.customSkillId,
+      globalSkillId: s.globalSkillId,
+    }));
   }
 
   static modelIdToSId({
@@ -757,6 +871,90 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return skills;
+  }
+
+  /**
+   * List skills that use any of the given MCP server view IDs.
+   * Used during space deletion to find skills that need to be updated.
+   */
+  static async listByMCPServerViewIds(
+    auth: Authenticator,
+    mcpServerViewIds: ModelId[]
+  ): Promise<SkillResource[]> {
+    if (mcpServerViewIds.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs that have any of the given MCP server views.
+    const skillConfigs = await SkillMCPServerConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        mcpServerViewId: {
+          [Op.in]: mcpServerViewIds,
+        },
+      },
+    });
+
+    if (skillConfigs.length === 0) {
+      return [];
+    }
+
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillIds,
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+    });
+  }
+
+  /**
+   * List skills that use any of the given data source view IDs.
+   * Used during space deletion to find skills that need to be updated.
+   */
+  static async listByDataSourceViewIds(
+    auth: Authenticator,
+    dataSourceViewIds: ModelId[]
+  ): Promise<SkillResource[]> {
+    if (dataSourceViewIds.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs that have any of the given data source views.
+    const skillConfigs = await SkillDataSourceConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        dataSourceViewId: {
+          [Op.in]: dataSourceViewIds,
+        },
+      },
+    });
+
+    if (skillConfigs.length === 0) {
+      return [];
+    }
+
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillIds,
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+    });
   }
 
   /**
@@ -1624,18 +1822,21 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   ): Promise<Result<void, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
-    const agentSkill = await AgentSkillModel.findOne({
-      where: {
-        ...this.skillReference,
-        workspaceId: workspace.id,
-        agentConfigurationId: agentConfiguration.id,
-      },
-    });
+    const refs = await SkillResource.getSkillReferencesForAgent(
+      auth,
+      agentConfiguration
+    );
 
-    if (!agentSkill) {
+    const hasSkill = refs.some(
+      (ref) =>
+        (ref.globalSkillId !== null && ref.globalSkillId === this.globalSId) ||
+        (ref.customSkillId !== null && ref.customSkillId === this.id)
+    );
+
+    if (!hasSkill) {
       return new Err(
         new Error(
-          `Skill ${this.name} was not added to agent ${agentConfiguration.name}.`
+          `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
         )
       );
     }

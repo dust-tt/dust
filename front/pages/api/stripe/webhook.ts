@@ -29,6 +29,7 @@ import {
   isPAYGEnabled,
 } from "@app/lib/credits/payg";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
+import { renderPlanFromModel } from "@app/lib/plans/renderers";
 import {
   assertStripeSubscriptionIsValid,
   createCustomerPortalSession,
@@ -287,7 +288,7 @@ async function handler(
               const stripeSubscription =
                 await stripe.subscriptions.retrieve(stripeSubscriptionId);
 
-              await SubscriptionModel.create(
+              await SubscriptionResource.makeNew(
                 {
                   sId: generateRandomModelSId(),
                   workspaceId: workspace.id,
@@ -297,7 +298,8 @@ async function handler(
                   startDate: now,
                   stripeSubscriptionId: stripeSubscriptionId,
                 },
-                { transaction: t }
+                renderPlanFromModel({ plan }),
+                t
               );
             });
             if (userId) {

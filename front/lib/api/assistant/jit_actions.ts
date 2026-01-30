@@ -14,8 +14,8 @@ import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedul
 import { getSkillManagementServer } from "@app/lib/api/assistant/jit/skills";
 import type { Authenticator } from "@app/lib/auth";
 import type {
+  AgentConfigurationType,
   ConversationWithoutContentType,
-  LightAgentConfigurationType,
 } from "@app/types";
 
 export async function getJITServers(
@@ -25,7 +25,7 @@ export async function getJITServers(
     conversation,
     attachments,
   }: {
-    agentConfiguration: LightAgentConfigurationType;
+    agentConfiguration: AgentConfigurationType;
     conversation: ConversationWithoutContentType;
     attachments: ConversationAttachmentType[];
   }

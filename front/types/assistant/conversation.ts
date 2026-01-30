@@ -117,7 +117,11 @@ export type AgenticMessageData = {
 };
 
 export type RichMentionWithStatus =
-  | (RichMention & { dismissed: boolean; status: "pending" })
+  | (RichMention & {
+      dismissed: boolean;
+      status: "pending_conversation_access";
+    })
+  | (RichMention & { dismissed: boolean; status: "pending_project_membership" })
   | (RichMention & { dismissed: boolean; status: "approved" })
   | (RichMention & { dismissed: boolean; status: "rejected" })
   | (RichMention & {
@@ -316,6 +320,10 @@ export type ConversationType = ConversationWithoutContentType & {
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
 };
+
+export const isProjectConversation = <T extends ConversationWithoutContentType>(
+  conversation: T
+): conversation is T & { spaceId: string } => !!conversation.spaceId;
 
 export type ParticipantActionType = "posted" | "reacted" | "subscribed";
 

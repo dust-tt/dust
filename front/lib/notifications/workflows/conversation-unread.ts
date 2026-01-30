@@ -934,15 +934,15 @@ export const triggerConversationUnreadNotifications = async (
   try {
     const novuClient = await getNovuClient();
 
-    const r = await novuClient.bulkTrigger(
-      participants.map((p) => {
+    const r = await novuClient.triggerBulk({
+      events: participants.map((p) => {
         const payload: ConversationUnreadPayloadType = {
           conversationId: conversation.sId,
           workspaceId: auth.getNonNullableWorkspace().sId,
           messageId,
         };
         return {
-          name: CONVERSATION_UNREAD_TRIGGER_ID,
+          workflowId: CONVERSATION_UNREAD_TRIGGER_ID,
           to: {
             subscriberId: p.sId,
             email: p.email,
@@ -951,13 +951,18 @@ export const triggerConversationUnreadNotifications = async (
           },
           payload,
         };
-      })
-    );
-    if (r.status < 200 || r.status >= 300) {
+      }),
+    });
+
+    if (r.result.some((event) => !!event.error?.length)) {
+      const eventErrors = r.result
+        .filter((res) => !!res.error?.length)
+        .map(({ error }) => error?.join("; "))
+        .join("; ");
       return new Err({
         name: "dust_error",
         code: "internal_server_error",
-        message: `Failed to trigger conversation unread notification due to network error: ${r.status} ${r.statusText}`,
+        message: `Failed to trigger conversation unread notification due to network errors: ${eventErrors}`,
       });
     }
     return new Ok(undefined);

@@ -103,7 +103,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     cwd: "front-spa",
     needsNvm: false,
     needsEnvSh: true,
-    buildCommand: (env) => `npm run dev:poke -- --port ${env.ports.frontSpaPoke}`,
+    buildCommand: (env) => `npm run dev:poke -- --port ${env.ports.frontSpaPoke} --host 127.0.0.1`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.frontSpaPoke}/`,
@@ -114,7 +114,7 @@ export const SERVICE_REGISTRY: Record<ServiceName, ServiceConfig> = {
     cwd: "front-spa",
     needsNvm: false,
     needsEnvSh: true,
-    buildCommand: (env) => `npm run dev:app -- --port ${env.ports.frontSpaApp}`,
+    buildCommand: (env) => `npm run dev:app -- --port ${env.ports.frontSpaApp} --host 127.0.0.1`,
     readinessCheck: {
       type: "http",
       url: (ports) => `http://localhost:${ports.frontSpaApp}/`,

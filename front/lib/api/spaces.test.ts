@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import { getProjectConversationsDatasourceName } from "@app/lib/api/projects";
 import {
   createSpaceAndGroup,
@@ -7,16 +8,23 @@ import {
 } from "@app/lib/api/spaces";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { SkillConfigurationModel } from "@app/lib/models/skill";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
+import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import type { UserResource } from "@app/lib/resources/user_resource";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
 import { KeyFactory } from "@app/tests/utils/KeyFactory";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import { Err, Ok, SPACE_KINDS } from "@app/types";
@@ -1009,6 +1017,146 @@ describe("softDeleteSpaceAndLaunchScrubWorkflow", () => {
         );
         expect(deleteResult.isOk()).toBe(true);
       }
+    });
+  });
+
+  describe("requestedSpaceIds cleanup", () => {
+    it("should remove deleted space from skill requestedSpaceIds", async () => {
+      // Create a non-restricted regular space (accessible via global group)
+      const spaceResult = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space With Tool",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(spaceResult.isOk()).toBe(true);
+      const space = spaceResult.isOk() ? spaceResult.value : null;
+      expect(space).not.toBeNull();
+
+      // Create an MCP server and view in the space
+      const server = await RemoteMCPServerFactory.create(workspace, {
+        name: "Test Server",
+      });
+      const serverView = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        space!
+      );
+
+      // Create a skill with the space in requestedSpaceIds and the MCP server view
+      const skill = await SkillFactory.create(adminAuth, {
+        name: "Test Skill With Tool",
+        requestedSpaceIds: [space!.id],
+        mcpServerViews: [serverView],
+      });
+
+      // Verify the skill has the space in its requestedSpaceIds
+      const skillBefore = await SkillResource.fetchById(adminAuth, skill.sId);
+      expect(skillBefore).not.toBeNull();
+      expect(skillBefore!.requestedSpaceIds).toContain(space!.id);
+
+      // Delete the space
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      // Verify the skill's requestedSpaceIds no longer contains the deleted space
+      // Note: We query the model directly because the MCP server views are cleaned up
+      // asynchronously by the scrub workflow and would fail permission checks
+      const skillAfter = await SkillConfigurationModel.findOne({
+        where: { id: skill.id, workspaceId: workspace.id },
+      });
+      expect(skillAfter).not.toBeNull();
+      expect(skillAfter!.requestedSpaceIds).not.toContain(space!.id);
+      expect(skillAfter!.requestedSpaceIds).toHaveLength(0);
+    });
+
+    it("should only remove deleted space from agent requestedSpaceIds, keeping other spaces", async () => {
+      // Create two non-restricted regular spaces (accessible via global group)
+      const space1Result = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space 1",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(space1Result.isOk()).toBe(true);
+      const space1 = space1Result.isOk() ? space1Result.value : null;
+
+      const space2Result = await createSpaceAndGroup(
+        adminAuth,
+        {
+          name: "Test Space 2",
+          isRestricted: false,
+          spaceKind: "regular",
+          managementMode: "manual",
+          memberIds: [],
+        },
+        { ignoreWorkspaceLimit: true }
+      );
+      expect(space2Result.isOk()).toBe(true);
+      const space2 = space2Result.isOk() ? space2Result.value : null;
+
+      // Create an agent with both spaces in requestedSpaceIds
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        adminAuth,
+        {
+          name: "Test Agent With Two Spaces",
+        }
+      );
+
+      // Update the agent's requestedSpaceIds to include both spaces
+      await AgentConfigurationModel.update(
+        {
+          requestedSpaceIds: [space1!.id, space2!.id],
+        },
+        {
+          where: {
+            id: agentConfig.id,
+            workspaceId: workspace.id,
+          },
+        }
+      );
+
+      // Verify the agent has both spaces in its requestedSpaceIds (using sIds)
+      const agentsBefore = await getAgentConfigurations(adminAuth, {
+        agentIds: [agentConfig.sId],
+        variant: "light",
+      });
+      expect(agentsBefore).toHaveLength(1);
+      expect(agentsBefore[0].requestedSpaceIds).toHaveLength(2);
+      expect(agentsBefore[0].requestedSpaceIds).toContain(space1!.sId);
+      expect(agentsBefore[0].requestedSpaceIds).toContain(space2!.sId);
+
+      // Delete space1
+      const deleteResult = await softDeleteSpaceAndLaunchScrubWorkflow(
+        adminAuth,
+        space1!,
+        true // force delete
+      );
+      expect(deleteResult.isOk()).toBe(true);
+
+      // Verify the agent's requestedSpaceIds no longer contains space1 but still has space2
+      const agentsAfter = await getAgentConfigurations(adminAuth, {
+        agentIds: [agentConfig.sId],
+        variant: "light",
+      });
+      expect(agentsAfter).toHaveLength(1);
+      expect(agentsAfter[0].requestedSpaceIds).toHaveLength(1);
+      expect(agentsAfter[0].requestedSpaceIds).toContain(space2!.sId);
+      expect(agentsAfter[0].requestedSpaceIds).not.toContain(space1!.sId);
     });
   });
 });

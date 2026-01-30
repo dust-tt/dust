@@ -8,8 +8,7 @@ export interface MockAgentState {
   scope?: string;
   model: {
     modelId: string;
-    providerId: string;
-    temperature: number;
+    temperature?: number;
     reasoningEffort?: string | null;
   };
   tools: Array<{
@@ -68,4 +67,12 @@ export interface JudgeResult {
 export interface CopilotExecutionResult {
   responseText: string;
   toolCalls: ToolCall[];
+}
+
+export interface EvalResult {
+  testCase: CategorizedTestCase;
+  responseText: string;
+  toolCalls: ToolCall[];
+  judgeResult: JudgeResult;
+  passed: boolean;
 }

@@ -1,11 +1,11 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
-import type { CopilotSuggestion } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 export interface GetAgentConfigCallbacks {
   getFormValues: () => AgentBuilderFormData;
-  getPendingSuggestions?: () => CopilotSuggestion[];
+  getPendingSuggestions?: () => AgentSuggestionType[];
   getCommittedInstructions?: () => string;
 }
 
@@ -63,16 +63,21 @@ When there are pending suggestions, the "instructions" field shows the original 
           description: skill.description,
         })),
         maxStepsPerRun: formData.maxStepsPerRun,
-        pendingSuggestions: pendingSuggestions.map((suggestion) =>
-          suggestion.type === "instructions"
-            ? {
-                id: suggestion.id,
-                type: suggestion.type,
-                find: suggestion.find,
-                replacement: suggestion.replacement,
-              }
-            : suggestion
-        ),
+        pendingSuggestions: pendingSuggestions
+          .filter((s) => s.state === "pending")
+          .map((suggestion) =>
+            suggestion.kind === "instructions"
+              ? {
+                  sId: suggestion.sId,
+                  kind: suggestion.kind,
+                  oldString: suggestion.suggestion.oldString,
+                  newString: suggestion.suggestion.newString,
+                }
+              : {
+                  sId: suggestion.sId,
+                  kind: suggestion.kind,
+                }
+          ),
       };
 
       return {

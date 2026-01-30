@@ -144,7 +144,7 @@ function setCorsHeaders(
 
   response.headers.set(
     "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
   );
   response.headers.set(
     "Access-Control-Allow-Headers",

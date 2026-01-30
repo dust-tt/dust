@@ -21,6 +21,8 @@ import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 import { isString } from "@app/types/shared/utils/general";
 
 export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     clientId,

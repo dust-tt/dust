@@ -201,8 +201,9 @@ describe("FileResource", () => {
       });
 
       // Mock processAndStoreFile to return success.
-      const { processAndStoreFile } =
-        await import("@app/lib/api/files/processing");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
         await file.markAsReady();
@@ -326,8 +327,9 @@ describe("FileResource", () => {
       });
 
       // Mock processAndStoreFile to return an error.
-      const { processAndStoreFile } =
-        await import("@app/lib/api/files/processing");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const { Err } = await import("@app/types");
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockResolvedValue(
@@ -377,8 +379,9 @@ describe("FileResource", () => {
         useCaseMetadata: { conversationId: "conv-1" },
       });
 
-      const { processAndStoreFile } =
-        await import("@app/lib/api/files/processing");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const mockProcessAndStoreFile = vi.mocked(processAndStoreFile);
       mockProcessAndStoreFile.mockImplementation(async (_auth, { file }) => {
         await file.markAsReady();

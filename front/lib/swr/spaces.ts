@@ -432,8 +432,13 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
     if (managementMode === "manual") {
       const { memberIds } = params;
 
-      // Must have memberIds for manual management mode
-      if (isRestricted && (!memberIds || memberIds.length < 1)) {
+      // Must have memberIds for manual management mode, except for projects
+      // where the backend handles adding the creator to the editor group
+      if (
+        spaceKind !== "project" &&
+        isRestricted &&
+        (!memberIds || memberIds.length < 1)
+      ) {
         return null;
       }
 

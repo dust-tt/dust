@@ -1,4 +1,5 @@
 import { Err, INTERNAL_MIME_TYPES, Ok } from "@dust-tt/client";
+import { Context } from "@temporalio/activity";
 
 import { upsertCodeDirectory } from "@connectors/connectors/github/lib/code/directory_operations";
 import { upsertCodeFile } from "@connectors/connectors/github/lib/code/file_operations";
@@ -10,7 +11,9 @@ import {
   TarballNotFoundError,
 } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
+  isBadCredentials,
   isGithubRequestErrorNotFound,
+  isTransientNetworkError,
   RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
 import { getOctokit } from "@connectors/connectors/github/lib/github_api";
@@ -169,6 +172,22 @@ export async function githubExtractToGcsActivity({
           return new Err(new TarballNotFoundError());
         }
 
+        if (isBadCredentials(error)) {
+          logger.error(
+            { err: error, repoLogin, repoName, repoId },
+            "Bad credentials: OAuth token is invalid or revoked."
+          );
+
+          throw new ExternalOAuthTokenError(error);
+        }
+
+        if (isTransientNetworkError(error)) {
+          logger.warn(
+            { err: error, repoLogin, repoName, repoId },
+            "Transient network error fetching tarball, will be retried."
+          );
+        }
+
         throw error;
       }
     },
@@ -176,14 +195,42 @@ export async function githubExtractToGcsActivity({
 
   logger.info("Extracting GitHub repository tarball to GCS");
 
-  const extractResult = await extractGitHubTarballToGCS(
-    tarballStreamProvider,
-    {
-      repoId,
-      connectorId,
-    },
-    logger
-  );
+  const MAX_ATTEMPTS_BEFORE_SKIP = 10;
+
+  let extractResult;
+  try {
+    extractResult = await extractGitHubTarballToGCS(
+      tarballStreamProvider,
+      {
+        repoId,
+        connectorId,
+      },
+      logger
+    );
+  } catch (error) {
+    const attempt = Context.current().info.attempt;
+
+    if (isTransientNetworkError(error) && attempt >= MAX_ATTEMPTS_BEFORE_SKIP) {
+      logger.error(
+        { err: error, attempt },
+        "Persistent transient error after max attempts: marking repository as skipped."
+      );
+
+      await GithubCodeRepositoryModel.update(
+        { skipReason: "persistent_download_failure" },
+        {
+          where: {
+            connectorId: connector.id,
+            repoId: repoId.toString(),
+          },
+        }
+      );
+
+      return null;
+    }
+
+    throw error;
+  }
 
   if (extractResult.isErr()) {
     if (extractResult.error instanceof TarballNotFoundError) {

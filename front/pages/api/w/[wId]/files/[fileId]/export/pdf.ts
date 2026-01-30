@@ -3,13 +3,18 @@ import { z } from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  isEntreprisePlanPrefix,
+  isFriendsAndFamilyPlan,
+} from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { PdfOptions, WithAPIErrorResponse } from "@app/types";
 import { DocumentRenderer, frameContentType, isString } from "@app/types";
 
 const PostPdfExportBodySchema = z.object({
@@ -152,7 +157,21 @@ async function handler(
 
   const { orientation } = bodyResult.data;
 
+  // Only show footer for non-Enterprise plans and non-FriendsAndFamily plans.
+  const plan = auth.plan();
+  const showFooter =
+    !plan ||
+    !isEntreprisePlanPrefix(plan.code) ||
+    !isFriendsAndFamilyPlan(plan.code);
+
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
+
+  const options: PdfOptions = showFooter
+    ? {
+        footerHtml: PDF_FOOTER_HTML,
+        marginBottom: "1cm", // Space for footer.
+      }
+    : {};
 
   const result = await renderer.exportToPdf(
     {
@@ -160,7 +179,10 @@ async function handler(
       waitForExpression:
         "document.querySelector('[data-viz-ready=\"true\"]') !== null",
     },
-    { orientation }
+    {
+      ...options,
+      orientation,
+    }
   );
 
   if (result.isErr()) {

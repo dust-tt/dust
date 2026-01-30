@@ -280,6 +280,14 @@ export function getGlobalAgentMetadata(sId: GLOBAL_AGENTS_SID): AgentMetadata {
         description: "Same as dust but running OpenAI models.",
         pictureUrl: DUST_AVATAR_URL,
       };
+    case GLOBAL_AGENTS_SID.DUST_NEXT:
+      return {
+        sId: GLOBAL_AGENTS_SID.DUST_NEXT,
+        name: "dust-next",
+        description:
+          "Same as dust but running a custom model for internal testing.",
+        pictureUrl: DUST_AVATAR_URL,
+      };
     case GLOBAL_AGENTS_SID.DUST:
       return {
         sId: GLOBAL_AGENTS_SID.DUST,

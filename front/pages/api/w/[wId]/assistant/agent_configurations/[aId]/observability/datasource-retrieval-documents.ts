@@ -15,10 +15,13 @@ import { isString } from "@app/types";
 const QuerySchema = z.object({
   days: z.coerce.number().positive().default(DEFAULT_PERIOD_DAYS),
   version: z.string().optional(),
+  // For servers with DB configurations, pass comma-separated config sIds.
   mcpServerConfigIds: z
     .string()
-    .min(1)
-    .transform((val) => val.split(",")),
+    .transform((val) => (val ? val.split(",") : []))
+    .default(""),
+  // For servers without DB configurations (like data_sources_file_system), pass server name.
+  mcpServerName: z.string().optional(),
   dataSourceId: z.string().min(1),
   limit: z.coerce.number().positive().max(200).default(50),
 });
@@ -82,7 +85,14 @@ async function handler(
         });
       }
 
-      const { days, version, mcpServerConfigIds, dataSourceId, limit } = q.data;
+      const {
+        days,
+        version,
+        mcpServerConfigIds,
+        mcpServerName,
+        dataSourceId,
+        limit,
+      } = q.data;
 
       const documentsResult = await fetchDatasourceRetrievalDocumentsMetrics(
         auth,
@@ -91,6 +101,7 @@ async function handler(
           days,
           version,
           mcpServerConfigIds,
+          mcpServerName,
           dataSourceId,
           limit,
         }

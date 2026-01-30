@@ -31,7 +31,10 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
     description:
       "Search for files in Google Drive. Can search in personal drive, all shared drives, or a specific drive.",
     schema: {
-      q: z.string().optional().describe(`\
+      q: z
+        .string()
+        .optional()
+        .describe(`\
 Search query to filter files. Uses Google Drive's search syntax. Leave empty to list all supported files. Examples:
 - Files with the name "hello": name = 'hello'
 - Files with a name containing the words "hello" and "goodbye": name contains 'hello' and name contains 'goodbye'
@@ -68,7 +71,10 @@ Search query to filter files. Uses Google Drive's search syntax. Leave empty to 
         .describe(
           "Whether both My Drive and shared drive items should be included in results. Defaults to true."
         ),
-      orderBy: z.string().optional().describe(`\
+      orderBy: z
+        .string()
+        .optional()
+        .describe(`\
 A comma-separated list of sort key. Valid keys are:
 \`createdTime\`: When the file was created.
 \`folder\`: The folder ID. This field is sorted using alphabetical ordering.
@@ -144,6 +150,35 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
   },
 });
 
+export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
+  create_document: {
+    description: "Create a new Google Docs document in the user's Drive.",
+    schema: {
+      title: z.string().describe("The title of the new document."),
+    },
+    stake: "low",
+  },
+  create_spreadsheet: {
+    description: "Create a new Google Sheets spreadsheet in the user's Drive.",
+    schema: {
+      title: z.string().describe("The title of the new spreadsheet."),
+    },
+    stake: "low",
+  },
+  create_presentation: {
+    description: "Create a new Google Slides presentation in the user's Drive.",
+    schema: {
+      title: z.string().describe("The title of the new presentation."),
+    },
+    stake: "low",
+  },
+});
+
+const ALL_TOOLS_METADATA = {
+  ...GOOGLE_DRIVE_TOOLS_METADATA,
+  ...GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+};
+
 export const GOOGLE_DRIVE_SERVER = {
   serverInfo: {
     name: "google_drive",
@@ -158,12 +193,12 @@ export const GOOGLE_DRIVE_SERVER = {
     documentationUrl: "https://docs.dust.tt/docs/google-drive",
     instructions: null,
   },
-  tools: Object.values(GOOGLE_DRIVE_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(ALL_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(GOOGLE_DRIVE_TOOLS_METADATA).map((t) => [t.name, t.stake])
+    Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;

@@ -95,7 +95,10 @@ import {
   removeNulls,
   toMentionType,
 } from "@app/types";
-import { isAgentMessageType } from "@app/types/assistant/conversation";
+import {
+  isAgentMessageType,
+  isProjectConversation,
+} from "@app/types/assistant/conversation";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Rate limit for programmatic usage: 1 message per this amount of dollars per minute.
@@ -1314,7 +1317,10 @@ export async function postNewContentFragment(
   }
 
   // Project conversations only allow content fragments from the project space or the global space.
-  if (conversation.spaceId && isContentFragmentInputWithContentNode(cf)) {
+  if (
+    isProjectConversation(conversation) &&
+    isContentFragmentInputWithContentNode(cf)
+  ) {
     const dsView = await DataSourceViewResource.fetchById(
       auth,
       cf.nodeDataSourceViewId

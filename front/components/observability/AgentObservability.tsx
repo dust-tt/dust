@@ -22,19 +22,20 @@ import {
 import type { LightWorkspaceType } from "@app/types";
 
 // Dynamic imports for chart components to exclude recharts from server bundle
+
 const DatasourceRetrievalTreemapChart = lazy(() =>
-  import("@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart").then(
-    (mod) => ({
-      default: mod.DatasourceRetrievalTreemapChart,
-    })
-  )
+  import(
+    "@app/components/agent_builder/observability/charts/DatasourceRetrievalTreemapChart"
+  ).then((mod) => ({
+    default: mod.DatasourceRetrievalTreemapChart,
+  }))
 );
 const LatencyChart = lazy(() =>
-  import("@app/components/agent_builder/observability/charts/LatencyChart").then(
-    (mod) => ({
-      default: mod.LatencyChart,
-    })
-  )
+  import(
+    "@app/components/agent_builder/observability/charts/LatencyChart"
+  ).then((mod) => ({
+    default: mod.LatencyChart,
+  }))
 );
 const SourceChart = lazy(() =>
   import("@app/components/agent_builder/observability/charts/SourceChart").then(
@@ -44,25 +45,25 @@ const SourceChart = lazy(() =>
   )
 );
 const ToolUsageChart = lazy(() =>
-  import("@app/components/agent_builder/observability/charts/ToolUsageChart").then(
-    (mod) => ({
-      default: mod.ToolUsageChart,
-    })
-  )
+  import(
+    "@app/components/agent_builder/observability/charts/ToolUsageChart"
+  ).then((mod) => ({
+    default: mod.ToolUsageChart,
+  }))
 );
 const ToolExecutionTimeChart = lazy(() =>
-  import("@app/components/agent_builder/observability/charts/ToolExecutionTimeChart").then(
-    (mod) => ({
-      default: mod.ToolExecutionTimeChart,
-    })
-  )
+  import(
+    "@app/components/agent_builder/observability/charts/ToolExecutionTimeChart"
+  ).then((mod) => ({
+    default: mod.ToolExecutionTimeChart,
+  }))
 );
 const UsageMetricsChart = lazy(() =>
-  import("@app/components/agent_builder/observability/charts/UsageMetricsChart").then(
-    (mod) => ({
-      default: mod.UsageMetricsChart,
-    })
-  )
+  import(
+    "@app/components/agent_builder/observability/charts/UsageMetricsChart"
+  ).then((mod) => ({
+    default: mod.UsageMetricsChart,
+  }))
 );
 
 function ChartFallback() {

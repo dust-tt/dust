@@ -8,13 +8,6 @@ LLM-as-judge evaluation framework for the Agent Builder Copilot.
 User Message → Copilot LLM → Tool Calls → Mock Responses → Final Response → Judge LLM → Score
 ```
 
-**Key components:**
-
-- `copilot-eval.test.ts` - Test runner with agentic loop simulation
-- `lib/types.ts` - `TestCase`, `MockAgentState`, `CopilotConfig` types
-- `lib/suite-loader.ts` - Filters test cases by category/scenario
-- `test-suites/*.ts` - Test case definitions
-
 ## How It Works
 
 1. **Load copilot config** from `_getCopilotGlobalAgent` (instructions + model)
@@ -26,74 +19,88 @@ User Message → Copilot LLM → Tool Calls → Mock Responses → Final Respons
 
 ```typescript
 interface TestCase {
-  scenarioId: string; // e.g., "NEW-001"
+  scenarioId: string;
   userMessage: string; // What the user asks
   mockState: MockAgentState; // Agent state the copilot "sees"
   expectedToolCalls?: string[]; // Tools that should be called
-  judgeCriteria: string; // How to evaluate the response
+  judgeCriteria: string; // Scenario specific criteria to judge
 }
 ```
 
-**Category** is derived from the parent `TestSuite.name`.
+### Writing judgeCriteria
+
+**IMPORTANT FOR AGENTS**: When adding new test cases, the judge prompt already includes generic evaluation criteria (intent understanding, actionable response, tool usage, instruction quality). Only include scenario-specific criteria in `judgeCriteria`:
+
+**Do NOT repeat generic criteria** like:
+
+- "The copilot should understand the user's intent" (already in judge prompt)
+- "Are suggestions actionable?" (already in judge prompt)
+- "Did it use appropriate tools?" (already in judge prompt)
+- "If suggest_prompt_edits was called, evaluate instruction quality" (already in judge prompt)
+
+**DO include only what's unique to this scenario**:
+
+- Specific content that should appear in the response
+- Scenario-specific behavior (e.g., "should ask clarifying questions" for vague requests)
+- Dealbreaker conditions ("Score 0-1 if...")
+
+````
+
+**Tips:**
+
+- Focus on what makes THIS scenario unique
+- Mention specific content that should appear
+- Include "Score 0-1 if..." for dealbreaker failures
+- Keep it concise - the judge has context from the generic checklist
 
 ## Running Tests
 
 ```bash
 cd front
 
-# Single scenario
-RUN_COPILOT_EVAL=true FILTER_SCENARIO=NEW-001 npm test -- \
+# Single scenario by name
+RUN_COPILOT_EVAL=true FILTER_SCENARIO=clear-saas-support npm test -- \
   --config tests/copilot-evals/vite.config.mjs tests/copilot-evals/copilot-eval.test.ts
 
-# All tests with 3 judge runs
-RUN_COPILOT_EVAL=true JUDGE_RUNS=3 npm test -- \
+# Filter by category
+RUN_COPILOT_EVAL=true FILTER_CATEGORY=new-agent npm test -- \
   --config tests/copilot-evals/vite.config.mjs tests/copilot-evals/copilot-eval.test.ts
-```
+
+# All tests
+RUN_COPILOT_EVAL=true npm test -- \
+  --config tests/copilot-evals/vite.config.mjs tests/copilot-evals/copilot-eval.test.ts
+````
 
 ## Environment Variables
 
-| Variable           | Default | Description                                 |
-| ------------------ | ------- | ------------------------------------------- |
-| `RUN_COPILOT_EVAL` | `false` | Must be `true` to run (skipped otherwise)   |
-| `JUDGE_RUNS`       | `3`     | Number of judge evaluations (majority vote) |
-| `PASS_THRESHOLD`   | `2`     | Minimum score to pass (0-3 scale)           |
-| `FILTER_CATEGORY`  | -       | Filter by suite name                        |
-| `FILTER_SCENARIO`  | -       | Filter by scenario ID                       |
+| Variable             | Default | Description                                        |
+| -------------------- | ------- | -------------------------------------------------- |
+| `RUN_COPILOT_EVAL`   | `false` | Must be `true` to run (skipped otherwise)          |
+| `JUDGE_RUNS`         | `3`     | Number of judge evaluations (majority vote)        |
+| `PASS_THRESHOLD`     | `2`     | Minimum score to pass (0-3 scale)                  |
+| `FILTER_CATEGORY`    | -       | Filter by suite name (e.g., `new-agent`)           |
+| `FILTER_SCENARIO`    | -       | Filter by scenario ID (e.g., `clear-saas-support`) |
+| `COPILOT_ON_COPILOT` | `false` | Enable self-improvement analysis after all tests   |
+
+## Copilot-on-Copilot (Self-Improvement)
+
+When `COPILOT_ON_COPILOT=true`, the framework runs the copilot on itself after all tests:
+
+1. Collects all failed test scenarios
+2. Sends failures + current copilot instructions to copilot.
+3. The copilot analyzes failures and suggests instruction improvements
+
+```bash
+RUN_COPILOT_EVAL=true COPILOT_ON_COPILOT=true npm test -- \
+  --config tests/copilot-evals/vite.config.mjs tests/copilot-evals/copilot-eval.test.ts
+```
 
 ## Adding Tests
 
 1. Create/edit file in `test-suites/` (e.g., `new-agent.ts`)
 2. Define `TestSuite` with test cases
 3. Export from `test-suites/index.ts`
-
-```typescript
-export const mySuite: TestSuite = {
-  name: "My Category",
-  description: "...",
-  testCases: [
-    {
-      scenarioId: "MY-001",
-      userMessage: "...",
-      mockState: {
-        /* agent state */
-      },
-      expectedToolCalls: ["get_agent_info", "suggest_prompt_editions"],
-      judgeCriteria: "The copilot should...",
-    },
-  ],
-};
-```
-
-## Copilot Instructions
-
-The copilot's system prompt is in:
-`lib/api/assistant/global_agents/configurations/dust/copilot.ts`
-
-Key tools referenced in instructions:
-
-- `get_agent_config` - Live form state (client-side, not in server MCP)
-- `get_agent_info` - Saved agent state (server-side MCP)
-- `suggest_prompt_editions` - Create instruction suggestions
+4. Use shared mock states from `shared-mock-states/index.ts`
 
 ## Debugging
 

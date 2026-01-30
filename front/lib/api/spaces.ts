@@ -1,22 +1,21 @@
 import assert from "assert";
 import uniq from "lodash/uniq";
+import { Op } from "sequelize";
 
 import { hardDeleteApp } from "@app/lib/api/apps";
-import {
-  getAgentConfigurations,
-  updateAgentRequirements,
-} from "@app/lib/api/assistant/configuration/agent";
-import { getAgentConfigurationRequirementsFromCapabilities } from "@app/lib/api/assistant/permissions";
+import { updateAgentRequirements } from "@app/lib/api/assistant/configuration/agent";
 import { createDataSourceAndConnectorForProject } from "@app/lib/api/projects";
 import { getWorkspaceAdministrationVersionLock } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AppResource } from "@app/lib/resources/app_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_resource";
 import { KeyResource } from "@app/lib/resources/key_resource";
+import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -157,62 +156,108 @@ export async function softDeleteSpaceAndLaunchScrubWorkflow(
       { concurrency: 4 }
     );
 
-    if (force) {
-      const agentIds = uniq(
-        usages.flatMap((u) => u.agents).map((agent) => agent.sId)
-      );
-      const agentConfigurations = await getAgentConfigurations(auth, {
-        agentIds,
-        variant: "full",
-      });
-      const agentConfigurationsById = new Map(
-        agentConfigurations.map((config) => [config.sId, config])
-      );
+    // Get MCP server views and data source views from the space being deleted.
+    const mcpServerViews = await MCPServerViewResource.listBySpace(auth, space);
+    const mcpServerViewIds = mcpServerViews.map((v) => v.id);
+    const dataSourceViewIds = dataSourceViews.map((v) => v.id);
 
-      await concurrentExecutor(
-        agentIds,
-        async (agentId) => {
-          const agentConfig = agentConfigurationsById.get(agentId);
-          if (!agentConfig) {
-            logger.error(
-              {
-                agentId,
-                workspaceId: auth.getNonNullableWorkspace().sId,
-              },
-              "Agent configuration not found for space soft delete"
-            );
-            return;
-          }
+    // Find all skills that reference MCP server views or data source views from this space.
+    const [skillsWithMCPViews, skillsWithDataSourceViews] = await Promise.all([
+      SkillResource.listByMCPServerViewIds(auth, mcpServerViewIds),
+      SkillResource.listByDataSourceViewIds(auth, dataSourceViewIds),
+    ]);
 
-          const skills = await SkillResource.listByAgentConfiguration(
-            auth,
-            agentConfig
-          );
-
-          // Get the required group IDs from the agent's actions
-          const requirements =
-            await getAgentConfigurationRequirementsFromCapabilities(auth, {
-              actions: agentConfig.actions,
-              skills,
-              ignoreSpaces: [space],
-            });
-
-          const res = await updateAgentRequirements(
-            auth,
-            {
-              agentModelId: agentConfig.id,
-              newSpaceIds: requirements.requestedSpaceIds,
-            },
-            { transaction: t }
-          );
-
-          if (res.isErr()) {
-            throw res.error;
-          }
-        },
-        { concurrency: 4 }
-      );
+    // Merge and deduplicate skills.
+    const skillMap = new Map<number, SkillResource>();
+    for (const skill of [...skillsWithMCPViews, ...skillsWithDataSourceViews]) {
+      skillMap.set(skill.id, skill);
     }
+    const skillsToUpdate = Array.from(skillMap.values());
+
+    // Create sets for quick lookup.
+    const mcpServerViewIdSet = new Set(mcpServerViewIds);
+    const dataSourceViewIdSet = new Set(dataSourceViewIds);
+
+    // Update each skill to remove MCP server views and attached knowledge from the deleted space.
+    // Note: updateSkill manages its own transaction, so we call it sequentially.
+    for (const skill of skillsToUpdate) {
+      // Filter out MCP server views from the deleted space.
+      const filteredMCPServerViews = skill.mcpServerViews.filter(
+        (v) => !mcpServerViewIdSet.has(v.id)
+      );
+
+      // Get attached knowledge and filter out those from the deleted space.
+      const attachedKnowledge = await skill.getAttachedKnowledge(auth);
+      const filteredAttachedKnowledge = attachedKnowledge.filter(
+        (k) => !dataSourceViewIdSet.has(k.dataSourceView.id)
+      );
+
+      // Compute the new requestedSpaceIds from the filtered tools and knowledge.
+      const requestedSpaceIds = await SkillResource.computeRequestedSpaceIds(
+        auth,
+        {
+          mcpServerViews: filteredMCPServerViews,
+          attachedKnowledge: filteredAttachedKnowledge,
+        }
+      );
+
+      // Log an error if the deleted space is still in requestedSpaceIds.
+      if (requestedSpaceIds.includes(space.id)) {
+        logger.error(
+          {
+            skillId: skill.sId,
+            spaceId: space.sId,
+            workspaceId: auth.getNonNullableWorkspace().sId,
+          },
+          "Deleted space still present in skill requestedSpaceIds after filtering"
+        );
+      }
+
+      await skill.updateSkill(auth, {
+        name: skill.name,
+        agentFacingDescription: skill.agentFacingDescription,
+        userFacingDescription: skill.userFacingDescription,
+        instructions: skill.instructions,
+        icon: skill.icon,
+        mcpServerViews: filteredMCPServerViews,
+        attachedKnowledge: filteredAttachedKnowledge,
+        requestedSpaceIds,
+      });
+    }
+
+    // Update agents that have this space in their requestedSpaceIds.
+    const agentsWithSpace = await AgentConfigurationModel.findAll({
+      attributes: ["id", "requestedSpaceIds"],
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        status: "active",
+        requestedSpaceIds: {
+          [Op.contains]: [space.id],
+        },
+      },
+    });
+
+    await concurrentExecutor(
+      agentsWithSpace,
+      async (agent) => {
+        const newSpaceIds = agent.requestedSpaceIds.filter(
+          (id) => id !== space.id
+        );
+        const res = await updateAgentRequirements(
+          auth,
+          {
+            agentModelId: agent.id,
+            newSpaceIds,
+          },
+          { transaction: t }
+        );
+
+        if (res.isErr()) {
+          throw res.error;
+        }
+      },
+      { concurrency: 4 }
+    );
 
     // Finally, soft delete the space.
     const res = await space.delete(auth, { hardDelete: false, transaction: t });

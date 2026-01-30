@@ -172,6 +172,21 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Read journal entries",
     },
   },
+  get_information: {
+    description:
+      "Get comprehensive information about the project context, including project URL, description, URLs, file count, and file list.",
+    schema: {
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Getting project information",
+      done: "Get project information",
+    },
+  },
 });
 
 const PROJECT_CONTEXT_MANAGEMENT_INSTRUCTIONS =

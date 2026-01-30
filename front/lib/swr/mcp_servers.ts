@@ -851,11 +851,10 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
     connectionType: "personal",
   });
 
-  const sendNotification = useSendNotification();
-
   const createPersonalConnection = async ({
     mcpServerId,
     mcpServerDisplayName,
+    authorization,
     provider,
     useCase,
     scope,
@@ -863,12 +862,28 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   }: {
     mcpServerId: string;
     mcpServerDisplayName: string;
+    authorization?: MCPServerType["authorization"];
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
     overriddenCredentials?: Record<string, string>;
-  }): Promise<boolean> => {
+  }): Promise<{ success: boolean; error?: string }> => {
     try {
+      const workspaceConnectionRequirement =
+        authorization?.workspace_connection;
+      if (
+        useCase === "personal_actions" &&
+        workspaceConnectionRequirement?.required &&
+        !workspaceConnectionRequirement.satisfied
+      ) {
+        return {
+          success: false,
+          error:
+            `A workspace admin must first connect ${mcpServerDisplayName} at the workspace level before users can connect their personal accounts. ` +
+            "Please contact your workspace administrator to set up the workspace connection.",
+        };
+      }
+
       const extraConfig: Record<string, string> = {
         mcp_server_id: mcpServerId,
       };
@@ -895,33 +910,24 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       });
 
       if (cRes.isErr()) {
-        sendNotification({
-          type: "error",
-          title: "Failed to connect provider",
-          description: cRes.error.message,
-        });
-        return false;
+        return { success: false, error: cRes.error.message };
       }
 
       const result = await createMCPServerConnection({
         connectionId: cRes.value.connection_id,
-        mcpServerId: mcpServerId,
-        mcpServerDisplayName: mcpServerDisplayName,
+        mcpServerId,
+        mcpServerDisplayName,
         provider,
       });
 
-      return result !== null;
-    } catch (error) {
-      sendNotification({
-        type: "error",
-        title: "Failed to connect provider",
-        description:
-          "Unexpected error trying to connect to your provider. Please try again. Error: " +
-          // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-          error,
-      });
+      return { success: result !== null };
+    } catch {
+      return {
+        success: false,
+        error:
+          "Unexpected error trying to connect to your provider. Please try again.",
+      };
     }
-    return false;
   };
 
   return { createPersonalConnection };

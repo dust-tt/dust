@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
-vi.mock("@app/lib/api/workos/organization", async () => {
-  const actual = await vi.importActual("@app/lib/api/workos/organization");
+vi.mock("@app/lib/api/workos/organization_primitives", async () => {
+  const actual = await vi.importActual(
+    "@app/lib/api/workos/organization_primitives"
+  );
   return {
     ...actual,
     listWorkOSOrganizationsWithDomain: vi.fn().mockResolvedValue([]),

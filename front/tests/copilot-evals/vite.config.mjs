@@ -26,7 +26,7 @@ export default defineConfig(() => {
         DUST_MANAGED_OPENAI_API_KEY:
           process.env.DUST_MANAGED_OPENAI_API_KEY ?? "",
       },
-      testTimeout: 180000, // 3 minutes for LLM calls
+      testTimeout: 300000,
     },
   });
 

@@ -27,6 +27,7 @@ export function useSubmitMessage({
       mentions: MentionType[];
       contentFragments: ContentFragmentsType;
       clientSideMCPServerIds?: string[];
+      skipToolsValidation?: boolean;
     }): Promise<Result<PostMessagesResponseBody, SubmitMessageError>> => {
       if (!conversationId) {
         return new Err({
@@ -36,8 +37,13 @@ export function useSubmitMessage({
         });
       }
 
-      const { input, mentions, contentFragments, clientSideMCPServerIds } =
-        messageData;
+      const {
+        input,
+        mentions,
+        contentFragments,
+        clientSideMCPServerIds,
+        skipToolsValidation,
+      } = messageData;
 
       // Create a new content fragment.
       if (
@@ -122,6 +128,7 @@ export function useSubmitMessage({
               clientSideMCPServerIds,
             },
             mentions,
+            skipToolsValidation,
           }),
         }
       );

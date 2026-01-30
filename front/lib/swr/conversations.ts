@@ -38,7 +38,7 @@ import type {
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
-import { normalizeError } from "@app/types";
+import { isProjectConversation, normalizeError } from "@app/types";
 
 const DELAY_BEFORE_MARKING_AS_READ = 2000;
 
@@ -893,13 +893,12 @@ export function useConversationMarkAsRead({
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
     if (conversation?.sId) {
-      const isProjectConversation = !!conversation.spaceId;
-
       timeout = setTimeout(
         () =>
           markAsRead(conversation.sId, {
-            mutateList: !isProjectConversation,
-            mutateSpaceConversationsSummary: isProjectConversation,
+            mutateList: !isProjectConversation(conversation),
+            mutateSpaceConversationsSummary:
+              isProjectConversation(conversation),
           }),
         DELAY_BEFORE_MARKING_AS_READ
       );

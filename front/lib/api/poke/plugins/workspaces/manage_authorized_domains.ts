@@ -1,12 +1,12 @@
 import type { PluginResponse } from "@app/lib/api/poke/types";
 import { createPlugin } from "@app/lib/api/poke/types";
 import { checkUserRegionAffinity } from "@app/lib/api/regions/lookup";
+import { addWorkOSOrganizationDomain } from "@app/lib/api/workos/organization";
+import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import {
-  addWorkOSOrganizationDomain,
   getWorkOSOrganization,
   removeWorkOSOrganizationDomain,
-} from "@app/lib/api/workos/organization";
-import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
+} from "@app/lib/api/workos/organization_primitives";
 import type { Authenticator } from "@app/lib/auth";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { isDomain } from "@app/lib/utils";

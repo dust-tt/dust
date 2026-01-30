@@ -22,12 +22,9 @@ import { BlockInsertExtension } from "@app/components/editor/extensions/agent_bu
 import { InstructionBlockExtension } from "@app/components/editor/extensions/agent_builder/InstructionBlockExtension";
 import { InstructionSuggestionExtension } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { EmojiExtension } from "@app/components/editor/extensions/EmojiExtension";
-import { EmptyLineParagraphExtension } from "@app/components/editor/extensions/EmptyLineParagraphExtension";
 import { HeadingExtension } from "@app/components/editor/extensions/HeadingExtension";
 import { KeyboardShortcutsExtension } from "@app/components/editor/extensions/input_bar/KeyboardShortcutsExtension";
-import { ListItemExtension } from "@app/components/editor/extensions/ListItemExtension";
 import { MentionExtension } from "@app/components/editor/extensions/MentionExtension";
-import { OrderedListExtension } from "@app/components/editor/extensions/OrderedListExtension";
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
@@ -91,10 +88,22 @@ export function AgentBuilderInstructionsEditor({
       Markdown,
       StarterKit.configure({
         heading: false, // we use a custom one, see below
-        paragraph: false, // we use custom EmptyLineParagraphExtension instead
         hardBreak: false, // we use custom EmptyLineParagraphExtension instead
-        orderedList: false, // we use custom OrderedListExtension instead
-        listItem: false, // we use custom ListItemExtension instead
+        paragraph: {
+          HTMLAttributes: {
+            class: markdownStyles.paragraph(),
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            class: markdownStyles.orderedList(),
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            class: markdownStyles.list(),
+          },
+        },
         link: false, // we use custom LinkExtension instead
         bulletList: {
           HTMLAttributes: {
@@ -116,24 +125,6 @@ export function AgentBuilderInstructionsEditor({
           HTMLAttributes: {
             class: markdownStyles.codeBlock(),
           },
-        },
-      }),
-      // Custom ordered list and list item extensions to preserve start attribute
-      OrderedListExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.orderedList(),
-        },
-      }),
-      ListItemExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.list(),
-        },
-      }),
-      // Custom paragraph extension to preserve empty lines in markdown
-      // See: https://github.com/ueberdosis/tiptap/issues/7269
-      EmptyLineParagraphExtension.configure({
-        HTMLAttributes: {
-          class: markdownStyles.paragraph(),
         },
       }),
       KeyboardShortcutsExtension,
