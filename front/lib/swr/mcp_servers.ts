@@ -63,7 +63,6 @@ import type {
 } from "@app/types";
 import {
   Err,
-  getMissingWorkspaceConnectionErrorMessage,
   isAdmin,
   isAPIErrorResponse,
   isSupportedOAuthCredential,
@@ -879,7 +878,9 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
       ) {
         return {
           success: false,
-          error: getMissingWorkspaceConnectionErrorMessage(mcpServerDisplayName),
+          error:
+            `A workspace admin must first connect ${mcpServerDisplayName} at the workspace level before users can connect their personal accounts. ` +
+            "Please contact your workspace administrator to set up the workspace connection.",
         };
       }
 

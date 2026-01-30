@@ -3,11 +3,6 @@ import { GetMCPServerViewsQuerySchema } from "@dust-tt/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import {
-  listWorkspaceConnectedMCPServerIds,
-  oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
-  withWorkspaceConnectionRequirement,
-} from "@app/lib/api/mcp_oauth_prerequisites";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -77,49 +72,15 @@ async function handler(
         auth,
         space
       );
-
-      const filteredServerViews = mcpServerViews
-        .map((mcpServerView) => mcpServerView.toJSON())
-        .filter(
-          (s) =>
-            s.server.availability === "manual" ||
-            (includeAuto && s.server.availability === "auto")
-        );
-
-      const needsWorkspaceConnectionEnrichment = filteredServerViews.some(
-        (s) =>
-          s.server.authorization !== null &&
-          oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
-            s.server.authorization.provider
-          )
-      );
-
-      if (!needsWorkspaceConnectionEnrichment) {
-        return res.status(200).json({
-          success: true,
-          serverViews: filteredServerViews,
-        });
-      }
-
-      const workspaceConnectedMCPServerIds =
-        await listWorkspaceConnectedMCPServerIds(auth);
-
       return res.status(200).json({
         success: true,
-        serverViews: filteredServerViews.map((serverView) => ({
-          ...serverView,
-          server: {
-            ...serverView.server,
-            authorization: withWorkspaceConnectionRequirement(
-              serverView.server.authorization,
-              {
-                isWorkspaceConnected: workspaceConnectedMCPServerIds.has(
-                  serverView.server.sId
-                ),
-              }
-            ),
-          },
-        })),
+        serverViews: mcpServerViews
+          .map((mcpServerView) => mcpServerView.toJSON())
+          .filter(
+            (s) =>
+              s.server.availability === "manual" ||
+              (includeAuto && s.server.availability === "auto")
+          ),
       });
     }
   }
