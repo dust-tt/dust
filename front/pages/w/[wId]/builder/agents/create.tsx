@@ -21,6 +21,7 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import {
   useFeatureFlags,
@@ -50,17 +51,18 @@ function FullPageSpinner() {
 
 export default function CreateAgentPage() {
   const router = useRouter();
+  const owner = useWorkspace();
 
   if (!router.isReady) {
     return null;
   }
 
-  if (!isString(router.query.wId)) {
+  if (!owner) {
     void router.replace("/404");
     return <FullPageSpinner />;
   }
 
-  return <CreateAgentAuthGate workspaceId={router.query.wId} />;
+  return <CreateAgentAuthGate workspaceId={owner.sId} />;
 }
 
 interface CreateAgentAuthGateProps {
@@ -137,9 +139,9 @@ function CreateAgentContent({
   hasFeature,
 }: CreateAgentContentProps) {
   const router = useRouter();
-  const selectedTemplateId = isString(router.query.templateId)
-    ? router.query.templateId
-    : null;
+  const { templateId } = router.query;
+
+  const selectedTemplateId = isString(templateId) ? templateId : null;
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -313,7 +315,7 @@ function CreateAgentContent({
   );
 }
 
-function getLayout(page: ReactElement): ReactElement {
+function getLayout(page: ReactElement) {
   return <AppRootLayout>{page}</AppRootLayout>;
 }
 

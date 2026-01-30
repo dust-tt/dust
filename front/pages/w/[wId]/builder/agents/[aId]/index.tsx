@@ -6,6 +6,8 @@ import type { ReactElement } from "react";
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useWorkspaceAuthContext } from "@app/lib/swr/workspaces";
 import type {
@@ -25,22 +27,18 @@ function FullPageSpinner() {
 
 export default function EditAgentPage() {
   const router = useRouter();
-
+  const aId = useRequiredPathParam("aId");
+  const owner = useWorkspace();
   if (!router.isReady) {
     return null;
   }
 
-  if (!isString(router.query.wId) || !isString(router.query.aId)) {
+  if (!owner || !isString(aId)) {
     void router.replace("/404");
     return <FullPageSpinner />;
   }
 
-  return (
-    <EditAgentAuthGate
-      workspaceId={router.query.wId}
-      agentId={router.query.aId}
-    />
-  );
+  return <EditAgentAuthGate workspaceId={owner.sId} agentId={aId} />;
 }
 
 interface EditAgentAuthGateProps {

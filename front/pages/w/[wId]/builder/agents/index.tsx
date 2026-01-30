@@ -27,6 +27,7 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
@@ -45,7 +46,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder, isString } from "@app/types";
+import { isAdmin, isBuilder } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS = [
@@ -97,17 +98,18 @@ function FullPageSpinner() {
 
 export default function WorkspaceAssistantsPage() {
   const router = useRouter();
+  const owner = useWorkspace();
 
   if (!router.isReady) {
     return null;
   }
 
-  if (!isString(router.query.wId)) {
+  if (!owner) {
     void router.replace("/404");
     return <FullPageSpinner />;
   }
 
-  return <WorkspaceAssistantsAuthGate workspaceId={router.query.wId} />;
+  return <WorkspaceAssistantsAuthGate workspaceId={owner.sId} />;
 }
 
 interface WorkspaceAssistantsAuthGateProps {

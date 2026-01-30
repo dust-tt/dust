@@ -9,6 +9,7 @@ import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useAgentConfiguration,
   useAssistantTemplate,
@@ -45,17 +46,18 @@ function FullPageSpinner() {
 
 export default function CreateAgentPage() {
   const router = useRouter();
+  const owner = useWorkspace();
 
   if (!router.isReady) {
     return null;
   }
 
-  if (!isString(router.query.wId)) {
+  if (!owner) {
     void router.replace("/404");
     return <FullPageSpinner />;
   }
 
-  return <CreateAgentAuthGate workspaceId={router.query.wId} />;
+  return <CreateAgentAuthGate workspaceId={owner.sId} />;
 }
 
 interface CreateAgentAuthGateProps {
@@ -125,15 +127,15 @@ interface CreateAgentContentProps {
 
 function CreateAgentContent({ owner, user, isAdmin }: CreateAgentContentProps) {
   const router = useRouter();
-  const templateId = isString(router.query.templateId)
-    ? router.query.templateId
-    : null;
-  const duplicateAgentId = isString(router.query.duplicate)
-    ? router.query.duplicate
-    : null;
-  const flow = resolveBuilderFlow(
-    isString(router.query.flow) ? router.query.flow : null
-  );
+  const {
+    templateId: templateIdQuery,
+    duplicate: duplicateQuery,
+    flow: flowQuery,
+  } = router.query;
+
+  const templateId = isString(templateIdQuery) ? templateIdQuery : null;
+  const duplicateAgentId = isString(duplicateQuery) ? duplicateQuery : null;
+  const flow = resolveBuilderFlow(isString(flowQuery) ? flowQuery : null);
 
   const {
     assistantTemplate,
