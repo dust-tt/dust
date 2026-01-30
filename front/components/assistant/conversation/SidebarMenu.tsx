@@ -375,7 +375,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               <Spinner size="xs" />
             </div>
           ) : summary.length > 0 ? (
-            <ProjectsList owner={owner} summary={summary} />
+            <ProjectsList
+              owner={owner}
+              summary={summary}
+              titleFilter={titleFilter}
+            />
           ) : (
             <NavigationListItem
               label="Create a Project"
@@ -394,6 +398,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     isProjectsSectionCollapsed,
     setProjectsSectionCollapsed,
     isSummaryLoading,
+    titleFilter,
   ]);
 
   const conversationsList = useMemo(() => {
