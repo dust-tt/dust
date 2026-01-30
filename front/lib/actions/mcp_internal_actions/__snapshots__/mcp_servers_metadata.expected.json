@@ -575,10 +575,10 @@
       }
     ],
     "toolsStakes": {
-      "compact_memory": "low",
-      "edit_entries": "low",
-      "erase_entries": "low",
-      "record_entries": "low",
+      "compact_memory": "never_ask",
+      "edit_entries": "never_ask",
+      "erase_entries": "never_ask",
+      "record_entries": "never_ask",
       "retrieve": "never_ask"
     }
   },
