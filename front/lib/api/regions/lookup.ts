@@ -8,8 +8,10 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
   UserLookupResponse,
+  WorkspaceLookupRequestBodyType,
+  WorkspaceLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
-import type { Result } from "@app/types";
+import type { LightWorkspaceType, Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { isAPIErrorResponse } from "@app/types/error";
 
@@ -26,6 +28,7 @@ export async function hasEmailLocalRegionAffinity(
     MembershipInvitationResource.listPendingForEmail({
       email: userLookup.email,
     }),
+
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
       email_verified: userLookup.email_verified,
@@ -69,21 +72,22 @@ export async function handleLookupWorkspace(workspaceLookup: {
   );
 
   // If workspace is done relocating, return null so users get created in new region.
-  if (
-    workspace &&
-    isWorkspaceRelocationDone(renderLightWorkspaceType({ workspace }))
-  ) {
-    return {
-      workspace: null,
-    };
+  if (workspace) {
+    const ws = renderLightWorkspaceType({ workspace });
+
+    if (!isWorkspaceRelocationDone(ws)) {
+      return {
+        workspace: ws,
+      };
+    }
   }
 
   return {
-    workspace: workspace?.sId ? { sId: workspace.sId } : null,
+    workspace: null,
   };
 }
 
-async function lookupInOtherRegion(
+export async function lookupInOtherRegion(
   userLookup: UserLookup
 ): Promise<Result<boolean, Error>> {
   const { url } = config.getOtherRegionInfo();
@@ -109,6 +113,55 @@ async function lookupInOtherRegion(
     }
 
     return new Ok(data.exists);
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Err(error);
+    }
+
+    return new Err(new Error("Unknown error in lookupInOtherRegion"));
+  }
+}
+
+export async function lookupWorkspace(
+  wId: string
+): Promise<
+  Result<{ region: RegionType; workspace: LightWorkspaceType } | null, Error>
+> {
+  const body: WorkspaceLookupRequestBodyType = {
+    workspace: wId,
+  };
+
+  const localLookup = await handleLookupWorkspace(body);
+  if (localLookup.workspace) {
+    return new Ok({
+      region: config.getCurrentRegion(),
+      workspace: localLookup.workspace,
+    });
+  }
+
+  const { url, name } = config.getOtherRegionInfo();
+
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    const otherRegionResponse = await fetch(`${url}/api/lookup/workspace`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: WorkspaceLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    if (data.workspace) {
+      return new Ok({ workspace: data.workspace, region: name });
+    }
+
+    return new Ok(null);
   } catch (error) {
     if (error instanceof Error) {
       return new Err(error);

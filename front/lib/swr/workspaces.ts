@@ -6,6 +6,7 @@ import type {
   GroupByType,
 } from "@app/lib/api/analytics/programmatic_cost";
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
+import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
@@ -322,6 +323,25 @@ export function useWorkspaceSeatsCount({
     isSeatsCountLoading: !error && !data && !disabled,
     isSeatsCountError: error,
     mutateSeatsCount: mutate,
+  };
+}
+
+export function useAuthContext({ disabled }: { disabled?: boolean }) {
+  const authContextFetcher: Fetcher<GetNoWorkspaceAuthContextResponseType> =
+    fetcher;
+
+  const { data, error } = useSWRWithDefaults(
+    `/api/auth-context`,
+    authContextFetcher,
+    { disabled }
+  );
+
+  return {
+    defaultWorkspace: data?.defaultWorkspace ?? null,
+    user: data?.user ?? null,
+    region: data?.region ?? null,
+    isAuthContextLoading: !error && !data && !disabled,
+    isAuthContextError: error,
   };
 }
 
