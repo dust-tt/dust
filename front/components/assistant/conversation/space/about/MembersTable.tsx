@@ -56,7 +56,8 @@ export function MembersTable({
 
   const removeMember = useCallback(
     async (userId: string) => {
-      if (!selectedMembers.some((m) => m.isEditor)) {
+      const updatedMembers = selectedMembers.filter((m) => m.sId !== userId);
+      if (!updatedMembers.some((m) => m.isEditor)) {
         sendNotifications({
           title: "Projects must have at least one editor.",
           description: "You cannot remove the last editor.",
@@ -64,8 +65,6 @@ export function MembersTable({
         });
         return;
       }
-
-      const updatedMembers = selectedMembers.filter((m) => m.sId !== userId);
 
       const updateMember = await doUpdate(space, {
         isRestricted: space.isRestricted,

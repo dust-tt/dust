@@ -12,6 +12,7 @@ import React, { useCallback, useState } from "react";
 
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
+import { InviteUsersPanel } from "@app/components/assistant/conversation/space/InviteUsersPanel";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
 import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
@@ -29,7 +30,6 @@ import {
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
-import { InviteUsersPanel } from "@app/components/assistant/conversation/space/InviteUsersPanel";
 
 type SpaceTab = "conversations" | "context" | "settings";
 
@@ -92,7 +92,7 @@ export function SpaceConversationsPage() {
         window.history.replaceState(
           null,
           "",
-          `${window.location.pathname}${window.location.search}#${newTab}`,
+          `${window.location.pathname}${window.location.search}#${newTab}`
         );
       }
     };
@@ -111,7 +111,7 @@ export function SpaceConversationsPage() {
     window.history.replaceState(
       null,
       "",
-      `${window.location.pathname}${window.location.search}#${tab}`,
+      `${window.location.pathname}${window.location.search}#${tab}`
     );
     setCurrentTab(tab);
   }, []);
@@ -146,7 +146,7 @@ export function SpaceConversationsPage() {
         await mutateSpaceInfo();
       }
     },
-    [spaceInfo, doUpdateSpace, mutateSpaceInfo],
+    [spaceInfo, doUpdateSpace, mutateSpaceInfo]
   );
 
   const handleConversationCreation = useCallback(
@@ -154,7 +154,7 @@ export function SpaceConversationsPage() {
       input: string,
       mentions: RichMention[],
       contentFragments: ContentFragmentsType,
-      selectedMCPServerViewIds?: string[],
+      selectedMCPServerViewIds?: string[]
     ): Promise<Result<undefined, DustError>> => {
       if (isSubmitting) {
         return new Err({
@@ -199,7 +199,7 @@ export function SpaceConversationsPage() {
         await router.push(
           getConversationRoute(owner.sId, conversationRes.value.sId),
           undefined,
-          { shallow: true },
+          { shallow: true }
         );
 
         // Update the conversations list
@@ -213,7 +213,7 @@ export function SpaceConversationsPage() {
               ],
             };
           },
-          { revalidate: false },
+          { revalidate: false }
         );
 
         return new Ok(undefined);
@@ -228,7 +228,7 @@ export function SpaceConversationsPage() {
       router,
       mutateConversations,
       createConversationWithMessage,
-    ],
+    ]
   );
 
   // Show loading state while fetching space info
@@ -309,6 +309,7 @@ export function SpaceConversationsPage() {
           <SpaceContextTab
             owner={owner}
             space={spaceInfo}
+            systemSpace={systemSpace}
             plan={subscription.plan}
             isAdmin={isAdmin}
             canReadInSpace={canReadInSpace}
