@@ -21,7 +21,8 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 // Base class for group-space junction resources
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupSpaceBaseResource extends ReadonlyAttributesType<GroupSpaceModel> {}
+export interface GroupSpaceBaseResource
+  extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceModel> {
   static model: ModelStatic<GroupSpaceModel> = GroupSpaceModel;
@@ -196,7 +197,8 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
 
 // GroupSpaceMemberResource - represents member permission (kind=member)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupSpaceMemberResource extends ReadonlyAttributesType<GroupSpaceModel> {}
+export interface GroupSpaceMemberResource
+  extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
   constructor(
@@ -399,7 +401,8 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
 
 // GroupSpaceEditorResource - represents editor permission (kind=project_editor)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupSpaceEditorResource extends ReadonlyAttributesType<GroupSpaceModel> {}
+export interface GroupSpaceEditorResource
+  extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
   constructor(
@@ -539,7 +542,8 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
 
 // GroupSpaceViewerResource - represents viewer permission (kind=project_viewer)
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface GroupSpaceViewerResource extends ReadonlyAttributesType<GroupSpaceModel> {}
+export interface GroupSpaceViewerResource
+  extends ReadonlyAttributesType<GroupSpaceModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class GroupSpaceViewerResource extends GroupSpaceBaseResource {
   constructor(

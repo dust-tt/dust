@@ -31,7 +31,10 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
     description:
       "Search for files in Google Drive. Can search in personal drive, all shared drives, or a specific drive.",
     schema: {
-      q: z.string().optional().describe(`\
+      q: z
+        .string()
+        .optional()
+        .describe(`\
 Search query to filter files. Uses Google Drive's search syntax. Leave empty to list all supported files. Examples:
 - Files with the name "hello": name = 'hello'
 - Files with a name containing the words "hello" and "goodbye": name contains 'hello' and name contains 'goodbye'
@@ -68,7 +71,10 @@ Search query to filter files. Uses Google Drive's search syntax. Leave empty to 
         .describe(
           "Whether both My Drive and shared drive items should be included in results. Defaults to true."
         ),
-      orderBy: z.string().optional().describe(`\
+      orderBy: z
+        .string()
+        .optional()
+        .describe(`\
 A comma-separated list of sort key. Valid keys are:
 \`createdTime\`: When the file was created.
 \`folder\`: The folder ID. This field is sorted using alphabetical ordering.

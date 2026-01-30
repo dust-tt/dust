@@ -380,8 +380,9 @@ describe("agent_copilot_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return null (no agent config ID).
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("get_agent_feedback");
@@ -398,15 +399,17 @@ describe("agent_copilot_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
       // Set up the mock to return an empty array of feedbacks.
-      const { getAgentFeedbacks } =
-        await import("@app/lib/api/assistant/feedback");
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -437,14 +440,16 @@ describe("agent_copilot_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
-      const { getAgentFeedbacks } =
-        await import("@app/lib/api/assistant/feedback");
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -472,14 +477,16 @@ describe("agent_copilot_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
-      const { getAgentFeedbacks } =
-        await import("@app/lib/api/assistant/feedback");
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -501,14 +508,16 @@ describe("agent_copilot_context tools", () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Mock the helper to return a valid agent config ID.
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
 
-      const { getAgentFeedbacks } =
-        await import("@app/lib/api/assistant/feedback");
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
       const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
       mockedGetAgentFeedbacks.mockResolvedValueOnce({
         isOk: () => true,
@@ -532,8 +541,9 @@ describe("agent_copilot_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_prompt_edits");
@@ -554,8 +564,9 @@ describe("agent_copilot_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -602,8 +613,9 @@ describe("agent_copilot_context tools", () => {
         );
       }
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -630,8 +642,9 @@ describe("agent_copilot_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_tools");
@@ -654,8 +667,9 @@ describe("agent_copilot_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -689,8 +703,9 @@ describe("agent_copilot_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_skills");
@@ -713,8 +728,9 @@ describe("agent_copilot_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -747,8 +763,9 @@ describe("agent_copilot_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("suggest_model");
@@ -771,8 +788,9 @@ describe("agent_copilot_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         agentConfiguration.sId
       );
@@ -806,8 +824,9 @@ describe("agent_copilot_context tools", () => {
     it("returns error when agent configuration ID is not available", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
 
       const tool = getToolByName("list_suggestions");
@@ -819,8 +838,9 @@ describe("agent_copilot_context tools", () => {
     it("lists suggestions with default status (pending)", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
@@ -844,8 +864,9 @@ describe("agent_copilot_context tools", () => {
     it("lists suggestions with specific states and kind filters", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
-      const { getAgentConfigurationIdFromContext } =
-        await import("@app/lib/api/actions/servers/agent_copilot_helpers");
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
       vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
         "test-agent-id"
       );
@@ -897,38 +918,40 @@ describe("agent_copilot_context tools", () => {
       }
     });
 
-    it.each([{ state: "rejected" as const }, { state: "outdated" as const }])(
-      "updates suggestion state to $state and returns all fields",
-      async ({ state }) => {
-        const { authenticator } = await createResourceTest({ role: "admin" });
+    it.each([
+      { state: "rejected" as const },
+      { state: "outdated" as const },
+    ])("updates suggestion state to $state and returns all fields", async ({
+      state,
+    }) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
 
-        // Create a real agent configuration and suggestion.
-        const agentConfiguration =
-          await AgentConfigurationFactory.createTestAgent(authenticator);
-        const suggestion = await AgentSuggestionFactory.createSkills(
-          authenticator,
-          agentConfiguration,
-          { state: "pending", analysis: "Test analysis for skills" }
-        );
+      // Create a real agent configuration and suggestion.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const suggestion = await AgentSuggestionFactory.createSkills(
+        authenticator,
+        agentConfiguration,
+        { state: "pending", analysis: "Test analysis for skills" }
+      );
 
-        const tool = getToolByName("update_suggestions_state");
-        const result = await tool.handler(
-          { suggestions: [{ suggestionId: suggestion.sId, state }] },
-          createTestExtra(authenticator)
-        );
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        { suggestions: [{ suggestionId: suggestion.sId, state }] },
+        createTestExtra(authenticator)
+      );
 
-        expect(result.isOk()).toBe(true);
-        if (result.isOk()) {
-          const content = result.value[0];
-          expect(content.type).toBe("text");
-          if (content.type === "text") {
-            const parsed = JSON.parse(content.text);
-            expect(parsed.results).toHaveLength(1);
-            expect(parsed.results[0].success).toBe(true);
-          }
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(1);
+          expect(parsed.results[0].success).toBe(true);
         }
       }
-    );
+    });
 
     it("updates multiple suggestions to outdated in a single call", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });

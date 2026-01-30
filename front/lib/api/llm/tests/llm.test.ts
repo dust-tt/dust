@@ -279,30 +279,30 @@ const modelsToTest = Object.entries(MODELS)
 describe.skipIf(
   process.env.RUN_LLM_TEST !== "true" || modelsToTest.length === 0
 )("LLM Integration Tests", () => {
-  describe.each(modelsToTest)(
-    "$providerId / $modelId",
-    ({ modelId, providerId }) => {
-      if (!isModelProviderId(providerId)) {
-        throw new Error(`Invalid providerId: ${providerId}`);
-      }
-      describe.concurrent.each(
-        getConversationsToRun({
-          modelId: modelId as ModelIdType,
-          providerId,
-        })
-      )("should handle: $name", (conversation) => {
-        it.concurrent.each(conversation.configs)(
-          "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
-          async (config) => {
-            await conversation.run({
-              modelId: modelId as ModelIdType,
-              provider: providerId,
-              ...config,
-            });
-          },
-          TIMEOUT
-        );
-      });
+  describe.each(modelsToTest)("$providerId / $modelId", ({
+    modelId,
+    providerId,
+  }) => {
+    if (!isModelProviderId(providerId)) {
+      throw new Error(`Invalid providerId: ${providerId}`);
     }
-  );
+    describe.concurrent.each(
+      getConversationsToRun({
+        modelId: modelId as ModelIdType,
+        providerId,
+      })
+    )("should handle: $name", (conversation) => {
+      it.concurrent.each(conversation.configs)(
+        "temperature: $temperature, reasoningEffort: $reasoningEffort, testStructuredOutputKey: $testStructuredOutputKey",
+        async (config) => {
+          await conversation.run({
+            modelId: modelId as ModelIdType,
+            provider: providerId,
+            ...config,
+          });
+        },
+        TIMEOUT
+      );
+    });
+  });
 });

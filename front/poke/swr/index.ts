@@ -11,7 +11,8 @@ import type { GetDocumentsResponseBody } from "@app/pages/api/poke/workspaces/[w
 import type { GetTablesResponseBody } from "@app/pages/api/poke/workspaces/[wId]/data_sources/[dsId]/tables";
 import type { FetchAssistantTemplatesResponse } from "@app/pages/api/templates";
 
-interface PokeAssistantTemplatesResponse extends FetchAssistantTemplatesResponse {
+interface PokeAssistantTemplatesResponse
+  extends FetchAssistantTemplatesResponse {
   dustRegionSyncEnabled: boolean;
 }
 import type {
