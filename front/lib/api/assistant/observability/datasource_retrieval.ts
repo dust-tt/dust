@@ -220,7 +220,7 @@ export async function fetchDatasourceRetrievalMetrics(
         ? serverConfigByModelId.get(configBuckets[0].key)
         : null;
     const mcpServerDisplayName =
-      asDisplayName(firstConfig?.name) || mcpServerName;
+      asDisplayName(firstConfig?.name) || asDisplayName(mcpServerName);
 
     const group = getOrCreateToolGroup({
       mcpServerDisplayName,
