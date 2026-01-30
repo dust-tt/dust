@@ -26,6 +26,7 @@ import {
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { triggerConversationAddedAsParticipantNotification } from "@app/lib/notifications/workflows/conversation-added-as-participant";
+import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -1005,6 +1006,12 @@ export async function validateUserMention(
         },
       });
     }
+
+    // Notify the user they were added to the project.
+    notifyProjectMembersAdded(auth, {
+      project: space.toJSON(),
+      addedUserIds: [userId],
+    });
   }
 
   const mentionStatus: "approved" | "rejected" = approvalState;
