@@ -168,6 +168,7 @@ export async function createConversation(
     actionRequired: false,
     hasError: false,
     visibility: conversation.visibility,
+    kind: conversation.kind,
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: space?.sId ?? null,
     triggerId: conversation.triggerSId,

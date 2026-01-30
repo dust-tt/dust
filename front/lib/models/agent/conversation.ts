@@ -11,6 +11,7 @@ import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import type {
   AgentMessageStatus,
+  ConversationKind,
   ConversationMetadata,
   ConversationVisibility,
   MessageVisibility,
@@ -25,6 +26,7 @@ export class ConversationModel extends WorkspaceAwareModel<ConversationModel> {
   declare sId: string;
   declare title: string | null;
   declare visibility: CreationOptional<ConversationVisibility>;
+  declare kind: CreationOptional<ConversationKind>;
   declare depth: CreationOptional<number>;
   declare triggerId: ForeignKey<TriggerModel["id"]> | null;
   declare hasError: CreationOptional<boolean>;
@@ -61,6 +63,11 @@ ConversationModel.init(
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: "unlisted",
+    },
+    kind: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "regular",
     },
     depth: {
       type: DataTypes.INTEGER,
@@ -99,6 +106,11 @@ ConversationModel.init(
       {
         fields: ["workspaceId", "createdAt"],
         name: "conversations_workspace_id_created_at_idx",
+      },
+      {
+        fields: ["workspaceId", "kind"],
+        name: "conversations_workspace_id_kind_idx",
+        concurrently: true,
       },
     ],
     sequelize: frontSequelize,
