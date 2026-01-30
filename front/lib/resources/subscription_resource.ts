@@ -8,6 +8,7 @@ import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization"
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { ConversationModel } from "@app/lib/models/agent/conversation";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -33,7 +34,6 @@ import {
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
-import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
@@ -944,10 +944,13 @@ export async function checkWorkspaceActivity(auth: Authenticator) {
     where: { workspaceId: auth.getNonNullableWorkspace().id },
   });
 
-  const hasRecentConversation =
-    (await ConversationResource.countForWorkspace(auth, {
-      updatedSince: sevenDaysAgo.getTime(),
-    })) > 0;
+  const hasRecentConversation = !!(await ConversationModel.findOne({
+    where: {
+      workspaceId: auth.getNonNullableWorkspace().id,
+      visibility: { [Op.ne]: "deleted" },
+      updatedAt: { [Op.gte]: sevenDaysAgo },
+    },
+  }));
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return hasDataSource || hasCreatedAssistant || hasRecentConversation;
