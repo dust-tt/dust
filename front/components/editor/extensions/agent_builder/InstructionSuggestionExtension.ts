@@ -1,14 +1,16 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
-// Generate a short label from suggestion ID for debugging.
-function getSuggestionLabel(suggestionId: string): string {
-  // Take last 4 chars of the ID for a short identifier.
-  return suggestionId.slice(-4);
+// Normalize suggestion text by stripping list markers and trailing whitespace.
+// List markers (- , * , 1. , etc.) are structural in TipTap, not part of text content.
+function normalizeSuggestionText(text: string): string {
+  return text.replace(/^(?:[-*]|\d+\.)\s+/, "").replace(/\s+$/, "");
 }
 
-// Mark for additions (blue background).
+// Mark for additions (styling applied via decorations based on selection state).
 export const SuggestionAdditionMark = Mark.create({
   name: "suggestionAddition",
 
@@ -25,35 +27,19 @@ export const SuggestionAdditionMark = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
     return [
       "span",
       {
         ...HTMLAttributes,
-        class:
-          "suggestion-addition s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800",
+        class: "suggestion-addition rounded px-0.5",
         "data-suggestion-id": HTMLAttributes.suggestionId,
-        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
-        contenteditable: "false",
       },
-      [
-        "span",
-        {},
-        0, // Content placeholder.
-      ],
-      [
-        "sup",
-        {
-          class:
-            "s-ml-0.5 s-text-[9px] s-font-mono s-text-highlight-500 s-select-none",
-        },
-        label,
-      ],
+      0,
     ];
   },
 });
 
-// Mark for deletions (red background + strikethrough).
+// Mark for deletions (styling applied via decorations based on selection state).
 export const SuggestionDeletionMark = Mark.create({
   name: "suggestionDeletion",
 
@@ -70,32 +56,145 @@ export const SuggestionDeletionMark = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
     return [
       "span",
       {
         ...HTMLAttributes,
-        class:
-          "suggestion-deletion s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 s-line-through",
+        class: "suggestion-deletion rounded px-0.5 line-through",
         "data-suggestion-id": HTMLAttributes.suggestionId,
-        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
-        contenteditable: "false",
       },
-      [
-        "span",
-        {},
-        0, // Content placeholder.
-      ],
-      [
-        "sup",
-        {
-          class:
-            "s-ml-0.5 s-text-[9px] s-font-mono s-text-warning-500 s-select-none s-no-underline",
-          style: "text-decoration: none;",
-        },
-        label,
-      ],
+      0,
     ];
+  },
+});
+
+// Collect all suggestion-marked nodes in the document.
+function collectSuggestionNodes(state: EditorState) {
+  const nodes: Array<{
+    from: number;
+    to: number;
+    text: string;
+    isAdd: boolean;
+    isRemove: boolean;
+    suggestionId: string | null;
+  }> = [];
+
+  state.doc.descendants((node, pos) => {
+    if (!node.isText) {
+      return;
+    }
+    const addMark = node.marks.find(
+      (m) => m.type.name === "suggestionAddition"
+    );
+    const removeMark = node.marks.find(
+      (m) => m.type.name === "suggestionDeletion"
+    );
+    if (addMark || removeMark) {
+      nodes.push({
+        from: pos,
+        to: pos + node.nodeSize,
+        text: node.text || "",
+        isAdd: !!addMark,
+        isRemove: !!removeMark,
+        suggestionId:
+          (addMark?.attrs.suggestionId as string) ||
+          (removeMark?.attrs.suggestionId as string) ||
+          null,
+      });
+    }
+  });
+
+  return nodes;
+}
+
+// Get the contiguous block of suggestion nodes around the cursor.
+function getSuggestionBlockRange(state: EditorState): {
+  start: number;
+  end: number;
+  suggestionId: string | null;
+} | null {
+  const { from } = state.selection;
+  const allSuggestionNodes = collectSuggestionNodes(state);
+
+  if (allSuggestionNodes.length === 0) {
+    return null;
+  }
+
+  const cursorNode = allSuggestionNodes.find(
+    (n) => from >= n.from && from <= n.to
+  );
+
+  if (!cursorNode) {
+    return null;
+  }
+
+  // Find all contiguous nodes with the same suggestionId.
+  const blockNodes = allSuggestionNodes.filter(
+    (n) => n.suggestionId === cursorNode.suggestionId
+  );
+
+  if (blockNodes.length === 0) {
+    return null;
+  }
+
+  blockNodes.sort((a, b) => a.from - b.from);
+
+  return {
+    start: blockNodes[0].from,
+    end: blockNodes[blockNodes.length - 1].to,
+    suggestionId: cursorNode.suggestionId,
+  };
+}
+
+// CSS classes for selected vs unselected suggestion states.
+const ADDITION_SELECTED =
+  "rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200";
+const ADDITION_UNSELECTED =
+  "rounded bg-blue-50 dark:bg-blue-900/20 text-gray-500 dark:text-gray-400";
+const DELETION_SELECTED =
+  "rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 line-through";
+const DELETION_UNSELECTED =
+  "rounded bg-red-50 dark:bg-red-900/20 text-gray-500 dark:text-gray-400 line-through";
+
+// ProseMirror plugin that applies decorations based on cursor position.
+const suggestionHighlightPlugin = new Plugin({
+  key: new PluginKey("suggestionHighlight"),
+  props: {
+    decorations(state) {
+      const range = getSuggestionBlockRange(state);
+      const allSuggestionNodes = collectSuggestionNodes(state);
+
+      if (allSuggestionNodes.length === 0) {
+        return null;
+      }
+
+      const decorations: Decoration[] = [];
+      const selectedStart = range?.start ?? -1;
+      const selectedEnd = range?.end ?? -1;
+      const selectedSuggestionId = range?.suggestionId ?? null;
+
+      for (const node of allSuggestionNodes) {
+        // A node is selected if it belongs to the same suggestion as the cursor.
+        const isSelected =
+          selectedSuggestionId !== null &&
+          node.suggestionId === selectedSuggestionId;
+
+        let className: string;
+        if (node.isAdd) {
+          className = isSelected ? ADDITION_SELECTED : ADDITION_UNSELECTED;
+        } else {
+          className = isSelected ? DELETION_SELECTED : DELETION_UNSELECTED;
+        }
+
+        decorations.push(
+          Decoration.inline(node.from, node.to, {
+            class: className,
+          })
+        );
+      }
+
+      return DecorationSet.create(state.doc, decorations);
+    },
   },
 });
 
@@ -186,6 +285,10 @@ export const InstructionSuggestionExtension = Extension.create({
     return [SuggestionAdditionMark, SuggestionDeletionMark];
   },
 
+  addProseMirrorPlugins() {
+    return [suggestionHighlightPlugin];
+  },
+
   addCommands() {
     return {
       applySuggestion:
@@ -194,9 +297,7 @@ export const InstructionSuggestionExtension = Extension.create({
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
-          // Normalize find string by trimming trailing whitespace/newlines.
-          // Backend may include trailing newlines that don't exist in editor.
-          const normalizedFind = find.replace(/\s+$/, "");
+          const normalizedFind = normalizeSuggestionText(find);
 
           // Get full document text and find the position.
           const fullText = doc.textContent;
@@ -254,8 +355,7 @@ export const InstructionSuggestionExtension = Extension.create({
             return false;
           }
 
-          // Normalize replacement too.
-          const normalizedReplacement = replacement.replace(/\s+$/, "");
+          const normalizedReplacement = normalizeSuggestionText(replacement);
 
           // Simple approach: show old text (red/strikethrough) then new text (blue).
           // No word-level diffing, users accept/reject the whole suggestion.
