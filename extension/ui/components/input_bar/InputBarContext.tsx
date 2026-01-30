@@ -1,5 +1,6 @@
 import type { AgentMentionType } from "@dust-tt/client";
-import React, { createContext, useState } from "react";
+import type React from "react";
+import { createContext, useState } from "react";
 
 export const InputBarContext = createContext<{
   animate: boolean;

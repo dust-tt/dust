@@ -24,7 +24,7 @@ function buildNodeSerializers(schema: Schema) {
   };
 
   map.codeBlock = (state: MarkdownSerializerState, node: ProseMirrorNode) => {
-    state.write("```" + (node.attrs.language || "") + "\n");
+    state.write(`\`\`\`${node.attrs.language || ""}\n`);
     state.text(node.textContent, false);
     state.ensureNewLine();
     state.write("```\n");

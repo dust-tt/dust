@@ -29,7 +29,7 @@ export function useSWRWithDefaults<TKey extends Key, TData>(
       try {
         const urlFromKey = new URL(
           key,
-          key.indexOf("://") == -1 ? "https://example.org/" : undefined // We need to provide a base url to make sure the URL is parsed correctly
+          key.indexOf("://") === -1 ? "https://example.org/" : undefined // We need to provide a base url to make sure the URL is parsed correctly
         );
         return urlFromKey.origin + urlFromKey.pathname;
       } catch {

@@ -48,7 +48,7 @@ export function useToolFileUpload({
       try {
         const response = await dustAPI.request({
           method: "POST",
-          path: `search/tools/upload`,
+          path: "search/tools/upload",
           body: {
             serverViewId: toolFile.serverViewId,
             externalId: toolFile.externalId,

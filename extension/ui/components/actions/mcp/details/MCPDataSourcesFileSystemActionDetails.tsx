@@ -15,7 +15,7 @@ export function DataSourceNodeContentDetails({
       }
       visual={DocumentIcon}
     >
-      <></>
+      
     </ActionDetailsWrapper>
   );
 }
@@ -27,7 +27,7 @@ export function FilesystemPathDetails({ viewType }: MCPActionDetailsProps) {
       actionName={viewType === "conversation" ? "Locating item" : "Locate item"}
       visual={ActionPinDistanceIcon}
     >
-      <></>
+      
     </ActionDetailsWrapper>
   );
 }

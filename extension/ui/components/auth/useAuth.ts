@@ -31,7 +31,7 @@ export const useAuthHook = () => {
     [tokens, user]
   );
 
-  const isUserSetup = !!(user && user.sId && user.selectedWorkspace);
+  const isUserSetup = !!(user?.sId && user.selectedWorkspace);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -51,7 +51,7 @@ export const useAuthHook = () => {
       clearTimeout(refreshTimerRef.current);
     }
     setIsLoading(false);
-  }, []);
+  }, [platform.auth.logout]);
 
   const handleRefreshToken = useCallback(async () => {
     // Call getAccessToken, it will refresh the token if needed.
@@ -76,7 +76,7 @@ export const useAuthHook = () => {
       };
     });
     setAuthError(null);
-  }, []);
+  }, [platform.auth.getAccessToken, platform.auth.getStoredTokens]);
 
   // Listen for changes in storage to make sure we always have the latest user and tokens.
   useEffect(() => {
@@ -89,7 +89,7 @@ export const useAuthHook = () => {
     });
 
     return () => unsub();
-  }, []);
+  }, [platform.storage.onChanged]);
 
   useEffect(() => {
     void (async () => {
@@ -120,7 +120,7 @@ export const useAuthHook = () => {
         clearTimeout(refreshTimerRef.current);
       }
     };
-  }, []);
+  }, [handleRefreshToken, platform.auth.getStoredTokens, platform.auth.getStoredUser]);
 
   const workspace = useMemo(
     () => user?.workspaces.find((w) => w.sId === user.selectedWorkspace),
@@ -139,7 +139,7 @@ export const useAuthHook = () => {
       setForcedConnection(makeEnterpriseConnectionName(workspace.sId));
       await platform.auth.logout();
     },
-    [setAuthError, setForcedConnection]
+    [platform.auth.logout]
   );
 
   const handleSelectWorkspace = async (workspace: WorkspaceType) => {
@@ -185,7 +185,7 @@ export const useAuthHook = () => {
     setAuthError(null);
     setUser(user);
     setIsLoading(false);
-  }, [forcedConnection]);
+  }, [forcedConnection, platform.auth.login, platform.clearStoredData, redirectToSSOLogin]);
 
   return {
     token: tokens?.accessToken ?? null,

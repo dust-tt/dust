@@ -110,9 +110,9 @@ const Content = () => {
 
       const updatedAt = moment(conversation.updated ?? conversation.created);
       if (updatedAt.isSameOrAfter(today)) {
-        groups["Today"].push(conversation);
+        groups.Today.push(conversation);
       } else if (updatedAt.isSameOrAfter(yesterday)) {
-        groups["Yesterday"].push(conversation);
+        groups.Yesterday.push(conversation);
       } else if (updatedAt.isSameOrAfter(lastWeek)) {
         groups["Last Week"].push(conversation);
       } else if (updatedAt.isSameOrAfter(lastMonth)) {
@@ -120,7 +120,7 @@ const Content = () => {
       } else if (updatedAt.isSameOrAfter(lastYear)) {
         groups["Last 12 Months"].push(conversation);
       } else {
-        groups["Older"].push(conversation);
+        groups.Older.push(conversation);
       }
     });
 

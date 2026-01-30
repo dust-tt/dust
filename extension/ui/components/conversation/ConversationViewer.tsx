@@ -128,11 +128,11 @@ export function ConversationViewer({
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      const url = esURL + "?lastEventId=" + lastEventId;
+      const url = `${esURL}?lastEventId=${lastEventId}`;
 
       return url;
     },
-    [conversationId, owner.sId]
+    [conversationId, owner.sId, user.dustDomain]
   );
 
   const onEventCallback = useCallback(
@@ -181,7 +181,7 @@ export function ConversationViewer({
         }
       }
     },
-    [mutateConversation]
+    [mutateConversation, debouncedMarkAsRead]
   );
 
   useEventSource(

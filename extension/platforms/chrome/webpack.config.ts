@@ -1,10 +1,10 @@
-import { execSync } from "child_process";
+import { execSync } from "node:child_process";
 import CopyPlugin from "copy-webpack-plugin";
 import Dotenv from "dotenv-webpack";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import TerserPlugin from "terser-webpack-plugin";
-import { promisify } from "util";
+import { promisify } from "node:util";
 import type { Configuration } from "webpack";
 import webpack from "webpack";
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";

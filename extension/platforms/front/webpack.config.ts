@@ -1,7 +1,7 @@
 import type { Environment } from "@app/config/env";
 import Dotenv from "dotenv-webpack";
 import HtmlWebpackPlugin from "html-webpack-plugin";
-import path from "path";
+import path from "node:path";
 import TerserPlugin from "terser-webpack-plugin";
 import webpack from "webpack";
 

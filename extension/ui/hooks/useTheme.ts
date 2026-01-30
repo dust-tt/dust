@@ -13,7 +13,7 @@ export const useTheme = () => {
       setTheme(savedTheme);
     };
     void loadTheme();
-  }, []);
+  }, [platform.getTheme]);
 
   const updateTheme = async (newTheme: Theme) => {
     await platform.saveTheme(newTheme);

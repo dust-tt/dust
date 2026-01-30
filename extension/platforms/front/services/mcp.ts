@@ -15,10 +15,6 @@ export class FrontMcpService extends McpService {
   private transport: DustMcpServerTransport | null = null;
   private serverId: string | undefined = undefined;
 
-  constructor() {
-    super();
-  }
-
   /**
    * Set the Front context for sending comments
    * This needs to be called by the platform service constructor

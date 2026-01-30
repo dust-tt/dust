@@ -7,7 +7,6 @@ import {
   getConnectionDetails,
   getDustDomain,
 } from "@app/shared/services/auth";
-import type { StorageService } from "@app/shared/services/storage";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { jwtDecode } from "jwt-decode";
@@ -66,9 +65,6 @@ const openAndWaitForPopup = async <T>(
 };
 
 export class FrontAuthService extends AuthService {
-  constructor(storage: StorageService) {
-    super(storage);
-  }
 
   private async openAuthPopup(
     options: Record<string, string>

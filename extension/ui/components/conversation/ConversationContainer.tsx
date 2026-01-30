@@ -52,7 +52,7 @@ export function ConversationContainer({
         includeCurrentPage: includeContent,
       },
     });
-  }, [includeContent, conversationId]);
+  }, [includeContent, conversationId, platform.setConversationsContext]);
 
   useEffect(() => {
     const doAsync = async () => {
@@ -62,7 +62,7 @@ export function ConversationContainer({
       setIncludeContent(context.includeCurrentPage);
     };
     void doAsync();
-  }, [conversationId]);
+  }, [conversationId, platform.getConversationContext]);
 
   const [planLimitReached, setPlanLimitReached] = useState(false);
   const [stickyMentions, setStickyMentions] = useState<AgentMentionType[]>([]);
@@ -231,7 +231,7 @@ export function ConversationContainer({
           });
         }
       },
-      [owner, sendNotification, includeContent, serverId]
+      [sendNotification, includeContent, serverId, dustAPI, navigate, platform]
     )
   );
 
@@ -239,7 +239,7 @@ export function ConversationContainer({
     (mentions: AgentMentionType[]) => {
       setStickyMentions(mentions);
     },
-    [setStickyMentions]
+    []
   );
 
   const [greeting, setGreeting] = useState<string>("");

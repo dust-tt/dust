@@ -130,7 +130,7 @@ export function AssistantInputBar({
       void sendInputBarStatus(false);
       cleanup?.();
     };
-  }, [platform.messaging, uploadContentTab]);
+  }, [platform.messaging, uploadContentTab, sendInputBarStatus]);
 
   const { droppedFiles, setDroppedFiles } = useFileDrop();
 

@@ -7,9 +7,7 @@ import type { Editor } from "@tiptap/react";
 import type { SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-interface CommandFunction {
-  (props: { id: string; label: string }): void;
-}
+type CommandFunction = (props: { id: string; label: string }) => void
 
 interface Range {
   from: number;

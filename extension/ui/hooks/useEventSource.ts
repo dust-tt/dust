@@ -49,7 +49,7 @@ const stableEventSourceManager = {
 
     const newSource = new EventSourcePolyfill(pathWithQueryAndHash, {
       headers: {
-        Authorization: "Bearer " + token,
+        Authorization: `Bearer ${token}`,
       },
       heartbeatTimeout: 90000,
     });
@@ -93,7 +93,7 @@ export function useEventSource(
   const reconnectAttempts = useRef(0);
 
   // We use a counter to trigger reconnects when the counter changes.
-  const [reconnectCounter, setReconnectCounter] = useState(0);
+  const [_reconnectCounter, setReconnectCounter] = useState(0);
 
   // Store the reconnect timeout reference to clear it when needed.
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -168,7 +168,7 @@ export function useEventSource(
 
       return source;
     },
-    [buildURL, onEventCallback, uniqueId, sourceManager]
+    [buildURL, onEventCallback, uniqueId]
   );
 
   useEffect(() => {
@@ -191,12 +191,10 @@ export function useEventSource(
       }
     };
   }, [
-    isReadyToConsumeStream,
-    connect,
-    reconnectCounter,
-    sourceManager,
-    uniqueId,
-    isError,
+    isReadyToConsumeStream, 
+    connect, 
+    uniqueId, 
+    isError, platform.auth.getAccessToken
   ]);
 
   return { isError };

@@ -57,7 +57,7 @@ export function registerNewConversationDraftTool(
           content: [
             {
               type: "text",
-              text: "Draft created successfully. Draft ID: " + d.id,
+              text: `Draft created successfully. Draft ID: ${d.id}`,
             },
           ],
         };

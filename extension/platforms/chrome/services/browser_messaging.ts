@@ -18,7 +18,7 @@ export class ChromeBrowserMessagingService implements BrowserMessagingService {
   sendMessage<T = any, R = any>(
     message: T,
     callback?: (response: R) => void
-  ): void | Promise<R> {
+  ): undefined | Promise<R> {
     if (!callback) {
       return chrome.runtime.sendMessage(message);
     }

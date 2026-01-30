@@ -59,7 +59,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
       const pageMatch = url.pathname.match(
         /\/wiki\/spaces\/[^/]+\/pages\/(\d+)/
       );
-      if (pageMatch && pageMatch[1]) {
+      if (pageMatch?.[1]) {
         return {
           node: `confluence-page-${pageMatch[1]}`,
           provider: "confluence",
@@ -78,7 +78,7 @@ const providers: Partial<Record<ConnectorProvider, Provider>> = {
     extractor: (url: URL): NodeCandidate => {
       // Extract from /d/ID format (common in all Google Drive URLs)
       const driveMatch = url.pathname.match(/\/d\/([^/]+)/);
-      if (driveMatch && driveMatch[1]) {
+      if (driveMatch?.[1]) {
         return { node: `gdrive-${driveMatch[1]}`, provider: "google_drive" };
       }
 
@@ -243,7 +243,7 @@ function extractThreadNodeId(url: URL): string | null {
   // Extract timestamp and convert to thread timestamp (with dot at decimal 6 before last digit)
   const timestamp = messagePart.substring(1);
   // add a dot at decimal 6 before last digit
-  const inferredThreadTs = timestamp.slice(0, -6) + "." + timestamp.slice(-6);
+  const inferredThreadTs = `${timestamp.slice(0, -6)}.${timestamp.slice(-6)}`;
 
   return `slack-${channelId}-thread-${inferredThreadTs}`;
 }
