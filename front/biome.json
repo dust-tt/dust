@@ -118,6 +118,8 @@
         "lib/api/actions/servers/agent_copilot_agent_state/tools/index.ts",
         "lib/api/actions/servers/agent_copilot_context/index.ts",
         "lib/api/actions/servers/agent_copilot_context/tools/index.ts",
+        "lib/api/actions/servers/project_context_management/index.ts",
+        "lib/api/actions/servers/project_context_management/tools/index.ts",
         "lib/api/actions/servers/skill_management/index.ts",
         "lib/api/actions/servers/skill_management/tools/index.ts",
         "lib/api/assistant/configuration/actions.ts",

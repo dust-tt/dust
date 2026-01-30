@@ -192,9 +192,16 @@ export function UserMessage({
     return (
       message.mentions.length === 0 &&
       isLastMessage &&
-      !hasHumansInteracting(methods.data.get())
+      !hasHumansInteracting(methods.data.get()) &&
+      message.user?.sId === currentUserId
     );
-  }, [message.mentions.length, isLastMessage, methods.data]);
+  }, [
+    message.mentions.length,
+    message.user?.sId,
+    isLastMessage,
+    methods.data,
+    currentUserId,
+  ]);
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;

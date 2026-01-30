@@ -187,6 +187,33 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
+  create_conversation: {
+    description:
+      "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
+    schema: {
+      message: z
+        .string()
+        .describe("The message content to post in the new conversation"),
+      title: z
+        .string()
+        .optional()
+        .nullable()
+        .describe("Optional title for the conversation"),
+      agentId: z
+        .string()
+        .optional()
+        .describe("Optional agent ID to mention in the conversation"),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "low",
+    displayLabels: {
+      running: "Creating conversation",
+      done: "Create conversation",
+    },
+  },
 });
 
 const PROJECT_CONTEXT_MANAGEMENT_INSTRUCTIONS =

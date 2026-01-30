@@ -14,6 +14,10 @@ import {
 } from "@app/lib/api/actions/servers/project_context_management/helpers";
 import { PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import {
+  createConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
@@ -24,13 +28,17 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import {
+  getConversationRoute,
+  getSpaceConversationsRoute,
+} from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { SupportedFileContentType } from "@app/types";
+import type { SupportedFileContentType, UserMessageOrigin } from "@app/types";
 import {
   Err,
   isAllSupportedFileContentType,
   isSupportedFileContentType,
+  isUserMessageType,
   Ok,
 } from "@app/types";
 
@@ -622,6 +630,101 @@ export function createProjectContextManagementTools(
           })
         );
       }, "Failed to get project information");
+    },
+
+    create_conversation: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const user = auth.getNonNullableUser();
+        const owner = auth.getNonNullableWorkspace();
+
+        // Get origin and timezone from the current conversation
+        let origin: UserMessageOrigin = "web";
+        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        if (agentLoopContext?.runContext?.conversation?.content) {
+          const userMessage = agentLoopContext.runContext.conversation.content
+            .flat()
+            .findLast(isUserMessageType);
+          if (userMessage?.context) {
+            origin = userMessage.context.origin ?? origin;
+            timezone = userMessage.context.timezone ?? timezone;
+          }
+        }
+
+        // Get agent configuration name & profile picture URL
+        const agentName =
+          agentLoopContext?.runContext?.agentConfiguration?.name ?? "Agent";
+
+        const agentProfilePictureUrl =
+          agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
+
+        // Build mentions if agentId is provided
+        const mentions = params.agentId
+          ? [{ configurationId: params.agentId }]
+          : [];
+
+        // Create conversation in the project space
+        const conversation = await createConversation(auth, {
+          title: params.title ?? null,
+          visibility: "unlisted",
+          spaceId: space.id,
+        });
+
+        // Post user message
+        const messageRes = await postUserMessage(auth, {
+          conversation,
+          content: params.message,
+          mentions,
+          context: {
+            username: agentName,
+            fullName: `@${agentName} on behalf of ${user.fullName()}`,
+            email: null,
+            profilePictureUrl: agentProfilePictureUrl,
+            timezone,
+            origin,
+            clientSideMCPServerIds: [],
+            selectedMCPServerViewIds: [],
+            lastTriggerRunAt: null,
+          },
+          skipToolsValidation: false,
+          doNotAssociateUser: true,
+        });
+
+        if (messageRes.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to post message: ${messageRes.error.api_error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        const conversationUrl = getConversationRoute(
+          owner.sId,
+          conversation.sId,
+          undefined,
+          config.getClientFacingUrl()
+        );
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            conversationId: conversation.sId,
+            conversationUrl,
+            userMessageId: messageRes.value.userMessage.sId,
+            message: `Conversation created successfully in project "${space.name}"`,
+          })
+        );
+      }, "Failed to create conversation");
     },
   };
 
