@@ -8,7 +8,7 @@ export const newAgentSuite: TestSuite = {
     {
       scenarioId: "clear-saas-support",
       userMessage:
-        "I need to create a customer support agent that will help users with common questions about our SaaS product. The agent should be friendly, professional, and able to handle basic troubleshooting. Please create the instructions for this agent.",
+        "I need to create a customer support agent that will help users with common questions about our SaaS product. The agent should handle questions about billing, feature usage, account settings, and basic technical troubleshooting. It should be friendly and professional in tone, provide clear step-by-step guidance when needed, and know when to escalate complex issues. Please create the instructions for this agent.",
       mockState: BLANK_AGENT,
       expectedToolCalls: ["get_agent_info", "suggest_prompt_edits"],
       judgeCriteria: `Clear requirements provided (SaaS support, friendly/professional tone, troubleshooting).

@@ -1,4 +1,5 @@
 import type { Authenticator } from "@app/lib/auth";
+import logger from "@app/logger/logger";
 import { executeCopilot } from "@app/tests/copilot-evals/lib/copilot-executor";
 import type {
   CopilotConfig,
@@ -81,8 +82,9 @@ export async function generateCopilotImprovementSuggestions(
     return { failedScenarios: [], suggestion: null };
   }
 
-  console.log(
-    `\n[copilot-on-copilot] Analyzing ${failedResults.length} failed scenario(s)...\n`
+  logger.info(
+    {},
+    `[copilot-on-copilot] Analyzing ${failedResults.length} failed scenario(s)...`
   );
 
   const failedScenarios = failedResults.map((r) => ({
@@ -122,16 +124,15 @@ export async function generateCopilotImprovementSuggestions(
       createCopilotSelfState(copilotConfig)
     );
 
-    console.log("\n[copilot-on-copilot] Analysis complete\n");
-    console.log("-".repeat(60));
-
-    console.log(responseText);
-    console.log("-".repeat(60) + "\n");
+    logger.info({}, "[copilot-on-copilot] Analysis complete");
+    logger.info({}, "-".repeat(60));
+    logger.info({}, responseText);
+    logger.info({}, "-".repeat(60));
 
     return { failedScenarios, suggestion: responseText };
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Unknown error";
-    console.error(`[copilot-on-copilot] Analysis failed: ${msg}`);
+    logger.error({ error }, `[copilot-on-copilot] Analysis failed: ${msg}`);
     return { failedScenarios, suggestion: null, error: msg };
   }
 }
