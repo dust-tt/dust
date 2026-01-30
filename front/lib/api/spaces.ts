@@ -521,7 +521,7 @@ export async function createSpaceAndGroup(
           return new Err(
             new DustError(
               "unauthorized",
-              "Only admins or group editors can change group members"
+              "Only admins can change group members"
             )
           );
         }

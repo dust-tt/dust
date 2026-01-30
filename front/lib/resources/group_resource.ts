@@ -1074,9 +1074,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       users,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1090,6 +1092,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
+    if (allowProvisionnedGroups) {
+      assert(
+        this.kind === "regular" ||
+          this.kind === "space_editors" ||
+          this.kind === "agent_editors" ||
+          this.kind === "skill_editors",
+        `You can't add members to ${this.kind} groups.`
+      );
+    }
     const owner = auth.getNonNullableWorkspace();
 
     if (users.length === 0) {
@@ -1199,9 +1210,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       user: UserType;
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1218,6 +1231,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.dangerouslyAddMembers(auth, {
       users: [user],
       transaction,
+      allowProvisionnedGroups,
     });
   }
 
@@ -1229,9 +1243,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       users,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       users: UserType[];
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1244,6 +1260,15 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
+    if (allowProvisionnedGroups) {
+      assert(
+        this.kind === "regular" ||
+          this.kind === "space_editors" ||
+          this.kind === "agent_editors" ||
+          this.kind === "skill_editors",
+        `You can't add members to ${this.kind} groups.`
+      );
+    }
     const owner = auth.getNonNullableWorkspace();
     if (users.length === 0) {
       return new Ok(undefined);
@@ -1336,9 +1361,11 @@ export class GroupResource extends BaseResource<GroupModel> {
     {
       user,
       transaction,
+      allowProvisionnedGroups = false,
     }: {
       user: UserType;
       transaction?: Transaction;
+      allowProvisionnedGroups?: boolean;
     }
   ): Promise<
     Result<
@@ -1354,6 +1381,7 @@ export class GroupResource extends BaseResource<GroupModel> {
     return this.dangerouslyRemoveMembers(auth, {
       users: [user],
       transaction,
+      allowProvisionnedGroups,
     });
   }
 

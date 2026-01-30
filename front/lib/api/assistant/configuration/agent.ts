@@ -673,7 +673,7 @@ export async function createAgentConfiguration(
             throw new Err(
               new DustError(
                 "unauthorized",
-                "Only `admins` are authorized to manage groups"
+                "You are not authorized to manage the editors of this agent."
               )
             );
           }
@@ -717,12 +717,12 @@ export async function createAgentConfiguration(
                 workspaceId: owner.sId,
                 agentConfigurationId: existingAgent.sId,
               },
-              `Error setting members to agent ${existingAgent.sId}: Only 'admins' are authorized to manage groups`
+              `Error setting members to agent ${existingAgent.sId}: You are not authorized to manage the editors of this agent`
             );
             throw new Err(
               new DustError(
                 "unauthorized",
-                "Only `admins` are authorized to manage groups"
+                "You are not authorized to manage the editors of this agent"
               )
             );
           }

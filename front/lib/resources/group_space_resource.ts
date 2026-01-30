@@ -210,7 +210,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     if (
       !users.every((user) =>
         this.canAddMember(auth, user.sId, requestedPermissions)
-      ) &&
+      ) ||
       !users.every((user) =>
         this.canRemoveMember(auth, user.sId, requestedPermissions)
       )

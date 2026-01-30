@@ -589,10 +589,10 @@ async function handleUserAddedToGroup(
 
   const isMember = await group.isMember(user);
   if (!isMember) {
-    if (!group.canWrite(auth)) {
-      throw new Error("Only admins or group editors can change group members");
-    }
-    const res = await group.dangerouslyAddMember(auth, { user: user.toJSON() });
+    const res = await group.dangerouslyAddMember(auth, {
+      user: user.toJSON(),
+      allowProvisionnedGroups: true,
+    });
     if (res.isErr()) {
       throw new Error(res.error.message);
     }
