@@ -2539,13 +2539,7 @@ describe("createUserMentions", () => {
     it("should auto-approve mentions for users who are members of the project space", async () => {
       // Create a project space
       const projectSpace = await SpaceFactory.project(workspace);
-
-      const adminUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, adminUser, {
-        role: "admin",
-      });
-      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        adminUser.sId,
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
         workspace.sId
       );
 
@@ -2625,12 +2619,7 @@ describe("createUserMentions", () => {
     it("should require approval for mentions of users who are NOT members of the project space", async () => {
       // Create a project space
       const projectSpace = await SpaceFactory.project(workspace);
-      const adminUser = await UserFactory.basic();
-      await MembershipFactory.associate(workspace, adminUser, {
-        role: "admin",
-      });
-      const adminAuth = await Authenticator.fromUserIdAndWorkspaceId(
-        adminUser.sId,
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
         workspace.sId
       );
 
@@ -3696,17 +3685,20 @@ describe("validateUserMention", () => {
 
       // Create a project space
       const projectSpace = await SpaceFactory.project(workspace);
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add the admin user to the project space (they need to be a member/editor)
+      await projectSpace.addMembers(internalAdminAuth, {
+        userIds: [adminUser.sId],
+      });
 
       // Create a fresh authenticator after adding user to space
       const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
         adminUser.sId,
         workspace.sId
       );
-
-      // Add the admin user to the project space (they need to be a member/editor)
-      await projectSpace.addMembers(userAuth, {
-        userIds: [adminUser.sId],
-      });
 
       // Create a conversation in the project space
       const projectConversation = await createConversation(userAuth, {
