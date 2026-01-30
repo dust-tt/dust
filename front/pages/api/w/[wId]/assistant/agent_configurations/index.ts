@@ -10,6 +10,7 @@ import type {
   MCPServerConfigurationType,
   ServerSideMCPServerConfigurationType,
 } from "@app/lib/actions/mcp";
+import { pruneSuggestionsForAgent } from "@app/lib/api/assistant/agent_suggestion_pruning";
 import { getAgentsUsage } from "@app/lib/api/assistant/agent_usage";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
@@ -25,7 +26,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -492,7 +492,7 @@ export async function createOrUpgradeAgentConfiguration({
   // Prune outdated suggestions after saving an existing agent.
   // This must happen after skills/tools are added to the new version.
   if (agentConfigurationId) {
-    await AgentSuggestionResource.pruneSuggestions(auth, agentConfiguration);
+    await pruneSuggestionsForAgent(auth, agentConfiguration);
   }
 
   // We are not tracking draft agents

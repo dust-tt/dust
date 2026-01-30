@@ -120,7 +120,6 @@
         "lib/api/actions/servers/agent_copilot_context/tools/index.ts",
         "lib/api/actions/servers/skill_management/index.ts",
         "lib/api/actions/servers/skill_management/tools/index.ts",
-        "lib/api/assistant/agent_suggestion_pruning.ts",
         "lib/api/assistant/configuration/actions.ts",
         "lib/api/assistant/configuration/agent.ts",
         "lib/api/assistant/configuration/helpers.ts",
