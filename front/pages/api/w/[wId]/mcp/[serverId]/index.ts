@@ -116,6 +116,8 @@ async function handler(
 
           const json = server.toJSON();
 
+          // Enrich authorization so the client can block the OAuth popup when the
+          // workspace-level connection is missing.
           return res.status(200).json({
             server: {
               ...json,
@@ -151,6 +153,8 @@ async function handler(
 
           const json = server.toJSON();
 
+          // Enrich authorization so the client can block the OAuth popup when the
+          // workspace-level connection is missing.
           return res.status(200).json({
             server: {
               ...json,

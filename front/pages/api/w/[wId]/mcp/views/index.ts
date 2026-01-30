@@ -102,6 +102,10 @@ async function handler(
             query.availabilities.includes(v.server.availability)
         );
 
+      // Some OAuth providers require a workspace-level connection before users
+      // can set up personal connections. We enrich the authorization info so the
+      // client can block the OAuth popup and show an inline error instead.
+      // The DB query is only made when at least one server in the list needs it.
       const needsWorkspaceConnectionEnrichment = flattenedServerViews.some(
         (v) =>
           v.server.authorization !== null &&
