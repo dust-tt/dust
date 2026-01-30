@@ -3,16 +3,12 @@ import { useEffect, useRef, useState } from "react";
 
 export type StreamingState = "streaming" | "ended" | "cancelled";
 
-export interface AnimatedTextConfig {
-  delimiter?: RegExp | string;
-  duration?: number;
-}
 
 export function useAnimatedText(
   text: string,
   streamingState: StreamingState,
   animationDuration: number,
-  delimiter: RegExp | string,
+  delimiter: string,
 ) {
   const [cursor, setCursor] = useState(0);
   const [startingCursor, setStartingCursor] = useState(0);
@@ -69,6 +65,5 @@ export function useAnimatedText(
     return text;
   }
 
-  const delimiterString = typeof delimiter === "string" ? delimiter : "";
-  return text.split(delimiter).slice(0, cursor).join(delimiterString);
+  return text.split(delimiter).slice(0, cursor).join(delimiter);
 }

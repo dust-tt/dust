@@ -290,7 +290,7 @@ export function StreamingAnimationMarkdown({
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
   canCopyQuotes?: boolean;
-  delimiter?: RegExp | string;
+  delimiter?: string;
   animationDuration?: number;
 }) {
   const processedContent = useMemo(() => {
