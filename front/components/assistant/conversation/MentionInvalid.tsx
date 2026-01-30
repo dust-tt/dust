@@ -8,7 +8,6 @@ import {
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
-import { isProjectConversation } from "@app/components/assistant/conversation/types";
 import { useDismissMention } from "@app/lib/swr/mentions";
 import { useUser } from "@app/lib/swr/user";
 import type {
@@ -17,6 +16,7 @@ import type {
   RichMentionWithStatus,
   UserType,
 } from "@app/types";
+import { isProjectConversation } from "@app/types";
 
 interface MentionInvalidProps {
   triggeringUser: UserType | null;
