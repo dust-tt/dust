@@ -2,6 +2,7 @@ import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 
 import type { ActionGeneratedFileType } from "@app/lib/actions/types";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import type { RegionType } from "@app/lib/api/regions/config";
 
 import type {
   AgentMessageType,
@@ -28,7 +29,11 @@ export interface PokeItemBase {
   link: string | null;
   name: string;
   type: PokeItemType;
+  region?: RegionType;
 }
+
+// Re-export for convenience
+export type { RegionType } from "@app/lib/api/regions/config";
 
 export type PokeSpaceType = SpaceType & {
   id: ModelId;
