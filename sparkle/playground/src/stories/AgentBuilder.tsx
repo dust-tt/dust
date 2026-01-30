@@ -128,7 +128,7 @@ export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
   const [agentName, setAgentName] = useState(agent?.name || "");
   const [agentDescription, setAgentDescription] = useState(
-    agent?.description || ""
+    agent?.description || "",
   );
   const nameSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
@@ -137,7 +137,7 @@ export default function AgentBuilder() {
   const descriptionSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
     return getRandomAgents(count).map(
-      (suggestedAgent) => suggestedAgent.description
+      (suggestedAgent) => suggestedAgent.description,
     );
   }, []);
   const versionHistoryItems = useMemo(() => {
@@ -167,22 +167,22 @@ export default function AgentBuilder() {
     author: string;
   } | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
-    () => new Set()
+    () => new Set(),
   );
   const [tagSearch, setTagSearch] = useState("");
   const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
-    () => new Set(initialEditorIds)
+    () => new Set(initialEditorIds),
   );
   const [isInviteEditorsOpen, setIsInviteEditorsOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [rightPanelRatio, setRightPanelRatio] = useState(0.4);
   const [activeRightPanelTab, setActiveRightPanelTab] = useState("copilot");
   const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
-    "unpublished"
+    "unpublished",
   );
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
-    null
+    null,
   );
   const [hasSuggestionsState, setHasSuggestionsState] = useState(false);
   const [isInstructionDirty, setIsInstructionDirty] = useState(false);
@@ -230,33 +230,33 @@ export default function AgentBuilder() {
   const filteredTagItems = useMemo(
     () =>
       tagItems.filter((tag) =>
-        tag.name.toLowerCase().includes(normalizedTagSearch)
+        tag.name.toLowerCase().includes(normalizedTagSearch),
       ),
-    [tagItems, normalizedTagSearch]
+    [tagItems, normalizedTagSearch],
   );
   const recommendedTagItems = useMemo(
     () => filteredTagItems.slice(0, 2),
-    [filteredTagItems]
+    [filteredTagItems],
   );
   const recommendedTagIds = useMemo(
     () => new Set(recommendedTagItems.map((tag) => tag.id)),
-    [recommendedTagItems]
+    [recommendedTagItems],
   );
   const remainingTagItems = useMemo(
     () => filteredTagItems.filter((tag) => !recommendedTagIds.has(tag.id)),
-    [filteredTagItems, recommendedTagIds]
+    [filteredTagItems, recommendedTagIds],
   );
   const openSpaces = useMemo(
     () => selectableSpaces.filter((space) => !isRestrictedSpace(space.id)),
-    [selectableSpaces]
+    [selectableSpaces],
   );
   const restrictedSpaces = useMemo(
     () => selectableSpaces.filter((space) => isRestrictedSpace(space.id)),
-    [selectableSpaces]
+    [selectableSpaces],
   );
   const selectedEditorIdList = useMemo(
     () => Array.from(selectedEditorIds),
-    [selectedEditorIds]
+    [selectedEditorIds],
   );
 
   const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
@@ -451,7 +451,7 @@ export default function AgentBuilder() {
             }
             const total = sizes.reduce(
               (sum, size) => sum + (typeof size === "number" ? size : 0),
-              0
+              0,
             );
             if (total <= 0) {
               return;
@@ -671,7 +671,7 @@ export default function AgentBuilder() {
                           .sort(
                             (a, b) =>
                               Number(isRestrictedSpace(a.id)) -
-                              Number(isRestrictedSpace(b.id))
+                              Number(isRestrictedSpace(b.id)),
                           )
                           .map((space) => {
                             const isRestricted = isRestrictedSpace(space.id);
@@ -1039,7 +1039,7 @@ export default function AgentBuilder() {
                           label="Suggest"
                           onClick={() => {
                             richTextAreaRef.current?.applyRandomSuggestions(
-                              mockSuggestionChanges
+                              mockSuggestionChanges,
                             );
                             setTimeout(checkForSuggestions, 100);
                           }}
@@ -1053,10 +1053,10 @@ export default function AgentBuilder() {
                               return;
                             }
                             const index = Math.floor(
-                              Math.random() * mockInstructionCases.length
+                              Math.random() * mockInstructionCases.length,
                             );
                             richTextAreaRef.current?.setContent(
-                              mockInstructionCases[index]
+                              mockInstructionCases[index],
                             );
                           }}
                         />
@@ -1160,7 +1160,7 @@ export default function AgentBuilder() {
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(
-                          checked: boolean | "indeterminate"
+                          checked: boolean | "indeterminate",
                         ) => {
                           if (checked !== "indeterminate") {
                             toggleSpace(space.id);
@@ -1202,7 +1202,7 @@ export default function AgentBuilder() {
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(
-                          checked: boolean | "indeterminate"
+                          checked: boolean | "indeterminate",
                         ) => {
                           if (checked !== "indeterminate") {
                             toggleSpace(space.id);
@@ -1239,9 +1239,10 @@ export default function AgentBuilder() {
         title="Select editors"
         actionLabel="Save"
         initialSelectedUserIds={selectedEditorIdList}
+        hasMultipleSelect={true}
         onClose={() => setIsInviteEditorsOpen(false)}
-        onInvite={(selectedUserIds) => {
-          setSelectedEditorIds(new Set(selectedUserIds));
+        onInvite={(_selectedUserIds, editorUserIds) => {
+          setSelectedEditorIds(new Set(editorUserIds));
           setIsInviteEditorsOpen(false);
         }}
       />

@@ -157,7 +157,7 @@ function getFakeDocumentFirstLine(dataSource: DataSource): string {
 
 function getBaseConversationId(
   conversation: Conversation,
-  allConversations: Conversation[]
+  allConversations: Conversation[],
 ): string {
   const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
   if (expandedIdMatch) {
@@ -193,7 +193,7 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
   const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
   const count = Math.min(
     Math.max(1, Math.floor(Math.random() * 6) + 1),
-    shuffled.length
+    shuffled.length,
   );
   return shuffled.slice(0, count);
 }
@@ -211,7 +211,7 @@ function getRandomCreator(conversation: Conversation): User | null {
 
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
-    "chat"
+    "chat",
   );
   const [searchText, setSearchText] = useState("");
   const [projectSearchText, setProjectSearchText] = useState("");
@@ -240,11 +240,14 @@ function DustMain() {
   const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
   const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
-    null
+    null,
   );
   const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
-    new Map()
+    new Map(),
+  );
+  const [spaceEditors, setSpaceEditors] = useState<Map<string, string[]>>(
+    new Map(),
   );
   const [spacePublicSettings, setSpacePublicSettings] = useState<
     Map<string, boolean>
@@ -405,7 +408,7 @@ function DustMain() {
         }
         return acc;
       },
-      []
+      [],
     );
 
     const peopleResults = mockUsers.reduce<UniversalSearchItem[]>(
@@ -427,7 +430,7 @@ function DustMain() {
         }
         return acc;
       },
-      []
+      [],
     );
 
     const conversationResults = allConversations.reduce<UniversalSearchItem[]>(
@@ -454,7 +457,7 @@ function DustMain() {
         }
         return acc;
       },
-      []
+      [],
     );
 
     return [
@@ -501,7 +504,7 @@ function DustMain() {
 
     const baseConversationId = getBaseConversationId(
       item.conversation,
-      allConversations
+      allConversations,
     );
     setSelectedConversationId(baseConversationId);
     setSelectedView("conversation");
@@ -597,7 +600,7 @@ function DustMain() {
     }
     const lowerSearch = searchText.toLowerCase();
     return allConversations.filter((conv) =>
-      conv.title.toLowerCase().includes(lowerSearch)
+      conv.title.toLowerCase().includes(lowerSearch),
     );
   }, [searchText, allConversations]);
 
@@ -643,7 +646,7 @@ function DustMain() {
     }
     const lowerSearch = agentSearchText.toLowerCase();
     return mockAgents.filter((agent) =>
-      agent.name.toLowerCase().includes(lowerSearch)
+      agent.name.toLowerCase().includes(lowerSearch),
     );
   }, [agentSearchText]);
 
@@ -655,7 +658,7 @@ function DustMain() {
     return mockUsers.filter(
       (person) =>
         person.fullName.toLowerCase().includes(lowerSearch) ||
-        person.email.toLowerCase().includes(lowerSearch)
+        person.email.toLowerCase().includes(lowerSearch),
     );
   }, [peopleSearchText]);
 
@@ -714,13 +717,13 @@ function DustMain() {
     return sortedSpaces.filter(
       (space) =>
         space.name.toLowerCase().includes(lowerSearch) ||
-        space.description.toLowerCase().includes(lowerSearch)
+        space.description.toLowerCase().includes(lowerSearch),
     );
   }, [searchText, sortedSpaces]);
 
   const filteredProjects = useMemo(() => {
     const allSpaces = [...mockSpaces].sort((a, b) =>
-      a.name.localeCompare(b.name)
+      a.name.localeCompare(b.name),
     );
     if (!projectSearchText.trim()) {
       return allSpaces;
@@ -729,7 +732,7 @@ function DustMain() {
     return allSpaces.filter(
       (space) =>
         space.name.toLowerCase().includes(lowerSearch) ||
-        space.description.toLowerCase().includes(lowerSearch)
+        space.description.toLowerCase().includes(lowerSearch),
     );
   }, [projectSearchText]);
 
@@ -1457,12 +1460,20 @@ function DustMain() {
     setIsInviteUsersScreenOpen(true);
   };
 
-  const handleInviteUsersComplete = (selectedUserIds: string[]) => {
+  const handleInviteUsersComplete = (
+    selectedUserIds: string[],
+    editorUserIds: string[],
+  ) => {
     // Store invited members for the space
     if (inviteSpaceId) {
       setSpaceMembers((prev) => {
         const newMap = new Map(prev);
         newMap.set(inviteSpaceId, selectedUserIds);
+        return newMap;
+      });
+      setSpaceEditors((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, editorUserIds);
         return newMap;
       });
     }
@@ -1477,8 +1488,8 @@ function DustMain() {
     // In a real implementation, this would update the space in the backend
     setSpaces((prev) =>
       prev.map((space) =>
-        space.id === spaceId ? { ...space, name: newName } : space
-      )
+        space.id === spaceId ? { ...space, name: newName } : space,
+      ),
     );
   };
 
@@ -1493,8 +1504,8 @@ function DustMain() {
     // Also update the space object
     setSpaces((prev) =>
       prev.map((space) =>
-        space.id === spaceId ? { ...space, isPublic } : space
-      )
+        space.id === spaceId ? { ...space, isPublic } : space,
+      ),
     );
     // For prototype, just log the update
   };
@@ -1551,6 +1562,11 @@ function DustMain() {
           spaceMembers.has(selectedSpaceId)
             ? spaceMembers.get(selectedSpaceId)!
             : getMembersBySpaceId(selectedSpaceId)
+        }
+        editorUserIds={
+          spaceEditors.has(selectedSpaceId)
+            ? spaceEditors.get(selectedSpaceId)!
+            : []
         }
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
@@ -1663,6 +1679,7 @@ function DustMain() {
           setInviteSpaceId(null);
         }}
         onInvite={handleInviteUsersComplete}
+        hasMultipleSelect={true}
       />
       <Sheet
         open={isDocumentSheetOpen}

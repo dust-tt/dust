@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   Button,
   ChatBubbleLeftRightIcon,
+  Chip,
   ConversationListItem,
   DataTable,
   Dialog,
@@ -66,6 +67,7 @@ interface GroupConversationViewProps {
   users: User[];
   agents: Agent[];
   spaceMemberIds?: string[];
+  editorUserIds?: string[];
   onConversationClick?: (conversation: Conversation) => void;
   onInviteMembers?: () => void;
   showToolsAndAboutTabs?: boolean;
@@ -104,7 +106,7 @@ type UniversalSearchItem =
 function getRandomParticipants(
   conversation: Conversation,
   _users: User[],
-  _agents: Agent[]
+  _agents: Agent[],
 ): Array<{ type: "user" | "agent"; data: User | Agent }> {
   const allParticipants: Array<{ type: "user" | "agent"; data: User | Agent }> =
     [];
@@ -129,7 +131,7 @@ function getRandomParticipants(
   const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
   const count = Math.min(
     Math.max(1, Math.floor(Math.random() * 6) + 1),
-    shuffled.length
+    shuffled.length,
   );
   return shuffled.slice(0, count);
 }
@@ -137,7 +139,7 @@ function getRandomParticipants(
 // Helper function to get random creator from people
 function getRandomCreator(
   conversation: Conversation,
-  _users: User[]
+  _users: User[],
 ): User | null {
   if (conversation.userParticipants.length === 0) {
     return null;
@@ -151,7 +153,7 @@ function getRandomCreator(
 
 // Convert participants to Avatar props format for Avatar.Stack
 function participantsToAvatarProps(
-  participants: Array<{ type: "user" | "agent"; data: User | Agent }>
+  participants: Array<{ type: "user" | "agent"; data: User | Agent }>,
 ) {
   return participants.map((participant) => {
     if (participant.type === "user") {
@@ -175,7 +177,7 @@ function participantsToAvatarProps(
 
 // Helper function to categorize conversation by date
 function getDateBucket(
-  updatedAt: Date
+  updatedAt: Date,
 ): "Today" | "Yesterday" | "Last Week" | "Last Month" {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -189,7 +191,7 @@ function getDateBucket(
   const conversationDate = new Date(
     updatedAt.getFullYear(),
     updatedAt.getMonth(),
-    updatedAt.getDate()
+    updatedAt.getDate(),
   );
 
   if (conversationDate.getTime() >= today.getTime()) {
@@ -206,7 +208,7 @@ function getDateBucket(
 // Helper function to generate more conversations with varied dates
 function generateConversationsWithDates(
   conversations: Conversation[],
-  count: number
+  count: number,
 ): Conversation[] {
   const now = new Date();
   const generated: Conversation[] = [];
@@ -262,7 +264,7 @@ function generateJoinedAt(spaceId: string, memberId: string): Date {
     Math.floor(random * 24),
     Math.floor(seededRandom(seed, 1) * 60),
     0,
-    0
+    0,
   );
 
   return joinedAt;
@@ -282,7 +284,7 @@ const fakeDocumentFirstLines = [
 function getFakeDocumentFirstLine(dataSource: DataSource): string {
   const seed = `${dataSource.id}-${dataSource.fileName}`;
   const index = Math.floor(
-    seededRandom(seed, 2) * fakeDocumentFirstLines.length
+    seededRandom(seed, 2) * fakeDocumentFirstLines.length,
   );
   return (
     fakeDocumentFirstLines[index] ||
@@ -292,7 +294,7 @@ function getFakeDocumentFirstLine(dataSource: DataSource): string {
 
 function getBaseConversationId(
   conversation: Conversation,
-  allConversations: Conversation[]
+  allConversations: Conversation[],
 ): string {
   const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
   if (expandedIdMatch) {
@@ -311,6 +313,7 @@ export function GroupConversationView({
   users,
   agents,
   spaceMemberIds = [],
+  editorUserIds = [],
   onConversationClick,
   onInviteMembers,
   showToolsAndAboutTabs = false,
@@ -328,17 +331,17 @@ export function GroupConversationView({
   const [roomName, setRoomName] = useState(space.name);
   const [isEditingName, setIsEditingName] = useState(false);
   const [isPublic, setIsPublic] = useState(
-    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
+    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true,
   );
   const [showNameSaveDialog, setShowNameSaveDialog] = useState(false);
   const [showPublicToggleDialog, setShowPublicToggleDialog] = useState(false);
   const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
-    null
+    null,
   );
 
   // Knowledge tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
-    getDataSourcesBySpaceId(space.id)
+    getDataSourcesBySpaceId(space.id),
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<
@@ -402,7 +405,7 @@ export function GroupConversationView({
         }
         return acc;
       },
-      []
+      [],
     );
 
     const conversationResults = expandedConversations.reduce<
@@ -445,7 +448,7 @@ export function GroupConversationView({
 
     const baseConversationId = getBaseConversationId(
       item.conversation,
-      conversations
+      conversations,
     );
     onConversationClick?.({
       ...item.conversation,
@@ -529,7 +532,7 @@ export function GroupConversationView({
     Object.keys(buckets).forEach((key) => {
       const bucketKey = key as keyof typeof buckets;
       buckets[bucketKey].sort(
-        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
       );
     });
 
@@ -658,7 +661,7 @@ export function GroupConversationView({
   const handleDeleteConfirm = () => {
     if (selectedDataSourceId) {
       setDataSources((prev) =>
-        prev.filter((ds) => ds.id !== selectedDataSourceId)
+        prev.filter((ds) => ds.id !== selectedDataSourceId),
       );
       setSelectedDataSourceId(null);
     }
@@ -768,7 +771,7 @@ export function GroupConversationView({
         ),
       },
     ],
-    []
+    [],
   );
 
   // Create member table columns
@@ -816,6 +819,24 @@ export function GroupConversationView({
         },
       },
       {
+        accessorKey: "userId",
+        header: "Role",
+        id: "role",
+        meta: {
+          className: "s-w-[120px]",
+        },
+        cell: (info) => {
+          const userId = info.getValue() as string;
+          return editorUserIds.includes(userId) ? (
+            <DataTable.CellContent>
+              <Chip size="xs" color="green" label="editor" />
+            </DataTable.CellContent>
+          ) : (
+            <DataTable.BasicCellContent label="" />
+          );
+        },
+      },
+      {
         accessorKey: "joinedAt",
         header: "Joined at",
         id: "joinedAt",
@@ -851,7 +872,7 @@ export function GroupConversationView({
         ),
       },
     ],
-    []
+    [editorUserIds],
   );
 
   // Filter members based on search text
@@ -1044,11 +1065,11 @@ export function GroupConversationView({
                                 const participants = getRandomParticipants(
                                   conversation,
                                   users,
-                                  agents
+                                  agents,
                                 );
                                 const creator = getRandomCreator(
                                   conversation,
-                                  users
+                                  users,
                                 );
                                 const avatarProps =
                                   participantsToAvatarProps(participants);
@@ -1064,18 +1085,18 @@ export function GroupConversationView({
 
                                 // Generate random message count (1-3)
                                 const messageCount = Math.floor(
-                                  Math.random() * 3 + 1
+                                  Math.random() * 3 + 1,
                                 );
 
                                 // Generate random reply count (1-8)
                                 const replyCount = Math.floor(
-                                  Math.random() * 8 + 1
+                                  Math.random() * 8 + 1,
                                 );
 
                                 const baseConversationId =
                                   getBaseConversationId(
                                     conversation,
-                                    conversations
+                                    conversations,
                                   );
 
                                 const conversationForLookup = {
@@ -1105,7 +1126,7 @@ export function GroupConversationView({
                                     }
                                     onClick={() => {
                                       onConversationClick?.(
-                                        conversationForLookup
+                                        conversationForLookup,
                                       );
                                     }}
                                   />
@@ -1250,7 +1271,7 @@ export function GroupConversationView({
               {/* Members Section */}
               <div className="s-flex s-flex-col s-gap-3">
                 <div className="s-flex s-items-center s-gap-2">
-                  <h3 className="s-heading-lg s-flex-1">Members</h3>
+                  <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
                   <Button
                     label="Invite"
                     variant="outline"
