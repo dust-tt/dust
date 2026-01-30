@@ -133,6 +133,7 @@ async function isUserMemberOfSpace(
 
 /**
  * Check if the current user can add members to a project space.
+ * TODO: remove when dedicated method is merged in space 
  */
 async function canCurrentUserAddProjectMembers(
   auth: Authenticator,
