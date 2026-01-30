@@ -355,61 +355,57 @@ async function runStandardEvaluation(
   const evaluationStartTime = Date.now()
   let completedCount = 0
 
-  // Process tasks in parallel batches
-  for (let i = 0; i < allTasks.length; i += config.parallel) {
-    // Check for graceful shutdown request
-    if (shutdownRequested) {
-      console.error("\n[Shutdown requested - saving checkpoint...]")
-      await saveCheckpoint(config, results, completedTasks, startTimeStr)
-      console.error(`[Checkpoint saved: ${results.length} results]`)
-      return Err(new Error("Evaluation interrupted by shutdown request"))
+  // Shared task index — workers claim tasks by incrementing this counter.
+  // Safe in single-threaded JS: mutations happen synchronously between awaits.
+  let nextTaskIndex = 0
+
+  function processResult(result: EvalResult, task: EvalTask) {
+    results.push(result)
+    completedTasks.add(task.taskId)
+    completedCount++
+
+    if (result.agentConversationId) {
+      conversationIds.push(result.agentConversationId)
     }
-
-    const batch = allTasks.slice(i, i + config.parallel)
-    const batchNumber = Math.floor(i / config.parallel) + 1
-    const totalBatches = Math.ceil(allTasks.length / config.parallel)
-
-    // Calculate ETA
-    let etaStr = ""
-    if (completedCount > 0) {
-      const elapsedMs = Date.now() - evaluationStartTime
-      const msPerTask = elapsedMs / completedCount
-      const remainingTasks = allTasks.length - completedCount
-      const etaMs = msPerTask * remainingTasks
-      const etaMin = Math.ceil(etaMs / 60000)
-      etaStr = etaMin > 1 ? ` (ETA: ${etaMin}m)` : ` (ETA: <1m)`
+    for (const vote of result.judgeResult.votes) {
+      if (vote.conversationId) {
+        conversationIds.push(vote.conversationId)
+      }
     }
+  }
 
-    console.error(
-      `\nProcessing batch ${batchNumber}/${totalBatches} (${batch.length} tasks)${etaStr}`
-    )
+  async function worker(workerId: number) {
+    while (true) {
+      if (shutdownRequested) return
 
-    // Execute batch in parallel - create promises at execution time, not before
-    const batchPromises = batch.map((task) =>
-      executeTask(task, config, client, scale, globalJudgePrompt)
-    )
+      const idx = nextTaskIndex++
+      if (idx >= allTasks.length) return
 
-    const batchResults = await Promise.all(batchPromises)
+      const task = allTasks[idx]!
 
-    // Process results
-    for (let j = 0; j < batchResults.length; j++) {
-      const result = batchResults[j]
-      const task = batch[j]
-      if (!result || !task) continue
-
-      results.push(result)
-      completedTasks.add(task.taskId)
-      completedCount++
-
-      // Collect conversation IDs
-      if (result.agentConversationId) {
-        conversationIds.push(result.agentConversationId)
+      // Log progress with ETA
+      let etaStr = ""
+      if (completedCount > 0) {
+        const elapsedMs = Date.now() - evaluationStartTime
+        const msPerTask = elapsedMs / completedCount
+        const remainingTasks = allTasks.length - completedCount
+        const etaMs = msPerTask * remainingTasks
+        const etaMin = Math.ceil(etaMs / 60000)
+        etaStr = etaMin > 1 ? ` (ETA: ${etaMin}m)` : ` (ETA: <1m)`
       }
-      for (const vote of result.judgeResult.votes) {
-        if (vote.conversationId) {
-          conversationIds.push(vote.conversationId)
-        }
-      }
+      console.error(
+        `  [Worker ${workerId}] Task ${completedCount + 1}/${allTasks.length}: ${task.taskId}${etaStr}`
+      )
+
+      const result = await executeTask(
+        task,
+        config,
+        client,
+        scale,
+        globalJudgePrompt
+      )
+
+      processResult(result, task)
 
       // Save checkpoint periodically
       checkpointCounter++
@@ -418,6 +414,20 @@ async function runStandardEvaluation(
         console.error(`  [Checkpoint saved: ${results.length} results]`)
       }
     }
+  }
+
+  // Launch worker pool — at most config.parallel workers, or fewer if tasks < parallel
+  const numWorkers = Math.min(config.parallel, allTasks.length)
+  await Promise.all(
+    Array.from({ length: numWorkers }, (_, i) => worker(i))
+  )
+
+  // If shutdown was requested during execution, save final checkpoint and return error
+  if (shutdownRequested) {
+    console.error("\n[Shutdown requested - saving checkpoint...]")
+    await saveCheckpoint(config, results, completedTasks, startTimeStr)
+    console.error(`[Checkpoint saved: ${results.length} results]`)
+    return Err(new Error("Evaluation interrupted by shutdown request"))
   }
 
   // Calculate statistics
