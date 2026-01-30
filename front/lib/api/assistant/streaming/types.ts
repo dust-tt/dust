@@ -2,6 +2,7 @@ import type { AgentActionRunningEvents } from "@app/lib/actions/mcp";
 import type { ToolPersonalAuthRequiredEvent } from "@app/lib/actions/mcp_internal_actions/events";
 import type {
   AgentActionSuccessEvent,
+  AgentContextPrunedEvent,
   AgentErrorEvent,
   AgentGenerationCancelledEvent,
   AgentMessageDoneEvent,
@@ -16,6 +17,7 @@ import type {
 export type AgentMessageEvents =
   | AgentActionRunningEvents
   | AgentActionSuccessEvent
+  | AgentContextPrunedEvent
   | AgentErrorEvent
   | AgentGenerationCancelledEvent
   | AgentMessageSuccessEvent
