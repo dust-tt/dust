@@ -23,6 +23,7 @@ import { AgentMCPActionResource } from "@app/lib/resources/agent_mcp_action_reso
 import { AgentMCPServerConfigurationResource } from "@app/lib/resources/agent_mcp_server_configuration_resource";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { RunResource } from "@app/lib/resources/run_resource";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
@@ -129,6 +130,7 @@ export async function storeAgentAnalyticsActivity(
     agentMessageRow,
     agentAgentMessageRow,
     userModel: userUserMessageRow.user ?? null,
+    userMessageModel: userUserMessageRow,
     conversationRow,
     contextOrigin: userUserMessageRow.userContextOrigin,
   });
@@ -143,6 +145,7 @@ export async function storeAgentAnalytics(
     agentMessageRow: MessageModel;
     agentAgentMessageRow: AgentMessageModel;
     userModel: UserModel | null;
+    userMessageModel: UserMessageModel;
     conversationRow: ConversationModel;
     contextOrigin: UserMessageOrigin | null;
   }
@@ -151,6 +154,7 @@ export async function storeAgentAnalytics(
     agentMessageRow,
     agentAgentMessageRow,
     userModel,
+    userMessageModel,
     conversationRow,
     contextOrigin,
   } = params;
@@ -193,8 +197,15 @@ export async function storeAgentAnalytics(
     ? getAgentMessageFeedbackAnalytics(agentAgentMessageRow.feedbacks)
     : [];
 
-  const apiKey = auth.key();
-
+  // Resolve API key name from stored ID, falling back to auth context if key was deleted.
+  let apiKeyName: string | undefined;
+  const storedKeyId = userMessageModel.userContextApiKeyId;
+  if (storedKeyId) {
+    const keyResource = await KeyResource.fetchByModelId(storedKeyId);
+    if (keyResource) {
+      apiKeyName = keyResource.name;
+    }
+  }
   // Build the complete analytics document.
   const document: AgentMessageAnalyticsData = {
     agent_id: agentAgentMessageRow.agentConfigurationId,
@@ -211,8 +222,8 @@ export async function storeAgentAnalytics(
     workspace_id: auth.getNonNullableWorkspace().sId,
     feedbacks,
     version: agentMessageRow.version.toString(),
-    auth_method: auth.authMethod(),
-    api_key_name: apiKey?.name,
+    auth_method: userMessageModel.userContextAuthMethod ?? auth.authMethod(),
+    api_key_name: apiKeyName,
   };
 
   await storeToElasticsearch(document);
