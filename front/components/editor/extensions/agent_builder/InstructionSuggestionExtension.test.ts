@@ -45,14 +45,24 @@ describe("InstructionSuggestionExtension", () => {
       expect(content?.[1]).toEqual({
         type: "text",
         text: "world",
-        marks: [{ type: "suggestionDeletion", attrs: { suggestionId: "test-suggestion-1" } }],
+        marks: [
+          {
+            type: "suggestionDeletion",
+            attrs: { suggestionId: "test-suggestion-1" },
+          },
+        ],
       });
 
       // Addition mark on "there"
       expect(content?.[2]).toEqual({
         type: "text",
         text: "there",
-        marks: [{ type: "suggestionAddition", attrs: { suggestionId: "test-suggestion-1" } }],
+        marks: [
+          {
+            type: "suggestionAddition",
+            attrs: { suggestionId: "test-suggestion-1" },
+          },
+        ],
       });
     });
 
@@ -121,15 +131,17 @@ describe("InstructionSuggestionExtension", () => {
       const content = json.content?.[0]?.content;
 
       // Should have "Hello" plain + " world" with deletion mark (no addition)
-      expect(content?.some(
-        (node: { marks?: Array<{ type: string }> }) =>
+      expect(
+        content?.some((node: { marks?: Array<{ type: string }> }) =>
           node.marks?.some((m) => m.type === "suggestionDeletion")
-      )).toBe(true);
+        )
+      ).toBe(true);
 
-      expect(content?.some(
-        (node: { marks?: Array<{ type: string }> }) =>
+      expect(
+        content?.some((node: { marks?: Array<{ type: string }> }) =>
           node.marks?.some((m) => m.type === "suggestionAddition")
-      )).toBe(false);
+        )
+      ).toBe(false);
     });
 
     it("should return false if find text not found", () => {
@@ -153,9 +165,9 @@ describe("InstructionSuggestionExtension", () => {
         replacement: "there",
       });
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toContain(
-        "test-suggestion-6"
-      );
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-suggestion-6");
     });
 
     it("should handle multiple suggestions", () => {
@@ -175,12 +187,12 @@ describe("InstructionSuggestionExtension", () => {
         replacement: "farewell",
       });
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toContain(
-        "suggestion-a"
-      );
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toContain(
-        "suggestion-b"
-      );
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("suggestion-a");
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("suggestion-b");
     });
   });
 
@@ -223,9 +235,9 @@ describe("InstructionSuggestionExtension", () => {
         replacement: "there",
       });
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toContain(
-        "test-accept-2"
-      );
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-accept-2");
 
       editor.commands.acceptSuggestion("test-accept-2");
 
@@ -260,9 +272,9 @@ describe("InstructionSuggestionExtension", () => {
       ).not.toContain("suggestion-x");
 
       // suggestion-y should still be active
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toContain(
-        "suggestion-y"
-      );
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("suggestion-y");
     });
   });
 
@@ -305,9 +317,9 @@ describe("InstructionSuggestionExtension", () => {
         replacement: "there",
       });
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toContain(
-        "test-reject-2"
-      );
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toContain("test-reject-2");
 
       editor.commands.rejectSuggestion("test-reject-2");
 
@@ -336,7 +348,9 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).not.toContain("Hello");
 
       // Storage should be empty
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toHaveLength(0);
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toHaveLength(0);
     });
 
     it("should clear all suggestion IDs from storage", () => {
@@ -350,11 +364,15 @@ describe("InstructionSuggestionExtension", () => {
         replacement: "there",
       });
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toHaveLength(1);
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toHaveLength(1);
 
       editor.commands.acceptAllSuggestions();
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toHaveLength(0);
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toHaveLength(0);
     });
   });
 
@@ -378,7 +396,9 @@ describe("InstructionSuggestionExtension", () => {
       expect(text).not.toContain("Hi");
 
       // Storage should be empty
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toHaveLength(0);
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toHaveLength(0);
     });
 
     it("should clear all suggestion IDs from storage", () => {
@@ -392,11 +412,15 @@ describe("InstructionSuggestionExtension", () => {
         replacement: "there",
       });
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toHaveLength(1);
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toHaveLength(1);
 
       editor.commands.rejectAllSuggestions();
 
-      expect(editor.storage.instructionSuggestion.activeSuggestionIds).toHaveLength(0);
+      expect(
+        editor.storage.instructionSuggestion.activeSuggestionIds
+      ).toHaveLength(0);
     });
   });
 
