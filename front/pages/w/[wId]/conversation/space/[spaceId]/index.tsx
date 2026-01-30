@@ -13,7 +13,7 @@ const PageWithAuthLayout = SpaceConversationsPage as AppPageWithLayout;
 
 PageWithAuthLayout.getLayout = (
   page: ReactElement,
-  pageProps: AuthContextValue,
+  pageProps: AuthContextValue
 ) => {
   return (
     <AppAuthContextLayout authContext={pageProps}>
