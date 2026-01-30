@@ -8,15 +8,17 @@ import {
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { FormProvider, useForm } from "react-hook-form";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
 import { ProjectUrlsSection } from "@app/components/assistant/conversation/space/about/ProjectUrlsSection";
+import { ConfirmContext } from "@app/components/Confirm";
 import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
 import {
   useProjectMetadata,
+  useSpaceInfo,
   useUpdateProjectMetadata,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
@@ -27,8 +29,8 @@ import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: SpaceType;
-  initialMembers: SpaceUserType[];
-  initialIsRestricted: boolean;
+  projectMembers: SpaceUserType[];
+  isPublic: boolean;
   isProjectEditor: boolean;
   onOpenInvitePanel?: () => void;
 }
@@ -36,19 +38,14 @@ interface SpaceAboutTabProps {
 export function SpaceAboutTab({
   owner,
   space,
-  initialMembers,
-  initialIsRestricted,
+  projectMembers,
+  isPublic,
   isProjectEditor,
   onOpenInvitePanel,
 }: SpaceAboutTabProps) {
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
-  const [savedIsPublic, setSavedIsPublic] = useState(!initialIsRestricted);
-  const [isPublic, setIsPublic] = useState(!initialIsRestricted);
-  const [savedMembers, setSavedMembers] =
-    useState<SpaceUserType[]>(initialMembers);
-  const [selectedMembers, setSelectedMembers] =
-    useState<SpaceUserType[]>(initialMembers);
-  const [isSaving, setIsSaving] = useState(false);
+
+  const confirm = useContext(ConfirmContext);
 
   // Project metadata form
   const [isSavingMetadata, setIsSavingMetadata] = useState(false);
@@ -80,51 +77,10 @@ export function SpaceAboutTab({
   }, [projectMetadata, form]);
 
   const doUpdate = useUpdateSpace({ owner });
-
-  useEffect(() => {
-    setSavedMembers(initialMembers);
-    setSelectedMembers(initialMembers);
-  }, [initialMembers]);
-
-  const hasChanges = useMemo(() => {
-    if (isPublic !== savedIsPublic) {
-      return true;
-    }
-
-    const currentMemberIds = selectedMembers.map((m) => m.sId).sort();
-    const savedMemberIds = savedMembers.map((m) => m.sId).sort();
-    const memberIdsChanged =
-      JSON.stringify(currentMemberIds) !== JSON.stringify(savedMemberIds);
-
-    // Check if editor IDs have changed
-    const selectedEditorIds = selectedMembers
-      .filter((m) => m.isEditor)
-      .map((m) => m.sId)
-      .sort();
-    const savedEditorIds = savedMembers
-      .filter((m: SpaceUserType) => m.isEditor)
-      .map((m) => m.sId)
-      .sort();
-    const editorsChanged =
-      JSON.stringify(savedEditorIds) !== JSON.stringify(selectedEditorIds);
-
-    return memberIdsChanged || editorsChanged;
-  }, [selectedMembers, savedMembers, isPublic, savedIsPublic]);
-
-  const canSave = useMemo(() => {
-    if (!isProjectEditor) {
-      return false;
-    }
-    if (!hasChanges) {
-      return false;
-    }
-    if (
-      selectedMembers.filter((m) => m.isEditor).length === 0 // a project must have at least one editor
-    ) {
-      return false;
-    }
-    return true;
-  }, [hasChanges, selectedMembers, isProjectEditor]);
+  const { mutateSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: space.sId,
+  });
 
   const onSaveMetadata = form.handleSubmit(async (data) => {
     setIsSavingMetadata(true);
@@ -132,37 +88,35 @@ export function SpaceAboutTab({
     setIsSavingMetadata(false);
   });
 
-  const onSave = useCallback(async () => {
-    if (!canSave) {
+  const handleVisibilityToggle = async () => {
+    const newIsPublic = !isPublic;
+    const message = newIsPublic
+      ? "Anyone in the workspace will be able to find and join this project. Are you sure?"
+      : "Only invited members will be able to access this project. Are you sure?";
+
+    const confirmed = await confirm({
+      title: "Change project visibility",
+      message,
+      validateVariant: "warning",
+    });
+
+    if (!confirmed) {
       return;
     }
 
-    setIsSaving(true);
-
-    const updatedSpace = await doUpdate(space, {
-      isRestricted: !isPublic,
-      memberIds: selectedMembers
-        .filter((m) => !m.isEditor)
-        .map((member) => member.sId),
-      editorIds: selectedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+    const updated = await doUpdate(space, {
+      isRestricted: !newIsPublic,
+      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
       managementMode: "manual",
       name: space.name,
     });
-    if (updatedSpace) {
-      // reset only if the update was successful
-      setSavedMembers(selectedMembers);
-      setSavedIsPublic(isPublic);
+
+    if (updated) {
+      await mutateSpaceInfo();
     }
-    setIsSaving(false);
-  }, [
-    canSave,
-    doUpdate,
-    selectedMembers,
-    isPublic,
-    space,
-    setSavedIsPublic,
-    setSavedMembers,
-  ]);
+  };
+
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
@@ -225,7 +179,7 @@ export function SpaceAboutTab({
             <SliderToggle
               size="xs"
               selected={isPublic}
-              onClick={() => setIsPublic((prev) => !prev)}
+              onClick={handleVisibilityToggle}
               disabled={!isProjectEditor}
             />
           </div>
@@ -242,7 +196,7 @@ export function SpaceAboutTab({
             />
           )}
         </div>
-        {selectedMembers.length > 0 && (
+        {projectMembers.length > 0 && (
           <>
             <SearchInput
               name="search"
@@ -254,24 +208,12 @@ export function SpaceAboutTab({
               <MembersTable
                 owner={owner}
                 space={space}
-                onMembersUpdated={setSelectedMembers}
-                selectedMembers={selectedMembers}
+                selectedMembers={projectMembers}
                 searchSelectedMembers={searchSelectedMembers}
                 isEditor={isProjectEditor}
               />
             </ScrollArea>
           </>
-        )}
-
-        {isProjectEditor && (
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              variant="primary"
-              label={isSaving ? "Saving..." : "Save"}
-              onClick={onSave}
-              disabled={!canSave || isSaving}
-            />
-          </div>
         )}
 
         {isProjectEditor && (
