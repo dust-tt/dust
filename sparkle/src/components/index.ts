@@ -182,6 +182,8 @@ export {
 } from "./Popover";
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
+export type { RequestCardProps } from "./RequestCard";
+export { RequestCard } from "./RequestCard";
 export { RainbowEffect } from "./RainbowEffect";
 export {
   ResizableHandle,
