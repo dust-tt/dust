@@ -350,6 +350,7 @@ export function DatasourceRetrievalTreemapChart({
     days: period,
     version,
     mcpServerConfigIds: zoomSelection?.mcpServerConfigIds ?? null,
+    mcpServerName: zoomSelection?.mcpServerName ?? null,
     dataSourceId: zoomSelection?.dataSourceId ?? null,
     limit: DOCUMENTS_LIMIT,
     disabled: !zoomSelection,
@@ -397,20 +398,23 @@ export function DatasourceRetrievalTreemapChart({
   }, [documents, groups, zoomSelection]);
 
   const handleDatasourceClick = useCallback((node: TreemapNode) => {
+    // Need either config IDs or server name (for servers like data_sources_file_system).
+    const hasConfigIds =
+      node.mcpServerConfigIds && node.mcpServerConfigIds.length > 0;
+    const hasServerName = !!node.mcpServerName;
+
     if (
-      !node.mcpServerConfigIds ||
-      node.mcpServerConfigIds.length === 0 ||
+      (!hasConfigIds && !hasServerName) ||
       !node.mcpServerDisplayName ||
-      !node.mcpServerName ||
       !node.dataSourceId
     ) {
       return;
     }
 
     setZoomSelection({
-      mcpServerConfigIds: node.mcpServerConfigIds,
+      mcpServerConfigIds: node.mcpServerConfigIds ?? [],
       mcpServerDisplayName: node.mcpServerDisplayName,
-      mcpServerName: node.mcpServerName,
+      mcpServerName: node.mcpServerName ?? "",
       dataSourceId: node.dataSourceId,
       dataSourceDisplayName: node.name,
       connectorProvider: node.connectorProvider,

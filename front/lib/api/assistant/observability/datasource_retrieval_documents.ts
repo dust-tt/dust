@@ -50,13 +50,6 @@ type DatasourceRetrievalDocumentsAggs = {
 
 const CORE_SEARCH_NODES_BATCH_SIZE = 200;
 
-// Internal MCP servers use fake numeric IDs (like -1, 0) instead of real sIds.
-// This function checks if a string represents a pure numeric ID.
-function isNumericId(id: string): boolean {
-  const numericId = parseInt(id, 10);
-  return !isNaN(numericId) && numericId.toString() === id;
-}
-
 function chunkArray<T>(items: T[], batchSize: number): T[][] {
   if (batchSize <= 0) {
     return [items];
@@ -138,6 +131,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     days,
     version,
     mcpServerConfigIds,
+    mcpServerName,
     dataSourceId,
     limit = 50,
   }: {
@@ -145,34 +139,27 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     days?: number;
     version?: string;
     mcpServerConfigIds: string[];
+    // For servers without config IDs (like data_sources_file_system), use name instead.
+    mcpServerName?: string;
     dataSourceId: string;
     limit?: number;
   }
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  // Separate real config sIds from fake numeric IDs (used by internal MCP servers like -1, 0)
-  const realConfigSIds = mcpServerConfigIds.filter((id) => !isNumericId(id));
-  const fakeNumericIds = mcpServerConfigIds
-    .filter(isNumericId)
-    .map((id) => parseInt(id, 10));
-
-  // Fetch real configs by sId
+  // Fetch configs by sId (only for servers with real config IDs).
   const mcpServerConfigs =
-    realConfigSIds.length > 0
+    mcpServerConfigIds.length > 0
       ? await AgentMCPServerConfigurationResource.fetchByIds(
           auth,
-          realConfigSIds
+          mcpServerConfigIds
         )
       : [];
 
-  // Combine real config model IDs with fake numeric IDs
-  const mcpServerConfigModelIds = [
-    ...mcpServerConfigs.map((config) => config.id),
-    ...fakeNumericIds,
-  ];
+  const mcpServerConfigModelIds = mcpServerConfigs.map((config) => config.id);
 
-  if (mcpServerConfigModelIds.length === 0) {
+  // Need at least one filter: either by config IDs or by server name.
+  if (mcpServerConfigModelIds.length === 0 && !mcpServerName) {
     return new Ok({ documents: [], groups: [], total: 0 });
   }
 
@@ -183,13 +170,27 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     version,
   });
 
+  // Build server filter: by config IDs OR by server name.
+  const serverFilters: estypes.QueryDslQueryContainer[] = [];
+  if (mcpServerConfigModelIds.length > 0) {
+    serverFilters.push({
+      terms: { mcp_server_configuration_id: mcpServerConfigModelIds },
+    });
+  }
+  if (mcpServerName) {
+    serverFilters.push({
+      term: { mcp_server_name: mcpServerName },
+    });
+  }
+
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         baseQuery,
         {
-          terms: {
-            mcp_server_configuration_id: mcpServerConfigModelIds,
+          bool: {
+            should: serverFilters,
+            minimum_should_match: 1,
           },
         },
         {

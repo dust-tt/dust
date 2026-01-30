@@ -5,14 +5,12 @@ import { Op } from "sequelize";
 import { Authenticator } from "@app/lib/auth";
 import { AgentMCPActionModel } from "@app/lib/models/agent/actions/mcp";
 import {
-  AgentMessageFeedbackModel,
   AgentMessageModel,
   ConversationModel,
   MessageModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
-import { UserModel } from "@app/lib/resources/storage/models/user";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type { Logger } from "@app/logger/logger";
@@ -136,20 +134,6 @@ async function backfillAgentAnalyticsWorkflow(
           model: AgentMessageModel,
           as: "agentMessage",
           required: true,
-          include: [
-            {
-              model: AgentMessageFeedbackModel,
-              as: "feedbacks",
-              required: false,
-              include: [
-                {
-                  model: UserModel,
-                  as: "user",
-                  required: false,
-                },
-              ],
-            },
-          ],
         },
         {
           model: ConversationModel,
@@ -219,78 +203,50 @@ async function backfillAgentAnalyticsWorkflow(
     );
 
     if (execute && filteredBatch.length > 0) {
+      // Filter out messages without parent IDs and collect parent IDs for batch fetch.
+      const messagesWithParents = filteredBatch.filter((m) => m.parentId);
+      const parentIds = messagesWithParents.map((m) => m.parentId as number);
+
+      // Batch fetch all parent user messages to avoid N+1 queries.
+      const userMessageRows = await MessageModel.findAll({
+        where: {
+          id: { [Op.in]: parentIds },
+          workspaceId: workspace.id,
+        },
+        include: [
+          {
+            model: UserMessageModel,
+            as: "userMessage",
+            required: true,
+          },
+        ],
+      });
+      const userMessageById = new Map(userMessageRows.map((m) => [m.id, m]));
+
       await concurrentExecutor(
-        filteredBatch,
+        messagesWithParents,
         async (agentMessageRow) => {
           try {
-            // Find the parent user message
-            if (!agentMessageRow.parentId) {
-              logger.warn(
-                {
-                  messageId: agentMessageRow.sId,
-                  workspaceId: workspace.sId,
-                },
-                "Skipping agent message without parent user message"
-              );
+            const userMessageRow = userMessageById.get(
+              agentMessageRow.parentId as number
+            );
+            if (!userMessageRow?.userMessage) {
               return;
             }
 
-            const userMessageRow = await MessageModel.findOne({
-              where: {
-                id: agentMessageRow.parentId,
-                workspaceId: workspace.id,
-              },
-              include: [
-                {
-                  model: UserMessageModel,
-                  as: "userMessage",
-                  required: true,
-                  include: [
-                    {
-                      model: UserModel,
-                      as: "user",
-                      required: false,
-                    },
-                  ],
-                },
-              ],
-            });
-
-            // Find the parent user message
-            if (!userMessageRow) {
-              logger.warn(
-                {
-                  messageId: agentMessageRow.sId,
-                  workspaceId: workspace.sId,
-                },
-                "Skipping agent message without parent user message"
-              );
+            const { agentMessage, conversation } = agentMessageRow;
+            if (!agentMessage || !conversation) {
               return;
-            }
-
-            const {
-              agentMessage: agentAgentMessageRow,
-              conversation: conversationRow,
-            } = agentMessageRow;
-
-            if (!agentAgentMessageRow || !conversationRow) {
-              throw new Error("Agent message or conversation not found");
-            }
-
-            const { userMessage: userUserMessageRow } = userMessageRow;
-
-            if (!userUserMessageRow) {
-              throw new Error("User message not found");
             }
 
             const agentLoopArgs: AgentLoopArgs = {
               agentMessageId: agentMessageRow.sId,
               agentMessageVersion: agentMessageRow.version,
-              conversationId: conversationRow.sId,
-              conversationTitle: conversationRow.title,
+              conversationId: conversation.sId,
+              conversationTitle: conversation.title,
               userMessageId: userMessageRow.sId,
               userMessageVersion: userMessageRow.version,
-              userMessageOrigin: userUserMessageRow.userContextOrigin,
+              userMessageOrigin: userMessageRow.userMessage.userContextOrigin,
             };
 
             const result = await launchStoreAgentAnalyticsWorkflow({

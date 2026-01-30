@@ -320,6 +320,9 @@ async function collectToolUsageFromMessage(
   });
 }
 
+// Internal server that doesn't have a persistent DB configuration.
+const FILE_SYSTEM_SERVER_NAME = "data_sources_file_system";
+
 async function extractRetrievalDocuments(
   auth: Authenticator,
   {
@@ -344,13 +347,15 @@ async function extractRetrievalDocuments(
     return [];
   }
 
+  // Filter out file_system server actions - they don't have DB configurations.
+  const actionsWithConfigs = searchActions.filter(
+    (a) => a.metadata.internalMCPServerName !== FILE_SYSTEM_SERVER_NAME
+  );
   const configIds = Array.from(
-    new Set(searchActions.map((a) => a.mcpServerConfigurationId))
+    new Set(actionsWithConfigs.map((a) => a.mcpServerConfigurationId))
   );
 
-  // Convert string IDs to numeric ModelIds at call site.
-  // Internal MCP servers (like data_sources_file_system) use fake IDs like -1, 0
-  // that won't exist in the database, but we filter them out here with isNaN check.
+  // Convert string IDs to numeric ModelIds.
   const configModelIds: ModelId[] = configIds
     .map((id) => parseInt(id, 10))
     .filter((id) => !isNaN(id) && id > 0);
@@ -377,7 +382,7 @@ async function extractRetrievalDocuments(
   };
 
   const partialDocuments: (typeof baseDocument & {
-    mcp_server_configuration_id: string;
+    mcp_server_configuration_id?: number;
     mcp_server_name: string;
     data_source_view_id: string;
     data_source_id: string;
@@ -386,9 +391,12 @@ async function extractRetrievalDocuments(
   const dataSourceViewIds = new Set<string>();
 
   for (const action of searchActions) {
-    // config may be null for internal MCP servers (like data_sources_file_system)
-    // which use dynamically generated configs with fake IDs (-1, 0, etc.)
-    const config = configMap.get(action.mcpServerConfigurationId);
+    const isFileSystemServer =
+      action.metadata.internalMCPServerName === FILE_SYSTEM_SERVER_NAME;
+    // Skip config lookup for file_system server - it doesn't have a DB configuration.
+    const config = isFileSystemServer
+      ? null
+      : configMap.get(action.mcpServerConfigurationId);
 
     const actionOutputItems = outputItemsByActionId.get(action.id);
     if (!actionOutputItems) {
@@ -426,9 +434,8 @@ async function extractRetrievalDocuments(
 
       partialDocuments.push({
         ...baseDocument,
-        // Use config.id if available, fall back to action.mcpServerConfigurationId for internal servers
-        mcp_server_configuration_id:
-          config?.id.toString() ?? action.mcpServerConfigurationId,
+        // Only include config ID for servers with DB configurations (not file_system).
+        ...(config && { mcp_server_configuration_id: config.id }),
         mcp_server_name: mcpServerName,
         data_source_view_id: dataSourceViewId,
         data_source_id: dataSourceId,
