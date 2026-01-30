@@ -12779,10 +12779,7 @@
       }
     ],
     "toolsStakes": {
-      "get_actions": "never_ask",
-      "get_cadences": "never_ask",
-      "get_current_user": "never_ask",
-      "get_tasks": "never_ask"
+      "get_actions": "never_ask"
     }
   },
   {

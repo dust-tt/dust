@@ -5,7 +5,6 @@ import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/co
 import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
 import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
-import { default as salesloftServer } from "@app/lib/actions/mcp_internal_actions/servers/salesloft";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import { default as vantaServer } from "@app/lib/actions/mcp_internal_actions/servers/vanta";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -55,6 +54,7 @@ import { default as tablesQueryServerV2 } from "@app/lib/api/actions/servers/que
 import { default as runAgentServer } from "@app/lib/api/actions/servers/run_agent";
 import { default as dustAppServer } from "@app/lib/api/actions/servers/run_dust_app";
 import { default as salesforceServer } from "@app/lib/api/actions/servers/salesforce";
+import { default as salesloftServer } from "@app/lib/api/actions/servers/salesloft";
 import { default as sandboxServer } from "@app/lib/api/actions/servers/sandbox";
 import { default as schedulesManagementServer } from "@app/lib/api/actions/servers/schedules_management";
 import { default as searchServer } from "@app/lib/api/actions/servers/search";

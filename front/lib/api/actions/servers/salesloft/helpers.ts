@@ -1,270 +1,144 @@
+import type { AgentLoopContextType } from "@app/lib/actions/types";
+import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
+import {
+  getAllPages,
+  makeSalesloftRequest,
+  makeSalesloftSingleItemRequest,
+} from "@app/lib/api/actions/servers/salesloft/client";
+import type {
+  SalesloftAction,
+  SalesloftActionDetails,
+  SalesloftActionWithDetails,
+  SalesloftCadence,
+  SalesloftPerson,
+  SalesloftStep,
+  SalesloftUser,
+} from "@app/lib/api/actions/servers/salesloft/types";
+import type { Authenticator } from "@app/lib/auth";
+import { DustAppSecretModel } from "@app/lib/models/dust_app_secret";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
+import { decrypt } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-const SALESLOFT_API_BASE_URL = "https://api.salesloft.com/v2";
-
-interface SalesloftUser {
-  id: number;
-  guid: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-}
-
-interface SalesloftCadence {
-  id: number;
-  name: string;
-  team_cadence: boolean;
-}
-
-interface SalesloftPerson {
-  id: number;
-  first_name: string | null;
-  last_name: string | null;
-  email_address: string | null;
-  phone: string | null;
-  linkedin_url: string | null;
-  title: string | null;
-  city: string | null;
-  state: string | null;
-  country: string | null;
-  person_company_name: string | null;
-  person_company_website: string | null;
-  do_not_contact: boolean | null;
-  twitter_handle: string | null;
-  job_seniority: string | null;
-  job_function: string | null;
-  untouched: boolean | null;
-  hot_lead: boolean | null;
-}
-
-interface SalesloftStep {
-  id: number;
-  cadence_id: number;
-  name: string;
-  step_number: number;
-  type: string;
-}
-
-interface SalesloftAction {
-  id: number;
-  type: string;
-  due: boolean;
-  status: string;
-  due_on: string | null;
-  action_details: {
-    id: number;
-    _href: string;
-  } | null;
-  user: {
-    id: number;
-    _href: string;
-  } | null;
-  person: {
-    id: number;
-    _href: string;
-  } | null;
-  cadence: {
-    id: number;
-    _href: string;
-  } | null;
-  step: {
-    id: number;
-    _href: string;
-  } | null;
-  task: {
-    id: number;
-    _href: string;
-  } | null;
-}
-
-interface SalesloftActionDetails {
-  [key: string]: unknown;
-}
-
-export interface SalesloftActionWithDetails {
-  action: SalesloftAction;
-  person: SalesloftPerson | null;
-  cadence: SalesloftCadence | null;
-  step: SalesloftStep | null;
-  action_details: SalesloftActionDetails | null;
-}
-
-interface SalesloftApiResponse<T> {
-  data: T[];
-  metadata: {
-    paging?: {
-      per_page: number;
-      current_page: number;
-      next_page: number | null;
-      prev_page: number | null;
-    };
-  };
-}
-
-interface SalesloftSingleItemResponse<T> {
-  data: T;
-}
-
-async function handleSalesloftError(
-  response: Response,
-  errorText: string
-): Promise<never> {
-  let errorMessage = `Salesloft API error: ${response.status} ${response.statusText}`;
-
-  if (errorText) {
-    try {
-      const errorData = JSON.parse(errorText);
-
-      if (response.status === 422 && errorData.errors) {
-        const fieldErrors = Object.entries(errorData.errors)
-          .map(
-            ([field, errors]) =>
-              `${field}: ${Array.isArray(errors) ? errors.join(", ") : errors}`
-          )
-          .join("; ");
-        errorMessage += ` - ${fieldErrors}`;
-      } else if (errorData.error) {
-        errorMessage += ` - ${errorData.error}`;
-      } else if (errorData.message) {
-        errorMessage += ` - ${errorData.message}`;
-      } else {
-        errorMessage += ` - ${errorText.substring(0, 200)}`;
-      }
-    } catch {
-      errorMessage += ` - ${errorText.substring(0, 200)}`;
-    }
+export async function getBearerToken(
+  auth: Authenticator,
+  agentLoopContext?: AgentLoopContextType
+): Promise<string | null> {
+  const toolConfig = agentLoopContext?.runContext?.toolConfiguration;
+  if (
+    !toolConfig ||
+    !isLightServerSideMCPToolConfiguration(toolConfig) ||
+    !toolConfig.secretName
+  ) {
+    return null;
   }
 
-  if (response.status === 401 || response.status === 403) {
-    throw new Error(
-      `Authentication failed: ${errorMessage}. Please verify your bearer token is valid.`
-    );
-  }
-
-  throw new Error(errorMessage);
-}
-
-async function makeSalesloftRequest<T>(
-  accessToken: string,
-  endpoint: string,
-  params?: Record<string, string | number | boolean>
-): Promise<SalesloftApiResponse<T>> {
-  const url = new URL(`${SALESLOFT_API_BASE_URL}${endpoint}`);
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.append(key, String(value));
-    });
-  }
-
-  // eslint-disable-next-line no-restricted-globals
-  const response = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
+  const secret = await DustAppSecretModel.findOne({
+    where: {
+      name: toolConfig.secretName,
+      workspaceId: auth.getNonNullableWorkspace().id,
     },
   });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    await handleSalesloftError(response, errorText);
-  }
+  const bearerToken = secret
+    ? decrypt(secret.hash, auth.getNonNullableWorkspace().sId)
+    : null;
 
-  const jsonResponse = await response.json();
-
-  if (!jsonResponse || typeof jsonResponse !== "object") {
-    throw new Error("Invalid response format from Salesloft API");
-  }
-
-  return jsonResponse;
+  return bearerToken;
 }
 
-async function makeSalesloftSingleItemRequest<T>(
-  accessToken: string,
-  endpoint: string
-): Promise<SalesloftSingleItemResponse<T>> {
-  const url = new URL(`${SALESLOFT_API_BASE_URL}${endpoint}`);
+export function formatActionAsString(
+  action: SalesloftActionWithDetails
+): string {
+  const parts: string[] = [];
 
-  // eslint-disable-next-line no-restricted-globals
-  const response = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json",
-    },
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    await handleSalesloftError(response, errorText);
+  parts.push(`Action #${action.action.id}`);
+  parts.push(`Type: ${action.action.type}`);
+  parts.push(`Status: ${action.action.status}`);
+  parts.push(`Due: ${action.action.due ? "Yes" : "No"}`);
+  if (action.action.due_on) {
+    parts.push(`Due On: ${new Date(action.action.due_on).toLocaleString()}`);
   }
 
-  const jsonResponse = await response.json();
+  if (action.person) {
+    const personName = [action.person.first_name, action.person.last_name]
+      .filter(Boolean)
+      .join(" ");
+    parts.push(`\nPerson: ${personName || "Unknown"}`);
 
-  if (!jsonResponse || typeof jsonResponse !== "object") {
-    throw new Error("Invalid response format from Salesloft API");
-  }
-
-  return jsonResponse;
-}
-
-async function getAllPages<T>(
-  accessToken: string,
-  endpoint: string,
-  params?: Record<string, string | number | boolean>
-): Promise<T[]> {
-  const allResults: T[] = [];
-  let currentPage = 1;
-  const perPage = 100;
-  let hasMorePages = true;
-  const maxPages = 5;
-  let pagesFetched = 0;
-
-  while (hasMorePages && pagesFetched < maxPages) {
-    const response = await makeSalesloftRequest<T>(accessToken, endpoint, {
-      ...params,
-      page: currentPage,
-      per_page: perPage,
-    });
-
-    if (!response.data || !Array.isArray(response.data)) {
-      logger.warn(
-        {
-          endpoint,
-          currentPage,
-          response: response,
-        },
-        "Response missing data array, stopping pagination"
-      );
-      break;
-    }
-
-    allResults.push(...response.data);
-
-    if (
-      !response.metadata?.paging ||
-      !response.metadata.paging.next_page ||
-      response.data.length < perPage
-    ) {
-      hasMorePages = false;
-    } else {
-      currentPage++;
-      pagesFetched++;
-    }
-  }
-
-  if (pagesFetched >= maxPages) {
-    logger.warn(
+    const personFields = [
+      { label: "Email", value: action.person.email_address },
+      { label: "Phone", value: action.person.phone },
+      { label: "Title", value: action.person.title },
+      { label: "Company", value: action.person.person_company_name },
+      { label: "Company Website", value: action.person.person_company_website },
       {
-        endpoint,
-        totalResults: allResults.length,
+        label: "Location",
+        value:
+          [action.person.city, action.person.state, action.person.country]
+            .filter(Boolean)
+            .join(", ") || null,
       },
-      "Reached maximum page limit, stopping pagination"
+      { label: "LinkedIn", value: action.person.linkedin_url },
+      { label: "Twitter", value: action.person.twitter_handle },
+      { label: "Job Seniority", value: action.person.job_seniority },
+      { label: "Job Function", value: action.person.job_function },
+      {
+        label: "Do Not Contact",
+        value:
+          action.person.do_not_contact !== null
+            ? action.person.do_not_contact
+              ? "Yes"
+              : "No"
+            : null,
+      },
+      {
+        label: "Untouched",
+        value:
+          action.person.untouched !== null
+            ? action.person.untouched
+              ? "Yes"
+              : "No"
+            : null,
+      },
+      {
+        label: "Hot Lead",
+        value:
+          action.person.hot_lead !== null
+            ? action.person.hot_lead
+              ? "Yes"
+              : "No"
+            : null,
+      },
+    ];
+
+    personFields.forEach(({ label, value }) => {
+      if (value) {
+        parts.push(`  ${label}: ${value}`);
+      }
+    });
+  }
+
+  if (action.cadence) {
+    parts.push(`\nCadence: ${action.cadence.name}`);
+    if (action.cadence.team_cadence) {
+      parts.push(`  (Team Cadence)`);
+    }
+  }
+
+  if (action.step) {
+    parts.push(
+      `\nStep: ${action.step.name} (Step #${action.step.step_number}, Type: ${action.step.type})`
     );
   }
 
-  return allResults;
+  if (action.action_details) {
+    parts.push(`\nAction Details: Available`);
+  }
+
+  return parts.join("\n");
 }
 
 async function getCadencesByIds(
