@@ -228,6 +228,7 @@ export default defineConfig(
       "dust/no-direct-sparkle-notification": "warn",
       "dust/no-bulk-lodash": "error",
       "dust/enforce-client-types-in-public-api": "error",
+      "dust/no-mcp-server-instructions": "error",
     },
   },
 

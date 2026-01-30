@@ -366,6 +366,9 @@ export const INTERNAL_MCP_SERVERS = {
       },
       icon: "SalesforceLogo",
       documentationUrl: "https://docs.dust.tt/docs/salesforce",
+      // Predates the introduction of the rule, would require extensive work to improve, already
+      // widely adopted.
+      // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: SALESFORCE_SERVER_INSTRUCTIONS,
     },
   },
@@ -489,6 +492,8 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: null,
       icon: "ActionFrameIcon",
       documentationUrl: null,
+      // Will be removed as soon as we add the ability to add skills to global agents.
+      // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: INTERACTIVE_CONTENT_INSTRUCTIONS,
     },
   },
@@ -557,6 +562,8 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: null,
       icon: "ActionDocumentTextIcon",
       documentationUrl: null,
+      // TBD if turned into a global skill or not.
+      // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: SLIDESHOW_INSTRUCTIONS,
     },
   },
@@ -577,6 +584,8 @@ export const INTERNAL_MCP_SERVERS = {
       authorization: null,
       icon: "ActionAtomIcon",
       documentationUrl: "https://docs.dust.tt/docs/go-deep",
+      // Will be removed as soon as we add the ability to add skills to global agents.
+      // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
@@ -924,6 +933,9 @@ export const INTERNAL_MCP_SERVERS = {
       },
       icon: "ProductboardLogo",
       documentationUrl: "https://docs.dust.tt/docs/productboard",
+      // Predates the introduction of the rule, would require extensive work to improve, already
+      // widely adopted.
+      // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: PRODUCTBOARD_SERVER_INSTRUCTIONS,
     },
   },
