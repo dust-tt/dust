@@ -51,6 +51,23 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
 
   abstract requestedPermissions(): Promise<CombinedResourcePermissions[]>;
 
+  canAddMember(
+    auth: Authenticator,
+    userId: string,
+    requestedPermissions: CombinedResourcePermissions[]
+  ): boolean {
+    if (this.space.isProject() && this.space.isOpen()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        // Users can add themselves to open projects.
+        return true;
+      }
+    }
+    return (
+      this.space.canAdministrate(auth) && auth.canWrite(requestedPermissions)
+    );
+  }
+
   /**
    * Add multiple members to the group with permissions from this group-space relationship.
    */
@@ -77,8 +94,9 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
   > {
     const requestedPermissions = await this.requestedPermissions();
     if (
-      !auth.canWrite(requestedPermissions) &&
-      !users.every((user) => this.space.canAddMember(auth, user.sId))
+      !users.every((user) =>
+        this.canAddMember(auth, user.sId, requestedPermissions)
+      )
     ) {
       return new Err(
         new DustError(
@@ -95,6 +113,23 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       return new Err(addMembersRes.error);
     }
     return new Ok(addMembersRes.value);
+  }
+
+  canRemoveMember(
+    auth: Authenticator,
+    userId: string,
+    requestedPermissions: CombinedResourcePermissions[]
+  ): boolean {
+    if (this.space.isProject()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        // Users can remove themselves from any project.
+        return true;
+      }
+    }
+    return (
+      this.space.canAdministrate(auth) && auth.canWrite(requestedPermissions)
+    );
   }
 
   /**
@@ -122,8 +157,9 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
   > {
     const requestedPermissions = await this.requestedPermissions();
     if (
-      !auth.canWrite(requestedPermissions) &&
-      !users.every((user) => this.space.canRemoveMember(auth, user.sId))
+      !users.every((user) =>
+        this.canRemoveMember(auth, user.sId, requestedPermissions)
+      )
     ) {
       return new Err(
         new DustError(
@@ -168,11 +204,15 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
+    // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
     const requestedPermissions = await this.requestedPermissions();
     if (
-      !auth.canWrite(requestedPermissions) &&
-      !users.every((user) => this.space.canAddMember(auth, user.sId)) &&
-      !users.every((user) => this.space.canRemoveMember(auth, user.sId))
+      !users.every((user) =>
+        this.canAddMember(auth, user.sId, requestedPermissions)
+      ) &&
+      !users.every((user) =>
+        this.canRemoveMember(auth, user.sId, requestedPermissions)
+      )
     ) {
       return new Err(
         new DustError(
