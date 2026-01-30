@@ -24,7 +24,7 @@ import { agentConfigurationWasUpdatedBy } from "@app/lib/api/assistant/recent_au
 import config from "@app/lib/api/config";
 import { Authenticator, getFeatureFlags } from "@app/lib/auth";
 import { isRemoteDatabase } from "@app/lib/data_sources";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { AgentDataSourceConfigurationModel } from "@app/lib/models/agent/actions/data_sources";
 import {
   AgentChildAgentConfigurationModel,
@@ -669,7 +669,18 @@ export async function createAgentConfiguration(
             { transaction: t }
           );
           await auth.refresh({ transaction: t });
-          await group.setMembers(auth, { users: editors, transaction: t });
+          if (!group.canWrite(auth)) {
+            throw new Err(
+              new DustError(
+                "unauthorized",
+                "Only `admins` are authorized to manage groups"
+              )
+            );
+          }
+          await group.dangerouslySetMembers(auth, {
+            users: editors,
+            transaction: t,
+          });
         } else {
           const group = await GroupResource.fetchByAgentConfiguration({
             auth,
@@ -699,7 +710,23 @@ export async function createAgentConfiguration(
               throw result.error;
             }
           }
-          const setMembersRes = await group.setMembers(auth, {
+
+          if (!group.canWrite(auth)) {
+            logger.error(
+              {
+                workspaceId: owner.sId,
+                agentConfigurationId: existingAgent.sId,
+              },
+              `Error setting members to agent ${existingAgent.sId}: Only 'admins' are authorized to manage groups`
+            );
+            throw new Err(
+              new DustError(
+                "unauthorized",
+                "Only `admins` are authorized to manage groups"
+              )
+            );
+          }
+          const setMembersRes = await group.dangerouslySetMembers(auth, {
             users: editors,
             transaction: t,
           });
@@ -1367,12 +1394,20 @@ export async function updateAgentPermissions(
     return editorGroupRes;
   }
 
-  // The canWrite check for agent_editors groups (allowing members and admins)
-  // is implicitly handled by addMembers and removeMembers.
+  // Check authorization for agent_editors groups (allowing members and admins)
+  if (!editorGroupRes.value.canWrite(auth)) {
+    return new Err(
+      new DustError(
+        "unauthorized",
+        "Only admins or group editors can change group members"
+      )
+    );
+  }
+
   try {
     const transactionResult = await withTransaction(async (t) => {
       if (usersToAdd.length > 0) {
-        const addRes = await editorGroupRes.value.addMembers(auth, {
+        const addRes = await editorGroupRes.value.dangerouslyAddMembers(auth, {
           users: usersToAdd,
           transaction: t,
         });
@@ -1382,10 +1417,13 @@ export async function updateAgentPermissions(
       }
 
       if (usersToRemove.length > 0) {
-        const removeRes = await editorGroupRes.value.removeMembers(auth, {
-          users: usersToRemove,
-          transaction: t,
-        });
+        const removeRes = await editorGroupRes.value.dangerouslyRemoveMembers(
+          auth,
+          {
+            users: usersToRemove,
+            transaction: t,
+          }
+        );
         if (removeRes.isErr()) {
           return removeRes;
         }

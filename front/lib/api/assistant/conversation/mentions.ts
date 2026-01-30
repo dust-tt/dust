@@ -1041,8 +1041,7 @@ export async function validateUserMention(
       });
     }
 
-    // TODO(projects): isEditor will check editor permissions once project roles PR is merged.
-    const canEdit = space.isEditor(auth);
+    const canEdit = space.canAddMember(auth, userId);
     if (!canEdit) {
       return new Err({
         status_code: 403,

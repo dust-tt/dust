@@ -1066,15 +1066,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     }
   }
 
-  async addMembers(
+  async dangerouslyAddMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1089,14 +1087,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only admins or group editors can change group members"
-        )
-      );
-    }
     const owner = auth.getNonNullableWorkspace();
 
     if (users.length === 0) {
@@ -1198,15 +1188,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  async addMember(
+  async dangerouslyAddMember(
     auth: Authenticator,
     {
       user,
-      requestedPermissions,
       transaction,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1221,22 +1209,19 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.addMembers(auth, {
+    return this.dangerouslyAddMembers(auth, {
       users: [user],
-      requestedPermissions,
       transaction,
     });
   }
 
-  async removeMembers(
+  async dangerouslyRemoveMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1250,14 +1235,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only admins or group editors can change group members"
-        )
-      );
-    }
     const owner = auth.getNonNullableWorkspace();
     if (users.length === 0) {
       return new Ok(undefined);
@@ -1342,15 +1319,13 @@ export class GroupResource extends BaseResource<GroupModel> {
     return new Ok(undefined);
   }
 
-  async removeMember(
+  async dangerouslyRemoveMember(
     auth: Authenticator,
     {
       user,
-      requestedPermissions,
       transaction,
     }: {
       user: UserType;
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1364,9 +1339,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    return this.removeMembers(auth, {
+    return this.dangerouslyRemoveMembers(auth, {
       users: [user],
-      requestedPermissions,
       transaction,
     });
   }
@@ -1489,16 +1463,14 @@ export class GroupResource extends BaseResource<GroupModel> {
 
     return new Ok(undefined);
   }
-
-  async setMembers(
+  
+async dangerouslySetMembers(
     auth: Authenticator,
     {
       users,
-      requestedPermissions,
       transaction,
     }: {
       users: UserType[];
-      requestedPermissions?: CombinedResourcePermissions[];
       transaction?: Transaction;
     }
   ): Promise<
@@ -1514,15 +1486,6 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (!auth.canWrite(requestedPermissions ?? this.requestedPermissions())) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "Only `admins` are authorized to manage groups"
-        )
-      );
-    }
-
     const userIds = users.map((u) => u.sId);
     const currentMembers = await this.getActiveMembers(auth, { transaction });
     const currentMemberIds = currentMembers.map((member) => member.sId);
@@ -1532,9 +1495,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       (user) => !currentMemberIds.includes(user.sId)
     );
     if (usersToAdd.length > 0) {
-      const addResult = await this.addMembers(auth, {
+      const addResult = await this.dangerouslyAddMembers(auth, {
         users: usersToAdd,
-        requestedPermissions,
         transaction,
       });
       if (addResult.isErr()) {
@@ -1547,9 +1509,8 @@ export class GroupResource extends BaseResource<GroupModel> {
       .filter((currentMember) => !userIds.includes(currentMember.sId))
       .map((m) => m.toJSON());
     if (usersToRemove.length > 0) {
-      const removeResult = await this.removeMembers(auth, {
+      const removeResult = await this.dangerouslyRemoveMembers(auth, {
         users: usersToRemove,
-        requestedPermissions,
         transaction,
       });
       if (removeResult.isErr()) {

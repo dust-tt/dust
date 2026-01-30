@@ -16,8 +16,9 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import type { LightWorkspaceType } from "@app/types/user";
-import { AGENT_GROUP_PREFIX } from "@app/types/groups";
+import { AGENT_GROUP_PREFIX, Err } from "@app/types";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
+import { DustError } from "@app/lib/error";
 
 async function backfillAgentEditorsGroup(
   auth: Authenticator,
@@ -127,7 +128,15 @@ async function backfillAgentEditorsGroup(
   );
 
   if (execute && editorGroup) {
-    const result = await editorGroup.setMembers(auth, {
+    if (!editorGroup.canWrite(auth)) {
+      throw new Err(
+        new DustError(
+          "unauthorized",
+          "Only `admins` are authorized to manage groups"
+        )
+      );
+    }
+    const result = await editorGroup.dangerouslySetMembers(auth, {
       users: usersToAdd.map((user) => user.toJSON()),
     });
 

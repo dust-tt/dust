@@ -92,7 +92,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
     );
 
     const regularSpace = await SpaceFactory.regular(workspace);
-    await regularSpace.groups[0].addMember(authenticator, {
+    await regularSpace.groups[0].dangerouslyAddMember(authenticator, {
       user: user.toJSON(),
     });
 

@@ -2,7 +2,7 @@ import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -77,9 +77,19 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    const addMembersRes = await this.group.addMembers(auth, {
+    if (
+      !auth.canWrite(requestedPermissions) &&
+      !users.every((user) => !this.space.canAddMember(auth, user.sId))
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to add group members"
+        )
+      );
+    }
+    const addMembersRes = await this.group.dangerouslyAddMembers(auth, {
       users,
-      requestedPermissions,
       transaction,
     });
     if (addMembersRes.isErr()) {
@@ -112,9 +122,19 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    const removeMembersRes = await this.group.removeMembers(auth, {
+    if (
+      !auth.canWrite(requestedPermissions) &&
+      !users.every((user) => !this.space.canRemoveMember(auth, user.sId))
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to remove group members"
+        )
+      );
+    }
+    const removeMembersRes = await this.group.dangerouslyRemoveMembers(auth, {
       users,
-      requestedPermissions,
       transaction,
     });
     if (removeMembersRes.isErr()) {
@@ -150,9 +170,20 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    const setMembersRes = await this.group.setMembers(auth, {
+    if (
+      !auth.canWrite(requestedPermissions) &&
+      !users.every((user) => !this.space.canAddMember(auth, user.sId)) &&
+      !users.every((user) => !this.space.canRemoveMember(auth, user.sId))
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to change group members"
+        )
+      );
+    }
+    const setMembersRes = await this.group.dangerouslySetMembers(auth, {
       users,
-      requestedPermissions,
       transaction,
     });
     if (setMembersRes.isErr()) {
