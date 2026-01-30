@@ -160,47 +160,43 @@ export function InviteUsersScreen({
             <ListGroup>
               {filteredUsers.map((user) => {
                 const isSelected = selectedUserIds.has(user.id);
+
                 return (
                   <ListItem
                     key={user.id}
                     itemsAlignment="center"
                     onClick={() => toggleUser(user.id)}
-                    className={
-                      isSelected
-                        ? "s-bg-primary-50 dark:s-bg-primary-50-night"
-                        : ""
-                    }
+                    ignorePressSelector=".button-class"
                   >
-                    <div className="s-flex s-min-w-0 s-flex-1 s-items-center s-gap-3">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => {
-                          if (checked !== "indeterminate") {
-                            handleCheckboxChange(user.id, checked);
-                          }
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                      <Avatar
-                        name={user.fullName}
-                        visual={user.portrait}
-                        size="sm"
-                        isRounded={true}
-                      />
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                        <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
-                          {user.fullName}
-                        </span>
-                        <span className="s-truncate s-text-xs s-text-muted-foreground">
-                          {user.email}
-                        </span>
-                      </div>
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        if (checked !== "indeterminate") {
+                          handleCheckboxChange(user.id, checked);
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    />
+                    <Avatar
+                      name={user.fullName}
+                      visual={user.portrait}
+                      size="sm"
+                      isRounded={true}
+                    />
+                    <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                      <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                        {user.fullName}
+                      </span>
+                      <span className="s-truncate s-text-xs s-text-muted-foreground">
+                        {user.email}
+                      </span>
                     </div>
                     {hasMultipleSelect && isSelected && (
                       <Button
                         size="xs"
+                        className="button-class"
                         variant={
                           editorUserIds.has(user.id) ? "highlight" : "outline"
                         }
