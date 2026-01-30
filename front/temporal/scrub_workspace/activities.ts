@@ -24,6 +24,7 @@ import {
 import { AgentMemoryResource } from "@app/lib/resources/agent_memory_resource";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
+import { KeyResource } from "@app/lib/resources/key_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { OnboardingTaskResource } from "@app/lib/resources/onboarding_task_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -120,6 +121,7 @@ export async function scrubWorkspaceData({
     dangerouslyRequestAllGroups: true,
   });
   await deleteAllConversations(auth);
+  await deleteKeys(auth);
   await archiveAssistants(auth);
   await deleteAgentMemories(auth);
   await deleteOnboardingTasks(auth);
@@ -165,6 +167,10 @@ export async function pauseAllTriggers({
       "Failed to disable workspace triggers during scrub"
     );
   }
+}
+
+export async function deleteKeys(auth: Authenticator) {
+  await KeyResource.deleteAllForWorkspace(auth);
 }
 
 export async function deleteAllConversations(auth: Authenticator) {
