@@ -4,6 +4,7 @@ import {
   createBrowserRouter,
   Navigate,
   RouterProvider,
+  useParams,
 } from "react-router-dom";
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
@@ -37,10 +38,17 @@ import { TemplatesListPage } from "@dust-tt/front/components/poke/pages/Template
 import { TriggerDetailsPage } from "@dust-tt/front/components/poke/pages/TriggerDetailsPage";
 import { WorkspacePage } from "@dust-tt/front/components/poke/pages/WorkspacePage";
 
+// Redirect component that strips /poke prefix
+function PokeRedirect() {
+  const params = useParams();
+  const rest = params["*"] || "";
+  return <Navigate to={`/${rest}`} replace />;
+}
+
 const router = createBrowserRouter(
   [
     {
-      path: "/poke",
+      path: "/",
       element: <PokePage />,
       children: [
         { index: true, element: <DashboardPage /> },
@@ -56,7 +64,7 @@ const router = createBrowserRouter(
       ],
     },
     {
-      path: "/poke/:wId",
+      path: "/:wId",
       element: <PokeWorkspacePage />,
       children: [
         { index: true, element: <WorkspacePage /> },
@@ -94,7 +102,9 @@ const router = createBrowserRouter(
         },
       ],
     },
-    { path: "*", element: <Navigate to="/poke" replace /> },
+    // Redirect /poke/* to /* (strip /poke prefix)
+    { path: "poke/*", element: <PokeRedirect /> },
+    { path: "*", element: <Navigate to="/" replace /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",
