@@ -64,9 +64,9 @@ export const MentionWithPasteExtension = Mention.extend({
       type: this.type,
       getAttributes: (match: Record<string, any>) => {
         return {
-          label: match.data["label"],
-          id: match.data["id"],
-          description: match.data["description"],
+          label: match.data.label,
+          id: match.data.id,
+          description: match.data.description,
         };
       },
     });

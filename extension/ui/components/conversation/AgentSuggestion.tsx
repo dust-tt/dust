@@ -104,8 +104,7 @@ export function AgentSuggestion({
   }
 
   return (
-    <>
-      <div className="pt-4">
+    <div className="pt-4">
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground dark:text-muted-foreground-night grow text-sm">
             Which Agent would you like to chat with?
@@ -151,7 +150,6 @@ export function AgentSuggestion({
           </CardGrid>
         )}
       </div>
-    </>
   );
 }
 

@@ -19,15 +19,13 @@ export function MCPTablesQueryActionDetails({
       visual={TableIcon}
     >
       {viewType === "conversation" && (
-        <>
-          {thinkingBlocks.length > 0 && (
+        thinkingBlocks.length > 0 && (
             <div className="flex flex-col gap-4 pl-6 pt-4">
               {thinkingBlocks.map((block) => (
                 <div key={block.text}>{block.text}</div>
               ))}
             </div>
-          )}
-        </>
+          )
       )}
     </ActionDetailsWrapper>
   );

@@ -43,7 +43,7 @@ export function createPlaceholderUserMessage({
   mentions: AgentMentionType[];
   user: UserType;
 }): UserMessageType {
-  const createdAt = new Date().getTime();
+  const createdAt = Date.now();
   const { email, fullName, image, username } = user;
 
   return {

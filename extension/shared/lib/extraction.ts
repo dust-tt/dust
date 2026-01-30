@@ -206,7 +206,7 @@ export const extractPage = (url: string) => {
         const hasNonNullChild = node.children.some(
           (child) => child.nodeType !== null
         );
-        const childIndent = hasNonNullChild ? indent + "  " : indent;
+        const childIndent = hasNonNullChild ? `${indent}  ` : indent;
 
         node.children.forEach((child) => {
           const { render: childRender } = renderTree(child, childIndent);
@@ -257,7 +257,7 @@ export const extractPage = (url: string) => {
       .map((c) => {
         try {
           const arr = JSON.parse(
-            (c || "").split("=", 2)[1].trim().split("},{")[0] + "}]"
+            `${(c || "").split("=", 2)[1].trim().split("},{")[0]}}]`
           );
           return arr[0].s;
         } catch {

@@ -40,9 +40,9 @@ const PAGE_SIZE = 25;
 
 const getKeyForDataSource = (dataSource: DataSourceType) => {
   if (dataSource.connectorProvider === "webcrawler") {
-    return `ds-webcrawler`;
+    return "ds-webcrawler";
   } else if (!dataSource.connectorProvider) {
-    return `ds-folder`;
+    return "ds-folder";
   } else {
     return `ds-${dataSource.sId}`;
   }
@@ -231,7 +231,7 @@ export const InputBarAttachmentsPicker = ({
     if (isOpen) {
       setSelectedDataSourcesAndTools({});
     }
-  }, [isOpen, searchQuery]);
+  }, [isOpen]);
 
   const dataSourcesWithResults: Record<
     string,

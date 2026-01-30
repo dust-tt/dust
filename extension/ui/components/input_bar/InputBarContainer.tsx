@@ -189,12 +189,11 @@ export const InputBarContainer = ({
     });
     setNodeOrUrlCandidate(null);
   }, [
-    searchResultNodes,
-    onNodeSelect,
-    isSearchLoading,
-    editorService,
-    spacesMap,
-    nodeOrUrlCandidate,
+    searchResultNodes, 
+    onNodeSelect, 
+    isSearchLoading, 
+    spacesMap, 
+    nodeOrUrlCandidate, sendNotification
   ]);
 
   // When input bar animation is requested it means the new button was clicked (removing focus from

@@ -35,7 +35,7 @@ export function useConversationMarkAsRead({
         void mutateConversations();
       }
     },
-    [mutateConversations]
+    [mutateConversations, dustAPI.markAsRead]
   );
 
   useEffect(() => {

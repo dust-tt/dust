@@ -284,11 +284,11 @@ export function AgentMessage({
         } = JSON.parse(lastEvent);
         lastEventId = eventPayload.eventId;
       }
-      const url = esURL + "?lastEventId=" + lastEventId;
+      const url = `${esURL}?lastEventId=${lastEventId}`;
 
       return url;
     },
-    [conversationId, message.sId, owner.sId]
+    [conversationId, message.sId, owner.sId, user.dustDomain]
   );
 
   const onEventCallback = useCallback(
@@ -428,9 +428,7 @@ export function AgentMessage({
   useEffect(() => {
     setReferences(getCitationsFromActions(agentMessageToRender.actions));
   }, [
-    agentMessageToRender.actions,
-    agentMessageToRender.status,
-    agentMessageToRender.sId,
+    agentMessageToRender.actions
   ]);
   const { configuration: agentConfiguration } = agentMessageToRender;
 
@@ -454,7 +452,7 @@ export function AgentMessage({
       mention_user: getUserMentionPlugin(),
       dustimg: getImgPlugin(),
     }),
-    [owner, conversationId, message.sId, agentConfiguration.sId, user]
+    [owner, conversationId, user]
   );
 
   const additionalMarkdownPlugins: PluggableList = useMemo(
@@ -589,7 +587,7 @@ export function AgentMessage({
 
   const handleRetry = useCallback(() => {
     void retryHandler(agentMessageToRender);
-  }, [agentMessageToRender]);
+  }, [agentMessageToRender, retryHandler]);
 
   const buttons = useMemo(() => {
     const buttonList = [];

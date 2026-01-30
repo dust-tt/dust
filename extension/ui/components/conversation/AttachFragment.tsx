@@ -28,7 +28,7 @@ export const AttachFragment = ({
       }, 1000); // Reset after 1 second.
     }
     return () => clearTimeout(timer);
-  }, [attachPageBlinking]);
+  }, [attachPageBlinking, setAttachPageBlinking]);
 
   const CaptureActionsComponent = platform.getCaptureActionsComponent();
 

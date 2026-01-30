@@ -95,7 +95,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
     };
 
     switch (type) {
-      case "user_message":
+      case "user_message": {
         const citations = message.contenFragments
           ? message.contenFragments
               .map((contentFragment) => {
@@ -129,6 +129,7 @@ const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
             />
           </div>
         );
+      }
 
       case "agent_message":
         return (

@@ -19,7 +19,7 @@ export const CitationsContext = React.createContext<CitationsContextType>({
 function isCiteProps(props: ReactMarkdownProps): props is ReactMarkdownProps & {
   references: string;
 } {
-  return Object.prototype.hasOwnProperty.call(props, "references");
+  return  Object.hasOwn(props, "references");
 }
 
 export function CiteBlock(props: ReactMarkdownProps) {

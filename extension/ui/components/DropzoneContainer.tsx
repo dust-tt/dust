@@ -101,7 +101,7 @@ export function DropzoneContainer({
               onDrop([file]);
             } else {
               sendNotification({
-                description: "Unsupported file type : " + blob.type,
+                description: `Unsupported file type : ${blob.type}`,
                 title: "Unsupported file type",
                 type: "error",
               });
@@ -114,7 +114,7 @@ export function DropzoneContainer({
         element.removeEventListener("drop", listener);
       };
     }
-  }, [rootProps.ref.current]);
+  }, [rootProps.ref.current, onDrop, sendNotification]);
 
   const onPaste = (event: React.ClipboardEvent) => {
     const items = event.clipboardData.items;

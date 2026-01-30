@@ -99,7 +99,7 @@ export function useMcpServer() {
         void disconnectServer();
       }
     };
-  }, [platform.mcp, isConnected, disconnectServer]);
+  }, [platform.mcp, isConnected, disconnectServer, dustAPI]);
 
   return {
     server,

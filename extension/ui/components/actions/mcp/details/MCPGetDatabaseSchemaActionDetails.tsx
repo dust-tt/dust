@@ -15,7 +15,7 @@ export function MCPGetDatabaseSchemaActionDetails({
       }
       visual={TableIcon}
     >
-      <></>
+      
     </ActionDetailsWrapper>
   );
 }

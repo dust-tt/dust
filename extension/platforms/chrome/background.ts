@@ -101,7 +101,7 @@ const toggleContextMenus = (isDisabled: boolean) => {
 };
 
 // Add URL change listener to update context menu state.
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener(async (_tabId, changeInfo, tab) => {
   if (changeInfo.status === "complete" && tab.url) {
     const isDisabled = await shouldDisableContextMenuForDomain(tab.url);
     toggleContextMenus(isDisabled);
@@ -199,7 +199,7 @@ chrome.contextMenus.onClicked.addListener(async (event, tab) => {
 });
 
 function capture(sendResponse: (x: CaptureResponse) => void) {
-  return chrome.tabs.captureVisibleTab(function (dataURI) {
+  return chrome.tabs.captureVisibleTab((dataURI) => {
     if (dataURI) {
       sendResponse({ dataURI });
     }
@@ -217,7 +217,7 @@ chrome.runtime.onMessage.addListener(
       | GetActiveTabBackgroundMessage
       | CaptureMesssage
       | InputBarStatusMessage,
-    sender,
+    _sender,
     sendResponse: (
       response:
         | OAuthAuthorizeResponse
@@ -404,7 +404,7 @@ chrome.runtime.onMessageExternal.addListener((request) => {
           chrome.storage.local.get(
             ["extensionReady", "user"],
             ({ extensionReady, user }) => {
-              if (request.workspaceId != user?.selectedWorkspace) {
+              if (request.workspaceId !== user?.selectedWorkspace) {
                 log("[onMessageExternal] User selected another workspace.");
                 return;
               }
@@ -540,7 +540,7 @@ const authenticate = async (
         log(`Missing authorization code: ${redirectUrl}`);
         sendResponse({
           success: false,
-          error: `Missing authorization code`,
+          error: "Missing authorization code",
         });
       }
     }

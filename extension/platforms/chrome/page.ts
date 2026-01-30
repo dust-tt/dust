@@ -32,7 +32,7 @@ declare global {
     hasScreenCapturePage: any;
   }
 }
-(function () {
+(() => {
   const CAPTURE_DELAY = 150;
   const MAX_PRIMARY_DIMENSION = 5000,
     MAX_SECONDARY_DIMENSION = 3000,
@@ -41,7 +41,7 @@ declare global {
   if (!window.hasScreenCapturePage) {
     window.hasScreenCapturePage = true;
     chrome.runtime.onMessage.addListener(
-      (message: CaptureFullPageMessage, sender, callback) => {
+      (message: CaptureFullPageMessage, _sender, callback) => {
         if (message.type === "PAGE_CAPTURE_FULL_PAGE") {
           try {
             getPositions(callback);
@@ -96,9 +96,9 @@ declare global {
       for (let col = 0; col < numCols; col++) {
         const canvas = document.createElement("canvas");
         canvas.width =
-          col == numCols - 1 ? totalWidth % maxWidth || maxWidth : maxWidth;
+          col === numCols - 1 ? totalWidth % maxWidth || maxWidth : maxWidth;
         canvas.height =
-          row == numRows - 1 ? totalHeight % maxHeight || maxHeight : maxHeight;
+          row === numRows - 1 ? totalHeight % maxHeight || maxHeight : maxHeight;
 
         const left = col * maxWidth;
         const top = row * maxHeight;
@@ -132,14 +132,12 @@ declare global {
     //
     const imgRight = imgLeft + imgWidth,
       imgBottom = imgTop + imgHeight;
-    return screenshots.filter(function (screenshot) {
-      return (
+    return screenshots.filter((screenshot) => (
         imgLeft < screenshot.right &&
         imgRight > screenshot.left &&
         imgTop < screenshot.bottom &&
         imgBottom > screenshot.top
-      );
-    });
+      ));
   }
 
   function getPositions(callback: (dataUrls: string[]) => void) {
@@ -251,14 +249,14 @@ declare global {
       const zoomFactor = 1 / window.devicePixelRatio;
 
       // Need to wait for things to settle
-      window.setTimeout(function () {
+      window.setTimeout(() => {
         // In case the below callback never returns, cleanup
         const cleanUpTimeout = window.setTimeout(cleanUp, 1250);
-        chrome.runtime.sendMessage({ type: "CAPTURE" }, function ({ dataURI }) {
+        chrome.runtime.sendMessage({ type: "CAPTURE" }, ({ dataURI }) => {
           window.clearTimeout(cleanUpTimeout);
           if (dataURI) {
             const image = new Image();
-            image.onload = function () {
+            image.onload = () => {
               data.image = { width: image.width, height: image.height };
 
               // given device mode emulation or zooming, we may end up with
@@ -291,7 +289,7 @@ declare global {
                 image.width * zoomFactor,
                 image.height * zoomFactor,
                 screenshots
-              ).forEach(function (screenshot) {
+              ).forEach((screenshot) => {
                 screenshot.ctx.drawImage(
                   image,
                   data.x * zoomFactor - screenshot.left,

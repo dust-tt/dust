@@ -77,7 +77,7 @@ const useHandleMentions = (
         editorService.insertMention(mention);
       }
     }
-  }, [selectedAssistant, editorService, disableAutoFocus, agentConfigurations]);
+  }, [selectedAssistant, editorService, agentConfigurations]);
 };
 
 export default useHandleMentions;

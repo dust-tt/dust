@@ -32,7 +32,7 @@ export const LoginPage = () => {
     if (isAuthenticated && isUserSetup) {
       navigate("/");
     }
-  }, [navigate, user, isAuthenticated, isUserSetup]);
+  }, [navigate, isAuthenticated, isUserSetup]);
 
   const PRIVACY_POLICY_URL =
     "https://dust-tt.notion.site/Website-Privacy-Policy-a118bb3472f945a1be8e11fbfb733084";

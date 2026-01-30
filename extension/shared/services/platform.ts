@@ -36,7 +36,7 @@ export interface BrowserMessagingService {
   sendMessage<T = any, R = any>(
     message: T,
     callback?: (response: R) => void
-  ): void | Promise<R>;
+  ): undefined | Promise<R>;
 }
 
 function getTabContentKey(

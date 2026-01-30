@@ -41,7 +41,7 @@ export function registerGetCurrentConversationTool(
               {
                 type: "text",
                 text:
-                  `Error retrieving current conversation timeline: ` +
+                  "Error retrieving current conversation timeline: " +
                   `${conversationTimelineRes.error.message}`,
               },
             ],

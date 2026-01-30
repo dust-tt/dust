@@ -71,7 +71,7 @@ const ChromeExtensionWrapper = () => {
     });
 
     return () => unsub();
-  }, []);
+  }, [checkIsLatestVersion, platform.storage.onChanged]);
 
   if (!isLatestVersion) {
     return (

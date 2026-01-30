@@ -15,7 +15,7 @@ export function MCPConversationCatFileDetails({
       }
       visual={DocumentIcon}
     >
-      <></>
+      
     </ActionDetailsWrapper>
   );
 }

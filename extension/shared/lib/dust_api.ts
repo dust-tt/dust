@@ -32,5 +32,5 @@ export const useDustAPI = () => {
       },
       console
     );
-  }, [user.dustDomain, workspace.sId, platform]);
+  }, [user.dustDomain, workspace.sId, platform, commitHash, extensionVersion]);
 };

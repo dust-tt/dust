@@ -507,7 +507,7 @@ module.exports = {
             Object.fromEntries(
               Object.entries(colors[colorName]).map(([shade]) => [
                 `${shade}-night`,
-                colors[colorName][Math.min(950, 1000 - parseInt(shade))],
+                colors[colorName][Math.min(950, 1000 - parseInt(shade, 10))],
               ])
             ),
           ])
@@ -778,7 +778,7 @@ module.exports = {
     require("@tailwindcss/forms"),
     require("tailwind-scrollbar-hide"),
     require("tailwindcss-animate"),
-    plugin(function ({ addBase, theme }) {
+    plugin(({ addBase, theme }) => {
       addBase({
         ".heading-base": {
           fontSize: theme("fontSize.base[0]"),

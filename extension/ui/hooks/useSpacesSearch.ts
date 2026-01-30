@@ -58,7 +58,7 @@ export function useSpacesSearch({
       limit: 100,
       searchSourceUrls,
     }),
-    [viewType, includeDataSources, nodeIds, search, spaceIds]
+    [viewType, includeDataSources, nodeIds, search, spaceIds, searchSourceUrls]
   );
 
   const searchFetcher = async () => {

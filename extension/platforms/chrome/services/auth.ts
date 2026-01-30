@@ -10,7 +10,6 @@ import {
   getConnectionDetails,
   getDustDomain,
 } from "@app/shared/services/auth";
-import type { StorageService } from "@app/shared/services/storage";
 import { datadogLogs } from "@datadog/browser-logs";
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
@@ -19,9 +18,6 @@ import { jwtDecode } from "jwt-decode";
 const log = console.error;
 
 export class ChromeAuthService extends AuthService {
-  constructor(storage: StorageService) {
-    super(storage);
-  }
 
   // Internal methods.
 

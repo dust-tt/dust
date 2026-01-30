@@ -7,7 +7,7 @@ import type {
   ConversationMessageReactionsType,
   LightWorkspaceType,
 } from "@dust-tt/client";
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface MessageGroupProps {
   conversationId: string;

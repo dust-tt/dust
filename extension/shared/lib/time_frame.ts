@@ -40,7 +40,7 @@ export function parseTimeFrame(raw: string): TimeFrame | null {
   }
 
   const duration = parseInt(m[1], 10);
-  if (isNaN(duration)) {
+  if (Number.isNaN(duration)) {
     return null;
   }
 

@@ -44,14 +44,14 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return () => {
       cleanup?.();
     };
-  }, [navigate]);
+  }, [navigate, platform.messaging?.addMessageListener]);
 
   useEffect(() => {
     if (!isAuthenticated || !isUserSetup || !user || !workspace) {
       navigate("/login");
       return;
     }
-  }, [navigate, isLoading, isAuthenticated, isUserSetup, user, workspace]);
+  }, [navigate, isAuthenticated, isUserSetup, user, workspace]);
 
   if (isLoading || !isAuthenticated || !isUserSetup || !user || !workspace) {
     return (

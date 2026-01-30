@@ -59,7 +59,7 @@ export const RunPage = () => {
     };
 
     void run();
-  }, []);
+  }, [dustAPI, fileUploaderService.resetUpload, fileUploaderService.uploadContentTab, location.search.substr, navigate, platform]);
   return (
     <div className="flex h-full w-full items-center justify-center">
       <Spinner size="xl" />

@@ -37,7 +37,7 @@ async function main() {
         console.error(res.compilation.errors);
       }
       console.log(
-        `[Dust Extension][development] Webpack successfully compiled.`
+        "[Dust Extension][development] Webpack successfully compiled."
       );
     });
   }

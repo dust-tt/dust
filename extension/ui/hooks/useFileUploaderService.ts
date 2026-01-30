@@ -53,8 +53,8 @@ export const MAX_FILE_SIZES: Record<"plainText" | "image", number> = {
   image: 5 * 1024 * 1024, // 5 MB
 };
 
-const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES["plainText"] * 2;
-const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES["image"] * 5;
+const COMBINED_MAX_TEXT_FILES_SIZE = MAX_FILE_SIZES.plainText * 2;
+const COMBINED_MAX_IMAGE_FILES_SIZE = MAX_FILE_SIZES.image * 5;
 
 export function useFileUploaderService(
   captureService: CaptureService,
@@ -185,7 +185,7 @@ export function useFileUploaderService(
   ): Promise<Result<FileBlob, FileBlobUploadError>[]> => {
     const uploadPromises = newFileBlobs.map(async (fileBlob) => {
       // Get upload URL from server.
-      let useCaseMetadata = undefined;
+      let useCaseMetadata ;
       if (conversationId) {
         useCaseMetadata = {
           conversationId,
@@ -320,7 +320,7 @@ export function useFileUploaderService(
       );
       setIsCapturing(false);
 
-      if (contentRes && contentRes.isErr()) {
+      if (contentRes?.isErr()) {
         sendNotification({
           title: "Cannot get page content",
           description: contentRes.error.message,
@@ -330,7 +330,7 @@ export function useFileUploaderService(
       }
 
       const tabContent =
-        contentRes && contentRes.isOk() ? contentRes.value : null;
+        contentRes?.isOk() ? contentRes.value : null;
 
       const existingTitles = fileBlobs.map((f) => f.filename);
 
@@ -363,7 +363,7 @@ export function useFileUploaderService(
             m.textBytes === new Blob([tabContent.content ?? ""]).size
         );
 
-        if (tabContent && tabContent.content && !alreadyUploaded) {
+        if (tabContent?.content && !alreadyUploaded) {
           const file = new File([tabContent.content], title, {
             type: "text/plain",
           });

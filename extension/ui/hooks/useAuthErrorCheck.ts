@@ -27,7 +27,7 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
             void platform.auth.logout();
             break;
 
-          case "expired_oauth_token_error":
+          case "expired_oauth_token_error": {
             // Attempt to get the access token, it will refresh the token if needed.
             const accesToken = await platform.auth.getAccessToken(true);
             if (!accesToken) {
@@ -38,6 +38,7 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
             }
             mutate();
             break;
+          }
 
           case "user_not_found":
             setAuthError(error);
@@ -50,5 +51,5 @@ export const useAuthErrorCheck = (error: any, mutate: () => any) => {
       }
     };
     void handleError();
-  }, [error]);
+  }, [error, mutate, navigate, platform.auth.getAccessToken, platform.auth.logout, redirectToSSOLogin, setAuthError, workspace]);
 };
