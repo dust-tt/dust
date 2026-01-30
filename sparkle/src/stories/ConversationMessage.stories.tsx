@@ -302,6 +302,27 @@ Operates on a simple value exchange - provides unlimited affection in return for
 Occasional system crashes when presented with empty food bowl. Single whisker may cause slight navigation errors when squeezing through spaces designed for two-whiskered models.
 `;
 
+type ActionCardState = "active" | "disabled" | "accepted" | "rejected";
+
+const StatefulActionCard = (
+  props: Omit<
+    React.ComponentProps<typeof ActionCardBlock>,
+    "state" | "onClickAccept" | "onClickReject"
+  > & { initialState?: ActionCardState }
+) => {
+  const [state, setState] = React.useState<ActionCardState>(
+    props.initialState ?? "active"
+  );
+  return (
+    <ActionCardBlock
+      {...props}
+      state={state}
+      onClickAccept={() => setState("accepted")}
+      onClickReject={() => setState("rejected")}
+    />
+  );
+};
+
 export const ConversationWithActions = () => {
   return (
     <div className="s-flex s-w-full s-justify-center s-gap-6">
@@ -340,7 +361,7 @@ export const ConversationWithActions = () => {
         >
           <div className="s-flex s-flex-col s-gap-3">
             <Markdown content="Got it. Should it personalize by role and include links to docs? Also, any brand voice guidelines?" />
-            <ActionCardBlock
+            <StatefulActionCard
               title="Update agent instructions"
               acceptedTitle="Instructions updated"
               rejectedTitle="Instructions update rejected"
@@ -382,7 +403,7 @@ export const ConversationWithActions = () => {
                 />
               }
             />
-            <ActionCardBlock
+            <StatefulActionCard
               title="Update agent name and avatar"
               acceptedTitle="Agent name and avatar updated"
               rejectedTitle="Agent name and avatar update rejected"
@@ -402,7 +423,7 @@ export const ConversationWithActions = () => {
               }
               collapsibleLabel="Suggestion details"
             />
-            <ActionCardBlock
+            <StatefulActionCard
               title="Remove Slack tool"
               acceptedTitle="Slack tool removed"
               rejectedTitle="Slack tool removal rejected"
@@ -419,14 +440,14 @@ export const ConversationWithActions = () => {
               actionsPosition="header"
               description="Disable the Slack tool to prevent the agent from posting or reading channel messages by default."
             />
-            <ActionCardBlock
+            <StatefulActionCard
               title="Add Gmail tool"
               acceptedTitle="Gmail tool added"
               rejectedTitle="Gmail tool addition rejected"
               applyLabel="Add"
               rejectLabel="Reject"
               cardVariant="highlight"
-              state="disabled"
+              initialState="disabled"
               visual={
                 <Avatar
                   size="sm"
@@ -436,7 +457,7 @@ export const ConversationWithActions = () => {
               }
               description="Enable the Gmail tool so the agent can read and send emails when users ask to draft replies."
             />
-            <ActionCardBlock
+            <StatefulActionCard
               title="Invite editors"
               acceptedTitle="Editors invited"
               rejectedTitle="Invite editors rejected"
@@ -448,7 +469,7 @@ export const ConversationWithActions = () => {
               cardVariant="highlight"
               description="Add four editors to collaborate on this agent."
             />
-            <ActionCardBlock
+            <StatefulActionCard
               title="Agent wants to use Gmail"
               acceptedTitle="Gmail request approved"
               rejectedTitle="Gmail request denied"

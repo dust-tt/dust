@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 import { Avatar } from "@sparkle/components/Avatar";
 import { Button } from "@sparkle/components/Button";
@@ -187,7 +187,6 @@ export function ActionCardBlock({
   avatarIconNames,
   avatarIsRounded,
 }: ActionCardBlockProps) {
-  const [localState, setLocalState] = useState<ActionCardState>(state);
   const [isChecked, setIsChecked] = useState(false);
 
   const resolvedAvatarList = Array.isArray(avatars)
@@ -211,15 +210,10 @@ export function ActionCardBlock({
 
   const applyVariant = cardVariant === "warning" ? "warning" : "highlight";
 
-  useEffect(() => {
-    // Keep local state in sync with props
-    setLocalState(state);
-  }, [state]);
-
-  const isAccepted = localState === "accepted";
-  const isRejected = localState === "rejected";
+  const isAccepted = state === "accepted";
+  const isRejected = state === "rejected";
   const isResolved = isAccepted || isRejected;
-  const isDisabled = localState === "disabled";
+  const isDisabled = state === "disabled";
 
   const resolvedTitle = isAccepted
     ? (acceptedTitle ?? title)
@@ -238,7 +232,6 @@ export function ActionCardBlock({
     if (isDisabled || isResolved) {
       return;
     }
-    setLocalState("accepted");
     onClickAccept?.();
   };
 
@@ -246,7 +239,6 @@ export function ActionCardBlock({
     if (isDisabled || isResolved) {
       return;
     }
-    setLocalState("rejected");
     onClickReject?.();
   };
 
