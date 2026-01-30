@@ -84,10 +84,10 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
       return;
     }
     const addMark = node.marks.find(
-      (m) => m.type.name === "suggestionAddition"
+      (m) => m.type.name === "suggestionAddition",
     );
     const deletionMark = node.marks.find(
-      (m) => m.type.name === "suggestionDeletion"
+      (m) => m.type.name === "suggestionDeletion",
     );
     const mark = addMark || deletionMark;
     if (mark) {
@@ -106,10 +106,10 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
 // Find the suggestionId of the suggestion block containing the cursor.
 function getSelectedSuggestionId(
   nodes: SuggestionNode[],
-  cursorPos: number
+  cursorPos: number,
 ): string | null {
   const cursorNode = nodes.find(
-    (n) => cursorPos >= n.from && cursorPos <= n.to
+    (n) => cursorPos >= n.from && cursorPos <= n.to,
   );
   return cursorNode?.suggestionId ?? null;
 }
@@ -152,9 +152,9 @@ const suggestionHighlightPlugin = new Plugin({
         Decoration.inline(node.from, node.to, {
           class: getSuggestionClass(
             node.isAdd,
-            selectedId !== null && node.suggestionId === selectedId
+            selectedId !== null && node.suggestionId === selectedId,
           ),
-        })
+        }),
       );
 
       return DecorationSet.create(state.doc, decorations);
