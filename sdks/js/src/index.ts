@@ -1191,7 +1191,7 @@ export class DustAPI {
   async getConversations() {
     const res = await this.request({
       method: "GET",
-      path: `assistant/conversations`,
+      path: "assistant/conversations",
     });
 
     const r = await this._resultFromResponse(
@@ -2101,7 +2101,7 @@ export class DustAPI {
           const err: APIError = {
             type: "unexpected_response_format",
             message:
-              `Unexpected response format from DustAPI calling ` +
+              "Unexpected response format from DustAPI calling " +
               `${res.value.response.url} : ${r.error.message}`,
           };
           this._logger.error(
@@ -2122,7 +2122,7 @@ export class DustAPI {
       const err: APIError = {
         type: "unexpected_response_format",
         message:
-          `Fail to parse response from DustAPI calling ` +
+          "Fail to parse response from DustAPI calling " +
           `${res.value.response.url} : ${e}`,
       };
       this._logger.error(
