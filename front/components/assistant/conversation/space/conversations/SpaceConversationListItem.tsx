@@ -37,8 +37,9 @@ export function SpaceConversationListItem({
       if (isUserMessageType(message)) {
         avatars.push({
           isRounded: true,
-          name: message.user?.fullName ?? "",
-          visual: message.user?.image ?? "",
+          name: message.user?.fullName ?? message.context?.fullName ?? "",
+          visual:
+            message.user?.image ?? message.context?.profilePictureUrl ?? "",
         });
       } else if (isAgentMessageType(message)) {
         avatars.push({
@@ -51,12 +52,26 @@ export function SpaceConversationListItem({
     return uniqBy(avatars, "visual").reverse();
   }, [conversation.content]);
 
+  const countUnreadMessages = useMemo(() => {
+    return conversation.content.filter((versions) => {
+      const message = versions[versions.length - 1];
+      return message.created > (conversation.lastReadMs ?? 0);
+    }).length;
+  }, [conversation.content, conversation.lastReadMs]);
+
   // TODO(conversations-groups) Are we sure we want to require a user message?
   if (!firstUserMessage) {
     return null;
   }
 
-  const conversationCreator = firstUserMessage.user;
+  const creatorName =
+    firstUserMessage.user?.fullName ??
+    firstUserMessage.context?.fullName ??
+    "Unknown";
+  const creatorVisual =
+    firstUserMessage.user?.image ??
+    firstUserMessage.context?.profilePictureUrl ??
+    undefined;
 
   const conversationLabel =
     conversation.title ??
@@ -81,19 +96,15 @@ export function SpaceConversationListItem({
           description: stripMarkdown(firstUserMessage.content),
           updatedAt: new Date(conversation.updated),
         }}
-        creator={
-          conversationCreator
-            ? {
-                fullName: conversationCreator.fullName,
-                portrait: conversationCreator.image ?? undefined,
-              }
-            : undefined
-        }
+        creator={{
+          fullName: creatorName,
+          portrait: creatorVisual,
+        }}
         time={time}
         replySection={
           <ReplySection
             totalMessages={messageCount}
-            newMessages={0} // todo(projects) count unread messages
+            newMessages={countUnreadMessages}
             avatars={avatars}
             lastMessageBy={avatars[avatars.length - 1]?.name ?? "Unknown"}
           />
