@@ -791,6 +791,7 @@ MessageReactionModel.belongsTo(UserModel, {
 });
 
 export type MentionStatusType =
+  | "pending" // DEPRECATED: use pending_conversation_access. Kept temporarily for migration.
   | "pending_conversation_access" // Waiting for user input to invite to conversation
   | "pending_project_membership" // Waiting for user input to add to project (mentioning user is project editor)
   | "approved" // Auto or manually approved

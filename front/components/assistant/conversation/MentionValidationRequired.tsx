@@ -26,7 +26,11 @@ interface MentionValidationRequiredProps {
   mention: Extract<
     RichMentionWithStatus,
     {
-      status: "pending_conversation_access" | "pending_project_membership";
+      // "pending" is deprecated but kept for migration compatibility
+      status:
+        | "pending"
+        | "pending_conversation_access"
+        | "pending_project_membership";
     }
   >;
   conversation: ConversationWithoutContentType;

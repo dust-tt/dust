@@ -218,6 +218,10 @@ export const createUserMentions = async (
           });
         }
 
+        // TODO: Alternative approach would be to always set pending_project_membership for
+        // project conversations and decide at render time whether to show "add to project"
+        // (for editors) or "request access" (for non-editors). This would require building
+        // a request access flow. See https://github.com/dust-tt/dust/issues/20852
         let status: MentionStatusType;
         if (!canAccess) {
           status = "user_restricted_by_conversation_access";
@@ -1092,7 +1096,9 @@ export async function validateUserMention(
     userMessages: [],
     agentMessages: [],
   };
+  // "pending" is deprecated but kept for migration compatibility
   const isPendingStatus = (status: MentionStatusType): boolean =>
+    status === "pending" ||
     status === "pending_conversation_access" ||
     status === "pending_project_membership";
 
