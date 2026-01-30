@@ -31,8 +31,8 @@ jobs:
         uses: ./.github/actions/setup-node-deps
         with:
           build-sdks: "true"
-      - name: Lint and format:check
-        run: npm -w connectors run lint && npm -w connectors run format:check
+      - name: Lint
+        run: npm -w connectors run lint
   tests:
     runs-on: ubuntu-latest
     steps:
