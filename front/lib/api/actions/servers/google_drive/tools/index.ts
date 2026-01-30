@@ -2,17 +2,34 @@ import { MCPError } from "@app/lib/actions/mcp_errors";
 import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
+  getDocsClient,
   getDriveClient,
   getSheetsClient,
+  getSlidesClient,
 } from "@app/lib/api/actions/servers/google_drive/helpers";
 import {
   GOOGLE_DRIVE_TOOLS_METADATA,
+  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
   MAX_CONTENT_SIZE,
   MAX_FILE_SIZE,
   SUPPORTED_MIMETYPES,
 } from "@app/lib/api/actions/servers/google_drive/metadata";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
+
+function handlePermissionError(err: unknown): MCPError {
+  const error = normalizeError(err);
+  if (
+    error.message?.includes("403") ||
+    error.message?.toLowerCase().includes("permission")
+  ) {
+    return new MCPError(
+      "Insufficient permissions. Please go to Settings > Connections, disconnect Google Drive, and reconnect to enable write access.",
+      { tracked: false }
+    );
+  }
+  return new MCPError(error.message || "Operation failed");
+}
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
   list_drives: async ({ pageToken }, { authInfo }) => {
@@ -273,3 +290,90 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 };
 
 export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
+
+const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
+  create_document: async ({ title }, { authInfo }) => {
+    const docs = await getDocsClient(authInfo);
+    if (!docs) {
+      return new Err(new MCPError("Failed to authenticate with Google Docs"));
+    }
+    try {
+      const res = await docs.documents.create({ requestBody: { title } });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              documentId: res.data.documentId,
+              title: res.data.title,
+              url: `https://docs.google.com/document/d/${res.data.documentId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(handlePermissionError(err));
+    }
+  },
+
+  create_spreadsheet: async ({ title }, { authInfo }) => {
+    const sheets = await getSheetsClient(authInfo);
+    if (!sheets) {
+      return new Err(new MCPError("Failed to authenticate with Google Sheets"));
+    }
+    try {
+      const res = await sheets.spreadsheets.create({
+        requestBody: { properties: { title } },
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              spreadsheetId: res.data.spreadsheetId,
+              title: res.data.properties?.title,
+              url: res.data.spreadsheetUrl,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(handlePermissionError(err));
+    }
+  },
+
+  create_presentation: async ({ title }, { authInfo }) => {
+    const slides = await getSlidesClient(authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+    try {
+      const res = await slides.presentations.create({ requestBody: { title } });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              presentationId: res.data.presentationId,
+              title: res.data.title,
+              url: `https://docs.google.com/presentation/d/${res.data.presentationId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      return new Err(handlePermissionError(err));
+    }
+  },
+};
+
+export const WRITE_TOOLS = buildTools(
+  GOOGLE_DRIVE_WRITE_TOOLS_METADATA,
+  writeHandlers
+);

@@ -4749,6 +4749,9 @@
       }
     ],
     "toolsStakes": {
+      "create_document": "low",
+      "create_presentation": "low",
+      "create_spreadsheet": "low",
       "get_file_content": "never_ask",
       "get_spreadsheet": "never_ask",
       "get_worksheet": "never_ask",

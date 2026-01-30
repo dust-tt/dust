@@ -1,8 +1,10 @@
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
 
 import {
+  getGoogleDocsClient,
   getGoogleDriveClient,
   getGoogleSheetsClient,
+  getGoogleSlidesClient,
 } from "@app/lib/providers/google_drive/utils";
 
 export async function getDriveClient(authInfo?: AuthInfo) {
@@ -19,4 +21,20 @@ export async function getSheetsClient(authInfo?: AuthInfo) {
     return null;
   }
   return getGoogleSheetsClient(accessToken);
+}
+
+export async function getDocsClient(authInfo?: AuthInfo) {
+  const accessToken = authInfo?.token;
+  if (!accessToken) {
+    return null;
+  }
+  return getGoogleDocsClient(accessToken);
+}
+
+export async function getSlidesClient(authInfo?: AuthInfo) {
+  const accessToken = authInfo?.token;
+  if (!accessToken) {
+    return null;
+  }
+  return getGoogleSlidesClient(accessToken);
 }
