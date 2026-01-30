@@ -1,48 +1,21 @@
-import fs from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
-import path from "path";
 import { z } from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { PDF_FOOTER_HTML } from "@app/lib/api/files/pdf_footer";
 import { generateVizAccessToken } from "@app/lib/api/viz/access_tokens";
 import type { Authenticator } from "@app/lib/auth";
+import {
+  isEntreprisePlanPrefix,
+  isFriendsAndFamilyPlan,
+} from "@app/lib/plans/plan_codes";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type { PdfOptions, WithAPIErrorResponse } from "@app/types";
 import { DocumentRenderer, frameContentType, isString } from "@app/types";
-import {
-  isEntreprisePlanPrefix,
-  isFriendsAndFamilyPlan,
-} from "@app/lib/plans/plan_codes";
-
-/**
- * Builds the PDF footer HTML by loading the template and logo from files.
- * The logo SVG is inlined because Gotenberg cannot load external assets.
- */
-function buildPdfFooterHtml(): string {
-  const footerTemplatePath = path.join(
-    process.cwd(),
-    "lib/api/files/pdf_footer.html"
-  );
-  const logoPath = path.join(
-    process.cwd(),
-    "public/static/landing/logos/dust/Dust_LogoSquare.svg"
-  );
-
-  const footerTemplate = fs.readFileSync(footerTemplatePath, "utf-8");
-  const logoSvg = fs.readFileSync(logoPath, "utf-8");
-
-  // Resize the logo for footer (16x16).
-  const resizedLogo = logoSvg.replace(
-    /width="48" height="48"/,
-    'width="16" height="16"'
-  );
-
-  return footerTemplate.replace("{{LOGO_SVG}}", resizedLogo);
-}
 
 const PostPdfExportBodySchema = z.object({
   orientation: z.enum(["portrait", "landscape"]).optional().default("portrait"),
@@ -195,7 +168,7 @@ async function handler(
 
   const options: PdfOptions = showFooter
     ? {
-        footerHtml: buildPdfFooterHtml(),
+        footerHtml: PDF_FOOTER_HTML,
         marginBottom: "1cm", // Space for footer.
       }
     : {};
