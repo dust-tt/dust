@@ -398,13 +398,11 @@ export function DatasourceRetrievalTreemapChart({
   }, [documents, groups, zoomSelection]);
 
   const handleDatasourceClick = useCallback((node: TreemapNode) => {
-    // Need either config IDs or server name (for servers like data_sources_file_system).
     const hasConfigIds =
       node.mcpServerConfigIds && node.mcpServerConfigIds.length > 0;
-    const hasServerName = !!node.mcpServerName;
-
+    // Need either config IDs or server name (for servers like data_sources_file_system).
     if (
-      (!hasConfigIds && !hasServerName) ||
+      (!hasConfigIds && !node.mcpServerName) ||
       !node.mcpServerDisplayName ||
       !node.dataSourceId
     ) {

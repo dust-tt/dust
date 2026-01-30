@@ -203,85 +203,90 @@ async function backfillAgentAnalyticsWorkflow(
     );
 
     if (execute && filteredBatch.length > 0) {
-      // Filter out messages without parent IDs and collect parent IDs for batch fetch.
-      const messagesWithParents = filteredBatch.filter((m) => m.parentId);
-      const parentIds = messagesWithParents.map((m) => m.parentId as number);
+      // Filter out messages without parent IDs.
+      const messagesWithParents = filteredBatch.filter(
+        (m): m is MessageModel & { parentId: number } => m.parentId !== null
+      );
 
-      // Batch fetch all parent user messages to avoid N+1 queries.
-      const userMessageRows = await MessageModel.findAll({
-        where: {
-          id: { [Op.in]: parentIds },
-          workspaceId: workspace.id,
-        },
-        include: [
-          {
-            model: UserMessageModel,
-            as: "userMessage",
-            required: true,
+      if (messagesWithParents.length > 0) {
+        const parentIds = messagesWithParents.map((m) => m.parentId);
+
+        // Batch fetch all parent user messages to avoid N+1 queries.
+        const userMessageRows = await MessageModel.findAll({
+          where: {
+            id: { [Op.in]: parentIds },
+            workspaceId: workspace.id,
           },
-        ],
-      });
-      const userMessageById = new Map(userMessageRows.map((m) => [m.id, m]));
+          include: [
+            {
+              model: UserMessageModel,
+              as: "userMessage",
+              required: true,
+            },
+          ],
+        });
+        const userMessageById = new Map(userMessageRows.map((m) => [m.id, m]));
 
-      await concurrentExecutor(
-        messagesWithParents,
-        async (agentMessageRow) => {
-          try {
-            const userMessageRow = userMessageById.get(
-              agentMessageRow.parentId as number
-            );
-            if (!userMessageRow?.userMessage) {
-              return;
-            }
+        await concurrentExecutor(
+          messagesWithParents,
+          async (agentMessageRow) => {
+            try {
+              const userMessageRow = userMessageById.get(
+                agentMessageRow.parentId
+              );
+              if (!userMessageRow?.userMessage) {
+                return;
+              }
 
-            const { agentMessage, conversation } = agentMessageRow;
-            if (!agentMessage || !conversation) {
-              return;
-            }
+              const { agentMessage, conversation } = agentMessageRow;
+              if (!agentMessage || !conversation) {
+                return;
+              }
 
-            const agentLoopArgs: AgentLoopArgs = {
-              agentMessageId: agentMessageRow.sId,
-              agentMessageVersion: agentMessageRow.version,
-              conversationId: conversation.sId,
-              conversationTitle: conversation.title,
-              userMessageId: userMessageRow.sId,
-              userMessageVersion: userMessageRow.version,
-              userMessageOrigin: userMessageRow.userMessage.userContextOrigin,
-            };
+              const agentLoopArgs: AgentLoopArgs = {
+                agentMessageId: agentMessageRow.sId,
+                agentMessageVersion: agentMessageRow.version,
+                conversationId: conversation.sId,
+                conversationTitle: conversation.title,
+                userMessageId: userMessageRow.sId,
+                userMessageVersion: userMessageRow.version,
+                userMessageOrigin: userMessageRow.userMessage.userContextOrigin,
+              };
 
-            const result = await launchStoreAgentAnalyticsWorkflow({
-              authType,
-              agentLoopArgs,
-            });
+              const result = await launchStoreAgentAnalyticsWorkflow({
+                authType,
+                agentLoopArgs,
+              });
 
-            if (result.isErr()) {
+              if (result.isErr()) {
+                errorCount++;
+                logger.error(
+                  {
+                    messageId: agentMessageRow.sId,
+                    workspaceId: workspace.sId,
+                    error: result.error,
+                  },
+                  "Failed to launch agent analytics workflow"
+                );
+                return;
+              }
+
+              successCount++;
+            } catch (err) {
               errorCount++;
               logger.error(
                 {
                   messageId: agentMessageRow.sId,
                   workspaceId: workspace.sId,
-                  error: result.error,
+                  error: err,
                 },
                 "Failed to launch agent analytics workflow"
               );
-              return;
             }
-
-            successCount++;
-          } catch (err) {
-            errorCount++;
-            logger.error(
-              {
-                messageId: agentMessageRow.sId,
-                workspaceId: workspace.sId,
-                error: err,
-              },
-              "Failed to launch agent analytics workflow"
-            );
-          }
-        },
-        { concurrency: 10 }
-      );
+          },
+          { concurrency: 10 }
+        );
+      }
     }
 
     processedCount += agentMessagesBatch.length;

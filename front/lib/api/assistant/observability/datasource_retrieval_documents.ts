@@ -51,8 +51,8 @@ type DatasourceRetrievalDocumentsAggs = {
 const CORE_SEARCH_NODES_BATCH_SIZE = 200;
 
 function chunkArray<T>(items: T[], batchSize: number): T[][] {
-  if (batchSize <= 0) {
-    return [items];
+  if (items.length === 0 || batchSize <= 0) {
+    return items.length === 0 ? [] : [items];
   }
 
   const batches: T[][] = [];
@@ -147,6 +147,11 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
+  // Need at least one filter: either by config IDs or by server name.
+  if (mcpServerConfigIds.length === 0 && !mcpServerName) {
+    return new Ok({ documents: [], groups: [], total: 0 });
+  }
+
   // Fetch configs by sId (only for servers with real config IDs).
   const mcpServerConfigs =
     mcpServerConfigIds.length > 0
@@ -157,11 +162,6 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
       : [];
 
   const mcpServerConfigModelIds = mcpServerConfigs.map((config) => config.id);
-
-  // Need at least one filter: either by config IDs or by server name.
-  if (mcpServerConfigModelIds.length === 0 && !mcpServerName) {
-    return new Ok({ documents: [], groups: [], total: 0 });
-  }
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: workspace.sId,

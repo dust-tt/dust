@@ -239,18 +239,14 @@ export async function fetchDatasourceRetrievalMetrics(
     group.count += nameBucket.doc_count;
 
     for (const dsBucket of datasourceBuckets) {
-      const dataSource = dataSourceBySId.get(dsBucket.key);
-      const displayName = dataSource
-        ? getDisplayNameForDataSource(dataSource.toJSON())
-        : dsBucket.key;
       const existing = group.datasources.get(dsBucket.key);
-
       if (existing) {
-        group.datasources.set(dsBucket.key, {
-          ...existing,
-          count: existing.count + dsBucket.doc_count,
-        });
+        existing.count += dsBucket.doc_count;
       } else {
+        const dataSource = dataSourceBySId.get(dsBucket.key);
+        const displayName = dataSource
+          ? getDisplayNameForDataSource(dataSource.toJSON())
+          : dsBucket.key;
         group.datasources.set(dsBucket.key, {
           dataSourceId: dsBucket.key,
           displayName,

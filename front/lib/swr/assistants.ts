@@ -1192,10 +1192,10 @@ export function useAgentDatasourceRetrievalDocuments({
 }) {
   const fetcherFn: Fetcher<GetDatasourceRetrievalDocumentsResponse> = fetcher;
   const hasConfigIds = mcpServerConfigIds && mcpServerConfigIds.length > 0;
-  const hasServerName = !!mcpServerName;
   // Allow query if we have either config IDs or server name.
   const isDisabled =
-    !!disabled || (!hasConfigIds && !hasServerName) || !dataSourceId;
+    disabled || (!hasConfigIds && !mcpServerName) || !dataSourceId;
+
   const params = new URLSearchParams({ days: days.toString() });
   if (version) {
     params.set("version", version);

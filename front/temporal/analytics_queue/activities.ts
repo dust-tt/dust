@@ -391,18 +391,12 @@ async function extractRetrievalDocuments(
   const dataSourceViewIds = new Set<string>();
 
   for (const action of searchActions) {
-    const isFileSystemServer =
-      action.metadata.internalMCPServerName === FILE_SYSTEM_SERVER_NAME;
-    // Skip config lookup for file_system server - it doesn't have a DB configuration.
-    const config = isFileSystemServer
-      ? null
-      : configMap.get(action.mcpServerConfigurationId);
-
     const actionOutputItems = outputItemsByActionId.get(action.id);
     if (!actionOutputItems) {
       continue;
     }
 
+    const config = configMap.get(action.mcpServerConfigurationId);
     const mcpServerName =
       action.metadata.internalMCPServerName ??
       action.metadata.mcpServerId ??
@@ -434,8 +428,7 @@ async function extractRetrievalDocuments(
 
       partialDocuments.push({
         ...baseDocument,
-        // Only include config ID for servers with DB configurations (not file_system).
-        ...(config && { mcp_server_configuration_id: config.id }),
+        ...(config ? { mcp_server_configuration_id: config.id } : {}),
         mcp_server_name: mcpServerName,
         data_source_view_id: dataSourceViewId,
         data_source_id: dataSourceId,
