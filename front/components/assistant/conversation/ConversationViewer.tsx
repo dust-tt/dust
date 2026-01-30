@@ -645,6 +645,7 @@ export const ConversationViewer = ({
     },
     [
       agentBuilderContext?.clientSideMCPServerIds,
+      agentBuilderContext?.skipToolsValidation,
       conversationId,
       mutateConversations,
       sendNotification,
