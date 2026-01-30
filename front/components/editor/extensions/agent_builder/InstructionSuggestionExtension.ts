@@ -2,11 +2,8 @@ import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 
-// TODO(2026-01-30: Copilot) Generate a short label from suggestion ID for debugging.
-function getSuggestionLabel(suggestionId: string | null): string {
-  if (!suggestionId) {
-    return "?";
-  }
+// Generate a short label from suggestion ID for debugging.
+function getSuggestionLabel(suggestionId: string): string {
   // Take last 4 chars of the ID for a short identifier.
   return suggestionId.slice(-4);
 }
