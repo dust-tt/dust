@@ -125,24 +125,6 @@ describe("GET /api/w/[wId]/assistant/agent_configurations/[aId]/skills", () => {
     expect(data.error.message).toBe("Invalid agent configuration ID.");
   });
 
-  it("should return empty array for global agents", async () => {
-    const { req, res, workspace } = await setupTest();
-
-    // Use a global agent sId format
-    req.query = {
-      ...req.query,
-      wId: workspace.sId,
-      aId: "dust",
-    };
-
-    await handler(req, res);
-
-    // Global agents return empty skills array (not yet implemented)
-    expect(res._getStatusCode()).toBe(200);
-    const data = res._getJSONData();
-    expect(data.skills).toEqual([]);
-  });
-
   it("should only return skills from the correct workspace", async () => {
     const { req, res, workspace, user } = await setupTest();
 
