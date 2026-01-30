@@ -112,6 +112,7 @@ function createMockConversation(
     title: "Test Conversation",
     depth: 0,
     visibility: "unlisted",
+    kind: "regular",
     unread: false,
     lastReadMs: Date.now(),
     actionRequired: false,

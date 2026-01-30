@@ -3846,3 +3846,201 @@ describe("ConversationResource.isConversationCreator", () => {
     }
   });
 });
+
+describe("System Conversations", () => {
+  let auth: Authenticator;
+  let space: SpaceResource;
+  let regularConversationId: string;
+  let systemConversationId: string;
+
+  beforeEach(async () => {
+    const workspace = await WorkspaceFactory.basic();
+    const user = await UserFactory.basic();
+    await MembershipFactory.create({
+      userId: user.id,
+      workspaceId: workspace.id,
+      role: "user",
+    });
+    auth = await Authenticator.fromUserIdAndWorkspaceId(
+      user.sId,
+      workspace.sId
+    );
+
+    const { space: createdSpace } = await createSpaceAndGroup({
+      auth,
+      spaceName: "Test Space",
+    });
+    space = createdSpace;
+
+    // Create a regular conversation
+    const regularConversation = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Regular Conversation",
+        visibility: "unlisted",
+        kind: "regular",
+        depth: 0,
+        triggerId: null,
+        spaceId: null,
+        requestedSpaceIds: [],
+      },
+      null
+    );
+    regularConversationId = regularConversation.sId;
+
+    // Create a system conversation
+    const systemConversation = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "[System] Journal Generation",
+        visibility: "unlisted",
+        kind: "system",
+        depth: 0,
+        triggerId: null,
+        spaceId: null,
+        requestedSpaceIds: [],
+      },
+      null
+    );
+    systemConversationId = systemConversation.sId;
+  });
+
+  afterEach(async () => {
+    await ConversationModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+      },
+    });
+  });
+
+  it("should exclude system conversations by default", async () => {
+    const conversations = await ConversationResource.listAll(auth);
+
+    expect(conversations.length).toBe(1);
+    expect(conversations[0].sId).toBe(regularConversationId);
+    expect(conversations[0].kind).toBe("regular");
+  });
+
+  it("should include system conversations when explicitly requested", async () => {
+    const conversations = await ConversationResource.listAll(auth, {
+      includeSystemConversations: true,
+    });
+
+    expect(conversations.length).toBe(2);
+    const kinds = conversations.map((c) => c.kind).sort();
+    expect(kinds).toEqual(["regular", "system"]);
+  });
+
+  it("should exclude system conversations from fetchById by default", async () => {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      systemConversationId
+    );
+
+    expect(conversation).toBeNull();
+  });
+
+  it("should fetch system conversation when explicitly requested", async () => {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      systemConversationId,
+      {
+        includeSystemConversations: true,
+      }
+    );
+
+    expect(conversation).not.toBeNull();
+    expect(conversation?.kind).toBe("system");
+  });
+
+  it("should exclude system conversations from space listing", async () => {
+    // Create conversations in the space
+    const regularInSpace = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Regular in Space",
+        visibility: "unlisted",
+        kind: "regular",
+        depth: 0,
+        triggerId: null,
+        spaceId: space.sId,
+        requestedSpaceIds: [space.id],
+      },
+      space
+    );
+
+    const _systemInSpace = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "[System] In Space",
+        visibility: "unlisted",
+        kind: "system",
+        depth: 0,
+        triggerId: null,
+        spaceId: space.sId,
+        requestedSpaceIds: [space.id],
+      },
+      space
+    );
+
+    const conversations = await ConversationResource.listConversationsInSpace(
+      auth,
+      {
+        spaceId: space.sId,
+      }
+    );
+
+    expect(conversations.length).toBe(1);
+    expect(conversations[0].sId).toBe(regularInSpace.sId);
+    expect(conversations[0].kind).toBe("regular");
+  });
+
+  it("should correctly convert system conversation to JSON", async () => {
+    const conversation = await ConversationResource.fetchById(
+      auth,
+      systemConversationId,
+      {
+        includeSystemConversations: true,
+      }
+    );
+
+    expect(conversation).not.toBeNull();
+    if (conversation) {
+      const json = conversation.toJSON();
+      expect(json.kind).toBe("system");
+      expect(json.sId).toBe(systemConversationId);
+    }
+  });
+
+  it("should create regular conversation by default when kind is not specified", async () => {
+    const conversation = await ConversationResource.makeNew(
+      auth,
+      {
+        sId: generateRandomModelSId(),
+        title: "Default Kind Conversation",
+        visibility: "unlisted",
+        depth: 0,
+        triggerId: null,
+        spaceId: null,
+        requestedSpaceIds: [],
+      },
+      null
+    );
+
+    // Fetch with includeSystemConversations to verify it's regular
+    const fetched = await ConversationResource.fetchById(
+      auth,
+      conversation.sId,
+      {
+        includeSystemConversations: true,
+      }
+    );
+
+    expect(fetched).not.toBeNull();
+    expect(fetched?.kind).toBe("regular");
+  });
+});

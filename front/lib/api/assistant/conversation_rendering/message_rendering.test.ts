@@ -140,6 +140,7 @@ describe("renderAllMessages", () => {
       spaceId: null,
       depth: 0,
       requestedSpaceIds: [],
+      kind: "regular",
       owner: {
         sId: "workspace_123",
         name: "Test Workspace",

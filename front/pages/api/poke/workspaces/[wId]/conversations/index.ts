@@ -73,6 +73,7 @@ async function handler(
             owner: auth.getNonNullableWorkspace(),
             title: c.title,
             visibility: c.visibility,
+            kind: c.kind,
             depth: c.depth,
             triggerId: c.triggerSId,
             actionRequired: false, // We don't care about actionRequired/unread, so set to false

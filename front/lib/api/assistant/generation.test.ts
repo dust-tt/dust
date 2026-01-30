@@ -130,6 +130,7 @@ describe("constructProjectContextSection", () => {
       depth: 0,
       requestedSpaceIds: [],
       metadata: {},
+      kind: "regular",
     };
 
     const result = constructProjectContextSection(conversation);
@@ -152,6 +153,7 @@ describe("constructProjectContextSection", () => {
       depth: 0,
       requestedSpaceIds: [],
       metadata: {},
+      kind: "regular",
     };
 
     const result = constructProjectContextSection(conversation);

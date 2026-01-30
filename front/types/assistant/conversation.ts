@@ -287,6 +287,14 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
+/**
+ * Kind of a conversation.
+ * - "regular": Normal user-initiated conversations (default)
+ * - "system": System-generated conversations (e.g., background tasks, bots)
+ *   that should be invisible in user-facing lists
+ */
+export type ConversationKind = "regular" | "system";
+
 export type ConversationMetadata = Record<string, unknown>;
 
 /**
@@ -306,6 +314,7 @@ export type ConversationWithoutContentType = {
   triggerId: string | null;
   depth: number;
   metadata: ConversationMetadata;
+  kind: ConversationKind;
 
   // Ideally, this property should be moved to the ConversationType.
   requestedSpaceIds: string[];

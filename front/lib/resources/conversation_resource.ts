@@ -50,6 +50,7 @@ import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 export type FetchConversationOptions = {
   includeDeleted?: boolean;
   includeTest?: boolean;
+  includeSystemConversations?: boolean; // Include system conversations (default: false)
   dangerouslySkipPermissionFiltering?: boolean;
   updatedSince?: number; // Filter conversations updated after this timestamp (milliseconds)
 };
@@ -152,6 +153,11 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     if (!options?.includeDeleted) {
       where.visibility = { [Op.ne]: "deleted" };
+    }
+
+    // By default, exclude system conversations from all queries.
+    if (!options?.includeSystemConversations) {
+      where.kind = { [Op.ne]: "system" };
     }
 
     if (options?.updatedSince !== undefined) {
@@ -604,6 +610,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       spaceId: conversation.space?.sId ?? null,
       depth: conversation.depth,
       metadata: conversation.metadata,
+      kind: conversation.kind,
     });
   }
 
@@ -779,6 +786,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           spaceId: c.space?.sId ?? null,
           depth: c.depth,
           metadata: c.metadata,
+          kind: c.kind,
         };
       })
     );
@@ -1689,6 +1697,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       lastReadMs: participation.lastReadAt?.getTime() ?? null,
       depth: this.depth,
       metadata: this.metadata,
+      kind: this.kind,
     };
   }
 }
