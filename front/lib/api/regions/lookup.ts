@@ -11,7 +11,7 @@ import type {
   WorkspaceLookupRequestBodyType,
   WorkspaceLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
-import type { LightWorkspaceType, Result } from "@app/types";
+import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
 import { isAPIErrorResponse } from "@app/types/error";
 
@@ -87,7 +87,7 @@ export async function handleLookupWorkspace(workspaceLookup: {
   };
 }
 
-export async function lookupInOtherRegion(
+async function lookupInOtherRegion(
   userLookup: UserLookup
 ): Promise<Result<boolean, Error>> {
   const { url } = config.getOtherRegionInfo();
@@ -124,19 +124,14 @@ export async function lookupInOtherRegion(
 
 export async function lookupWorkspace(
   wId: string
-): Promise<
-  Result<{ region: RegionType; workspace: LightWorkspaceType } | null, Error>
-> {
+): Promise<Result<RegionType | null, Error>> {
   const body: WorkspaceLookupRequestBodyType = {
     workspace: wId,
   };
 
   const localLookup = await handleLookupWorkspace(body);
   if (localLookup.workspace) {
-    return new Ok({
-      region: config.getCurrentRegion(),
-      workspace: localLookup.workspace,
-    });
+    return new Ok(config.getCurrentRegion());
   }
 
   const { url, name } = config.getOtherRegionInfo();
@@ -158,7 +153,7 @@ export async function lookupWorkspace(
     }
 
     if (data.workspace) {
-      return new Ok({ workspace: data.workspace, region: name });
+      return new Ok(name);
     }
 
     return new Ok(null);

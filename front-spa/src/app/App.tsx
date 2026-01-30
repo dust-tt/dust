@@ -1,7 +1,11 @@
 import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import { IndexPage } from "@spa/app/pages/IndexPage";
-import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import {
+  createBrowserRouter,
+  Navigate,
+  RouterProvider,
+} from "react-router-dom";
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { AnalyticsPage } from "@dust-tt/front/components/pages/workspace/AnalyticsPage";

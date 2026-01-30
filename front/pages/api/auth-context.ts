@@ -1,21 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { withSessionAuthentication } from "@app/lib/api/auth_wrappers";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { lookupWorkspace } from "@app/lib/api/regions/lookup";
-import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
+import { getUserFromSession } from "@app/lib/iam/session";
 import { apiError } from "@app/logger/withlogging";
-import type {
-  LightWorkspaceType,
-  UserType,
-  WithAPIErrorResponse,
-} from "@app/types";
+import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 export type GetNoWorkspaceAuthContextResponseType = {
-  user: UserType | null;
+  user: UserTypeWithWorkspaces | null;
   region: RegionType | null;
-  defaultWorkspace: LightWorkspaceType | null;
+  defaultWorkspace: string | null;
 };
 
 async function handler(
@@ -23,7 +18,6 @@ async function handler(
   res: NextApiResponse<
     WithAPIErrorResponse<GetNoWorkspaceAuthContextResponseType>
   >,
-  auth: Authenticator,
   session: SessionWithUser
 ): Promise<void> {
   if (req.method !== "GET") {
@@ -36,29 +30,13 @@ async function handler(
     });
   }
 
-  const userResource = auth.getNonNullableUser();
-  let defaultWorkspace: LightWorkspaceType | null = null;
-  if (session.workspaceId) {
-    const lookupRes = await lookupWorkspace(session.workspaceId);
-    if (lookupRes.isErr()) {
-      return apiError(req, res, {
-        status_code: 500,
-        api_error: {
-          type: "internal_server_error",
-          message: "Can't lookup workspace.",
-        },
-      });
-    }
+  const user = await getUserFromSession(session);
 
-    defaultWorkspace = lookupRes.value?.workspace ?? null;
-  }
-
-  // If we reach here, user is a superuser (withSessionAuthenticationForPoke checks this)
   return res.status(200).json({
-    user: userResource.toJSON(),
+    user,
     region: session.region,
-    defaultWorkspace,
+    defaultWorkspace: session.workspaceId ?? null,
   });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthentication(handler);
