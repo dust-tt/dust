@@ -770,6 +770,21 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     });
   }
 
+  canAddMember(auth: Authenticator, userId: string): boolean {
+    if (this.isRegular()) {
+      return this.canAdministrate(auth);
+    }
+    if (this.isProject()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        // Users can add themselves to open projects, but not to restricted projects.
+        return this.isOpen();
+      }
+      return this.canAdministrate(auth);
+    }
+    return false;
+  }
+
   async addMembers(
     auth: Authenticator,
     {
@@ -790,15 +805,6 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "You do not have permission to add members to this space."
-        )
-      );
-    }
-
     assert(
       this.isRegular() || this.isProject(),
       "Only regular spaces and projects can have manual members."
@@ -812,6 +818,15 @@ export class SpaceResource extends BaseResource<SpaceModel> {
 
     if (!users) {
       return new Err(new DustError("user_not_found", "User not found."));
+    }
+
+    if (users.some((user) => !this.canAddMember(auth, user.sId))) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to add members to this space."
+        )
+      );
     }
 
     const memberGroupSpaces = await GroupSpaceMemberResource.fetchBySpace({
@@ -835,6 +850,17 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     return new Ok(users);
   }
 
+  canRemoveMember(auth: Authenticator, userId: string): boolean {
+    if (this.isProject()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        // Users can remove themselves from any project.
+        return true;
+      }
+    }
+    return this.canAdministrate(auth);
+  }
+
   async removeMembers(
     auth: Authenticator,
     {
@@ -854,19 +880,19 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       >
     >
   > {
-    if (!this.canAdministrate(auth)) {
-      return new Err(
-        new DustError(
-          "unauthorized",
-          "You do not have permission to remove members from this space."
-        )
-      );
-    }
-
     const users = await UserResource.fetchByIds(userIds);
 
     if (!users) {
       return new Err(new DustError("user_not_found", "User not found."));
+    }
+
+    if (users.some((user) => !this.canRemoveMember(auth, user.sId))) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You do not have permission to remove these members from this space."
+        )
+      );
     }
 
     // Get the GroupSpaceMemberResource for the member group
