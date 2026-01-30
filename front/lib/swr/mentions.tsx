@@ -19,6 +19,7 @@ type MentionSuggestionsResponseBody = {
 export function useMentionSuggestions({
   workspaceId,
   conversationId,
+  spaceId,
   query = "",
   select,
   disabled = false,
@@ -26,6 +27,7 @@ export function useMentionSuggestions({
 }: {
   workspaceId: string;
   conversationId: string | null;
+  spaceId?: string;
   query?: string;
   select: {
     agents: boolean;
@@ -57,6 +59,10 @@ export function useMentionSuggestions({
   }
   if (includeCurrentUser) {
     searchParams.append("current", "true");
+  }
+
+  if (!conversationId && spaceId) {
+    searchParams.append("spaceId", spaceId);
   }
 
   const url =

@@ -67,6 +67,7 @@ export interface RichUserMention extends BaseRichMention {
 
 export interface RichUserMentionInConversation extends RichUserMention {
   isParticipant?: boolean;
+  isProjectMember?: boolean;
   lastActivityAt?: number;
 }
 
