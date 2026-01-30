@@ -7,7 +7,7 @@ import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
-  const { user, defaultWorkspace, isAuthContextLoading } =
+  const { user, defaultWorkspaceId, isAuthContextLoading } =
     useAuthContext({});
 
   const isAuthenticated = !!user;
@@ -17,11 +17,10 @@ export function IndexPage() {
   });
 
   useEffect(() => {
-    console.log('redirect')
-    if (defaultWorkspace) {
-      navigate(`/w/${defaultWorkspace}/new`, { replace: true });
+    if (defaultWorkspaceId) {
+      navigate(`/w/${defaultWorkspaceId}/conversation/new`, { replace: true });
     }
-  }, [defaultWorkspace, navigate]);
+  }, [defaultWorkspaceId, navigate]);
 
   return (
     <div className="flex h-screen w-full items-center justify-center">

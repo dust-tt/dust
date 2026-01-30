@@ -337,7 +337,7 @@ export function useAuthContext({ disabled }: { disabled?: boolean }) {
   );
 
   return {
-    defaultWorkspace: data?.defaultWorkspace ?? null,
+    defaultWorkspaceId: data?.defaultWorkspaceId ?? null,
     user: data?.user ?? null,
     region: data?.region ?? null,
     isAuthContextLoading: !error && !data && !disabled,

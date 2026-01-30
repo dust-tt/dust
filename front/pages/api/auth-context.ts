@@ -10,7 +10,7 @@ import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 export type GetNoWorkspaceAuthContextResponseType = {
   user: UserTypeWithWorkspaces | null;
   region: RegionType | null;
-  defaultWorkspace: string | null;
+  defaultWorkspaceId: string | null;
 };
 
 async function handler(
@@ -35,7 +35,7 @@ async function handler(
   return res.status(200).json({
     user,
     region: session.region,
-    defaultWorkspace: session.workspaceId ?? null,
+    defaultWorkspaceId: session.workspaceId ?? null,
   });
 }
 

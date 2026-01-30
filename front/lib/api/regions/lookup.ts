@@ -72,18 +72,17 @@ export async function handleLookupWorkspace(workspaceLookup: {
   );
 
   // If workspace is done relocating, return null so users get created in new region.
-  if (workspace) {
-    const ws = renderLightWorkspaceType({ workspace });
-
-    if (!isWorkspaceRelocationDone(ws)) {
-      return {
-        workspace: ws,
-      };
-    }
+  if (
+    workspace &&
+    isWorkspaceRelocationDone(renderLightWorkspaceType({ workspace }))
+  ) {
+    return {
+      workspace: null,
+    };
   }
 
   return {
-    workspace: null,
+    workspace: workspace?.sId ? { sId: workspace.sId } : null,
   };
 }
 
