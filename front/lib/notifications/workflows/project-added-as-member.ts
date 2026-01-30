@@ -10,7 +10,7 @@ import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getSpaceRoute } from "@app/lib/utils/router";
 import type { Result, SpaceType } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 import { PROJECT_ADDED_AS_MEMBER_TRIGGER_ID } from "@app/types/notification_preferences";
 
 const ProjectAddedAsMemberPayloadSchema = z.object({
@@ -141,7 +141,7 @@ export const projectAddedAsMemberWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `${details.userThatAddedYouFullname} added you to the project "${details.projectName}".`,
+          content: `${details.userThatAddedYouFullname} added you to the project "${details.projectName}".\n\nYou now have access to the project's agents, conversations, and knowledge.`,
           action: {
             label: "View project",
             url:
@@ -237,12 +237,12 @@ export const triggerProjectAddedAsMemberNotifications = async (
         cause: r.statusText,
       });
     }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (error) {
+  } catch (err) {
     return new Err({
       name: "dust_error",
       code: "internal_error",
       message: "Failed to trigger project added as member notification",
+      cause: normalizeError(err),
     });
   }
 
