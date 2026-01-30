@@ -81,6 +81,8 @@ async function getWorkspaceConnectionForMCPServer(
 }
 
 export class SnowflakeOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     clientId,

@@ -3,6 +3,7 @@ import type { ParsedUrlQuery } from "querystring";
 import config from "@app/lib/api/config";
 import type { OAuthProvider } from "@app/types";
 import { isDevelopment } from "@app/types";
+import { getMissingWorkspaceConnectionErrorMessage } from "@app/types/oauth/lib";
 
 export function finalizeUriForProvider(provider: OAuthProvider): string {
   // Fathom does not accept http nor localhost in the redirect URL, even in dev.
@@ -33,11 +34,8 @@ export function missingWorkspaceConnectionError(toolName?: string): {
   code: "connection_creation_failed";
   message: string;
 } {
-  const tool = toolName ?? "this tool";
   return {
     code: "connection_creation_failed",
-    message:
-      `A workspace admin must first connect ${tool} at the workspace level before users can connect their personal accounts. ` +
-      "Please contact your workspace administrator to set up the workspace connection.",
+    message: getMissingWorkspaceConnectionErrorMessage(toolName),
   };
 }

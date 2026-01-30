@@ -4,6 +4,11 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
+import {
+  listWorkspaceConnectedMCPServerIds,
+  oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
+  withWorkspaceConnectionRequirement,
+} from "@app/lib/api/mcp_oauth_prerequisites";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
@@ -68,12 +73,45 @@ async function handler(
       const serverViews = (
         await MCPServerViewResource.listBySpace(auth, space)
       ).map((view) => view.toJSON());
+
+      const filteredServerViews = serverViews.filter(
+        (s) => availability === "all" || s.server.availability === availability
+      );
+
+      const needsWorkspaceConnectionEnrichment = filteredServerViews.some(
+        (s) =>
+          s.server.authorization !== null &&
+          oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
+            s.server.authorization.provider
+          )
+      );
+
+      if (!needsWorkspaceConnectionEnrichment) {
+        return res.status(200).json({
+          success: true,
+          serverViews: filteredServerViews,
+        });
+      }
+
+      const workspaceConnectedMCPServerIds =
+        await listWorkspaceConnectedMCPServerIds(auth);
+
       return res.status(200).json({
         success: true,
-        serverViews: serverViews.filter(
-          (s) =>
-            availability === "all" || s.server.availability === availability
-        ),
+        serverViews: filteredServerViews.map((serverView) => ({
+          ...serverView,
+          server: {
+            ...serverView.server,
+            authorization: withWorkspaceConnectionRequirement(
+              serverView.server.authorization,
+              {
+                isWorkspaceConnected: workspaceConnectedMCPServerIds.has(
+                  serverView.server.sId
+                ),
+              }
+            ),
+          },
+        })),
       });
     }
     case "POST": {

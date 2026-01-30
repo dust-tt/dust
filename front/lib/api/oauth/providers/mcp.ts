@@ -53,6 +53,7 @@ type MCPMetadataType = z.infer<typeof MCPMetadataSchema>;
 
 export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
   provider: OAuthProvider = "mcp";
+  requiresWorkspaceConnectionForPersonalAuth = true;
 
   setupUri({
     connection,

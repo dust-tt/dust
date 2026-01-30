@@ -63,6 +63,7 @@ import type {
 } from "@app/types";
 import {
   Err,
+  getMissingWorkspaceConnectionErrorMessage,
   isAdmin,
   isAPIErrorResponse,
   isSupportedOAuthCredential,
@@ -854,6 +855,7 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   const createPersonalConnection = async ({
     mcpServerId,
     mcpServerDisplayName,
+    authorization,
     provider,
     useCase,
     scope,
@@ -861,12 +863,26 @@ export function useCreatePersonalConnection(owner: LightWorkspaceType) {
   }: {
     mcpServerId: string;
     mcpServerDisplayName: string;
+    authorization?: MCPServerType["authorization"];
     provider: OAuthProvider;
     useCase: OAuthUseCase;
     scope?: string;
     overriddenCredentials?: Record<string, string>;
   }): Promise<{ success: boolean; error?: string }> => {
     try {
+      const workspaceConnectionRequirement =
+        authorization?.workspace_connection;
+      if (
+        useCase === "personal_actions" &&
+        workspaceConnectionRequirement?.required &&
+        !workspaceConnectionRequirement.satisfied
+      ) {
+        return {
+          success: false,
+          error: getMissingWorkspaceConnectionErrorMessage(mcpServerDisplayName),
+        };
+      }
+
       const extraConfig: Record<string, string> = {
         mcp_server_id: mcpServerId,
       };

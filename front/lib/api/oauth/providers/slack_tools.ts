@@ -29,6 +29,8 @@ import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
  * the workspace connection could be reused for personal actions.
  */
 export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({
     connection,
     useCase,

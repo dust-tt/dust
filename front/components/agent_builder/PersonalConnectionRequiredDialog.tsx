@@ -238,6 +238,8 @@ export function PersonalConnectionRequiredDialog({
                                   mcpServerId: mcpServerView.server.sId,
                                   mcpServerDisplayName:
                                     getMcpServerViewDisplayName(mcpServerView),
+                                  authorization:
+                                    mcpServerView.server.authorization,
                                   provider:
                                     mcpServerView.server.authorization.provider,
                                   useCase: "personal_actions",

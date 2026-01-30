@@ -9,8 +9,13 @@ import {
 } from "@app/lib/actions/mcp_helper";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { MCPServerType } from "@app/lib/api/mcp";
+import {
+  oauthProviderRequiresWorkspaceConnectionForPersonalAuth,
+  withWorkspaceConnectionRequirement,
+} from "@app/lib/api/mcp_oauth_prerequisites";
 import type { Authenticator } from "@app/lib/auth";
 import { InternalMCPServerInMemoryResource } from "@app/lib/resources/internal_mcp_server_in_memory_resource";
+import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import { RemoteMCPServerResource } from "@app/lib/resources/remote_mcp_servers_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
@@ -54,6 +59,35 @@ export type PatchMCPServerResponseBody = {
 export type DeleteMCPServerResponseBody = {
   deleted: boolean;
 };
+
+async function getEnrichedAuthorizationForWorkspaceConnectionRequirement(
+  auth: Authenticator,
+  server: MCPServerType
+): Promise<MCPServerType["authorization"]> {
+  const { authorization } = server;
+  if (!authorization) {
+    return authorization;
+  }
+
+  if (
+    !oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
+      authorization.provider
+    )
+  ) {
+    return authorization;
+  }
+
+  const isWorkspaceConnected = (
+    await MCPServerConnectionResource.findByMCPServer(auth, {
+      mcpServerId: server.sId,
+      connectionType: "workspace",
+    })
+  ).isOk();
+
+  return withWorkspaceConnectionRequirement(authorization, {
+    isWorkspaceConnected,
+  });
+}
 
 async function handler(
   req: NextApiRequest,
@@ -112,7 +146,18 @@ async function handler(
             });
           }
 
-          return res.status(200).json({ server: server.toJSON() });
+          const json = server.toJSON();
+
+          return res.status(200).json({
+            server: {
+              ...json,
+              authorization:
+                await getEnrichedAuthorizationForWorkspaceConnectionRequirement(
+                  auth,
+                  json
+                ),
+            },
+          });
         }
         case "remote": {
           const server = await RemoteMCPServerResource.fetchById(
@@ -130,7 +175,18 @@ async function handler(
             });
           }
 
-          return res.status(200).json({ server: server.toJSON() });
+          const json = server.toJSON();
+
+          return res.status(200).json({
+            server: {
+              ...json,
+              authorization:
+                await getEnrichedAuthorizationForWorkspaceConnectionRequirement(
+                  auth,
+                  json
+                ),
+            },
+          });
         }
         default:
           assertNever(serverType);

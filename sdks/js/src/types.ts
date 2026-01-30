@@ -3131,6 +3131,12 @@ const MCPServerTypeSchema = z.object({
         z.enum(["personal_actions", "platform_actions"]),
       ),
       scope: z.string().optional(),
+      workspace_connection: z
+        .object({
+          required: z.boolean(),
+          satisfied: z.boolean(),
+        })
+        .optional(),
     })
     .nullable(),
   tools: z.array(

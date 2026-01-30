@@ -94,6 +94,8 @@ function getProviderStrategy(
   return _PROVIDER_STRATEGIES[provider];
 }
 
+export { getProviderStrategy };
+
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
   provider: OAuthProvider,

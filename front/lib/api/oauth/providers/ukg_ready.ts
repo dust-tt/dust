@@ -21,6 +21,8 @@ import { Err, isValidUrl, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
 export class UkgReadyOAuthProvider implements BaseOAuthStrategyProvider {
+  requiresWorkspaceConnectionForPersonalAuth = true;
+
   setupUri({ connection }: { connection: OAuthConnectionType }) {
     const instanceUrl = connection.metadata.instance_url;
     const companyId = connection.metadata.ukg_ready_company_id;

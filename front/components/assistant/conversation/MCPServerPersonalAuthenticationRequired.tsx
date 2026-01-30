@@ -95,6 +95,7 @@ export function MCPServerPersonalAuthenticationRequired({
       const result = await createPersonalConnection({
         mcpServerId: mcpServer.sId,
         mcpServerDisplayName: getMcpServerDisplayName(mcpServer),
+        authorization: mcpServer.authorization,
         provider,
         useCase: "personal_actions",
         scope,

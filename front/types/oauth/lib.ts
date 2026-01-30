@@ -89,6 +89,16 @@ export const OAUTH_PROVIDER_NAMES: Record<OAuthProvider, string> = {
   vanta: "Vanta",
 };
 
+export function getMissingWorkspaceConnectionErrorMessage(
+  toolName?: string
+): string {
+  const tool = toolName ?? "this tool";
+  return (
+    `A workspace admin must first connect ${tool} at the workspace level before users can connect their personal accounts. ` +
+    "Please contact your workspace administrator to set up the workspace connection."
+  );
+}
+
 const SUPPORTED_OAUTH_CREDENTIALS = [
   "client_id",
   "client_secret",
