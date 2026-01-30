@@ -85,9 +85,13 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
 
   static async makeNew(
     blob: CreationAttributes<SubscriptionModel>,
-    plan: PlanType
+    plan: PlanType,
+    transaction?: Transaction
   ) {
-    const subscription = await SubscriptionModel.create({ ...blob });
+    const subscription = await SubscriptionModel.create(
+      { ...blob },
+      { transaction }
+    );
     return new SubscriptionResource(
       SubscriptionModel,
       subscription.get(),
