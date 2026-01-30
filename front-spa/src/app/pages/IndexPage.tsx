@@ -7,7 +7,7 @@ import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
-  const { user, region, defaultWorkspace, isAuthContextLoading } =
+  const { user, defaultWorkspace, isAuthContextLoading } =
     useAuthContext({});
 
   const isAuthenticated = !!user;
@@ -16,9 +16,8 @@ export function IndexPage() {
     isAuthenticated,
   });
 
-  console.log("Initial auth-context", user, region, defaultWorkspace);
-
   useEffect(() => {
+    console.log('redirect')
     if (defaultWorkspace) {
       navigate(`/w/${defaultWorkspace}/new`, { replace: true });
     }
