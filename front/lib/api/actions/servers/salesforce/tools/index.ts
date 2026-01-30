@@ -1,3 +1,5 @@
+import type { DescribeSObjectResult } from "jsforce";
+
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import type {
   ToolDefinition,
@@ -20,17 +22,6 @@ import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { Err, Ok } from "@app/types";
 
-interface SalesforceRecord {
-  Id: string;
-  [key: string]: unknown;
-}
-
-interface SalesforceUpdateResult {
-  success: boolean;
-  id?: string;
-  errors?: Array<{ message: string }>;
-}
-
 interface DescribeFieldResult {
   name: string;
   label: string;
@@ -44,44 +35,12 @@ interface DescribeFieldResult {
   picklistValues?: Array<{ active: boolean; value: string }> | null;
 }
 
-interface ChildRelationship {
-  relationshipName?: string | null;
-  childSObject: string;
-  field: string;
-}
-
-interface DescribeSObjectResult {
-  name: string;
-  label: string;
-  labelPlural: string;
-  keyPrefix?: string | null;
-  queryable: boolean;
-  createable: boolean;
-  updateable: boolean;
-  deletable: boolean;
-  feedEnabled: boolean;
-  fields: DescribeFieldResult[];
-  childRelationships: ChildRelationship[];
-}
-
-interface DescribeGlobalSObjectResult {
-  name: string;
-  label: string;
-  custom: boolean;
-}
-
-interface QueryResult<T> {
-  totalSize?: number;
-  done: boolean;
-  records: T[];
-}
-
 export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
   const handlers: ToolHandlers<typeof SALESFORCE_TOOLS_METADATA> = {
     execute_read_query: async ({ query }, extra) => {
       return withAuth(extra, async (conn) => {
         try {
-          const result: QueryResult<SalesforceRecord> = await conn.query(query);
+          const result = await conn.query(query);
 
           const formattedRecords = jsonToMarkdown(result.records);
 
@@ -116,7 +75,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
         try {
           const result = await conn.describeGlobal();
 
-          const objects = (result.sobjects as DescribeGlobalSObjectResult[])
+          const objects = result.sobjects
             .filter((object) => {
               if (filter === "all") {
                 return true;
@@ -158,12 +117,8 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
           summary += `Feed Enabled: ${result.feedEnabled}\n\n`;
 
           summary += "Fields:\n";
-          const standardFields = result.fields.filter(
-            (f: DescribeFieldResult) => !f.custom
-          );
-          const customFields = result.fields.filter(
-            (f: DescribeFieldResult) => f.custom
-          );
+          const standardFields = result.fields.filter((f) => !f.custom);
+          const customFields = result.fields.filter((f) => f.custom);
 
           const formatField = (field: DescribeFieldResult) => {
             let fieldStr = `- ${field.name} (Label: "${field.label}", Type: ${field.type}`;
@@ -198,14 +153,14 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
 
           if (standardFields.length > 0) {
             summary += "\nStandard Fields:\n";
-            standardFields.forEach((field: DescribeFieldResult) => {
+            standardFields.forEach((field) => {
               summary += `${formatField(field)}\n`;
             });
           }
 
           if (customFields.length > 0) {
             summary += "\nCustom Fields (names end with '__c'):\n";
-            customFields.forEach((field: DescribeFieldResult) => {
+            customFields.forEach((field) => {
               summary += `${formatField(field)}\n`;
             });
           }
@@ -216,7 +171,7 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
             result.childRelationships &&
             result.childRelationships.length > 0
           ) {
-            result.childRelationships.forEach((rel: ChildRelationship) => {
+            result.childRelationships.forEach((rel) => {
               // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
               summary += `- RelationshipName: ${rel.relationshipName || "(N/A - check API docs)"}`;
               summary += `, ChildObject: ${rel.childSObject}`;
@@ -260,15 +215,11 @@ export function createSalesforceTools(auth: Authenticator): ToolDefinition[] {
 
       return withAuth(extra, async (conn) => {
         try {
-          const result = await conn
-            .sobject(objectName)
-            .update(records as SalesforceRecord[], {
-              allOrNone,
-            });
+          const result = await conn.sobject(objectName).update(records, {
+            allOrNone,
+          });
 
-          const results: SalesforceUpdateResult[] = Array.isArray(result)
-            ? result
-            : [result];
+          const results = Array.isArray(result) ? result : [result];
           const successCount = results.filter((r) => r.success).length;
           const failureCount = results.length - successCount;
 
