@@ -7,6 +7,7 @@ import { sendProactiveTrialCancelledEmail } from "@app/lib/api/email";
 import { getOrCreateWorkOSOrganization } from "@app/lib/api/workos/organization";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import type { PlanAttributes } from "@app/lib/plans/free_plans";
 import { FREE_NO_PLAN_DATA } from "@app/lib/plans/free_plans";
@@ -32,6 +33,8 @@ import {
 import { getTrialVersionForPlan, isTrial } from "@app/lib/plans/trial/limits";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { BaseResource } from "@app/lib/resources/base_resource";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
@@ -42,7 +45,6 @@ import {
   getWorkspaceFirstAdmin,
   renderLightWorkspaceType,
 } from "@app/lib/workspace";
-import { checkWorkspaceActivity } from "@app/lib/workspace_usage";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -924,4 +926,29 @@ export class SubscriptionResource extends BaseResource<SubscriptionModel> {
       stripeSubscription
     );
   }
+}
+
+/**
+ * Check if a workspace is active during a trial based on the following conditions:
+ *   - Existence of a connected data source
+ *   - Existence of a custom agent
+ *   - A conversation occurred within the past 7 days
+ */
+export async function checkWorkspaceActivity(auth: Authenticator) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const hasDataSource =
+    (await DataSourceResource.listByWorkspace(auth, { limit: 1 })).length > 0;
+
+  const hasCreatedAssistant = await AgentConfigurationModel.findOne({
+    where: { workspaceId: auth.getNonNullableWorkspace().id },
+  });
+
+  const hasRecentConversation =
+    (await ConversationResource.countForWorkspace(auth, {
+      updatedSince: sevenDaysAgo.getTime(),
+    })) > 0;
+
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+  return hasDataSource || hasCreatedAssistant || hasRecentConversation;
 }
