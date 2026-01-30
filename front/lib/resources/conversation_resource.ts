@@ -239,7 +239,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     return spaceBasedAccessible;
   }
 
-  static triggerModelIdToSId({
+  private static triggerModelIdToSId({
     id,
     workspaceId,
   }: {
