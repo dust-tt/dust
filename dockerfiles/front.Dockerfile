@@ -17,7 +17,7 @@ COPY sparkle/package.json ./sparkle/
 COPY front/package.json ./front/
 COPY front-spa/package.json ./front-spa/
 
-RUN npm ci -w sdks/js -w sparkle -w front -w front-spa
+RUN --mount=type=cache,id=npm-cache,target=/root/.npm npm ci -w sdks/js -w sparkle -w front -w front-spa
 
 # Build SDK
 WORKDIR /app/sdks/js
