@@ -19,6 +19,7 @@ import { CONFLUENCE_SERVER } from "@app/lib/api/actions/servers/confluence/metad
 import { CONVERSATION_FILES_SERVER } from "@app/lib/api/actions/servers/conversation_files/metadata";
 import { DATA_SOURCES_FILE_SYSTEM_SERVER } from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
 import { DATA_WAREHOUSES_SERVER } from "@app/lib/api/actions/servers/data_warehouses/metadata";
+import { DATABRICKS_SERVER } from "@app/lib/api/actions/servers/databricks/metadata";
 import { EXTRACT_DATA_SERVER } from "@app/lib/api/actions/servers/extract_data/metadata";
 import { FILE_GENERATION_SERVER } from "@app/lib/api/actions/servers/file_generation/metadata";
 import { FRESHSERVICE_SERVER } from "@app/lib/api/actions/servers/freshservice/metadata";
@@ -870,25 +871,10 @@ export const INTERNAL_MCP_SERVERS = {
       return !featureFlags.includes("databricks_tool");
     },
     isPreview: true,
-    tools_stakes: {
-      list_warehouses: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "databricks",
-      version: "1.0.0",
-      description:
-        "Execute SQL queries and manage databases in Databricks SQL.",
-      authorization: {
-        provider: "databricks" as const,
-        supported_use_cases: ["platform_actions", "personal_actions"] as const,
-      },
-      icon: "ActionTableIcon",
-      documentationUrl: "https://docs.dust.tt/docs/databricks",
-      instructions: null,
-    },
+    metadata: DATABRICKS_SERVER,
   },
   productboard: {
     id: 46,
