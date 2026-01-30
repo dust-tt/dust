@@ -9,9 +9,15 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import { useAgentBuilderSessionContext } from "@app/components/agent_builder/AgentBuilderSessionContext";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useUser } from "@app/lib/swr/user";
+import {
+  trackEvent,
+  TRACKING_ACTIONS,
+  TRACKING_AREAS,
+} from "@app/lib/tracking";
 import type { ConversationType } from "@app/types";
 import { GLOBAL_AGENTS_SID } from "@app/types";
 
@@ -125,6 +131,8 @@ export const CopilotPanelProvider = ({
   const { owner } = useAgentBuilderContext();
   const { user } = useUser();
   const sendNotification = useSendNotification();
+  const { sessionId, setCopilotConversationId } =
+    useAgentBuilderSessionContext();
 
   const [conversation, setConversation] = useState<ConversationType | null>(
     null
@@ -170,6 +178,18 @@ export const CopilotPanelProvider = ({
 
     if (result.isOk()) {
       setConversation(result.value);
+      setCopilotConversationId(result.value.sId);
+      trackEvent({
+        area: TRACKING_AREAS.BUILDER,
+        object: "copilot_conversation",
+        action: TRACKING_ACTIONS.CREATE,
+        extra: {
+          agent_builder_copilot_session: sessionId,
+          copilot_conversation_id: result.value.sId,
+          agent_id: targetAgentConfigurationId ?? "",
+          is_new_agent: isNewAgent,
+        },
+      });
     } else {
       setCreationFailed(true);
       sendNotification({
@@ -185,6 +205,8 @@ export const CopilotPanelProvider = ({
     createConversationWithMessage,
     isNewAgent,
     sendNotification,
+    sessionId,
+    setCopilotConversationId,
     targetAgentConfigurationId,
     targetAgentConfigurationVersion,
   ]);
