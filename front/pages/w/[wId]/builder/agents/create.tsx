@@ -9,7 +9,6 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { useMemo, useState } from "react";
 
@@ -21,58 +20,133 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceAuthContext,
+} from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
+import Custom404 from "@app/pages/404";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
-  TemplateTagsType,
   WorkspaceType,
+  WhitelistableFeature,
 } from "@app/types";
-import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
+import {
+  isBuilder,
+  isString,
+  isTemplateTagCodeArray,
+  TEMPLATES_TAGS_CONFIG,
+} from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  templateTagsMapping: TemplateTagsType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  if (!owner || !plan || !auth.isUser() || !subscription) {
-    return {
-      notFound: true,
-    };
+function FullPageSpinner() {
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <Spinner size="lg" />
+    </div>
+  );
+}
+
+export default function CreateAgentPage() {
+  const { isReady, query } = useRouter();
+
+  if (!isReady) {
+    return null;
   }
 
-  return {
-    props: {
-      owner,
-      subscription,
-      templateTagsMapping: TEMPLATES_TAGS_CONFIG,
-    },
-  };
-});
+  if (!isString(query.wId)) {
+    return <Custom404 />;
+  }
 
-export default function CreateAgent({
+  return <CreateAgentAuthGate workspaceId={query.wId} />;
+}
+
+interface CreateAgentAuthGateProps {
+  workspaceId: string;
+}
+
+function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
+  const {
+    owner,
+    subscription,
+    user,
+    isAuthContextLoading,
+    isAuthContextError,
+  } = useWorkspaceAuthContext({ workspaceId });
+
+  if (isAuthContextLoading) {
+    return <FullPageSpinner />;
+  }
+
+  if (isAuthContextError || !owner || !subscription || !user) {
+    return <Custom404 />;
+  }
+
+  return (
+    <CreateAgentFeatureGate owner={owner} subscription={subscription} />
+  );
+}
+
+interface CreateAgentFeatureGateProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+}
+
+function CreateAgentFeatureGate({
   owner,
   subscription,
-  templateTagsMapping,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+}: CreateAgentFeatureGateProps) {
+  const { featureFlags, hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  if (isFeatureFlagsLoading) {
+    return <FullPageSpinner />;
+  }
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
+
+  if (isRestrictedFromAgentCreation) {
+    return <Custom404 />;
+  }
+
+  return (
+    <CreateAgentContent
+      owner={owner}
+      subscription={subscription}
+      hasFeature={hasFeature}
+    />
+  );
+}
+
+interface CreateAgentContentProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  hasFeature: (flag: WhitelistableFeature | null | undefined) => boolean;
+}
+
+function CreateAgentContent({
+  owner,
+  subscription,
+  hasFeature,
+}: CreateAgentContentProps) {
   const router = useRouter();
+  const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
+  const initialTemplateId = isString(router.query.templateId)
+    ? router.query.templateId
+    : null;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    (router.query.templateId as string) ?? null
+    initialTemplateId
   );
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
   });
-
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
   const { assistantTemplates } = useAssistantTemplates();
 
@@ -241,6 +315,6 @@ export default function CreateAgent({
   );
 }
 
-CreateAgent.getLayout = (page: React.ReactElement) => {
+CreateAgentPage.getLayout = (page: React.ReactElement) => {
   return <AppRootLayout>{page}</AppRootLayout>;
 };

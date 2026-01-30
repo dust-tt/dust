@@ -12,8 +12,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
@@ -26,24 +26,26 @@ import { EmptyCallToAction } from "@app/components/EmptyCallToAction";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { isRestrictedFromAgentCreation } from "@app/lib/auth";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import {
+  useFeatureFlags,
+  useWorkspaceAuthContext,
+} from "@app/lib/swr/workspaces";
 import {
   compareForFuzzySort,
   getAgentSearchString,
   subFilter,
 } from "@app/lib/utils";
+import Custom404 from "@app/pages/404";
 import type {
   LightAgentConfigurationType,
   SubscriptionType,
   UserType,
+  WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin, isBuilder, isString } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS = [
@@ -79,49 +81,116 @@ export const AGENT_MANAGER_TABS = [
 export type AssistantManagerTabsType =
   (typeof AGENT_MANAGER_TABS)[number]["id"];
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-
-  if (!owner || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  if (await isRestrictedFromAgentCreation(owner)) {
-    return {
-      notFound: true,
-    };
-  }
-
-  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-  const user = auth.getNonNullableUser();
-
-  return {
-    props: {
-      owner,
-      subscription,
-      user: user.toJSON(),
-    },
-  };
-});
-
 function isValidTab(tab: string): tab is AssistantManagerTabsType {
   return AGENT_MANAGER_TABS.map((tab) => tab.id).includes(
     tab as AssistantManagerTabsType
   );
 }
 
-export default function WorkspaceAssistants({
+function FullPageSpinner() {
+  return (
+    <div className="flex h-screen items-center justify-center">
+      <Spinner size="lg" />
+    </div>
+  );
+}
+
+export default function WorkspaceAssistantsPage() {
+  const { isReady, query } = useRouter();
+
+  if (!isReady) {
+    return null;
+  }
+
+  if (!isString(query.wId)) {
+    return <Custom404 />;
+  }
+
+  return <WorkspaceAssistantsAuthGate workspaceId={query.wId} />;
+}
+
+interface WorkspaceAssistantsAuthGateProps {
+  workspaceId: string;
+}
+
+function WorkspaceAssistantsAuthGate({
+  workspaceId,
+}: WorkspaceAssistantsAuthGateProps) {
+  const {
+    owner,
+    subscription,
+    user,
+    isAuthContextLoading,
+    isAuthContextError,
+  } = useWorkspaceAuthContext({ workspaceId });
+
+  if (isAuthContextLoading) {
+    return <FullPageSpinner />;
+  }
+
+  if (isAuthContextError || !owner || !subscription || !user) {
+    return <Custom404 />;
+  }
+
+  return (
+    <WorkspaceAssistantsFeatureGate
+      owner={owner}
+      subscription={subscription}
+      user={user}
+    />
+  );
+}
+
+interface WorkspaceAssistantsFeatureGateProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  user: UserType;
+}
+
+function WorkspaceAssistantsFeatureGate({
   owner,
   subscription,
   user,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+}: WorkspaceAssistantsFeatureGateProps) {
+  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+
+  if (isFeatureFlagsLoading) {
+    return <FullPageSpinner />;
+  }
+
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") &&
+    !isBuilder(owner);
+
+  if (isRestrictedFromAgentCreation) {
+    return <Custom404 />;
+  }
+
+  return (
+    <WorkspaceAssistantsContent
+      owner={owner}
+      subscription={subscription}
+      user={user}
+      featureFlags={featureFlags}
+    />
+  );
+}
+
+interface WorkspaceAssistantsContentProps {
+  owner: WorkspaceType;
+  subscription: SubscriptionType;
+  user: UserType;
+  featureFlags: readonly WhitelistableFeature[];
+}
+
+function WorkspaceAssistantsContent({
+  owner,
+  subscription,
+  user,
+  featureFlags,
+}: WorkspaceAssistantsContentProps) {
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -129,10 +198,6 @@ export default function WorkspaceAssistants({
   const [selectedTags, setSelectedTags] = useState<TagType[]>([]);
   const [isBatchEdit, setIsBatchEdit] = useState(false);
   const [selection, setSelection] = useState<string[]>([]);
-
-  const { featureFlags } = useFeatureFlags({
-    workspaceId: owner.sId,
-  });
 
   const isRestrictedFromAgentCreation =
     featureFlags.includes("disallow_agent_creation_to_users") &&
@@ -439,6 +504,6 @@ export default function WorkspaceAssistants({
   );
 }
 
-WorkspaceAssistants.getLayout = (page: React.ReactElement) => {
+WorkspaceAssistantsPage.getLayout = (page: React.ReactElement) => {
   return <AppRootLayout>{page}</AppRootLayout>;
 };
