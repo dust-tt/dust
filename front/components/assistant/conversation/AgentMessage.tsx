@@ -97,10 +97,10 @@ import { assertNever } from "@app/types/shared/utils/assert_never";
 function PrunedContextChip() {
   return (
     <Tooltip
-      label="Some tool results were removed to keep this conversation within its size limit. The answer may be less accurate or miss details."
+      label="Some tool results were removed to keep this conversation within its context size limit. The answer may be less accurate or miss details."
       trigger={
         <Chip
-          label="Degraded response"
+          label="Answer may be inaccurate"
           size="xs"
           color="golden"
           icon={ExclamationCircleIcon}
