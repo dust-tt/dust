@@ -345,9 +345,9 @@ export const ConversationWithActions = () => {
               acceptedTitle="Instructions updated"
               rejectedTitle="Instructions update rejected"
               cardVariant="highlight"
-              collapsible
               collapsibleLabel="Suggestion details"
               size="auto"
+              actionsPosition="header"
               visual={
                 <Avatar
                   size="sm"
@@ -363,23 +363,25 @@ export const ConversationWithActions = () => {
                   icon={EyeIcon}
                 />
               }
-            >
-              <DiffBlock
-                changes={[
-                  {
-                    old: "Keep responses short and formal. Avoid unnecessary details and stick to the essential information only.",
-                    new: "Keep responses friendly and concise. Feel free to add helpful context when it improves clarity for the reader.",
-                  },
-                  {
-                    old: "Do not include personal greetings or sign-offs. Start directly with the answer to maintain a professional tone throughout.",
-                    new: "Add a short welcome line for new hires. Personalize the greeting when possible to make them feel valued and included.",
-                  },
-                  {
-                    new: "Include links to relevant documentation and internal resources. This helps users find additional information on their own.",
-                  },
-                ]}
-              />
-            </ActionCardBlock>
+              description="Based on recent feedback, users prefer a friendlier tone. Adding documentation links will reduce follow-up questions by ~40%."
+              collapsibleContent={
+                <DiffBlock
+                  changes={[
+                    {
+                      old: "Keep responses short and formal. Avoid unnecessary details and stick to the essential information only.",
+                      new: "Keep responses friendly and concise. Feel free to add helpful context when it improves clarity for the reader.",
+                    },
+                    {
+                      old: "Do not include personal greetings or sign-offs. Start directly with the answer to maintain a professional tone throughout.",
+                      new: "Add a short welcome line for new hires. Personalize the greeting when possible to make them feel valued and included.",
+                    },
+                    {
+                      new: "Include links to relevant documentation and internal resources. This helps users find additional information on their own.",
+                    },
+                  ]}
+                />
+              }
+            />
             <ActionCardBlock
               title="Update agent name and avatar"
               acceptedTitle="Agent name and avatar updated"
@@ -387,13 +389,35 @@ export const ConversationWithActions = () => {
               applyLabel="Update"
               rejectLabel="Reject"
               cardVariant="highlight"
-              collapsible
+              actionsPosition="header"
               visual={
                 <Avatar size="sm" emoji="👋" backgroundColor="s-bg-blue-100" />
               }
-              description={
-                'Set the agent name to "Concise Researcher" and update the avatar to a clean, blue icon for better clarity in the workspace.'
+              description="The current name is too generic. A descriptive name helps users pick the right agent faster."
+              collapsibleContent={
+                <Markdown
+                  forcedTextSize="sm"
+                  content={`- Set the agent name to "Concise Researcher"\n- Update the avatar to a clean, blue icon`}
+                />
               }
+              collapsibleLabel="Suggestion details"
+            />
+            <ActionCardBlock
+              title="Remove Slack tool"
+              acceptedTitle="Slack tool removed"
+              rejectedTitle="Slack tool removal rejected"
+              applyLabel="Remove"
+              rejectLabel="Reject"
+              cardVariant="warning"
+              visual={
+                <Avatar
+                  size="sm"
+                  icon={SlackLogo}
+                  backgroundColor="s-bg-white"
+                />
+              }
+              actionsPosition="header"
+              description="Disable the Slack tool to prevent the agent from posting or reading channel messages by default."
             />
             <ActionCardBlock
               title="Add Gmail tool"
@@ -411,22 +435,6 @@ export const ConversationWithActions = () => {
                 />
               }
               description="Enable the Gmail tool so the agent can read and send emails when users ask to draft replies."
-            />
-            <ActionCardBlock
-              title="Remove Slack tool"
-              acceptedTitle="Slack tool removed"
-              rejectedTitle="Slack tool removal rejected"
-              applyLabel="Remove"
-              rejectLabel="Reject"
-              cardVariant="warning"
-              visual={
-                <Avatar
-                  size="sm"
-                  icon={SlackLogo}
-                  backgroundColor="s-bg-white"
-                />
-              }
-              description="Disable the Slack tool to prevent the agent from posting or reading channel messages by default."
             />
             <ActionCardBlock
               title="Invite editors"

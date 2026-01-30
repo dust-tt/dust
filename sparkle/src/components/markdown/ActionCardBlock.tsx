@@ -52,6 +52,8 @@ interface AvatarStackStringProps {
   avatarIsRounded?: boolean;
 }
 
+type ActionButtonPosition = "header" | "footer";
+
 interface ActionCardBlockProps extends AvatarStackStringProps {
   // Visual
   title?: string;
@@ -60,12 +62,12 @@ interface ActionCardBlockProps extends AvatarStackStringProps {
 
   // Content
   description?: React.ReactNode;
-  children?: React.ReactNode;
-  collapsible?: boolean;
+  collapsibleContent?: React.ReactNode;
   collapsibleLabel?: string;
 
   // Actions
   actions?: React.ReactNode;
+  actionsPosition?: ActionButtonPosition;
   applyLabel?: string;
   rejectLabel?: string;
   hasCheck?: boolean;
@@ -103,15 +105,7 @@ function parseListAttribute(value: unknown): string[] {
     .filter(Boolean);
 }
 
-function buildAvatarStackFromProps(props: {
-  avatarNames?: string;
-  avatarEmojis?: string;
-  avatarVisuals?: string;
-  avatarHexBgColors?: string;
-  avatarBackgroundColors?: string;
-  avatarIconNames?: string;
-  avatarIsRounded?: boolean;
-}) {
+function buildAvatarStackFromProps(props: AvatarStackStringProps) {
   const avatarNames = parseListAttribute(props.avatarNames);
   const avatarEmojis = parseListAttribute(props.avatarEmojis);
   const avatarVisuals = parseListAttribute(props.avatarVisuals);
@@ -167,11 +161,11 @@ export function ActionCardBlock({
   avatars,
   // Content
   description,
-  children,
-  collapsible,
+  collapsibleContent,
   collapsibleLabel,
   // Actions
   actions,
+  actionsPosition = "footer",
   applyLabel,
   rejectLabel,
   hasCheck,
@@ -278,36 +272,26 @@ export function ActionCardBlock({
   const actionButtons = actions ?? defaultActionButtons;
 
   const showHeader = resolvedVisual || resolvedTitle;
-  const showFooter = !isResolved && !collapsible;
+  const showActionsInHeader = !isResolved && actionsPosition === "header";
+  const showActionsInFooter = !isResolved && actionsPosition === "footer";
 
   const renderContent = () => {
-    const content = description ?? children;
-    if (!content) return null;
-
-    if (collapsible) {
-      return (
-        <Collapsible>
-          <CollapsibleTrigger
-            label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
-            variant="secondary"
-          />
-          <CollapsibleContent>
-            {description ? (
-              <div className="s-text-sm s-text-muted-foreground">{content}</div>
-            ) : (
-              content
-            )}
-          </CollapsibleContent>
-        </Collapsible>
-      );
-    }
-
-    if (isResolved) return null;
-
-    return description ? (
-      <div className={descriptionClasses}>{content}</div>
-    ) : (
-      content
+    return (
+      <>
+        {description && <div className={descriptionClasses}>{description}</div>}
+        {collapsibleContent && (
+          <Collapsible>
+            <CollapsibleTrigger
+              className="s-mb-1"
+              label={collapsibleLabel ?? DEFAULT_COLLAPSIBLE_LABEL}
+              variant="secondary"
+            />
+            <CollapsibleContent className="s-text-sm">
+              {collapsibleContent}
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+      </>
     );
   };
 
@@ -326,13 +310,13 @@ export function ActionCardBlock({
               <div className={titleClasses}>{resolvedTitle}</div>
             )}
           </div>
-          {!isResolved && collapsible && actionButtons}
+          {showActionsInHeader && actionButtons}
         </div>
       )}
 
       {renderContent()}
 
-      {showFooter && (
+      {showActionsInFooter && (
         <div
           className={`s-flex s-flex-wrap s-gap-2 ${hasCheck ? "s-justify-between" : "s-justify-end"}`}
         >
