@@ -6,12 +6,10 @@ import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
 import type { UserType, WithAPIErrorResponse } from "@app/types";
 
-export type GetPokeNoWorkspaceAuthContextResponseType =
-  | {
-      user: UserType;
-      isSuperUser: true;
-    }
-  | { user: null; isSuperUser: false };
+export type GetPokeNoWorkspaceAuthContextResponseType = {
+  user: UserType;
+  isSuperUser: true;
+};
 
 async function handler(
   req: NextApiRequest,

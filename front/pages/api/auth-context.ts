@@ -8,8 +8,8 @@ import { apiError } from "@app/logger/withlogging";
 import type { UserTypeWithWorkspaces, WithAPIErrorResponse } from "@app/types";
 
 export type GetNoWorkspaceAuthContextResponseType = {
-  user: UserTypeWithWorkspaces | null;
-  region: RegionType | null;
+  user: UserTypeWithWorkspaces;
+  region: RegionType;
   defaultWorkspaceId: string | null;
 };
 
@@ -31,6 +31,16 @@ async function handler(
   }
 
   const user = await getUserFromSession(session);
+
+  if (!user) {
+    return apiError(req, res, {
+      status_code: 403,
+      api_error: {
+        type: "not_authenticated",
+        message: "User not authenticated.",
+      },
+    });
+  }
 
   return res.status(200).json({
     user,

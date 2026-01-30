@@ -7,8 +7,7 @@ import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
-  const { user, defaultWorkspaceId, isAuthContextLoading } =
-    useAuthContext({});
+  const { user, defaultWorkspaceId, isAuthContextLoading } = useAuthContext({});
 
   const isAuthenticated = !!user;
   useLoginRedirect({
