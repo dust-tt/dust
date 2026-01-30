@@ -177,7 +177,7 @@ const DialogContainer = ({
   className,
 }: DialogContainerProps) => {
   const contentStyles = cn(
-    "s-copy-base s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
+    "s-copy-base s-break-words s-px-5 s-py-4 s-text-foreground dark:s-text-foreground-night"
   );
 
   const scrollableContent = (
@@ -264,6 +264,7 @@ const DialogTitle = React.forwardRef<
       ref={ref}
       className={cn(
         "s-heading-lg",
+        "s-min-w-0 s-break-words",
         "s-text-foreground dark:s-text-foreground-night",
         className
       )}
