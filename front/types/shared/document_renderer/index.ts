@@ -11,6 +11,7 @@ export interface RenderTarget {
 }
 
 export interface PdfOptions {
+  footerHtml?: string;
   marginBottom?: string;
   marginLeft?: string;
   marginRight?: string;
@@ -45,11 +46,11 @@ export class DocumentRendererError extends Error {
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
-const DEFAULT_PDF_OPTIONS: Required<PdfOptions> = {
-  marginBottom: "1cm",
-  marginLeft: "1cm",
-  marginRight: "1cm",
-  marginTop: "1cm",
+const DEFAULT_PDF_OPTIONS: Omit<Required<PdfOptions>, "footerHtml"> = {
+  marginBottom: "0",
+  marginLeft: "0",
+  marginRight: "0",
+  marginTop: "0",
   orientation: "portrait",
   scale: 0.8,
 };
@@ -86,6 +87,7 @@ export class DocumentRenderer {
     options: PdfOptions = {}
   ): Promise<Result<Buffer, DocumentRendererError>> {
     const {
+      footerHtml,
       marginBottom,
       marginLeft,
       marginRight,
@@ -104,6 +106,11 @@ export class DocumentRenderer {
     formData.append("marginBottom", marginBottom);
     formData.append("marginLeft", marginLeft);
     formData.append("marginRight", marginRight);
+
+    if (footerHtml) {
+      const footerBlob = new Blob([footerHtml], { type: "text/html" });
+      formData.append("files", footerBlob, "footer.html");
+    }
 
     if (orientation === "landscape") {
       formData.append("landscape", "true");
