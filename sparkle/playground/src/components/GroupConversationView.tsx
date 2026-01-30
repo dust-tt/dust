@@ -3,6 +3,7 @@ import {
   BookOpenIcon,
   Button,
   ChatBubbleLeftRightIcon,
+  Chip,
   ConversationListItem,
   DataTable,
   Dialog,
@@ -11,6 +12,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyCTA,
   EmptyCTAButton,
   Icon,
@@ -18,8 +23,11 @@ import {
   Input,
   ListGroup,
   ListItemSection,
+  MoreIcon,
+  LogoutIcon,
   ReplySection,
   SearchInput,
+  SearchInputWithPopover,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -35,7 +43,10 @@ import {
   ArrowUpOnSquareIcon,
   UserGroupIcon,
   TrashIcon,
+  XMarkIcon,
+  CheckIcon,
 } from "@dust-tt/sparkle";
+import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useEffect, useMemo, useState } from "react";
 
@@ -58,12 +69,16 @@ interface GroupConversationViewProps {
   users: User[];
   agents: Agent[];
   spaceMemberIds?: string[];
+  editorUserIds?: string[];
   onConversationClick?: (conversation: Conversation) => void;
   onInviteMembers?: () => void;
   showToolsAndAboutTabs?: boolean;
   onUpdateSpaceName?: (spaceId: string, newName: string) => void;
   onUpdateSpacePublic?: (spaceId: string, isPublic: boolean) => void;
   spacePublicSettings?: Map<string, boolean>;
+  isProjectJoined?: boolean;
+  onJoinProject?: () => void;
+  onLeaveProject?: () => void;
 }
 
 interface Member {
@@ -72,11 +87,28 @@ interface Member {
   onClick?: () => void; // For DataTable compatibility
 }
 
+type UniversalSearchItem =
+  | {
+      type: "document";
+      dataSource: DataSource;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "conversation";
+      conversation: Conversation;
+      creator?: User;
+      title: string;
+      description: string;
+      score: number;
+    };
+
 // Helper function to get random participants for a conversation
 function getRandomParticipants(
   conversation: Conversation,
   _users: User[],
-  _agents: Agent[]
+  _agents: Agent[],
 ): Array<{ type: "user" | "agent"; data: User | Agent }> {
   const allParticipants: Array<{ type: "user" | "agent"; data: User | Agent }> =
     [];
@@ -101,7 +133,7 @@ function getRandomParticipants(
   const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
   const count = Math.min(
     Math.max(1, Math.floor(Math.random() * 6) + 1),
-    shuffled.length
+    shuffled.length,
   );
   return shuffled.slice(0, count);
 }
@@ -109,7 +141,7 @@ function getRandomParticipants(
 // Helper function to get random creator from people
 function getRandomCreator(
   conversation: Conversation,
-  _users: User[]
+  _users: User[],
 ): User | null {
   if (conversation.userParticipants.length === 0) {
     return null;
@@ -123,7 +155,7 @@ function getRandomCreator(
 
 // Convert participants to Avatar props format for Avatar.Stack
 function participantsToAvatarProps(
-  participants: Array<{ type: "user" | "agent"; data: User | Agent }>
+  participants: Array<{ type: "user" | "agent"; data: User | Agent }>,
 ) {
   return participants.map((participant) => {
     if (participant.type === "user") {
@@ -147,7 +179,7 @@ function participantsToAvatarProps(
 
 // Helper function to categorize conversation by date
 function getDateBucket(
-  updatedAt: Date
+  updatedAt: Date,
 ): "Today" | "Yesterday" | "Last Week" | "Last Month" {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -161,7 +193,7 @@ function getDateBucket(
   const conversationDate = new Date(
     updatedAt.getFullYear(),
     updatedAt.getMonth(),
-    updatedAt.getDate()
+    updatedAt.getDate(),
   );
 
   if (conversationDate.getTime() >= today.getTime()) {
@@ -178,7 +210,7 @@ function getDateBucket(
 // Helper function to generate more conversations with varied dates
 function generateConversationsWithDates(
   conversations: Conversation[],
-  count: number
+  count: number,
 ): Conversation[] {
   const now = new Date();
   const generated: Conversation[] = [];
@@ -234,10 +266,47 @@ function generateJoinedAt(spaceId: string, memberId: string): Date {
     Math.floor(random * 24),
     Math.floor(seededRandom(seed, 1) * 60),
     0,
-    0
+    0,
   );
 
   return joinedAt;
+}
+
+const fakeDocumentFirstLines = [
+  "Introduction: This document outlines the initial scope and goals.",
+  "Summary: Key findings are consolidated in the sections below.",
+  "Overview: A first pass at the requirements and assumptions.",
+  "Draft note: Please review the proposed changes and provide feedback.",
+  "Excerpt: The following section captures the primary constraints.",
+  "Context: This file compiles the core decisions made so far.",
+  "Opening: A quick recap of the current state and next steps.",
+  "First line: The document begins with a brief background statement.",
+];
+
+function getFakeDocumentFirstLine(dataSource: DataSource): string {
+  const seed = `${dataSource.id}-${dataSource.fileName}`;
+  const index = Math.floor(
+    seededRandom(seed, 2) * fakeDocumentFirstLines.length,
+  );
+  return (
+    fakeDocumentFirstLines[index] ||
+    "Overview: This document contains a summary of the content."
+  );
+}
+
+function getBaseConversationId(
+  conversation: Conversation,
+  allConversations: Conversation[],
+): string {
+  const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
+  if (expandedIdMatch) {
+    const potentialBase = expandedIdMatch[1];
+    const baseExists = allConversations.some((c) => c.id === potentialBase);
+    if (baseExists) {
+      return potentialBase;
+    }
+  }
+  return conversation.id;
 }
 
 export function GroupConversationView({
@@ -246,30 +315,40 @@ export function GroupConversationView({
   users,
   agents,
   spaceMemberIds = [],
+  editorUserIds = [],
   onConversationClick,
   onInviteMembers,
   showToolsAndAboutTabs = false,
   onUpdateSpaceName,
   onUpdateSpacePublic,
   spacePublicSettings,
+  isProjectJoined = false,
+  onJoinProject = () => {},
+  onLeaveProject = () => {},
 }: GroupConversationViewProps) {
   const [searchText, setSearchText] = useState("");
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   // Settings state
   const [roomName, setRoomName] = useState(space.name);
   const [isEditingName, setIsEditingName] = useState(false);
+  const [roomDescription, setRoomDescription] = useState(
+    space.description ?? "",
+  );
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editorIds, setEditorIds] = useState<string[]>(editorUserIds);
   const [isPublic, setIsPublic] = useState(
-    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true
+    spacePublicSettings?.get(space.id) ?? space.isPublic ?? true,
   );
   const [showNameSaveDialog, setShowNameSaveDialog] = useState(false);
   const [showPublicToggleDialog, setShowPublicToggleDialog] = useState(false);
   const [pendingPublicValue, setPendingPublicValue] = useState<boolean | null>(
-    null
+    null,
   );
 
   // Knowledge tab state
   const [dataSources, setDataSources] = useState<DataSource[]>(() =>
-    getDataSourcesBySpaceId(space.id)
+    getDataSourcesBySpaceId(space.id),
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDataSourceId, setSelectedDataSourceId] = useState<
@@ -306,18 +385,136 @@ export function GroupConversationView({
     return generateConversationsWithDates(conversations, targetCount);
   }, [conversations, space.id]);
 
-  // Filter conversations by search text
-  const filteredConversations = useMemo(() => {
-    if (!searchText.trim()) {
-      return expandedConversations;
+  const searchResults = useMemo((): UniversalSearchItem[] => {
+    const trimmed = searchText.trim();
+    if (!trimmed) {
+      return [];
     }
-    const searchLower = searchText.toLowerCase();
-    return expandedConversations.filter(
-      (conv) =>
-        conv.title.toLowerCase().includes(searchLower) ||
-        conv.description?.toLowerCase().includes(searchLower)
+
+    const searchLower = trimmed.toLowerCase();
+
+    const documentResults = dataSources.reduce<UniversalSearchItem[]>(
+      (acc, dataSource) => {
+        const title = dataSource.fileName;
+        const description = getFakeDocumentFirstLine(dataSource);
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "document",
+            dataSource,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      [],
     );
-  }, [expandedConversations, searchText]);
+
+    const conversationResults = expandedConversations.reduce<
+      UniversalSearchItem[]
+    >((acc, conversation) => {
+      const creator = getRandomCreator(conversation, users);
+      const title = conversation.title;
+      const description = conversation.description ?? "";
+      const searchableTitle = creator ? `${creator.fullName} ${title}` : title;
+      const titleMatch = searchableTitle.toLowerCase().includes(searchLower);
+      const descriptionMatch = description.toLowerCase().includes(searchLower);
+      if (titleMatch || descriptionMatch) {
+        acc.push({
+          type: "conversation",
+          conversation,
+          creator: creator || undefined,
+          title,
+          description,
+          score: titleMatch ? 2 : 1,
+        });
+      }
+      return acc;
+    }, []);
+
+    return [...documentResults, ...conversationResults].sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [dataSources, expandedConversations, searchText, users]);
+
+  const handleSearchItemSelect = (item: UniversalSearchItem) => {
+    if (item.type === "document") {
+      setSelectedDataSource(item.dataSource);
+      setIsDocumentSheetOpen(true);
+      setIsSearchOpen(false);
+      return;
+    }
+
+    const baseConversationId = getBaseConversationId(
+      item.conversation,
+      conversations,
+    );
+    onConversationClick?.({
+      ...item.conversation,
+      id: baseConversationId,
+    });
+    setIsSearchOpen(false);
+  };
+
+  const SearchResultItem = ({
+    item,
+    selected,
+  }: {
+    item: UniversalSearchItem;
+    selected: boolean;
+  }) => {
+    const isDocument = item.type === "document";
+    const key = isDocument ? item.dataSource.id : item.conversation.id;
+    const onClick = () => handleSearchItemSelect(item);
+    const description = isDocument
+      ? item.description
+      : item.description || "No description available.";
+    const visual = isDocument ? (
+      item.dataSource.icon ? (
+        <Icon visual={item.dataSource.icon} size="md" />
+      ) : null
+    ) : item.creator ? (
+      <Avatar
+        name={item.creator.fullName}
+        visual={item.creator.portrait}
+        size="xs"
+        isRounded={true}
+      />
+    ) : null;
+    const titlePrefix =
+      !isDocument && item.creator ? item.creator.fullName : "";
+
+    const title = titlePrefix ? (
+      <>
+        <span className="s-shrink-0">{titlePrefix}</span>
+        <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+          {item.title}
+        </span>
+      </>
+    ) : (
+      <span className="s-min-w-0 s-truncate">{item.title}</span>
+    );
+
+    return (
+      <UniversalSearchItem
+        key={key}
+        onClick={onClick}
+        selected={selected}
+        hasSeparator={false}
+        visual={visual}
+        title={title}
+        description={description}
+      />
+    );
+  };
 
   // Group conversations by date bucket
   const conversationsByBucket = useMemo(() => {
@@ -333,7 +530,7 @@ export function GroupConversationView({
       "Last Month": [],
     };
 
-    filteredConversations.forEach((conversation) => {
+    expandedConversations.forEach((conversation) => {
       const bucket = getDateBucket(conversation.updatedAt);
       buckets[bucket].push(conversation);
     });
@@ -342,12 +539,12 @@ export function GroupConversationView({
     Object.keys(buckets).forEach((key) => {
       const bucketKey = key as keyof typeof buckets;
       buckets[bucketKey].sort(
-        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()
+        (a, b) => b.updatedAt.getTime() - a.updatedAt.getTime(),
       );
     });
 
     return buckets;
-  }, [filteredConversations]);
+  }, [expandedConversations]);
 
   // Determine if space is new (no conversations and no members)
   const isNew = useMemo(() => {
@@ -426,8 +623,15 @@ export function GroupConversationView({
   useEffect(() => {
     setRoomName(space.name);
     setIsEditingName(false);
+    setRoomDescription(space.description ?? "");
+    setIsEditingDescription(false);
+    setEditorIds(editorUserIds);
     setIsPublic(spacePublicSettings?.get(space.id) ?? space.isPublic ?? true);
   }, [space.id, space.name, spacePublicSettings, space.isPublic]);
+
+  useEffect(() => {
+    setEditorIds(editorUserIds);
+  }, [editorUserIds]);
 
   // Reset data sources when space changes
   useEffect(() => {
@@ -471,7 +675,7 @@ export function GroupConversationView({
   const handleDeleteConfirm = () => {
     if (selectedDataSourceId) {
       setDataSources((prev) =>
-        prev.filter((ds) => ds.id !== selectedDataSourceId)
+        prev.filter((ds) => ds.id !== selectedDataSourceId),
       );
       setSelectedDataSourceId(null);
     }
@@ -486,6 +690,15 @@ export function GroupConversationView({
       setSelectedMemberIdToRemove(null);
     }
     setRemoveMemberDialogOpen(false);
+  };
+
+  const toggleMemberEditor = (userId: string) => {
+    setEditorIds((prev) => {
+      if (prev.includes(userId)) {
+        return prev.filter((id) => id !== userId);
+      }
+      return [...prev, userId];
+    });
   };
 
   // Format date for display
@@ -581,7 +794,7 @@ export function GroupConversationView({
         ),
       },
     ],
-    []
+    [],
   );
 
   // Create member table columns
@@ -629,6 +842,24 @@ export function GroupConversationView({
         },
       },
       {
+        accessorKey: "userId",
+        header: "Role",
+        id: "role",
+        meta: {
+          className: "s-w-[120px]",
+        },
+        cell: (info) => {
+          const userId = info.getValue() as string;
+          return editorIds.includes(userId) ? (
+            <DataTable.CellContent>
+              <Chip size="xs" color="green" label="editor" />
+            </DataTable.CellContent>
+          ) : (
+            <DataTable.BasicCellContent label="" />
+          );
+        },
+      },
+      {
         accessorKey: "joinedAt",
         header: "Joined at",
         id: "joinedAt",
@@ -651,6 +882,18 @@ export function GroupConversationView({
             menuItems={[
               {
                 kind: "item",
+                icon: editorIds.includes(info.row.original.userId)
+                  ? XMarkIcon
+                  : CheckIcon,
+                label: editorIds.includes(info.row.original.userId)
+                  ? "Remove from editors"
+                  : "Set as editor",
+                onClick: () => {
+                  toggleMemberEditor(info.row.original.userId);
+                },
+              },
+              {
+                kind: "item",
                 label: "Remove from Room",
                 icon: TrashIcon,
                 variant: "warning",
@@ -664,7 +907,7 @@ export function GroupConversationView({
         ),
       },
     ],
-    []
+    [editorIds],
   );
 
   // Filter members based on search text
@@ -688,34 +931,38 @@ export function GroupConversationView({
       {/* Tabs */}
       <Tabs
         defaultValue="conversations"
-        className="s-flex s-min-h-0 s-flex-1 s-flex-col s-pt-3"
+        className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-px-6">
-          <TabsTrigger
-            value="conversations"
-            label="Conversations"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger
-            value="knowledge"
-            label="Knowledge"
-            icon={BookOpenIcon}
-          />
-          {showToolsAndAboutTabs && (
-            <>
-              <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+        <div className="s-flex s-h-14 s-w-full s-items-center s-gap-2 s-border-b s-border-border s-px-6">
+          <div className="s-flex s-h-full s-flex-1 s-items-end">
+            <TabsList border={false}>
               <TabsTrigger
-                value="about"
-                label="About"
-                icon={InformationCircleIcon}
+                value="conversations"
+                label="Conversations"
+                icon={ChatBubbleLeftRightIcon}
               />
-            </>
-          )}
-          <TabsTrigger
-            value="settings"
-            icon={Cog6ToothIcon}
-            tooltip={"Room settings"}
-          />
+              <TabsTrigger
+                value="knowledge"
+                label="Knowledge"
+                icon={BookOpenIcon}
+              />
+              {showToolsAndAboutTabs && (
+                <>
+                  <TabsTrigger value="Tools" label="Tools" icon={ToolsIcon} />
+                  <TabsTrigger
+                    value="about"
+                    label="About"
+                    icon={InformationCircleIcon}
+                  />
+                </>
+              )}
+              <TabsTrigger
+                value="settings"
+                icon={Cog6ToothIcon}
+                tooltip={"Room settings"}
+              />
+            </TabsList>
+          </div>
           <div className="s-flex-1" />
           {spaceAvatars.length > 0 && (
             <div className="s-flex s-h-8 s-items-center">
@@ -724,11 +971,38 @@ export function GroupConversationView({
                 nbVisibleItems={spaceAvatars.length}
                 orientation="horizontal"
                 hasMagnifier={false}
-                size="xs"
+                size="sm"
               />
             </div>
           )}
-        </TabsList>
+          {isProjectJoined ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  icon={MoreIcon}
+                  tooltip="Project options"
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem
+                  label="Leave the project"
+                  icon={LogoutIcon}
+                  onClick={onLeaveProject}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button
+              size="sm"
+              variant="primary"
+              label="Join the project"
+              tooltip="Join the project to be notified of new conversations"
+              onClick={onJoinProject}
+            />
+          )}
+        </div>
 
         {/* Conversations Tab */}
         <TabsContent value="conversations">
@@ -758,9 +1032,7 @@ export function GroupConversationView({
                       icon: BookOpenIcon,
                       description:
                         "Centralize the information used in this project for Agents and Participants.",
-                      onClick: () => {
-                        console.log("Add knowledge clicked");
-                      },
+                      onClick: () => {},
                     },
                     {
                       id: "invite-members",
@@ -781,12 +1053,30 @@ export function GroupConversationView({
                 {expandedConversations.length > 0 && (
                   <>
                     <div className="s-flex s-w-full s-px-3">
-                      <SearchInput
+                      <SearchInputWithPopover
                         name="conversation-search"
                         value={searchText}
-                        onChange={setSearchText}
+                        onChange={(value) => {
+                          setSearchText(value);
+                          if (!value.trim()) {
+                            setIsSearchOpen(false);
+                          }
+                        }}
+                        open={isSearchOpen}
+                        onOpenChange={setIsSearchOpen}
                         placeholder={`Search in ${space.name}`}
                         className="s-w-full"
+                        items={searchResults}
+                        availableHeight
+                        noResults={
+                          searchText.trim()
+                            ? "No results found"
+                            : "Start typing to search"
+                        }
+                        onItemSelect={handleSearchItemSelect}
+                        renderItem={(item, selected) => (
+                          <SearchResultItem item={item} selected={selected} />
+                        )}
                       />
                     </div>
                     <div className="s-flex s-flex-col">
@@ -810,11 +1100,11 @@ export function GroupConversationView({
                                 const participants = getRandomParticipants(
                                   conversation,
                                   users,
-                                  agents
+                                  agents,
                                 );
                                 const creator = getRandomCreator(
                                   conversation,
-                                  users
+                                  users,
                                 );
                                 const avatarProps =
                                   participantsToAvatarProps(participants);
@@ -830,34 +1120,20 @@ export function GroupConversationView({
 
                                 // Generate random message count (1-3)
                                 const messageCount = Math.floor(
-                                  Math.random() * 3 + 1
+                                  Math.random() * 3 + 1,
                                 );
 
                                 // Generate random reply count (1-8)
                                 const replyCount = Math.floor(
-                                  Math.random() * 8 + 1
+                                  Math.random() * 8 + 1,
                                 );
 
-                                // Extract base conversation ID if this is an expanded conversation
-                                // Expanded IDs have pattern: {baseId}-{number} (e.g., "conv-1-5")
-                                // Check if ID matches expanded pattern (ends with -{digits})
-                                // Use a more specific pattern to avoid false matches with IDs like "conv-10"
-                                const expandedIdMatch =
-                                  conversation.id.match(/^(.+)-(\d+)$/);
-                                // Only extract if the match makes sense (base ID exists in original conversations)
-                                let baseConversationId = conversation.id;
-                                if (expandedIdMatch) {
-                                  const potentialBase = expandedIdMatch[1];
-                                  // Check if the base ID exists in the original conversations
-                                  const baseExists = conversations.some(
-                                    (c) => c.id === potentialBase
+                                const baseConversationId =
+                                  getBaseConversationId(
+                                    conversation,
+                                    conversations,
                                   );
-                                  if (baseExists) {
-                                    baseConversationId = potentialBase;
-                                  }
-                                }
 
-                                // Create a conversation object with the base ID for lookup
                                 const conversationForLookup = {
                                   ...conversation,
                                   id: baseConversationId,
@@ -885,7 +1161,7 @@ export function GroupConversationView({
                                     }
                                     onClick={() => {
                                       onConversationClick?.(
-                                        conversationForLookup
+                                        conversationForLookup,
                                       );
                                     }}
                                   />
@@ -1002,6 +1278,41 @@ export function GroupConversationView({
                   )}
                 </div>
               </div>
+              <div className="s-flex s-w-full s-flex-col s-gap-2">
+                <h3 className="s-heading-lg">Description</h3>
+                <div className="s-flex s-w-full s-min-w-0 s-gap-2">
+                  <Input
+                    value={roomDescription}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setRoomDescription(e.target.value);
+                      setIsEditingDescription(
+                        e.target.value !== (space.description ?? ""),
+                      );
+                    }}
+                    placeholder="Enter room description"
+                    containerClassName="s-flex-1"
+                  />
+                  {isEditingDescription && (
+                    <>
+                      <Button
+                        label="Save"
+                        variant="highlight"
+                        onClick={() => {
+                          setIsEditingDescription(false);
+                        }}
+                      />
+                      <Button
+                        label="Cancel"
+                        variant="outline"
+                        onClick={() => {
+                          setRoomDescription(space.description ?? "");
+                          setIsEditingDescription(false);
+                        }}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
               {/* Open to Everyone Section */}
 
               <div className="s-flex s-w-full s-flex-col s-gap-2">
@@ -1030,9 +1341,9 @@ export function GroupConversationView({
               {/* Members Section */}
               <div className="s-flex s-flex-col s-gap-3">
                 <div className="s-flex s-items-center s-gap-2">
-                  <h3 className="s-heading-lg s-flex-1">Members</h3>
+                  <h3 className="s-heading-lg s-flex-1">Members & Editors</h3>
                   <Button
-                    label="Invite"
+                    label="Manage"
                     variant="outline"
                     icon={UserGroupIcon}
                     onClick={() => onInviteMembers?.()}

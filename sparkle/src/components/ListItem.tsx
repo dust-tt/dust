@@ -23,7 +23,7 @@ const listItemVariants = cva(
         true: cn(
           "s-cursor-pointer s-transition s-duration-200",
           "hover:s-bg-muted-background dark:hover:s-bg-muted-background-night",
-          "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
+          "active:s-bg-primary-100 dark:active:s-bg-primary-100-night",
         ),
         false: "",
       },
@@ -34,7 +34,7 @@ const listItemVariants = cva(
       hasSeparatorIfLast: false,
       interactive: false,
     },
-  }
+  },
 );
 
 type ListItemProps = {
@@ -45,6 +45,7 @@ type ListItemProps = {
   hasSeparatorIfLast?: boolean;
   groupName?: string;
   itemsAlignment?: "start" | "center";
+  ignorePressSelector?: string;
 };
 
 export function ListItem({
@@ -55,7 +56,17 @@ export function ListItem({
   hasSeparatorIfLast = false,
   groupName = "list-item",
   itemsAlignment = "start",
+  ignorePressSelector,
 }: ListItemProps) {
+  const [isPressed, setIsPressed] = React.useState(false);
+
+  const shouldIgnorePress = (target: EventTarget | null) => {
+    if (!ignorePressSelector || !(target instanceof HTMLElement)) {
+      return false;
+    }
+    return Boolean(target.closest(ignorePressSelector));
+  };
+
   return (
     <div
       className={cn(
@@ -66,9 +77,18 @@ export function ListItem({
           interactive: !!onClick,
         }),
         `s-group/${groupName}`,
-        className
+        isPressed && "s-bg-primary-100 dark:s-bg-primary-100-night",
+        className,
       )}
       onClick={onClick}
+      onMouseDown={(event) => {
+        if (!onClick || shouldIgnorePress(event.target)) {
+          return;
+        }
+        setIsPressed(true);
+      }}
+      onMouseUp={() => setIsPressed(false)}
+      onMouseLeave={() => setIsPressed(false)}
     >
       {children}
     </div>
@@ -85,7 +105,7 @@ export function ListGroup({ children, className }: ListGroupProps) {
     <div
       className={cn(
         "s-flex s-flex-col s-border-b s-border-t s-border-border dark:s-border-border-night",
-        className
+        className,
       )}
     >
       {children}
@@ -110,7 +130,7 @@ const listItemSectionVariants = cva("", {
     interactive: {
       true: cn(
         "s-cursor-pointer s-transition s-duration-200",
-        "active:s-bg-primary-100 dark:active:s-bg-primary-100-night"
+        "active:s-bg-primary-100 dark:active:s-bg-primary-100-night",
       ),
       false: "",
     },
@@ -145,7 +165,7 @@ export function ListItemSection({
           isHovered: !!onClick && isHoveringMain && !isHoveringAction,
         }),
         "s-group/section-item s-flex s-items-center s-justify-between",
-        className
+        className,
       )}
       onClick={onClick}
       onMouseEnter={() => {

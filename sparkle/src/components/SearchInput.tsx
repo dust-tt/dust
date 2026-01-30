@@ -109,6 +109,7 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   onOpenChange: (open: boolean) => void;
   mountPortal?: boolean;
   mountPortalContainer?: HTMLElement;
+  availableHeight?: boolean;
   items: T[];
   renderItem: (item: T, selected: boolean) => React.ReactNode;
   onItemSelect?: (item: T) => void;
@@ -118,6 +119,8 @@ type SearchInputWithPopoverBaseProps<T> = SearchInputProps & {
   contentMessage?: ContentMessageProps;
   displayItemCount?: boolean;
   totalItems?: number;
+  stickyTopContent?: React.ReactNode;
+  stickyBottomContent?: React.ReactNode;
 };
 
 function BaseSearchInputWithPopover<T>(
@@ -139,12 +142,19 @@ function BaseSearchInputWithPopover<T>(
     contentMessage,
     displayItemCount = false,
     totalItems,
+    stickyTopContent,
+    stickyBottomContent,
+    availableHeight = false,
     ...searchInputProps
   }: SearchInputWithPopoverBaseProps<T>,
   ref: Ref<HTMLInputElement>
 ) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
+  const showHeader =
+    Boolean(stickyTopContent) ||
+    (items.length > 0 && (displayItemCount || onSelectAll));
+  const showBottom = Boolean(stickyBottomContent);
 
   useEffect(() => {
     itemRefs.current = new Array(items.length).fill(null);
@@ -208,7 +218,9 @@ function BaseSearchInputWithPopover<T>(
       </PopoverTrigger>
       <PopoverContent
         className={cn(
-          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-md dark:s-bg-background-night",
+          "s-w-[--radix-popover-trigger-width] s-rounded-lg s-border s-bg-background s-shadow-lg dark:s-bg-background-night",
+          availableHeight &&
+            "s-max-h-[var(--radix-popover-content-available-height)] s-overflow-hidden",
           contentClassName
         )}
         sideOffset={0}
@@ -221,46 +233,68 @@ function BaseSearchInputWithPopover<T>(
         mountPortal={mountPortal}
         mountPortalContainer={mountPortalContainer}
       >
-        <div className="s-flex s-flex-col">
-          {items.length > 0 && (displayItemCount || onSelectAll) && (
-            <div className="s-flex s-items-center s-justify-between s-p-2 s-text-sm s-text-gray-500">
-              <div>
-                {displayItemCount && (
-                  <span>
-                    {items.length} search results
-                    {totalItems && ` (out of ${totalItems})`}.
-                  </span>
-                )}
-              </div>
-              {onSelectAll && (
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={onSelectAll}
-                  label="Select all"
-                  icon={ListCheckIcon}
-                />
-              )}
-            </div>
-          )}
+        <div
+          className={cn("s-flex s-flex-col", availableHeight && "s-max-h-full")}
+        >
           <ScrollArea
-            role="listbox"
-            className="s-flex s-max-h-72 s-flex-col"
+            className={cn(
+              "s-flex s-flex-col s-rounded-lg",
+              availableHeight
+                ? "s-max-h-[calc(var(--radix-popover-content-available-height)-12px)] s-min-h-0 s-flex-1"
+                : "s-max-h-72"
+            )}
             hideScrollBar
           >
-            {items.length > 0 ? (
-              items.map((item, index) => (
-                <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
-                  {renderItem(item, selectedIndex === index)}
+            {showHeader && (
+              <div
+                className={cn(
+                  "s-sticky s-top-0 s-z-10 s-flex s-items-center s-justify-between s-gap-2 s-border-b s-border-border s-bg-background/80 s-p-2 s-backdrop-blur-sm dark:s-border-border-night dark:s-bg-background-night"
+                )}
+              >
+                <div className="s-flex s-flex-1 s-items-center s-gap-2">
+                  {stickyTopContent}
+                  {displayItemCount && items.length > 0 && (
+                    <span className="s-text-sm s-text-gray-500">
+                      {items.length} search results
+                      {totalItems && ` (out of ${totalItems})`}.
+                    </span>
+                  )}
                 </div>
-              ))
-            ) : isLoading ? (
-              <div className="s-flex s-justify-center s-py-8">
-                <Spinner variant="dark" size="md" />
+                {onSelectAll && items.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={onSelectAll}
+                    label="Select all"
+                    icon={ListCheckIcon}
+                  />
+                )}
               </div>
-            ) : (
-              <div className="s-p-2 s-text-sm s-text-gray-500">
-                {noResults ?? ""}
+            )}
+            <div role="listbox" className="s-flex s-flex-col">
+              {items.length > 0 ? (
+                items.map((item, index) => (
+                  <div key={index} ref={(el) => (itemRefs.current[index] = el)}>
+                    {renderItem(item, selectedIndex === index)}
+                  </div>
+                ))
+              ) : isLoading ? (
+                <div className="s-flex s-justify-center s-py-8">
+                  <Spinner variant="dark" size="md" />
+                </div>
+              ) : (
+                <div className="s-p-4 s-text-center s-text-sm s-italic s-text-muted-foreground dark:s-text-muted-foreground-night">
+                  {noResults ?? ""}
+                </div>
+              )}
+            </div>
+            {showBottom && (
+              <div
+                className={cn(
+                  "s-sticky s-bottom-0 s-z-10 s-flex s-items-center s-justify-between s-gap-2 s-border-t s-border-border s-bg-background/80 s-p-2 s-backdrop-blur-sm dark:s-border-border-night dark:s-bg-background-night"
+                )}
+              >
+                {stickyBottomContent}
               </div>
             )}
             <ScrollBar className="s-py-0" />
