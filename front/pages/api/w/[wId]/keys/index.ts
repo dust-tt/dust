@@ -99,6 +99,7 @@ async function handler(
 
       const existingKey = await KeyResource.fetchByName(auth, {
         name: trimmedName,
+        onlyActive: true,
       });
       if (existingKey) {
         return apiError(req, res, {
