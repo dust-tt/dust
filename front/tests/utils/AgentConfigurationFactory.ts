@@ -3,7 +3,7 @@ import assert from "assert";
 import { createAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
 import type {
-  LightAgentConfigurationType,
+  AgentConfigurationType,
   ModelIdType,
   ModelProviderIdType,
 } from "@app/types";
@@ -14,14 +14,14 @@ export class AgentConfigurationFactory {
     overrides: Partial<{
       name: string;
       description: string;
-      scope: Exclude<LightAgentConfigurationType["scope"], "global">;
+      scope: Exclude<AgentConfigurationType["scope"], "global">;
       model: {
         providerId: ModelProviderIdType;
         modelId: ModelIdType;
         temperature?: number;
       };
     }> = {}
-  ): Promise<LightAgentConfigurationType> {
+  ): Promise<AgentConfigurationType> {
     const name = overrides.name ?? "Test Agent";
     const description = overrides.description ?? "Test Agent Description";
     const scope = overrides.scope ?? "visible";
@@ -54,7 +54,7 @@ export class AgentConfigurationFactory {
       throw result.error;
     }
 
-    return result.value;
+    return { ...result.value, actions: [] };
   }
 
   /**
@@ -63,13 +63,13 @@ export class AgentConfigurationFactory {
    */
   static async updateTestAgent(
     auth: Authenticator,
-    agentSId: string,
+    agentId: string,
     overrides: Partial<{
       name: string;
       description: string;
       instructions: string;
     }> = {}
-  ): Promise<LightAgentConfigurationType> {
+  ): Promise<AgentConfigurationType> {
     const user = auth.user();
     assert(user, "User is required");
 
@@ -89,13 +89,13 @@ export class AgentConfigurationFactory {
       requestedSpaceIds: [],
       tags: [],
       editors: [user.toJSON()],
-      agentConfigurationId: agentSId,
+      agentConfigurationId: agentId,
     });
 
     if (result.isErr()) {
       throw result.error;
     }
 
-    return result.value;
+    return { ...result.value, actions: [] };
   }
 }
