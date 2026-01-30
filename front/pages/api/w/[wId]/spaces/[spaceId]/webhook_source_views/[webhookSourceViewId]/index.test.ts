@@ -85,7 +85,7 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
     expect(deletedWebhookSourceView).toBe(null);
   });
 
-  it("should return 404 when user is not admin", async () => {
+  it("should return 403 when user is not admin", async () => {
     const { req, res, workspace, user, authenticator } = await setupTest(
       "builder",
       "DELETE"
@@ -105,10 +105,13 @@ describe("DELETE /api/w/[wId]/spaces/[spaceId]/webhook_source_views/[webhookSour
 
     await handler(req, res);
 
-    expect(res._getStatusCode()).toBe(404);
+    expect(res._getStatusCode()).toBe(403);
     const responseData = res._getJSONData();
     expect(responseData).toHaveProperty("error");
-    expect(responseData.error).toHaveProperty("type", "space_not_found");
+    expect(responseData.error).toHaveProperty(
+      "type",
+      "webhook_source_view_auth_error"
+    );
   });
 
   it("should return 404 when webhook source view doesn't exist", async () => {
