@@ -5,7 +5,7 @@
   "scripts": {
     "dev:poke": "VITE_APP_NAME=poke VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
     "dev:app": "VITE_APP_NAME=app VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
-    "build:poke": "VITE_APP_NAME=poke vite build",
+    "build:poke": "VITE_APP_NAME=poke vite build && cp public-poke/_redirects dist/poke/_redirects",
     "build:app": "VITE_APP_NAME=app vite build",
     "build": "npm run build:poke && npm run build:app",
     "preview:poke": "VITE_APP_NAME=poke vite preview",
