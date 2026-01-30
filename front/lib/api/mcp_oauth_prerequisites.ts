@@ -17,10 +17,10 @@ export function oauthProviderRequiresWorkspaceConnectionForPersonalAuth(
 export async function listWorkspaceConnectedMCPServerIds(
   auth: Authenticator
 ): Promise<Set<string>> {
-  const workspaceConnections = await MCPServerConnectionResource.listByWorkspace(
-    auth,
-    { connectionType: "workspace" }
-  );
+  const workspaceConnections =
+    await MCPServerConnectionResource.listByWorkspace(auth, {
+      connectionType: "workspace",
+    });
 
   const workspaceId = auth.getNonNullableWorkspace().id;
   const serverIds = new Set<string>();
