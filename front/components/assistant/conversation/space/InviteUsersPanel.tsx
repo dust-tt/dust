@@ -28,8 +28,6 @@ interface InviteUsersPanelProps {
   currentMembers: SpaceUserType[];
   onClose: () => void;
   onInvite: (selectedUserIds: string[]) => void;
-  title?: string;
-  actionLabel?: string;
   initialSelectedUserIds?: string[];
 }
 
@@ -40,17 +38,12 @@ export function InviteUsersPanel({
   currentMembers,
   onClose,
   onInvite,
-  title,
-  actionLabel = "Invite",
   initialSelectedUserIds,
 }: InviteUsersPanelProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
     new Set()
   );
   const [searchText, setSearchText] = useState("");
-
-  const spaceName = space.name || "this room";
-  const resolvedTitle = title ?? `Invite Members to ${spaceName}`;
 
   // Initialize with initial selections only (not current members)
   useEffect(() => {
@@ -96,16 +89,6 @@ export function InviteUsersPanel({
     onClose();
   };
 
-  const handleCheckboxChange = (userId: string, checked: boolean) => {
-    const newSelected = new Set(selectedUserIds);
-    if (checked) {
-      newSelected.add(userId);
-    } else {
-      newSelected.delete(userId);
-    }
-    setSelectedUserIds(newSelected);
-  };
-
   // Get selected users data for button label and tooltip
   const selectedUsers = useMemo(() => {
     return members.filter((user) => selectedUserIds.has(user.sId));
@@ -113,17 +96,13 @@ export function InviteUsersPanel({
 
   const selectedCount = selectedUsers.length;
   const inviteButtonLabel =
-    selectedCount > 0 ? `${actionLabel} (${selectedCount})` : actionLabel;
-  const inviteButtonTooltip =
-    selectedCount > 0
-      ? selectedUsers.map((user) => user.fullName).join(", ")
-      : undefined;
+    "Invite" + (selectedCount > 0 ? ` (${selectedCount})` : "");
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <SheetContent size="lg" side="right">
         <SheetHeader>
-          <SheetTitle>{resolvedTitle}</SheetTitle>
+          <SheetTitle>Invite Members to {space.name}</SheetTitle>
         </SheetHeader>
         <SheetContainer>
           <SearchInput
@@ -181,7 +160,7 @@ export function InviteUsersPanel({
                         checked={isSelected}
                         onCheckedChange={(checked) => {
                           if (checked !== "indeterminate") {
-                            handleCheckboxChange(user.sId, checked);
+                            toggleUser(user.sId);
                           }
                         }}
                         onClick={(e) => {
@@ -205,7 +184,6 @@ export function InviteUsersPanel({
             label: inviteButtonLabel,
             variant: "highlight",
             onClick: handleInvite,
-            tooltip: inviteButtonTooltip,
             disabled: selectedCount === 0,
           }}
         />
