@@ -401,9 +401,9 @@ export const triggerAgentMessageFeedbackNotification = async (
       feedbackId,
     };
 
-    const r = await novuClient.bulkTrigger(
-      editorsToNotify.map((editor) => ({
-        name: AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
+    const r = await novuClient.triggerBulk({
+      events: editorsToNotify.map((editor) => ({
+        workflowId: AGENT_MESSAGE_FEEDBACK_TRIGGER_ID,
         to: {
           subscriberId: editor.sId,
           email: editor.email,
@@ -411,14 +411,18 @@ export const triggerAgentMessageFeedbackNotification = async (
           lastName: editor.lastName ?? undefined,
         },
         payload,
-      }))
-    );
+      })),
+    });
 
-    if (r.status !== 200) {
+    if (r.result.some((res) => !!res.error?.length)) {
+      const eventErrors = r.result
+        .filter((res) => !!res.error?.length)
+        .map(({ error }) => error?.join("; "))
+        .join("; ");
       return new Err({
         name: "dust_error",
         code: "internal_error",
-        message: `Failed to trigger agent message feedback notification: status=${r.status}`,
+        message: `Failed to trigger agent message feedback notification: errors: ${eventErrors}`,
       });
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
