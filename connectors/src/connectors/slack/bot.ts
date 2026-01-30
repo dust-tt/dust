@@ -324,7 +324,7 @@ export async function botValidateToolExecution(
         ? slackChatBotMessage.slackEmail
         : undefined;
     let slackUserInfo: SlackUserInfo | null = null;
-    let requestedGroups: string[] | undefined = undefined;
+    let requestedGroups: string[] | undefined ;
 
     if (slackUserId) {
       try {
@@ -547,7 +547,7 @@ async function processErrorResult(
       connector.workspaceId,
       errorMessage
     );
-    if (mainMessage && mainMessage.ts) {
+    if (mainMessage?.ts) {
       reportSlackUsage({
         connectorId: connector.id,
         method: "chat.update",
@@ -690,7 +690,7 @@ async function answerMessage(
     throw new Error("Failed to get slack user info");
   }
 
-  let requestedGroups: string[] | undefined = undefined;
+  let requestedGroups: string[] | undefined ;
   let skipToolsValidation = false;
 
   if (slackUserInfo.is_bot) {
@@ -925,7 +925,7 @@ async function answerMessage(
       };
     } else {
       // If no mention is found and no channel-based routing rule is found, we use the default agent.
-      let defaultAgent: LightAgentConfigurationType | undefined = undefined;
+      let defaultAgent: LightAgentConfigurationType | undefined ;
       for (const agent of DEFAULT_AGENTS) {
         defaultAgent = activeAgentConfigurations.find(
           (ac) => ac.sId === agent && ac.status === "active"
@@ -1069,10 +1069,10 @@ async function answerMessage(
     );
   }
 
-  let conversation: ConversationPublicType | undefined = undefined;
-  let userMessage: UserMessageType | undefined = undefined;
+  let conversation: ConversationPublicType | undefined ;
+  let userMessage: UserMessageType | undefined ;
 
-  if (lastSlackChatBotMessage && lastSlackChatBotMessage.conversationId) {
+  if (lastSlackChatBotMessage?.conversationId) {
     // Check conversation existence (it might have been deleted between two messages).
     const existsRes = await dustAPI.getConversation({
       conversationId: lastSlackChatBotMessage.conversationId,

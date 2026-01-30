@@ -22,7 +22,7 @@ export async function allowSyncZendeskTickets({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const brand = await ZendeskBrandResource.fetchByBrandId({

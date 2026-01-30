@@ -108,9 +108,6 @@ export async function streamConversationToSlack(
 }
 
 class SlackAnswerRetryableError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
 }
 
 async function streamAgentAnswerToSlack(

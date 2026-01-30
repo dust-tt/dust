@@ -22,7 +22,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     DustProjectConversationModel;
 
   constructor(
-    model: ModelStatic<DustProjectConversationModel>,
+    _model: ModelStatic<DustProjectConversationModel>,
     blob: Attributes<DustProjectConversationModel>
   ) {
     super(DustProjectConversationModel, blob);
@@ -161,7 +161,7 @@ export class DustProjectConversationResource extends BaseResource<DustProjectCon
     connector: ConnectorResource,
     transaction?: Transaction
   ): Promise<Result<undefined, Error>> {
-    await this.model.destroy({
+    await DustProjectConversationResource.model.destroy({
       where: {
         connectorId: connector.id,
       },

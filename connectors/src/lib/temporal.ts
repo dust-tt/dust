@@ -97,7 +97,7 @@ export async function getConnectorId(
     let connectorId: ModelId | null = null;
 
     // Try to get connectorId from memo first.
-    if (described.memo && described.memo.connectorId) {
+    if (described.memo?.connectorId) {
       const memoValue = described.memo.connectorId;
       if (typeof memoValue === "number") {
         connectorId = memoValue;
@@ -194,7 +194,7 @@ export async function terminateAllWorkflowsForConnectorId({
 export async function heartbeat() {
   try {
     Context.current();
-  } catch (error) {
+  } catch (_error) {
     // If we're not in a temporal context, Context.current() will throw
     // In this case, we just return without doing anything
     // This allows the function to be called safely outside of temporal activities

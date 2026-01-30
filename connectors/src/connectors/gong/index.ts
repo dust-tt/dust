@@ -99,7 +99,7 @@ export class GongConnectorManager extends BaseConnectorManager<null> {
       mimeType: INTERNAL_MIME_TYPES.GONG.TRANSCRIPT_FOLDER,
     });
 
-    const result = await this.createGongSchedule(connector);
+    const result = await GongConnectorManager.createGongSchedule(connector);
     if (result.isErr()) {
       throw result.error;
     }

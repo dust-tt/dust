@@ -169,7 +169,7 @@ export async function processFileAttachments(
         fileType?.ext &&
         !fileName.toLowerCase().endsWith(`.${fileType.ext}`)
       ) {
-        fileName = fileName + `.${fileType.ext}`;
+        fileName = `${fileName}.${fileType.ext}`;
       }
     } else {
       // Check if this is an HTML content attachment (inline content, not a file)

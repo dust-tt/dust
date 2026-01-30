@@ -1,8 +1,8 @@
 import type { Bucket, File } from "@google-cloud/storage";
 import { Storage } from "@google-cloud/storage";
 import { chunk } from "lodash";
-import type { Readable } from "stream";
-import { pipeline } from "stream/promises";
+import type { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import { getCodeDirInternalId } from "@connectors/connectors/github/lib/utils";
 import { connectorsConfig } from "@connectors/connectors/shared/config";
@@ -255,7 +255,7 @@ export class GCSRepositoryManager {
             // If we're not on the last attempt, back off before retrying.
             if (attempt < SMALL_FILE_UPLOAD_MAX_RETRIES - 1) {
               const delay =
-                SMALL_FILE_UPLOAD_BASE_DELAY_MS * Math.pow(2, attempt);
+                SMALL_FILE_UPLOAD_BASE_DELAY_MS * 2 ** attempt;
               childLogger.warn(
                 { error, gcsPath, attempt, delay },
                 "GCS upload failed, retrying"

@@ -78,7 +78,7 @@ export async function formatMessagesForUpsert({
         dateStr: messageDateStr,
         authorName,
         text: text + filesInfo,
-        content: text + "\n",
+        content: `${text}\n`,
         sections: [],
       };
     })
@@ -92,7 +92,7 @@ export async function formatMessagesForUpsert({
 
   const title = isThread
     ? `Thread in #${channelName}: ${
-        safeSubstring(first.text.replace(/\s+/g, " ").trim(), 0, 128) + "..."
+        `${safeSubstring(first.text.replace(/\s+/g, " ").trim(), 0, 128)}...`
       }`
     : `Messages in #${channelName}`;
 
@@ -106,7 +106,7 @@ export async function formatMessagesForUpsert({
       content: null,
       sections: data.map((d) => ({
         prefix: `>> @${d.authorName} [${d.dateStr}]:\n`,
-        content: d.text + "\n",
+        content: `${d.text}\n`,
         sections: [],
       })),
     },

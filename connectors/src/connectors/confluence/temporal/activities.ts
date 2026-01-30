@@ -665,7 +665,7 @@ export async function confluenceUpsertPageWithFullParentsActivity({
     workspaceId: dataSourceConfig.workspaceId,
   };
   const localLogger = logger.child(loggerArgs);
-  const visitedAtMs = new Date().getTime();
+  const visitedAtMs = Date.now();
 
   const pageInDb = await ConfluencePageModel.findOne({
     attributes: ["parentId", "skipReason"],

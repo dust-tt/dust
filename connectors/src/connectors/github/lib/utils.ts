@@ -1,6 +1,6 @@
-import assert from "assert";
+import assert from "node:assert";
 import { hash as blake3 } from "blake3/esm/node/hash-fn";
-import { join } from "path";
+import { join } from "node:path";
 
 export const GITHUB_CONTENT_NODE_TYPES = [
   "REPO_FULL",

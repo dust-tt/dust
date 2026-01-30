@@ -25,7 +25,7 @@ export function annotateCitations(
   } = {};
 
   for (const action of actions) {
-    if (action && action.output) {
+    if (action?.output) {
       // Handle MCP search results.
       action.output?.filter(isSearchResultResourceType).forEach((o) => {
         if (o.type === "resource" && o.resource.ref) {

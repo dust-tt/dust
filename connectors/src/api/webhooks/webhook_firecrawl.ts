@@ -72,7 +72,7 @@ const _webhookFirecrawlAPIHandler = async (
     "Received webhook"
   );
 
-  if (!metadata.connectorId || isNaN(parseInt(metadata.connectorId))) {
+  if (!metadata.connectorId || Number.isNaN(parseInt(metadata.connectorId, 10))) {
     logger.error(
       {
         metadata,
@@ -84,7 +84,7 @@ const _webhookFirecrawlAPIHandler = async (
   }
 
   const connector = await ConnectorResource.fetchById(
-    parseInt(metadata.connectorId)
+    parseInt(metadata.connectorId, 10)
   );
   if (!connector) {
     logger.error({ connectorId: metadata.connectorId }, "Connector not found");

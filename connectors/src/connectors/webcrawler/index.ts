@@ -96,7 +96,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
     }
     logger.info(
       { connectorId: connector.id },
-      `Launched crawl website workflow for connector`
+      "Launched crawl website workflow for connector"
     );
 
     return new Ok(connector.id.toString());
@@ -302,7 +302,7 @@ export class WebcrawlerConnectorManager extends BaseConnectorManager<WebCrawlerC
                 : null,
               title: getDisplayNameForPage(page),
               sourceUrl: page.url,
-              expandable: isFileAndFolder ? true : false,
+              expandable: !!isFileAndFolder,
               permission: "read",
               type: "document",
               lastUpdatedAt: page.updatedAt.getTime(),

@@ -169,7 +169,7 @@ export async function syncOneChannel(
     return;
   }
 
-  let messagesCursor: string | undefined = undefined;
+  let messagesCursor: string | undefined ;
   let weeksSynced: Record<number, boolean> = {};
 
   do {
@@ -286,7 +286,7 @@ export async function syncOneMessageDebounced(
       connectorId,
       channelId,
       // endTsMs can be in the future so we cap it to now for the channel metadata.
-      Math.min(new Date().getTime(), endTsMs)
+      Math.min(Date.now(), endTsMs)
     );
 
     await getSlackActivities().syncNonThreaded({

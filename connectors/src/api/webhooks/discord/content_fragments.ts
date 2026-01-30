@@ -87,7 +87,7 @@ export async function makeDiscordContentFragments({
   );
 
   const allMessages: DiscordMessage[] = [];
-  let oldestMessageId: string | undefined = undefined;
+  let oldestMessageId: string | undefined ;
   let hasMoreMessages = true;
 
   while (hasMoreMessages) {

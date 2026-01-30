@@ -44,7 +44,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   private headers: WebCrawlerConfigurationType["headers"] = {};
 
   constructor(
-    model: ModelStatic<WebCrawlerConfigurationModel>,
+    _model: ModelStatic<WebCrawlerConfigurationModel>,
     blob: Attributes<WebCrawlerConfigurationModel>
   ) {
     super(WebCrawlerConfigurationModel, blob);
@@ -63,7 +63,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   }
 
   static async fetchByConnectorId(connectorId: ModelId) {
-    const blob = await this.model.findOne({
+    const blob = await WebCrawlerConfigurationResource.model.findOne({
       where: {
         connectorId: connectorId,
       },
@@ -72,7 +72,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       return null;
     }
 
-    const c = new this(this.model, blob.get());
+    const c = new WebCrawlerConfigurationResource(WebCrawlerConfigurationResource.model, blob.get());
     await c.postFetchHook();
     return c;
   }
@@ -80,7 +80,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
   static async fetchByConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, WebCrawlerConfigurationResource>> {
-    const blobs = await this.model.findAll({
+    const blobs = await WebCrawlerConfigurationResource.model.findAll({
       where: {
         connectorId: connectorIds,
       },
@@ -88,7 +88,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
 
     const resources = blobs.reduce(
       (acc, blob) => {
-        acc[blob.connectorId] = new this(this.model, blob.get());
+        acc[blob.connectorId] = new WebCrawlerConfigurationResource(WebCrawlerConfigurationResource.model, blob.get());
         return acc;
       },
       {} as Record<ModelId, WebCrawlerConfigurationResource>
@@ -149,7 +149,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
       }
     );
 
-    const c = new this(this.model, config.get());
+    const c = new WebCrawlerConfigurationResource(WebCrawlerConfigurationResource.model, config.get());
     c.headers = blob.headers;
     return c;
   }
@@ -168,7 +168,7 @@ export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConf
         continue;
       }
       const sql = frequencyToSQLQuery[frequency];
-      const websites = await this.model.findAll({
+      const websites = await WebCrawlerConfigurationResource.model.findAll({
         attributes: ["connectorId"],
         where: {
           lastCrawledAt: {

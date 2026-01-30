@@ -1,5 +1,5 @@
-import { Readable } from "stream";
-import type { ReadableStream as NodeReadableStream } from "stream/web";
+import { Readable } from "node:stream";
+import type { ReadableStream as NodeReadableStream } from "node:stream/web";
 
 // Define a type for the RequestInit object with duplex set to "half" because the official types are
 // lagging behind.

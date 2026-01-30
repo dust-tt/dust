@@ -77,7 +77,7 @@ export async function launchMicrosoftFullSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -87,7 +87,7 @@ export async function launchMicrosoftFullSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -124,7 +124,7 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -134,7 +134,7 @@ export async function launchMicrosoftIncrementalSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -167,7 +167,7 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
             workspaceId: dataSourceConfig.workspaceId,
             workflowId,
           },
-          `Microsoft GC Workflow is already running, not relaunching.`
+          "Microsoft GC Workflow is already running, not relaunching."
         );
         return new Ok(workflowId);
       }
@@ -195,7 +195,7 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -205,7 +205,7 @@ export async function launchMicrosoftGarbageCollectionWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }

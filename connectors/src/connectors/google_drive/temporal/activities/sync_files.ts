@@ -58,7 +58,7 @@ export async function syncFiles(
       folderId: driveFolderId,
       dataSourceId: dataSourceConfig.dataSourceId,
     },
-    `[SyncFiles] Start sync.`
+    "[SyncFiles] Start sync."
   );
 
   const mimeTypesToSync = getMimeTypesToSync({
@@ -81,7 +81,7 @@ export async function syncFiles(
         folderId: driveFolderId,
         dataSourceId: dataSourceConfig.dataSourceId,
       },
-      `Google Drive Folder unexpectedly not found (got 404)`
+      "Google Drive Folder unexpectedly not found (got 404)"
     );
     return {
       nextPageToken: null,
@@ -140,7 +140,7 @@ export async function syncFiles(
       .filter((file) => file.id && file.createdTime)
       .map(async (file) => {
         if (!file.id || !file.createdTime || !file.name || !file.mimeType) {
-          throw new Error("Invalid file. File is: " + JSON.stringify(file));
+          throw new Error(`Invalid file. File is: ${JSON.stringify(file)}`);
         }
         return driveObjectToDustType(connectorId, file, authCredentials);
       })
@@ -156,7 +156,7 @@ export async function syncFiles(
       folderId: driveFolderId,
       count: filesToSync.length,
     },
-    `[SyncFiles] Call syncOneFile.`
+    "[SyncFiles] Call syncOneFile."
   );
 
   const filesToDelete = filesToSync.filter((file) => file.trashed);
@@ -202,7 +202,7 @@ export async function syncFiles(
       folderId: driveFolderId,
       count,
     },
-    `[SyncFiles] Successful sync.`
+    "[SyncFiles] Successful sync."
   );
 
   return {

@@ -32,7 +32,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   static model: ModelStatic<SlackConfigurationModel> = SlackConfigurationModel;
 
   constructor(
-    model: ModelStatic<SlackConfigurationModel>,
+    _model: ModelStatic<SlackConfigurationModel>,
     blob: Attributes<SlackConfigurationModel>
   ) {
     super(SlackConfigurationModel, blob);
@@ -94,7 +94,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   static async fetchByConnectorId(connectorId: ModelId) {
-    const blob = await this.model.findOne({
+    const blob = await SlackConfigurationResource.model.findOne({
       where: {
         connectorId: connectorId,
       },
@@ -103,13 +103,13 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       return null;
     }
 
-    return new this(this.model, blob.get());
+    return new SlackConfigurationResource(SlackConfigurationResource.model, blob.get());
   }
 
   static async fetchByConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, SlackConfigurationResource>> {
-    const blobs = await this.model.findAll({
+    const blobs = await SlackConfigurationResource.model.findAll({
       where: {
         connectorId: connectorIds,
       },
@@ -117,7 +117,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
 
     return blobs.reduce(
       (acc, blob) => {
-        acc[blob.connectorId] = new this(this.model, blob.get());
+        acc[blob.connectorId] = new SlackConfigurationResource(SlackConfigurationResource.model, blob.get());
         return acc;
       },
       {} as Record<ModelId, SlackConfigurationResource>
@@ -138,7 +138,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
   }
 
   static async fetchByActiveBot(slackTeamId: string) {
-    const blob = await this.model.findOne({
+    const blob = await SlackConfigurationResource.model.findOne({
       where: {
         slackTeamId,
         botEnabled: true,
@@ -148,7 +148,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
       return null;
     }
 
-    return new this(this.model, blob.get());
+    return new SlackConfigurationResource(SlackConfigurationResource.model, blob.get());
   }
 
   async isBotWhitelistedToSummon(botName: string | string[]): Promise<boolean> {
@@ -223,7 +223,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     const blobs = await SlackConfigurationResource.model.findAll({});
 
     return blobs.map(
-      (b) => new SlackConfigurationResource(this.model, b.get())
+      (b) => new SlackConfigurationResource(SlackConfigurationResource.model, b.get())
     );
   }
 
@@ -231,7 +231,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     slackTeamId: string,
     provider?: Extract<ConnectorProvider, "slack" | "slack_bot">
   ): Promise<SlackConfigurationResource[]> {
-    const blobs = await this.model.findAll({
+    const blobs = await SlackConfigurationResource.model.findAll({
       where: {
         slackTeamId,
       },
@@ -251,7 +251,7 @@ export class SlackConfigurationResource extends BaseResource<SlackConfigurationM
     });
 
     return blobs.map(
-      (b) => new SlackConfigurationResource(this.model, b.get())
+      (b) => new SlackConfigurationResource(SlackConfigurationResource.model, b.get())
     );
   }
 

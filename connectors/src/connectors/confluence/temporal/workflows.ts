@@ -174,7 +174,7 @@ export async function confluenceSpaceSyncWorkflow(
   const { connectorId, spaceId } = params;
 
   const uniqueTopLevelContentRefs = new Map<string, ConfluenceContentRef>();
-  const visitedAtMs = new Date().getTime();
+  const visitedAtMs = Date.now();
 
   const wInfo = workflowInfo();
 

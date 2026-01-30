@@ -388,7 +388,7 @@ async function retryWithBackoff<T>(
           const responseHeaders = e.headers as Record<string, string>;
           if (responseHeaders["retry-after"]) {
             const retryAfter = parseInt(responseHeaders["retry-after"], 10);
-            if (!isNaN(retryAfter) && retryAfter > 0) {
+            if (!Number.isNaN(retryAfter) && retryAfter > 0) {
               waitTime = retryAfter * 1000;
               usingHeader = true;
             }
@@ -575,7 +575,7 @@ async function getBlockParent(
         // We don't want to go up more than 8 levels.
         return null;
       }
-    } catch (e) {
+    } catch (_e) {
       // For non-retriable errors, return null
       return null;
     }
@@ -585,12 +585,12 @@ async function getBlockParent(
 export const getBlockParentMemoized = cacheWithRedis(
   getBlockParent,
   (
-    notionAccessToken: string,
+    _notionAccessToken: string,
     blockId: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-    localLogger: Logger,
+    _localLogger: Logger,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used for memoization
-    onProgress?: () => Promise<void>
+    _onProgress?: () => Promise<void>
   ) => {
     return blockId;
   },
@@ -908,7 +908,7 @@ export async function validateAccessToken(notionAccessToken: string) {
   });
   try {
     await notionClient.users.me({});
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
   return true;
@@ -995,11 +995,11 @@ export function parsePropertyValue(
     case "last_edited_time":
       return property.last_edited_time;
     case "title":
-      return property.title && property.title.map
+      return property.title?.map
         ? property.title.map((t) => t.plain_text).join(" ")
         : null;
     case "rich_text":
-      return property.rich_text && property.rich_text.map
+      return property.rich_text?.map
         ? property.rich_text.map((t) => t.plain_text).join(" ")
         : null;
     case "people":
@@ -1288,7 +1288,7 @@ export function parsePageBlock(block: BlockObjectResponse): ParsedNotionBlock {
         : fileContainer.file?.url || "NO_URL";
     const caption = parseRichText(fileContainer.caption);
     const fileText =
-      caption && caption.length
+      caption?.length
         ? `[${parseRichText(fileContainer.caption)}](${fileUrl})`
         : fileUrl;
     return fileText;
@@ -1575,7 +1575,6 @@ export async function* iteratePaginatedAPIWithRetries<
         const sleepTime = 500 * retry.backoffFactor ** tries;
         tryLogger.info({ sleepTime }, "Sleeping before retrying.");
         await new Promise((resolve) => setTimeout(resolve, sleepTime));
-        continue;
       }
     }
 

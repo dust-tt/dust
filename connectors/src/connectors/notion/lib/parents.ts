@@ -122,7 +122,7 @@ async function _getParents(
 export const getParents = cacheWithRedis(
   _getParents,
 
-  (connectorId, pageOrDbId, seen, syncing, memoizationKey) => {
+  (connectorId, pageOrDbId, _seen, _syncing, memoizationKey) => {
     return `${connectorId}:${pageOrDbId}:${memoizationKey}`;
   },
   // parents should be stable over the maximum time if memoized (almost a day).

@@ -27,7 +27,7 @@ export async function getRepliesFromThread({
   let allMessages: MessageElement[] = [];
 
   let iteration = 0;
-  let next_cursor: string | undefined = undefined;
+  let next_cursor: string | undefined ;
   do {
     const now = new Date();
 
@@ -75,7 +75,7 @@ export async function getRepliesFromThread({
         channelId,
         threadTs,
         next_cursor,
-        duration: new Date().getTime() - now.getTime(),
+        duration: Date.now()- now.getTime(),
         iteration,
       },
       "Fetched replies from channel thread."

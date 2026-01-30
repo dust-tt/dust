@@ -1,4 +1,4 @@
-import assert from "assert";
+import assert from "node:assert";
 import { Sequelize } from "sequelize";
 
 import { dbConfig } from "@connectors/resources/storage/config";
@@ -24,7 +24,7 @@ function sequelizeLogger(message: string) {
 // prevents silent precision loss when handling large integers from the database.
 // Throws an assertion error if a BIGINT value exceeds JavaScript's safe integer
 // limits.
-types.setTypeParser(types.builtins.INT8, function (val: unknown) {
+types.setTypeParser(types.builtins.INT8, (val: unknown) => {
   assert(
     Number.isSafeInteger(Number(val)),
     `Found a value stored as a BIGINT that is not a safe integer: ${val}`
@@ -47,7 +47,7 @@ export const connectorsSequelize = new Sequelize(
       beforePoolAcquire: (options) => {
         acquireAttempts.set(options, Date.now());
       },
-      afterPoolAcquire: (connection, options) => {
+      afterPoolAcquire: (_connection, options) => {
         const elapsedTime = Date.now() - acquireAttempts.get(options);
         if (elapsedTime > CONNECTION_ACQUISITION_THRESHOLD_MS) {
           statsDClient.distribution(

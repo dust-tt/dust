@@ -87,7 +87,7 @@ export function findBestAgentMatch(
         agent: LightAgentConfigurationType;
         distance: number;
       }
-    | undefined = undefined;
+    | undefined ;
 
   const queryLower = query.toLowerCase();
 
@@ -147,7 +147,7 @@ export function processMessageForMention({
 
   if (!mention) {
     // Use default agent if no mention found
-    let defaultAgent: LightAgentConfigurationType | undefined = undefined;
+    let defaultAgent: LightAgentConfigurationType | undefined ;
     for (const agentId of fallbackAgentIds) {
       defaultAgent = activeAgentConfigurations.find(
         (ac) => ac.sId === agentId && ac.status === "active"

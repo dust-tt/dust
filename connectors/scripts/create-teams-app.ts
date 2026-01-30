@@ -1,7 +1,7 @@
-import { execSync } from "child_process";
-import crypto from "crypto";
-import fs from "fs";
-import path from "path";
+import { execSync } from "node:child_process";
+import crypto from "node:crypto";
+import fs from "node:fs";
+import path from "node:path";
 
 interface TeamsManifest {
   id: string;
@@ -84,7 +84,7 @@ function createPlaceholderIcon(filePath: string, isOutline: boolean): void {
 
   // For now, just save as SVG (you can convert to PNG manually or install sharp)
   fs.writeFileSync(filePath.replace(".png", ".svg"), svgContent);
-  console.log(`ℹ️  Created SVG placeholder, please convert to PNG manually`);
+  console.log("ℹ️  Created SVG placeholder, please convert to PNG manually");
 }
 
 iconSources.forEach(({ src, dest }) => {

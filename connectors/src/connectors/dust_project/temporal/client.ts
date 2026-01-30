@@ -46,7 +46,7 @@ export async function launchDustProjectFullSyncWorkflow(
         workspaceId: dataSourceConfig.workspaceId,
         workflowId,
       },
-      `Started dust_project full sync workflow.`
+      "Started dust_project full sync workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -56,7 +56,7 @@ export async function launchDustProjectFullSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting dust_project full sync workflow.`
+      "Failed starting dust_project full sync workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -77,7 +77,7 @@ export async function launchDustProjectIncrementalSyncWorkflow(
   // Run incremental sync every 10 minutes
   const minuteOffset = connector.id % 10;
   const cronSchedule = isDevelopment()
-    ? `* * * * *`
+    ? "* * * * *"
     : `${minuteOffset},${minuteOffset + 10},${minuteOffset + 20},${minuteOffset + 30},${minuteOffset + 40},${minuteOffset + 50} * * * *`;
 
   try {
@@ -119,7 +119,7 @@ export async function launchDustProjectIncrementalSyncWorkflow(
         workflowId,
         cronSchedule,
       },
-      `Started dust_project incremental sync workflow with cron schedule.`
+      "Started dust_project incremental sync workflow with cron schedule."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -129,7 +129,7 @@ export async function launchDustProjectIncrementalSyncWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting dust_project incremental sync workflow.`
+      "Failed starting dust_project incremental sync workflow."
     );
     return new Err(normalizeError(e));
   }

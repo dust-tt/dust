@@ -37,21 +37,20 @@ export async function rateLimiter({
 
   try {
     const zCountRes = await redis.zCount(
-      redisKey,
-      new Date().getTime() - timeframeSeconds * 1000,
+      redisKey,Date.now()- timeframeSeconds * 1000,
       "+inf"
     );
     const remaining = maxPerTimeframe - zCountRes;
     if (remaining > 0) {
       await redis.zAdd(redisKey, {
-        score: new Date().getTime(),
+        score: Date.now(),
         value: uuidv4(),
       });
       await redis.expire(redisKey, timeframeSeconds * 2);
     } else {
       statsDClient.increment("ratelimiter.exceeded.count", 1, tags);
     }
-    const totalTimeMs = new Date().getTime() - now.getTime();
+    const totalTimeMs = Date.now()- now.getTime();
 
     statsDClient.distribution(
       "ratelimiter.latency.distribution",
@@ -69,7 +68,7 @@ export async function rateLimiter({
         timeframeSeconds,
         error: e,
       },
-      `RateLimiter error`
+      "RateLimiter error"
     );
 
     // In case of error on our side, we allow the request.

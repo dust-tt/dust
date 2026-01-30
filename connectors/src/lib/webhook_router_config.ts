@@ -235,7 +235,7 @@ export class WebhookRouterConfigService {
           );
           // Brief exponential backoff before retry
           await new Promise((resolve) =>
-            setTimeout(resolve, Math.pow(2, attempt) * 100)
+            setTimeout(resolve, 2 ** attempt * 100)
           );
           continue;
         }
@@ -276,7 +276,7 @@ export class WebhookRouterConfigService {
         }
 
         // Get existing entry if any
-        const existingEntry = config[provider]![providerWorkspaceId];
+        const existingEntry = config[provider]?.[providerWorkspaceId];
 
         if (connectorIds.length === 0) {
           // No connectors for this region - remove the region
@@ -285,7 +285,7 @@ export class WebhookRouterConfigService {
 
             // If no regions left, delete the entire entry
             if (Object.keys(existingEntry.regions).length === 0) {
-              delete config[provider]![providerWorkspaceId];
+              delete config[provider]?.[providerWorkspaceId];
             }
           }
         } else {

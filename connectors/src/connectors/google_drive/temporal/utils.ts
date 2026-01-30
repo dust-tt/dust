@@ -129,7 +129,7 @@ export async function driveObjectToDustType(
     !file.capabilities ||
     file.capabilities.canDownload === undefined
   ) {
-    throw new Error("Invalid file. File is: " + JSON.stringify(file));
+    throw new Error(`Invalid file. File is: ${JSON.stringify(file)}`);
   }
 
   const drive = await getDriveClient(authCredentials);
@@ -145,7 +145,7 @@ export async function driveObjectToDustType(
     return {
       id: file.id as string,
       name: file.name,
-      parent: file.parents && file.parents[0] ? file.parents[0] : null,
+      parent: file.parents?.[0] ? file.parents[0] : null,
       mimeType: file.mimeType,
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),
@@ -164,7 +164,7 @@ export async function driveObjectToDustType(
       },
       labels: labels,
     };
-  } else if (file.driveId == file.id) {
+  } else if (file.driveId === file.id) {
     // We are dealing with a Google Drive object. We need a query to the Drive API to get the actual Drive name.
     const driveRes = await drive.drives.get({
       driveId: file.id as string,
@@ -195,7 +195,7 @@ export async function driveObjectToDustType(
     return {
       id: file.id as string,
       name: file.name,
-      parent: file.parents && file.parents[0] ? file.parents[0] : null,
+      parent: file.parents?.[0] ? file.parents[0] : null,
       mimeType: file.mimeType,
       webViewLink: file.webViewLink ? file.webViewLink : undefined,
       createdAtMs: new Date(file.createdTime).getTime(),

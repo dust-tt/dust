@@ -35,7 +35,7 @@ describe("decodeBuffer", () => {
   it("should decode UTF-16LE text with BOM", () => {
     const content = "Hello, World! 你好世界";
     // Create UTF-16LE buffer with BOM
-    const utf16Buffer = Buffer.from("\uFEFF" + content, "utf16le");
+    const utf16Buffer = Buffer.from(`\uFEFF${content}`, "utf16le");
 
     const result = decodeBuffer(bufferToArrayBuffer(utf16Buffer));
 
@@ -68,7 +68,7 @@ describe("decodeBuffer", () => {
     const csvContent = `name,age,city
 Alice,30,Paris
 Bob,25,London`;
-    const utf16Buffer = Buffer.from("\uFEFF" + csvContent, "utf16le");
+    const utf16Buffer = Buffer.from(`\uFEFF${csvContent}`, "utf16le");
 
     const result = decodeBuffer(bufferToArrayBuffer(utf16Buffer));
 
@@ -83,7 +83,7 @@ Bob,25,London`;
 André,30,París
 François,25,Zürich
 日本,28,東京`;
-    const utf16Buffer = Buffer.from("\uFEFF" + csvContent, "utf16le");
+    const utf16Buffer = Buffer.from(`\uFEFF${csvContent}`, "utf16le");
 
     const result = decodeBuffer(bufferToArrayBuffer(utf16Buffer));
 
@@ -173,7 +173,7 @@ François,25,Zürich
 
   it("should handle Windows-style line endings in UTF-16LE", () => {
     const content = "line1\r\nline2\r\nline3";
-    const utf16Buffer = Buffer.from("\uFEFF" + content, "utf16le");
+    const utf16Buffer = Buffer.from(`\uFEFF${content}`, "utf16le");
 
     const result = decodeBuffer(bufferToArrayBuffer(utf16Buffer));
 

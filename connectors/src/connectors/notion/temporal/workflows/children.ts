@@ -215,7 +215,7 @@ export async function syncResultPageDatabaseChildWorkflow({
     concurrency: MAX_CONCURRENT_CHILD_WORKFLOWS,
   });
 
-  let promises: Promise<void | void[]>[] = [];
+  let promises: Promise<undefined | undefined[]>[] = [];
 
   for (const [databaseIndex, databaseId] of databaseIds.entries()) {
     const loggerArgs = {

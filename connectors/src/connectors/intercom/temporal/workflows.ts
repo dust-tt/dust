@@ -102,7 +102,7 @@ export async function intercomFullSyncWorkflow({
     memo,
   } = workflowInfo();
 
-  const currentSyncMs = new Date().getTime();
+  const currentSyncMs = Date.now();
 
   // Async operations allow Temporal's event loop to process signals.
   // If a signal arrives during an async operation, it will update the set before the next iteration.
@@ -206,7 +206,7 @@ export async function intercomHelpCenterSyncWorkflow({
     memo,
   } = workflowInfo();
 
-  const currentSyncMs = new Date().getTime();
+  const currentSyncMs = Date.now();
 
   for (const helpCenterId of helpCenterIds) {
     // We full sync the Help Center, we don't have incremental sync here.
@@ -245,7 +245,7 @@ export async function intercomConversationSyncWorkflow({
 
   const teamIds = await getTeamIdsToSyncActivity({ connectorId });
 
-  const currentSyncMs = new Date().getTime();
+  const currentSyncMs = Date.now();
 
   // Sync conversations for each team.
   for (const teamId of teamIds) {

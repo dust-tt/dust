@@ -93,8 +93,7 @@ export async function handleGoogleDriveExport(
 
       // Check if the error message indicates the file is too large to export
       if (
-        e.message &&
-        e.message.includes("This file is too large to be exported")
+        e.message?.includes("This file is too large to be exported")
       ) {
         localLogger.info(
           { error: e.message },

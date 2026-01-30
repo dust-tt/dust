@@ -1,5 +1,5 @@
-import assert from "assert";
-import fs from "fs/promises";
+import assert from "node:assert";
+import fs from "node:fs/promises";
 
 import {
   listConfluenceSpaces,
@@ -432,6 +432,6 @@ export const confluence = async ({
     }
 
     default:
-      throw new Error("Unknown Confluence command: " + command);
+      throw new Error(`Unknown Confluence command: ${command}`);
   }
 };

@@ -159,7 +159,7 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
         connector.id
       );
       if (!config) {
-        throw new Error(`Connector configuration not found`);
+        throw new Error("Connector configuration not found");
       }
       const { tenantId: currentTenantId } = config;
       const { tenantId: newTenantId } =

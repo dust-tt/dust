@@ -262,7 +262,7 @@ async function isUserAllowed(
 async function isSlackUserAllowed(
   slackUserInfo: SlackUserInfo,
   connector: ConnectorResource,
-  slackClient: WebClient,
+  _slackClient: WebClient,
   slackInfos: SlackInfos
 ) {
   const { teamId } = slackUserInfo;

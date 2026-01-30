@@ -1,5 +1,5 @@
 import { isLeft } from "fp-ts/lib/Either";
-import fs from "fs";
+import fs from "node:fs";
 import * as t from "io-ts";
 import * as reporter from "io-ts-reporters";
 
@@ -217,7 +217,7 @@ export const microsoft = async ({
       }
 
       const startSyncTs = Date.now();
-      let nextPageLink = undefined;
+      let nextPageLink ;
       let totalCount = 0;
       let nodeIdsToSync = [parentInternalId];
       while (nodeIdsToSync.length > 0) {
@@ -401,7 +401,7 @@ export const microsoft = async ({
         const file = (await getItem(
           logger,
           client,
-          itemAPIPath + `?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
+          `${itemAPIPath}?${DRIVE_ITEM_EXPANDS_AND_SELECTS}`
         )) as DriveItem;
 
         if (!file) {
@@ -409,7 +409,7 @@ export const microsoft = async ({
         }
 
         if (!file.parentReference) {
-          throw new Error(`No parentReference found`);
+          throw new Error("No parentReference found");
         }
 
         const parentInternalId = getParentReferenceInternalId(
@@ -429,6 +429,6 @@ export const microsoft = async ({
     }
 
     default:
-      throw new Error("Unknown microsoft command: " + command);
+      throw new Error(`Unknown microsoft command: ${command}`);
   }
 };

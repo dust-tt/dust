@@ -151,7 +151,7 @@ const _syncWebhookRouterEntryHandler = async (
 
   logger.info(
     { provider, providerWorkspaceId, region, connectorIds },
-    `Successfully synced webhook router entry`
+    "Successfully synced webhook router entry"
   );
 
   return res.status(200).json({

@@ -1,6 +1,6 @@
-import assert from "assert";
+import assert from "node:assert";
 import { hash as blake3 } from "blake3";
-import { extname } from "path";
+import { extname } from "node:path";
 
 import { GCSRepositoryManager } from "@connectors/connectors/github/lib/code/gcs_repository";
 import {

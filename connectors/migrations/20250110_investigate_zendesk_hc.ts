@@ -89,7 +89,7 @@ makeScript({}, async ({ execute }, logger) => {
           userRole: user.role,
           userActive: user.active,
         },
-        `FETCH`
+        "FETCH"
       );
     }
   }

@@ -39,7 +39,7 @@ export async function clientApiGet(
     logger.info({ duration, endpoint }, `Graph API call took ${duration}ms`);
     return res;
   } catch (error) {
-    logger.error({ error, endpoint }, `Graph API call threw an error`);
+    logger.error({ error, endpoint }, "Graph API call threw an error");
     if (
       error instanceof GraphError &&
       error.message.includes("Access denied")
@@ -64,7 +64,7 @@ export async function clientApiPost(
     logger.info({ duration, endpoint }, `Graph API call took ${duration}ms`);
     return res;
   } catch (error) {
-    logger.error({ error, endpoint }, `Graph API call threw an error`);
+    logger.error({ error, endpoint }, "Graph API call threw an error");
     if (
       error instanceof GraphError &&
       error.message.includes("Access denied")
@@ -263,7 +263,7 @@ export async function getFullDeltaResults({
 }): Promise<{ results: DriveItem[]; deltaLink: string }> {
   let nextLink: string | undefined = initialDeltaLink;
   let allItems: DriveItem[] = [];
-  let deltaLink: string | undefined = undefined;
+  let deltaLink: string | undefined ;
 
   do {
     const {
@@ -366,7 +366,7 @@ export async function getAllPaginatedEntities<T extends Entity>(
     nextLink?: string
   ) => Promise<{ results: T[]; nextLink?: string }>
 ): Promise<T[]> {
-  let nextLink: string | undefined = undefined;
+  let nextLink: string | undefined ;
   let allItems: T[] = [];
 
   do {

@@ -7,8 +7,8 @@ import type {
 import type FirecrawlApp from "@mendable/firecrawl-js";
 import { FirecrawlError } from "@mendable/firecrawl-js";
 import { Context } from "@temporalio/activity";
-import { createHash, randomUUID } from "crypto";
-import path from "path";
+import { createHash, randomUUID } from "node:crypto";
+import path from "node:path";
 import type { Logger } from "pino";
 import { Op } from "sequelize";
 
@@ -65,7 +65,7 @@ export async function markAsCrawled(connectorId: ModelId) {
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
   if (!webCrawlerConfig) {
-    throw new Error(`Webcrawler configuration not found for connector.`);
+    throw new Error("Webcrawler configuration not found for connector.");
   }
 
   // Immediately marking the config as crawled to avoid having the scheduler seeing it as a
@@ -90,7 +90,7 @@ export async function crawlWebsiteByConnectorId(connectorId: ModelId) {
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
 
   if (!webCrawlerConfig) {
-    throw new Error(`Webcrawler configuration not found for connector.`);
+    throw new Error("Webcrawler configuration not found for connector.");
   }
 
   const childLogger = logger.child({
@@ -372,7 +372,7 @@ export async function webCrawlerGarbageCollector(
   const webCrawlerConfig =
     await WebCrawlerConfigurationResource.fetchByConnectorId(connectorId);
   if (!webCrawlerConfig) {
-    throw new Error(`Webcrawler configuration not found for connector.`);
+    throw new Error("Webcrawler configuration not found for connector.");
   }
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
   let pagesToDelete: WebCrawlerPageModel[] = [];
@@ -488,7 +488,7 @@ export async function firecrawlCrawlPage(
 
   const connector = await ConnectorResource.fetchById(connectorId);
 
-  if (connector && connector.isPaused()) {
+  if (connector?.isPaused()) {
     localLogger.info(
       {
         connectorId,
@@ -644,7 +644,7 @@ export async function firecrawlCrawlPage(
             configId: webCrawlerConfig.id,
             url: sourceUrl,
           },
-          `Invalid document or URL. Skipping`
+          "Invalid document or URL. Skipping"
         );
         return;
       }
@@ -660,7 +660,7 @@ export async function firecrawlCrawlPage(
         documentId: documentId,
         documentContent: formattedDocumentContent,
         documentUrl: validatedUrl.standardized,
-        timestampMs: new Date().getTime(),
+        timestampMs: Date.now(),
         tags: [`title:${stripNullBytes(pageTitle)}`],
         parents: parentFolderIds,
         parentId: parentFolderIds[1] || null,
@@ -681,7 +681,7 @@ export async function firecrawlCrawlPage(
           title: pageTitle,
           url: sourceUrl,
         },
-        `Document is empty or too big to be upserted. Skipping`
+        "Document is empty or too big to be upserted. Skipping"
       );
       return;
     }

@@ -94,7 +94,7 @@ export const getFileParentsMemoized = cacheWithRedis(
   getFileParents,
   (
     connectorId: ModelId,
-    authCredentials: OAuth2Client,
+    _authCredentials: OAuth2Client,
     driveFile: GoogleDriveObjectType,
     startSyncTs: number | string,
     { includeAllRemoteParents }: { includeAllRemoteParents?: boolean } = {}

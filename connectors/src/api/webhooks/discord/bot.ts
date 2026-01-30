@@ -194,8 +194,8 @@ async function streamAgentResponseToDiscord(
           const conversationUrl = `${apiConfig.getDustFrontAPIUrl()}/w/${connector.workspaceId}/assistant/new`;
           await updateDiscordMessage(
             interactionToken,
-            `⚠️ **Personal credentials required**\n\n` +
-              `This agent uses tools that require personal authentication. ` +
+            "⚠️ **Personal credentials required**\n\n" +
+              "This agent uses tools that require personal authentication. " +
               `Discord bot doesn't support personal credentials yet.\n\n` +
               `**To use this agent, please start a conversation at:**\n${conversationUrl}\n\n` +
               `You'll be able to authenticate and chat with the agent in your browser.`,

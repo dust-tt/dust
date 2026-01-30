@@ -34,7 +34,7 @@ import type {
   AdminSuccessResponseType,
   SlackCheckChannelResponseType,
   SlackCommandType,
-  SlackJoinResponseType as SlackJoinResponseType,
+  SlackJoinResponseType,
 } from "@connectors/types";
 import {
   INTERNAL_MIME_TYPES,
@@ -154,7 +154,7 @@ export const slack = async ({
           messageTs: args.threadId,
         },
       });
-      if (thread && thread.skipReason) {
+      if (thread?.skipReason) {
         throw new Error(
           `Thread ${args.threadId} is skipped with reason: ${thread.skipReason}`
         );
@@ -881,6 +881,6 @@ export const slack = async ({
     }
 
     default:
-      throw new Error("Unknown slack command: " + command);
+      throw new Error(`Unknown slack command: ${command}`);
   }
 };

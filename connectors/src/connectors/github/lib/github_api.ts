@@ -1,7 +1,7 @@
 import type { Result } from "@dust-tt/client";
 import { Err, Ok } from "@dust-tt/client";
 import { isLeft } from "fp-ts/lib/Either";
-import { rm } from "fs/promises";
+import { rm } from "node:fs/promises";
 import * as reporter from "io-ts-reporters";
 import { Octokit, RequestError } from "octokit";
 import type {
@@ -108,9 +108,7 @@ export async function installationIdFromConnectionId(
     return null;
   }
 
-  return (tokRes.value.scrubbed_raw_json as { installation_id: string })[
-    "installation_id"
-  ];
+  return (tokRes.value.scrubbed_raw_json as { installation_id: string }).installation_id;
 }
 
 export async function getReposPage(
@@ -156,7 +154,7 @@ export async function getRepo(
   const octokit = await getOctokit(connector);
 
   try {
-    const { data: r } = await octokit.request(`GET /repositories/:repo_id`, {
+    const { data: r } = await octokit.request("GET /repositories/:repo_id", {
       repo_id: repoId,
     });
 
@@ -235,7 +233,7 @@ export async function getRepoIssuesPage(
     if (isBadCredentials(err)) {
       throw new ProviderWorkflowError(
         "github",
-        `401 - Transient BadCredentialErrror`,
+        "401 - Transient BadCredentialErrror",
         "transient_upstream_activity_error"
       );
     }
@@ -307,7 +305,7 @@ export async function getIssue(
     if (isBadCredentials(err)) {
       throw new ProviderWorkflowError(
         "github",
-        `401 - Transient BadCredentialErrror`,
+        "401 - Transient BadCredentialErrror",
         "transient_upstream_activity_error"
       );
     }

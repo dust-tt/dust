@@ -42,7 +42,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     ZendeskConfigurationModel;
 
   constructor(
-    model: ModelStatic<ZendeskConfigurationModel>,
+    _model: ModelStatic<ZendeskConfigurationModel>,
     blob: Attributes<ZendeskConfigurationModel>
   ) {
     super(ZendeskConfigurationModel, blob);
@@ -59,7 +59,7 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, configuration.get());
+    return new ZendeskConfigurationResource(ZendeskConfigurationResource.model, configuration.get());
   }
 
   static async fetchByConnectorId(
@@ -68,14 +68,14 @@ export class ZendeskConfigurationResource extends BaseResource<ZendeskConfigurat
     const configuration = await ZendeskConfigurationModel.findOne({
       where: { connectorId },
     });
-    return configuration && new this(this.model, configuration.get());
+    return configuration && new ZendeskConfigurationResource(ZendeskConfigurationResource.model, configuration.get());
   }
 
   static async deleteByConnectorId(
     connectorId: number,
     transaction: Transaction
   ): Promise<void> {
-    await this.model.destroy({ where: { connectorId }, transaction });
+    await ZendeskConfigurationResource.model.destroy({ where: { connectorId }, transaction });
   }
 
   async postFetchHook(): Promise<void> {
@@ -243,7 +243,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
   static model: ModelStatic<ZendeskBrandModel> = ZendeskBrandModel;
 
   constructor(
-    model: ModelStatic<ZendeskBrandModel>,
+    _model: ModelStatic<ZendeskBrandModel>,
     blob: Attributes<ZendeskBrandModel>
   ) {
     super(ZendeskBrandModel, blob);
@@ -291,7 +291,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, brand.get());
+    return new ZendeskBrandResource(ZendeskBrandResource.model, brand.get());
   }
 
   async grantHelpCenterPermissions(): Promise<void> {
@@ -324,7 +324,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
     const brands = await ZendeskBrandModel.findAll({
       where: { connectorId: connector.id },
     });
-    return brands.map((brand) => new this(this.model, brand.get()));
+    return brands.map((brand) => new ZendeskBrandResource(ZendeskBrandResource.model, brand.get()));
   }
 
   static async fetchByBrandId({
@@ -337,7 +337,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
     const blob = await ZendeskBrandModel.findOne({
       where: { connectorId, brandId },
     });
-    return blob && new this(this.model, blob.get());
+    return blob && new ZendeskBrandResource(ZendeskBrandResource.model, blob.get());
   }
 
   static async fetchByBrandSubdomain({
@@ -350,7 +350,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
     const blob = await ZendeskBrandModel.findOne({
       where: { connectorId, subdomain },
     });
-    return blob && new this(this.model, blob.get());
+    return blob && new ZendeskBrandResource(ZendeskBrandResource.model, blob.get());
   }
 
   static async fetchByBrandIds({
@@ -363,7 +363,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
     const brands = await ZendeskBrandModel.findAll({
       where: { connectorId, brandId: { [Op.in]: brandIds } },
     });
-    return brands.map((brand) => new this(this.model, brand.get()));
+    return brands.map((brand) => new ZendeskBrandResource(ZendeskBrandResource.model, brand.get()));
   }
 
   static async fetchAllReadOnly(
@@ -378,7 +378,7 @@ export class ZendeskBrandResource extends BaseResource<ZendeskBrandModel> {
         ],
       },
     });
-    return brands.map((brand) => new this(this.model, brand.get()));
+    return brands.map((brand) => new ZendeskBrandResource(ZendeskBrandResource.model, brand.get()));
   }
 
   static async fetchAllBrandIds(connectorId: number): Promise<number[]> {
@@ -504,7 +504,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
   static model: ModelStatic<ZendeskCategoryModel> = ZendeskCategoryModel;
 
   constructor(
-    model: ModelStatic<ZendeskCategoryModel>,
+    _model: ModelStatic<ZendeskCategoryModel>,
     blob: Attributes<ZendeskCategoryModel>
   ) {
     super(ZendeskCategoryModel, blob);
@@ -521,7 +521,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, category.get());
+    return new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get());
   }
 
   async postFetchHook(): Promise<void> {
@@ -558,7 +558,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId: connector.id },
     });
-    return categories.map((category) => new this(this.model, category.get()));
+    return categories.map((category) => new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get()));
   }
 
   static async fetchByCategoryId({
@@ -573,7 +573,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const category = await ZendeskCategoryModel.findOne({
       where: { connectorId, brandId, categoryId },
     });
-    return category && new this(this.model, category.get());
+    return category && new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get());
   }
 
   static async fetchByCategoryIds({
@@ -588,7 +588,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, categoryId: { [Op.in]: categoryIds } },
     });
-    return categories.map((category) => new this(this.model, category.get()));
+    return categories.map((category) => new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get()));
   }
 
   static async fetchReadOnlyCategoryIdsByBrandId({
@@ -642,7 +642,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId },
     });
-    return categories.map((category) => new this(this.model, category.get()));
+    return categories.map((category) => new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get()));
   }
 
   static async fetchSelectedCategoriesInBrand({
@@ -655,7 +655,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, permission: "read" },
     });
-    return categories.map((category) => new this(this.model, category.get()));
+    return categories.map((category) => new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get()));
   }
 
   static async fetchUnselectedCategoriesInBrand({
@@ -668,7 +668,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, brandId, permission: "none" },
     });
-    return categories.map((category) => new this(this.model, category.get()));
+    return categories.map((category) => new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get()));
   }
 
   static async fetchAllReadOnly(
@@ -677,7 +677,7 @@ export class ZendeskCategoryResource extends BaseResource<ZendeskCategoryModel> 
     const categories = await ZendeskCategoryModel.findAll({
       where: { connectorId, permission: "read" },
     });
-    return categories.map((category) => new this(this.model, category.get()));
+    return categories.map((category) => new ZendeskCategoryResource(ZendeskCategoryResource.model, category.get()));
   }
 
   static async deleteByCategoryId({
@@ -764,7 +764,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
   static model: ModelStatic<ZendeskTicketModel> = ZendeskTicketModel;
 
   constructor(
-    model: ModelStatic<ZendeskTicketModel>,
+    _model: ModelStatic<ZendeskTicketModel>,
     blob: Attributes<ZendeskTicketModel>
   ) {
     super(ZendeskTicketModel, blob);
@@ -781,7 +781,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, article.get());
+    return new ZendeskTicketResource(ZendeskTicketResource.model, article.get());
   }
 
   async postFetchHook(): Promise<void> {
@@ -870,7 +870,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
     const ticket = await ZendeskTicketModel.findOne({
       where: { connectorId, brandId, ticketId },
     });
-    return ticket && new this(this.model, ticket.get());
+    return ticket && new ZendeskTicketResource(ZendeskTicketResource.model, ticket.get());
   }
 
   static async fetchByTicketIds({
@@ -885,7 +885,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
     const tickets = await ZendeskTicketModel.findAll({
       where: { connectorId, brandId, ticketId: { [Op.in]: ticketIds } },
     });
-    return tickets.map((ticket) => new this(this.model, ticket.get()));
+    return tickets.map((ticket) => new ZendeskTicketResource(ZendeskTicketResource.model, ticket.get()));
   }
 
   static async fetchByBrandId({
@@ -898,7 +898,7 @@ export class ZendeskTicketResource extends BaseResource<ZendeskTicketModel> {
     const tickets = await ZendeskTicketModel.findAll({
       where: { connectorId, brandId },
     });
-    return tickets.map((ticket) => new this(this.model, ticket.get()));
+    return tickets.map((ticket) => new ZendeskTicketResource(ZendeskTicketResource.model, ticket.get()));
   }
 
   static async fetchTicketIdsByBrandId({
@@ -963,7 +963,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
   static model: ModelStatic<ZendeskArticleModel> = ZendeskArticleModel;
 
   constructor(
-    model: ModelStatic<ZendeskArticleModel>,
+    _model: ModelStatic<ZendeskArticleModel>,
     blob: Attributes<ZendeskArticleModel>
   ) {
     super(ZendeskArticleModel, blob);
@@ -980,7 +980,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
       { ...blob },
       transaction && { transaction }
     );
-    return new this(this.model, article.get());
+    return new ZendeskArticleResource(ZendeskArticleResource.model, article.get());
   }
 
   async postFetchHook(): Promise<void> {
@@ -1089,7 +1089,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
     const article = await ZendeskArticleModel.findOne({
       where: { connectorId, brandId, articleId },
     });
-    return article && new this(this.model, article.get());
+    return article && new ZendeskArticleResource(ZendeskArticleResource.model, article.get());
   }
 
   static async fetchByArticleIds({
@@ -1104,7 +1104,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
     const articles = await ZendeskArticleModel.findAll({
       where: { connectorId, brandId, articleId: { [Op.in]: articleIds } },
     });
-    return articles.map((article) => new this(this.model, article.get()));
+    return articles.map((article) => new ZendeskArticleResource(ZendeskArticleResource.model, article.get()));
   }
 
   static async fetchByCategoryId({
@@ -1119,7 +1119,7 @@ export class ZendeskArticleResource extends BaseResource<ZendeskArticleModel> {
     const articles = await ZendeskArticleModel.findAll({
       where: { connectorId, brandId, categoryId },
     });
-    return articles.map((article) => new this(this.model, article.get()));
+    return articles.map((article) => new ZendeskArticleResource(ZendeskArticleResource.model, article.get()));
   }
 
   static async deleteByArticleId({

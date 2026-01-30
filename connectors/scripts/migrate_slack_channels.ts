@@ -42,9 +42,9 @@ makeScript(
     const { execute } = argv;
 
     if (!execute) {
-      logger.info(`🔍 DRY RUN MODE - No actual migration will be performed`);
+      logger.info("🔍 DRY RUN MODE - No actual migration will be performed");
     } else {
-      logger.info(`🚀 LIVE MODE - Migration will be executed`);
+      logger.info("🚀 LIVE MODE - Migration will be executed");
     }
 
     // Auto-discover workspaces if none provided
@@ -80,7 +80,7 @@ makeScript(
           workspacesWithBoth: workspaceIds.length,
           discoveredWorkspaces: workspaceIds,
         },
-        `📊 Auto-discovery results:`
+        "📊 Auto-discovery results:"
       );
     }
 
@@ -129,7 +129,7 @@ makeScript(
           legacyConnectorId: legacyConnector.id,
           newConnectorId: connector.id,
         },
-        `📈 Channel fetch results:`
+        "📈 Channel fetch results:"
       );
 
       // Create a set of existing slackChannelIds for collision detection
@@ -149,7 +149,7 @@ makeScript(
           totalLegacyChannels: legacyChannels.length,
           channelsToMigrate: channelsToMigrate.length,
         },
-        `📊 Migration summary:`
+        "📊 Migration summary:"
       );
 
       if (channelsToMigrate.length === 0) {
@@ -204,15 +204,14 @@ makeScript(
           logger.info(
             `⚠️  Skipping workspace ${workspaceId} due to migration error. No channels were migrated for this workspace.`
           );
-          continue;
         }
       }
     }
 
     if (!execute) {
-      logger.info(`🔍 DRY RUN: All migration previews completed successfully!`);
+      logger.info("🔍 DRY RUN: All migration previews completed successfully!");
     } else {
-      logger.info(`🏁 All migrations completed successfully!`);
+      logger.info("🏁 All migrations completed successfully!");
     }
   }
 );

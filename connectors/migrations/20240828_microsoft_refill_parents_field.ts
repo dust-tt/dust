@@ -62,7 +62,7 @@ async function updateParentsFieldForConnector(
       order: [["id", "ASC"]],
     });
 
-    const startSyncTs = new Date().getTime();
+    const startSyncTs = Date.now();
     const res = await concurrentExecutor(
       nodes,
       async (node) => {

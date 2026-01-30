@@ -23,7 +23,7 @@ export const MAX_BLOCKED_RATIO = 0.9;
 export const MAX_PAGES_TOO_LARGE_RATIO = 0.9;
 
 const { webCrawlerGarbageCollector } = proxyActivities<typeof activities>({
-  startToCloseTimeout: `60 minutes`,
+  startToCloseTimeout: "60 minutes",
   heartbeatTimeout: `${HEARTBEAT_TIMEOUT} seconds`,
   cancellationType: ActivityCancellationType.TRY_CANCEL,
   retry: {
@@ -84,7 +84,7 @@ export async function crawlWebsiteSchedulerWorkflow() {
 }
 
 export function crawlWebsiteSchedulerWorkflowId() {
-  return `webcrawler-scheduler`;
+  return "webcrawler-scheduler";
 }
 
 export async function garbageCollectWebsiteWorkflow(

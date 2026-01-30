@@ -46,6 +46,6 @@ export class BaseModel<M extends Model> extends Model<
       },
     };
 
-    return super.init(attrs, options) as MS;
+    return Model.init(attrs, options) as MS;
   }
 }

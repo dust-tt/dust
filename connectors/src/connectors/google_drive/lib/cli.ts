@@ -284,7 +284,7 @@ export const google_drive = async ({
       if (!file) {
         throw new Error(`File ${args.fileId} not found`);
       }
-      const now = new Date().getTime();
+      const now = Date.now();
       const localParents = await getLocalParents(
         connector.id,
         file.dustFileId,
@@ -449,7 +449,7 @@ export const google_drive = async ({
           .join(" or ");
 
         // List all files and folders in this folder
-        let nextPageToken: string | undefined = undefined;
+        let nextPageToken: string | undefined ;
         do {
           const res: GaxiosResponse<drive_v3.Schema$FileList> =
             await drive.files.list({
@@ -510,6 +510,6 @@ export const google_drive = async ({
     }
 
     default:
-      throw new Error("Unknown google command: " + command);
+      throw new Error(`Unknown google command: ${command}`);
   }
 };

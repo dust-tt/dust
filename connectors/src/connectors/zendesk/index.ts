@@ -599,7 +599,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         const retentionDays = parseInt(configValue.trim(), 10);
         if (
           configValue.trim() !== "" &&
-          (isNaN(retentionDays) || retentionDays < 0)
+          (Number.isNaN(retentionDays) || retentionDays < 0)
         ) {
           return new Err(
             new Error(
@@ -786,7 +786,7 @@ export class ZendeskConnectorManager extends BaseConnectorManager<null> {
         }
 
         const transactionsPerSecond = parseInt(configValue.trim(), 10);
-        if (isNaN(transactionsPerSecond) || transactionsPerSecond < 1) {
+        if (Number.isNaN(transactionsPerSecond) || transactionsPerSecond < 1) {
           return new Err(
             new Error(
               "Rate limit transactions per second must be a positive integer or empty to disable."

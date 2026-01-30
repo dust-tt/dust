@@ -94,7 +94,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
       connectionId,
     });
     if (tokRes.isErr()) {
-      throw new Error("Error retrieving access token: " + tokRes.error.message);
+      throw new Error(`Error retrieving access token: ${tokRes.error.message}`);
     }
 
     const isValidToken = await validateAccessToken(tokRes.value.access_token);
@@ -528,7 +528,7 @@ export class NotionConnectorManager extends BaseConnectorManager<null> {
 
   async setPermissions(): Promise<Result<void, Error>> {
     return new Err(
-      new Error(`Setting Notion connector permissions is not implemented yet.`)
+      new Error("Setting Notion connector permissions is not implemented yet.")
     );
   }
 

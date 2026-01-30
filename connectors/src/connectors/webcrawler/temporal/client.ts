@@ -80,7 +80,7 @@ export async function launchCrawlWebsiteWorkflow(
       {
         workflowId,
       },
-      `Started workflow.`
+      "Started workflow."
     );
     return new Ok(workflowId);
   } catch (e) {
@@ -89,7 +89,7 @@ export async function launchCrawlWebsiteWorkflow(
         workflowId,
         error: e,
       },
-      `Failed starting workflow.`
+      "Failed starting workflow."
     );
     return new Err(normalizeError(e));
   }
@@ -122,14 +122,14 @@ export async function stopCrawlWebsiteWorkflow({
         workflowId,
         error: e,
       },
-      `Failed stopping workflow.`
+      "Failed stopping workflow."
     );
     return new Err(normalizeError(e));
   }
 }
 
 export async function launchCrawlWebsiteScheduler() {
-  const scheduleId = `webcrawler-scheduler`;
+  const scheduleId = "webcrawler-scheduler";
 
   // Only create the schedule if it doesn't already exist.
   const scheduleAlreadyExists = await scheduleExists({

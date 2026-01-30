@@ -370,7 +370,7 @@ export const intercom = async ({
         throw new Error("Missing --conversationsSlidingWindow argument");
       }
       const { conversationsSlidingWindow } = args;
-      if (isNaN(conversationsSlidingWindow) || conversationsSlidingWindow < 0) {
+      if (Number.isNaN(conversationsSlidingWindow) || conversationsSlidingWindow < 0) {
         throw new Error(
           `Invalid --conversationsSlidingWindow argument: ${conversationsSlidingWindow}`
         );
@@ -418,7 +418,7 @@ export const intercom = async ({
         if (!forceDeleteExisting) {
           throw new Error(
             `Schedules already exist (helpCenter: ${helpCenterExists}, conversation: ${conversationExists}). ` +
-              `Use --forceDeleteExisting=true to delete and recreate them.`
+              "Use --forceDeleteExisting=true to delete and recreate them."
           );
         }
 

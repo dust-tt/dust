@@ -26,7 +26,7 @@ export async function allowSyncZendeskHelpCenter({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const { subdomain, accessToken } =
@@ -120,7 +120,7 @@ export async function allowSyncZendeskCategory({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const category = await ZendeskCategoryResource.fetchByCategoryId({

@@ -155,7 +155,7 @@ function getValidRows(allRows: string[][], localLogger: Logger): string[][] {
 
     return validRows;
   } catch (err) {
-    localLogger.info({ err }, `[Spreadsheet] Failed to retrieve valid rows.`);
+    localLogger.info({ err }, "[Spreadsheet] Failed to retrieve valid rows.");
 
     // If the headers are invalid, return an empty array to ignore it.
     if (err instanceof InvalidStructuredDataHeaderError) {
@@ -406,9 +406,9 @@ export async function syncSpreadSheet(
     }
 > {
   return tracer.trace(
-    `gdrive`,
+    "gdrive",
     {
-      resource: `syncSpreadSheet`,
+      resource: "syncSpreadSheet",
     },
     async (span) => {
       span?.setTag("connectorId", connectorId);

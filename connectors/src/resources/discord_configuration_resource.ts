@@ -18,7 +18,7 @@ export class DiscordConfigurationResource extends BaseResource<DiscordConfigurat
     DiscordConfigurationModel;
 
   constructor(
-    model: ModelStatic<DiscordConfigurationModel>,
+    _model: ModelStatic<DiscordConfigurationModel>,
     blob: Attributes<DiscordConfigurationModel>
   ) {
     super(DiscordConfigurationModel, blob);
@@ -75,35 +75,35 @@ export class DiscordConfigurationResource extends BaseResource<DiscordConfigurat
       {
         guildId,
         connectorId,
-        botEnabled: otherDiscordConfigurationWithBotEnabled ? false : true,
+        botEnabled: !otherDiscordConfigurationWithBotEnabled,
       },
       { transaction }
     );
 
-    return new this(this.model, model.get());
+    return new DiscordConfigurationResource(DiscordConfigurationResource.model, model.get());
   }
 
   static async fetchByConnectorId(connectorId: ModelId) {
-    const blob = await this.model.findOne({
+    const blob = await DiscordConfigurationResource.model.findOne({
       where: { connectorId },
     });
     if (!blob) {
       return null;
     }
-    return new this(this.model, blob.get());
+    return new DiscordConfigurationResource(DiscordConfigurationResource.model, blob.get());
   }
 
   static async listForGuildId(guildId: string) {
-    const blobs = await this.model.findAll({
+    const blobs = await DiscordConfigurationResource.model.findAll({
       where: { guildId },
     });
-    return blobs.map((blob) => new this(this.model, blob.get()));
+    return blobs.map((blob) => new DiscordConfigurationResource(DiscordConfigurationResource.model, blob.get()));
   }
 
   static async fetchByConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, DiscordConfigurationResource>> {
-    const blobs = await this.model.findAll({
+    const blobs = await DiscordConfigurationResource.model.findAll({
       where: {
         connectorId: connectorIds,
       },
@@ -111,7 +111,7 @@ export class DiscordConfigurationResource extends BaseResource<DiscordConfigurat
 
     return blobs.reduce(
       (acc, blob) => {
-        acc[blob.connectorId] = new this(this.model, blob.get());
+        acc[blob.connectorId] = new DiscordConfigurationResource(DiscordConfigurationResource.model, blob.get());
         return acc;
       },
       {} as Record<ModelId, DiscordConfigurationResource>

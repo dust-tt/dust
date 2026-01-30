@@ -309,8 +309,8 @@ export async function launchGithubDiscussionSyncWorkflow(
 
 export async function launchGithubIssueGarbageCollectWorkflow(
   connectorId: ModelId,
-  repoLogin: string,
-  repoName: string,
+  _repoLogin: string,
+  _repoName: string,
   repoId: number,
   issueNumber: number
 ) {
@@ -342,8 +342,8 @@ export async function launchGithubIssueGarbageCollectWorkflow(
 
 export async function launchGithubDiscussionGarbageCollectWorkflow(
   connectorId: ModelId,
-  repoLogin: string,
-  repoName: string,
+  _repoLogin: string,
+  _repoName: string,
   repoId: number,
   discussionNumber: number
 ) {
@@ -375,8 +375,8 @@ export async function launchGithubDiscussionGarbageCollectWorkflow(
 
 export async function launchGithubRepoGarbageCollectWorkflow(
   connectorId: ModelId,
-  repoLogin: string,
-  repoName: string,
+  _repoLogin: string,
+  _repoName: string,
   repoId: number
 ) {
   const client = await getTemporalClient();

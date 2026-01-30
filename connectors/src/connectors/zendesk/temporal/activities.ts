@@ -1,4 +1,4 @@
-import assert from "assert";
+import assert from "node:assert";
 import _ from "lodash";
 
 import {
@@ -108,7 +108,7 @@ export async function syncZendeskBrandActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const brandInDb = await ZendeskBrandResource.fetchByBrandId({
@@ -285,7 +285,7 @@ export async function getZendeskHelpCenterReadAllowedBrandIdsActivity(
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const { subdomain, accessToken } = await getZendeskSubdomainAndAccessToken(
@@ -364,7 +364,7 @@ export async function syncZendeskCategoryBatchActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -448,7 +448,7 @@ export async function syncZendeskCategoryActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const categoryInDb = await ZendeskCategoryResource.fetchByCategoryId({
@@ -561,7 +561,7 @@ export async function syncZendeskArticleBatchActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -673,7 +673,7 @@ export async function syncZendeskTicketBatchActivity({
   const configuration =
     await ZendeskConfigurationResource.fetchByConnectorId(connectorId);
   if (!configuration) {
-    throw new Error(`[Zendesk] Configuration not found.`);
+    throw new Error("[Zendesk] Configuration not found.");
   }
 
   const dataSourceConfig = dataSourceConfigFromConnector(connector);
@@ -710,7 +710,7 @@ export async function syncZendeskTicketBatchActivity({
   if (tickets.length === 0) {
     logger.info(
       { ...loggerArgs, ticketsSynced: 0 },
-      `[Zendesk] No tickets to process in batch - stopping.`
+      "[Zendesk] No tickets to process in batch - stopping."
     );
     return { hasMore: false, nextLink: "" };
   }

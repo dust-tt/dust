@@ -114,7 +114,7 @@ export async function zendeskSyncWorkflow({
           }
           default:
             assertNever(
-              `Unexpected signal type received within Zendesk sync workflow.`,
+              "Unexpected signal type received within Zendesk sync workflow.",
               signal
             );
         }
@@ -128,7 +128,7 @@ export async function zendeskSyncWorkflow({
     memo,
   } = workflowInfo();
 
-  const currentSyncDateMs = new Date().getTime();
+  const currentSyncDateMs = Date.now();
 
   if (
     !isInitialSync &&

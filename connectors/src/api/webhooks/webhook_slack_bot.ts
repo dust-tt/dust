@@ -188,7 +188,7 @@ const _webhookSlackBotAPIHandler = async (
                     event.channel
                   );
 
-                if (channel && channel.agentConfigurationId) {
+                if (channel?.agentConfigurationId) {
                   logger.info(
                     {
                       slackChannelId: event.channel,

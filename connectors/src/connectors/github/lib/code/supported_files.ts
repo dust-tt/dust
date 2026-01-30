@@ -1,4 +1,4 @@
-import { extname } from "path";
+import { extname } from "node:path";
 
 const EXTENSION_WHITELIST = [
   // Programming Languages - General Purpose

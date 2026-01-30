@@ -214,8 +214,8 @@ export async function fetchIntercomCollections({
 
   return collections.filter(
     (collection) =>
-      collection.parent_id == parentId &&
-      (parentId === null ? collection.help_center_id == helpCenterId : true)
+      collection.parent_id === parentId &&
+      (parentId === null ? collection.help_center_id === helpCenterId : true)
   );
 }
 
@@ -283,7 +283,7 @@ export async function fetchIntercomTeams({
 }): Promise<IntercomTeamType[]> {
   const response = await queryIntercomAPI({
     accessToken,
-    path: `teams`,
+    path: "teams",
     method: "GET",
   });
 
@@ -379,7 +379,7 @@ export async function fetchIntercomConversations({
   const response: IntercomFetchConversationsResponseType =
     await queryIntercomAPI({
       accessToken,
-      path: `conversations/search`,
+      path: "conversations/search",
       method: "POST",
       body: {
         query: {
@@ -433,7 +433,7 @@ export async function fetchIntercomConversationsForDay({
 }> {
   const response = await queryIntercomAPI({
     accessToken,
-    path: `conversations/search`,
+    path: "conversations/search",
     method: "POST",
     body: {
       query: {

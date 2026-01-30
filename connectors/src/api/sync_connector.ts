@@ -14,7 +14,7 @@ const _syncConnectorAPIHandler = async (
     res.status(400).send({
       error: {
         type: "invalid_request_error",
-        message: `Missing required parameters. Required : connector_id`,
+        message: "Missing required parameters. Required : connector_id",
       },
     });
 

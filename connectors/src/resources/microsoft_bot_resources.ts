@@ -24,7 +24,7 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
     MicrosoftBotConfigurationModel;
 
   constructor(
-    model: ModelStatic<MicrosoftBotConfigurationModel>,
+    _model: ModelStatic<MicrosoftBotConfigurationModel>,
     blob: Attributes<MicrosoftBotConfigurationModel>
   ) {
     super(MicrosoftBotConfigurationModel, blob);
@@ -38,18 +38,18 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
     blob: WithCreationAttributes<MicrosoftBotConfigurationModel>,
     transaction: Transaction
   ): Promise<MicrosoftBotConfigurationResource> {
-    const config = await this.model.create(
+    const config = await MicrosoftBotConfigurationResource.model.create(
       {
         ...blob,
       },
       { transaction }
     );
 
-    return new this(this.model, config.get());
+    return new MicrosoftBotConfigurationResource(MicrosoftBotConfigurationResource.model, config.get());
   }
 
   static async fetchByConnectorId(connectorId: ModelId) {
-    const blob = await this.model.findOne({
+    const blob = await MicrosoftBotConfigurationResource.model.findOne({
       where: {
         connectorId: connectorId,
       },
@@ -58,13 +58,13 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
       return null;
     }
 
-    return new this(this.model, blob.get());
+    return new MicrosoftBotConfigurationResource(MicrosoftBotConfigurationResource.model, blob.get());
   }
 
   static async fetchByConnectorIds(
     connectorIds: ModelId[]
   ): Promise<Record<ModelId, MicrosoftBotConfigurationResource>> {
-    const blobs = await this.model.findAll({
+    const blobs = await MicrosoftBotConfigurationResource.model.findAll({
       where: {
         connectorId: connectorIds,
       },
@@ -72,7 +72,7 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
 
     return blobs.reduce(
       (acc, blob) => {
-        acc[blob.connectorId] = new this(this.model, blob.get());
+        acc[blob.connectorId] = new MicrosoftBotConfigurationResource(MicrosoftBotConfigurationResource.model, blob.get());
         return acc;
       },
       {} as Record<ModelId, MicrosoftBotConfigurationResource>
@@ -80,7 +80,7 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
   }
 
   static async fetchByTenantId(tenantId: string) {
-    const blob = await this.model.findOne({
+    const blob = await MicrosoftBotConfigurationResource.model.findOne({
       where: {
         tenantId: tenantId,
       },
@@ -89,7 +89,7 @@ export class MicrosoftBotConfigurationResource extends BaseResource<MicrosoftBot
       return null;
     }
 
-    return new this(this.model, blob.get());
+    return new MicrosoftBotConfigurationResource(MicrosoftBotConfigurationResource.model, blob.get());
   }
 
   async delete(transaction?: Transaction): Promise<Result<undefined, Error>> {
