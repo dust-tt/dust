@@ -5,27 +5,9 @@ import {
   LoginIcon,
   Page,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import Link from "next/link";
 
-import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
-
-export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
-  requireUserPrivilege: "none",
-})<{
-  domain: string | null;
-  reason: string | null;
-}>(async (context) => {
-  const reason =
-    typeof context.query.reason === "string" ? context.query.reason : null;
-
-  return {
-    props: {
-      domain: (context.query.domain as string) ?? null,
-      reason,
-    },
-  };
-});
+import { useSearchParam } from "@app/lib/platform";
 
 const defaultErrorMessageClassName = "text-base text-primary-100";
 
@@ -173,10 +155,9 @@ function getErrorMessage(domain: string | null, reason: string | null) {
   }
 }
 
-export default function LoginError({
-  domain,
-  reason,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+export default function LoginError() {
+  const domain = useSearchParam("domain");
+  const reason = useSearchParam("reason");
   const errorMessage = getErrorMessage(domain, reason);
 
   return (
