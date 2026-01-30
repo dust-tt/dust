@@ -512,11 +512,20 @@ export async function createSpaceAndGroup(
           );
           break;
         }
+
         // Add members to the member group in regular spaces
         const users = (await UserResource.fetchByIds(params.memberIds)).map(
           (user) => user.toJSON()
         );
-        const groupsResult = await membersGroup.addMembers(auth, {
+        if (!membersGroup.canWrite(auth)) {
+          return new Err(
+            new DustError(
+              "unauthorized",
+              "Only admins or group editors can change group members"
+            )
+          );
+        }
+        const groupsResult = await membersGroup.dangerouslyAddMembers(auth, {
           users,
           transaction: t,
         });

@@ -588,7 +588,10 @@ async function handleUserAddedToGroup(
 
   const isMember = await group.isMember(user);
   if (!isMember) {
-    const res = await group.addMember(auth, { user: user.toJSON() });
+    if (!group.canWrite(auth)) {
+      throw new Error("Only admins or group editors can change group members");
+    }
+    const res = await group.dangerouslyAddMember(auth, { user: user.toJSON() });
     if (res.isErr()) {
       throw new Error(res.error.message);
     }
@@ -681,7 +684,12 @@ async function handleUserRemovedFromGroup(
     return;
   }
 
-  const res = await group.removeMember(auth, { user: user.toJSON() });
+  if (!group.canWrite(auth)) {
+    throw new Error("Only admins or group editors can change group members");
+  }
+  const res = await group.dangerouslyRemoveMember(auth, {
+    user: user.toJSON(),
+  });
   if (res.isErr() && res.error.code !== "user_not_member") {
     throw new Error(res.error.message);
   }
@@ -824,7 +832,10 @@ async function handleDeleteWorkOSUser(
   });
 
   for (const group of groups) {
-    const removeResult = await group.removeMember(auth, {
+    if (!group.canWrite(auth)) {
+      throw new Error("Only admins or group editors can change group members");
+    }
+    const removeResult = await group.dangerouslyRemoveMember(auth, {
       user: user.toJSON(),
     });
     if (removeResult.isErr()) {
