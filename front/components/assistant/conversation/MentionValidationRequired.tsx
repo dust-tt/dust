@@ -27,7 +27,11 @@ interface MentionValidationRequiredProps {
   mention: Extract<
     RichMentionWithStatus,
     {
-      status: "pending";
+      // "pending" is deprecated but kept for migration compatibility
+      status:
+        | "pending"
+        | "pending_conversation_access"
+        | "pending_project_membership";
     }
   >;
   conversation: ConversationWithoutContentType;
@@ -43,13 +47,13 @@ export function MentionValidationRequired({
 }: MentionValidationRequiredProps) {
   const { user } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isProjectConv = isProjectConversation(conversation);
+  const isProjectMembership = mention.status === "pending_project_membership";
 
   const { validateMention } = useMentionValidation({
     workspaceId: owner.sId,
     conversationId: conversation.sId,
     messageId: message.sId,
-    isProjectConversation: isProjectConv,
+    isProjectConversation: isProjectMembership,
   });
 
   const isTriggeredByCurrentUser = useMemo(
@@ -90,7 +94,7 @@ export function MentionValidationRequired({
                 @{message.configuration.name}
               </span>{" "}
               mentioned <span className="font-semibold">{mention.label}</span>.
-              {isProjectConv ? (
+              {isProjectMembership ? (
                 <> Do you want to add them to this project?</>
               ) : (
                 <>
@@ -102,7 +106,7 @@ export function MentionValidationRequired({
             </>
           ) : (
             <>
-              {isProjectConv ? (
+              {isProjectMembership ? (
                 <>
                   Add <b>{mention.label}</b> to this project? They'll have
                   access to all project conversations.
@@ -126,10 +130,10 @@ export function MentionValidationRequired({
             onClick={handleReject}
           />
           <Button
-            label={isProjectConv ? "Add to project" : "Yes"}
+            label={isProjectMembership ? "Add to project" : "Yes"}
             variant="highlight"
             size="xs"
-            icon={isProjectConv ? PlusIcon : CheckIcon}
+            icon={isProjectMembership ? PlusIcon : CheckIcon}
             disabled={isSubmitting}
             onClick={handleApprove}
           />
