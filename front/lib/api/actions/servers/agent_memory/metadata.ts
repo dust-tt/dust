@@ -34,7 +34,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .array(z.number())
         .describe("The indexes of the memory entries to erase."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
   [AGENT_MEMORY_EDIT_TOOL_NAME]: {
     description:
