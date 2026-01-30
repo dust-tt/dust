@@ -50,6 +50,13 @@ type DatasourceRetrievalDocumentsAggs = {
 
 const CORE_SEARCH_NODES_BATCH_SIZE = 200;
 
+// Internal MCP servers use fake numeric IDs (like -1, 0) instead of real sIds.
+// This function checks if a string represents a pure numeric ID.
+function isNumericId(id: string): boolean {
+  const numericId = parseInt(id, 10);
+  return !isNaN(numericId) && numericId.toString() === id;
+}
+
 function chunkArray<T>(items: T[], batchSize: number): T[][] {
   if (batchSize <= 0) {
     return [items];
@@ -144,18 +151,30 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const mcpServerConfigs = await AgentMCPServerConfigurationResource.fetchByIds(
-    auth,
-    mcpServerConfigIds
-  );
+  // Separate real config sIds from fake numeric IDs (used by internal MCP servers like -1, 0)
+  const realConfigSIds = mcpServerConfigIds.filter((id) => !isNumericId(id));
+  const fakeNumericIds = mcpServerConfigIds
+    .filter(isNumericId)
+    .map((id) => parseInt(id, 10));
 
-  if (mcpServerConfigs.length === 0) {
+  // Fetch real configs by sId
+  const mcpServerConfigs =
+    realConfigSIds.length > 0
+      ? await AgentMCPServerConfigurationResource.fetchByIds(
+          auth,
+          realConfigSIds
+        )
+      : [];
+
+  // Combine real config model IDs with fake numeric IDs
+  const mcpServerConfigModelIds = [
+    ...mcpServerConfigs.map((config) => config.id),
+    ...fakeNumericIds,
+  ];
+
+  if (mcpServerConfigModelIds.length === 0) {
     return new Ok({ documents: [], groups: [], total: 0 });
   }
-
-  const mcpServerConfigModelIds = Array.from(
-    new Set(mcpServerConfigs.map((config) => config.id))
-  );
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: workspace.sId,

@@ -349,9 +349,11 @@ async function extractRetrievalDocuments(
   );
 
   // Convert string IDs to numeric ModelIds at call site.
+  // Internal MCP servers (like data_sources_file_system) use fake IDs like -1, 0
+  // that won't exist in the database, but we filter them out here with isNaN check.
   const configModelIds: ModelId[] = configIds
     .map((id) => parseInt(id, 10))
-    .filter((id) => !isNaN(id));
+    .filter((id) => !isNaN(id) && id > 0);
 
   // Fetch MCP server configurations for analytics tracking.
   // Using standalone resource allows independent querying for reporting purposes.
@@ -384,10 +386,9 @@ async function extractRetrievalDocuments(
   const dataSourceViewIds = new Set<string>();
 
   for (const action of searchActions) {
+    // config may be null for internal MCP servers (like data_sources_file_system)
+    // which use dynamically generated configs with fake IDs (-1, 0, etc.)
     const config = configMap.get(action.mcpServerConfigurationId);
-    if (!config) {
-      continue;
-    }
 
     const actionOutputItems = outputItemsByActionId.get(action.id);
     if (!actionOutputItems) {
@@ -425,7 +426,9 @@ async function extractRetrievalDocuments(
 
       partialDocuments.push({
         ...baseDocument,
-        mcp_server_configuration_id: config.id.toString(),
+        // Use config.id if available, fall back to action.mcpServerConfigurationId for internal servers
+        mcp_server_configuration_id:
+          config?.id.toString() ?? action.mcpServerConfigurationId,
         mcp_server_name: mcpServerName,
         data_source_view_id: dataSourceViewId,
         data_source_id: dataSourceId,

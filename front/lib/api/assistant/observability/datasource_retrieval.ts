@@ -206,7 +206,9 @@ export async function fetchDatasourceRetrievalMetrics(
     const config = serverConfigByModelId.get(mcpConfigBucket.key);
     const mcpServerName = mcpServerNameBuckets[0]?.key ?? "unknown";
     const mcpServerDisplayName = asDisplayName(config?.name) || mcpServerName;
-    const configId = config?.sId ?? "unknown";
+    // For internal MCP servers (fake IDs like -1), use the bucket key as the configId
+    // since there's no real config to look up. The documents API will handle this.
+    const configId = config?.sId ?? mcpConfigBucket.key.toString();
 
     const group = getOrCreateToolGroup({
       mcpServerDisplayName,
