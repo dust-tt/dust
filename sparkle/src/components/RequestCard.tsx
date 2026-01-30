@@ -68,7 +68,7 @@ export const RequestCard = React.forwardRef<HTMLDivElement, RequestCardProps>(
     ref
   ) => {
     return (
-      <Card ref={ref} variant="secondary" size="md" className={className}>
+      <Card ref={ref} variant="primary" size="md" className={className}>
         <div className="s-flex s-w-full s-flex-col s-gap-3">
           <div className="s-flex s-items-center s-gap-3">
             <Avatar
