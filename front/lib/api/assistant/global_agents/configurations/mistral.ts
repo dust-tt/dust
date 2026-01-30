@@ -4,10 +4,7 @@ import {
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
-import {
-  _getDefaultWebActionsForGlobalAgent,
-  _getInteractiveContentToolConfiguration,
-} from "@app/lib/api/assistant/global_agents/tools";
+import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type { AgentConfigurationType } from "@app/types";
@@ -68,11 +65,8 @@ export function _getMistralLargeGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -124,11 +118,8 @@ export function _getMistralMediumGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -175,11 +166,8 @@ export function _getMistralSmallGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],

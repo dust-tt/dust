@@ -19,7 +19,6 @@ import type {
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
-  _getInteractiveContentToolConfiguration,
   _getToolsetsToolsConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
@@ -507,13 +506,6 @@ function _getDustLikeGlobalAgent(
     });
   }
 
-  actions.push(
-    ..._getInteractiveContentToolConfiguration({
-      agentId,
-      mcpServerViews,
-    })
-  );
-
   // Fix the action ids.
   actions.forEach((action, i) => {
     action.id = -i;
@@ -523,6 +515,7 @@ function _getDustLikeGlobalAgent(
     ...dustAgent,
     status: "active",
     actions,
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
   };
 }

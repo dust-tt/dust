@@ -194,39 +194,3 @@ export function _getAgentRouterToolsConfiguration({
     },
   ];
 }
-
-export function _getInteractiveContentToolConfiguration({
-  agentId,
-  mcpServerViews,
-}: {
-  agentId: GLOBAL_AGENTS_SID;
-  mcpServerViews: MCPServerViewsForGlobalAgentsMap;
-}): ServerSideMCPServerConfigurationType[] {
-  const { interactive_content: interactiveContentMCPServerView } =
-    mcpServerViews;
-
-  if (!interactiveContentMCPServerView) {
-    return [];
-  }
-
-  return [
-    {
-      id: -1,
-      sId: agentId + "-interactive-content",
-      type: "mcp_server_configuration",
-      name: "interactive_content",
-      description: "Create & update Interactive Content files.",
-      mcpServerViewId: interactiveContentMCPServerView.sId,
-      internalMCPServerId: interactiveContentMCPServerView.internalMCPServerId,
-      dataSources: null,
-      tables: null,
-      childAgentId: null,
-      additionalConfiguration: {},
-      timeFrame: null,
-      dustAppConfiguration: null,
-      jsonSchema: null,
-      secretName: null,
-      dustProject: null,
-    },
-  ];
-}

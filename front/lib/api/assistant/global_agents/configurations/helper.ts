@@ -5,7 +5,6 @@ import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/gl
 import {
   _getAgentRouterToolsConfiguration,
   _getDefaultWebActionsForGlobalAgent,
-  _getInteractiveContentToolConfiguration,
 } from "@app/lib/api/assistant/global_agents/tools";
 import { dummyModelConfiguration } from "@app/lib/api/assistant/global_agents/utils";
 import type { Authenticator } from "@app/lib/auth";
@@ -90,10 +89,6 @@ The user you're interacting with is granted with the role ${role}. Their name is
       agentId: sId,
       mcpServerViews,
     }),
-    ..._getInteractiveContentToolConfiguration({
-      agentId: sId,
-      mcpServerViews,
-    }),
   ];
 
   return {
@@ -111,6 +106,7 @@ The user you're interacting with is granted with the role ${role}. Their name is
     scope: "global",
     model: model,
     actions,
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],

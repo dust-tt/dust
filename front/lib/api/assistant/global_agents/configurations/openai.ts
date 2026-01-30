@@ -4,10 +4,7 @@ import {
   globalAgentWebSearchGuidelines,
 } from "@app/lib/api/assistant/global_agents/guidelines";
 import type { MCPServerViewsForGlobalAgentsMap } from "@app/lib/api/assistant/global_agents/tools";
-import {
-  _getDefaultWebActionsForGlobalAgent,
-  _getInteractiveContentToolConfiguration,
-} from "@app/lib/api/assistant/global_agents/tools";
+import { _getDefaultWebActionsForGlobalAgent } from "@app/lib/api/assistant/global_agents/tools";
 import type { Authenticator } from "@app/lib/auth";
 import type { GlobalAgentSettingsModel } from "@app/lib/models/agent/agent";
 import type {
@@ -70,11 +67,8 @@ export function _getGPT35TurboGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -129,11 +123,8 @@ export function _getGPT4GlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -194,11 +185,8 @@ export function _getGPT5GlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -261,11 +249,8 @@ export function _getGPT5ThinkingGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -324,11 +309,8 @@ export function _getGPT5MiniGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -386,11 +368,8 @@ export function _getGPT5NanoGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -446,11 +425,8 @@ export function _getO3MiniGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -501,11 +477,8 @@ export function _getO1GlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -601,11 +574,8 @@ export function _getO1HighReasoningGlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
@@ -656,11 +626,8 @@ export function _getO3GlobalAgent({
         agentId: sId,
         mcpServerViews,
       }),
-      ..._getInteractiveContentToolConfiguration({
-        agentId: sId,
-        mcpServerViews,
-      }),
     ],
+    skills: ["frames"],
     maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
     templateId: null,
     requestedGroupIds: [],
