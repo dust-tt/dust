@@ -1,3 +1,4 @@
+import { ConversationLayoutWrapper } from "@spa/app/layouts/ConversationLayoutWrapper";
 import { WorkspacePage } from "@spa/app/layouts/WorkspacePage";
 import {
   createBrowserRouter,
@@ -21,6 +22,10 @@ import { ManageSubscriptionPage } from "@dust-tt/front/components/pages/workspac
 import { PaymentProcessingPage } from "@dust-tt/front/components/pages/workspace/subscription/PaymentProcessingPage";
 import { SubscriptionPage } from "@dust-tt/front/components/pages/workspace/subscription/SubscriptionPage";
 import { WorkspaceSettingsPage } from "@dust-tt/front/components/pages/workspace/WorkspaceSettingsPage";
+
+// Conversation pages
+import { ConversationPage } from "@dust-tt/front/components/pages/conversation/ConversationPage";
+import { SpaceConversationsPage } from "@dust-tt/front/components/pages/conversation/SpaceConversationsPage";
 
 // Space pages
 import { DataSourceViewPage } from "@dust-tt/front/components/pages/spaces/DataSourceViewPage";
@@ -49,6 +54,16 @@ const router = createBrowserRouter(
       children: [
         // Profile
         { path: "me", element: <ProfilePage /> },
+
+        // Conversation (wrapped with ConversationLayout)
+        {
+          path: "conversation",
+          element: <ConversationLayoutWrapper />,
+          children: [
+            { path: ":cId", element: <ConversationPage /> },
+            { path: "space/:spaceId", element: <SpaceConversationsPage /> },
+          ],
+        },
 
         // Workspace settings
         { path: "workspace", element: <WorkspaceSettingsPage /> },
@@ -85,10 +100,22 @@ const router = createBrowserRouter(
         // Spaces
         { path: "spaces", element: <SpacesRedirectPage /> },
         { path: "spaces/:spaceId", element: <SpacePage /> },
-        { path: "spaces/:spaceId/categories/actions", element: <SpaceActionsPage /> },
-        { path: "spaces/:spaceId/categories/apps", element: <SpaceAppsListPage /> },
-        { path: "spaces/:spaceId/categories/triggers", element: <SpaceTriggersPage /> },
-        { path: "spaces/:spaceId/categories/:category", element: <SpaceCategoryPage /> },
+        {
+          path: "spaces/:spaceId/categories/actions",
+          element: <SpaceActionsPage />,
+        },
+        {
+          path: "spaces/:spaceId/categories/apps",
+          element: <SpaceAppsListPage />,
+        },
+        {
+          path: "spaces/:spaceId/categories/triggers",
+          element: <SpaceTriggersPage />,
+        },
+        {
+          path: "spaces/:spaceId/categories/:category",
+          element: <SpaceCategoryPage />,
+        },
         {
           path: "spaces/:spaceId/categories/:category/data_source_views/:dataSourceViewId",
           element: <DataSourceViewPage />,
@@ -96,11 +123,26 @@ const router = createBrowserRouter(
 
         // Apps
         { path: "spaces/:spaceId/apps/:aId", element: <AppViewPage /> },
-        { path: "spaces/:spaceId/apps/:aId/settings", element: <AppSettingsPage /> },
-        { path: "spaces/:spaceId/apps/:aId/specification", element: <AppSpecificationPage /> },
-        { path: "spaces/:spaceId/apps/:aId/datasets", element: <DatasetsPage /> },
-        { path: "spaces/:spaceId/apps/:aId/datasets/new", element: <NewDatasetPage /> },
-        { path: "spaces/:spaceId/apps/:aId/datasets/:name", element: <DatasetPage /> },
+        {
+          path: "spaces/:spaceId/apps/:aId/settings",
+          element: <AppSettingsPage />,
+        },
+        {
+          path: "spaces/:spaceId/apps/:aId/specification",
+          element: <AppSpecificationPage />,
+        },
+        {
+          path: "spaces/:spaceId/apps/:aId/datasets",
+          element: <DatasetsPage />,
+        },
+        {
+          path: "spaces/:spaceId/apps/:aId/datasets/new",
+          element: <NewDatasetPage />,
+        },
+        {
+          path: "spaces/:spaceId/apps/:aId/datasets/:name",
+          element: <DatasetPage />,
+        },
         { path: "spaces/:spaceId/apps/:aId/runs", element: <RunsPage /> },
         { path: "spaces/:spaceId/apps/:aId/runs/:runId", element: <RunPage /> },
       ],
