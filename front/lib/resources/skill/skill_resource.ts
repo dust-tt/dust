@@ -229,6 +229,76 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     return this._mcpServerConfigurations;
   }
 
+  /**
+   * Get attached knowledge from the skill's data source configurations.
+   * Requires data source views to be fetched first.
+   */
+  async getAttachedKnowledge(
+    auth: Authenticator
+  ): Promise<SkillAttachedKnowledge[]> {
+    if (this.dataSourceConfigurations.length === 0) {
+      return [];
+    }
+
+    const dataSourceViewIds = uniq(
+      this.dataSourceConfigurations.map((c) => c.dataSourceViewId)
+    );
+
+    const dataSourceViews = await DataSourceViewResource.fetchByModelIds(
+      auth,
+      dataSourceViewIds
+    );
+
+    const dataSourceViewMap = new Map(dataSourceViews.map((v) => [v.id, v]));
+
+    const attachedKnowledge: SkillAttachedKnowledge[] = [];
+
+    for (const config of this.dataSourceConfigurations) {
+      const dataSourceView = dataSourceViewMap.get(config.dataSourceViewId);
+      if (dataSourceView) {
+        for (const nodeId of config.parentsIn) {
+          attachedKnowledge.push({
+            dataSourceView,
+            nodeId,
+          });
+        }
+      }
+    }
+
+    return attachedKnowledge;
+  }
+
+  /**
+   * Compute the requestedSpaceIds from MCP server views and attached knowledge.
+   * This is the source of truth for which spaces a skill needs access to.
+   */
+  static async computeRequestedSpaceIds(
+    auth: Authenticator,
+    {
+      mcpServerViews,
+      attachedKnowledge,
+    }: {
+      mcpServerViews: MCPServerViewResource[];
+      attachedKnowledge: SkillAttachedKnowledge[];
+    }
+  ): Promise<ModelId[]> {
+    const mcpServerViewIds = mcpServerViews.map((v) => v.sId);
+    const spaceIdsFromMcpServerViews =
+      await MCPServerViewResource.listSpaceRequirementsByIds(
+        auth,
+        mcpServerViewIds
+      );
+
+    const spaceIdsFromAttachedKnowledge = attachedKnowledge.map(
+      (k) => k.dataSourceView.space.id
+    );
+
+    return uniq([
+      ...spaceIdsFromMcpServerViews,
+      ...spaceIdsFromAttachedKnowledge,
+    ]);
+  }
+
   get isAutoEnabled(): boolean {
     if (!this.globalSId) {
       return false;
@@ -757,6 +827,90 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     }
 
     return skills;
+  }
+
+  /**
+   * List skills that use any of the given MCP server view IDs.
+   * Used during space deletion to find skills that need to be updated.
+   */
+  static async listByMCPServerViewIds(
+    auth: Authenticator,
+    mcpServerViewIds: ModelId[]
+  ): Promise<SkillResource[]> {
+    if (mcpServerViewIds.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs that have any of the given MCP server views.
+    const skillConfigs = await SkillMCPServerConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        mcpServerViewId: {
+          [Op.in]: mcpServerViewIds,
+        },
+      },
+    });
+
+    if (skillConfigs.length === 0) {
+      return [];
+    }
+
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillIds,
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+    });
+  }
+
+  /**
+   * List skills that use any of the given data source view IDs.
+   * Used during space deletion to find skills that need to be updated.
+   */
+  static async listByDataSourceViewIds(
+    auth: Authenticator,
+    dataSourceViewIds: ModelId[]
+  ): Promise<SkillResource[]> {
+    if (dataSourceViewIds.length === 0) {
+      return [];
+    }
+
+    const workspace = auth.getNonNullableWorkspace();
+
+    // Query skill IDs that have any of the given data source views.
+    const skillConfigs = await SkillDataSourceConfigurationModel.findAll({
+      attributes: ["skillConfigurationId"],
+      where: {
+        workspaceId: workspace.id,
+        dataSourceViewId: {
+          [Op.in]: dataSourceViewIds,
+        },
+      },
+    });
+
+    if (skillConfigs.length === 0) {
+      return [];
+    }
+
+    const skillIds = uniq(skillConfigs.map((c) => c.skillConfigurationId));
+
+    return this.baseFetch(auth, {
+      where: {
+        id: {
+          [Op.in]: skillIds,
+        },
+        status: "active",
+      },
+      onlyCustom: true,
+    });
   }
 
   /**
