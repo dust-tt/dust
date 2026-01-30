@@ -7,7 +7,7 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import type { FileUseCase, Result } from "@app/types";
-import { Err, normalizeError, Ok } from "@app/types";
+import { Err, isProjectConversation, normalizeError, Ok } from "@app/types";
 
 // Use cases that are not allowed for copying.
 const DISALLOWED_USE_CASES: FileUseCase[] = [
@@ -97,7 +97,7 @@ export async function getProjectSpace(
 
     const conversation = conversationRes.value;
 
-    if (!conversation.spaceId) {
+    if (!isProjectConversation(conversation)) {
       return new Err(
         new MCPError(
           "This conversation is not in a project. Project context management is only available in project conversations.",
