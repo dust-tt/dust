@@ -776,6 +776,8 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
   ): Promise<SkillResource[]> {
     // For global agents, skills are defined in the config, not in the database.
+    // Ideally, we would want to take in input an AgentResource that would have bundled the logic
+    // about loading skills and exposes a unified interface.
     if (
       isGlobalAgentId(agentConfiguration.sId) &&
       "skills" in agentConfiguration &&
@@ -795,7 +797,9 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       },
     });
 
-    return this.fetchBySkillReferences(auth, agentSkills, { agentConfiguration });
+    return this.fetchBySkillReferences(auth, agentSkills, {
+      agentConfiguration,
+    });
   }
 
   static modelIdToSId({
