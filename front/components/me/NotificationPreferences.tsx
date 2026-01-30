@@ -1,6 +1,6 @@
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useNovuClient } from "@app/hooks/useNovuClient";
-import { useUserMetadata } from "@app/lib/swr/user";
+import { useSetupSlackNotifications, useUserMetadata } from "@app/lib/swr/user";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { setUserMetadataFromClient } from "@app/lib/user";
 import type {
@@ -76,6 +76,20 @@ export const NotificationPreferences = forwardRef<
   NotificationPreferencesProps
 >(({ onChanged, owner }, ref) => {
   const sendNotification = useSendNotification();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+
+  const hasSlackNotificationsFeature = hasFeature(
+    "conversations_slack_notifications"
+  );
+
+  const {
+    isSlackSetup,
+    isSlackSetupLoading,
+    mutateIsSlackSetup,
+    setupSlackNotifications,
+  } = useSetupSlackNotifications(owner.sId, {
+    disabled: !hasSlackNotificationsFeature,
+  });
 
   // Novu workflow-specific channel preferences for conversation-unread
   const [conversationPreferences, setConversationPreferences] = useState<
@@ -144,8 +158,6 @@ export const NotificationPreferences = forwardRef<
     DEFAULT_NOTIFICATION_CONDITION
   );
 
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-
   const isProjectsFeatureEnabled = hasFeature("projects");
 
   // Load email delay from user metadata
@@ -182,7 +194,7 @@ export const NotificationPreferences = forwardRef<
 
   // Load workflow-specific preferences from Novu
   useEffect(() => {
-    if (!novuClient) {
+    if (!novuClient || isSlackSetupLoading) {
       return;
     }
     setIsLoadingPreferences(true);
@@ -211,7 +223,7 @@ export const NotificationPreferences = forwardRef<
 
       setIsLoadingPreferences(false);
     });
-  }, [novuClient]);
+  }, [novuClient, isSlackSetupLoading]);
 
   // Expose methods to parent component
   useImperativeHandle(
@@ -458,10 +470,14 @@ export const NotificationPreferences = forwardRef<
     onChanged,
   ]);
 
-  const updateConversationChannelPreference = (
+  const updateConversationChannelPreference = async (
     channel: keyof ChannelPreference,
     enabled: boolean
   ) => {
+    if (channel === "chat" && enabled && !isSlackSetup) {
+      await setupSlackNotifications();
+      void mutateIsSlackSetup(() => ({ isConfigured: true }));
+    }
     setConversationPreferences((prev) => {
       if (!prev) {
         return undefined;
@@ -514,6 +530,10 @@ export const NotificationPreferences = forwardRef<
 
   const isConversationInAppEnabled =
     conversationPreferences.channels.in_app && conversationPreferences.enabled;
+  const isConversationSlackEnabled =
+    isSlackSetup &&
+    conversationPreferences.channels.chat &&
+    conversationPreferences.enabled;
   const isConversationEmailEnabled =
     conversationPreferences.channels.email && conversationPreferences.enabled;
 
@@ -601,6 +621,32 @@ export const NotificationPreferences = forwardRef<
               </Label>
             </div>
           )}
+          {hasSlackNotificationsFeature &&
+            conversationPreferences.channels.chat !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <Checkbox
+                  id="conversation-slack-preference"
+                  checked={isConversationSlackEnabled}
+                  disabled={notifyCondition === "never"}
+                  onCheckedChange={(checked) =>
+                    updateConversationChannelPreference(
+                      "chat",
+                      checked === true
+                    )
+                  }
+                />
+                <Label
+                  htmlFor="conversation-slack-preference"
+                  className={
+                    notifyCondition === "never"
+                      ? "text-muted-foreground dark:text-muted-foreground-night"
+                      : "cursor-pointer"
+                  }
+                >
+                  Slack
+                </Label>
+              </div>
+            )}
           {conversationPreferences.channels.email !== undefined && (
             <div className="flex items-center gap-1.5">
               <Checkbox

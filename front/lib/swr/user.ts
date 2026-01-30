@@ -11,9 +11,14 @@ import type { GetUserResponseBody } from "@app/pages/api/user";
 import type { GetUserMetadataResponseBody } from "@app/pages/api/user/metadata/[key]";
 import type { GetUserApprovalsResponseBody } from "@app/pages/api/w/[wId]/me/approvals";
 import type { GetPendingInvitationsResponseBody } from "@app/pages/api/w/[wId]/me/pending-invitations";
+import type {
+  GetSlackNotificationResponseBody,
+  PostSlackNotificationResponseBody,
+} from "@app/pages/api/w/[wId]/me/slack-notifications";
 import type { FavoritePlatform } from "@app/types/favorite_platforms";
 import type { JobType } from "@app/types/job_type";
 import type { LightWorkspaceType } from "@app/types/user";
+import { useCallback, useMemo } from "react";
 import type { Fetcher, SWRConfiguration } from "swr";
 
 export function useUser(
@@ -190,5 +195,67 @@ export function usePendingInvitations({
     isPendingInvitationsLoading: !error && !data && !disabled,
     isPendingInvitationsError: error,
     mutatePendingInvitations: mutate,
+  };
+}
+
+export function useSetupSlackNotifications(
+  workspaceId: string,
+  options?: {
+    disabled?: boolean;
+  }
+) {
+  const slackNotificationsFetcher: Fetcher<GetSlackNotificationResponseBody> =
+    fetcher;
+
+  const {
+    data,
+    isLoading,
+    mutate: mutateIsSlackSetup,
+  } = useSWRWithDefaults(
+    `/api/w/${workspaceId}/me/slack-notifications`,
+    slackNotificationsFetcher,
+    { disabled: options?.disabled }
+  );
+
+  const isSlackSetupLoading = useMemo(
+    () => isLoading && !options?.disabled,
+    [isLoading, options?.disabled]
+  );
+
+  const isSlackSetup = useMemo(() => {
+    return data?.isConfigured === true;
+  }, [data]);
+
+  const sendNotification = useSendNotification();
+  const setupSlackNotifications = useCallback(async () => {
+    const res = await clientFetch(
+      `/api/w/${workspaceId}/me/slack-notifications`,
+      {
+        method: "POST",
+      }
+    );
+
+    if (res.ok) {
+      const data: PostSlackNotificationResponseBody = await res.json();
+      window.open(data.oauthUrl, "_blank");
+
+      return data;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error Setting up Slack Notifications",
+        description: `Error: ${errorData.message}`,
+      });
+
+      return null;
+    }
+  }, [workspaceId, sendNotification]);
+
+  return {
+    isSlackSetup,
+    isSlackSetupLoading,
+    mutateIsSlackSetup,
+    setupSlackNotifications,
   };
 }
