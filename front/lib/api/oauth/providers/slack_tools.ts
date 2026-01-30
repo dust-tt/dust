@@ -12,7 +12,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
-import type { ExtraConfigType } from "@app/types";
+import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
 import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";

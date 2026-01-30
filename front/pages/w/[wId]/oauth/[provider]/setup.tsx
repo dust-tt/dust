@@ -1,13 +1,17 @@
 import { isLeft } from "fp-ts/lib/Either";
+import * as t from "io-ts";
 import type { InferGetServerSidePropsType } from "next";
 import { useEffect } from "react";
 
 import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { postOAuthMessageAndClose } from "@app/lib/oauth/postOAuthMessageAndClose";
-import type { ExtraConfigType, OAuthProvider } from "@app/types";
-import { ExtraConfigTypeSchema, isOAuthProvider, isOAuthUseCase } from "@app/types";
+import logger from "@app/logger/logger";
+import type { OAuthProvider } from "@app/types";
+import { isOAuthProvider, isOAuthUseCase } from "@app/types";
 import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+
+export const ExtraConfigTypeSchema = t.record(t.string, t.string);
+export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
 
 export const getServerSideProps = withDefaultUserAuthRequirements<{
   error?: string;
@@ -80,11 +84,37 @@ export default function OAuthSetup({
       return;
     }
 
-    postOAuthMessageAndClose({
+    const messageData = {
       type: "connection_finalized",
       error,
       provider,
-    });
+    };
+
+    if (window.opener && !window.opener.closed) {
+      try {
+        window.opener.postMessage(messageData, window.location.origin);
+      } catch (e) {
+        logger.error(
+          { err: e },
+          "[OAuth Setup] window.opener.postMessage failed"
+        );
+      }
+    } else {
+      try {
+        const channel = new BroadcastChannel("oauth_finalize");
+        channel.postMessage(messageData);
+        setTimeout(() => channel.close(), 100);
+      } catch (e) {
+        logger.error({ err: e }, "[OAuth Setup] BroadcastChannel failed");
+      }
+    }
+
+    setTimeout(() => {
+      window.close();
+      setTimeout(() => {
+        window.location.href = window.location.origin;
+      }, 100);
+    }, 1000);
   }, [error, provider]);
 
   return null;
