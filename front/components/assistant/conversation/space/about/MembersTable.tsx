@@ -1,4 +1,10 @@
-import { Avatar, Checkbox, DataTable, TrashIcon } from "@dust-tt/sparkle";
+import {
+  Avatar,
+  Checkbox,
+  DataTable,
+  TrashIcon,
+  UserIcon,
+} from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
 
@@ -10,7 +16,6 @@ import type { LightWorkspaceType, SpaceType, SpaceUserType } from "@app/types";
 interface MembersTableProps {
   owner: LightWorkspaceType;
   space: SpaceType;
-  onMembersUpdated: (members: SpaceUserType[]) => void;
   selectedMembers: SpaceUserType[];
   searchSelectedMembers: string;
   isEditor?: boolean;
@@ -40,7 +45,6 @@ function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
 export function MembersTable({
   owner,
   space,
-  onMembersUpdated,
   selectedMembers,
   searchSelectedMembers,
   isEditor,
@@ -82,24 +86,46 @@ export function MembersTable({
     [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
   );
 
-  const toggleEditor = (userId: string) => {
-    if (!isEditor) {
-      return;
-    }
-    const toggledMember = selectedMembers.find((m) => m.sId === userId);
-    if (!toggledMember) {
-      return;
-    }
+  const toggleEditor = useCallback(
+    async (userId: string) => {
+      const toggledMember = selectedMembers.find((m) => m.sId === userId);
+      if (!toggledMember) {
+        return;
+      }
+      const toggledMemberIndex = selectedMembers.indexOf(toggledMember);
+      const updatedMembers = [
+        ...selectedMembers.slice(0, toggledMemberIndex),
+        {
+          ...selectedMembers[toggledMemberIndex],
+          isEditor: !toggledMember.isEditor,
+        },
+        ...selectedMembers.slice(toggledMemberIndex + 1),
+      ];
 
-    onMembersUpdated([
-      ...selectedMembers.slice(0, selectedMembers.indexOf(toggledMember)),
-      {
-        ...toggledMember,
-        isEditor: !toggledMember.isEditor,
-      },
-      ...selectedMembers.slice(selectedMembers.indexOf(toggledMember) + 1),
-    ]);
-  };
+      if (updatedMembers.filter((m) => m.isEditor).length === 0) {
+        sendNotifications({
+          title: "Projects must have at least one editor.",
+          description: "You cannot remove the last editor.",
+          type: "error",
+        });
+        return;
+      }
+
+      const updateMember = await doUpdate(space, {
+        isRestricted: space.isRestricted,
+        memberIds: updatedMembers
+          .filter((m) => !m.isEditor)
+          .map((member) => member.sId),
+        editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: space.name,
+      });
+      if (updateMember) {
+        await mutateSpaceInfo();
+      }
+    },
+    [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
+  );
 
   const columns: ColumnDef<MemberRowData>[] = useMemo(
     () => [
@@ -149,13 +175,7 @@ export function MembersTable({
               cell: (info: any) => {
                 return (
                   <DataTable.CellContent>
-                    <Checkbox
-                      checked={info.row.original.isEditor}
-                      onCheckedChange={() =>
-                        toggleEditor(info.row.original.userId)
-                      }
-                      disabled={!isEditor}
-                    />
+                    <Checkbox checked={info.row.original.isEditor} disabled />
                   </DataTable.CellContent>
                 );
               },
@@ -192,35 +212,63 @@ export function MembersTable({
               meta: {
                 className: "w-12",
               },
-              cell: (info: any) => (
-                <DataTable.MoreButton
-                  menuItems={[
-                    {
-                      kind: "item",
-                      label: "Remove from project",
-                      icon: TrashIcon,
-                      variant: "warning",
-                      onClick: async () => {
-                        const confirmed = await confirm({
-                          title: "Remove member",
-                          message: `Are you sure you want to remove "${info.row.original.name}" from this project?`,
-                          validateLabel: "Remove",
-                          validateVariant: "warning",
-                        });
+              cell: (info: any) => {
+                const editorLabel = info.row.original.isEditor
+                  ? "Remove from editors"
+                  : "Add as editor";
+                const editorMessage = info.row.original.isEditor
+                  ? `Are you sure you want to remove "${info.row.original.name}" from editors?`
+                  : `Are you sure you want to add "${info.row.original.name}" as an editor?`;
+                return (
+                  <DataTable.MoreButton
+                    menuItems={[
+                      {
+                        kind: "item",
+                        label: editorLabel,
+                        icon: info.row.original.isEditor ? TrashIcon : UserIcon,
+                        variant: "default",
+                        onClick: async () => {
+                          const confirmed = await confirm({
+                            title: editorLabel,
+                            message: editorMessage,
+                            validateLabel: info.row.original.isEditor
+                              ? "Remove"
+                              : "Add",
+                            validateVariant: "primary",
+                          });
 
-                        if (confirmed) {
-                          await removeMember(info.row.original.userId);
-                        }
+                          if (confirmed) {
+                            await toggleEditor(info.row.original.userId);
+                          }
+                        },
                       },
-                    },
-                  ]}
-                />
-              ),
+                      {
+                        kind: "item",
+                        label: "Remove from project",
+                        icon: TrashIcon,
+                        variant: "warning",
+                        onClick: async () => {
+                          const confirmed = await confirm({
+                            title: "Remove member",
+                            message: `Are you sure you want to remove "${info.row.original.name}" from this project?`,
+                            validateLabel: "Remove",
+                            validateVariant: "warning",
+                          });
+
+                          if (confirmed) {
+                            await removeMember(info.row.original.userId);
+                          }
+                        },
+                      },
+                    ]}
+                  />
+                );
+              },
             },
           ]
         : []),
     ],
-    [isEditor, removeMember, toggleEditor, confirm]
+    [isEditor, removeMember, confirm, toggleEditor]
   );
 
   const rows = useMemo(

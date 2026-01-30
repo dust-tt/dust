@@ -322,8 +322,8 @@ export function SpaceConversationsPage() {
             key={spaceId}
             owner={owner}
             space={spaceInfo}
-            initialMembers={spaceInfo.members}
-            initialIsRestricted={spaceInfo.isRestricted}
+            projectMembers={spaceInfo.members}
+            isPublic={!spaceInfo.isRestricted}
             isProjectEditor={spaceInfo.isEditor}
             onOpenInvitePanel={() => setIsInvitePanelOpen(true)}
           />
