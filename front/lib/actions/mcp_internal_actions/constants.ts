@@ -67,6 +67,7 @@ import { STATUSPAGE_SERVER } from "@app/lib/api/actions/servers/statuspage/metad
 import { TOOLSETS_SERVER } from "@app/lib/api/actions/servers/toolsets/metadata";
 import { UKG_READY_SERVER } from "@app/lib/api/actions/servers/ukg_ready/metadata";
 import { VAL_TOWN_SERVER } from "@app/lib/api/actions/servers/val_town/metadata";
+import { VANTA_SERVER } from "@app/lib/api/actions/servers/vanta/metadata";
 import {
   WEB_SEARCH_BROWSE_SERVER,
   WEB_SEARCH_BROWSE_SERVER_NAME,
@@ -794,38 +795,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: true,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: {
-      list_tests: "never_ask",
-      list_test_entities: "never_ask",
-      list_controls: "never_ask",
-      list_control_tests: "never_ask",
-      list_control_documents: "never_ask",
-      list_documents: "never_ask",
-      list_document_resources: "never_ask",
-      list_integrations: "never_ask",
-      list_integration_resources: "never_ask",
-      list_frameworks: "never_ask",
-      list_framework_controls: "never_ask",
-      list_people: "never_ask",
-      list_risks: "never_ask",
-      list_vulnerabilities: "never_ask",
-    },
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "vanta",
-      version: "1.0.0",
-      description:
-        "Review compliance posture powered by Vanta's security platform.",
-      authorization: {
-        provider: "vanta" as const,
-        supported_use_cases: ["platform_actions"] as const,
-      },
-      icon: "VantaLogo",
-      documentationUrl: "https://docs.dust.tt/docs/vanta",
-      instructions: null,
-    },
+    metadata: VANTA_SERVER,
   },
   databricks: {
     id: 45,
