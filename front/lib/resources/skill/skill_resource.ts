@@ -1835,7 +1835,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     if (!hasSkill) {
       return new Err(
         new Error(
-          `Skill ${this.name} was not added to agent ${agentConfiguration.name}.`
+          `Skill ${this.name} is not equipped by agent ${agentConfiguration.name}.`
         )
       );
     }
