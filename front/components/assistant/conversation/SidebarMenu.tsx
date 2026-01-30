@@ -967,7 +967,7 @@ const NavigationListWithInbox = forwardRef<
             action={
               <>
                 <Button
-                  size="xs"
+                  size="xmini"
                   icon={ChatBubbleLeftRightIcon}
                   variant="ghost"
                   aria-label="New Conversation"
@@ -978,7 +978,7 @@ const NavigationListWithInbox = forwardRef<
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="xs"
+                      size="xmini"
                       icon={MoreIcon}
                       variant="ghost"
                       aria-label="Conversations options"
