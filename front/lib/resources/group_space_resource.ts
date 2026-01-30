@@ -2,7 +2,7 @@ import assert from "assert";
 import type { Attributes, ModelStatic, Transaction } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
-import type { DustError } from "@app/lib/error";
+import { DustError } from "@app/lib/error";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
@@ -51,6 +51,23 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
 
   abstract requestedPermissions(): Promise<CombinedResourcePermissions[]>;
 
+  canAddMember(
+    auth: Authenticator,
+    userId: string,
+    requestedPermissions: CombinedResourcePermissions[]
+  ): boolean {
+    if (this.space.isProject() && this.space.isOpen()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        // Users can add themselves to open projects.
+        return true;
+      }
+    }
+    return (
+      this.space.canAdministrate(auth) && auth.canWrite(requestedPermissions)
+    );
+  }
+
   /**
    * Add multiple members to the group with permissions from this group-space relationship.
    */
@@ -76,15 +93,43 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    const addMembersRes = await this.group.addMembers(auth, {
+    if (
+      !users.every((user) =>
+        this.canAddMember(auth, user.sId, requestedPermissions)
+      )
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to add group members"
+        )
+      );
+    }
+    const addMembersRes = await this.group.dangerouslyAddMembers(auth, {
       users,
-      requestedPermissions,
       transaction,
     });
     if (addMembersRes.isErr()) {
       return new Err(addMembersRes.error);
     }
     return new Ok(addMembersRes.value);
+  }
+
+  canRemoveMember(
+    auth: Authenticator,
+    userId: string,
+    requestedPermissions: CombinedResourcePermissions[]
+  ): boolean {
+    if (this.space.isProject()) {
+      const currentUser = auth.getNonNullableUser();
+      if (userId === currentUser.sId) {
+        // Users can remove themselves from any project.
+        return true;
+      }
+    }
+    return (
+      this.space.canAdministrate(auth) && auth.canWrite(requestedPermissions)
+    );
   }
 
   /**
@@ -111,9 +156,20 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     const requestedPermissions = await this.requestedPermissions();
-    const removeMembersRes = await this.group.removeMembers(auth, {
+    if (
+      !users.every((user) =>
+        this.canRemoveMember(auth, user.sId, requestedPermissions)
+      )
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to remove group members"
+        )
+      );
+    }
+    const removeMembersRes = await this.group.dangerouslyRemoveMembers(auth, {
       users,
-      requestedPermissions,
       transaction,
     });
     if (removeMembersRes.isErr()) {
@@ -148,10 +204,25 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
+    // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
     const requestedPermissions = await this.requestedPermissions();
-    const setMembersRes = await this.group.setMembers(auth, {
+    if (
+      !users.every((user) =>
+        this.canAddMember(auth, user.sId, requestedPermissions)
+      ) ||
+      !users.every((user) =>
+        this.canRemoveMember(auth, user.sId, requestedPermissions)
+      )
+    ) {
+      return new Err(
+        new DustError(
+          "unauthorized",
+          "You're not authorized to change group members"
+        )
+      );
+    }
+    const setMembersRes = await this.group.dangerouslySetMembers(auth, {
       users,
-      requestedPermissions,
       transaction,
     });
     if (setMembersRes.isErr()) {
