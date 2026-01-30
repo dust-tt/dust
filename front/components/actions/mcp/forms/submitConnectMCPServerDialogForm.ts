@@ -7,7 +7,8 @@ import { Err, Ok, setupOAuthConnection } from "@app/types";
 import type { OAuthProvider } from "@app/types/oauth/lib";
 
 interface CreateMCPServerConnectionParams {
-  connectionId: string;
+  connectionId?: string;
+  credentialId?: string;
   mcpServerId: string;
   mcpServerDisplayName: string;
   provider: OAuthProvider;
@@ -51,6 +52,62 @@ export async function submitConnectMCPServerDialogForm({
   if (!values.useCase) {
     return new Err(new Error("Use case is null while trying to connect"));
   }
+
+  const isKeyPairAuth = values.connectionAuthMethod === "keypair";
+
+  if (isKeyPairAuth) {
+    // Key pair authentication flow
+    if (!values.keyPairCredentials) {
+      return new Err(new Error("Key pair credentials are required"));
+    }
+
+    // Step 1: Store credentials via the credentials API.
+    // eslint-disable-next-line no-restricted-globals
+    const credentialsResponse = await fetch(`/api/w/${owner.sId}/credentials`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        provider: "snowflake",
+        credentials: values.keyPairCredentials,
+      }),
+    });
+
+    if (!credentialsResponse.ok) {
+      const errorText = await credentialsResponse.text();
+      return new Err(
+        new Error(`Failed to store credentials: ${errorText}`)
+      );
+    }
+
+    const credentialsData = await credentialsResponse.json();
+    const credentialId = credentialsData.credentials?.id;
+
+    if (!credentialId) {
+      return new Err(new Error("Failed to get credential ID from response"));
+    }
+
+    onBeforeAssociateConnection();
+
+    // Step 2: Associate credentials with MCP server.
+    await createMCPServerConnection({
+      credentialId,
+      mcpServerId: mcpServerView.server.sId,
+      mcpServerDisplayName: getMcpServerDisplayName(mcpServerView.server),
+      provider: authorization.provider,
+    });
+
+    // Step 3: Update the oAuthUseCase for the MCP server view.
+    // For key pair auth, always use platform_actions.
+    await updateServerView({
+      oAuthUseCase: "platform_actions",
+    });
+
+    return new Ok(null);
+  }
+
+  // OAuth authentication flow (existing behavior)
 
   // Check if this is google_drive and if write feature is enabled
   const isGoogleDrive = authorization.provider === "google_drive";

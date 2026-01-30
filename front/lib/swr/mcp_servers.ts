@@ -661,11 +661,13 @@ export function useCreateMCPServerConnection({
   const sendNotification = useSendNotification();
   const createMCPServerConnection = async ({
     connectionId,
+    credentialId,
     mcpServerId,
     mcpServerDisplayName,
     provider,
   }: {
-    connectionId: string;
+    connectionId?: string;
+    credentialId?: string;
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
@@ -678,7 +680,8 @@ export function useCreateMCPServerConnection({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          connectionId,
+          ...(connectionId ? { connectionId } : {}),
+          ...(credentialId ? { credentialId } : {}),
           mcpServerId,
           provider,
         }),

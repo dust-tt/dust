@@ -16,6 +16,7 @@ import { mcpServerOAuthFormSchema } from "@app/components/actions/mcp/forms/type
 import { getConnectMCPServerDialogDefaultValues } from "@app/components/actions/mcp/forms/utils";
 import {
   AUTH_CREDENTIALS_ERROR_KEY,
+  KEYPAIR_CREDENTIALS_ERROR_KEY,
   MCPServerOAuthConnexion,
 } from "@app/components/actions/mcp/MCPServerOAuthConnexion";
 import type {
@@ -68,8 +69,10 @@ export function ConnectMCPServerDialog({
   });
 
   // Check for credential validation errors set by MCPServerOAuthConnexion.
+  // Includes both OAuth and key pair credential errors.
   const hasCredentialErrors =
-    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY];
+    !!form.formState.errors[AUTH_CREDENTIALS_ERROR_KEY] ||
+    !!form.formState.errors[KEYPAIR_CREDENTIALS_ERROR_KEY];
 
   const useCase = useWatch({
     control: form.control,

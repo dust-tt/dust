@@ -213,19 +213,41 @@ export async function connectToMCPServer(
                     : "workspace",
               });
               if (c.isOk()) {
-                const authInfo: AuthInfo = {
-                  token: c.value.access_token,
-                  expiresAt: c.value.access_token_expiry ?? undefined,
-                  clientId: "",
-                  scopes: [],
-                  extra: {
-                    ...c.value.connection.metadata,
-                    connectionType:
-                      params.oAuthUseCase === "personal_actions"
-                        ? "personal"
-                        : "workspace",
-                  },
-                };
+                let authInfo: AuthInfo;
+
+                if (c.value.authType === "keypair") {
+                  // Key pair authentication: pass credentials in extra.
+                  authInfo = {
+                    token: "", // No OAuth token for key pair auth.
+                    expiresAt: undefined,
+                    clientId: "",
+                    scopes: [],
+                    extra: {
+                      auth_type: "keypair",
+                      credentials: c.value.credentials,
+                      connectionType:
+                        params.oAuthUseCase === "personal_actions"
+                          ? "personal"
+                          : "workspace",
+                    },
+                  };
+                } else {
+                  // OAuth authentication: pass access token.
+                  authInfo = {
+                    token: c.value.access_token,
+                    expiresAt: c.value.access_token_expiry ?? undefined,
+                    clientId: "",
+                    scopes: [],
+                    extra: {
+                      auth_type: "oauth",
+                      ...c.value.connection.metadata,
+                      connectionType:
+                        params.oAuthUseCase === "personal_actions"
+                          ? "personal"
+                          : "workspace",
+                    },
+                  };
+                }
 
                 client.setAuthInfo(authInfo);
                 server.setAuthInfo(authInfo);
@@ -334,12 +356,22 @@ export async function connectToMCPServer(
               connectionType: connectionType,
             });
             if (c.isOk()) {
-              token = {
-                access_token: c.value.access_token,
-                token_type: "bearer",
-                expires_in: c.value.access_token_expiry ?? undefined,
-                scope: c.value.connection.metadata.scope,
-              };
+              // For remote MCP servers, only OAuth is supported.
+              if (c.value.authType === "oauth") {
+                token = {
+                  access_token: c.value.access_token,
+                  token_type: "bearer",
+                  expires_in: c.value.access_token_expiry ?? undefined,
+                  scope: c.value.connection.metadata.scope,
+                };
+              } else {
+                // Key pair auth is not supported for remote MCP servers.
+                return new Err(
+                  new Error(
+                    "Key pair authentication is not supported for remote MCP servers."
+                  )
+                );
+              }
             } else {
               // Get conditional scope based on feature flag
               const scope = await getConditionalScope(
