@@ -137,7 +137,7 @@ export const RequestCard = React.forwardRef<HTMLDivElement, RequestCardProps>(
           <div className="s-flex s-items-center s-justify-end s-gap-2">
             {secondaryAction && (
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 label={secondaryAction.label}
                 onClick={secondaryAction.onClick}
