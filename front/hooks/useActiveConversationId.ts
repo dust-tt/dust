@@ -1,6 +1,6 @@
-import { useRequiredPathParam } from "@app/lib/platform";
+import { usePathParam } from "@app/lib/platform";
 
 export function useActiveConversationId() {
-  const cId = useRequiredPathParam("cId");
+  const cId = usePathParam("cId");
   return cId === "new" ? null : cId;
 }

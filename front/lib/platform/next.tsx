@@ -89,6 +89,16 @@ export function usePathParams(): Record<string, string | undefined> {
  * Hook to get a required route param
  * Throws an error if the param is missing
  */
+export function usePathParam(name: string): string | null {
+  const params = usePathParams();
+  const value = params[name];
+  return value ?? null;
+}
+
+/**
+ * Hook to get a required route param
+ * Throws an error if the param is missing
+ */
 export function useRequiredPathParam(name: string): string {
   const params = usePathParams();
   const value = params[name];
