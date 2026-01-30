@@ -195,13 +195,18 @@ async function backfillAgentAnalyticsWorkflow(
     // toolConfiguration is typed as LightMCPToolConfigurationType which includes originalName.
     const agentMessageIdsWithSemanticSearch = new Set(
       mcpActions
-        .filter((action) => action.toolConfiguration.originalName === "semantic_search")
+        .filter(
+          (action) =>
+            action.toolConfiguration.originalName === "semantic_search"
+        )
         .map((action) => action.agentMessageId)
     );
 
     // Filter batch to only messages with semantic_search actions
     const filteredBatch = agentMessagesBatch.filter(
-      (m) => m.agentMessageId && agentMessageIdsWithSemanticSearch.has(m.agentMessageId)
+      (m) =>
+        m.agentMessageId &&
+        agentMessageIdsWithSemanticSearch.has(m.agentMessageId)
     );
 
     logger.info(
