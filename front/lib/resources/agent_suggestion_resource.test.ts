@@ -1,33 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
-import { SkillFactory } from "@app/tests/utils/SkillFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
-import type {
-  AgentConfigurationType,
-  LightAgentConfigurationType,
-  WorkspaceType,
-} from "@app/types";
-
-async function getFullAgentConfiguration(
-  auth: Authenticator,
-  agentId: string
-): Promise<AgentConfigurationType> {
-  const agent = await getAgentConfiguration(auth, {
-    agentId,
-    variant: "full",
-  });
-  if (!agent) {
-    throw new Error(`Agent configuration not found for agentId: ${agentId}`);
-  }
-  return agent;
-}
+import type { LightAgentConfigurationType, WorkspaceType } from "@app/types";
 
 describe("AgentSuggestionResource", () => {
   let workspace: WorkspaceType;

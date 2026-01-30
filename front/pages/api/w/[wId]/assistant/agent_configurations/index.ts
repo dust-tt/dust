@@ -26,7 +26,6 @@ import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrapper
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentMessageFeedbackResource } from "@app/lib/resources/agent_message_feedback_resource";
-import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { KillSwitchResource } from "@app/lib/resources/kill_switch_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
