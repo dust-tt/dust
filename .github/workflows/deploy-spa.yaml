@@ -8,7 +8,7 @@ on:
         type: choice
         options:
           - poke
-          # - app  # Uncomment when app SPA is ready
+          - app
         required: true
       region:
         description: "Default region for API endpoint"
