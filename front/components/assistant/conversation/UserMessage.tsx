@@ -423,6 +423,8 @@ function ActionMenu({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
+  const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } = useHover();
+  const shouldHideActions = !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -440,38 +442,43 @@ function ActionMenu({
 
   const actions = showActions
     ? [
-        ...(enableExtendedActions
-          ? [
-              {
-                icon: LinkIcon,
-                label: "Copy message link",
-                onClick: handleCopyMessageLink,
-              },
-            ]
-          : []),
-        ...(canEdit
-          ? [
-              {
-                icon: PencilSquareIcon,
-                label: "Edit message",
-                onClick: handleEditMessage,
-              },
-            ]
-          : []),
-        ...(canDelete
-          ? [
-              {
-                icon: TrashIcon,
-                label: "Delete message",
-                onClick: handleDeleteMessage,
-              },
-            ]
-          : []),
-      ]
+      ...(enableExtendedActions
+        ? [
+          {
+            icon: LinkIcon,
+            label: "Copy message link",
+            onClick: handleCopyMessageLink,
+          },
+        ]
+        : []),
+      ...(canEdit
+        ? [
+          {
+            icon: PencilSquareIcon,
+            label: "Edit message",
+            onClick: handleEditMessage,
+          },
+        ]
+        : []),
+      ...(canDelete
+        ? [
+          {
+            icon: TrashIcon,
+            label: "Delete message",
+            onClick: handleDeleteMessage,
+          },
+        ]
+        : []),
+    ]
     : [];
 
   return (
-    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+    <div
+      className={cn(
+        "absolute top-[80%] left-2.5 flex flex-wrap items-center gap-1 pb-3",
+      )}
+      ref={isReactionsHoveredRef}
+    >
       {!isDeleted && enableExtendedActions && (
         <>
           <MessageReactions
@@ -483,7 +490,7 @@ function ActionMenu({
             onEmojiSelect={onReactionToggle}
             className={cn(
               "opacity-100 transition-opacity duration-200",
-              !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+              shouldHideActions && "sm:opacity-0"
             )}
           />
         </>
@@ -501,7 +508,7 @@ function ActionMenu({
               aria-label="Message actions"
               className={cn(
                 "opacity-100 transition-opacity duration-200",
-                !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+                shouldHideActions && "sm:opacity-0"
               )}
             />
           </DropdownMenuTrigger>

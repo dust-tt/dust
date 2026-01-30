@@ -1,4 +1,4 @@
-import { Button, Tooltip } from "@dust-tt/sparkle";
+import { Button, cn, Tooltip } from "@dust-tt/sparkle";
 
 interface ReactionPillProps {
   emoji: string;
@@ -37,8 +37,9 @@ export function ReactionPill({
         <Button
           label={`${emoji} ${count}`}
           size="xmini"
-          variant={hasCurrentUserReacted ? "primary" : "outline"}
+          variant="outline"
           onClick={onClick}
+          className={cn(hasCurrentUserReacted && "border-blue-200 bg-blue-50 hover:border-blue-200 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 hover:dark:border-blue-700 dark:hover:bg-blue-800")}
         />
       }
     />
