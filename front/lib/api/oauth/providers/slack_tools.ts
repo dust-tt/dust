@@ -2,18 +2,15 @@ import assert from "assert";
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { OAuthError } from "@app/lib/api/oauth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
-  missingWorkspaceConnectionError,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
@@ -112,7 +109,7 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<Result<ExtraConfigType, OAuthError>> {
+  ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
       // For personal actions we fetch the team id of the admin-setup (workspace connection)
       // to enforce the team id to be the same as the admin-setup.
@@ -126,7 +123,10 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return new Err(missingWorkspaceConnectionError("Slack"));
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -140,26 +140,23 @@ export class SlackToolsOAuthProvider implements BaseOAuthStrategyProvider {
               error: connectionRes.error,
             }
           );
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-          });
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
         }
 
         const teamId = connectionRes.value.connection.metadata.team_id;
         const teamName = connectionRes.value.connection.metadata.team_name;
 
-        return new Ok({
+        return {
           ...restConfig,
           requested_team_id: teamId,
           requested_team_name: teamName,
-        });
+        };
       }
     }
 
-    return new Ok(extraConfig);
+    return extraConfig;
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {

@@ -9,7 +9,6 @@ import type {
 import {
   finalizeUriForProvider,
   getStringFromQuery,
-  missingWorkspaceConnectionError,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -207,7 +206,7 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<Result<ExtraConfigType, OAuthError>> {
+  ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -222,7 +221,10 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return new Err(missingWorkspaceConnectionError());
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -230,23 +232,20 @@ export class FreshserviceOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-          });
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
         }
         const connection = connectionRes.value.connection;
 
-        return new Ok({
+        return {
           ...restConfig,
           freshservice_domain: connection.metadata.freshservice_domain,
           freshworks_org_url: connection.metadata.freshworks_org_url,
-        });
+        };
       }
     }
 
-    return new Ok(extraConfig);
+    return extraConfig;
   }
 }

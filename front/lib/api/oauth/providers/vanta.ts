@@ -56,8 +56,8 @@ export class VantaOAuthProvider implements BaseOAuthStrategyProvider {
     });
   }
 
-  async getUpdatedExtraConfig(): Promise<Result<ExtraConfigType, OAuthError>> {
+  async getUpdatedExtraConfig(): Promise<ExtraConfigType> {
     // Remove sensitive data from config
-    return new Ok({});
+    return {};
   }
 }

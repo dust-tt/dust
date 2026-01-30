@@ -88,13 +88,11 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   vanta: new VantaOAuthProvider(),
 };
 
-function getProviderStrategy(
+export function getProviderStrategy(
   provider: OAuthProvider
 ): BaseOAuthStrategyProvider {
   return _PROVIDER_STRATEGIES[provider];
 }
-
-export { getProviderStrategy };
 
 export async function createConnectionAndGetSetupUrl(
   auth: Authenticator,
@@ -154,45 +152,35 @@ export async function createConnectionAndGetSetupUrl(
       }
 
       relatedCredential = credentials;
-    }
-  }
 
-  // Update extra config if the provider has a method for it
-  if (providerStrategy.getUpdatedExtraConfig) {
-    const extraConfigResult = await providerStrategy.getUpdatedExtraConfig(
-      auth,
-      {
+      extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
         extraConfig,
         useCase,
-      }
-    );
-    if (extraConfigResult.isErr()) {
-      logger.error(
-        { provider, useCase, error: extraConfigResult.error },
-        "OAuth: Failed to update extra config"
-      );
-      return extraConfigResult;
-    }
-    extraConfig = extraConfigResult.value;
-  }
+      });
 
-  // Validate extraConfig after update (some providers add required fields in getUpdatedExtraConfig)
-  if (
-    relatedCredential &&
-    providerStrategy.isExtraConfigValidPostRelatedCredential &&
-    !providerStrategy.isExtraConfigValidPostRelatedCredential(
+      if (
+        //TODO: add the same verification for other providers with a getRelatedCredential method.
+        providerStrategy.isExtraConfigValidPostRelatedCredential &&
+        !providerStrategy.isExtraConfigValidPostRelatedCredential!(
+          extraConfig,
+          useCase
+        )
+      ) {
+        logger.error(
+          { provider, useCase, extraConfig },
+          "OAuth: Invalid extraConfig after getting related credential"
+        );
+        return new Err({
+          code: "connection_creation_failed",
+          message:
+            "Invalid OAuth connection extraConfig for provider after getting related credential",
+        });
+      }
+    }
+  } else if (providerStrategy.getUpdatedExtraConfig) {
+    extraConfig = await providerStrategy.getUpdatedExtraConfig!(auth, {
       extraConfig,
-      useCase
-    )
-  ) {
-    logger.error(
-      { provider, useCase, extraConfig },
-      "OAuth: Invalid extraConfig after getting related credential"
-    );
-    return new Err({
-      code: "connection_creation_failed",
-      message:
-        "Invalid OAuth connection extraConfig for provider after getting related credential",
+      useCase,
     });
   }
 

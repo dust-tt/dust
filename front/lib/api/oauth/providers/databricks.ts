@@ -10,7 +10,6 @@ import type {
 import {
   finalizeUriForProvider,
   getStringFromQuery,
-  missingWorkspaceConnectionError,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
@@ -171,7 +170,7 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<Result<ExtraConfigType, OAuthError>> {
+  ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
       // For personal actions we reuse the existing connection credential id from the existing
       // workspace connection (setup by admin) if we have it, otherwise we fallback to assuming
@@ -186,7 +185,10 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return new Err(missingWorkspaceConnectionError());
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -194,27 +196,24 @@ export class DatabricksOAuthProvider implements BaseOAuthStrategyProvider {
           connectionId: mcpServerConnectionRes.value.connectionId,
         });
         if (connectionRes.isErr()) {
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-          });
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
         }
         const connection = connectionRes.value.connection;
 
-        return new Ok({
+        return {
           client_id: connection.metadata.client_id,
           databricks_workspace_url:
             connection.metadata.databricks_workspace_url,
           ...restConfig,
-        });
+        };
       }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars -- we filter out the client_secret from the extraConfig.
     const { client_secret, ...restConfig } = extraConfig;
 
-    return new Ok(restConfig);
+    return restConfig;
   }
 }

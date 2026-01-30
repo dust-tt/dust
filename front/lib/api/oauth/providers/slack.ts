@@ -189,7 +189,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<Result<ExtraConfigType, OAuthError>> {
+  ): Promise<ExtraConfigType> {
     if (useCase === "connection") {
       // Remove the secrets from the stored config (they're stored in relatedCredential)
       const {
@@ -197,7 +197,7 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
         signing_secret: __,
         ...restConfig
       } = extraConfig;
-      return new Ok(restConfig);
+      return restConfig;
     } else if (useCase === "platform_actions") {
       const feature_flags = await getFeatureFlags(
         auth.getNonNullableWorkspace()
@@ -206,10 +206,10 @@ export class SlackOAuthProvider implements BaseOAuthStrategyProvider {
       if (feature_flags.includes("slack_bot_mcp")) {
         config.slack_bot_mcp_feature_flag = "true";
       }
-      return new Ok(config);
+      return config;
     }
 
-    return new Ok(extraConfig);
+    return extraConfig;
   }
 
   isExtraConfigValid(extraConfig: ExtraConfigType, useCase: OAuthUseCase) {

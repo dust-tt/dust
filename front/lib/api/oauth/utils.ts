@@ -3,7 +3,6 @@ import type { ParsedUrlQuery } from "querystring";
 import config from "@app/lib/api/config";
 import type { OAuthProvider } from "@app/types";
 import { isDevelopment } from "@app/types";
-import { getMissingWorkspaceConnectionErrorMessage } from "@app/types/oauth/lib";
 
 export function finalizeUriForProvider(provider: OAuthProvider): string {
   // Fathom does not accept http nor localhost in the redirect URL, even in dev.
@@ -24,18 +23,4 @@ export function getStringFromQuery(
     return null;
   }
   return value;
-}
-
-/**
- * Returns an error object for when a workspace-level connection is required but missing.
- * Use with `new Err(missingWorkspaceConnectionError())` in providers.
- */
-export function missingWorkspaceConnectionError(toolName?: string): {
-  code: "connection_creation_failed";
-  message: string;
-} {
-  return {
-    code: "connection_creation_failed",
-    message: getMissingWorkspaceConnectionErrorMessage(toolName),
-  };
 }

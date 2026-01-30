@@ -1,18 +1,15 @@
 import type { ParsedUrlQuery } from "querystring";
 
 import config from "@app/lib/api/config";
-import type { OAuthError } from "@app/lib/api/oauth";
 import type { BaseOAuthStrategyProvider } from "@app/lib/api/oauth/providers/base_oauth_stragegy_provider";
 import {
   finalizeUriForProvider,
   getStringFromQuery,
-  missingWorkspaceConnectionError,
 } from "@app/lib/api/oauth/utils";
 import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import logger from "@app/logger/logger";
 import type { ExtraConfigType } from "@app/pages/w/[wId]/oauth/[provider]/setup";
-import type { Result } from "@app/types";
 import { Err, OAuthAPI, Ok } from "@app/types";
 import type { OAuthConnectionType, OAuthUseCase } from "@app/types/oauth/lib";
 
@@ -81,7 +78,7 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
       extraConfig: ExtraConfigType;
       useCase: OAuthUseCase;
     }
-  ): Promise<Result<ExtraConfigType, OAuthError>> {
+  ): Promise<ExtraConfigType> {
     if (useCase === "personal_actions") {
       // For personal actions we fetch the workspace id of the admin-setup to enforce the workspace id to be the same as the admin-setup.
       // workspace connection (setup by admin) if we have it.
@@ -95,7 +92,10 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
           });
 
         if (mcpServerConnectionRes.isErr()) {
-          return new Err(missingWorkspaceConnectionError());
+          throw new Error(
+            "Failed to find MCP server connection: " +
+              mcpServerConnectionRes.error.message
+          );
         }
 
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
@@ -109,12 +109,9 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
               error: connectionRes.error,
             }
           );
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "Failed to get connection metadata: " +
-              connectionRes.error.message,
-          });
+          throw new Error(
+            "Failed to get connection metadata: " + connectionRes.error.message
+          );
         }
 
         // The workspace_id in metadata is the Dust workspace ID, not the Notion workspace ID.
@@ -124,20 +121,15 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
         });
 
         if (oauthRes.isErr()) {
-          return new Err({
-            code: "connection_creation_failed",
-            message:
-              "Failed to get access token for admin connection: " +
-              oauthRes.error.message,
-          });
+          throw new Error(
+            "Failed to get access token for admin connection: " +
+              oauthRes.error.message
+          );
         }
 
         // Extract Notion workspace info from the raw OAuth response
         if (!hasNotionWorkspaceId(oauthRes.value.scrubbed_raw_json)) {
-          return new Err({
-            code: "connection_creation_failed",
-            message: "No workspace_id found in admin OAuth response",
-          });
+          throw new Error("No workspace_id found in admin OAuth response");
         }
 
         const notionWorkspaceId = oauthRes.value.scrubbed_raw_json.workspace_id;
@@ -152,11 +144,11 @@ export class NotionOAuthProvider implements BaseOAuthStrategyProvider {
             notionWorkspaceName || "Unknown Workspace",
         };
 
-        return new Ok(updatedConfig);
+        return updatedConfig;
       }
     }
 
-    return new Ok(extraConfig);
+    return extraConfig;
   }
 
   async checkConnectionValidPostFinalize(connection: OAuthConnectionType) {
