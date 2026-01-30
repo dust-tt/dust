@@ -12,6 +12,7 @@ import React, { useCallback, useState } from "react";
 
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
+import { InviteUsersPanel } from "@app/components/assistant/conversation/space/InviteUsersPanel";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -20,8 +21,11 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
-import { useGroups } from "@app/lib/swr/groups";
-import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
+import {
+  useSpaceInfo,
+  useSystemSpace,
+  useUpdateSpace,
+} from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
@@ -35,14 +39,17 @@ export function SpaceConversationsPage() {
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
 
-  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError } = useSpaceInfo({
-    workspaceId: owner.sId,
-    spaceId: spaceId,
-  });
+  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError, mutateSpaceInfo } =
+    useSpaceInfo({
+      workspaceId: owner.sId,
+      spaceId: spaceId,
+    });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
   });
+
+  const doUpdateSpace = useUpdateSpace({ owner });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -55,15 +62,9 @@ export function SpaceConversationsPage() {
       spaceId: spaceId,
     });
 
-  const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
-  const { groups } = useGroups({
-    owner,
-    kinds: ["provisioned"],
-    disabled: !planAllowsSCIM,
-  });
-
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
+  const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
 
   // Parse and validate the current tab from URL hash
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
@@ -113,6 +114,39 @@ export function SpaceConversationsPage() {
     );
     setCurrentTab(tab);
   }, []);
+
+  const handleInviteMembers = useCallback(
+    async (selectedUserIds: string[]) => {
+      if (selectedUserIds.length === 0 || !spaceInfo) {
+        setIsInvitePanelOpen(false);
+        return;
+      }
+
+      const currentMembers = spaceInfo.members ?? [];
+      const currentMemberIds = currentMembers
+        .filter((m) => !m.isEditor)
+        .map((m) => m.sId);
+      const currentEditorIds = currentMembers
+        .filter((m) => m.isEditor)
+        .map((m) => m.sId);
+      const newMemberIds = [...currentMemberIds, ...selectedUserIds];
+
+      // Call the API to update the space with new members
+      const updatedSpace = await doUpdateSpace(spaceInfo, {
+        isRestricted: spaceInfo.isRestricted,
+        memberIds: newMemberIds,
+        editorIds: currentEditorIds,
+        managementMode: "manual",
+        name: spaceInfo.name,
+      });
+
+      if (updatedSpace) {
+        // Trigger a refresh of the space info to get updated members list
+        await mutateSpaceInfo();
+      }
+    },
+    [spaceInfo, doUpdateSpace, mutateSpaceInfo]
+  );
 
   const handleConversationCreation = useCallback(
     async (
@@ -248,7 +282,9 @@ export function SpaceConversationsPage() {
             conversations={conversations}
             isConversationsLoading={isConversationsLoading}
             spaceInfo={spaceInfo}
+            isProjectEditor={spaceInfo.isEditor}
             onSubmit={handleConversationCreation}
+            onOpenInvitePanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
 
@@ -269,23 +305,21 @@ export function SpaceConversationsPage() {
             key={spaceId}
             owner={owner}
             space={spaceInfo}
-            initialMembers={spaceInfo.members}
-            planAllowsSCIM={planAllowsSCIM}
-            initialGroups={
-              planAllowsSCIM &&
-              spaceInfo.groupIds &&
-              spaceInfo.groupIds.length > 0 &&
-              groups
-                ? groups.filter((group) =>
-                    spaceInfo.groupIds.includes(group.sId)
-                  )
-                : []
-            }
-            initialManagementMode={spaceInfo.managementMode}
-            initialIsRestricted={spaceInfo.isRestricted}
+            projectMembers={spaceInfo.members}
+            isPublic={!spaceInfo.isRestricted}
+            isProjectEditor={spaceInfo.isEditor}
+            onOpenInvitePanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
       </Tabs>
+      <InviteUsersPanel
+        isOpen={isInvitePanelOpen}
+        owner={owner}
+        space={spaceInfo}
+        currentMembers={spaceInfo.members}
+        onClose={() => setIsInvitePanelOpen(false)}
+        onInvite={handleInviteMembers}
+      />
     </div>
   );
 }

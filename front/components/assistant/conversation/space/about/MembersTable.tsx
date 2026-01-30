@@ -1,0 +1,288 @@
+import {
+  Avatar,
+  Checkbox,
+  DataTable,
+  TrashIcon,
+  UserIcon,
+} from "@dust-tt/sparkle";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useContext, useMemo } from "react";
+
+import { ConfirmContext } from "@app/components/Confirm";
+import { useSendNotification } from "@app/hooks/useNotification";
+import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
+import type { LightWorkspaceType, SpaceType, SpaceUserType } from "@app/types";
+
+interface MembersTableProps {
+  owner: LightWorkspaceType;
+  space: SpaceType;
+  selectedMembers: SpaceUserType[];
+  searchSelectedMembers: string;
+  isEditor?: boolean;
+}
+
+type MemberRowData = {
+  userId: string;
+  name: string;
+  email: string;
+  avatarUrl: string;
+  isEditor: boolean;
+  joinedAt: string;
+  onClick?: () => void;
+};
+
+function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
+  return allUsers.map((user) => ({
+    userId: user.sId,
+    name: user.fullName,
+    email: user.email ?? "",
+    avatarUrl: user.image ?? "",
+    isEditor: user.isEditor ?? false,
+    joinedAt: user.joinedAt ?? "",
+  }));
+}
+
+export function MembersTable({
+  owner,
+  space,
+  selectedMembers,
+  searchSelectedMembers,
+  isEditor,
+}: MembersTableProps) {
+  const sendNotifications = useSendNotification();
+
+  const doUpdate = useUpdateSpace({ owner });
+  const { mutateSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: space.sId,
+  });
+  const confirm = useContext(ConfirmContext);
+
+  const removeMember = useCallback(
+    async (userId: string) => {
+      const updatedMembers = selectedMembers.filter((m) => m.sId !== userId);
+      if (!updatedMembers.some((m) => m.isEditor)) {
+        sendNotifications({
+          title: "Projects must have at least one editor.",
+          description: "You cannot remove the last editor.",
+          type: "error",
+        });
+        return;
+      }
+
+      const updateMember = await doUpdate(space, {
+        isRestricted: space.isRestricted,
+        memberIds: updatedMembers
+          .filter((m) => !m.isEditor)
+          .map((member) => member.sId),
+        editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: space.name,
+      });
+      if (updateMember) {
+        await mutateSpaceInfo();
+      }
+    },
+    [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
+  );
+
+  const toggleEditor = useCallback(
+    async (userId: string) => {
+      const toggledMember = selectedMembers.find((m) => m.sId === userId);
+      if (!toggledMember) {
+        return;
+      }
+      const toggledMemberIndex = selectedMembers.indexOf(toggledMember);
+      const updatedMembers = [
+        ...selectedMembers.slice(0, toggledMemberIndex),
+        {
+          ...selectedMembers[toggledMemberIndex],
+          isEditor: !toggledMember.isEditor,
+        },
+        ...selectedMembers.slice(toggledMemberIndex + 1),
+      ];
+
+      if (updatedMembers.filter((m) => m.isEditor).length === 0) {
+        sendNotifications({
+          title: "Projects must have at least one editor.",
+          description: "You cannot remove the last editor.",
+          type: "error",
+        });
+        return;
+      }
+
+      const updateMember = await doUpdate(space, {
+        isRestricted: space.isRestricted,
+        memberIds: updatedMembers
+          .filter((m) => !m.isEditor)
+          .map((member) => member.sId),
+        editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        managementMode: "manual",
+        name: space.name,
+      });
+      if (updateMember) {
+        await mutateSpaceInfo();
+      }
+    },
+    [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
+  );
+
+  const columns: ColumnDef<MemberRowData>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: "Name",
+        id: "name",
+        sortingFn: "text",
+        meta: {
+          className: "w-full",
+        },
+        cell: (info) => {
+          return (
+            <DataTable.CellContent>
+              <div className="flex items-center gap-2">
+                <Avatar
+                  name={info.row.original.name}
+                  visual={info.row.original.avatarUrl}
+                  size="xs"
+                  isRounded={true}
+                />
+                <span className="text-sm">{info.row.original.name}</span>
+              </div>
+            </DataTable.CellContent>
+          );
+        },
+      },
+      {
+        accessorKey: "email",
+        header: "Email",
+        id: "email",
+        meta: {
+          className: "w-[250px]",
+        },
+        cell: (info) => {
+          return <DataTable.BasicCellContent label={info.row.original.email} />;
+        },
+      },
+      ...(isEditor
+        ? [
+            {
+              id: "editor",
+              header: "Editor",
+              meta: {
+                className: "w-20",
+              },
+              cell: (info: any) => {
+                return (
+                  <DataTable.CellContent>
+                    <Checkbox checked={info.row.original.isEditor} disabled />
+                  </DataTable.CellContent>
+                );
+              },
+            },
+          ]
+        : []),
+      {
+        accessorKey: "joinedAt",
+        header: "Joined at",
+        id: "joinedAt",
+        meta: {
+          className: "w-[140px]",
+        },
+        cell: (info) => {
+          const date = new Date(info.row.original.joinedAt);
+          return (
+            <DataTable.BasicCellContent
+              label={
+                date?.toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                }) ?? ""
+              }
+            />
+          );
+        },
+      },
+      ...(isEditor
+        ? [
+            {
+              id: "actions",
+              header: "",
+              meta: {
+                className: "w-12",
+              },
+              cell: (info: any) => {
+                const editorLabel = info.row.original.isEditor
+                  ? "Remove from editors"
+                  : "Add as editor";
+                const editorMessage = info.row.original.isEditor
+                  ? `Are you sure you want to remove "${info.row.original.name}" from editors?`
+                  : `Are you sure you want to add "${info.row.original.name}" as an editor?`;
+                return (
+                  <DataTable.MoreButton
+                    menuItems={[
+                      {
+                        kind: "item",
+                        label: editorLabel,
+                        icon: info.row.original.isEditor ? TrashIcon : UserIcon,
+                        variant: "default",
+                        onClick: async () => {
+                          const confirmed = await confirm({
+                            title: editorLabel,
+                            message: editorMessage,
+                            validateLabel: info.row.original.isEditor
+                              ? "Remove"
+                              : "Add",
+                            validateVariant: "primary",
+                          });
+
+                          if (confirmed) {
+                            await toggleEditor(info.row.original.userId);
+                          }
+                        },
+                      },
+                      {
+                        kind: "item",
+                        label: "Remove from project",
+                        icon: TrashIcon,
+                        variant: "warning",
+                        onClick: async () => {
+                          const confirmed = await confirm({
+                            title: "Remove member",
+                            message: `Are you sure you want to remove "${info.row.original.name}" from this project?`,
+                            validateLabel: "Remove",
+                            validateVariant: "warning",
+                          });
+
+                          if (confirmed) {
+                            await removeMember(info.row.original.userId);
+                          }
+                        },
+                      },
+                    ]}
+                  />
+                );
+              },
+            },
+          ]
+        : []),
+    ],
+    [isEditor, removeMember, confirm, toggleEditor]
+  );
+
+  const rows = useMemo(
+    () => getMemberTableRows(selectedMembers),
+    [selectedMembers]
+  );
+
+  return (
+    <DataTable
+      columns={columns}
+      data={rows}
+      filter={searchSelectedMembers}
+      filterColumn="email"
+      sorting={[{ id: "name", desc: false }]}
+    />
+  );
+}

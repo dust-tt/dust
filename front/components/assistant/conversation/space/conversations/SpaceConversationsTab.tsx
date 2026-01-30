@@ -46,12 +46,14 @@ interface SpaceConversationsTabProps {
   conversations: ConversationType[];
   isConversationsLoading: boolean;
   spaceInfo: SpaceType;
+  isProjectEditor: boolean;
   onSubmit: (
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
+  onOpenInvitePanel: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -60,7 +62,9 @@ export function SpaceConversationsTab({
   conversations,
   isConversationsLoading,
   spaceInfo,
+  isProjectEditor,
   onSubmit,
+  onOpenInvitePanel,
 }: SpaceConversationsTabProps) {
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
@@ -170,7 +174,12 @@ export function SpaceConversationsTab({
           <SpaceJournalEntry owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
-          {!hasHistory && <SpaceConversationsActions />}
+          {!hasHistory && (
+            <SpaceConversationsActions
+              isEditor={isProjectEditor}
+              onOpenInvitePanel={onOpenInvitePanel}
+            />
+          )}
 
           {/* Space conversations section */}
           <div className="w-full">

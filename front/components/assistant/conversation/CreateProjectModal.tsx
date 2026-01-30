@@ -3,12 +3,10 @@ import {
   Dialog,
   DialogContainer,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
-  Label,
   SliderToggle,
 } from "@dust-tt/sparkle";
 import { useCallback, useEffect, useState } from "react";
@@ -33,7 +31,7 @@ export function CreateProjectModal({
 }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isRestricted, setIsRestricted] = useState(false);
+  const [isPublic, setIsPublic] = useState(false);
 
   const doCreate = useCreateSpace({ owner });
   const router = useAppRouter();
@@ -67,10 +65,9 @@ export function CreateProjectModal({
     }
 
     setIsSaving(true);
-
     const createdSpace = await doCreate({
       name: trimmedName,
-      isRestricted,
+      isRestricted: !isPublic,
       managementMode: "manual",
       memberIds: [],
       spaceKind: "project",
@@ -90,7 +87,7 @@ export function CreateProjectModal({
     }
   }, [
     projectName,
-    isRestricted,
+    isPublic,
     doCreate,
     handleClose,
     sendNotification,
@@ -113,16 +110,12 @@ export function CreateProjectModal({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create a new Project</DialogTitle>
-          <DialogDescription>
-            Unrestricted projects are accessible to all the members of the
-            workspace. Restricted projects allow you to control who can access
-            them.
-          </DialogDescription>
         </DialogHeader>
         <DialogContainer>
           <div className="flex w-full flex-col gap-y-4">
             <Input
-              placeholder="Project name"
+              label="Project name"
+              placeholder="Enter project name"
               value={projectName}
               name="projectName"
               onChange={(e) => {
@@ -131,11 +124,19 @@ export function CreateProjectModal({
               onKeyDown={handleKeyPress}
               autoFocus
             />
-            <div className="flex w-full items-center justify-between">
-              <Label>Restricted Access</Label>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col">
+                <div className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                  Opened to everyone
+                </div>
+                <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
+                  Anyone in the workspace can find and join the project.
+                </div>
+              </div>
               <SliderToggle
-                selected={isRestricted}
-                onClick={() => setIsRestricted(!isRestricted)}
+                size="xs"
+                selected={isPublic}
+                onClick={() => setIsPublic((prev) => !prev)}
               />
             </div>
           </div>
