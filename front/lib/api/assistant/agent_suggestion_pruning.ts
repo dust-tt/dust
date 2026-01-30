@@ -1,6 +1,6 @@
 import type { MCPServerConfigurationType } from "@app/lib/actions/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import type { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { AgentConfigurationType } from "@app/types";
@@ -10,12 +10,7 @@ import type {
   SkillsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import {
-  isInstructionsSuggestion,
-  isModelSuggestion,
-  isSkillsSuggestion,
-  isToolsSuggestion,
-} from "@app/types/suggestions/agent_suggestion";
+import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 
 type ToolsSuggestionResource = AgentSuggestionResource & {
   kind: "tools";
@@ -37,12 +32,35 @@ type InstructionsSuggestionResource = AgentSuggestionResource & {
   suggestion: InstructionsSuggestionType;
 };
 
-type SuggestionsByKind = {
-  tools: ToolsSuggestionResource[];
-  skills: SkillsSuggestionResource[];
-  model: ModelSuggestionResource[];
-  instructions: InstructionsSuggestionResource[];
+// Maps each kind to its corresponding resource type.
+type SuggestionResourceByKind = {
+  tools: ToolsSuggestionResource;
+  skills: SkillsSuggestionResource;
+  model: ModelSuggestionResource;
+  instructions: InstructionsSuggestionResource;
 };
+
+type SuggestionsByKind = {
+  [K in keyof SuggestionResourceByKind]: SuggestionResourceByKind[K][];
+};
+
+/**
+ * Type guard that validates both kind and suggestion payload together.
+ * Uses the Zod discriminated union to ensure the payload matches the kind.
+ */
+function isSuggestionOfKind<K extends keyof SuggestionResourceByKind>(
+  suggestion: AgentSuggestionResource,
+  kind: K
+): suggestion is SuggestionResourceByKind[K] {
+  if (suggestion.kind !== kind) {
+    return false;
+  }
+  const result = parseAgentSuggestionData({
+    kind: suggestion.kind,
+    suggestion: suggestion.suggestion,
+  });
+  return result.kind === kind;
+}
 
 function splitByKind(
   suggestions: AgentSuggestionResource[]
@@ -55,49 +73,19 @@ function splitByKind(
   };
 
   for (const suggestion of suggestions) {
-    switch (suggestion.kind) {
-      case "tools":
-        if (isToolsSuggestion(suggestion.suggestion)) {
-          result.tools.push(suggestion as ToolsSuggestionResource);
-        } else {
-          logger.warn(
-            { suggestionId: suggestion.id, kind: suggestion.kind },
-            "Invalid suggestion payload for kind"
-          );
-        }
-        break;
-      case "skills":
-        if (isSkillsSuggestion(suggestion.suggestion)) {
-          result.skills.push(suggestion as SkillsSuggestionResource);
-        } else {
-          logger.warn(
-            { suggestionId: suggestion.id, kind: suggestion.kind },
-            "Invalid suggestion payload for kind"
-          );
-        }
-        break;
-      case "model":
-        if (isModelSuggestion(suggestion.suggestion)) {
-          result.model.push(suggestion as ModelSuggestionResource);
-        } else {
-          logger.warn(
-            { suggestionId: suggestion.id, kind: suggestion.kind },
-            "Invalid suggestion payload for kind"
-          );
-        }
-        break;
-      case "instructions":
-        if (isInstructionsSuggestion(suggestion.suggestion)) {
-          result.instructions.push(
-            suggestion as InstructionsSuggestionResource
-          );
-        } else {
-          logger.warn(
-            { suggestionId: suggestion.id, kind: suggestion.kind },
-            "Invalid suggestion payload for kind"
-          );
-        }
-        break;
+    if (isSuggestionOfKind(suggestion, "tools")) {
+      result.tools.push(suggestion);
+    } else if (isSuggestionOfKind(suggestion, "skills")) {
+      result.skills.push(suggestion);
+    } else if (isSuggestionOfKind(suggestion, "model")) {
+      result.model.push(suggestion);
+    } else if (isSuggestionOfKind(suggestion, "instructions")) {
+      result.instructions.push(suggestion);
+    } else {
+      logger.warn(
+        { suggestionId: suggestion.id, kind: suggestion.kind },
+        "Invalid suggestion payload for kind"
+      );
     }
   }
 
@@ -109,7 +97,8 @@ function splitByKind(
  * This should be called after saving an agent configuration to mark
  * outdated suggestions.
  *
- * Runs pruning checks in parallel for each suggestion kind.
+ * Runs pruning checks in parallel for each suggestion kind, then bulk updates
+ * all outdated suggestions in a single database call.
  */
 export async function pruneSuggestions(
   auth: Authenticator,
@@ -123,29 +112,29 @@ export async function pruneSuggestions(
   const { tools, skills, model, instructions } =
     splitByKind(pendingSuggestions);
 
-  await Promise.all([
-    pruneToolsSuggestions(auth, tools, agentConfiguration.actions),
-    pruneSkillsSuggestions(auth, skills, agentConfiguration),
-    pruneModelSuggestions(
-      auth,
+  const outdatedByKind = await Promise.all([
+    getOutdatedToolsSuggestions(tools, agentConfiguration.actions),
+    getOutdatedSkillsSuggestions(auth, skills, agentConfiguration),
+    getOutdatedModelSuggestions(
       model,
       agentConfiguration.model.modelId,
       agentConfiguration.model.reasoningEffort ?? null
     ),
-    pruneInstructionsSuggestions(
-      auth,
+    getOutdatedInstructionsSuggestions(
       instructions,
       agentConfiguration.instructions
     ),
   ]);
+
+  const allOutdated = outdatedByKind.flat();
+  await AgentSuggestionResource.bulkUpdateState(auth, allOutdated, "outdated");
 }
 
 /** Outdated if any addition already exists or any deletion no longer exists. */
-async function pruneToolsSuggestions(
-  auth: Authenticator,
+function getOutdatedToolsSuggestions(
   suggestions: ToolsSuggestionResource[],
   currentActions: MCPServerConfigurationType[]
-): Promise<void> {
+): ToolsSuggestionResource[] {
   // Collect mcpServerViewIds from current actions.
   // Suggestions store the mcpServerViewId as the tool identifier.
   const currentToolIds = new Set<string>();
@@ -154,6 +143,8 @@ async function pruneToolsSuggestions(
       currentToolIds.add(action.mcpServerViewId);
     }
   }
+
+  const outdatedSuggestions: ToolsSuggestionResource[] = [];
 
   for (const suggestion of suggestions) {
     let isOutdated = false;
@@ -177,25 +168,29 @@ async function pruneToolsSuggestions(
     }
 
     if (isOutdated) {
-      await suggestion.updateState(auth, "outdated");
+      outdatedSuggestions.push(suggestion);
     }
   }
+
+  return outdatedSuggestions;
 }
 
 /** Outdated if any addition already exists or any deletion no longer exists. */
-async function pruneSkillsSuggestions(
+async function getOutdatedSkillsSuggestions(
   auth: Authenticator,
   suggestions: SkillsSuggestionResource[],
   agentConfiguration: AgentConfigurationType
-): Promise<void> {
+): Promise<SkillsSuggestionResource[]> {
   if (suggestions.length === 0) {
-    return;
+    return [];
   }
   const currentSkills = await SkillResource.listByAgentConfiguration(
     auth,
     agentConfiguration
   );
   const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
+
+  const outdatedSuggestions: SkillsSuggestionResource[] = [];
 
   for (const suggestion of suggestions) {
     let isOutdated = false;
@@ -219,18 +214,21 @@ async function pruneSkillsSuggestions(
     }
 
     if (isOutdated) {
-      await suggestion.updateState(auth, "outdated");
+      outdatedSuggestions.push(suggestion);
     }
   }
+
+  return outdatedSuggestions;
 }
 
 /** Outdated if current model AND reasoning effort (when provided) match. */
-async function pruneModelSuggestions(
-  auth: Authenticator,
+function getOutdatedModelSuggestions(
   suggestions: ModelSuggestionResource[],
   currentModelId: string,
   currentReasoningEffort: string | null
-): Promise<void> {
+): ModelSuggestionResource[] {
+  const outdatedSuggestions: ModelSuggestionResource[] = [];
+
   for (const suggestion of suggestions) {
     // Model must match.
     if (suggestion.suggestion.modelId !== currentModelId) {
@@ -245,18 +243,21 @@ async function pruneModelSuggestions(
     }
 
     // Both model and reasoning effort (if provided) match -> outdated.
-    await suggestion.updateState(auth, "outdated");
+    outdatedSuggestions.push(suggestion);
   }
+
+  return outdatedSuggestions;
 }
 
-async function pruneInstructionsSuggestions(
-  auth: Authenticator,
+function getOutdatedInstructionsSuggestions(
   suggestions: InstructionsSuggestionResource[],
   currentInstructions: string | null
-): Promise<void> {
+): InstructionsSuggestionResource[] {
   if (suggestions.length === 0) {
-    return;
+    return [];
   }
+
+  const outdatedSuggestions: InstructionsSuggestionResource[] = [];
 
   // Suggestions are already sorted by createdAt DESC (most recent first).
   // We process them in order, tracking applied regions in the edited prompt.
@@ -272,7 +273,7 @@ async function pruneInstructionsSuggestions(
     );
 
     if (!result.canApply) {
-      await suggestion.updateState(auth, "outdated");
+      outdatedSuggestions.push(suggestion);
     } else {
       // Apply the suggestion to the edited instructions and track the regions.
       const { newEditedInstructions, newRegions, regionShift } = result;
@@ -292,6 +293,8 @@ async function pruneInstructionsSuggestions(
       appliedRegions.push(...newRegions);
     }
   }
+
+  return outdatedSuggestions;
 }
 
 /**
