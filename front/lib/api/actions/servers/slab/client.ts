@@ -1,12 +1,7 @@
 import logger from "@app/logger/logger";
 import { normalizeError } from "@app/types";
 
-import type {
-  RawPost,
-  SlabPost,
-  SlabSearchResult,
-  SlabTopic,
-} from "./slab_types";
+import type { RawPost, SlabPost, SlabSearchResult, SlabTopic } from "./types";
 
 export const SLAB_GRAPHQL_URL = "https://api.slab.com/v1/graphql";
 export const MAX_LIMIT = 100;
@@ -67,7 +62,7 @@ function isDeltaObject(value: unknown): value is { ops: DeltaOp[] } {
 async function makeGraphQLRequest<T>(
   accessToken: string,
   query: string,
-  variables?: Record<string, any>
+  variables?: Record<string, unknown>
 ): Promise<T> {
   try {
     // eslint-disable-next-line no-restricted-globals
@@ -182,7 +177,7 @@ export async function searchPosts(
     `;
 
     const data = await makeGraphQLRequest<{
-      topic: { posts: any[] } | null;
+      topic: { posts: RawPost[] } | null;
     }>(accessToken, gqlQuery, { topicId });
 
     const allPosts = (data.topic?.posts ?? []).map((post) => ({
@@ -247,7 +242,10 @@ export async function searchPosts(
 
   const data = await makeGraphQLRequest<{
     search: {
-      edges: Array<{ cursor: string; node: any }>;
+      edges: Array<{
+        cursor: string;
+        node: { title: string; highlight: string; post: RawPost };
+      }>;
     };
   }>(accessToken, gqlQuery, {
     query,
@@ -308,9 +306,13 @@ ${postFields}
     }
   `;
 
-  const data = await makeGraphQLRequest<{ posts: any[] }>(accessToken, query, {
-    ids: postIds,
-  });
+  const data = await makeGraphQLRequest<{ posts: RawPost[] }>(
+    accessToken,
+    query,
+    {
+      ids: postIds,
+    }
+  );
 
   return data.posts.map((post: RawPost) => normalizePost(post));
 }
@@ -335,7 +337,15 @@ export async function getTopics(accessToken: string): Promise<SlabTopic[]> {
   `;
 
   const data = await makeGraphQLRequest<{
-    organization: { topics: any[] };
+    organization: {
+      topics: Array<{
+        id: string;
+        name?: string | null;
+        description?: unknown;
+        parent?: { id: string } | null;
+        posts?: Array<{ id: string }> | null;
+      }>;
+    };
   }>(accessToken, query);
 
   const topics = (data.organization?.topics ?? []).map((topic) => ({
