@@ -6,7 +6,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { isGlobalAgentId, isString } from "@app/types";
+import { isString } from "@app/types";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export interface GetAgentSkillsResponseBody {
@@ -31,7 +31,7 @@ async function handler(
 
   const agent = await getAgentConfiguration(auth, {
     agentId: aId,
-    variant: "light",
+    variant: "full",
   });
   if (!agent) {
     return apiError(req, res, {
@@ -45,23 +45,6 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      if (isGlobalAgentId(agent.sId)) {
-        const fullAgent = await getAgentConfiguration(auth, {
-          agentId: aId,
-          variant: "full",
-        });
-
-        if (!fullAgent?.skills?.length) {
-          return res.status(200).json({ skills: [] });
-        }
-
-        const skills = await SkillResource.fetchByIds(auth, fullAgent.skills);
-
-        return res.status(200).json({
-          skills: skills.map((s) => s.toJSON(auth)),
-        });
-      }
-
       const skills = await SkillResource.listByAgentConfiguration(auth, agent);
 
       return res.status(200).json({
