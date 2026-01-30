@@ -6,7 +6,6 @@ import type { ReactElement } from "react";
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 import { useWorkspaceAuthContext } from "@app/lib/swr/workspaces";
 import type {
@@ -14,8 +13,9 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
+import { isString } from "@app/types";
 
-function FullPageSpinner(): JSX.Element {
+function FullPageSpinner() {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -23,11 +23,24 @@ function FullPageSpinner(): JSX.Element {
   );
 }
 
-export default function EditAgentPage(): JSX.Element {
-  const workspaceId = useRequiredPathParam("wId");
-  const agentId = useRequiredPathParam("aId");
+export default function EditAgentPage() {
+  const router = useRouter();
 
-  return <EditAgentAuthGate workspaceId={workspaceId} agentId={agentId} />;
+  if (!router.isReady) {
+    return null;
+  }
+
+  if (!isString(router.query.wId) || !isString(router.query.aId)) {
+    void router.replace("/404");
+    return <FullPageSpinner />;
+  }
+
+  return (
+    <EditAgentAuthGate
+      workspaceId={router.query.wId}
+      agentId={router.query.aId}
+    />
+  );
 }
 
 interface EditAgentAuthGateProps {
@@ -35,10 +48,7 @@ interface EditAgentAuthGateProps {
   agentId: string;
 }
 
-function EditAgentAuthGate({
-  workspaceId,
-  agentId,
-}: EditAgentAuthGateProps): JSX.Element {
+function EditAgentAuthGate({ workspaceId, agentId }: EditAgentAuthGateProps) {
   const router = useRouter();
   const {
     owner,
@@ -80,7 +90,7 @@ function EditAgentLoader({
   user,
   isAdmin,
   agentId,
-}: EditAgentLoaderProps): JSX.Element {
+}: EditAgentLoaderProps) {
   const router = useRouter();
   const {
     agentConfiguration,
@@ -127,7 +137,7 @@ function EditAgentContent({
   owner,
   user,
   isAdmin,
-}: EditAgentContentProps): JSX.Element {
+}: EditAgentContentProps) {
   if (agentConfiguration.scope === "global") {
     throw new Error("Cannot edit global agent");
   }
@@ -151,7 +161,7 @@ function EditAgentContent({
   );
 }
 
-function getLayout(page: ReactElement): ReactElement {
+function getLayout(page: ReactElement) {
   return <AppRootLayout>{page}</AppRootLayout>;
 }
 

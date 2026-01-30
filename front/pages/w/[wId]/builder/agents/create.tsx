@@ -10,7 +10,8 @@ import {
   Spinner,
 } from "@dust-tt/sparkle";
 import { useRouter } from "next/router";
-import { useMemo, useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
+import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
@@ -20,7 +21,6 @@ import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import {
   useFeatureFlags,
@@ -30,12 +30,17 @@ import { removeParamFromRouter } from "@app/lib/utils/router_util";
 import type {
   SubscriptionType,
   TemplateTagCodeType,
-  WorkspaceType,
   WhitelistableFeature,
+  WorkspaceType,
 } from "@app/types";
-import { isBuilder, isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
+import {
+  isBuilder,
+  isString,
+  isTemplateTagCodeArray,
+  TEMPLATES_TAGS_CONFIG,
+} from "@app/types";
 
-function FullPageSpinner(): JSX.Element {
+function FullPageSpinner() {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -43,19 +48,26 @@ function FullPageSpinner(): JSX.Element {
   );
 }
 
-export default function CreateAgentPage(): JSX.Element {
-  const workspaceId = useRequiredPathParam("wId");
+export default function CreateAgentPage() {
+  const router = useRouter();
 
-  return <CreateAgentAuthGate workspaceId={workspaceId} />;
+  if (!router.isReady) {
+    return null;
+  }
+
+  if (!isString(router.query.wId)) {
+    void router.replace("/404");
+    return <FullPageSpinner />;
+  }
+
+  return <CreateAgentAuthGate workspaceId={router.query.wId} />;
 }
 
 interface CreateAgentAuthGateProps {
   workspaceId: string;
 }
 
-function CreateAgentAuthGate({
-  workspaceId,
-}: CreateAgentAuthGateProps): JSX.Element {
+function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
   const router = useRouter();
   const {
     owner,
@@ -74,9 +86,7 @@ function CreateAgentAuthGate({
     return <FullPageSpinner />;
   }
 
-  return (
-    <CreateAgentFeatureGate owner={owner} subscription={subscription} />
-  );
+  return <CreateAgentFeatureGate owner={owner} subscription={subscription} />;
 }
 
 interface CreateAgentFeatureGateProps {
@@ -87,7 +97,7 @@ interface CreateAgentFeatureGateProps {
 function CreateAgentFeatureGate({
   owner,
   subscription,
-}: CreateAgentFeatureGateProps): JSX.Element {
+}: CreateAgentFeatureGateProps) {
   const router = useRouter();
   const { featureFlags, hasFeature, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -125,9 +135,11 @@ function CreateAgentContent({
   owner,
   subscription,
   hasFeature,
-}: CreateAgentContentProps): JSX.Element {
+}: CreateAgentContentProps) {
   const router = useRouter();
-  const selectedTemplateId = useSearchParam("templateId");
+  const selectedTemplateId = isString(router.query.templateId)
+    ? router.query.templateId
+    : null;
   const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
 
   const [searchTerm, setSearchTerm] = useState("");

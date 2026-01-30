@@ -9,7 +9,6 @@ import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import {
   useAgentConfiguration,
   useAssistantTemplate,
@@ -23,7 +22,7 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { isBuilder } from "@app/types";
+import { isBuilder, isString } from "@app/types";
 
 function isBuilderFlow(value: string): value is BuilderFlow {
   return BUILDER_FLOWS.some((flow) => flow === value);
@@ -36,7 +35,7 @@ function resolveBuilderFlow(value: string | null): BuilderFlow {
   return "personal_assistants";
 }
 
-function FullPageSpinner(): JSX.Element {
+function FullPageSpinner() {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -44,19 +43,26 @@ function FullPageSpinner(): JSX.Element {
   );
 }
 
-export default function CreateAgentPage(): JSX.Element {
-  const workspaceId = useRequiredPathParam("wId");
+export default function CreateAgentPage() {
+  const router = useRouter();
 
-  return <CreateAgentAuthGate workspaceId={workspaceId} />;
+  if (!router.isReady) {
+    return null;
+  }
+
+  if (!isString(router.query.wId)) {
+    void router.replace("/404");
+    return <FullPageSpinner />;
+  }
+
+  return <CreateAgentAuthGate workspaceId={router.query.wId} />;
 }
 
 interface CreateAgentAuthGateProps {
   workspaceId: string;
 }
 
-function CreateAgentAuthGate({
-  workspaceId,
-}: CreateAgentAuthGateProps): JSX.Element {
+function CreateAgentAuthGate({ workspaceId }: CreateAgentAuthGateProps) {
   const router = useRouter();
   const {
     owner,
@@ -76,9 +82,7 @@ function CreateAgentAuthGate({
     return <FullPageSpinner />;
   }
 
-  return (
-    <CreateAgentFeatureGate owner={owner} user={user} isAdmin={isAdmin} />
-  );
+  return <CreateAgentFeatureGate owner={owner} user={user} isAdmin={isAdmin} />;
 }
 
 interface CreateAgentFeatureGateProps {
@@ -91,7 +95,7 @@ function CreateAgentFeatureGate({
   owner,
   user,
   isAdmin,
-}: CreateAgentFeatureGateProps): JSX.Element {
+}: CreateAgentFeatureGateProps) {
   const router = useRouter();
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -110,9 +114,7 @@ function CreateAgentFeatureGate({
     return <FullPageSpinner />;
   }
 
-  return (
-    <CreateAgentContent owner={owner} user={user} isAdmin={isAdmin} />
-  );
+  return <CreateAgentContent owner={owner} user={user} isAdmin={isAdmin} />;
 }
 
 interface CreateAgentContentProps {
@@ -121,15 +123,17 @@ interface CreateAgentContentProps {
   isAdmin: boolean;
 }
 
-function CreateAgentContent({
-  owner,
-  user,
-  isAdmin,
-}: CreateAgentContentProps): JSX.Element {
+function CreateAgentContent({ owner, user, isAdmin }: CreateAgentContentProps) {
   const router = useRouter();
-  const templateId = useSearchParam("templateId");
-  const duplicateAgentId = useSearchParam("duplicate");
-  const flow = resolveBuilderFlow(useSearchParam("flow"));
+  const templateId = isString(router.query.templateId)
+    ? router.query.templateId
+    : null;
+  const duplicateAgentId = isString(router.query.duplicate)
+    ? router.query.duplicate
+    : null;
+  const flow = resolveBuilderFlow(
+    isString(router.query.flow) ? router.query.flow : null
+  );
 
   const {
     assistantTemplate,
@@ -200,7 +204,7 @@ function CreateAgentContent({
   );
 }
 
-function getLayout(page: ReactElement): ReactElement {
+function getLayout(page: ReactElement) {
   return <AppRootLayout>{page}</AppRootLayout>;
 }
 

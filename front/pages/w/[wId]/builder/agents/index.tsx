@@ -14,7 +14,8 @@ import {
 } from "@dust-tt/sparkle";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { useEffect, useMemo, useRef, useState, type ReactElement } from "react";
+import type { ReactElement } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentEditBar } from "@app/components/assistant/AgentEditBar";
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -27,7 +28,6 @@ import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
 import { clientFetch } from "@app/lib/egress/client";
-import { useRequiredPathParam } from "@app/lib/platform";
 import { useAgentConfigurations } from "@app/lib/swr/assistants";
 import {
   useFeatureFlags,
@@ -45,7 +45,7 @@ import type {
   WhitelistableFeature,
   WorkspaceType,
 } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isAdmin, isBuilder, isString } from "@app/types";
 import type { TagType } from "@app/types/tag";
 
 export const AGENT_MANAGER_TABS = [
@@ -87,7 +87,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
   );
 }
 
-function FullPageSpinner(): JSX.Element {
+function FullPageSpinner() {
   return (
     <div className="flex h-screen items-center justify-center">
       <Spinner size="lg" />
@@ -95,10 +95,19 @@ function FullPageSpinner(): JSX.Element {
   );
 }
 
-export default function WorkspaceAssistantsPage(): JSX.Element {
-  const workspaceId = useRequiredPathParam("wId");
+export default function WorkspaceAssistantsPage() {
+  const router = useRouter();
 
-  return <WorkspaceAssistantsAuthGate workspaceId={workspaceId} />;
+  if (!router.isReady) {
+    return null;
+  }
+
+  if (!isString(router.query.wId)) {
+    void router.replace("/404");
+    return <FullPageSpinner />;
+  }
+
+  return <WorkspaceAssistantsAuthGate workspaceId={router.query.wId} />;
 }
 
 interface WorkspaceAssistantsAuthGateProps {
@@ -107,7 +116,7 @@ interface WorkspaceAssistantsAuthGateProps {
 
 function WorkspaceAssistantsAuthGate({
   workspaceId,
-}: WorkspaceAssistantsAuthGateProps): JSX.Element {
+}: WorkspaceAssistantsAuthGateProps) {
   const router = useRouter();
   const {
     owner,
@@ -145,7 +154,7 @@ function WorkspaceAssistantsFeatureGate({
   owner,
   subscription,
   user,
-}: WorkspaceAssistantsFeatureGateProps): JSX.Element {
+}: WorkspaceAssistantsFeatureGateProps) {
   const router = useRouter();
   const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
     workspaceId: owner.sId,
@@ -186,7 +195,7 @@ function WorkspaceAssistantsContent({
   subscription,
   user,
   featureFlags,
-}: WorkspaceAssistantsContentProps): JSX.Element {
+}: WorkspaceAssistantsContentProps) {
   const [assistantSearch, setAssistantSearch] = useState("");
   const [showDisabledFreeWorkspacePopup, setShowDisabledFreeWorkspacePopup] =
     useState<string | null>(null);
@@ -500,7 +509,7 @@ function WorkspaceAssistantsContent({
   );
 }
 
-function getLayout(page: ReactElement): ReactElement {
+function getLayout(page: ReactElement) {
   return <AppRootLayout>{page}</AppRootLayout>;
 }
 
