@@ -141,7 +141,7 @@ export const projectAddedAsMemberWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `${details.userThatAddedYouFullname} added you to the project "${details.projectName}".\n\nYou now have access to the project's agents, conversations, and knowledge.`,
+          content: `${details.userThatAddedYouFullname} added you to the project "${details.projectName}".`,
           action: {
             label: "View project",
             url:
@@ -216,9 +216,9 @@ export const triggerProjectAddedAsMemberNotifications = async (
       userThatAddedYouId: userThatAddedYou.sId,
     };
 
-    const r = await novuClient.bulkTrigger(
-      addedUsers.map((user: UserResource) => ({
-        name: PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
+    const r = await novuClient.triggerBulk({
+      events: addedUsers.map((user: UserResource) => ({
+        workflowId: PROJECT_ADDED_AS_MEMBER_TRIGGER_ID,
         to: {
           subscriberId: user.sId,
           email: user.email,
@@ -226,15 +226,18 @@ export const triggerProjectAddedAsMemberNotifications = async (
           lastName: user.lastName ?? undefined,
         },
         payload,
-      }))
-    );
+      })),
+    });
 
-    if (r.status < 200 || r.status >= 300) {
+    if (r.result.some((event) => !!event.error?.length)) {
+      const eventErrors = r.result
+        .filter((res) => !!res.error?.length)
+        .map(({ error }) => error?.join("; "))
+        .join("; ");
       return new Err({
         name: "dust_error",
         code: "internal_error",
-        message: "Failed to trigger project added as member notification",
-        cause: r.statusText,
+        message: `Failed to trigger project added as member notification: ${eventErrors}`,
       });
     }
   } catch (err) {
