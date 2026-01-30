@@ -45,8 +45,9 @@ async function handler(
 
   switch (req.method) {
     case "GET": {
-      const skills = await SkillResource.listByAgentConfiguration(auth, agent);
-
+      const skills = await SkillResource.listByAgentConfiguration(auth, {
+        agentConfiguration: agent,
+      });
       return res.status(200).json({
         skills: skills.map((s) => s.toJSON(auth)),
       });

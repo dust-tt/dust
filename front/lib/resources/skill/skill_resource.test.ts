@@ -712,7 +712,7 @@ describe("SkillResource", () => {
       // Verify agent-skill link exists before deletion using Resource.
       const skillsForAgentBefore = await SkillResource.listByAgentConfiguration(
         testContext.authenticator,
-        agent
+        { agentConfiguration: agent }
       );
       expect(skillsForAgentBefore.some((s) => s.id === skillResource.id)).toBe(
         true
@@ -725,7 +725,7 @@ describe("SkillResource", () => {
       // Verify agent-skill link is deleted.
       const skillsForAgentAfter = await SkillResource.listByAgentConfiguration(
         testContext.authenticator,
-        agent
+        { agentConfiguration: agent }
       );
       expect(skillsForAgentAfter.some((s) => s.id === skillResource.id)).toBe(
         false
