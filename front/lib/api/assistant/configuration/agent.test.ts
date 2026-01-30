@@ -3,11 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   createAgentConfiguration,
   createPendingAgentConfiguration,
+  getAgentConfiguration,
 } from "@app/lib/api/assistant/configuration/agent";
 import { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
+import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { generateRandomModelSId } from "@app/lib/resources/string_ids";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
@@ -170,6 +173,60 @@ describe("createAgentConfiguration with pending agent", () => {
       expect(result.value.sId).toBe(existingAgent.sId);
       expect(result.value.name).toBe("Updated Agent");
       expect(result.value.version).toBe(1); // Version bumped
+    }
+  });
+
+  it("preserves suggestions when converting pending agent to active", async () => {
+    const { authenticator, user } = await createResourceTest({
+      role: "builder",
+    });
+    const { sId: pendingSId } =
+      await createPendingAgentConfiguration(authenticator);
+    const pendingAgent = await getAgentConfiguration(authenticator, {
+      agentId: pendingSId,
+      variant: "light",
+    });
+    expect(pendingAgent).not.toBeNull();
+
+    const originalAgentId = pendingAgent!.id;
+
+    await AgentSuggestionFactory.createInstructions(
+      authenticator,
+      pendingAgent!,
+      { suggestion: { oldString: "old", newString: "new" } }
+    );
+
+    const result = await createAgentConfiguration(authenticator, {
+      name: "Agent From Pending With Suggestions",
+      description: "Test agent",
+      instructions: "Test instructions",
+      pictureUrl: "https://dust.tt/static/systemavatar/test_avatar_1.png",
+      status: "active",
+      scope: "hidden",
+      model: {
+        providerId: "anthropic",
+        modelId: "claude-sonnet-4-5-20250929",
+        temperature: 0.5,
+      },
+      agentConfigurationId: pendingSId,
+      templateId: null,
+      requestedSpaceIds: [],
+      tags: [],
+      editors: [user.toJSON()],
+    });
+
+    expect(result.isOk()).toBe(true);
+    if (result.isOk()) {
+      expect(result.value.sId).toBe(pendingSId);
+      expect(result.value.status).toBe("active");
+      expect(result.value.id).toBe(originalAgentId);
+
+      const suggestionsAfter =
+        await AgentSuggestionResource.listByAgentConfigurationId(
+          authenticator,
+          result.value.sId
+        );
+      expect(suggestionsAfter).toHaveLength(1);
     }
   });
 });

@@ -97,25 +97,36 @@ export async function createPendingAgentConfiguration(
 
   const sId = generateRandomModelSId();
 
-  await AgentConfigurationModel.create({
-    sId,
-    version: 0,
-    status: "pending",
-    scope: "hidden",
-    name: PENDING_AGENT_PLACEHOLDER_NAME,
-    description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
-    instructions: null,
-    providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
-    modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
-    temperature: 0.7,
-    reasoningEffort:
-      CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
-    maxStepsPerRun: 8,
-    pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
-    workspaceId: owner.id,
-    authorId: user.id,
-    templateId: null,
-    requestedSpaceIds: [],
+  await withTransaction(async (t) => {
+    const agent = await AgentConfigurationModel.create(
+      {
+        sId,
+        version: 0,
+        status: "pending",
+        scope: "hidden",
+        name: PENDING_AGENT_PLACEHOLDER_NAME,
+        description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+        instructions: null,
+        providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+        reasoningEffort:
+          CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        maxStepsPerRun: 8,
+        pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+        workspaceId: owner.id,
+        authorId: user.id,
+        templateId: null,
+        requestedSpaceIds: [],
+      },
+      { transaction: t }
+    );
+
+    const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
+      transaction: t,
+    });
+    await auth.refresh({ transaction: t });
+    await group.setMembers(auth, { users: [user.toJSON()], transaction: t });
   });
 
   return { sId };
@@ -461,6 +472,7 @@ export async function createAgentConfiguration(
       t: Transaction
     ): Promise<AgentConfigurationModel> => {
       let existingAgent = null;
+
       if (agentConfigurationId) {
         const [agentConfiguration, userRelation] = await Promise.all([
           AgentConfigurationModel.findOne({
@@ -495,7 +507,7 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
-          // Handle pending agent: delete it (don't bump version)
+          // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
           // Otherwise: archive old versions and bump version
           if (existingAgent.status === "pending") {
             if (existingAgent.authorId === user.id) {
@@ -509,17 +521,6 @@ export async function createAgentConfiguration(
                 },
                 "Agent created from pending status"
               );
-
-              // Delete the pending agent - we'll create a fresh one with version 0
-              await AgentConfigurationModel.destroy({
-                where: {
-                  id: existingAgent.id,
-                  workspaceId: owner.id,
-                },
-                transaction: t,
-              });
-              // Treat as new agent for the rest of the flow (no editor group to reuse)
-              existingAgent = null;
             } else {
               throw new Error(
                 "Cannot update a pending agent owned by another user."
@@ -547,32 +548,78 @@ export async function createAgentConfiguration(
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
-      // Create Agent config.
-      const agentConfigurationInstance = await AgentConfigurationModel.create(
-        {
-          sId,
-          version,
-          status,
-          scope,
-          name,
-          description,
-          instructions,
-          providerId: model.providerId,
-          modelId: model.modelId,
-          temperature: model.temperature,
-          reasoningEffort: model.reasoningEffort,
-          maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-          pictureUrl,
-          workspaceId: owner.id,
-          authorId: user.id,
-          templateId: template?.id,
-          requestedSpaceIds: requestedSpaceIds,
-          responseFormat: model.responseFormat,
-        },
-        {
+      // Create or update Agent config.
+      let agentConfigurationInstance: AgentConfigurationModel;
+
+      if (existingAgent && existingAgent.status === "pending") {
+        // Update pending agent in place to preserve id (and FK relationships like suggestions)
+        await AgentConfigurationModel.update(
+          {
+            version,
+            status,
+            scope,
+            name,
+            description,
+            instructions,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
+            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+            pictureUrl,
+            authorId: user.id,
+            templateId: template?.id,
+            requestedSpaceIds: requestedSpaceIds,
+            responseFormat: model.responseFormat,
+          },
+          {
+            where: {
+              id: existingAgent.id,
+              workspaceId: owner.id,
+            },
+            transaction: t,
+          }
+        );
+        // Reload the updated instance
+        const updatedAgent = await AgentConfigurationModel.findOne({
+          where: {
+            id: existingAgent.id,
+            workspaceId: owner.id,
+          },
           transaction: t,
+        });
+        if (!updatedAgent) {
+          throw new Error("Failed to reload updated agent configuration");
         }
-      );
+        agentConfigurationInstance = updatedAgent;
+      } else {
+        // Create new agent config
+        agentConfigurationInstance = await AgentConfigurationModel.create(
+          {
+            sId,
+            version,
+            status,
+            scope,
+            name,
+            description,
+            instructions,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
+            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+            pictureUrl,
+            workspaceId: owner.id,
+            authorId: user.id,
+            templateId: template?.id,
+            requestedSpaceIds: requestedSpaceIds,
+            responseFormat: model.responseFormat,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
 
       const existingTags = existingAgent
         ? await TagResource.listForAgent(auth, existingAgent.id)
@@ -633,20 +680,24 @@ export async function createAgentConfiguration(
               "Unexpected: agent should have exactly one editor group."
             );
           }
-          const result = await group.addGroupToAgentConfiguration({
-            auth,
-            agentConfiguration: agentConfigurationInstance,
-            transaction: t,
-          });
-          if (result.isErr()) {
-            logger.error(
-              {
-                workspaceId: owner.sId,
-                agentConfigurationId: existingAgent.sId,
-              },
-              `Error adding group to agent ${existingAgent.sId}: ${result.error}`
-            );
-            throw result.error;
+          // For pending agents updated in place, the group is already linked to the same agent ID
+          // For regular updates, we need to link the group to the new agent configuration
+          if (existingAgent.id !== agentConfigurationInstance.id) {
+            const result = await group.addGroupToAgentConfiguration({
+              auth,
+              agentConfiguration: agentConfigurationInstance,
+              transaction: t,
+            });
+            if (result.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: existingAgent.sId,
+                },
+                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+              );
+              throw result.error;
+            }
           }
           const setMembersRes = await group.setMembers(auth, {
             users: editors,
