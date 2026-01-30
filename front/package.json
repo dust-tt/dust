@@ -67,7 +67,7 @@
     "@novu/api": "^3.13.0",
     "@novu/framework": "^2.7.1",
     "@novu/js": "^3.13.0",
-    "@novu/react": "^3.11.0",
+    "@novu/react": "^3.13.0",
     "@octokit/core": "^6.1.5",
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/resources": "^2.2.0",
