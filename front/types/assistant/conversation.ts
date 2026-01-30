@@ -212,6 +212,7 @@ export type BaseAgentMessageType = {
   visibility: MessageVisibility;
   richMentions: RichMentionWithStatus[];
   completionDurationMs: number | null;
+  prunedContext?: boolean;
 };
 
 export type ParsedContentItem =
@@ -252,6 +253,7 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
   reactions: MessageReactionType[];
+  prunedContext?: boolean;
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events

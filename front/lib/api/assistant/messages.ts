@@ -641,6 +641,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           actions
         ),
         reactions: reactionsByMessageId[message.id] ?? [],
+        prunedContext: agentMessage.prunedContext ?? false,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {
