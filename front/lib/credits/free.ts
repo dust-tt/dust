@@ -37,6 +37,13 @@ function getBillingInterval(
 ): "month" | "year" {
   const item = stripeSubscription.items.data[0];
   if (!item?.price.recurring) {
+    logger.error(
+      {
+        panic: true,
+        stripeSubscriptionId: stripeSubscription.id,
+      },
+      "Unexpected: Cannot have a non-recurring item in a subscription"
+    );
     return "month";
   }
   return item.price.recurring.interval === "year" ? "year" : "month";
