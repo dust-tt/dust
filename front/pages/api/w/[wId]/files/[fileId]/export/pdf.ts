@@ -1,4 +1,6 @@
+import fs from "fs";
 import type { NextApiRequest, NextApiResponse } from "next";
+import path from "path";
 import { z } from "zod";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -9,8 +11,38 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
-import type { WithAPIErrorResponse } from "@app/types";
+import type { PdfOptions, WithAPIErrorResponse } from "@app/types";
 import { DocumentRenderer, frameContentType, isString } from "@app/types";
+import {
+  isEntreprisePlanPrefix,
+  isFriendsAndFamilyPlan,
+} from "@app/lib/plans/plan_codes";
+
+/**
+ * Builds the PDF footer HTML by loading the template and logo from files.
+ * The logo SVG is inlined because Gotenberg cannot load external assets.
+ */
+function buildPdfFooterHtml(): string {
+  const footerTemplatePath = path.join(
+    process.cwd(),
+    "lib/api/files/pdf_footer.html"
+  );
+  const logoPath = path.join(
+    process.cwd(),
+    "public/static/landing/logos/dust/Dust_LogoSquare.svg"
+  );
+
+  const footerTemplate = fs.readFileSync(footerTemplatePath, "utf-8");
+  const logoSvg = fs.readFileSync(logoPath, "utf-8");
+
+  // Resize the logo for footer (16x16).
+  const resizedLogo = logoSvg.replace(
+    /width="48" height="48"/,
+    'width="16" height="16"'
+  );
+
+  return footerTemplate.replace("{{LOGO_SVG}}", resizedLogo);
+}
 
 const PostPdfExportBodySchema = z.object({
   orientation: z.enum(["portrait", "landscape"]).optional().default("portrait"),
@@ -152,7 +184,21 @@ async function handler(
 
   const { orientation } = bodyResult.data;
 
+  // Only show footer for non-Enterprise plans and non-FriendsAndFamily plans.
+  const plan = auth.plan();
+  const showFooter =
+    !plan ||
+    !isEntreprisePlanPrefix(plan.code) ||
+    !isFriendsAndFamilyPlan(plan.code);
+
   const renderer = new DocumentRenderer(documentRendererUrl, logger);
+
+  const options: PdfOptions = showFooter
+    ? {
+        footerHtml: buildPdfFooterHtml(),
+        marginBottom: "1cm", // Space for footer.
+      }
+    : {};
 
   const result = await renderer.exportToPdf(
     {
@@ -160,7 +206,10 @@ async function handler(
       waitForExpression:
         "document.querySelector('[data-viz-ready=\"true\"]') !== null",
     },
-    { orientation }
+    {
+      ...options,
+      orientation,
+    }
   );
 
   if (result.isErr()) {
