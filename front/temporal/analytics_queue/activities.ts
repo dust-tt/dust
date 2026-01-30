@@ -348,6 +348,7 @@ async function extractRetrievalDocuments(
   }
 
   // Filter out file_system server actions - they don't have DB configurations.
+  // Note: file_system uses ID 1010 (positive), so we can't rely on id > 0 alone.
   const actionsWithConfigs = searchActions.filter(
     (a) => a.metadata.internalMCPServerName !== FILE_SYSTEM_SERVER_NAME
   );
@@ -356,6 +357,8 @@ async function extractRetrievalDocuments(
   );
 
   // Convert string IDs to numeric ModelIds.
+  // Filter out non-positive IDs as a defensive check - some internal servers
+  // may use fake negative IDs (e.g., -1) that don't exist in the database.
   const configModelIds: ModelId[] = configIds
     .map((id) => parseInt(id, 10))
     .filter((id) => !isNaN(id) && id > 0);
