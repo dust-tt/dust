@@ -393,3 +393,10 @@ export type AgentStepContentEvent = {
     | AgentFunctionCallContentType
     | AgentReasoningContentType;
 };
+
+export type AgentContextPrunedEvent = {
+  type: "agent_context_pruned";
+  created: number;
+  configurationId: string;
+  messageId: string;
+};

@@ -260,6 +260,7 @@ export function AgentMessage({
           case "tool_error":
           case "tool_notification":
           case "tool_params":
+          case "agent_context_pruned":
             // Do nothing
             break;
           default:

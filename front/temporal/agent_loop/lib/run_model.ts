@@ -431,6 +431,18 @@ export async function runModelActivity(
     await agentMessageRow.update({
       prunedContext: true,
     });
+
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "agent_context_pruned",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
   }
 
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
@@ -557,6 +569,7 @@ export async function runModelActivity(
         completedTs,
         agentMessage.actions
       ),
+      prunedContext: agentMessageRow.prunedContext ?? false,
     } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {
