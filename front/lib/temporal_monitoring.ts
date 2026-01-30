@@ -26,7 +26,9 @@ export type WorkflowError = {
   __is_dust_error: boolean;
 };
 
-export class ActivityInboundLogInterceptor implements ActivityInboundCallsInterceptor {
+export class ActivityInboundLogInterceptor
+  implements ActivityInboundCallsInterceptor
+{
   public readonly logger: Logger;
   private readonly context: Context;
 

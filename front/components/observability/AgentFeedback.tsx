@@ -9,11 +9,11 @@ import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 
 const FeedbackDistributionChart = lazy(() =>
-  import("@app/components/agent_builder/observability/charts/FeedbackDistributionChart").then(
-    (mod) => ({
-      default: mod.FeedbackDistributionChart,
-    })
-  )
+  import(
+    "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
+  ).then((mod) => ({
+    default: mod.FeedbackDistributionChart,
+  }))
 );
 
 function ChartFallback() {

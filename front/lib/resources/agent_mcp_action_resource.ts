@@ -64,7 +64,8 @@ const FETCH_OUTPUT_ITEMS_CONCURRENCY = 2;
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMCPActionResource extends ReadonlyAttributesType<AgentMCPActionModel> {}
+export interface AgentMCPActionResource
+  extends ReadonlyAttributesType<AgentMCPActionModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
