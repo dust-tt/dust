@@ -773,7 +773,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   static async listByAgentConfiguration(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
+    agentConfiguration: AgentConfigurationType
   ): Promise<SkillResource[]> {
     const refs = await this.getSkillReferencesForAgent(
       auth,
@@ -796,7 +796,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async getSkillReferencesForAgent(
     auth: Authenticator,
-    agentConfiguration: LightAgentConfigurationType | AgentConfigurationType
+    agentConfiguration: AgentConfigurationType
   ): Promise<
     {
       customSkillId: ModelId | null;
