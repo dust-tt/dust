@@ -10,6 +10,7 @@ import {
   TarballNotFoundError,
 } from "@connectors/connectors/github/lib/code/tar_extraction";
 import {
+  isBadCredentials,
   isGithubRequestErrorNotFound,
   RepositoryAccessBlockedError,
 } from "@connectors/connectors/github/lib/errors";
@@ -167,6 +168,15 @@ export async function githubExtractToGcsActivity({
           await cleanupMissingRepository("garbageCollectRepoNotFound");
 
           return new Err(new TarballNotFoundError());
+        }
+
+        if (isBadCredentials(error)) {
+          logger.error(
+            { err: error, repoLogin, repoName, repoId },
+            "Bad credentials: OAuth token is invalid or revoked."
+          );
+
+          throw new ExternalOAuthTokenError(error);
         }
 
         throw error;
