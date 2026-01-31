@@ -8,6 +8,7 @@ import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { isEUCountry } from "@app/lib/geo/eu-detection";
 import { useGeolocation } from "@app/lib/swr/geo";
 import { trackEvent, TRACKING_AREAS } from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 const CASE_STUDIES: Record<string, string> = {
   alan: "/customers/alans-pmm-team-transforms-sales-conversations-into-intelligence-with-ai-agents",
@@ -306,7 +307,9 @@ export default function TrustedBy({
         label="Join them"
         className="mt-8"
         onClick={() => {
-          window.location.href = "/api/workos/login?screenHint=sign-up";
+          window.location.href = appendUTMParams(
+            "/api/workos/login?screenHint=sign-up"
+          );
         }}
       />
     </div>

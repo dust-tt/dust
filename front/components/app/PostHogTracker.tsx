@@ -12,23 +12,11 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 const POSTHOG_INITIALIZED_KEY = "dust-ph-init";
-
-// Marketing parameters to preserve and send to PostHog as explicit properties.
-const MARKETING_PARAMS = [
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_term",
-  "utm_content",
-  "gclid",
-  "fbclid",
-  "msclkid",
-  "li_fat_id",
-];
 
 const EXCLUDED_PATHS = [
   "/poke",
@@ -125,18 +113,30 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
           return null;
         }
 
-        // Extract marketing parameters before stripping query string.
+        // Extract marketing parameters from URL first, then fall back to sessionStorage.
+        const storedParams = getStoredUTMParams();
         if (event.properties.$current_url) {
           try {
             const url = new URL(event.properties.$current_url);
             for (const param of MARKETING_PARAMS) {
-              const value = url.searchParams.get(param);
-              if (value) {
-                event.properties[param] = value;
+              const urlValue = url.searchParams.get(param);
+              const storedValue = storedParams[param];
+              if (urlValue) {
+                event.properties[param] = urlValue;
+              } else if (storedValue) {
+                event.properties[param] = storedValue;
               }
             }
           } catch {
             // Ignore URL parsing errors.
+          }
+        } else {
+          // No URL available, use sessionStorage values.
+          for (const param of MARKETING_PARAMS) {
+            const storedValue = storedParams[param];
+            if (storedValue) {
+              event.properties[param] = storedValue;
+            }
           }
         }
 
