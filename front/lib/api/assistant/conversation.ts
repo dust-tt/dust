@@ -512,6 +512,7 @@ export async function postUserMessage(
     context,
     agenticMessageData,
     skipToolsValidation,
+    doNotAssociateUser,
   }: {
     conversation: ConversationType;
     content: string;
@@ -519,6 +520,7 @@ export async function postUserMessage(
     context: UserMessageContext;
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
+    doNotAssociateUser?: boolean;
   }
 ): Promise<
   Result<
@@ -542,6 +544,29 @@ export async function postUserMessage(
         message: "The conversation does not exist.",
       },
     });
+  }
+
+  if (isProjectConversation(conversation)) {
+    // Check if the user is a member of the space.
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Space not found",
+        },
+      });
+    }
+    if (!space.isMember(auth)) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You are not a member of the project.",
+        },
+      });
+    }
   }
 
   // Check plan and rate limit.
@@ -651,7 +676,7 @@ export async function postUserMessage(
       content,
       metadata: {
         type: "create",
-        user: user?.toJSON() ?? null,
+        user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
         rank: nextMessageRank++,
         context,
         agenticMessageData,
