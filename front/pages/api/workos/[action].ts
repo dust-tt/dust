@@ -15,6 +15,7 @@ import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
 import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
@@ -85,9 +86,13 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       ? validatedReturnTo.sanitizedPath
       : null;
 
+    // Extract UTM params from query to preserve through OAuth flow
+    const utmParams = extractUTMParams(req.query);
+
     const state = {
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
+      ...(Object.keys(utmParams).length > 0 ? { utm: utmParams } : {}),
     };
 
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
@@ -309,12 +314,29 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
       ]);
     }
 
+    // Restore UTM params from state to the redirect URL for cross-domain tracking
+    const utmParams: Record<string, string> = stateObj.utm ?? {};
+    const appendUtmToUrl = (url: string): string => {
+      if (Object.keys(utmParams).length === 0) {
+        return url;
+      }
+      const [baseUrl, existingQuery] = url.split("?");
+      const searchParams = new URLSearchParams(existingQuery ?? "");
+      for (const [key, value] of Object.entries(utmParams)) {
+        if (!searchParams.has(key)) {
+          searchParams.set(key, value);
+        }
+      }
+      const queryString = searchParams.toString();
+      return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+    };
+
     if (sanitizedReturnTo) {
-      res.redirect(sanitizedReturnTo);
+      res.redirect(appendUtmToUrl(sanitizedReturnTo));
       return;
     }
 
-    res.redirect("/api/login");
+    res.redirect(appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
     statsDClient.increment("login.callback.error", 1);

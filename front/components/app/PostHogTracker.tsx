@@ -12,6 +12,7 @@ import {
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -111,6 +112,34 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         if (!event) {
           return null;
         }
+
+        // Extract marketing parameters from URL first, then fall back to sessionStorage.
+        const storedParams = getStoredUTMParams();
+        if (event.properties.$current_url) {
+          try {
+            const url = new URL(event.properties.$current_url);
+            for (const param of MARKETING_PARAMS) {
+              const urlValue = url.searchParams.get(param);
+              const storedValue = storedParams[param];
+              if (urlValue) {
+                event.properties[param] = urlValue;
+              } else if (storedValue) {
+                event.properties[param] = storedValue;
+              }
+            }
+          } catch {
+            // Ignore URL parsing errors.
+          }
+        } else {
+          // No URL available, use sessionStorage values.
+          for (const param of MARKETING_PARAMS) {
+            const storedValue = storedParams[param];
+            if (storedValue) {
+              event.properties[param] = storedValue;
+            }
+          }
+        }
+
         // Strip query parameters from URLs for privacy.
         if (event.properties.$current_url) {
           event.properties.$current_url =
