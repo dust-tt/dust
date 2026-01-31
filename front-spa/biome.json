@@ -1,0 +1,95 @@
+{
+  "vcs": {
+    "enabled": true,
+    "clientKind": "git",
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**/*.{js,jsx,ts,tsx}",
+      "!!**/node_modules",
+      "!!**/dist",
+      "!!**/build",
+      "!!**/coverage",
+      "!**/*.css",
+      "!**/*.scss",
+      "!**/*.less",
+      "!**/*.json",
+      "!**/*.md",
+      "!**/*.yml",
+      "!**/*.yaml",
+      "!**/*.sh"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "attributePosition": "auto",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "expand": "auto",
+    "useEditorconfig": true,
+    "includes": ["**", "!**/node_modules", "!**/dist"]
+  },
+  "linter": {
+    "rules": {
+      "recommended": false,
+      "a11y": {
+        "recommended": false
+      },
+      "complexity": {
+        "recommended": false
+      },
+      "correctness": {
+        "recommended": false
+      },
+      "nursery": {
+        "noImportCycles": "error"
+      },
+      "performance": {
+        "recommended": false
+      },
+      "security": {
+        "recommended": false
+      },
+      "style": {
+        "recommended": false
+      },
+      "suspicious": {
+        "recommended": false
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "trailingCommas": "es5",
+      "semicolons": "always",
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "quoteStyle": "double",
+      "attributePosition": "auto",
+      "bracketSpacing": true
+    }
+  },
+  "html": {
+    "formatter": {
+      "indentScriptAndStyle": false,
+      "selfCloseVoidElements": "always"
+    }
+  },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  }
+}
