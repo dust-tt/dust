@@ -29,10 +29,12 @@ export function SpaceConversationListItem({
     .map((m) => m[m.length - 1])
     .find(isUserMessageType);
 
+  // Compute the reply section avatars.
   const avatars = useMemo(() => {
     const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
-    for (const versions of conversation.content) {
+    // Slice to skip the first message as it's not a reply.
+    for (const versions of conversation.content.slice(1)) {
       const message = versions[versions.length - 1];
       if (isUserMessageType(message)) {
         avatars.push({
@@ -49,7 +51,7 @@ export function SpaceConversationListItem({
         });
       }
     }
-    return uniqBy(avatars, "visual").reverse();
+    return uniqBy(avatars.reverse(), "visual");
   }, [conversation.content]);
 
   const countUnreadMessages = useMemo(() => {
@@ -84,7 +86,7 @@ export function SpaceConversationListItem({
   const agentAndUserMessages = conversation.content.filter(
     (versions) => !isContentFragmentType(versions[versions.length - 1])
   );
-  const messageCount = agentAndUserMessages.length;
+  const replyCount = agentAndUserMessages.length - 1;
 
   return (
     <>
@@ -102,12 +104,14 @@ export function SpaceConversationListItem({
         }}
         time={time}
         replySection={
-          <ReplySection
-            totalMessages={messageCount}
-            newMessages={countUnreadMessages}
-            avatars={avatars}
-            lastMessageBy={avatars[avatars.length - 1]?.name ?? "Unknown"}
-          />
+          replyCount > 0 ? (
+            <ReplySection
+              totalMessages={replyCount}
+              newMessages={countUnreadMessages}
+              avatars={avatars}
+              lastMessageBy={avatars[0]?.name ?? "Unknown"}
+            />
+          ) : null
         }
         onClick={async () => {
           await router.push(
