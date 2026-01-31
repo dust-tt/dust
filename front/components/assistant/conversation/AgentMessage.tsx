@@ -36,6 +36,7 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
@@ -187,6 +188,32 @@ export function AgentMessage({
                 authorizationInfo: {
                   ...authError,
                   supported_use_cases: [],
+                },
+                configurationId: eventPayload.data.configurationId,
+                conversationId: eventPayload.data.conversationId,
+                created: eventPayload.data.created,
+                inputs: eventPayload.data.inputs,
+                messageId: eventPayload.data.messageId,
+                metadata: eventPayload.data.metadata,
+                stake: eventPayload.data.stake,
+                userId: eventPayload.data.userId,
+              },
+            });
+            break;
+
+          case "tool_file_auth_required":
+            const { fileAuthError } = eventPayload.data;
+
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                status: "blocked_file_authorization_required",
+                actionId: eventPayload.data.actionId,
+                fileAuthorizationInfo: {
+                  fileId: fileAuthError.fileId,
+                  fileName: fileAuthError.fileName,
+                  connectionId: fileAuthError.connectionId,
+                  mimeType: fileAuthError.mimeType,
                 },
                 configurationId: eventPayload.data.configurationId,
                 conversationId: eventPayload.data.conversationId,
@@ -931,6 +958,22 @@ function AgentMessageContent({
             mcpServerId={blockedAction.metadata.mcpServerId}
             provider={blockedAction.authorizationInfo.provider}
             scope={blockedAction.authorizationInfo.scope}
+            retryHandler={() =>
+              retryHandlerWithResetState({
+                conversationId: blockedAction.conversationId,
+                messageId: blockedAction.messageId,
+              })
+            }
+          />
+        );
+
+      case "blocked_file_authorization_required":
+        return (
+          <GoogleDriveFileAuthorizationRequired
+            triggeringUser={triggeringUser}
+            owner={owner}
+            fileAuthorizationInfo={blockedAction.fileAuthorizationInfo}
+            mcpServerId={blockedAction.metadata.mcpServerId}
             retryHandler={() =>
               retryHandlerWithResetState({
                 conversationId: blockedAction.conversationId,

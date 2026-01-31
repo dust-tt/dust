@@ -3,6 +3,7 @@ import { assertNever, isAgentPauseOutputResourceType } from "@dust-tt/client";
 
 import type {
   ToolEarlyExitEvent,
+  ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import type { Authenticator } from "@app/lib/auth";
@@ -38,6 +39,7 @@ export async function getExitOrPauseEvents(
   (
     | MCPApproveExecutionEvent
     | ToolPersonalAuthRequiredEvent
+    | ToolFileAuthRequiredEvent
     | ToolEarlyExitEvent
   )[]
 > {
@@ -110,6 +112,55 @@ export async function getExitOrPauseEvents(
               ...(scope && {
                 scope,
               }),
+            },
+          },
+        ];
+      }
+      case "tool_file_auth_required": {
+        const { fileId, fileName, connectionId, mimeType_file } =
+          exitOutputItem;
+
+        const fileAuthErrorMessage =
+          `The tool ${action.functionCallName} requires file authorization ` +
+          `for ${fileName}, please authorize the file to continue.`;
+
+        await action.updateStatus("blocked_file_authorization_required");
+
+        // Persisted here so the blocked action can be reconstructed on page reload.
+        await action.updateStepContext({
+          ...action.stepContext,
+          fileAuthorizationInfo: {
+            fileId,
+            fileName,
+            connectionId,
+            mimeType: mimeType_file,
+          },
+        });
+
+        return [
+          {
+            type: "tool_file_auth_required",
+            created: Date.now(),
+            configurationId: agentConfiguration.sId,
+            userId: auth.user()?.sId,
+            messageId: agentMessage.sId,
+            conversationId: conversation.sId,
+            actionId: action.sId,
+            metadata: {
+              toolName: action.toolConfiguration.originalName,
+              mcpServerName: action.toolConfiguration.mcpServerName,
+              agentName: agentConfiguration.name,
+              mcpServerDisplayName: action.toolConfiguration.mcpServerName,
+              mcpServerId: action.toolConfiguration.toolServerId,
+            },
+            inputs: action.augmentedInputs,
+            fileAuthError: {
+              fileId,
+              fileName,
+              connectionId,
+              mimeType: mimeType_file,
+              toolName: action.functionCallName ?? "unknown",
+              message: fileAuthErrorMessage,
             },
           },
         ];

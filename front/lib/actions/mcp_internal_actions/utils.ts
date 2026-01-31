@@ -46,6 +46,36 @@ export function makePersonalAuthenticationError(
   };
 }
 
+export function makeFileAuthorizationError({
+  fileId,
+  fileName,
+  connectionId,
+  mimeType,
+}: {
+  fileId: string;
+  fileName: string;
+  connectionId: string;
+  mimeType: string;
+}) {
+  return {
+    content: [
+      {
+        type: "resource" as const,
+        resource: {
+          mimeType: INTERNAL_MIME_TYPES.TOOL_OUTPUT.AGENT_PAUSE_TOOL_OUTPUT,
+          type: "tool_file_auth_required",
+          fileId,
+          fileName,
+          connectionId,
+          mimeType_file: mimeType,
+          text: `File authorization required for ${fileName}`,
+          uri: "",
+        },
+      },
+    ],
+  };
+}
+
 export function makeMCPToolExit({
   message,
   isError,

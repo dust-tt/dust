@@ -1,6 +1,11 @@
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type {
+  ToolHandlerExtra,
+  ToolHandlerResult,
+  ToolHandlers,
+} from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { makeFileAuthorizationError } from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   getDocsClient,
   getDriveClient,
@@ -17,6 +22,52 @@ import {
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
+/**
+ * Checks if an error is a 404 (file not found / not authorized).
+ * Google returns 404 when user doesn't have access to a file via drive.file scope.
+ */
+function is404Error(err: unknown): boolean {
+  const error = normalizeError(err);
+  return (
+    error.message?.includes("404") ||
+    error.message?.toLowerCase().includes("not found")
+  );
+}
+
+/**
+ * Handles file access errors by triggering the authorization flow for 404s.
+ * Returns file auth error for 404s, generic MCPError otherwise.
+ */
+function handleFileAccessError(
+  err: unknown,
+  fileId: string,
+  extra: ToolHandlerExtra,
+  fileMeta?: { name?: string; mimeType?: string }
+): ToolHandlerResult {
+  if (is404Error(err)) {
+    const connectionId =
+      extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
+      "google_drive";
+
+    return new Ok(
+      makeFileAuthorizationError({
+        fileId,
+        fileName: fileMeta?.name ?? fileId,
+        connectionId,
+        mimeType: fileMeta?.mimeType ?? "unknown",
+      }).content
+    );
+  }
+
+  return new Err(
+    new MCPError(normalizeError(err).message || "Failed to access file")
+  );
+}
+
+/**
+ * Handles permission errors from Google Drive API calls for write operations.
+ * Returns an MCPError with appropriate messaging for 403/permission errors.
+ */
 function handlePermissionError(err: unknown): MCPError {
   const error = normalizeError(err);
   if (
@@ -115,9 +166,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 
   get_file_content: async (
     { fileId, offset = 0, limit = MAX_CONTENT_SIZE },
-    { authInfo }
+    extra
   ) => {
-    const drive = await getDriveClient(authInfo);
+    const drive = await getDriveClient(extra.authInfo);
     if (!drive) {
       return new Err(new MCPError("Failed to authenticate with Google Drive"));
     }
@@ -225,16 +276,12 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(
-        new MCPError(
-          normalizeError(err).message || "Failed to get file content"
-        )
-      );
+      return handleFileAccessError(err, fileId, extra);
     }
   },
 
-  get_spreadsheet: async ({ spreadsheetId }, { authInfo }) => {
-    const sheets = await getSheetsClient(authInfo);
+  get_spreadsheet: async ({ spreadsheetId }, extra) => {
+    const sheets = await getSheetsClient(extra.authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -248,9 +295,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return new Err(
-        new MCPError(normalizeError(err).message || "Failed to get spreadsheet")
-      );
+      return handleFileAccessError(err, spreadsheetId, extra);
     }
   },
 
@@ -261,9 +306,9 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
       majorDimension = "ROWS",
       valueRenderOption = "FORMATTED_VALUE",
     },
-    { authInfo }
+    extra
   ) => {
-    const sheets = await getSheetsClient(authInfo);
+    const sheets = await getSheetsClient(extra.authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -280,11 +325,7 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
         { type: "text" as const, text: JSON.stringify(res.data, null, 2) },
       ]);
     } catch (err) {
-      return new Err(
-        new MCPError(
-          normalizeError(err).message || "Failed to get worksheet data"
-        )
-      );
+      return handleFileAccessError(err, spreadsheetId, extra);
     }
   },
 };

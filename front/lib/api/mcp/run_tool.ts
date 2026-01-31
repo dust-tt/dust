@@ -12,6 +12,7 @@ import {
 import type {
   MCPApproveExecutionEvent,
   ToolEarlyExitEvent,
+  ToolFileAuthRequiredEvent,
   ToolPersonalAuthRequiredEvent,
 } from "@app/lib/actions/mcp_internal_actions/events";
 import { getExitOrPauseEvents } from "@app/lib/actions/mcp_internal_actions/exit_events";
@@ -56,6 +57,7 @@ export async function* runToolWithStreaming(
   | MCPParamsEvent
   | MCPSuccessEvent
   | ToolNotificationEvent
+  | ToolFileAuthRequiredEvent
   | ToolPersonalAuthRequiredEvent
   | ToolEarlyExitEvent,
   void
