@@ -58,7 +58,7 @@ export function PokeRegionProvider({
       if (override && regionUrls?.[override]) {
         return regionUrls[override];
       }
-      return import.meta.env?.VITE_DUST_CLIENT_FACING_URL;
+      return import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "";
     });
 
     return () => setBaseUrlResolver(null);
@@ -74,7 +74,7 @@ export function PokeRegionProvider({
         if (regionUrls?.[region]) {
           return regionUrls[region];
         }
-        return import.meta.env?.VITE_DUST_CLIENT_FACING_URL;
+        return import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "";
       });
 
       void mutate(() => true, undefined, { revalidate: true });
