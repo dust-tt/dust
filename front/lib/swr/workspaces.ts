@@ -326,7 +326,7 @@ export function useWorkspaceSeatsCount({
   };
 }
 
-export function useAuthContext({ disabled }: { disabled?: boolean }) {
+export function useAuthContext({ disabled }: { disabled?: boolean } = {}) {
   const authContextFetcher: Fetcher<GetNoWorkspaceAuthContextResponseType> =
     fetcher;
 
@@ -337,9 +337,8 @@ export function useAuthContext({ disabled }: { disabled?: boolean }) {
   );
 
   return {
-    defaultWorkspaceId: data?.defaultWorkspaceId ?? null,
-    user: data?.user ?? null,
-    region: data?.region ?? null,
+    authContext: data,
+    isAuthenticated: !!data?.user,
     isAuthContextLoading: !error && !data && !disabled,
     isAuthContextError: error,
   };
@@ -362,11 +361,8 @@ export function useWorkspaceAuthContext({
   );
 
   return {
-    owner: data?.workspace ?? null,
-    subscription: data?.subscription ?? null,
-    user: data?.user ?? null,
-    isAdmin: data?.isAdmin ?? false,
-    isBuilder: data?.isBuilder ?? false,
+    authContext: data,
+    isAuthenticated: !!data?.user,
     isAuthContextLoading: !error && !data && !disabled,
     isAuthContextError: error,
   };

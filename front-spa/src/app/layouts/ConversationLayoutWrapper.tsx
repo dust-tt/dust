@@ -9,7 +9,7 @@ import { useAuth, useWorkspace } from "@dust-tt/front/lib/auth/AuthContext";
  */
 export function ConversationLayoutWrapper() {
   const owner = useWorkspace();
-  const { subscription, user, isAdmin, isBuilder, isSuperUser } = useAuth();
+  const { subscription, user, isAdmin, isBuilder } = useAuth();
 
   const pageProps = {
     workspace: owner,
@@ -17,7 +17,6 @@ export function ConversationLayoutWrapper() {
     user,
     isAdmin,
     isBuilder,
-    isSuperUser,
   };
 
   return (
