@@ -1457,11 +1457,37 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(this.canWrite(auth), "User is not authorized to archive this skill");
 
-    // We preserve AgentSkillModel and ConversationSkillModel relationships
-    // so they can be restored when the skill is unarchived.
-    const [affectedCount] = await this.update({ status: "archived" });
+    const workspace = auth.getNonNullableWorkspace();
 
-    return { affectedCount };
+    return withTransaction(async (transaction) => {
+      // Rename any existing archived skill with the same name to avoid unique constraint violation.
+      const existingArchivedSkill = await this.model.findOne({
+        where: {
+          workspaceId: workspace.id,
+          name: this.name,
+          status: "archived",
+        },
+        transaction,
+      });
+
+      if (existingArchivedSkill) {
+        const { updatedAt: d } = existingArchivedSkill;
+        const timestamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        await existingArchivedSkill.update(
+          { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
+          { transaction }
+        );
+      }
+
+      // We preserve AgentSkillModel and ConversationSkillModel relationships
+      // so they can be restored when the skill is unarchived.
+      const [affectedCount] = await this.update(
+        { status: "archived" },
+        transaction
+      );
+
+      return { affectedCount };
+    });
   }
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
