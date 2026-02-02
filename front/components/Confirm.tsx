@@ -60,9 +60,11 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setIsDialogOpen(confirmData != null);
   }, [confirmData]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // To avoid content flickering, we clear out the current validation when closing animation ends
   // instead of right after clicking on one of the buttons.

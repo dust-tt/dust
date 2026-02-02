@@ -232,6 +232,7 @@ export default function AgentBuilder({
     },
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     const currentValues = form.getValues();
 
@@ -275,6 +276,7 @@ export default function AgentBuilder({
     agentConfiguration,
     agentSlackChannels,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const { showDialog, ...dialogProps } = useAwaitableDialog({
     owner,
@@ -284,6 +286,7 @@ export default function AgentBuilder({
     mcpServerViews,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     const createdParam = router.query.showCreatedDialog;
     const shouldOpenDialog =
@@ -298,8 +301,10 @@ export default function AgentBuilder({
     setIsCreatedDialogOpen(true);
     void removeParamFromRouter(router, "showCreatedDialog");
   }, [agentConfiguration, router, router.query.showCreatedDialog]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   // Create pending agent on mount for NEW agents only
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     // Only create pending agent for new agents (not editing or duplicating)
     if (agentConfiguration || duplicateAgentId || pendingAgentId) {
@@ -330,6 +335,7 @@ export default function AgentBuilder({
     };
     void createPendingAgent();
   }, [agentConfiguration, duplicateAgentId, owner.sId, pendingAgentId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-event-handler */
 
   const handleSubmit = async (formData: AgentBuilderFormData) => {
     try {

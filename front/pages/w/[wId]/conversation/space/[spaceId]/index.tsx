@@ -88,6 +88,7 @@ function SpaceConversationsPage() {
   const [currentTab, setCurrentTab] = useState<SpaceTab>(getCurrentTabFromHash);
 
   // Sync current tab with URL hash
+  /* eslint-disable react-you-might-not-need-an-effect/no-initialize-state */
   React.useEffect(() => {
     const updateTabFromHash = () => {
       const newTab = getCurrentTabFromHash();
@@ -111,6 +112,7 @@ function SpaceConversationsPage() {
     return () => window.removeEventListener("hashchange", updateTabFromHash);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount and cleanup on unmount
+  /* eslint-enable react-you-might-not-need-an-effect/no-initialize-state */
 
   const handleTabChange = useCallback((tab: SpaceTab) => {
     // Use replaceState to avoid adding to browser history for each tab switch

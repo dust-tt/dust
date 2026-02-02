@@ -115,18 +115,22 @@ export function CreateMCPServerDialog({
   const { createInternalMCPServer } = useCreateInternalMCPServer(owner);
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (isOpen) {
       form.reset(defaultValues);
     }
   }, [defaultValues, form, isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   // Initialize authorization from internalMCPServer when dialog opens.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (internalMCPServer && isOpen) {
       setAuthorization(internalMCPServer.authorization);
     }
   }, [internalMCPServer, isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const resetState = () => {
     setIsLoading(false);

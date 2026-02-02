@@ -33,11 +33,13 @@ export function MultiDomainAutoJoinModal({
   >({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (isOpen) {
       setDomainOverrides({});
     }
   }, [isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const hasChanges = workspaceVerifiedDomains.some((d) => {
     const desiredValue = domainOverrides[d.domain];

@@ -84,6 +84,7 @@ export function WebhookSourceSheet({
   // debounce when closing to avoid messing up the closing animation.
   // 300ms is vibe based.
   const [debouncedOpen, setDebouncedOpen] = useState(() => open);
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (open) {
       setDebouncedOpen(true);
@@ -94,6 +95,7 @@ export function WebhookSourceSheet({
       return () => clearTimeout(timeout);
     }
   }, [open]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleOpenChange = useCallback(async () => {
     if (isDirty) {
@@ -168,6 +170,7 @@ function WebhookSourceSheetContent({
   const { deleteWebhookSource, isDeleting } = useDeleteWebhookSource({ owner });
   const createWebhookSource = useCreateWebhookSource({ owner });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (mode) {
       setCurrentPageId(mode.type);
@@ -176,6 +179,7 @@ function WebhookSourceSheetContent({
       }
     }
   }, [mode]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const webhookSource = mode?.type === "edit" ? mode.webhookSource : null;
   const systemView = webhookSource?.systemView ?? null;
@@ -209,9 +213,11 @@ function WebhookSourceSheetContent({
     defaultValues: createFormDefaultValues,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     setIsDirty(createForm.formState.isDirty);
   }, [createForm.formState.isDirty, setIsDirty]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   // Edit form
   const editDefaults = useMemo<WebhookSourceFormValues | null>(() => {
@@ -232,15 +238,19 @@ function WebhookSourceSheetContent({
     resolver: zodResolver(getWebhookSourceFormSchema()),
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (editDefaults) {
       editForm.reset(editDefaults);
     }
   }, [editDefaults, editForm]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     setIsDirty(editForm.formState.isDirty);
   }, [editForm.formState.isDirty, setIsDirty]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const onCreateSubmit = useCallback(
     async (

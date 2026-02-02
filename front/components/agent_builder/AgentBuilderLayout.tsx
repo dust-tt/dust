@@ -31,10 +31,11 @@ export function AgentBuilderLayout({
   const [isResizing, setIsResizing] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-initialize-state */
   useEffect(() => {
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
     setLoaded(true);
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-initialize-state */
 
   useEffect(() => {
     if (previewPanelRef.current) {

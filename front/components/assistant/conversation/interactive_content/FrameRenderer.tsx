@@ -277,6 +277,7 @@ export function FrameRenderer({
     });
   };
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!panel) {
       return;
@@ -299,8 +300,10 @@ export function FrameRenderer({
     setIsNavigationBarOpen,
     restoreLayout,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // ESC key event listener to exit full screen mode
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && isFullScreen) {
@@ -313,6 +316,7 @@ export function FrameRenderer({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isFullScreen, exitFullScreen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   if (error) {
     return (

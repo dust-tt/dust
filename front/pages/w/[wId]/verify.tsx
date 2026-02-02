@@ -89,11 +89,13 @@ export default function Verify({
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (step === "code") {
       inputRefs.current[0]?.focus();
     }
   }, [step]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const handleSendCode = async () => {
     setPhoneError(null);

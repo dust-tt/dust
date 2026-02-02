@@ -11,6 +11,7 @@ export function useDatadogLogs() {
   const router = useAppRouter();
   const { wId } = router.query;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (userId) {
       datadogLogs.setUser({
@@ -24,7 +25,9 @@ export function useDatadogLogs() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (wId && !Array.isArray(wId)) {
       datadogLogs.setGlobalContext({
@@ -42,4 +45,5 @@ export function useDatadogLogs() {
       });
     }
   }, [wId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 }

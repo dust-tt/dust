@@ -111,12 +111,14 @@ export function ProviderManagementModal({
     return states;
   }, [workspace]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (open) {
       setProviderStates(initialProviderStates);
       setDefaultEmbeddingProvider(workspace?.defaultEmbeddingProvider ?? null);
     }
   }, [open, initialProviderStates, workspace?.defaultEmbeddingProvider]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-derived-state */
 
   const allToggleEnabled = useMemo(
     () => Object.values(providerStates).every(Boolean),

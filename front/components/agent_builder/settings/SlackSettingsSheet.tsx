@@ -214,6 +214,7 @@ export function SlackSettingsSheet({
     name: "agentSettings.slackChannels",
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setLocalSlackChannels([...(slackChannels || [])]);
     const currentAutoRespondWithoutMention =
@@ -221,7 +222,9 @@ export function SlackSettingsSheet({
       (slackChannels || [])[0]?.autoRespondWithoutMention || false;
     setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
   }, [slackChannels]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setLocalSlackChannels([...(slackChannels || [])]);
@@ -231,6 +234,7 @@ export function SlackSettingsSheet({
       setAutoRespondWithoutMentionEnabled(currentAutoRespondWithoutMention);
     }
   }, [isOpen, slackChannels]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleSelectionChange = (channels: SlackChannel[]) => {
     setLocalSlackChannels(channels);

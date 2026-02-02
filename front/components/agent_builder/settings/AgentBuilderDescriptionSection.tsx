@@ -82,6 +82,7 @@ export function AgentBuilderDescriptionSection({
     setIsGenerating(false);
   }, [instructions, isGenerating, name, owner, sendNotification, setValue]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const onInstructionsBlur = () => {
       if (isCreatingNew && !userSetDescriptionRef.current) {
@@ -98,6 +99,7 @@ export function AgentBuilderDescriptionSection({
       }
     };
   }, [handleGenerateDescription, isCreatingNew]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <BaseFormFieldSection

@@ -77,6 +77,7 @@ export function DustAppSection() {
     space: selectedSpace,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const configuredAppId = field.value?.appId;
     if (!configuredAppId || isAppsLoading) {
@@ -94,6 +95,7 @@ export function DustAppSection() {
       }
     }
   }, [field.value?.appId, apps, isAppsLoading, selectedSpace, spaces]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const availableApps = useMemo(
     () =>

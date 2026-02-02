@@ -17,6 +17,7 @@ export function useNavigationLock(
   const confirm = useContext(ConfirmContext);
   const isNavigatingAway = React.useRef<boolean>(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const handleWindowClose = (e: BeforeUnloadEvent) => {
       if (!isEnabled) {
@@ -69,4 +70,5 @@ export function useNavigationLock(
       router.events.off("routeChangeStart", handleBrowseAway);
     };
   }, [isEnabled, warningData, confirm, router]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 }

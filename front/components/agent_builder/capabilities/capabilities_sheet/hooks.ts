@@ -44,10 +44,12 @@ export const useSkillSpaceSelection = () => {
     setLocalSelectedSpaces(agentBuilderFormAdditionalSpaces);
   }, [agentBuilderFormAdditionalSpaces]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // When agent builder form spaces change, make sure local state is updated
     resetLocalState();
   }, [agentBuilderFormAdditionalSpaces, resetLocalState]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return {
     localSelectedSpaces,

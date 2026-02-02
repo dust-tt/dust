@@ -104,6 +104,7 @@ export const InputBar = React.memo(function InputBar({
     shouldUseDraft,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (droppedFiles.length > 0) {
       // Handle the dropped files.
@@ -113,6 +114,7 @@ export const InputBar = React.memo(function InputBar({
       setDroppedFiles([]);
     }
   }, [droppedFiles, setDroppedFiles, fileUploaderService]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const [isAnimating, setIsAnimating] = useState<boolean>(false);
   const { animate, setAnimate, getAndClearSelectedAgent } =
@@ -122,6 +124,7 @@ export const InputBar = React.memo(function InputBar({
     () => getAndClearSelectedAgent(),
     [getAndClearSelectedAgent]
   );
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (animate && !isAnimating) {
       setAnimate(false);
@@ -140,8 +143,10 @@ export const InputBar = React.memo(function InputBar({
       }, 700);
     }
   }, [animate, isAnimating, setAnimate]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Cleanup timeout on component unmount.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       if (animationTimeoutRef.current) {
@@ -149,6 +154,7 @@ export const InputBar = React.memo(function InputBar({
       }
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Tools selection
 
@@ -164,9 +170,11 @@ export const InputBar = React.memo(function InputBar({
   });
 
   // The truth is in the conversationTools, we need to update the selectedMCPServerViewIds when the conversationTools change.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setSelectedMCPServerViews(conversationTools);
   }, [conversationTools]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const { addTool, deleteTool } = useAddDeleteConversationTool({
     conversationId: conversation?.sId,
@@ -179,9 +187,11 @@ export const InputBar = React.memo(function InputBar({
   });
 
   // The truth is in the conversationSkills, we need to update the selectedSkills when the conversationSkills change.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setSelectedSkills(conversationSkills);
   }, [conversationSkills]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // JIT skills apply to all agents in the conversation, so we pass null for agentConfigurationId
   const { addSkill, deleteSkill } = useAddDeleteConversationSkill({
@@ -322,9 +332,11 @@ export const InputBar = React.memo(function InputBar({
     setAttachedNodes((prev) => prev.filter((n) => !isEqualNode(n, node)));
   };
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setIsLocalSubmitting(isSubmitting);
   }, [isSubmitting]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <div className="flex w-full flex-col">

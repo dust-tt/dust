@@ -114,11 +114,13 @@ export function ShareFramePopover({
     });
 
   // Sync selectedScope with current fileShare data.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   React.useEffect(() => {
     if (!isFileShareLoading && !isFileShareError && fileShare) {
       setSelectedScope(fileShare.scope);
     }
   }, [fileShare, isFileShareLoading, isFileShareError]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleChangeFileShare = async (shareScope: FileShareScope) => {
     setIsUpdatingShare(true);

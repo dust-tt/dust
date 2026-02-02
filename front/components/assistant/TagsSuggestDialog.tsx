@@ -69,6 +69,7 @@ export const TagsSuggestDialog = ({
     });
   };
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isSuggestionsError) {
       sendNotification({
@@ -81,7 +82,9 @@ export const TagsSuggestDialog = ({
       setIsOpen(false);
     }
   }, [isSuggestionsError, sendNotification, setIsOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setAppliedSuggestion(
       suggestions.reduce(
@@ -93,6 +96,7 @@ export const TagsSuggestDialog = ({
       )
     );
   }, [suggestions]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>

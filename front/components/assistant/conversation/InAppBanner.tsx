@@ -267,12 +267,14 @@ function useHover(): [(node: HTMLElement | null) => void, boolean] {
   }, []);
 
   // Cleanup debounced function on unmount
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const debouncedFn = debouncedHandleMouseLeaveRef.current;
     return () => {
       debouncedFn.cancel();
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const customRef = useCallback(
     (node: HTMLElement | null) => {

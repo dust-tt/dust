@@ -6,11 +6,13 @@ export function useURLSheet(paramName: string) {
   const router = useAppRouter();
   const [isOpen, setIsOpen] = useState(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (router.isReady) {
       setIsOpen(router.query[paramName] === "true");
     }
   }, [router.isReady, paramName, router.query]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const onOpenChange = useCallback(
     (open: boolean) => {

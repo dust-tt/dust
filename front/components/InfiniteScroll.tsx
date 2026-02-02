@@ -25,11 +25,13 @@ export const InfiniteScroll = ({
 }: InfiniteScrollProps) => {
   const { ref, inView } = useInView(options);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (inView && hasMore) {
       void nextPage();
     }
   }, [inView, hasMore, nextPage]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <>

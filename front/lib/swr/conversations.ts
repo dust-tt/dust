@@ -937,6 +937,7 @@ export const useConversationParticipationOptions = ({
   });
   const [options, setOptions] = useState<ConversationParticipationOption[]>([]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (conversationParticipants === undefined) {
       setOptions([]);
@@ -967,6 +968,7 @@ export const useConversationParticipationOptions = ({
       setOptions(["join"]);
     }
   }, [conversationParticipants, userId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   return options;
 };

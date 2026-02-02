@@ -19,6 +19,7 @@ export function useQueryParams<T extends string[]>(
   const router = useAppRouter();
   const [values, setValues] = useState<Record<string, string | undefined>>({});
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (router.isReady) {
       const newValues = paramNames.reduce<Record<string, string | undefined>>(
@@ -35,6 +36,7 @@ export function useQueryParams<T extends string[]>(
       }
     }
   }, [router.isReady, paramNames, router.query, values]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
 
   const setParams = useCallback(
     (updates: Partial<Record<T[number], string | undefined>>) => {

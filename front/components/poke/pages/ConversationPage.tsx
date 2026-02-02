@@ -340,6 +340,7 @@ export function ConversationPage() {
   const [showRenderControls, setShowRenderControls] = useState(false);
   const [isCopiedJSON, copyJSON] = useCopyToClipboard();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
   useEffect(() => {
     if (!selectedAgentId) {
       if (defaultAgentId) {
@@ -347,6 +348,7 @@ export function ConversationPage() {
       }
     }
   }, [defaultAgentId, selectedAgentId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
 
   async function handleRenderConversation() {
     if (!selectedAgentId) {

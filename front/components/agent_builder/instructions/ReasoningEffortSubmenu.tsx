@@ -42,6 +42,7 @@ export function ReasoningEffortSubmenu() {
     providerId: modelSettings.providerId,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (modelConfig) {
       const currentEffort = field.value;
@@ -55,6 +56,7 @@ export function ReasoningEffortSubmenu() {
       }
     }
   }, [modelConfig, field]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   if (!modelConfig) {
     return null;

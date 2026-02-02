@@ -47,11 +47,13 @@ export const AddToolsMenu = ({
   const [portalContainer, setPortalContainer] = useState<
     HTMLElement | undefined
   >(undefined);
+  /* eslint-disable react-you-might-not-need-an-effect/no-initialize-state */
   useEffect(() => {
     if (typeof document !== "undefined") {
       setPortalContainer(document.body);
     }
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-initialize-state */
 
   return (
     <DropdownMenu modal={false}>

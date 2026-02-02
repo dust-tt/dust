@@ -313,6 +313,7 @@ export const SpaceResourcesList = ({
   const isFolder = category === "folder";
   const isWebsiteOrFolder = isWebsiteOrFolderCategory(category);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!router.isReady || !isWebsite) {
       return;
@@ -325,7 +326,9 @@ export const SpaceResourcesList = ({
     setShowFolderOrWebsiteModal(true);
     void removeParamFromRouter(router, "modal");
   }, [isWebsite, router.isReady, router.query.modal, router]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!router.isReady || !isManagedCategory || isSystemSpace) {
       return;
@@ -344,6 +347,7 @@ export const SpaceResourcesList = ({
     router.query.modal,
     router,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",
@@ -452,6 +456,7 @@ export const SpaceResourcesList = ({
   ]);
 
   // Capture configureConnection=slack query param and store intent to open modal.
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!router.isReady || !isManagedCategory || !isSystemSpace) {
       return;
@@ -463,8 +468,10 @@ export const SpaceResourcesList = ({
     setShouldOpenSlackEditionModal(true);
     void removeParamFromRouter(router, "configureConnection");
   }, [isManagedCategory, isSystemSpace, router]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   // Open Slack connector edition modal once data is loaded.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!shouldOpenSlackEditionModal || !spaceDataSourceViews?.length) {
       return;
@@ -478,6 +485,7 @@ export const SpaceResourcesList = ({
       setShowConnectorPermissionsModal(true);
     }
   }, [shouldOpenSlackEditionModal, spaceDataSourceViews]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   // Disable the search if there are no rows.
   useEffect(() => {

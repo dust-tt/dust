@@ -90,6 +90,7 @@ export function BlockedActionsProvider({
   );
   const pulseTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (conversationId) {
       setBlockedActionsQueue(
@@ -108,6 +109,7 @@ export function BlockedActionsProvider({
       setBlockedActionsQueue(EMPTY_BLOCKED_ACTIONS_QUEUE);
     }
   }, [conversationId, blockedActions]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const enqueueBlockedAction = useCallback(
     ({
@@ -264,12 +266,14 @@ export function BlockedActionsProvider({
   );
 
   // Cleanup all timers on unmount
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       pulseTimersRef.current.forEach((timer) => clearTimeout(timer));
       pulseTimersRef.current.clear();
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <BlockedActionsContext.Provider

@@ -44,9 +44,11 @@ export function WorkspaceNameEditor({ owner }: { owner: WorkspaceType }) {
     return valid;
   }, [owner.name, workspaceName]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-live-state-to-parent */
   useEffect(() => {
     setDisabled(!formValidation());
   }, [workspaceName, formValidation]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-live-state-to-parent */
 
   const handleUpdateWorkspace = async () => {
     setUpdating(true);

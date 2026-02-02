@@ -70,6 +70,7 @@ function AgentActionsPanelContent({
       useFullChainOfThought: true,
     });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       fullAgentMessage.type !== "agent_message" ||
@@ -85,6 +86,7 @@ function AgentActionsPanelContent({
       void mutateSkills();
     }
   }, [fullAgentMessage, isFreshMountWithContent, mutateSkills]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const steps =
     fullAgentMessage?.type === "agent_message"
@@ -109,6 +111,7 @@ function AgentActionsPanelContent({
     content: "",
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (messageStreamState.message?.chainOfThought) {
       lastChainOfThoughtRef.current = {
@@ -117,7 +120,9 @@ function AgentActionsPanelContent({
       };
     }
   }, [messageStreamState.message?.chainOfThought, currentStreamingStep]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!shouldStream) {
       return;
@@ -135,6 +140,7 @@ function AgentActionsPanelContent({
       });
     }
   }, [fullAgentMessage, messageStreamState, shouldStream]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -291,6 +297,7 @@ export function AgentActionsPanel({
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
@@ -299,12 +306,15 @@ export function AgentActionsPanel({
       });
     }
   }, [fullAgentMessage]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!messageId) {
       onPanelClosed();
     }
   }, [messageId, onPanelClosed]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   if (isMessageLoading) {
     return (

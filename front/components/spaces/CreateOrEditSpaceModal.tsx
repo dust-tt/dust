@@ -72,11 +72,13 @@ export function CreateOrEditSpaceModal({
   const planAllowsSCIM = plan.limits.users.isSCIMAllowed;
   const { user } = useUser();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!planAllowsSCIM) {
       setManagementType("manual");
     }
   }, [planAllowsSCIM]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const doCreate = useCreateSpace({ owner });
   const doUpdate = useUpdateSpace({ owner });
@@ -96,6 +98,7 @@ export function CreateOrEditSpaceModal({
     disabled: !planAllowsSCIM,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (isOpen) {
       const spaceMembers = spaceInfo?.members ?? null;
@@ -153,6 +156,7 @@ export function CreateOrEditSpaceModal({
     user,
     space,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const handleClose = useCallback(() => {
     // Call the original onClose function.

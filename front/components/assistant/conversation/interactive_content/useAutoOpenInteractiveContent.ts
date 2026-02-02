@@ -65,6 +65,7 @@ export function useAutoOpenInteractiveContent({
     [agentMessage.generatedFiles]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   React.useEffect(() => {
     // Handle progress notifications - always open drawer (supports generated->progress refresh).
     if (interactiveFilesFromProgress.length > 0) {
@@ -99,11 +100,14 @@ export function useAutoOpenInteractiveContent({
     isLastMessage,
     openPanel,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Reset tracking when message changes.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   React.useEffect(() => {
     lastOpenedFileIdRef.current = null;
   }, [agentMessage.sId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return {
     interactiveFiles: completedInteractiveFiles,

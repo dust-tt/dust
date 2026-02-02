@@ -26,10 +26,13 @@ export default function ConversationSidePanelContainer({
 
   const isMobile = useIsMobile();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setPanelRef(panelRef.current);
   }, [setPanelRef]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!currentPanel || !panelRef.current) {
       return;
@@ -37,6 +40,7 @@ export default function ConversationSidePanelContainer({
 
     panelRef.current?.expand(DEFAULT_RIGHT_PANEL_SIZE);
   }, [currentPanel]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <>

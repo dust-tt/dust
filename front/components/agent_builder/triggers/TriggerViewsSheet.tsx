@@ -208,6 +208,7 @@ export function TriggerViewsSheet({
   }, []);
 
   // Jumping to the correct page directly in the edit.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     form.reset(defaultValues);
     if (mode?.type === "edit") {
@@ -223,12 +224,15 @@ export function TriggerViewsSheet({
     }
     setCurrentPageId(TRIGGERS_SHEET_PAGE_IDS.SELECTION);
   }, [defaultValues, form, mode]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (mode) {
       setOpen(true);
     }
   }, [mode]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   let scheduleTitle;
   if (editTrigger) {

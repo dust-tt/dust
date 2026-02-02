@@ -113,6 +113,7 @@ export function ConnectMCPServerDialog({
     }, [mcpServerView]);
 
   // Discover OAuth metadata for remote MCP servers.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     const discoverOAuth = async () => {
       if (isOpen && mcpServerView) {
@@ -169,6 +170,7 @@ export function ConnectMCPServerDialog({
     form,
     sendNotification,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const resetState = () => {
     setExternalIsLoading(false);

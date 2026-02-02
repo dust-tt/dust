@@ -96,6 +96,7 @@ export function AgentBuilderAvatarSection({
     field.onChange(avatarUrl);
   }, [field, instructions, owner]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const onInstructionsBlur = () => {
       if (
@@ -114,6 +115,7 @@ export function AgentBuilderAvatarSection({
       }
     };
   }, [instructions, updateEmojiFromSuggestions, isCreatingNew]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <>

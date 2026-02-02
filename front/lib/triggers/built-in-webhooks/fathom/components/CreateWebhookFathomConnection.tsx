@@ -48,6 +48,7 @@ export function CreateWebhookFathomConnection({
     includeActionItems ||
     includeCrmMatches;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     const isReady = !!(
       connectionId &&
@@ -82,6 +83,7 @@ export function CreateWebhookFathomConnection({
     onDataToCreateWebhookChange,
     onReadyToSubmitChange,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const handleRecordingTypeToggle = (value: TriggeredFor) => {
     setSelectedRecordingTypes((prev) =>

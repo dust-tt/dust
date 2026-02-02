@@ -34,6 +34,7 @@ export const SpacesProvider = ({ owner, children }: SpacesProviderProps) => {
     workspaceId: owner.sId,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isSpacesError) {
       sendNotification({
@@ -43,6 +44,7 @@ export const SpacesProvider = ({ owner, children }: SpacesProviderProps) => {
       });
     }
   }, [isSpacesError, sendNotification]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const value: SpacesContextType = useMemo(
     () => ({

@@ -114,6 +114,7 @@ function useVisualizationDataHandler({
     [visualization.identifier]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const listener = async (event: MessageEvent) => {
       const { data } = event;
@@ -199,6 +200,7 @@ function useVisualizationDataHandler({
     vizIframeRef,
     sendNotification,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 }
 
 export function CodeDrawer({

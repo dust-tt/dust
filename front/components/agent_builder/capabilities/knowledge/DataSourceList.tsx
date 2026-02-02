@@ -106,6 +106,7 @@ export function DataSourceList({
   }, [hasMore, isLoading, onLoadMore]);
 
   // Infinite scroll implementation
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !hasMore || isLoading || !onLoadMore) {
@@ -123,6 +124,7 @@ export function DataSourceList({
     container.addEventListener("scroll", handleScroll);
     return () => container.removeEventListener("scroll", handleScroll);
   }, [hasMore, isLoading, onLoadMore, handleLoadMore]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const shouldHideCheckbox = useCallback(
     (item: DataSourceListItem): boolean => {

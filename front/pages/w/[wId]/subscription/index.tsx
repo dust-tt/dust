@@ -81,6 +81,7 @@ function Subscription() {
   const isLoading =
     isTrialInfoLoading || isSeatsCountLoading || isPerSeatPricingLoading;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-initialize-state */
   useEffect(() => {
     if (router.query.type === "succeeded") {
       if (subscription.plan.code === router.query.plan_code) {
@@ -107,6 +108,7 @@ function Subscription() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Intentionally passing an empty dependency array to execute only once
+  /* eslint-enable react-you-might-not-need-an-effect/no-initialize-state */
 
   const { submit: handleSubscribePlan, isSubmitting: isSubscribingPlan } =
     useSubmitFunction(async () => {

@@ -106,6 +106,7 @@ export default function TablePicker({
     disabled: !currentTableId,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (tables && !isTablesLoading) {
       setallTablesMap((prevTablesMap) => {
@@ -124,12 +125,15 @@ export default function TablePicker({
       });
     }
   }, [tables, isTablesLoading, pageIndex]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!isTableLoading && !isTableError) {
       setCurrentTable(table);
     }
   }, [isTableError, isTableLoading, table]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const showTableLoaders = isTablesLoading || isDebouncing;
 

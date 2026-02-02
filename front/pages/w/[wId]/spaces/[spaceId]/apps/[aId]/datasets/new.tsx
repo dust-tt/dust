@@ -75,6 +75,7 @@ export default function NewDatasetView({
   // "You have unsaved changes" dialog, we need to set editorDirty to false and then do the router
   // redirect in the next render cycle. We use the isFinishedEditing state variable to tell us when
   // this should happen.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (isFinishedEditing) {
       void router.push(
@@ -83,6 +84,7 @@ export default function NewDatasetView({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFinishedEditing]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const onUpdate = (
     initializing: boolean,

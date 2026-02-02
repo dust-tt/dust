@@ -40,6 +40,7 @@ export const PreviewPanelProvider = ({
     return window.innerWidth >= 1024;
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const mediaQuery = window.matchMedia("(min-width: 1024px)");
 
@@ -53,6 +54,7 @@ export const PreviewPanelProvider = ({
       mediaQuery.removeEventListener("change", handleMediaChange);
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const value: PreviewPanelContextType = useMemo(
     () => ({

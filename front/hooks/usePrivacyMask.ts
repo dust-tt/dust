@@ -28,9 +28,11 @@ export function usePrivacyMask() {
   }, []);
 
   // Initialize state from localStorage on mount.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setIsEnabled(getPrivacyMaskState());
   }, [getPrivacyMaskState]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Toggle privacy mask state.
   const toggle = useCallback(() => {

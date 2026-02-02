@@ -49,9 +49,11 @@ export function useCopilotMCPServer({
   const suggestionsContextRef = useRef(suggestionsContext);
 
   // Update ref in effect to avoid updating during render.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     suggestionsContextRef.current = suggestionsContext;
   }, [suggestionsContext]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Create a stable callback for getting the current form values.
   // This is used by the MCP tool handler.
@@ -67,6 +69,7 @@ export function useCopilotMCPServer({
     [setValue]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // Don't initialize if the feature is disabled.
     if (!enabled) {
@@ -173,6 +176,7 @@ export function useCopilotMCPServer({
       setIsConnected(false);
     };
   }, [enabled, owner.sId, getFormValues, setInstructions]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return {
     serverId,

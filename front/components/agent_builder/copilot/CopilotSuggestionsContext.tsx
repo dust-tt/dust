@@ -115,6 +115,7 @@ export const CopilotSuggestionsProvider = ({
   }, []);
 
   // Apply backend suggestions when editor is ready and suggestions are loaded.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const editor = editorRef.current;
 
@@ -161,6 +162,7 @@ export const CopilotSuggestionsProvider = ({
       }
     }
   }, [backendSuggestions, isSuggestionsLoading, isEditorReady]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const addSuggestion = useCallback(
     (

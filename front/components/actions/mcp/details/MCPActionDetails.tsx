@@ -151,6 +151,7 @@ export function MCPActionDetails({
 
   const [output, setOutput] = useState(baseOutput);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (status === "denied") {
       const deniedMessage = {
@@ -167,6 +168,7 @@ export function MCPActionDetails({
       setOutput(baseOutput);
     }
   }, [status, baseOutput]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
 
   const toolOutputDetailsProps: ToolExecutionDetailsProps = {
     lastNotification,

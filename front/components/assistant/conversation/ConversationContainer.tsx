@@ -149,9 +149,11 @@ export function ConversationContainerVirtuoso({
   );
 
   const [greeting, setGreeting] = useState<string>("");
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setGreeting(getRandomGreetingForName(user.firstName));
   }, [user]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const { startConversationRef } = useWelcomeTourGuide();
 

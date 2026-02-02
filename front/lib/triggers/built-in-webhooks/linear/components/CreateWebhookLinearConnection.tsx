@@ -51,6 +51,7 @@ export function CreateWebhookLinearConnection({
     return { linearTeams, teamsInDropdown };
   }, [linearData, debouncedTeamSearchQuery, selectedTeams]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     const isReady = !!(connectionId && selectedTeams.length > 0);
 
@@ -74,6 +75,7 @@ export function CreateWebhookLinearConnection({
     onDataToCreateWebhookChange,
     onReadyToSubmitChange,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const handleAddTeam = (team: LinearTeam) => {
     if (!selectedTeams.some((t) => t.id === team.id)) {

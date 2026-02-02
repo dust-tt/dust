@@ -84,9 +84,11 @@ export function MCPServerDetails({
   });
 
   // Reset form when defaults change (e.g., when switching between servers)
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     form.reset(defaults);
   }, [defaults, form]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const applyToolChanges = async (
     toolChanges: Array<{

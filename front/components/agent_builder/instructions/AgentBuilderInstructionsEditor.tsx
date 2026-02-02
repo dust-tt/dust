@@ -244,6 +244,7 @@ export function AgentBuilderInstructionsEditor({
   // Set initial content after editor is created, then focus
   // This is separated from useEditor() to avoid Safari race conditions
   // Only runs once when editor is first created
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!editor || editor.isDestroyed || initialContentSetRef.current) {
       return;
@@ -283,18 +284,22 @@ export function AgentBuilderInstructionsEditor({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editor]); // Only run when editor is created, not when field.value changes
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
     };
   }, [debouncedUpdate]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const currentCharacterCount =
     editor?.storage.characterCount.characters() ?? 0;
   const displayError =
     currentCharacterCount >= INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!editor) {
       return;
@@ -312,7 +317,9 @@ export function AgentBuilderInstructionsEditor({
       },
     });
   }, [editor, displayError]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       !editor ||
@@ -339,7 +346,9 @@ export function AgentBuilderInstructionsEditor({
       });
     }
   }, [editor, field.value]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!editor || editor.isDestroyed) {
       return;
@@ -362,6 +371,7 @@ export function AgentBuilderInstructionsEditor({
       }
     }
   }, [isInstructionDiffMode, compareVersion, editor]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <div className="flex h-full flex-col gap-1">

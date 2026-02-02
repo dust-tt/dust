@@ -171,6 +171,7 @@ export function CapabilitiesPicker({
   );
 
   // Fallback: add server to conversation when it appears in serverViews.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (pendingServerToAdd) {
       const newServerView = serverViews.find(
@@ -194,6 +195,7 @@ export function CapabilitiesPicker({
       }
     }
   }, [serverViews, pendingServerToAdd, onSelect]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const { filteredServerViews, filteredServerViewsUnselected } = useMemo(() => {
     const filteredServerViews = serverViews.filter(

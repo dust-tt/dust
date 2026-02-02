@@ -7,6 +7,7 @@ export const useNovuClient = () => {
   const { user } = useUser();
   const [novuClient, setNovuClient] = useState<Novu | null>(null);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (user?.subscriberHash && user?.sId) {
       if (!process.env.NEXT_PUBLIC_NOVU_APPLICATION_IDENTIFIER) {
@@ -31,6 +32,7 @@ export const useNovuClient = () => {
       setNovuClient(new Novu(config));
     }
   }, [user?.subscriberHash, user?.sId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return { novuClient };
 };

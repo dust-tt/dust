@@ -111,9 +111,11 @@ const CommandDialog = ({
   }, [open, onOpenChange, selectedIndex]);
 
   // Reset selection when dialog opens/closes.
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   React.useEffect(() => {
     setSelectedIndex(0);
   }, [open]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   return (
     <CommandContext.Provider value={commandContext}>

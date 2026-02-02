@@ -246,9 +246,11 @@ function WorkspaceMembersList({
     groupKind: isProvisioningEnabled ? "provisioned" : undefined,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setPagination({ pageIndex: 0, pageSize: DEFAULT_PAGE_SIZE });
   }, [setPagination]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const resetSelectedMember = useCallback(() => {
     setSelectedMember(null);

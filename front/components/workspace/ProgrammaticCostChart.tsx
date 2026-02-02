@@ -318,6 +318,7 @@ export function BaseProgrammaticCostChart({
 
   // Cache labels when availableGroupsArray changes
   // Otherwise, labels would be lost when switching groupBy types, and would display raw keys instead
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (groupBy && availableGroupsArray.length > 0) {
       const newLabels: Record<string, string> = {};
@@ -331,6 +332,7 @@ export function BaseProgrammaticCostChart({
       }));
     }
   }, [groupBy, availableGroupsArray]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Extract visible group keys from filtered data.
   const visibleGroupKeys = new Set<string>();

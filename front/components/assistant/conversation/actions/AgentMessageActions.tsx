@@ -63,6 +63,7 @@ export function AgentMessageActions({
     });
   };
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // Only if we are in the first rendering, message is empty and panel is open on another message.
     if (
@@ -78,6 +79,7 @@ export function AgentMessageActions({
     }
     firstRender.current = false;
   }, [agentMessage, currentPanel, data, openPanel]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const lastNotification = lastAction
     ? (actionProgress.get(lastAction.id)?.progress ?? null)

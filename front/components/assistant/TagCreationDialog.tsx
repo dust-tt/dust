@@ -31,11 +31,13 @@ export const TagCreationDialog = ({
   const [name, setName] = useState("");
   const { createTag } = useCreateTag({ owner });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setName("");
     }
   }, [isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleCreateTag = async () => {
     const tag = await createTag(name);

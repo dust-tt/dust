@@ -45,9 +45,11 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
   const [linkPos, setLinkPos] = useState<LinkPosition>({ from: 0, to: 0 });
   const editorRef = useRef(editor);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     editorRef.current = editor;
   }, [editor]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   function getTooltipText(label: string, shortcutLabel: string): string {
     if (isMobile) {
@@ -73,6 +75,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
     openLinkDialog(editor);
   }
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     function handleOpenDialog(event: Event): void {
       // Prevent other toolbar instances from handling the same event.
@@ -86,6 +89,7 @@ export function ToolBarContent({ editor }: ToolBarContentProps) {
       window.removeEventListener("dust:openLinkDialog", handleOpenDialog);
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   function handleLinkSubmit(): void {
     let finalText = linkText;

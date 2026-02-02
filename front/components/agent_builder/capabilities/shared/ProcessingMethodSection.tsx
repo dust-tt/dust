@@ -131,6 +131,7 @@ export function ProcessingMethodSection() {
     return [mcpServerViewsWithKnowledge, warning];
   }, [mcpServerViewsWithKnowledge, sources.in, mcpServerView]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (serversToDisplay && sources.in.length > 0 && !mcpServerView) {
       const allTablesOrDatabases = sources.in.every(
@@ -157,6 +158,7 @@ export function ProcessingMethodSection() {
       }
     }
   }, [hasFeature, mcpServerView, serversToDisplay, setValue, sources.in]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <div className="mt-2 flex flex-col space-y-4">

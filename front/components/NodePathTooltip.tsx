@@ -45,6 +45,7 @@ export function NodePathTooltip({
   const [isPointerHovering, setIsPointerHovering] = useState(false);
   const [isPointerOpen, setIsPointerOpen] = useState(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!isPointerHovering) {
       setIsPointerOpen(false);
@@ -59,6 +60,7 @@ export function NodePathTooltip({
       clearTimeout(id);
     };
   }, [isPointerHovering]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handlePointerEnter = () => {
     setIsPointerHovering(true);

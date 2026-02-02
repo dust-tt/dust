@@ -80,6 +80,7 @@ export const FeedbacksSection = ({
 
   // Intersection observer to detect when the user has scrolled to the bottom of the list.
   const { ref: bottomRef, inView: isBottomOfListVisible } = useInView();
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (
       isBottomOfListVisible &&
@@ -97,6 +98,7 @@ export const FeedbacksSection = ({
     setSize,
     size,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const { agentConfigurationHistory, isAgentConfigurationHistoryLoading } =
     useAgentConfigurationHistory({

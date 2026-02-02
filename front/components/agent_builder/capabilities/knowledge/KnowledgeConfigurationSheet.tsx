@@ -88,6 +88,7 @@ export function KnowledgeConfigurationSheet({
   // debounce when closing to avoid messing up the closing animation.
   // 300ms is vibe based.
   const [debouncedOpen, setDebouncedOpen] = useState(() => open);
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (open) {
       setDebouncedOpen(true);
@@ -97,6 +98,7 @@ export function KnowledgeConfigurationSheet({
       }, 300);
     }
   }, [open]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handlePageChange = async () => {
     if (isDirty) {
@@ -217,9 +219,11 @@ function KnowledgeConfigurationSheetForm({
     formState: { isDirty },
   } = form;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setIsDirty(isDirty);
   }, [isDirty, setIsDirty]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <FormProvider {...form}>
@@ -281,6 +285,7 @@ function KnowledgeConfigurationSheetContent({
   }, [mcpServerView]);
 
   // Focus NameSection input when navigating to CONFIGURATION page
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (currentPageId === CONFIGURATION_SHEET_PAGE_IDS.CONFIGURATION) {
       const t = setTimeout(() => {
@@ -289,8 +294,10 @@ function KnowledgeConfigurationSheetContent({
       return () => clearTimeout(t);
     }
   }, [currentPageId, setFocus]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Prefill name field with processing method display name when mcpServerView.id changes
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (mcpServerView && !isEditing) {
       const processingMethodName = getMcpServerViewDisplayName(mcpServerView);
@@ -309,6 +316,7 @@ function KnowledgeConfigurationSheetContent({
     // 3. Watching the id ensures we re-run when the server actually changes, avoiding name change on form invalidation
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mcpServerView?.id, isEditing, setValue, getValues]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handlePageChange = useCallback(
     (pageId: string) => {

@@ -76,6 +76,7 @@ export default function SkillBuilder({
   });
 
   // Populate editors reactively
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     const currentValues = form.getValues();
 
@@ -84,6 +85,7 @@ export default function SkillBuilder({
       editors: skill || editors.length > 0 ? editors : [user],
     });
   }, [editors, form, user, skill]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const isCreatingNew = !skill;
   const { isDirty } = form.formState;

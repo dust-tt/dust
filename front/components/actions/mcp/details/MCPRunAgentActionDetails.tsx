@@ -95,6 +95,7 @@ export function MCPRunAgentActionDetails({
     { index: number; document: MCPReferenceCitation }[]
   >([]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (queryResource) {
       setQuery(queryResource.resource.text);
@@ -117,6 +118,7 @@ export function MCPRunAgentActionDetails({
       }
     }
   }, [queryResource, lastNotification]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const response = useMemo(() => {
     if (resultResource) {

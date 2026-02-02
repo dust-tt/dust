@@ -372,16 +372,19 @@ export function EmailTemplatesPage() {
   });
 
   // Reset form when template changes
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (jsonSchema) {
       const defaults = getDefaultValuesFromJsonSchema(jsonSchema);
       form.reset(defaults);
     }
   }, [selectedTemplateId, jsonSchema, form]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   // Watch all form values
   const formValues = form.watch();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     const renderPreview = async () => {
       if (!selectedTemplate) {
@@ -437,6 +440,7 @@ export function EmailTemplatesPage() {
 
     void renderPreview();
   }, [selectedTemplate, formValues, jsonSchema, form]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   return (
     <div className="mx-auto h-full w-full max-w-7xl flex-grow flex-col items-center justify-center p-8 pt-8">

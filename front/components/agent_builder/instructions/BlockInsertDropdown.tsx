@@ -51,9 +51,11 @@ export const BlockInsertDropdown = ({
     }
   }, [triggerRect]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     updateTriggerPosition();
   }, [triggerRect, updateTriggerPosition]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   if (!isOpen) {
     return null;

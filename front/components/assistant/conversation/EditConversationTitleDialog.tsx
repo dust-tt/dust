@@ -35,6 +35,7 @@ export const EditConversationTitleDialog = ({
     conversationId,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setTitle(currentTitle);
@@ -44,6 +45,7 @@ export const EditConversationTitleDialog = ({
       }, 0);
     }
   }, [isOpen, currentTitle]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const editTitle = useCallback(async () => {
     await updateTitle(title);

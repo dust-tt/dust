@@ -214,6 +214,7 @@ export function MCPServerViewsSheet({
     };
   }, [searchTerm, selectableTopMCPServerViews, selectableNonTopMCPServerViews]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (mode?.type === "edit") {
       setCurrentPageId(TOOLS_SHEET_PAGE_IDS.CONFIGURATION);
@@ -269,8 +270,10 @@ export function MCPServerViewsSheet({
     mcpServerViewsWithKnowledge,
     mcpServerViewsWithoutKnowledge,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Focus SearchInput when opening on TOOL_SELECTION page
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen && currentPageId === TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION) {
       // Small delay to ensure the component is fully rendered
@@ -279,6 +282,7 @@ export function MCPServerViewsSheet({
       }, 100);
     }
   }, [isOpen, currentPageId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const toggleToolSelection = useCallback((tool: SelectedTool) => {
     setSelectedToolsInSheet((prev) => {
@@ -398,9 +402,11 @@ export function MCPServerViewsSheet({
     [configurationTool, mcpServerView, isOpen]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const resetToSelection = useCallback(() => {
     setCurrentPageId(TOOLS_SHEET_PAGE_IDS.TOOL_SELECTION);

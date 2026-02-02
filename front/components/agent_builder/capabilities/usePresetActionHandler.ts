@@ -43,6 +43,7 @@ export function usePresetActionHandler({
   // Store preset object reference to prevent duplicate processing.
   const lastProcessedPresetRef = useRef<TemplateActionPreset | null>(null);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!presetActionToAdd || isMCPServerViewsLoading) {
       if (!presetActionToAdd) {
@@ -128,4 +129,5 @@ export function usePresetActionHandler({
     fields,
     setKnowledgeAction,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 }

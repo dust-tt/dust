@@ -260,11 +260,13 @@ export const InputBarAttachmentsPicker = ({
     [spaces]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setSelectedDataSourcesAndTools({});
     }
   }, [isOpen, searchQuery]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const dataSourcesNodes = useMemo(
     () =>
@@ -332,6 +334,7 @@ export const InputBarAttachmentsPicker = ({
   );
 
   // Auto-select new datasources/tools as they appear
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const allKeys = [
       ...Object.keys(dataSourcesWithResults),
@@ -353,6 +356,7 @@ export const InputBarAttachmentsPicker = ({
       });
     }
   }, [dataSourcesWithResults, serversWithResults]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleFilterClick = (key: string) => {
     setSelectedDataSourcesAndTools((prev) => ({

@@ -112,11 +112,13 @@ export function SpaceSearchInput(props: SpaceSearchInputProps) {
   const router = useAppRouter();
 
   // Reset the search term when the URL changes.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   React.useEffect(() => {
     setTargetDataSourceViews(
       props.dataSourceView ? [props.dataSourceView] : []
     );
   }, [props.dataSourceView, router.asPath]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const [viewType] = useHashParam("viewType", DEFAULT_VIEW_TYPE) as [
     ContentNodesViewType,
@@ -239,6 +241,7 @@ function BackendSearch({
   };
 
   // Check if the search term is a URL
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   React.useEffect(() => {
     if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
       const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
@@ -247,6 +250,7 @@ function BackendSearch({
       setNodeOrUrlCandidate(null);
     }
   }, [debouncedSearch]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const shouldShowSearchResults = debouncedSearch.length > 0;
 
@@ -338,6 +342,7 @@ function BackendSearch({
 
   const isLoading = isDebouncing || isSearchLoading || isSearchValidating;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler */
   React.useEffect(() => {
     // Process search results to convert them to DataSourceViewContentNode format
     const processedResults = searchResultNodes.flatMap((node) => {
@@ -364,6 +369,7 @@ function BackendSearch({
       setSearchResults((prev) => [...prev, ...filteredResults]);
     }
   }, [searchResultNodes, tablePagination.pageIndex, nodeOrUrlCandidate]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-event-handler */
 
   const handleLoadMore = React.useCallback(() => {
     if (nextPageCursor && !isSearchValidating) {
@@ -383,6 +389,7 @@ function BackendSearch({
   ]);
 
   // Handle transition when search state changes
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
   React.useEffect(() => {
     if (shouldShowSearchResults !== showSearch) {
       setIsChanging(true);
@@ -395,12 +402,15 @@ function BackendSearch({
       return () => clearTimeout(timer);
     }
   }, [shouldShowSearchResults, showSearch]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-derived-state */
   React.useEffect(() => {
     if (!isSearchValidating && !isLoading) {
       setSearchHitCount(searchResults.length);
     }
   }, [isLoading, isSearchValidating, searchResults]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <SpaceSearchContext.Provider value={searchContextValue}>

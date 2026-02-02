@@ -132,6 +132,7 @@ export function ToolExecutionTimeChart({
     label: row.label,
   }));
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (view !== "tool") {
       return;
@@ -152,6 +153,7 @@ export function ToolExecutionTimeChart({
       setSelectedServerName(serverRows[0].name);
     }
   }, [view, serverRows, selectedServerName, setSelectedServerName]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const toolLatency = useToolLatencyData({
     workspaceId,

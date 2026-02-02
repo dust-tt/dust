@@ -131,9 +131,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     [setTheme]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     updateTheme(theme);
   }, [theme, updateTheme]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // system theme change event handling
   useEffect(() => {

@@ -197,6 +197,7 @@ export function AgentBuilderPreview() {
   const debounceTimerRef = useRef<NodeJS.Timeout>();
   const isUpdatingDraftRef = useRef(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const handleDraftUpdate = async () => {
       if (
@@ -257,6 +258,7 @@ export function AgentBuilderPreview() {
     createDraftAgent,
     setDraftAgent,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Show loading spinner only when the first time we create a draft agent. After that the spinner is shown
   // inside the button in the input bar. This way we don't have to unmount the conversation viewer every time.

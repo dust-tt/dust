@@ -15,9 +15,11 @@ export function useFrameSharingToggle({ owner }: UseFrameSharingToggleProps) {
   );
   const sendNotification = useSendNotification();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setIsEnabled(owner.metadata?.allowContentCreationFileSharing !== false);
   }, [owner.metadata?.allowContentCreationFileSharing]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const doToggleInteractiveContentSharing = async () => {
     setIsChanging(true);

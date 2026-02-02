@@ -32,6 +32,7 @@ export function MCPAgentManagementActionDetails({
   // 1. We have a successful creation result
   // 2. The message is still streaming (status === "created")
   // 3. We haven't refreshed yet (to avoid multiple refreshes)
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       creationResult &&
@@ -51,6 +52,7 @@ export function MCPAgentManagementActionDetails({
       );
     }
   }, [creationResult, messageStatus, mutate, owner.sId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   if (!creationResult) {
     // Fallback to showing the raw output if no structured data

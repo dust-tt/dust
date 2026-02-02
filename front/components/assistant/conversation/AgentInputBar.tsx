@@ -199,12 +199,14 @@ export const AgentInputBar = ({
   const blockedActions = getBlockedActions(context.user.sId);
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // Clamp index to valid range: [0, length-1] when non-empty, or 0 when empty.
     if (blockedActionIndex >= blockedActions.length) {
       setBlockedActionIndex(Math.max(0, blockedActions.length - 1));
     }
   }, [blockedActionIndex, blockedActions.length]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const [isStopping, setIsStopping] = useState<boolean>(false);
 
@@ -229,6 +231,7 @@ export const AgentInputBar = ({
     void mutateConversation();
   };
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       isStopping &&
@@ -239,6 +242,7 @@ export const AgentInputBar = ({
       setIsStopping(false);
     }
   }, [isStopping, generationContext.generatingMessages, context.conversation]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <div

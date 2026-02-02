@@ -77,11 +77,13 @@ export function AgentSuggestion({
     conversationId,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!dustAgent) {
       setShowSuggestion(true);
     }
   }, [dustAgent]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const { submit: handleSelectSuggestion, isSubmitting } = useSubmitFunction(
     async (agent: LightAgentConfigurationType) => {
@@ -128,6 +130,7 @@ export function AgentSuggestion({
     [router]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       isSubmitting ||
@@ -154,6 +157,7 @@ export function AgentSuggestion({
     userMessage.contentFragments.length,
     isSubmitting,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   if (!showSuggestion) {
     return null;

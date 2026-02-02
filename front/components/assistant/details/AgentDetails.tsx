@@ -104,10 +104,12 @@ export function AgentDetails({
     agentConfigurationId: agentId,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // Reset to info tab when we open/close the modal
     setSelectedTab("info");
   }, [agentId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const isGlobalAgent = Object.values(GLOBAL_AGENTS_SID).includes(
     agentConfiguration?.sId as GLOBAL_AGENTS_SID

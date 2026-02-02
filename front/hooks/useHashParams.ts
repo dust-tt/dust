@@ -82,6 +82,7 @@ export const useHashParam = (
   }, [router.events, innerValue, setInnerValue]);
 
   // Listen to innerValue changes and update the hash in the router if there is a mismatch.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (typeof window !== "undefined" && router.isReady) {
       // get current hash from window.location, DO NOT DEFAULT TO DEFAULT VALUE.
@@ -123,6 +124,7 @@ export const useHashParam = (
     // some of which cause an infinite rendering loop.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue, innerValue, key, router.isReady]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const setValue = useCallback<Setter>(
     async (

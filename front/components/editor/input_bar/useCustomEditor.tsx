@@ -346,11 +346,11 @@ const useCustomEditor = ({
   const editorService = useEditorService(editor);
 
   // Set keydown handler after editor is initialized to avoid synchronous updates during render.
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (!editor) {
       return;
     }
-    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent
     editor.setOptions({
       editorProps: {
         handleKeyDown: (view, event) => {
@@ -421,6 +421,7 @@ const useCustomEditor = ({
       },
     });
   }, [editor, editorService, onEnterKeyDown]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   // Expose the editor instance and the editor service.
   return {

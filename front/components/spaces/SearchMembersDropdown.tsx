@@ -38,6 +38,7 @@ export function SearchMembersDropdown({
     pageSize: pagination.pageSize,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (members && !isLoading) {
       setAllMembers((prevMembers) => {
@@ -55,11 +56,14 @@ export function SearchMembersDropdown({
       });
     }
   }, [members, isLoading, pagination.pageIndex]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-derived-state */
 
   // Effect to reset pagination when the search term changes.
+  /* eslint-disable react-you-might-not-need-an-effect/no-chain-state-updates */
   useEffect(() => {
     setPagination(DefaultPagination);
   }, [searchTerm]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-chain-state-updates */
 
   const filteredMembers = useMemo(() => {
     return allMembers.filter(

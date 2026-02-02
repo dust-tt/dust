@@ -127,9 +127,11 @@ export function AgentBuilderCopilot() {
   } = useCopilotPanelContext();
 
   // Auto-start conversation when component mounts
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     void startConversation();
   }, [startConversation]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const renderContent = () => {
     if (creationFailed) {

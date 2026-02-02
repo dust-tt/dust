@@ -80,11 +80,13 @@ export function useVoiceTranscriberService({
     }
   }, []);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       stopLevelMetering();
     };
   }, [stopLevelMetering]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const startLevelMetering = useCallback(
     (stream: MediaStream) => {
@@ -134,6 +136,7 @@ export function useVoiceTranscriberService({
   );
 
   // Cleanup on unmounting: ensure the recorder is stopped and tracks are closed.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       stopRecorder(mediaRecorderRef.current);
@@ -141,7 +144,9 @@ export function useVoiceTranscriberService({
       stopTracks(streamRef.current);
     };
   }, [stopLevelMetering]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -160,6 +165,7 @@ export function useVoiceTranscriberService({
       }
     };
   }, [status]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const startRecording = useCallback(async () => {
     if (status === "recording" || status === "authorizing_microphone") {

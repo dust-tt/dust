@@ -126,6 +126,7 @@ export const AgentGrid = ({
     threshold: 0,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       // The observer is in view.
@@ -139,6 +140,7 @@ export const AgentGrid = ({
       nextPage();
     }
   }, [inView, nextPage, entry, agentConfigurations.length, itemsPage]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const slicedAgentConfigurations = agentConfigurations.slice(
     0,
@@ -341,6 +343,7 @@ export function AgentBrowser({
   }, [selectedTab, agentsByTab]);
 
   // Initialize `selectedTag` from persisted selection (or default to Most popular).
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (noTagsDefined || selectedTag) {
       return;
@@ -362,8 +365,10 @@ export function AgentBrowser({
     selectedTag,
     setSelectedTag,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Persist selectedTag when they change (and tags exist).
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (noTagsDefined || isPersistedSelectionLoading) {
       return;
@@ -379,6 +384,7 @@ export function AgentBrowser({
     persistedSelectedTagId,
     setSelectedTagId,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const sortTypeLabel = useMemo(() => {
     switch (sortType) {

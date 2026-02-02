@@ -167,6 +167,7 @@ export function useEventSource(
     return source;
   }, [buildURL, onEventCallback, uniqueId, sourceManager]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (!isReadyToConsumeStream || isError) {
       return;
@@ -189,6 +190,7 @@ export function useEventSource(
     uniqueId,
     isError,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return { isError };
 }

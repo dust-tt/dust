@@ -68,6 +68,7 @@ export const DataSourceBuilderSelector = ({
     UrlCandidate | NodeCandidate | null
   >(null);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (debouncedSearch.length >= MIN_SEARCH_QUERY_SIZE) {
       const candidate = nodeCandidateFromUrl(debouncedSearch.trim());
@@ -76,6 +77,7 @@ export const DataSourceBuilderSelector = ({
       setNodeOrUrlCandidate(null);
     }
   }, [debouncedSearch]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Filter spaces to only those with data source views
   const filteredSpaces = useMemo(() => {
@@ -99,13 +101,16 @@ export const DataSourceBuilderSelector = ({
   );
 
   // Automatically select the first space if there is only one
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (filteredSpaces.length === 1) {
       setSpaceEntry(filteredSpaces[0]);
     }
   }, [filteredSpaces, setSpaceEntry]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Automatically select the managed category if we are in a "project" kind of space
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       currentSpace &&
@@ -115,6 +120,7 @@ export const DataSourceBuilderSelector = ({
       setCategoryEntry("managed");
     }
   }, [currentSpace, currentNavigationEntry, setCategoryEntry]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const [searchScope, setSearchScope] = useState<"node" | "space">("space");
 

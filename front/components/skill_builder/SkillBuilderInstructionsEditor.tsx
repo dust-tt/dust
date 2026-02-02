@@ -179,11 +179,13 @@ export function SkillBuilderInstructionsEditor({
     editor.chain().focus().insertKnowledgeNode().run();
   }, [editor]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (editor && onAddKnowledge) {
       onAddKnowledge(handleAddKnowledge);
     }
   }, [editor, handleAddKnowledge, onAddKnowledge]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   useEffect(() => {
     return () => {
@@ -192,6 +194,7 @@ export function SkillBuilderInstructionsEditor({
   }, [debouncedUpdate]);
 
   // Set editor class based on error state (applies to ProseMirror element)
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (!editor) {
       return;
@@ -205,7 +208,9 @@ export function SkillBuilderInstructionsEditor({
       },
     });
   }, [editor, displayError]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (!editor || instructionsField.value === undefined) {
       return;
@@ -224,7 +229,9 @@ export function SkillBuilderInstructionsEditor({
       }, 0);
     }
   }, [editor, instructionsField.value]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     if (!editor) {
       return;
@@ -247,6 +254,7 @@ export function SkillBuilderInstructionsEditor({
       }
     }
   }, [isInstructionDiffMode, compareVersion, editor]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   return (
     <div className="space-y-1 p-px">

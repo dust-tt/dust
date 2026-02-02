@@ -154,11 +154,13 @@ export default function SettingsView({
     }
   };
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-chain-state-updates */
   useEffect(() => {
     setDisabled(!formValidation());
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appName]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-chain-state-updates */
 
   return (
     <DustAppPageLayout

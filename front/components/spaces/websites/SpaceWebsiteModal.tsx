@@ -206,6 +206,7 @@ export default function SpaceWebsiteModal({
     )
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     dispatch({
       type: "RESET",
@@ -213,6 +214,7 @@ export default function SpaceWebsiteModal({
       name: dataSourceView ? dataSourceView.dataSource.name : "",
     });
   }, [webCrawlerConfiguration, dataSourceView]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const handleSubmit = async () => {
     dispatch({ type: "VALIDATE" });

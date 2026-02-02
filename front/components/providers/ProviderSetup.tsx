@@ -310,6 +310,7 @@ export function ProviderSetup({
   const [testRunning, setTestRunning] = useState(false);
   const [enableRunning, setEnableRunning] = useState(false);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     const newValues: Record<string, string> = {};
     for (const field of fields) {
@@ -319,6 +320,7 @@ export function ProviderSetup({
     setTestSuccessful(false);
     setTestError("");
   }, [config, fields]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const runTest = async () => {
     setTestRunning(true);

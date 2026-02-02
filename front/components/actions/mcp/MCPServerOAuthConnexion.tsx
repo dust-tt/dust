@@ -80,6 +80,7 @@ export function MCPServerOAuthConnexion({
 
   // Initialize use case and fetch credential inputs.
   // setValue is stable across renders, so no ref tricks needed.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     let effectiveUseCase = useCase;
 
@@ -124,9 +125,11 @@ export function MCPServerOAuthConnexion({
       setValue("authCredentials", nextCredentials);
     }
   }, [authorization, useCase, setValue]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // Validate credentials based on dynamic requirements.
   // Runs when credentials or inputs change, uses setError/clearErrors.
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (!inputs) {
       clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
@@ -169,6 +172,7 @@ export function MCPServerOAuthConnexion({
       clearErrors(AUTH_CREDENTIALS_ERROR_KEY);
     }
   }, [authCredentials, inputs, setError, clearErrors]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const handleCredentialChange = (key: string, value: string) => {
     if (!isSupportedOAuthCredential(key)) {

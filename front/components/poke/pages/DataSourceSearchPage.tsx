@@ -36,6 +36,7 @@ export function DataSourceSearchPage() {
     disabled: false,
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(
     () =>
       setDisplayNameByDocId(
@@ -49,6 +50,7 @@ export function DataSourceSearchPage() {
       ),
     [documents]
   );
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   useEffect(() => {
     if (!dataSourceDetails) {

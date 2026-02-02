@@ -40,6 +40,7 @@ export default function SpaceManagedActionsViewsModel({
       space,
     });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!shouldOpenMenu) {
       return;
@@ -47,6 +48,7 @@ export default function SpaceManagedActionsViewsModel({
     setMenuOpen(true);
     onOpenMenuHandled?.();
   }, [shouldOpenMenu, onOpenMenuHandled]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   return (
     <DropdownMenu

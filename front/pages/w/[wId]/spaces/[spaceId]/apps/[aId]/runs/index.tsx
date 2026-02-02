@@ -86,6 +86,7 @@ export default function RunsView({
   const [tabs, setTabs] = useState(
     [] as { name: string; runType: RunRunType; ownerOwnly: boolean }[]
   );
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     setTabs(
       TABS.filter((tab) => {
@@ -93,6 +94,7 @@ export default function RunsView({
       })
     );
   }, [readOnly]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const { runs, total } = useRuns(
     owner,

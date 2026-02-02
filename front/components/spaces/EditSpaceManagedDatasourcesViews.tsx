@@ -304,6 +304,7 @@ export function EditSpaceManagedDataSourcesViews({
     }
   }, [systemSpaceDataSourceViews.length]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // If the modal should be opened (from query param for instance) we wait for the data to be loaded
     // before opening it.
@@ -322,6 +323,7 @@ export function EditSpaceManagedDataSourcesViews({
     openAddDataModal,
     onOpenModalHandled,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
 
   if (isSystemSpaceDataSourceViewsLoading || isSpaceDataSourceViewsLoading) {
     return false;

@@ -45,11 +45,13 @@ export function useDebounce(
   );
 
   // Cleanup on unmount.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       debouncedUpdate.cancel();
     };
   }, [debouncedUpdate]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   // eslint-disable-next-line react-hooks/refs
   return {
@@ -139,6 +141,7 @@ export function useDebounceWithAbort<T = string>(
   );
 
   // Cleanup on unmount.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       if (debounceHandle.current) {
@@ -149,6 +152,7 @@ export function useDebounceWithAbort<T = string>(
       }
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return trigger;
 }

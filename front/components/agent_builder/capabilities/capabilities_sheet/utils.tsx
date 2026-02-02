@@ -148,9 +148,11 @@ export function useCapabilitiesPageAndFooter({
     [sheetState]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     resetFormValues(form);
   }, [resetFormValues, form]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   switch (sheetState.state) {
     case "selection":

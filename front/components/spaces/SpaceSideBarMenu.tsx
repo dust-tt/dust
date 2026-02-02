@@ -503,11 +503,13 @@ const SpaceDataSourceViewItem = ({
     (!node || (node && selected?.parentInternalIds?.includes(node.internalId)));
 
   // Unfold the folder if it's an ancestor of the current page.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isAncestorToCurrentPage) {
       setIsExpanded(isAncestorToCurrentPage);
     }
   }, [isAncestorToCurrentPage]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const LogoComponent = node
     ? getVisualForDataSourceViewContentNode(node)

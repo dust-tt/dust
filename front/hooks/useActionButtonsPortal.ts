@@ -16,9 +16,11 @@ export function useActionButtonsPortal({
   const containerRef = useRef<HTMLElement | null>(null);
 
   // Find the container on mount.
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     containerRef.current = document.getElementById(containerId);
   }, [containerId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return {
     // Function to create a portal if container exists.

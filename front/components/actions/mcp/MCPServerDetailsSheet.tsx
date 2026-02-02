@@ -63,6 +63,7 @@ export function MCPServerDetailsSheet({
 
   const form = useFormContext<MCPServerFormValues>();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     // Only reset to info tab when modal transitions from closed to open.
     if (isOpen && !prevIsOpen) {
@@ -70,6 +71,7 @@ export function MCPServerDetailsSheet({
     }
     setPrevIsOpen(isOpen);
   }, [isOpen, prevIsOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
 
   const changeTab = async (next: TabType) => {
     setSelectedTab(next);

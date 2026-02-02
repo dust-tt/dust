@@ -47,12 +47,14 @@ export function CreateProjectModal({
     options: { disabled: true },
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setProjectName("");
       setIsSaving(false);
     }
   }, [isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const handleClose = useCallback(() => {
     onClose();

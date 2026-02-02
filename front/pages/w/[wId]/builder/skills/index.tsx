@@ -175,6 +175,7 @@ export default function WorkspaceSkills({
   const isLoading = isActiveLoading || isArchivedLoading || isSuggestedLoading;
 
   // Open skill from hash param when skills are loaded.
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (skillIdParam && !isActiveLoading && activeSkills.length > 0) {
       const skillFromParam = activeSkills.find((s) => s.sId === skillIdParam);
@@ -183,6 +184,7 @@ export default function WorkspaceSkills({
       }
     }
   }, [skillIdParam, activeSkills, isActiveLoading, selectedSkill?.sId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
 
   const handleSkillSelect = useCallback(
     (skill: SkillWithRelationsType | null) => {

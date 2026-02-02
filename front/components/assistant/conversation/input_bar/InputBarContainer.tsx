@@ -341,6 +341,7 @@ const InputBarContainer = ({
     },
   });
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent */
   useEffect(() => {
     // If an attachment disappears from the uploader, remove its chip from the editor
     const currentPastedIds = new Set(
@@ -359,6 +360,7 @@ const InputBarContainer = ({
       }
     });
   }, [fileUploaderService.fileBlobs, removePastedAttachmentChip]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent */  
 
   const voiceTranscriberService = useVoiceTranscriberService({
     owner,

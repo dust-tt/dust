@@ -262,6 +262,7 @@ export function AgentMessage({
       "AgentMessage must be used within a GenerationContextProvider"
     );
   }
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   React.useEffect(() => {
     if (shouldStream) {
       generationContext.addGeneratingMessage({
@@ -272,6 +273,7 @@ export function AgentMessage({
       generationContext.removeGeneratingMessage({ messageId: sId });
     }
   }, [shouldStream, generationContext, sId, conversationId]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const isGlobalAgent = isGlobalAgentId(agentMessage.configuration.sId);
 

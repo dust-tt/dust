@@ -112,6 +112,7 @@ export const AttachmentViewer = ({
     [isProcessedContentLoading]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const handleText = async () => {
       if (isAudio) {
@@ -149,6 +150,7 @@ export const AttachmentViewer = ({
     processedContent,
     shouldFetchFromServer,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const audioPlayer = isAudio && (
     <>

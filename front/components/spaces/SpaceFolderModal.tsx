@@ -74,6 +74,7 @@ export default function SpaceFolderModal({
   const [showDeleteConfirmDialog, setShowDeleteConfirmDialog] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setName(dataSourceView ? dataSourceView.dataSource.name : null);
@@ -82,6 +83,7 @@ export default function SpaceFolderModal({
       );
     }
   }, [isOpen, dataSourceView]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
 
   const onSave = async () => {
     let nameError: string | null = null;

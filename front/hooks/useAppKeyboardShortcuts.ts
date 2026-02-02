@@ -10,6 +10,7 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
 
   const router = useAppRouter();
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     function handleKeyboardShortcuts(event: KeyboardEvent) {
       // Check for Command/Control key.
@@ -37,4 +38,5 @@ export function useAppKeyboardShortcuts(owner: LightWorkspaceType) {
     window.addEventListener("keydown", handleKeyboardShortcuts);
     return () => window.removeEventListener("keydown", handleKeyboardShortcuts);
   }, [owner.sId, router, toggleNavigationBar]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 }

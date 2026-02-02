@@ -54,6 +54,7 @@ export function CreateWebhookJiraConnection({
     [filteredProjects, selectedProjects]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     const isReady = !!(connectionId && selectedProjects.length > 0);
 
@@ -77,6 +78,7 @@ export function CreateWebhookJiraConnection({
     onDataToCreateWebhookChange,
     onReadyToSubmitChange,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const handleAddProject = (project: JiraProjectType) => {
     if (!selectedProjects.some((p) => p.key === project.key)) {

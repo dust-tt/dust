@@ -44,6 +44,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
     DEFAULT_BACKGROUND_COLOR
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (avatarUrl) {
       const emojiInfos = avatarUtils.getEmojiAndBackgroundFromUrl(avatarUrl);
@@ -59,6 +60,7 @@ const AgentBuilderEmojiPicker = React.forwardRef<
       }
     }
   }, [avatarUrl]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   useImperativeHandle(ref, () => {
     return {

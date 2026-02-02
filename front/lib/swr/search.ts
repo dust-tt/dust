@@ -160,6 +160,7 @@ export function useUnifiedSearch({
     ]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     setKnowledgeResults([]);
     setToolResults([]);
@@ -198,6 +199,7 @@ export function useUnifiedSearch({
     spaceIds?.join(","),
     viewType,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const nextPage = useCallback(async () => {
     if (nextPageCursor && !isLoadingNextPage) {

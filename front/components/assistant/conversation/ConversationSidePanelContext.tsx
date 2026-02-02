@@ -123,6 +123,7 @@ export function ConversationSidePanelProvider({
   );
 
   // Initialize panel state from URL hash parameters
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (data && currentPanel) {
       setCurrentPanel(currentPanel);
@@ -130,6 +131,7 @@ export function ConversationSidePanelProvider({
       closePanel();
     }
   }, [data, currentPanel, setCurrentPanel, closePanel]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <ConversationSidePanelContext.Provider

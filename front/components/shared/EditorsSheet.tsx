@@ -68,12 +68,15 @@ export function EditorsSheet({
   const [isOpen, setIsOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isOpen) {
       setLocalEditors([...(editors || [])]);
     }
   }, [editors, isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state */
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler */
   useEffect(() => {
     if (isOpen) {
       // Small delay to wait for sheet animation to complete
@@ -82,6 +85,7 @@ export function EditorsSheet({
       }, 200);
     }
   }, [isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler */
 
   const { members: workspaceMembers, isLoading: isWorkspaceMembersLoading } =
     useSearchMembers({

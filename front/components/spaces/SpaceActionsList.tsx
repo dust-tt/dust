@@ -69,6 +69,7 @@ export const SpaceActionsList = ({
   });
 
   const [shouldOpenToolsMenu, setShouldOpenToolsMenu] = React.useState(false);
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   React.useEffect(() => {
     if (!router.isReady || !isAdmin) {
       return;
@@ -80,6 +81,7 @@ export const SpaceActionsList = ({
     setShouldOpenToolsMenu(true);
     void removeParamFromRouter(router, "modal");
   }, [router.isReady, router.query.modal, isAdmin, router]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const { pagination, setPagination } = usePaginationFromUrl({
     urlPrefix: "table",

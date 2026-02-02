@@ -114,11 +114,13 @@ export function PersonalConnectionRequiredDialog({
     Record<string, Record<string, string>>
   >({});
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (!isOpen) {
       setCredentialOverridesMap({});
     }
   }, [isOpen]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const setOverrideValue = useCallback(
     (serverId: string, key: string, value: string) => {

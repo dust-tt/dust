@@ -55,6 +55,7 @@ export function useOnboardingConversation({
     isCreatingRef.current = false;
   }, [workspaceId, router]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-ref-to-parent */
   useEffect(() => {
     const shouldCreateOnboarding =
       welcome === "true" && conversationId === null;
@@ -63,4 +64,5 @@ export function useOnboardingConversation({
       void createOnboardingConversation();
     }
   }, [welcome, conversationId, createOnboardingConversation]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-ref-to-parent */
 }

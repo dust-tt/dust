@@ -79,6 +79,7 @@ function FolderDisplay({
     Record<string, string>
   >({});
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-chain-state-updates */
   useEffect(() => {
     if (!isDocumentsLoading && !isDocumentsError) {
       setDisplayNameByDocId(
@@ -95,6 +96,7 @@ function FolderDisplay({
       setDisplayNameByDocId({});
     }
   }, [documents, isDocumentsLoading, isDocumentsError]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react-you-might-not-need-an-effect/no-chain-state-updates */
 
   let lastDocument = offsetDocument + limit;
   if (offsetDocument + limit > totalDocuments) {

@@ -46,6 +46,7 @@ export const DataSourceViewsProvider = ({
   const { dataSourceViews, isDataSourceViewsLoading, isDataSourceViewsError } =
     useDataSourceViews(owner);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (isDataSourceViewsError) {
       sendNotification({
@@ -55,6 +56,7 @@ export const DataSourceViewsProvider = ({
       });
     }
   }, [isDataSourceViewsError, sendNotification]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const supportedDataSourceViews = useMemo(() => {
     return dataSourceViews.filter(

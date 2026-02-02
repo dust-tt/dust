@@ -29,6 +29,7 @@ function useStabilizedValue<T>(
   defaultValue: T
 ): T {
   const [value, setValue] = useState<T | undefined>();
+  /* eslint-disable react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   useEffect(() => {
     if (isOpen && !value) {
       setValue(initialValue);
@@ -36,6 +37,7 @@ function useStabilizedValue<T>(
       setValue(undefined);
     }
   }, [isOpen, initialValue, value]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-chain-state-updates, react-you-might-not-need-an-effect/no-derived-state, react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   return value ?? defaultValue;
 }
 
@@ -104,6 +106,7 @@ export default function SpaceManagedDataSourcesViewsModal({
     useState<DataSourceViewSelectionConfigurations>({});
 
   const [hasChanged, setHasChanged] = useState(false);
+  /* eslint-disable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (
       !initialConfigurations.isNodesLoading &&
@@ -133,6 +136,7 @@ export default function SpaceManagedDataSourcesViewsModal({
       setSelectionConfigurations(converted);
     }
   }, [initialConfigurations, spaceDataSourceViews]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-event-handler, react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent, react-you-might-not-need-an-effect/no-derived-state */
 
   const setSelectionConfigurationsCallback = useCallback(
     (func: SetStateAction<DataSourceViewSelectionConfigurations>) => {

@@ -62,11 +62,13 @@ export function EditKeyCapDialog({
 
   const { handleSubmit, reset, formState } = form;
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     reset({
       capValueDollars: microUsdToDollarsString(keyData.monthlyCapMicroUsd),
     });
   }, [keyData, reset]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const onSubmit = async (data: FormValues) => {
     const monthlyCapMicroUsd =

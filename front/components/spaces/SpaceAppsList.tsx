@@ -105,6 +105,7 @@ export const SpaceAppsList = ({
     [apps, onSelect, owner]
   );
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
   React.useEffect(() => {
     // Extract modal=apps query param to open modal on first render and remove it from URL
     if (!router.isReady || !isBuilder) {
@@ -117,6 +118,7 @@ export const SpaceAppsList = ({
     setIsCreateAppModalOpened(true);
     void removeParamFromRouter(router, "modal");
   }, [router.isReady, router.query.modal, isBuilder, router]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-adjust-state-on-prop-change */
 
   const { portalToHeader } = useActionButtonsPortal({
     containerId: ACTION_BUTTONS_CONTAINER_ID,

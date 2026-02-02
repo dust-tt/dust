@@ -37,6 +37,7 @@ export function usePeriodicRefresh(
     }, intervalMs);
   }, [refreshFn, intervalMs, totalDurationMs]);
 
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     return () => {
       if (intervalRef.current) {
@@ -44,6 +45,7 @@ export function usePeriodicRefresh(
       }
     };
   }, []);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return { startPeriodicRefresh };
 }

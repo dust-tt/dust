@@ -77,6 +77,7 @@ export function CreateWebhookGithubConnection({
   );
 
   // Notify parent component when data changes
+  /* eslint-disable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
   useEffect(() => {
     const isReady = !!(
       connectionId &&
@@ -106,6 +107,7 @@ export function CreateWebhookGithubConnection({
     onDataToCreateWebhookChange,
     onReadyToSubmitChange,
   ]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-data-to-parent */
 
   const handleAddRepository = (repo: GithubRepository) => {
     if (!selectedRepositories.some((r) => r.fullName === repo.fullName)) {

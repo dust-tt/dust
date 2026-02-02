@@ -44,6 +44,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   const lastInstructionsRef = useRef("");
 
   // Reset pulse after animation completes so it can trigger again
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     if (shouldPulse) {
       const timer = setTimeout(() => {
@@ -53,6 +54,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
       return () => clearTimeout(timer);
     }
   }, [shouldPulse]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   const fetchTips = useCallback(
     async (currentInstructions: string) => {
@@ -108,6 +110,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
   }
 
   // Debounced fetch tips when instructions change
+  /* eslint-disable react-you-might-not-need-an-effect/no-derived-state */
   useEffect(() => {
     const currentInstructions = instructions || "";
 
@@ -125,6 +128,7 @@ export function InstructionTipsPopover({ owner }: InstructionTipsPopoverProps) {
 
     return () => clearTimeout(timer);
   }, [instructions, fetchTips]);
+  /* eslint-enable react-you-might-not-need-an-effect/no-derived-state */
 
   return (
     <PopoverRoot open={isOpen} onOpenChange={onOpenChange}>
