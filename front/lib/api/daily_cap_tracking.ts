@@ -1,5 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -7,12 +8,15 @@ import { executeWithLock } from "@app/lib/lock";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { Err, Ok } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 import {
   AGENT_MESSAGE_STATUSES_TO_TRACK,
   getShouldTrackTokenUsageCostsESFilter,
 } from "./programmatic_usage_tracking";
+
+// Markup multiplier to convert raw ES costs to costs with Dust markup
+const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
 
 // $1,000 in microUSD - default daily cap for non-PAYG workspaces, also used as
 // minimum daily cap for PAYG workspaces
@@ -93,6 +97,7 @@ type UsageAggregations = {
 /**
  * Get today's usage from Elasticsearch (used to initialize Redis).
  * Today is defined as UTC day.
+ * Returns cost WITH markup applied to match Redis increments.
  */
 async function getTodayUsageFromESMicroUsd(
   auth: Authenticator
@@ -133,8 +138,10 @@ async function getTodayUsageFromESMicroUsd(
     return new Err(new Error(`ES query failed: ${result.error.message}`));
   }
 
-  const totalCost = result.value.aggregations?.total_cost?.value ?? 0;
-  return new Ok(Math.round(totalCost));
+  // ES stores raw cost; apply markup to match Redis increments
+  const rawCost = result.value.aggregations?.total_cost?.value ?? 0;
+  const costWithMarkup = Math.round(rawCost * MARKUP_MULTIPLIER);
+  return new Ok(costWithMarkup);
 }
 
 /**
@@ -148,12 +155,23 @@ async function getDailyUsageMicroUsd(
   const workspace = auth.getNonNullableWorkspace();
   const redisKey = getDailyUsageRedisKey(workspace.sId);
 
-  const redis = await runOnRedis(
-    { origin: DAILY_USAGE_REDIS_ORIGIN },
-    async (client) => client
-  );
+  let redis;
+  try {
+    redis = await runOnRedis(
+      { origin: DAILY_USAGE_REDIS_ORIGIN },
+      async (client) => client
+    );
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
 
-  const cached = await redis.get(redisKey);
+  let cached;
+  try {
+    cached = await redis.get(redisKey);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+
   if (cached !== null) {
     return new Ok(parseInt(cached, 10));
   }
@@ -183,13 +201,17 @@ async function getDailyUsageMicroUsd(
       10_000 // 10s timeout for lock acquisition
     );
   } catch (err) {
-    return new Err(
-      err instanceof Error ? err : new Error("Failed to initialize daily usage")
-    );
+    return new Err(normalizeError(err));
   }
 
   // Read the value that was just set (or was set by another request)
-  const finalCached = await redis.get(redisKey);
+  let finalCached;
+  try {
+    finalCached = await redis.get(redisKey);
+  } catch (err) {
+    return new Err(normalizeError(err));
+  }
+
   if (finalCached === null) {
     return new Err(
       new Error("Failed to read daily usage after initialization")
