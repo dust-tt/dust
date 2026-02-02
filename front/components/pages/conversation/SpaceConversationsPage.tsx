@@ -50,11 +50,17 @@ export function SpaceConversationsPage() {
     user,
   });
 
-  const { conversations, isConversationsLoading, mutateConversations } =
-    useSpaceConversations({
-      workspaceId: owner.sId,
-      spaceId: spaceId,
-    });
+  const {
+    conversations,
+    isConversationsLoading,
+    mutateConversations,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+  } = useSpaceConversations({
+    workspaceId: owner.sId,
+    spaceId: spaceId,
+  });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
@@ -162,16 +168,29 @@ export function SpaceConversationsPage() {
           { shallow: true }
         );
 
-        // Update the conversations list
+        // Update the conversations list (prepend new conversation to first page)
         await mutateConversations(
           (currentData) => {
-            return {
-              ...currentData,
-              conversations: [
-                ...(currentData?.conversations ?? []),
-                conversationRes.value,
-              ],
-            };
+            if (!currentData || currentData.length === 0) {
+              return [
+                {
+                  conversations: [conversationRes.value],
+                  hasMore: false,
+                  lastValue: null,
+                },
+              ];
+            }
+            const [firstPage, ...restPages] = currentData;
+            return [
+              {
+                ...firstPage,
+                conversations: [
+                  conversationRes.value,
+                  ...firstPage.conversations,
+                ],
+              },
+              ...restPages,
+            ];
           },
           { revalidate: false }
         );
@@ -258,6 +277,9 @@ export function SpaceConversationsPage() {
             user={user}
             conversations={conversations}
             isConversationsLoading={isConversationsLoading}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            isLoadingMore={isLoadingMore}
             spaceInfo={spaceInfo}
             onSubmit={handleConversationCreation}
             onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
