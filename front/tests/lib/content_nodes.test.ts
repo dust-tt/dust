@@ -83,16 +83,22 @@ describe("SharePoint folder display titles", () => {
 
   it("does not prefix non-root nodes", () => {
     const node = makeMicrosoftRootFolderNode({ parentInternalId: "parent" });
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe("01 Engagement");
+    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+      "01 Engagement"
+    );
   });
 
   it("does not prefix when sourceUrl is missing", () => {
     const node = makeMicrosoftRootFolderNode({ sourceUrl: null });
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe("01 Engagement");
+    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+      "01 Engagement"
+    );
   });
 
   it("works through getDisplayTitleForContentNode (tree usage)", () => {
     const node = makeMicrosoftRootFolderNode();
-    expect(getDisplayTitleForContentNode(node)).toBe("Project Alpha → 01 Engagement");
+    expect(getDisplayTitleForContentNode(node)).toBe(
+      "Project Alpha → 01 Engagement"
+    );
   });
 });
