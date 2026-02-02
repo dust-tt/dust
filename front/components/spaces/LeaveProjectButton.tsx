@@ -9,6 +9,7 @@ interface LeaveProjectButtonProps {
   owner: LightWorkspaceType;
   spaceId: string;
   spaceName: string;
+  isRestricted: boolean;
   onLeaveSuccess?: () => void;
 }
 
@@ -16,6 +17,7 @@ export function LeaveProjectButton({
   owner,
   spaceId,
   spaceName,
+  isRestricted,
   onLeaveSuccess,
 }: LeaveProjectButtonProps) {
   const [isLeaving, setIsLeaving] = useState(false);
@@ -25,11 +27,13 @@ export function LeaveProjectButton({
   const handleLeaveClick = async () => {
     const confirmed = await showDialog({
       title: "Leave this project?",
-      children: (
+      children: isRestricted ? (
         <p>
           You will no longer have access to conversations and context in{" "}
           <strong>{spaceName}</strong>.
         </p>
+      ) : (
+        <p>You can rejoin this project anytime.</p>
       ),
       alertDialog: true,
       validateLabel: "Leave",

@@ -133,7 +133,7 @@ async function handler(
           categories,
           canWrite: space.canWrite(auth),
           canRead: space.canRead(auth),
-          isMember: space.canRead(auth),
+          isMember: space.isMember(auth),
           members: currentMembers.map((member) => member.toJSON()),
         },
       });
