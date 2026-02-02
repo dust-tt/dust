@@ -290,30 +290,6 @@ describe("constructPromptMultiActions - system prompt stability", () => {
     expect(prompt1).toBe(prompt2);
   });
 
-  it("should generate identical prompts regardless of call order or timing", () => {
-    const params = {
-      userMessage: userMessage1,
-      agentConfiguration: agentConfig1,
-      model: modelConfig,
-      hasAvailableActions: false,
-      agentsList: null,
-      enabledSkills: [],
-      equippedSkills: [],
-    };
-
-    // Simulate multiple "conversations" being rendered.
-    const prompts: string[] = [];
-    for (let i = 0; i < 5; i++) {
-      prompts.push(constructPromptMultiActions(authenticator1, params));
-    }
-
-    // All prompts should be identical.
-    const firstPrompt = prompts[0];
-    for (const prompt of prompts) {
-      expect(prompt).toBe(firstPrompt);
-    }
-  });
-
   it("should generate identical prompts with different conversation metadata from the same workspace", () => {
     // Same workspace, same agent, but different conversation metadata
     const baseParams = {
