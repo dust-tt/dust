@@ -197,11 +197,6 @@ export function getDisplayTitleForDataSourceViewContentNode(
     return node.title;
   }
 
-  // Avoid double-prefixing if already decorated (defensive).
-  if (node.title.includes("→")) {
-    return node.title;
-  }
-
   const siteName = extractSharePointSiteNameFromSourceUrl(node.sourceUrl);
   return siteName ? `${siteName} → ${node.title}` : node.title;
 }
