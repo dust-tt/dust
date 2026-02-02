@@ -970,21 +970,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     if (!auth.user()) {
       return new Err(new Error("user_not_authenticated"));
     }
-
-    const updated = await ConversationParticipantModel.update(
-      { lastReadAt: new Date() },
-      {
-        where: {
-          conversationId: conversation.id,
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: auth.getNonNullableUser().id,
-        },
-        // Do not update `updatedAt.
-        silent: true,
-        transaction,
-      }
-    );
-    await UserConversationReadsModel.upsert(
+    const updated = await UserConversationReadsModel.upsert(
       {
         conversationId: conversation.id,
         userId: auth.getNonNullableUser().id,
@@ -1107,7 +1093,6 @@ export class ConversationResource extends BaseResource<ConversationModel> {
             action,
             userId: user.id,
             workspaceId: auth.getNonNullableWorkspace().id,
-            lastReadAt,
             actionRequired: false,
           },
           { transaction: t }
@@ -1726,7 +1711,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     await ConversationParticipantModel.update(
-      { lastReadAt: new Date(), actionRequired: false },
+      { actionRequired: false },
       {
         where: {
           conversationId: { [Op.in]: conversationIds },
