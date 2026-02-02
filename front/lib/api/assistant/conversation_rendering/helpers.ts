@@ -243,7 +243,10 @@ export function getSteps(
 /**
  * Renders a user message with metadata
  */
-export function renderUserMessage(conversation: ConversationWithoutContentType,  m: UserMessageType): UserMessageTypeModel {
+export function renderUserMessage(
+  conversation: ConversationWithoutContentType,
+  m: UserMessageType
+): UserMessageTypeModel {
   const content = replaceMentionsWithAt(m.content);
 
   const metadataItems: string[] = [];
