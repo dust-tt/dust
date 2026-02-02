@@ -315,6 +315,10 @@ export class DustAPI {
     return this._credentials.workspaceId;
   }
 
+  /**
+   * @deprecated Mutating workspaceId after initialization is not recommended.
+   * Create a new DustAPI instance instead.
+   */
   setWorkspaceId(workspaceId: string) {
     this._credentials.workspaceId = workspaceId;
   }
@@ -328,6 +332,10 @@ export class DustAPI {
         multiplier: this._retryOptions.retryDelay.multiplier,
       },
     };
+  }
+
+  getLogger(): LoggerInterface {
+    return this._logger;
   }
 
   apiUrl(): string {

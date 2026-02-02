@@ -83,6 +83,27 @@ export class DustStreamConsumedError extends DustAPIError {
   }
 }
 
+export class DustInternalError extends DustAPIError {
+  constructor(params: DustAPIErrorParams) {
+    super(params);
+    this.name = "DustInternalError";
+  }
+}
+
+export class DustResourceError extends DustAPIError {
+  constructor(params: DustAPIErrorParams) {
+    super(params);
+    this.name = "DustResourceError";
+  }
+}
+
+export class DustPlanLimitError extends DustAPIError {
+  constructor(params: DustAPIErrorParams) {
+    super(params);
+    this.name = "DustPlanLimitError";
+  }
+}
+
 const AUTH_ERROR_TYPES = new Set<string>([
   "invalid_api_key_error",
   "missing_authorization_header_error",
@@ -100,14 +121,43 @@ const VALIDATION_ERROR_TYPES = new Set<string>([
   "content_too_large",
   "file_too_large",
   "file_type_not_supported",
+  "invalid_attachment",
+  "method_not_supported_error",
 ]);
 
 const AGENT_ERROR_TYPES = new Set<string>([
   "agent_message_error",
   "global_agent_error",
+  "agent_configuration_not_found",
 ]);
 
-const CONNECTION_ERROR_TYPES = new Set<string>(["unexpected_network_error"]);
+const CONNECTION_ERROR_TYPES = new Set<string>([
+  "unexpected_network_error",
+  "connector_oauth_target_mismatch",
+  "connector_update_error",
+  "connector_update_unauthorized",
+]);
+
+const INTERNAL_ERROR_TYPES = new Set<string>(["internal_server_error"]);
+
+const RESOURCE_ERROR_TYPES = new Set<string>([
+  "data_source_error",
+  "data_source_not_found",
+  "data_source_not_managed",
+  "run_error",
+  "app_error",
+  "app_not_found",
+  "space_not_found",
+  "conversation_not_found",
+  "message_not_found",
+  "workspace_not_found",
+]);
+
+const PLAN_LIMIT_ERROR_TYPES = new Set<string>([
+  "plan_limit_error",
+  "subscription_payment_failed",
+  "subscription_state_invalid",
+]);
 
 type MinimalApiError = {
   type: string;
@@ -131,46 +181,32 @@ function toMinimalApiError(error: unknown): MinimalApiError | null {
   return null;
 }
 
+type ErrorClassification = {
+  types: Set<string>;
+  ErrorClass: new (params: DustAPIErrorParams) => DustAPIError;
+};
+
+const ERROR_CLASSIFICATIONS: ErrorClassification[] = [
+  { types: AUTH_ERROR_TYPES, ErrorClass: DustAuthenticationError },
+  { types: RATE_LIMIT_ERROR_TYPES, ErrorClass: DustRateLimitError },
+  { types: VALIDATION_ERROR_TYPES, ErrorClass: DustValidationError },
+  { types: AGENT_ERROR_TYPES, ErrorClass: DustAgentError },
+  { types: CONNECTION_ERROR_TYPES, ErrorClass: DustConnectionError },
+  { types: INTERNAL_ERROR_TYPES, ErrorClass: DustInternalError },
+  { types: RESOURCE_ERROR_TYPES, ErrorClass: DustResourceError },
+  { types: PLAN_LIMIT_ERROR_TYPES, ErrorClass: DustPlanLimitError },
+];
+
 function mapApiError(error: MinimalApiError): DustAPIError {
-  if (AUTH_ERROR_TYPES.has(error.type)) {
-    return new DustAuthenticationError({
-      code: error.type,
-      message: error.message,
-    });
+  const params = { code: error.type, message: error.message };
+
+  for (const { types, ErrorClass } of ERROR_CLASSIFICATIONS) {
+    if (types.has(error.type)) {
+      return new ErrorClass(params);
+    }
   }
 
-  if (RATE_LIMIT_ERROR_TYPES.has(error.type)) {
-    return new DustRateLimitError({
-      code: error.type,
-      message: error.message,
-    });
-  }
-
-  if (VALIDATION_ERROR_TYPES.has(error.type)) {
-    return new DustValidationError({
-      code: error.type,
-      message: error.message,
-    });
-  }
-
-  if (AGENT_ERROR_TYPES.has(error.type)) {
-    return new DustAgentError({
-      code: error.type,
-      message: error.message,
-    });
-  }
-
-  if (CONNECTION_ERROR_TYPES.has(error.type)) {
-    return new DustConnectionError({
-      code: error.type,
-      message: error.message,
-    });
-  }
-
-  return new DustAPIError({
-    code: error.type,
-    message: error.message,
-  });
+  return new DustAPIError(params);
 }
 
 export function toDustAPIError(error: unknown): DustAPIError {

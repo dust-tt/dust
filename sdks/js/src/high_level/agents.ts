@@ -9,6 +9,7 @@ import type {
   CreateConversationResponseType,
   FileType,
   FileUploadUrlRequestType,
+  LoggerInterface,
   MentionType,
   PublicPostContentFragmentRequestBody,
   PublicPostConversationsRequestBody,
@@ -21,6 +22,7 @@ import { isAgentMessage, isSupportedFileContentType } from "../types";
 import {
   DustAPIError,
   DustAuthenticationError,
+  DustRateLimitError,
   DustValidationError,
   isRetryableError,
   toDustAPIError,
@@ -82,6 +84,7 @@ interface DustAPIClient {
   }): Promise<Result<ConversationPublicType, APIError>>;
   getApiKey(): Promise<string | null>;
   getRetryOptions(): ResolvedRetryOptions;
+  getLogger(): LoggerInterface;
 }
 
 type ContentFragmentContext = {
@@ -218,7 +221,17 @@ async function withRetry<T>(
     }
 
     attempt += 1;
-    await sleep(delayMs);
+
+    // Respect rate limit hint if available
+    let effectiveDelay = delayMs;
+    if (error instanceof DustRateLimitError && error.retryAfterSeconds) {
+      effectiveDelay = Math.max(delayMs, error.retryAfterSeconds * 1000);
+    }
+
+    // Add 0-30% jitter to prevent thundering herd
+    const jitter = Math.random() * 0.3 * effectiveDelay;
+    await sleep(Math.round(effectiveDelay + jitter));
+
     delayMs = Math.min(
       delayMs * options.retryDelay.multiplier,
       options.retryDelay.maxMs
@@ -370,7 +383,11 @@ export class AgentsAPI {
       });
     };
 
-    return new MessageStream(streamFactory, abortController);
+    return new MessageStream(
+      streamFactory,
+      abortController,
+      this.client.getLogger()
+    );
   }
 
   private async buildContentFragments(
@@ -453,6 +470,15 @@ export class AgentsAPI {
     }
   }
 
+  /**
+   * Polls for the agent message to appear in the conversation.
+   *
+   * This polling approach is intentional for continuing existing conversations where
+   * the agent message may already exist or be created asynchronously. The race window
+   * between finding the agent message and starting the stream is minimal since
+   * startStream is called immediately after. Streaming from the start would require
+   * more complex handling for existing conversation continuation scenarios.
+   */
   private async waitForAgentMessage(
     conversationId: string,
     userMessageId: string,
