@@ -53,7 +53,7 @@ export function SkillsBanner({
     <AnimatePresence>
       {showSkillsBanner ? (
         <motion.div
-          initial={{ opacity: 100, translateY: "80%" }}
+          initial={{ opacity: 100, translateY: "0%" }}
           transition={{ duration: 0.1, ease: "easeIn" }}
           exit={{ opacity: 0, translateY: "120%" }}
           className="relative z-10 mx-2 mb-2 hidden cursor-pointer flex-col overflow-hidden rounded-2xl border border-border-dark bg-white shadow-md dark:border-border-night dark:bg-background-night sm:flex"
