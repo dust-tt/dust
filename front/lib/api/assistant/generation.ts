@@ -33,18 +33,20 @@ import type {
 } from "@app/types";
 import { CHAIN_OF_THOUGHT_META_PROMPT } from "@app/types/assistant/chain_of_thought_meta_prompt";
 
+// This section is included in the system prompt, which benefits from prompt caching.
+// To maximize cache hits, avoid adding high-entropy data (e.g., timestamps with time precision,
+// user specific information). The current date (without time) is an acceptable
+// trade-off, but adding more volatile data would reduce cache effectiveness.
 function constructContextSection({
   userMessage,
   agentConfiguration,
   model,
-  conversation,
   owner,
   errorContext,
 }: {
   userMessage: UserMessageType;
   agentConfiguration: AgentConfigurationType;
   model: ModelConfigurationType;
-  conversation?: ConversationWithoutContentType;
   owner: WorkspaceType | null;
   errorContext?: string;
 }): string {
@@ -54,17 +56,8 @@ function constructContextSection({
   context += `assistant: @${agentConfiguration.name}\n`;
   context += `current_date: ${d.format("YYYY-MM-DD (ddd)")}\n`;
   context += `model_id: ${model.modelId}\n`;
-  if (conversation?.sId) {
-    context += `conversation_id: ${conversation.sId}\n`;
-  }
   if (owner) {
     context += `workspace: ${owner.name}\n`;
-    if (userMessage.context.fullName) {
-      context += `user_full_name: ${userMessage.context.fullName}\n`;
-    }
-    if (userMessage.context.email) {
-      context += `user_email: ${userMessage.context.email}\n`;
-    }
   }
 
   if (model.formattingMetaPrompt) {
@@ -89,7 +82,7 @@ export function constructProjectContextSection(
   }
 
   return `# PROJECT CONTEXT
-  
+
 This conversation is associated with a project. The project provides:
 - Persistent file storage shared across all conversations in this project
 - Project metadata (description and URLs) for organizational context
@@ -481,7 +474,6 @@ export function constructPromptMultiActions(
       userMessage,
       agentConfiguration,
       model,
-      conversation,
       owner,
       errorContext,
     }),
