@@ -1,135 +1,123 @@
-import type { InferGetServerSidePropsType } from "next";
+import { Spinner } from "@dust-tt/sparkle";
 import Head from "next/head";
-import type { ParsedUrlQuery } from "querystring";
+import type { ReactElement } from "react";
 
 import AgentBuilder from "@app/components/agent_builder/AgentBuilder";
 import { AgentBuilderProvider } from "@app/components/agent_builder/AgentBuilderContext";
 import type { BuilderFlow } from "@app/components/agent_builder/types";
 import { BUILDER_FLOWS } from "@app/components/agent_builder/types";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { throwIfInvalidAgentConfiguration } from "@app/lib/actions/types/guards";
-import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
-import config from "@app/lib/api/config";
-import { isRestrictedFromAgentCreation } from "@app/lib/auth";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { useAssistantTemplate } from "@app/lib/swr/assistants";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
+import {
+  useAgentConfiguration,
+  useAssistantTemplate,
+} from "@app/lib/swr/assistants";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
+  AgentConfigurationScope,
   AgentConfigurationType,
-  PlanType,
-  SubscriptionType,
-  TemplateAgentConfigurationType,
-  UserType,
-  WorkspaceType,
 } from "@app/types";
 
-function getDuplicateAndTemplateIdFromQuery(query: ParsedUrlQuery) {
-  const { duplicate, templateId } = query;
-
-  return {
-    duplicate: duplicate && typeof duplicate === "string" ? duplicate : null,
-    templateId:
-      templateId && typeof templateId === "string" ? templateId : null,
-  };
+function isBuilderFlow(value: string): value is BuilderFlow {
+  return BUILDER_FLOWS.some((flow) => flow === value);
 }
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  user: UserType;
-  isAdmin: boolean;
-  subscription: SubscriptionType;
-  plan: PlanType;
-  agentConfiguration:
-    | AgentConfigurationType
-    | TemplateAgentConfigurationType
-    | null;
-  flow: BuilderFlow;
-  baseUrl: string;
-  templateId: string | null;
-  duplicateAgentId: string | null;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  if (!owner || !plan || !auth.isUser() || !subscription) {
-    return {
-      notFound: true,
-    };
+export const getServerSideProps = appGetServerSideProps;
+
+function CreateAgent() {
+  const router = useAppRouter();
+  const owner = useWorkspace();
+  const { user, isAdmin, isBuilder } = useAuth();
+
+  const flowParam = useSearchParam("flow");
+  const flow: BuilderFlow =
+    flowParam && isBuilderFlow(flowParam) ? flowParam : "personal_assistants";
+
+  const duplicateAgentId = useSearchParam("duplicate");
+  const templateId = useSearchParam("templateId");
+
+  const { featureFlags, isFeatureFlagsLoading } = useFeatureFlags({
+    workspaceId: owner.sId,
+  });
+  const isRestrictedFromAgentCreation =
+    featureFlags.includes("disallow_agent_creation_to_users") && !isBuilder;
+
+  const {
+    agentConfiguration,
+    isAgentConfigurationLoading,
+    isAgentConfigurationError,
+  } = useAgentConfiguration({
+    workspaceId: owner.sId,
+    agentConfigurationId: duplicateAgentId,
+    disabled: !duplicateAgentId,
+  });
+
+  const {
+    assistantTemplate,
+    isAssistantTemplateLoading,
+    isAssistantTemplateError,
+  } = useAssistantTemplate({ templateId });
+
+  let duplicateConfiguration: AgentConfigurationType | null = null;
+  if (agentConfiguration && duplicateAgentId) {
+    const scope: AgentConfigurationScope =
+      flow === "personal_assistants" ? "hidden" : "visible";
+    duplicateConfiguration =
+      agentConfiguration.scope === scope
+        ? agentConfiguration
+        : { ...agentConfiguration, scope };
   }
 
-  if (await isRestrictedFromAgentCreation(owner)) {
-    return {
-      notFound: true,
-    };
+  const isDuplicateLoading = !!duplicateAgentId && isAgentConfigurationLoading;
+
+  if (isFeatureFlagsLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
-  const flow: BuilderFlow = BUILDER_FLOWS.includes(
-    context.query.flow as BuilderFlow
-  )
-    ? (context.query.flow as BuilderFlow)
-    : "personal_assistants";
-
-  let configuration:
-    | AgentConfigurationType
-    | TemplateAgentConfigurationType
-    | null = null;
-  const { duplicate, templateId } = getDuplicateAndTemplateIdFromQuery(
-    context.query
-  );
-
-  await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
-
-  if (duplicate) {
-    configuration = await getAgentConfiguration(auth, {
-      agentId: duplicate,
-      variant: "full",
-    });
-
-    if (!configuration) {
-      return {
-        notFound: true,
-      };
-    }
-    // We reset the scope according to the current flow. This ensures that cloning a workspace
-    // agent with flow `personal_assistants` will initialize the agent as private.
-    configuration.scope = flow === "personal_assistants" ? "hidden" : "visible";
+  if (isRestrictedFromAgentCreation) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
-  const user = auth.getNonNullableUser().toJSON();
-  const isAdmin = auth.isAdmin();
-
-  return {
-    props: {
-      agentConfiguration: configuration,
-      baseUrl: config.getClientFacingUrl(),
-      flow,
-      owner,
-      plan,
-      subscription,
-      templateId,
-      duplicateAgentId: duplicate,
-      user,
-      isAdmin,
-    },
-  };
-});
-
-export default function CreateAgent({
-  agentConfiguration,
-  owner,
-  user,
-  isAdmin,
-  templateId,
-  duplicateAgentId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const { assistantTemplate } = useAssistantTemplate({ templateId });
-
-  if (agentConfiguration) {
-    throwIfInvalidAgentConfiguration(agentConfiguration);
+  if (
+    (duplicateAgentId &&
+      (isAgentConfigurationError ||
+        (!isAgentConfigurationLoading && !agentConfiguration))) ||
+    (templateId &&
+      (isAssistantTemplateError ||
+        (!isAssistantTemplateLoading && !assistantTemplate)))
+  ) {
+    void router.replace("/404");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
-  if (templateId && !assistantTemplate) {
-    return null;
+  if (isDuplicateLoading || (templateId && isAssistantTemplateLoading)) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (duplicateConfiguration) {
+    throwIfInvalidAgentConfiguration(duplicateConfiguration);
   }
 
   return (
@@ -143,17 +131,22 @@ export default function CreateAgent({
         <title>Dust - New Agent</title>
       </Head>
       <AgentBuilder
-        agentConfiguration={
-          agentConfiguration && "sId" in agentConfiguration
-            ? agentConfiguration
-            : undefined
-        }
+        agentConfiguration={duplicateConfiguration ?? undefined}
         duplicateAgentId={duplicateAgentId}
       />
     </AgentBuilderProvider>
   );
 }
 
-CreateAgent.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = CreateAgent as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;

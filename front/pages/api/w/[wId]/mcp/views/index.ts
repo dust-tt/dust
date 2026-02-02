@@ -33,17 +33,17 @@ export type GetMCPServerViewsListResponseBody = {
 };
 
 // We don't allow to fetch "auto_hidden_builder".
-const isAllowedAvailability = (
+function isAllowedAvailability(
   availability: string
-): availability is MCPViewsRequestAvailabilityType => {
+): availability is MCPViewsRequestAvailabilityType {
   return availability === "manual" || availability === "auto";
-};
+}
 
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<WithAPIErrorResponse<GetMCPServerViewsListResponseBody>>,
   auth: Authenticator
-) {
+): Promise<void> {
   const { method } = req;
 
   switch (method) {
@@ -79,6 +79,10 @@ async function handler(
       }
 
       const query = r.data;
+
+      if (auth.isAdmin()) {
+        await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+      }
 
       const serverViews = await concurrentExecutor(
         query.spaceIds,
