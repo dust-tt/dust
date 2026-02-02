@@ -93,22 +93,12 @@ function CreateAgent() {
   }
 
   if (
-    duplicateAgentId &&
-    (isAgentConfigurationError ||
-      (!isAgentConfigurationLoading && !agentConfiguration))
-  ) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  if (
-    templateId &&
-    (isAssistantTemplateError ||
-      (!isAssistantTemplateLoading && !assistantTemplate))
+    (duplicateAgentId &&
+      (isAgentConfigurationError ||
+        (!isAgentConfigurationLoading && !agentConfiguration))) ||
+    (templateId &&
+      (isAssistantTemplateError ||
+        (!isAssistantTemplateLoading && !assistantTemplate)))
   ) {
     void router.replace("/404");
     return (
