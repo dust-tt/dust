@@ -17,6 +17,7 @@ import {
 } from "@app/lib/api/assistant/streaming/events";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type {
   AgentMessageType,
@@ -26,7 +27,7 @@ import type {
   UserMessageType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { isAgentMessageType } from "@app/types";
+import { isAgentMessageType, isProjectConversation } from "@app/types";
 import { isUserMessageType } from "@app/types";
 
 export const MessageReactionRequestBodySchema = t.type({
@@ -62,6 +63,25 @@ async function handler(
   }
 
   const conversation = conversationRes.value;
+
+  if (isProjectConversation(conversation)) {
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return apiError(req, res, {
+        status_code: 404,
+        api_error: { type: "space_not_found", message: "Space not found." },
+      });
+    }
+    if (!space.isMember(auth)) {
+      return apiError(req, res, {
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You are not a member of the project.",
+        },
+      });
+    }
+  }
 
   if (!(typeof req.query.mId === "string")) {
     return apiError(req, res, {

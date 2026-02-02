@@ -8,8 +8,8 @@ import type {
 } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
-import { PROJECTS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { getSpaceName } from "@app/lib/spaces";
+import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import {
   emptyArray,
   fetcher,
@@ -1039,15 +1039,23 @@ export function useGenerateProjectJournalEntry({
 export function useLeaveProject({
   owner,
   spaceId,
+  spaceName,
+  userName,
 }: {
   owner: LightWorkspaceType;
   spaceId: string;
+  spaceName: string;
+  userName: string;
 }) {
   const sendNotification = useSendNotification();
   const { mutateSpaceInfo } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
     disabled: true, // Needed just to mutate
+  });
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true }, // Needed just to mutate
   });
 
   const doLeave = async (): Promise<boolean> => {
@@ -1058,10 +1066,10 @@ export function useLeaveProject({
 
     if (res.ok) {
       void mutateSpaceInfo();
-      window.dispatchEvent(new CustomEvent(PROJECTS_UPDATED_EVENT));
+      void mutateSpaceSummary();
       sendNotification({
         type: "success",
-        title: "Left project",
+        title: `${userName} left project ${spaceName}`,
         description: "You have successfully left the project.",
       });
       return true;
@@ -1077,4 +1085,55 @@ export function useLeaveProject({
   };
 
   return doLeave;
+}
+
+export function useJoinProject({
+  owner,
+  spaceId,
+  spaceName,
+  userName,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+  spaceName: string;
+  userName: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId,
+    disabled: true,
+  });
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true }, // Needed just to mutate
+  });
+
+  const doJoin = async (): Promise<boolean> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${spaceId}/join`,
+      { method: "POST" }
+    );
+
+    if (res.ok) {
+      void mutateSpaceInfo();
+      void mutateSpaceSummary();
+      sendNotification({
+        type: "success",
+        title: `${userName} joined project ${spaceName}`,
+        description: "You can now participate in conversations.",
+      });
+      return true;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Could not join project",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+  };
+
+  return doJoin;
 }

@@ -50,6 +50,7 @@ import {
   useConversationParticipants,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
@@ -126,6 +127,12 @@ export const ConversationViewer = ({
   } = useConversation({
     conversationId,
     workspaceId: owner.sId,
+  });
+
+  const { spaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: conversation?.spaceId ?? "",
+    disabled: !conversation?.spaceId,
   });
 
   const { markAsRead } = useConversationMarkAsRead({
@@ -706,6 +713,10 @@ export const ConversationViewer = ({
     );
   }, [feedbacks]);
 
+  const isProjectMember = conversation?.spaceId
+    ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
+    : undefined;
+
   const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
@@ -713,11 +724,16 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       draftKey: `conversation-${conversationId}`,
-      enableExtendedActions: !!conversation?.spaceId,
+      enableExtendedActions:
+        !!conversation?.spaceId && isProjectMember !== false,
       agentBuilderContext,
       feedbacksByMessageId,
       additionalMarkdownComponents,
       additionalMarkdownPlugins,
+      isProjectMember,
+      isProjectRestricted: spaceInfo?.isRestricted,
+      projectSpaceId: conversation?.spaceId ?? undefined,
+      projectSpaceName: spaceInfo?.name,
     };
   }, [
     user,
@@ -729,6 +745,9 @@ export const ConversationViewer = ({
     feedbacksByMessageId,
     additionalMarkdownComponents,
     additionalMarkdownPlugins,
+    isProjectMember,
+    spaceInfo?.isRestricted,
+    spaceInfo?.name,
   ]);
 
   return (

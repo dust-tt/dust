@@ -70,10 +70,7 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import {
-  CONVERSATIONS_UPDATED_EVENT,
-  PROJECTS_UPDATED_EVENT,
-} from "@app/lib/notifications/events";
+import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { AppRouter } from "@app/lib/platform";
 import { useAppRouter } from "@app/lib/platform";
 import { SKILL_ICON } from "@app/lib/skill";
@@ -171,19 +168,6 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
       );
     };
   }, [hasSpaceConversations, mutateConversations, mutateSpaceSummary]);
-
-  useEffect(() => {
-    if (!hasSpaceConversations) {
-      return;
-    }
-    const handleProjectsUpdated = () => {
-      void mutateSpaceSummary();
-    };
-    window.addEventListener(PROJECTS_UPDATED_EVENT, handleProjectsUpdated);
-    return () => {
-      window.removeEventListener(PROJECTS_UPDATED_EVENT, handleProjectsUpdated);
-    };
-  }, [hasSpaceConversations, mutateSpaceSummary]);
 
   const [isMultiSelect, setIsMultiSelect] = useState(false);
   const [selectedConversations, setSelectedConversations] = useState<
