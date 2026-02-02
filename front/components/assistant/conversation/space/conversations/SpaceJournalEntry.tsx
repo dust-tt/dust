@@ -104,7 +104,8 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
         title="Journal Entry"
         icon={BookOpenIcon}
         className="[&>div]:!items-start"
-        action={
+      >
+        <div className="flex flex-col py-2 ">
           <div className="flex items-center gap-2">
             <Tooltip
               trigger={<Chip color="golden" size="xs" label={formattedDate} />}
@@ -118,25 +119,25 @@ export function SpaceJournalEntry({ owner, space }: SpaceJournalEntryProps) {
               onClick={handleGenerate}
             />
           </div>
-        }
-      >
-        {isLongContent ? (
-          <Collapsible>
-            <div>
-              <Markdown content={previewContent} />
-              <CollapsibleTrigger
-                label="Show more"
-                variant="secondary"
-                className="mt-2"
-              />
-            </div>
-            <CollapsibleContent className="mt-2">
-              <Markdown content={remainingContent} />
-            </CollapsibleContent>
-          </Collapsible>
-        ) : (
-          <Markdown content={latestJournalEntry.journalEntry} />
-        )}
+
+          {isLongContent ? (
+            <Collapsible>
+              <div>
+                <Markdown content={previewContent} />
+                <CollapsibleTrigger
+                  label="Show more"
+                  variant="secondary"
+                  className="mt-2"
+                />
+              </div>
+              <CollapsibleContent className="mt-2">
+                <Markdown content={remainingContent} />
+              </CollapsibleContent>
+            </Collapsible>
+          ) : (
+            <Markdown content={latestJournalEntry.journalEntry} />
+          )}
+        </div>
       </ContentMessage>
     </Page.Vertical>
   );
