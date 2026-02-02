@@ -976,6 +976,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         transaction,
       }
     );
+    await UserConversationReadsModel.upsert(
+      {
+        conversationId: conversation.id,
+        userId: auth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        lastReadAt: new Date(),
+      },
+      { transaction }
+    );
     return new Ok(updated);
   }
 
@@ -1087,6 +1096,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
           { transaction: t }
         );
+        if (lastReadAt) {
+          await UserConversationReadsModel.upsert(
+            {
+              conversationId: conversation.id,
+              userId: user.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              lastReadAt,
+            },
+            { transaction: t }
+          );
+        }
         status = "added";
       }
     }, transaction);
@@ -1680,15 +1700,54 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversationIds = conversations.map((c) => c.id);
 
+    const userId = auth.getNonNullableUser().id;
+    const workspaceId = auth.getNonNullableWorkspace().id;
+
     await ConversationParticipantModel.update(
       { lastReadAt: new Date(), actionRequired: false },
       {
         where: {
           conversationId: { [Op.in]: conversationIds },
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: auth.getNonNullableUser().id,
+          workspaceId,
+          userId,
         },
       }
+    );
+
+    // Update the existing UserConversationReads entries
+    const existingReads = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: { [Op.in]: conversationIds },
+        userId,
+        workspaceId,
+      },
+    });
+
+    await UserConversationReadsModel.update(
+      { lastReadAt: new Date() },
+      {
+        where: {
+          id: {
+            [Op.in]: existingReads.map((read) => read.id),
+          },
+        },
+      }
+    );
+
+    // Create entries for conversations that do not have one yet
+    const conversationIdsWithExistingReads = new Set(
+      existingReads.map((read) => read.conversationId)
+    );
+    const conversationIdsNeedingNewReads = conversationIds.filter(
+      (id) => !conversationIdsWithExistingReads.has(id)
+    );
+    await UserConversationReadsModel.bulkCreate(
+      conversationIdsNeedingNewReads.map((conversationId) => ({
+        conversationId,
+        userId,
+        workspaceId,
+        lastReadAt: new Date(),
+      }))
     );
 
     return new Ok(undefined);
