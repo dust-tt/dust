@@ -1611,6 +1611,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const participants = await ConversationParticipantModel.findAll({
       where: {
         workspaceId: auth.getNonNullableWorkspace().id,
+        conversationId: this.id,
       },
     });
 

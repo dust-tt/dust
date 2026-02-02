@@ -1053,7 +1053,7 @@ describe("listConversationsForUser", () => {
         ))!.id,
         workspaceId: userAuth.getNonNullableWorkspace().id,
         userId: userAuth.getNonNullableUser().id,
-        lastReadAt: new Date(),
+        lastReadAt: dateFromDaysAgo(10),
       });
 
       // Mark readConvo as read
@@ -1314,10 +1314,7 @@ describe("listConversationsForUser", () => {
 
       // Mark unreadSpaceConvo as unread
       await UserConversationReadsModel.upsert({
-        conversationId: (await ConversationResource.fetchById(
-          adminAuth,
-          unreadSpaceConvo.sId
-        ))!.id,
+        conversationId: unreadSpaceConvo.id,
         workspaceId: userAuth.getNonNullableWorkspace().id,
         userId: userAuth.getNonNullableUser().id,
         lastReadAt: dateFromDaysAgo(2),
