@@ -45,6 +45,7 @@ import {
   slackNonThreadedMessagesInternalIdFromSlackNonThreadedMessagesIdentifier,
   slackThreadInternalIdFromSlackThreadIdentifier,
 } from "@connectors/connectors/slack/lib/utils";
+import { RATE_LIMITS } from "@connectors/connectors/slack/ratelimits";
 import { apiConfig } from "@connectors/lib/api/config";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import {
@@ -66,6 +67,7 @@ import {
   syncSucceeded,
 } from "@connectors/lib/sync_status";
 import { heartbeat } from "@connectors/lib/temporal";
+import { throttleWithRedis } from "@connectors/lib/throttle";
 import mainLogger from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import { SlackConfigurationResource } from "@connectors/resources/slack_configuration_resource";
@@ -318,12 +320,19 @@ export async function getMessagesForChannel(
     channelId,
     limit,
   });
-  const c: ConversationsHistoryResponse = await withSlackErrorHandling(() =>
-    slackClient.conversations.history({
-      channel: channelId,
-      limit: limit,
-      cursor: nextCursor,
-    })
+  const c = await throttleWithRedis(
+    RATE_LIMITS["conversations.history"],
+    `${connectorId}-conversations-history`,
+    { canBeIgnored: false },
+    () =>
+      withSlackErrorHandling(() =>
+        slackClient.conversations.history({
+          channel: channelId,
+          limit: limit,
+          cursor: nextCursor,
+        })
+      ),
+    { source: "getMessagesForChannel" }
   );
   // Despite the typing, in practice `conversations.history` can be undefined at times.
   if (!c) {
@@ -454,14 +463,21 @@ export async function syncNonThreaded({
         useCase: isBatchSync ? "batch_sync" : "incremental_sync",
       });
 
-      c = await withSlackErrorHandling(() =>
-        slackClient.conversations.history({
-          channel: channelId,
-          limit: CONVERSATION_HISTORY_LIMIT,
-          oldest: `${startTsSec}`,
-          latest: `${latestTsSec}`,
-          inclusive: true,
-        })
+      c = await throttleWithRedis(
+        RATE_LIMITS["conversations.history"],
+        `${connectorId}-conversations-history`,
+        { canBeIgnored: false },
+        () =>
+          withSlackErrorHandling(() =>
+            slackClient.conversations.history({
+              channel: channelId,
+              limit: CONVERSATION_HISTORY_LIMIT,
+              oldest: `${startTsSec}`,
+              latest: `${latestTsSec}`,
+              inclusive: true,
+            })
+          ),
+        { source: "syncNonThreaded" }
       );
     } catch (e) {
       const maybeSlackPlatformError = e as WebAPIPlatformError;
@@ -476,12 +492,17 @@ export async function syncNonThreaded({
       throw e;
     }
 
-    if (c?.error) {
+    if (!c) {
+      throw new Error(
+        `Failed getting messages for channel ${channelId}: response is undefined`
+      );
+    }
+    if (c.error) {
       throw new Error(
         `Failed getting messages for channel ${channelId}: ${c.error}`
       );
     }
-    if (c?.messages === undefined) {
+    if (c.messages === undefined) {
       logger.error(
         {
           channelId,

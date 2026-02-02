@@ -268,7 +268,13 @@ export async function getSlackConversationInfo(
     method: "conversations.info",
     channelId,
   });
-  return slackClient.conversations.info({ channel: channelId });
+  return throttleWithRedis(
+    RATE_LIMITS["conversations.info"],
+    `${connectorId}-conversations-info`,
+    { canBeIgnored: false },
+    () => slackClient.conversations.info({ channel: channelId }),
+    { source: "getSlackConversationInfo" }
+  );
 }
 
 export async function getSlackAccessToken(
