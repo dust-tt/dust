@@ -23,6 +23,7 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
   ConversationType,

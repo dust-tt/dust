@@ -3865,7 +3865,12 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     // eslint-disable-next-line dust/no-raw-sql
     await frontSequelize.query(
       `UPDATE conversations SET "updatedAt" = :updatedAt WHERE id = :id`,
-      { replacements: { updatedAt: dateFromDaysAgo(daysAgo).toISOString(), id: convo.id } }
+      {
+        replacements: {
+          updatedAt: dateFromDaysAgo(daysAgo).toISOString(),
+          id: convo.id,
+        },
+      }
     );
     return convo;
   };
@@ -3962,7 +3967,9 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     const lastValueMs = parseInt(result.lastValue ?? "", 10);
     expect(Number.isNaN(lastValueMs)).toBe(false);
     // Check timestamp is close to expected (within 1 second tolerance)
-    expect(Math.abs(lastValueMs - expectedTimestamp.getTime())).toBeLessThan(1000);
+    expect(Math.abs(lastValueMs - expectedTimestamp.getTime())).toBeLessThan(
+      1000
+    );
   });
 
   it("should fetch next page using lastValue cursor", async () => {
@@ -4023,13 +4030,14 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     const maxIterations = 10;
 
     while (iterations < maxIterations) {
-      const result = await ConversationResource.listConversationsInSpacePaginated(
-        adminAuth,
-        {
-          spaceId: space.sId,
-          pagination: { limit: 2, lastValue },
-        }
-      );
+      const result =
+        await ConversationResource.listConversationsInSpacePaginated(
+          adminAuth,
+          {
+            spaceId: space.sId,
+            pagination: { limit: 2, lastValue },
+          }
+        );
 
       allSids.push(...result.conversations.map((c) => c.sId));
 
@@ -4141,26 +4149,22 @@ describe("ConversationResource.listConversationsInSpacePaginated", () => {
     );
 
     // Without includeDeleted - should only return convo1
-    const resultWithoutDeleted = await ConversationResource.listConversationsInSpacePaginated(
-      adminAuth,
-      {
+    const resultWithoutDeleted =
+      await ConversationResource.listConversationsInSpacePaginated(adminAuth, {
         spaceId: space.sId,
         pagination: { limit: 10 },
-      }
-    );
+      });
 
     expect(resultWithoutDeleted.conversations).toHaveLength(1);
     expect(resultWithoutDeleted.conversations[0].sId).toBe(convo1.sId);
 
     // With includeDeleted - should return both
-    const resultWithDeleted = await ConversationResource.listConversationsInSpacePaginated(
-      adminAuth,
-      {
+    const resultWithDeleted =
+      await ConversationResource.listConversationsInSpacePaginated(adminAuth, {
         spaceId: space.sId,
         options: { includeDeleted: true },
         pagination: { limit: 10 },
-      }
-    );
+      });
 
     const sIds = resultWithDeleted.conversations.map((c) => c.sId);
     expect(sIds).toContain(convo1.sId);
