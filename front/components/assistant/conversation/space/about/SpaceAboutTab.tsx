@@ -22,6 +22,7 @@ import { RestrictedAccessBody } from "@app/components/spaces/RestrictedAccessBod
 import { RestrictedAccessHeader } from "@app/components/spaces/RestrictedAccessHeader";
 import {
   useProjectMetadata,
+  useRenameSpace,
   useUpdateProjectMetadata,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
@@ -185,6 +186,7 @@ export function SpaceAboutTab({
   initialIsRestricted,
   planAllowsSCIM,
 }: SpaceAboutTabProps) {
+  const [projectName, setProjectName] = useState(space.name);
   const [managementType, setManagementType] = useState<"manual" | "group">(
     initialManagementMode
   );
@@ -206,6 +208,7 @@ export function SpaceAboutTab({
     owner,
     spaceId: space.sId,
   });
+  const doRename = useRenameSpace({ owner });
 
   const form = useForm<PatchProjectMetadataBodyType>({
     resolver: zodResolver(PatchProjectMetadataBodySchema),
@@ -227,6 +230,8 @@ export function SpaceAboutTab({
 
   const isManual = !planAllowsSCIM || managementType === "manual";
   const doUpdate = useUpdateSpace({ owner });
+
+  const hasNameChange = projectName !== space.name;
 
   const hasChanges = useMemo(() => {
     if (managementType !== initialManagementMode) {
@@ -275,7 +280,14 @@ export function SpaceAboutTab({
 
   const onSaveMetadata = form.handleSubmit(async (data) => {
     setIsSavingMetadata(true);
-    await doUpdateMetadata(data);
+
+    const promises: Promise<unknown>[] = [doUpdateMetadata(data)];
+
+    if (hasNameChange) {
+      promises.push(doRename(space, projectName));
+    }
+
+    await Promise.all(promises);
     setIsSavingMetadata(false);
   });
 
@@ -318,6 +330,17 @@ export function SpaceAboutTab({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col gap-y-4 overflow-y-scroll p-8">
+      <div className="space-y-2">
+        <h3 className="heading-base font-semibold text-foreground dark:text-foreground-night">
+          Project Name
+        </h3>
+        <Input
+          placeholder="Project name"
+          value={projectName}
+          onChange={(e) => setProjectName(e.target.value)}
+        />
+      </div>
+
       <FormProvider {...form}>
         <form onSubmit={onSaveMetadata} className="flex flex-col gap-y-4">
           <BaseFormFieldSection
@@ -353,7 +376,7 @@ export function SpaceAboutTab({
               disabled={
                 isSavingMetadata ||
                 isProjectMetadataLoading ||
-                !form.formState.isDirty
+                (!form.formState.isDirty && !hasNameChange)
               }
             />
           </div>

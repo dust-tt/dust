@@ -512,6 +512,58 @@ export function useCreateSpace({ owner }: { owner: LightWorkspaceType }) {
   return doCreate;
 }
 
+export function useRenameSpace({ owner }: { owner: LightWorkspaceType }) {
+  const sendNotification = useSendNotification();
+  const { mutate: mutateSpaces } = useSpaces({
+    workspaceId: owner.sId,
+    kinds: "all",
+    disabled: true,
+  });
+  const { mutate: mutateSpacesAsAdmin } = useSpacesAsAdmin({
+    workspaceId: owner.sId,
+    disabled: true,
+  });
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
+    options: { disabled: true },
+  });
+
+  return async (space: SpaceType, newName: string) => {
+    if (newName === space.name) {
+      return space;
+    }
+
+    const res = await clientFetch(`/api/w/${owner.sId}/spaces/${space.sId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName }),
+    });
+
+    if (!res.ok) {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Error renaming project",
+        description: `Error: ${errorData.message}`,
+      });
+      return null;
+    }
+
+    void mutateSpaces();
+    void mutateSpacesAsAdmin();
+    void mutateSpaceSummary();
+
+    sendNotification({
+      type: "success",
+      title: "Project renamed",
+      description: "Project was successfully renamed.",
+    });
+
+    const spaceResponse: PatchSpaceResponseBody = await res.json();
+    return spaceResponse.space;
+  };
+}
+
 export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
   const sendNotification = useSendNotification();
   const { mutate: mutateSpaces } = useSpaces({
@@ -532,7 +584,6 @@ export function useUpdateSpace({ owner }: { owner: LightWorkspaceType }) {
 
     const updatePromises: Promise<Response>[] = [];
 
-    // Prepare space update request.
     if (newName) {
       const spaceUrl = `/api/w/${owner.sId}/spaces/${space.sId}`;
       updatePromises.push(
