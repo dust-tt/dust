@@ -11,6 +11,13 @@ import {
 } from "@sparkle/components/Collapsible";
 import { cn } from "@sparkle/lib/utils";
 
+interface RequestCardActionProps {
+  label: string;
+  onClick: () => void;
+  isLoading?: boolean;
+  disabled?: boolean;
+}
+
 export interface RequestCardProps {
   title: string;
   icon?: ComponentType<{ className?: string }>;
@@ -34,20 +41,11 @@ export interface RequestCardProps {
     };
   };
 
-  primaryAction: {
-    label: string;
-    onClick: () => void;
+  primaryAction: RequestCardActionProps & {
     variant?: "highlight" | "warning";
-    isLoading?: boolean;
-    disabled?: boolean;
   };
 
-  secondaryAction?: {
-    label: string;
-    onClick: () => void;
-    isLoading?: boolean;
-    disabled?: boolean;
-  };
+  secondaryAction?: RequestCardActionProps;
 
   className?: string;
 }
