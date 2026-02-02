@@ -52,6 +52,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -1471,8 +1472,10 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       });
 
       if (existingArchivedSkill) {
-        const { updatedAt: d } = existingArchivedSkill;
-        const timestamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+        const timestamp = formatTimestampToFriendlyDate(
+          existingArchivedSkill.updatedAt.getTime(),
+          "compactWithDay"
+        );
         await existingArchivedSkill.update(
           { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
           { transaction }
