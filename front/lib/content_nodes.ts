@@ -158,7 +158,7 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
 }
 
 const SHAREPOINT_SITE_NAME_REGEX =
-  /^https?:\/\/[^/]*sharepoint\.com\/(?:\:f:\/r\/)?(?:sites|teams)\/([^/?#]+)/i;
+  /^https?:\/\/[^/]*sharepoint\.com\/(?::f:\/r\/)?(?:sites|teams)\/([^/?#]+)/i;
 
 function extractSharePointSiteNameFromSourceUrl(sourceUrl: string): string | null {
   const match = sourceUrl.match(SHAREPOINT_SITE_NAME_REGEX);
