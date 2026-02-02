@@ -242,7 +242,7 @@ export function ManageUsersPanel({
                       </div>
                       {user.isMember && user.isEditor && (
                         <Button
-                          size="mini"
+                          size="xs"
                           variant="highlight"
                           label="Editor"
                           icon={CheckIcon}
@@ -254,7 +254,7 @@ export function ManageUsersPanel({
                       )}
                       {user.isMember && !user.isEditor && (
                         <Button
-                          size="mini"
+                          size="xs"
                           variant="outline"
                           label="Set as editor"
                           onClick={(e) => {
