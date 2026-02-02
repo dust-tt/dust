@@ -15,7 +15,9 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useMemo, useState } from "react";
 
+import { useSendNotification } from "@app/hooks/useNotification";
 import { useSearchMembers } from "@app/lib/swr/memberships";
+import { useSpaceInfo, useUpdateSpace } from "@app/lib/swr/spaces";
 import type {
   LightWorkspaceType,
   SpaceType,
@@ -30,28 +32,27 @@ interface UserWithMembershipStatus extends UserType {
 
 interface ManageUsersPanelProps {
   isOpen: boolean;
+  setIsOpen: (isOpen: boolean) => void;
   owner: LightWorkspaceType;
   space: SpaceType;
   currentProjectMembers: SpaceUserType[];
-  onClose: () => void;
-  onSave: ({
-    members,
-    editors,
-  }: {
-    members: string[];
-    editors: string[];
-  }) => void;
 }
 
 export function ManageUsersPanel({
   isOpen,
+  setIsOpen,
   owner,
   space,
   currentProjectMembers: currentProjectMembers,
-  onClose,
-  onSave,
 }: ManageUsersPanelProps) {
   const [searchText, setSearchText] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const sendNotification = useSendNotification();
+  const doUpdateSpace = useUpdateSpace({ owner });
+  const { mutateSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: space.sId,
+  });
 
   // Fetch workspace members
   const { members: allWorkspaceMembers, isLoading } = useSearchMembers({
@@ -113,7 +114,8 @@ export function ManageUsersPanel({
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    setIsSaving(true);
     // Preserve existing members/editors who weren't loaded in the members list
     const loadedMemberIds = new Set(members.map((m) => m.sId));
     const unloadedMembers = currentProjectMembers
@@ -131,15 +133,40 @@ export function ManageUsersPanel({
       .filter((m) => m.isMember && m.isEditor)
       .map((m) => m.sId);
 
-    onSave({
-      members: [...unloadedMembers, ...loadedMembersToSave],
-      editors: [...unloadedEditors, ...loadedEditorsToSave],
+    const memberIds = [...unloadedMembers, ...loadedMembersToSave];
+    const editorIds = [...unloadedEditors, ...loadedEditorsToSave];
+
+    if (editorIds.length === 0) {
+      setIsOpen(false);
+      sendNotification({
+        title: "At least one editor is required.",
+        description: "You cannot remove the last editor.",
+        type: "error",
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    // Call the API to update the space with new members
+    const updatedSpace = await doUpdateSpace(space, {
+      isRestricted: space.isRestricted,
+      memberIds,
+      editorIds,
+      managementMode: "manual",
+      name: space.name,
     });
+
+    if (updatedSpace) {
+      // Trigger a refresh of the space info to get updated members list
+      await mutateSpaceInfo();
+      setIsOpen(false);
+    }
+    setIsSaving(false);
   };
 
   const handleClose = () => {
     setSearchText("");
-    onClose();
+    setIsOpen(false);
   };
 
   // Get selected users data for button label
@@ -153,7 +180,7 @@ export function ManageUsersPanel({
   const selectedEditorsCount = useMemo(() => {
     return members.filter((user) => user.isEditor).length;
   }, [members]);
-  const canSave = selectedEditorsCount > 0;
+  const canSave = selectedEditorsCount > 0 && !isSaving;
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && handleClose()}>
@@ -254,6 +281,7 @@ export function ManageUsersPanel({
             variant: "highlight",
             onClick: handleSave,
             disabled: !canSave,
+            isLoading: isSaving,
             tooltip: !canSave
               ? "Please select at least one editor to save."
               : undefined,

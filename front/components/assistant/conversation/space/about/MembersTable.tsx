@@ -183,9 +183,7 @@ export function MembersTable({
           return (
             <DataTable.CellContent>
               {info.row.original.isEditor && (
-                <Chip color="green" size="mini">
-                  editor
-                </Chip>
+                <Chip color="green" size="xs" label="editor" />
               )}
             </DataTable.CellContent>
           );

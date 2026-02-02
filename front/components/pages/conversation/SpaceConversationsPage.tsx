@@ -22,11 +22,7 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
-import {
-  useSpaceInfo,
-  useSystemSpace,
-  useUpdateSpace,
-} from "@app/lib/swr/spaces";
+import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
@@ -40,17 +36,14 @@ export function SpaceConversationsPage() {
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
 
-  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError, mutateSpaceInfo } =
-    useSpaceInfo({
-      workspaceId: owner.sId,
-      spaceId: spaceId,
-    });
+  const { spaceInfo, isSpaceInfoLoading, isSpaceInfoError } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: spaceId,
+  });
 
   const { systemSpace, isSystemSpaceLoading } = useSystemSpace({
     workspaceId: owner.sId,
   });
-
-  const doUpdateSpace = useUpdateSpace({ owner });
 
   const createConversationWithMessage = useCreateConversationWithMessage({
     owner,
@@ -115,30 +108,6 @@ export function SpaceConversationsPage() {
     );
     setCurrentTab(tab);
   }, []);
-
-  const handleManageMembers = useCallback(
-    async ({ members, editors }: { members: string[]; editors: string[] }) => {
-      if (editors.length === 0 || !spaceInfo) {
-        setIsInvitePanelOpen(false);
-        return;
-      }
-
-      // Call the API to update the space with new members
-      const updatedSpace = await doUpdateSpace(spaceInfo, {
-        isRestricted: spaceInfo.isRestricted,
-        memberIds: members,
-        editorIds: editors,
-        managementMode: "manual",
-        name: spaceInfo.name,
-      });
-
-      if (updatedSpace) {
-        // Trigger a refresh of the space info to get updated members list
-        await mutateSpaceInfo();
-      }
-    },
-    [spaceInfo, doUpdateSpace, mutateSpaceInfo]
-  );
 
   const handleConversationCreation = useCallback(
     async (
@@ -318,11 +287,10 @@ export function SpaceConversationsPage() {
       </Tabs>
       <ManageUsersPanel
         isOpen={isInvitePanelOpen}
+        setIsOpen={setIsInvitePanelOpen}
         owner={owner}
         space={spaceInfo}
         currentProjectMembers={spaceInfo.members}
-        onClose={() => setIsInvitePanelOpen(false)}
-        onSave={handleManageMembers}
       />
     </div>
   );

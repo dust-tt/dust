@@ -37,7 +37,7 @@ export function InviteUsersScreen({
   initialSelectedUserIds,
 }: InviteUsersScreenProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [searchText, setSearchText] = useState("");
 
@@ -62,7 +62,7 @@ export function InviteUsersScreen({
     return mockUsers.filter(
       (user) =>
         user.fullName.toLowerCase().includes(lowerSearch) ||
-        user.email.toLowerCase().includes(lowerSearch)
+        user.email.toLowerCase().includes(lowerSearch),
     );
   }, [searchText]);
 
