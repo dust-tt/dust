@@ -9486,9 +9486,45 @@
           ],
           "type": "object"
         }
+      },
+      {
+        "name": "copy_file",
+        "description": "Copy a file or folder to a new location in OneDrive or SharePoint. Returns immediately with a monitor URL to check copy progress. This is the recommended method for creating documents from templates.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "driveId": {
+              "description": "Drive ID (takes priority over siteId)",
+              "type": "string"
+            },
+            "itemId": {
+              "description": "ID of the item to copy",
+              "type": "string"
+            },
+            "name": {
+              "description": "Name for the copied item",
+              "type": "string"
+            },
+            "parentItemId": {
+              "description": "ID of the parent folder for the copy. If not specified, copies to the same folder.",
+              "type": "string"
+            },
+            "siteId": {
+              "description": "SharePoint site ID",
+              "type": "string"
+            }
+          },
+          "required": [
+            "itemId",
+            "name"
+          ],
+          "type": "object"
+        }
       }
     ],
     "toolsStakes": {
+      "copy_file": "high",
       "get_file_content": "never_ask",
       "search_drive_items": "never_ask",
       "search_in_files": "never_ask",

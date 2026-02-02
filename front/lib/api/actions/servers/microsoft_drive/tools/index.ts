@@ -400,6 +400,73 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
       return new Err(new MCPError(errorMessage));
     }
   },
+
+  copy_file: async ({ itemId, driveId, siteId, parentItemId, name }, extra) => {
+    // Validation: au moins driveId ou siteId requis
+    if (!driveId && !siteId) {
+      return new Err(new MCPError("Either driveId or siteId must be provided"));
+    }
+
+    try {
+      const client = await getGraphClient(extra.authInfo);
+      if (!client) {
+        return new Err(new MCPError("Failed to get Microsoft Graph client"));
+      }
+
+      // Construire l'endpoint source
+      const sourceEndpoint = await getDriveItemEndpoint(
+        itemId,
+        driveId,
+        siteId
+      );
+
+      // Construire le corps de la requête
+      const requestBody: any = { name };
+
+      // Destination parent (optionnel)
+      if (parentItemId) {
+        requestBody.parentReference = {
+          id: parentItemId,
+          driveId: driveId,
+        };
+
+        // Si siteId fourni sans driveId, résoudre le driveId du site
+        if (siteId && !driveId) {
+          const siteResponse = await client.api(`/sites/${siteId}`).get();
+          const siteDriveId = siteResponse.drive?.id;
+          if (!siteDriveId) {
+            return new Err(
+              new MCPError(`Could not find drive for site ${siteId}`)
+            );
+          }
+          requestBody.parentReference.driveId = siteDriveId;
+        }
+      }
+
+      // Effectuer la copie (opération asynchrone)
+      const response = await client
+        .api(`${sourceEndpoint}/copy`)
+        .post(requestBody);
+
+      // L'API retourne 202 Accepted avec monitoring URL
+      const result = {
+        status: "accepted",
+        message: "Copy operation initiated successfully",
+        fileName: name,
+        monitorUrl: response["@odata.location"] || response.location,
+        note: "The copy operation is asynchronous. Use the monitorUrl to check progress and get the final document ID, or use search_drive_items to find the document by name.",
+      };
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(result, null, 2),
+        },
+      ]);
+    } catch (err) {
+      return new Err(new MCPError(normalizeError(err).message));
+    }
+  },
 };
 
 export const TOOLS = buildTools(MICROSOFT_DRIVE_TOOLS_METADATA, handlers);

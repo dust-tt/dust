@@ -143,6 +143,26 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
   },
+  copy_file: {
+    description:
+      "Copy a file or folder to a new location in OneDrive or SharePoint. Returns immediately with a monitor URL to check copy progress. This is the recommended method for creating documents from templates.",
+    schema: {
+      itemId: z.string().describe("ID of the item to copy"),
+      driveId: z
+        .string()
+        .optional()
+        .describe("Drive ID (takes priority over siteId)"),
+      siteId: z.string().optional().describe("SharePoint site ID"),
+      parentItemId: z
+        .string()
+        .optional()
+        .describe(
+          "ID of the parent folder for the copy. If not specified, copies to the same folder."
+        ),
+      name: z.string().describe("Name for the copied item"),
+    },
+    stake: "high",
+  },
 });
 
 export const MICROSOFT_DRIVE_SERVER = {
