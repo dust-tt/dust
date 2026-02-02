@@ -67,6 +67,26 @@ procs:
       echo "sdks-js ready. Starting connectors."
       source ~/.nvm/nvm.sh && nvm install && ./admin/dev.sh
 
+  front-spa:
+    cwd: "<CONFIG_DIR>/../front-spa"
+    shell: |
+      set -euo pipefail
+      READY_FILE="../sparkle/dist/cjs/index.js"
+      echo "Waiting for sparkle to compile..."
+      echo "Expecting file: $READY_FILE"
+      while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      source ~/.nvm/nvm.sh && nvm install && npm run dev:app
+
+  front-poke:
+    cwd: "<CONFIG_DIR>/../front-spa"
+    shell: |
+      set -euo pipefail
+      READY_FILE="../sparkle/dist/cjs/index.js"
+      echo "Waiting for sparkle to compile..."
+      echo "Expecting file: $READY_FILE"
+      while [ ! -f "$READY_FILE" ]; do sleep 1; done
+      source ~/.nvm/nvm.sh && nvm install && npm run dev:poke
+
   sparkle-storybook:
     cwd: "<CONFIG_DIR>/../sparkle"
     shell: "source ~/.nvm/nvm.sh && nvm install && npm run storybook"
