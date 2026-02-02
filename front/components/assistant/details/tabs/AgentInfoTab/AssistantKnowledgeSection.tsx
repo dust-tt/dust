@@ -27,7 +27,10 @@ import type {
 } from "@app/lib/api/assistant/configuration/types";
 import { getContentNodeInternalIdFromTableId } from "@app/lib/api/content_nodes";
 import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_providers_ui";
-import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import {
+  getDisplayTitleForDataSourceViewContentNode,
+  getVisualForDataSourceViewContentNode,
+} from "@app/lib/content_nodes";
 import {
   canBeExpanded,
   getDisplayNameForDataSource,
@@ -544,7 +547,7 @@ function DataSourceViewSelectedNodes({
   return nodes.map((node) => (
     <Tree.Item
       key={node.internalId}
-      label={node.title}
+      label={getDisplayTitleForDataSourceViewContentNode(node)}
       type={node.expandable && viewType !== "table" ? "node" : "leaf"}
       visual={getVisualForDataSourceViewContentNode(node)}
       className="whitespace-nowrap"

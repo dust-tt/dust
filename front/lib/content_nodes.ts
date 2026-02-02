@@ -156,3 +156,64 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
     ? `${spaceName} › ${locationWithoutSpace}`
     : locationWithoutSpace;
 }
+
+function extractSharePointSiteNameFromSourceUrl(sourceUrl: string): string | null {
+  try {
+    const url = new URL(sourceUrl);
+    if (!url.hostname.includes("sharepoint.com")) {
+      return null;
+    }
+
+    const segments = decodeURIComponent(url.pathname)
+      .split("/")
+      .filter(Boolean);
+
+    const sitesIndex = segments.findIndex(
+      (s) => s === "sites" || s === "teams"
+    );
+    if (sitesIndex === -1 || sitesIndex + 1 >= segments.length) {
+      return null;
+    }
+
+    return segments[sitesIndex + 1] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Display title used in knowledge selection trees.
+ * For Microsoft SharePoint root folders, include the site name to disambiguate
+ * repeated folder names across sites.
+ */
+export function getDisplayTitleForDataSourceViewContentNode(
+  node: DataSourceViewContentNode
+): string {
+  if (node.dataSourceView.dataSource.connectorProvider !== "microsoft") {
+    return node.title;
+  }
+
+  if (node.type !== "folder" || node.parentInternalId !== null || !node.sourceUrl) {
+    return node.title;
+  }
+
+  // Avoid double-prefixing if already decorated (defensive).
+  if (node.title.includes("→")) {
+    return node.title;
+  }
+
+  const siteName = extractSharePointSiteNameFromSourceUrl(node.sourceUrl);
+  return siteName ? `${siteName} → ${node.title}` : node.title;
+}
+
+export function getDisplayTitleForContentNode(node: ContentNode): string {
+  // ContentNodeTree sometimes receives DataSourceViewContentNode items (which carry
+  // connector metadata). When available, use the richer formatting.
+  const maybeDSVNode = node as unknown as Partial<DataSourceViewContentNode>;
+  if (maybeDSVNode.dataSourceView) {
+    return getDisplayTitleForDataSourceViewContentNode(
+      node as unknown as DataSourceViewContentNode
+    );
+  }
+  return node.title;
+}

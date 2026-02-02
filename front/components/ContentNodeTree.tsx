@@ -12,7 +12,10 @@ import type { ReactNode } from "react";
 import React, { useCallback, useContext, useState } from "react";
 
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getVisualForContentNode } from "@app/lib/content_nodes";
+import {
+  getDisplayTitleForContentNode,
+  getVisualForContentNode,
+} from "@app/lib/content_nodes";
 import { classNames } from "@app/lib/utils";
 import type { APIError, ContentNode } from "@app/types";
 
@@ -148,9 +151,16 @@ function ContentNodeTreeChildren({
     isLoadingMore,
   } = useResourcesHook(parentId);
 
+  const getNodeTitle = useCallback(
+    (node: ContentNode) => getDisplayTitleForContentNode(node),
+    []
+  );
+
   const filteredNodes = resources
-    .filter((n) => filter.trim().length === 0 || n.title.includes(filter))
-    .sort((a, b) => a.title.localeCompare(b.title));
+    .filter(
+      (n) => filter.trim().length === 0 || getNodeTitle(n).includes(filter)
+    )
+    .sort((a, b) => getNodeTitle(a).localeCompare(getNodeTitle(b)));
 
   const getCheckedState = useCallback(
     (node: ContentNode) => {
@@ -206,6 +216,7 @@ function ContentNodeTreeChildren({
 
       {filteredNodes.map((n) => {
         const checkedState = getCheckedState(n);
+        const title = getNodeTitle(n);
         return (
           <Tree.Item
             key={n.internalId}
@@ -213,7 +224,7 @@ function ContentNodeTreeChildren({
             type={
               showExpand === false ? "item" : n.expandable ? "node" : "leaf"
             }
-            label={n.title}
+            label={title}
             labelClassName={
               n.providerVisibility === "private"
                 ? "after:content-['(private)'] after:text-warning after:ml-1"
