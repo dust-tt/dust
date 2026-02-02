@@ -31,7 +31,8 @@ export function createMissingActionCatcherTools(
                 "  1. Please verify that the function name is correct: " +
                 "pay attention to case sensitivity and separators between words in the name.\n" +
                 "  2. If the function comes from a skill, enable the skill first.\n" +
-                "This action can safely be retried with another name.",
+                "This action can safely be retried with another name or with the same name after " +
+                "enabling a skill.",
               { tracked: false }
             )
           );
