@@ -13,7 +13,7 @@ export const goDeepSkill = {
     "Enable when the user asks complex or research-heavy questions. Ideal for analysis " +
     "tasks requiring comprehensive research across multiple data sources, databases, or web " +
     "resources. Enable when the user explicitly asks for a deep dive, for a detailed response " +
-    "or for thorough analysis.",
+    "or for thorough analysis. When in doubt, prefer enabling this skill than not.",
   instructions: getDeepDiveInstructions({ includeToolsetsPrompt: false }),
   mcpServers: [
     {
