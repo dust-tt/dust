@@ -164,7 +164,7 @@ export function AnalyticsPage() {
               </div>
             }
             icon={BarChartIcon}
-            description="Monitor workspace activity and usage"
+            description="Track how your team uses Dust"
           />
           <WorkspaceAnalyticsOverviewCards
             workspaceId={owner.sId}
@@ -183,6 +183,7 @@ export function AnalyticsPage() {
             includeInactive={includeInactive}
             onIncludeInactiveChange={setIncludeInactive}
           />
+          F
         </Page.Vertical>
       </AppCenteredLayout>
     </>
