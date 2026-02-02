@@ -1,3 +1,4 @@
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import { MCPError } from "@app/lib/actions/mcp_errors";
 import {
   getMcpServerViewDescription,
@@ -13,8 +14,9 @@ import { getAgentFeedbacks } from "@app/lib/api/assistant/feedback";
 import { fetchAgentOverview } from "@app/lib/api/assistant/observability/overview";
 import { buildAgentAnalyticsBaseQuery } from "@app/lib/api/assistant/observability/utils";
 import type { MCPServerViewType } from "@app/lib/api/mcp";
-import { getSupportedModelConfigs } from "@app/lib/api/models";
+import { isModelAvailableAndWhitelisted } from "@app/lib/assistant";
 import type { Authenticator } from "@app/lib/auth";
+import { getFeatureFlags } from "@app/lib/auth";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
@@ -22,9 +24,19 @@ import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resour
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import type { DataSourceViewCategory, SpaceType } from "@app/types";
-import { removeNulls } from "@app/types";
-import { Err, isModelProviderId, normalizeError, Ok } from "@app/types";
+import type {
+  DataSourceViewCategory,
+  ModelConfigurationType,
+  SpaceType,
+} from "@app/types";
+import {
+  Err,
+  isModelProviderId,
+  normalizeError,
+  Ok,
+  removeNulls,
+} from "@app/types";
+import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
@@ -69,6 +81,24 @@ function getMaxPendingSuggestions(kind: LimitedSuggestionKind): number {
     case "skills":
       return MAX_PENDING_SKILLS_SUGGESTIONS;
   }
+}
+
+/**
+ * Get the list of available models for the workspace.
+ * This filters USED_MODEL_CONFIGS and CUSTOM_MODEL_CONFIGS based on feature flags,
+ * plan, and workspace provider whitelisting.
+ */
+async function getAvailableModelsForWorkspace(
+  auth: Authenticator
+): Promise<ModelConfigurationType[]> {
+  const owner = auth.getNonNullableWorkspace();
+  const plan = auth.plan();
+  const featureFlags = await getFeatureFlags(owner);
+
+  const allUsedModels = [...USED_MODEL_CONFIGS, ...CUSTOM_MODEL_CONFIGS];
+  return allUsedModels.filter((m) =>
+    isModelAvailableAndWhitelisted(m, featureFlags, plan, owner)
+  );
 }
 
 async function checkPendingSuggestionLimit(
@@ -217,10 +247,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    const owner = auth.getNonNullableWorkspace();
-
-    const allModels = getSupportedModelConfigs();
-    let models = allModels.filter((m) => !m.isLegacy);
+    let models = await getAvailableModelsForWorkspace(auth);
 
     if (providerId) {
       if (!isModelProviderId(providerId)) {
@@ -232,11 +259,6 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       }
       models = models.filter((m) => m.providerId === providerId);
     }
-
-    // Filter by whitelisted providers for the workspace.
-    const whiteListedProviders =
-      owner.whiteListedProviders ?? allModels.map((m) => m.providerId);
-    models = models.filter((m) => whiteListedProviders.includes(m.providerId));
 
     const modelList = models.map((m) => ({
       providerId: m.providerId,
@@ -739,6 +761,19 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     const auth = extra.auth;
     if (!auth) {
       return new Err(new MCPError("Authentication required"));
+    }
+
+    const availableModels = await getAvailableModelsForWorkspace(auth);
+    const availableModelIds = availableModels.map((m) => m.modelId);
+
+    const { modelId } = params.suggestion;
+    if (!availableModelIds.includes(modelId)) {
+      return new Err(
+        new MCPError(
+          `Invalid model ID: ${modelId}. Use get_available_models to see the list of available models.`,
+          { tracked: false }
+        )
+      );
     }
 
     const agentConfigurationId = getAgentConfigurationIdFromContext(

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -28,7 +29,7 @@ vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
 
 // Reset mocks between tests to prevent interference.
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 function getToolByName(name: string) {
@@ -772,7 +773,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-3-5-sonnet-20241022",
+            modelId: "claude-sonnet-4-5-20250929",
           },
         },
         createTestExtra(authenticator)
@@ -799,7 +800,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-3-5-sonnet-20241022",
+            modelId: "claude-sonnet-4-5-20250929",
             reasoningEffort: "high",
           },
           analysis: "Upgrading to better model for complex tasks",
@@ -816,6 +817,81 @@ describe("agent_copilot_context tools", () => {
             /:agent_suggestion\[\]\{sId=\S+ kind=model\}/
           );
         }
+      }
+    });
+
+    it("returns error when suggesting a model not available in the UI", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      // gpt-4o-mini is in SUPPORTED_MODEL_CONFIGS but not in USED_MODEL_CONFIGS
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "gpt-4o-mini",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain("gpt-4o-mini");
+        expect(result.error.message).toContain("get_available_models");
+      }
+    });
+
+    it("returns error when suggesting a model from a non-whitelisted provider", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Override the workspace to only whitelist anthropic provider.
+      Object.defineProperty(authenticator, "_workspace", {
+        value: {
+          ...authenticator["_workspace"],
+          whiteListedProviders: ["anthropic"],
+        },
+        writable: true,
+      });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      // gpt-5 is in USED_MODEL_CONFIGS but openai is not whitelisted
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5")).toBe(true);
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "gpt-5",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain("gpt-5");
       }
     });
   });
