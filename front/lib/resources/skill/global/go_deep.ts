@@ -11,9 +11,9 @@ export const goDeepSkill = {
     "sources — thorough analysis that may take several minutes.",
   agentFacingDescription:
     "Use when the user asks complex, multi-faceted questions requiring " +
-    "comprehensive research across multiple data sources, databases, and web " +
-    "resources. Ideal for analysis tasks that need thorough investigation " +
-    "beyond your current capabilities.",
+    "comprehensive research across multiple data sources, databases, or web " +
+    "resources. Ideal for analysis tasks that need thorough investigation. " +
+    "Use when the user explicitly asks for a deep dive or a detailed response.",
   instructions: getDeepDiveInstructions({ includeToolsetsPrompt: false }),
   mcpServers: [
     {
