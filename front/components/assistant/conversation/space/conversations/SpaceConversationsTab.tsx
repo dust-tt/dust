@@ -17,17 +17,18 @@ import { SpaceConversationsActions } from "@app/components/assistant/conversatio
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
   ConversationType,
   ConversationWithoutContentType,
   Result,
   RichMention,
-  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -45,7 +46,7 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
-  spaceInfo: SpaceType;
+  spaceInfo: GetSpaceResponseBody["space"];
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -157,14 +158,24 @@ export function SpaceConversationsTab({
             <h2 className="heading-2xl text-foreground dark:text-foreground-night">
               {spaceInfo.name}
             </h2>
-            <InputBar
-              owner={owner}
-              user={user}
-              onSubmit={onSubmit}
-              draftKey={`space-${spaceInfo.sId}-new-conversation`}
-              space={spaceInfo}
-              disableAutoFocus={false}
-            />
+            {spaceInfo.isMember ? (
+              <InputBar
+                owner={owner}
+                user={user}
+                onSubmit={onSubmit}
+                draftKey={`space-${spaceInfo.sId}-new-conversation`}
+                space={spaceInfo}
+                disableAutoFocus={false}
+              />
+            ) : (
+              <ProjectJoinCTA
+                owner={owner}
+                spaceId={spaceInfo.sId}
+                spaceName={spaceInfo.name}
+                isRestricted={spaceInfo.isRestricted}
+                userName={user.fullName}
+              />
+            )}
           </div>
 
           <SpaceJournalEntry owner={owner} space={spaceInfo} />

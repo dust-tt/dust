@@ -13,11 +13,3 @@ export class AgentMessageCompletedEvent extends CustomEvent<void> {
     super(AGENT_MESSAGE_COMPLETED_EVENT);
   }
 }
-
-export const PROJECTS_UPDATED_EVENT = "projects-updated";
-
-export class ProjectsUpdatedEvent extends CustomEvent<void> {
-  constructor() {
-    super(PROJECTS_UPDATED_EVENT);
-  }
-}

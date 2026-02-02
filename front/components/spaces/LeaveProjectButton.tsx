@@ -10,7 +10,7 @@ interface LeaveProjectButtonProps {
   spaceId: string;
   spaceName: string;
   isRestricted: boolean;
-  onLeaveSuccess?: () => void;
+  userName: string;
 }
 
 export function LeaveProjectButton({
@@ -18,10 +18,10 @@ export function LeaveProjectButton({
   spaceId,
   spaceName,
   isRestricted,
-  onLeaveSuccess,
+  userName,
 }: LeaveProjectButtonProps) {
   const [isLeaving, setIsLeaving] = useState(false);
-  const doLeave = useLeaveProject({ owner, spaceId });
+  const doLeave = useLeaveProject({ owner, spaceId, spaceName, userName });
   const { AwaitableDialog, showDialog } = useAwaitableDialog();
 
   const handleLeaveClick = async () => {
@@ -44,10 +44,10 @@ export function LeaveProjectButton({
     if (confirmed) {
       setIsLeaving(true);
       const success = await doLeave();
-      setIsLeaving(false);
-
-      if (success && onLeaveSuccess) {
-        onLeaveSuccess();
+      // Only reset if the leave failed. On success, the SWR mutation will trigger
+      // a re-render with updated membership state.
+      if (!success) {
+        setIsLeaving(false);
       }
     }
   };

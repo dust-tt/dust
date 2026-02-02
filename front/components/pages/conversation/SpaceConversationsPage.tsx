@@ -253,9 +253,7 @@ export function SpaceConversationsPage() {
               spaceId={spaceInfo.sId}
               spaceName={spaceInfo.name}
               isRestricted={spaceInfo.isRestricted}
-              onLeaveSuccess={() => {
-                void router.push(getConversationRoute(owner.sId, "new"));
-              }}
+              userName={user.fullName}
             />
           )}
         </div>
