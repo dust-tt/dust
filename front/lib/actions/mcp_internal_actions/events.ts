@@ -57,12 +57,13 @@ type ToolFileAuthError = {
 
 // Pauses agent execution to prompt user for file access consent (e.g., Google Drive).
 // Non-terminal because the tool can resume once the user authorizes the file.
-export interface ToolFileAuthRequiredEvent extends ToolExecution<
-  MCPValidationMetadataType & {
-    mcpServerId: string;
-    mcpServerDisplayName: string;
-  }
-> {
+export interface ToolFileAuthRequiredEvent
+  extends ToolExecution<
+    MCPValidationMetadataType & {
+      mcpServerId: string;
+      mcpServerDisplayName: string;
+    }
+  > {
   type: "tool_file_auth_required";
   fileAuthError: ToolFileAuthError;
 }

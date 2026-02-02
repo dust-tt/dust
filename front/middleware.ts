@@ -61,12 +61,8 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Handle CORS for public API endpoints and poke endpoints.
-  const isDevelopment = process.env.NODE_ENV === "development";
-  const needsCors =
-    url.startsWith("/api/v1") ||
-    url.startsWith("/api/poke") ||
-    (isDevelopment && url.startsWith("/api/"));
+  // Handle CORS for API endpoints.
+  const needsCors = url.startsWith("/api/");
 
   if (needsCors) {
     if (request.method === "OPTIONS") {
