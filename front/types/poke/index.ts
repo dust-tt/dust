@@ -32,9 +32,6 @@ export interface PokeItemBase {
   region?: RegionType;
 }
 
-// Re-export for convenience
-export type { RegionType } from "@app/lib/api/regions/config";
-
 export type PokeSpaceType = SpaceType & {
   id: ModelId;
   groups: GroupType[];
