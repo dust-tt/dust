@@ -77,6 +77,7 @@ describe("renderUserMessage", () => {
     // Should include a dust system block and a Sender line.
     expect(text).toEqual(`<dust_system>
 - Sender: John Doe (:mention_user[John Doe]{sId=user_123}) <john@example.com>
+- Conversation: ${conversation.sId}
 </dust_system>
 
 Hello!`);
@@ -97,6 +98,7 @@ Hello!`);
     const text = (res.content[0] as TextContent).text;
     expect(text).toEqual(`<dust_system>
 - Sender: John Doe (:mention_user[John Doe]{sId=user_123}) <john@example.com>
+- Conversation: ${conversation.sId}
 </dust_system>
 
 Hello!`);
@@ -163,7 +165,7 @@ Hello!`);
     expect(text).toContain("- Source: email");
   });
 
-  it("does not include system context when no metadata is available", async () => {
+  it("includes only conversation metadata when no user metadata is available", async () => {
     const { conversation, userMessage } = await buildMessage({
       content: "Just text",
       context: {},
@@ -174,6 +176,11 @@ Hello!`);
     expect(res.content[0].type).toBe("text");
     const text = (res.content[0] as TextContent).text;
 
-    expect(text).toEqual(`Just text`);
+    // Should still include the conversation sId even without user info
+    expect(text).toEqual(`<dust_system>
+- Conversation: ${conversation.sId}
+</dust_system>
+
+Just text`);
   });
 });
