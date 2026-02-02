@@ -52,11 +52,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
 
   abstract requestedPermissions(): Promise<CombinedResourcePermissions[]>;
 
-  canAddMember(
-    auth: Authenticator,
-    userId: string,
-    requestedPermissions: CombinedResourcePermissions[]
-  ): boolean {
+  async canAddMember(auth: Authenticator, userId: string): Promise<boolean> {
     if (this.space.isProject() && this.space.isOpen()) {
       const currentUser = auth.getNonNullableUser();
       if (userId === currentUser.sId) {
@@ -64,9 +60,8 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
         return true;
       }
     }
-    return (
-      this.space.canAdministrate(auth) && auth.canWrite(requestedPermissions)
-    );
+    const requestedPermissions = await this.requestedPermissions();
+    return auth.canWrite(requestedPermissions);
   }
 
   /**
@@ -93,12 +88,10 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    const requestedPermissions = await this.requestedPermissions();
-    if (
-      !users.every((user) =>
-        this.canAddMember(auth, user.sId, requestedPermissions)
-      )
-    ) {
+    const canAddResults = await Promise.all(
+      users.map((user) => this.canAddMember(auth, user.sId))
+    );
+    if (!canAddResults.every((result) => result)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -116,11 +109,7 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     return new Ok(addMembersRes.value);
   }
 
-  canRemoveMember(
-    auth: Authenticator,
-    userId: string,
-    requestedPermissions: CombinedResourcePermissions[]
-  ): boolean {
+  async canRemoveMember(auth: Authenticator, userId: string): Promise<boolean> {
     if (this.space.isProject()) {
       const currentUser = auth.getNonNullableUser();
       if (userId === currentUser.sId) {
@@ -128,9 +117,8 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
         return true;
       }
     }
-    return (
-      this.space.canAdministrate(auth) && auth.canWrite(requestedPermissions)
-    );
+    const requestedPermissions = await this.requestedPermissions();
+    return auth.canWrite(requestedPermissions);
   }
 
   /**
@@ -156,12 +144,10 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    const requestedPermissions = await this.requestedPermissions();
-    if (
-      !users.every((user) =>
-        this.canRemoveMember(auth, user.sId, requestedPermissions)
-      )
-    ) {
+    const canRemoveResults = await Promise.all(
+      users.map((user) => this.canRemoveMember(auth, user.sId))
+    );
+    if (!canRemoveResults.every((result) => result)) {
       return new Err(
         new DustError(
           "unauthorized",
@@ -206,14 +192,15 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
-    const requestedPermissions = await this.requestedPermissions();
+    const canAddResults = await Promise.all(
+      users.map((user) => this.canAddMember(auth, user.sId))
+    );
+    const canRemoveResults = await Promise.all(
+      users.map((user) => this.canRemoveMember(auth, user.sId))
+    );
     if (
-      !users.every((user) =>
-        this.canAddMember(auth, user.sId, requestedPermissions)
-      ) ||
-      !users.every((user) =>
-        this.canRemoveMember(auth, user.sId, requestedPermissions)
-      )
+      !canAddResults.every((result) => result) ||
+      !canRemoveResults.every((result) => result)
     ) {
       return new Err(
         new DustError(

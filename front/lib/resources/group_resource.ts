@@ -1092,15 +1092,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (allowProvisionnedGroups) {
-      assert(
-        this.kind === "regular" ||
-          this.kind === "space_editors" ||
-          this.kind === "agent_editors" ||
-          this.kind === "skill_editors",
-        `You can't add members to ${this.kind} groups.`
-      );
-    }
+    assert(
+      this.kind === "regular" ||
+        this.kind === "space_editors" ||
+        this.kind === "agent_editors" ||
+        this.kind === "skill_editors" ||
+        (allowProvisionnedGroups && this.kind === "provisioned"),
+      `You can't add members to ${this.kind} groups.`
+    );
     const owner = auth.getNonNullableWorkspace();
 
     if (users.length === 0) {
@@ -1260,15 +1259,14 @@ export class GroupResource extends BaseResource<GroupModel> {
       >
     >
   > {
-    if (allowProvisionnedGroups) {
-      assert(
-        this.kind === "regular" ||
-          this.kind === "space_editors" ||
-          this.kind === "agent_editors" ||
-          this.kind === "skill_editors",
-        `You can't add members to ${this.kind} groups.`
-      );
-    }
+    assert(
+      this.kind === "regular" ||
+        this.kind === "space_editors" ||
+        this.kind === "agent_editors" ||
+        this.kind === "skill_editors" ||
+        (allowProvisionnedGroups && this.kind === "provisioned"),
+      `You can't add members to ${this.kind} groups.`
+    );
     const owner = auth.getNonNullableWorkspace();
     if (users.length === 0) {
       return new Ok(undefined);
