@@ -38,11 +38,11 @@ export function UniversalSearchItem({
           <div className="s-heading-sm s-flex s-min-w-0 s-gap-1 s-truncate s-text-foreground dark:s-text-foreground-night">
             {title}
           </div>
-          {description ? (
+          {description && (
             <div className="s-line-clamp-1 s-text-sm s-text-muted-foreground dark:s-text-muted-foreground-night">
               {description}
             </div>
-          ) : null}
+          )}
         </div>
       </div>
     </ListItem>

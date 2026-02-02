@@ -16,9 +16,7 @@
   },
   "watch": {
     "build": {
-      "patterns": [
-        "src"
-      ],
+      "patterns": ["src"],
       "extensions": "ts,tsx,css",
       "ignore": ""
     }
@@ -44,15 +42,8 @@
     },
     "./dist/sparkle.css": "./dist/sparkle.css"
   },
-  "files": [
-    "dist/",
-    "src/",
-    "!src/stories/"
-  ],
-  "sideEffects": [
-    "src/index_with_tw_base.ts",
-    "*.css"
-  ],
+  "files": ["dist/", "src/", "!src/stories/"],
+  "sideEffects": ["src/index_with_tw_base.ts", "*.css"],
   "devDependencies": {
     "@babel/core": "^7.22.9",
     "@babel/preset-env": "^7.22.9",
@@ -95,8 +86,6 @@
     "eslint-plugin-storybook": "^0.8.0",
     "eslint-plugin-unused-imports": "^4.3.0",
     "npm-watch": "^0.11.0",
-    "prettier": "^3.7.4",
-    "prettier-plugin-tailwindcss": "^0.7.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sass-loader": "^13.3.2",

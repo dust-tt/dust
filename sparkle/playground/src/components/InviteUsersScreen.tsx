@@ -43,7 +43,7 @@ export function InviteUsersScreen({
   hasMultipleSelect = false,
 }: InviteUsersScreenProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
-    new Set(),
+    new Set()
   );
   const [editorUserIds, setEditorUserIds] = useState<Set<string>>(new Set());
   const [searchText, setSearchText] = useState("");
@@ -61,18 +61,13 @@ export function InviteUsersScreen({
     if (hasMultipleSelect) {
       const initialEditors = new Set(initialEditorUserIds ?? []);
       const filteredEditors = Array.from(initialEditors).filter((userId) =>
-        initialSelection.includes(userId),
+        initialSelection.includes(userId)
       );
       setEditorUserIds(new Set(filteredEditors));
     } else {
       setEditorUserIds(new Set());
     }
-  }, [
-    initialSelectedUserIds,
-    initialEditorUserIds,
-    isOpen,
-    hasMultipleSelect,
-  ]);
+  }, [initialSelectedUserIds, initialEditorUserIds, isOpen, hasMultipleSelect]);
 
   // Filter users based on search text
   const filteredUsers = useMemo(() => {
@@ -83,7 +78,7 @@ export function InviteUsersScreen({
     return mockUsers.filter(
       (user) =>
         user.fullName.toLowerCase().includes(lowerSearch) ||
-        user.email.toLowerCase().includes(lowerSearch),
+        user.email.toLowerCase().includes(lowerSearch)
     );
   }, [searchText]);
 

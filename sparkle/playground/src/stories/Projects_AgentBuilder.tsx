@@ -102,7 +102,7 @@ const getRandomSubset = <T,>(items: T[], count: number) => {
 const pickProjectsWithVisibility = <T,>(
   openItems: T[],
   restrictedItems: T[],
-  totalCount: number,
+  totalCount: number
 ) => {
   const totalAvailable = openItems.length + restrictedItems.length;
   const total = Math.min(totalCount, totalAvailable);
@@ -162,7 +162,7 @@ export default function AgentBuilder() {
   const agent = useMemo(() => getRandomAgents(1)[0], []);
   const [agentName, setAgentName] = useState(agent?.name || "");
   const [agentDescription, setAgentDescription] = useState(
-    agent?.description || "",
+    agent?.description || ""
   );
   const nameSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
@@ -171,7 +171,7 @@ export default function AgentBuilder() {
   const descriptionSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
     return getRandomAgents(count).map(
-      (suggestedAgent) => suggestedAgent.description,
+      (suggestedAgent) => suggestedAgent.description
     );
   }, []);
   const versionHistoryItems = useMemo(() => {
@@ -197,15 +197,15 @@ export default function AgentBuilder() {
     const openCount = Math.floor(Math.random() * 7) + 2;
     const restrictedCount = Math.floor(Math.random() * 3) + 1;
     const openCandidates = mockSpaces.filter(
-      (space) => !isRestrictedSpace(space.id),
+      (space) => !isRestrictedSpace(space.id)
     );
     const restrictedCandidates = mockSpaces.filter((space) =>
-      isRestrictedSpace(space.id),
+      isRestrictedSpace(space.id)
     );
     const openSpaces = getRandomSubset(openCandidates, openCount);
     const restrictedSpaces = getRandomSubset(
       restrictedCandidates,
-      restrictedCount,
+      restrictedCount
     );
     return [...openSpaces, ...restrictedSpaces];
   }, []);
@@ -216,23 +216,23 @@ export default function AgentBuilder() {
     author: string;
   } | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set()
   );
   const [tagSearch, setTagSearch] = useState("");
   const [spacesProjectsSearch, setSpacesProjectsSearch] = useState("");
   const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
-    () => new Set(initialEditorIds),
+    () => new Set(initialEditorIds)
   );
   const [isInviteEditorsOpen, setIsInviteEditorsOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [rightPanelRatio, setRightPanelRatio] = useState(0.4);
   const [activeRightPanelTab, setActiveRightPanelTab] = useState("testing");
   const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
-    "unpublished",
+    "unpublished"
   );
   const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(
-    null,
+    null
   );
   const [hasSuggestionsState, setHasSuggestionsState] = useState(false);
   const [isInstructionDirty, setIsInstructionDirty] = useState(false);
@@ -242,13 +242,13 @@ export default function AgentBuilder() {
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
   });
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
-    () => new Set(),
+    () => new Set()
   );
   const [draftSpaceIds, setDraftSpaceIds] = useState<Set<string>>(
-    () => new Set(selectedSpaceIds),
+    () => new Set(selectedSpaceIds)
   );
   const [draftProjectIds, setDraftProjectIds] = useState<Set<string>>(
-    () => new Set(selectedProjectIds),
+    () => new Set(selectedProjectIds)
   );
   const [instructionReference, setInstructionReference] = useState<{
     start: number;
@@ -287,7 +287,7 @@ export default function AgentBuilder() {
   }, [selectableSpaces, selectedSpaceIds]);
   const selectedProjects = useMemo(
     () => mockSpaces.filter((space) => selectedProjectIds.has(space.id)),
-    [selectedProjectIds],
+    [selectedProjectIds]
   );
   const selectedTagNames = useMemo(() => {
     return tagItems
@@ -312,95 +312,95 @@ export default function AgentBuilder() {
   const filteredTagItems = useMemo(
     () =>
       tagItems.filter((tag) =>
-        tag.name.toLowerCase().includes(normalizedTagSearch),
+        tag.name.toLowerCase().includes(normalizedTagSearch)
       ),
-    [tagItems, normalizedTagSearch],
+    [tagItems, normalizedTagSearch]
   );
   const recommendedTagItems = useMemo(
     () => filteredTagItems.slice(0, 2),
-    [filteredTagItems],
+    [filteredTagItems]
   );
   const recommendedTagIds = useMemo(
     () => new Set(recommendedTagItems.map((tag) => tag.id)),
-    [recommendedTagItems],
+    [recommendedTagItems]
   );
   const remainingTagItems = useMemo(
     () => filteredTagItems.filter((tag) => !recommendedTagIds.has(tag.id)),
-    [filteredTagItems, recommendedTagIds],
+    [filteredTagItems, recommendedTagIds]
   );
   const selectableSpaceIds = useMemo(
     () => new Set(selectableSpaces.map((space) => space.id)),
-    [selectableSpaces],
+    [selectableSpaces]
   );
   const openSpaces = useMemo(
     () => selectableSpaces.filter((space) => !isRestrictedSpace(space.id)),
-    [selectableSpaces],
+    [selectableSpaces]
   );
   const restrictedSpaces = useMemo(
     () => selectableSpaces.filter((space) => isRestrictedSpace(space.id)),
-    [selectableSpaces],
+    [selectableSpaces]
   );
   const filteredOpenSpaces = useMemo(
     () =>
       openSpaces.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description),
+        matchesSpacesProjectsSearch(space.name, space.description)
       ),
-    [openSpaces, normalizedSpacesProjectsSearch],
+    [openSpaces, normalizedSpacesProjectsSearch]
   );
   const filteredRestrictedSpaces = useMemo(
     () =>
       restrictedSpaces.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description),
+        matchesSpacesProjectsSearch(space.name, space.description)
       ),
-    [restrictedSpaces, normalizedSpacesProjectsSearch],
+    [restrictedSpaces, normalizedSpacesProjectsSearch]
   );
   const projectSpaces = useMemo(
     () => mockSpaces.filter((space) => !selectableSpaceIds.has(space.id)),
-    [selectableSpaceIds],
+    [selectableSpaceIds]
   );
   const myProjects = useMemo(() => {
     const count = Math.floor(Math.random() * 12) + 12;
     const joined = projectSpaces.filter((space) => isJoinedProject(space.id));
     const openJoined = joined.filter((space) => !isRestrictedSpace(space.id));
     const restrictedJoined = joined.filter((space) =>
-      isRestrictedSpace(space.id),
+      isRestrictedSpace(space.id)
     );
     return pickProjectsWithVisibility(openJoined, restrictedJoined, count);
   }, [projectSpaces]);
   const allProjects = useMemo(() => {
     const count = Math.floor(Math.random() * 27) + 8;
     const notJoined = projectSpaces.filter(
-      (space) => !isJoinedProject(space.id),
+      (space) => !isJoinedProject(space.id)
     );
     const openNotJoined = notJoined.filter(
-      (space) => !isRestrictedSpace(space.id),
+      (space) => !isRestrictedSpace(space.id)
     );
     const restrictedNotJoined = notJoined.filter((space) =>
-      isRestrictedSpace(space.id),
+      isRestrictedSpace(space.id)
     );
     return pickProjectsWithVisibility(
       openNotJoined,
       restrictedNotJoined,
-      count,
+      count
     );
   }, [projectSpaces]);
   const filteredMyProjects = useMemo(
     () =>
       myProjects.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description),
+        matchesSpacesProjectsSearch(space.name, space.description)
       ),
-    [myProjects, normalizedSpacesProjectsSearch],
+    [myProjects, normalizedSpacesProjectsSearch]
   );
   const filteredAllProjects = useMemo(
     () =>
       allProjects.filter((space) =>
-        matchesSpacesProjectsSearch(space.name, space.description),
+        matchesSpacesProjectsSearch(space.name, space.description)
       ),
-    [allProjects, normalizedSpacesProjectsSearch],
+    [allProjects, normalizedSpacesProjectsSearch]
   );
   const selectedEditorIdList = useMemo(
     () => Array.from(selectedEditorIds),
-    [selectedEditorIds],
+    [selectedEditorIds]
   );
 
   const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
@@ -614,7 +614,7 @@ export default function AgentBuilder() {
             }
             const total = sizes.reduce(
               (sum, size) => sum + (typeof size === "number" ? size : 0),
-              0,
+              0
             );
             if (total <= 0) {
               return;
@@ -834,7 +834,7 @@ export default function AgentBuilder() {
                         .sort(
                           (a, b) =>
                             Number(isRestrictedSpace(a.id)) -
-                            Number(isRestrictedSpace(b.id)),
+                            Number(isRestrictedSpace(b.id))
                         )
                         .map((space) => {
                           const isRestricted = isRestrictedSpace(space.id);
@@ -1256,7 +1256,7 @@ export default function AgentBuilder() {
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={(
-                              checked: boolean | "indeterminate",
+                              checked: boolean | "indeterminate"
                             ) => {
                               if (checked !== "indeterminate") {
                                 toggleDraftSpace(space.id);
@@ -1268,7 +1268,7 @@ export default function AgentBuilder() {
                           />
                         </ListItem>
                       );
-                    },
+                    }
                   )}
                 </ListGroup>
                 <ListItemSection size="sm">My projects</ListItemSection>
@@ -1305,7 +1305,7 @@ export default function AgentBuilder() {
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(
-                            checked: boolean | "indeterminate",
+                            checked: boolean | "indeterminate"
                           ) => {
                             if (checked !== "indeterminate") {
                               toggleDraftProject(space.id);
@@ -1353,7 +1353,7 @@ export default function AgentBuilder() {
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={(
-                            checked: boolean | "indeterminate",
+                            checked: boolean | "indeterminate"
                           ) => {
                             if (checked !== "indeterminate") {
                               toggleDraftProject(space.id);

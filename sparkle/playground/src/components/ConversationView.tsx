@@ -89,7 +89,7 @@ export function ConversationView({
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [pendingTitle, setPendingTitle] = useState("");
   const [displayTitle, setDisplayTitle] = useState(
-    conversationTitle || conversation.title || "Conversation",
+    conversationTitle || conversation.title || "Conversation"
   );
 
   useEffect(() => {
@@ -118,7 +118,7 @@ export function ConversationView({
     }
 
     const randomIndex = Math.floor(
-      Math.random() * conversationsWithMessages.length,
+      Math.random() * conversationsWithMessages.length
     );
     const sourceConversation = conversationsWithMessages[randomIndex];
     const sourceMessages = sourceConversation.messages || [];
@@ -135,7 +135,7 @@ export function ConversationView({
     let userMessageCount = 0;
     let agentMessageCount = 0;
     const otherUsers = currentUserParticipants.filter(
-      (id) => id !== locutor.id,
+      (id) => id !== locutor.id
     );
 
     return sourceMessages.map((msg, index) => {

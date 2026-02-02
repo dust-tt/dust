@@ -106,14 +106,14 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
   const shuffled = [...allParticipants].sort(() => Math.random() - 0.5);
   const count = Math.min(
     Math.max(1, Math.floor(Math.random() * 6) + 1),
-    shuffled.length,
+    shuffled.length
   );
   return shuffled.slice(0, count);
 }
 
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
-    "chat",
+    "chat"
   );
   const [searchText, setSearchText] = useState("");
   const [agentSearchText, setAgentSearchText] = useState("");
@@ -133,14 +133,14 @@ function DustMain() {
   const [isCreateRoomDialogOpen, setIsCreateRoomDialogOpen] = useState(false);
   const [isInviteUsersScreenOpen, setIsInviteUsersScreenOpen] = useState(false);
   const [lastCreatedSpaceId, setLastCreatedSpaceId] = useState<string | null>(
-    null,
+    null
   );
   const [inviteSpaceId, setInviteSpaceId] = useState<string | null>(null);
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
-    new Map(),
+    new Map()
   );
   const [spaceEditors, setSpaceEditors] = useState<Map<string, string[]>>(
-    new Map(),
+    new Map()
   );
   const [spacePublicSettings, setSpacePublicSettings] = useState<
     Map<string, boolean>
@@ -217,7 +217,7 @@ function DustMain() {
     }
     const lowerSearch = searchText.toLowerCase();
     return allConversations.filter((conv) =>
-      conv.title.toLowerCase().includes(lowerSearch),
+      conv.title.toLowerCase().includes(lowerSearch)
     );
   }, [searchText, allConversations]);
 
@@ -263,7 +263,7 @@ function DustMain() {
     }
     const lowerSearch = agentSearchText.toLowerCase();
     return mockAgents.filter((agent) =>
-      agent.name.toLowerCase().includes(lowerSearch),
+      agent.name.toLowerCase().includes(lowerSearch)
     );
   }, [agentSearchText]);
 
@@ -275,7 +275,7 @@ function DustMain() {
     return mockUsers.filter(
       (person) =>
         person.fullName.toLowerCase().includes(lowerSearch) ||
-        person.email.toLowerCase().includes(lowerSearch),
+        person.email.toLowerCase().includes(lowerSearch)
     );
   }, [peopleSearchText]);
 
@@ -333,7 +333,7 @@ function DustMain() {
     return sortedSpaces.filter(
       (space) =>
         space.name.toLowerCase().includes(lowerSearch) ||
-        space.description.toLowerCase().includes(lowerSearch),
+        space.description.toLowerCase().includes(lowerSearch)
     );
   }, [searchText, sortedSpaces]);
 
@@ -366,7 +366,7 @@ function DustMain() {
     const shuffled = [...filteredConversations].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(
       0,
-      Math.min(count, filteredConversations.length),
+      Math.min(count, filteredConversations.length)
     );
 
     // Assign statuses: ~25% probability of "blocked", rest "idle"
@@ -985,7 +985,7 @@ function DustMain() {
 
   const handleInviteUsersComplete = (
     selectedUserIds: string[],
-    editorUserIds: string[],
+    editorUserIds: string[]
   ) => {
     // Store invited members for the space
     if (inviteSpaceId) {
@@ -1011,8 +1011,8 @@ function DustMain() {
     // In a real implementation, this would update the space in the backend
     setSpaces((prev) =>
       prev.map((space) =>
-        space.id === spaceId ? { ...space, name: newName } : space,
-      ),
+        space.id === spaceId ? { ...space, name: newName } : space
+      )
     );
   };
 
@@ -1027,8 +1027,8 @@ function DustMain() {
     // Also update the space object
     setSpaces((prev) =>
       prev.map((space) =>
-        space.id === spaceId ? { ...space, isPublic } : space,
-      ),
+        space.id === spaceId ? { ...space, isPublic } : space
+      )
     );
     // For prototype, just log the update
   };

@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import type { ComponentType } from "react";
 import React from "react";
 
@@ -16,6 +17,34 @@ import { cn } from "@sparkle/lib";
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
+
+const breadcrumbTextVariants = cva("", {
+  variants: {
+    isLast: {
+      true: "s-text-foreground dark:s-text-foreground-night",
+      false: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    },
+    size: {
+      xs: "",
+      sm: "",
+    },
+    hasLighterFont: {
+      true: "",
+      false: "",
+    },
+  },
+  compoundVariants: [
+    { size: "xs", hasLighterFont: true, className: "s-text-xs" },
+    { size: "sm", hasLighterFont: true, className: "s-text-sm" },
+    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
+    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
+  ],
+  defaultVariants: {
+    size: "sm",
+    hasLighterFont: true,
+    isLast: false,
+  },
+});
 
 type BaseBreadcrumbItem = {
   icon?: ComponentType<{ className?: string }>;
@@ -96,18 +125,11 @@ function BreadcrumbItem({
     );
   }
 
-  const textClassName = cn(
-    isLast
-      ? "s-text-foreground dark:s-text-foreground-night"
-      : "s-text-muted-foreground dark:s-text-muted-foreground-night",
-    hasLighterFont
-      ? size === "xs"
-        ? "s-text-xs"
-        : "s-text-sm"
-      : size === "xs"
-        ? "s-label-xs"
-        : "s-label-sm"
-  );
+  const textClassName = breadcrumbTextVariants({
+    isLast,
+    size,
+    hasLighterFont,
+  });
 
   const truncatedLabel = truncateTextToLength(
     item.label,
