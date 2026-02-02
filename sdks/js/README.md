@@ -43,8 +43,17 @@ const response = await dust.agents.sendMessage({
 console.log(response.text);
 ```
 
-High-level methods throw typed errors (e.g. `DustAuthenticationError`, `DustRateLimitError`).
-Wrap calls in `try/catch` if you need custom handling.
+High-level methods throw typed errors. Wrap calls in `try/catch` for custom handling:
+
+- `DustAuthenticationError` - Invalid/missing API key, authentication failures
+- `DustRateLimitError` - Rate limits hit (includes `retryAfterSeconds` hint)
+- `DustValidationError` - Invalid request parameters, unsupported file types
+- `DustAgentError` - Agent execution failures
+- `DustConnectionError` - Network/connection issues (automatically retried)
+- `DustInternalError` - Server-side errors
+- `DustResourceError` - Resource not found (data source, conversation, etc.)
+- `DustPlanLimitError` - Plan/subscription limits exceeded
+- `DustAPIError` - Base class for other API errors
 
 ### Streaming
 
