@@ -44,6 +44,10 @@ jobs:
         run: |
           set -a
           source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.prod
+          # Map all NEXT_PUBLIC_* to VITE_* for SPA
+          for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
+            export "VITE_${var#NEXT_PUBLIC_}=${!var}"
+          done
           set +a
           npm run build:${{ inputs.app }}
 
