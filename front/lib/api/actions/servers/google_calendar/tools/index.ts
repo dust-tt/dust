@@ -4,8 +4,8 @@ import { google } from "googleapis";
 import { DateTime, Interval } from "luxon";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
-import type { ToolDefinition } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { defineTool } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import type { ToolHandlers } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import {
   buildUnavailableIntervals,
   computeAvailability,
@@ -18,22 +18,12 @@ import {
   isGoogleCalendarEvent,
   mergeIntervals,
 } from "@app/lib/api/actions/servers/google_calendar/helpers";
-import {
-  checkAvailabilityMeta,
-  createEventMeta,
-  deleteEventMeta,
-  getEventMeta,
-  getUserTimezonesMeta,
-  listCalendarsMeta,
-  listEventsMeta,
-  updateEventMeta,
-} from "@app/lib/api/actions/servers/google_calendar/metadata";
+import { GOOGLE_CALENDAR_TOOLS_METADATA } from "@app/lib/api/actions/servers/google_calendar/metadata";
 import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
-const listCalendarsTool = defineTool({
-  ...listCalendarsMeta,
-  handler: async ({ pageToken, maxResults }, extra) => {
+const handlers: ToolHandlers<typeof GOOGLE_CALENDAR_TOOLS_METADATA> = {
+  list_calendars: async ({ pageToken, maxResults }, extra) => {
     const accessToken = extra.authInfo?.token;
     assert(accessToken, "No access token provided");
 
@@ -56,11 +46,8 @@ const listCalendarsTool = defineTool({
       );
     }
   },
-});
 
-const listEventsTool = defineTool({
-  ...listEventsMeta,
-  handler: async (
+  list_events: async (
     { calendarId = "primary", q, timeMin, timeMax, maxResults, pageToken },
     extra
   ) => {
@@ -102,11 +89,8 @@ const listEventsTool = defineTool({
       );
     }
   },
-});
 
-const getEventTool = defineTool({
-  ...getEventMeta,
-  handler: async ({ calendarId = "primary", eventId }, extra) => {
+  get_event: async ({ calendarId = "primary", eventId }, extra) => {
     const calendar = await getCalendarClient(extra.authInfo);
     assert(
       calendar,
@@ -137,11 +121,8 @@ const getEventTool = defineTool({
       );
     }
   },
-});
 
-const createEventTool = defineTool({
-  ...createEventMeta,
-  handler: async (
+  create_event: async (
     {
       calendarId = "primary",
       summary,
@@ -233,11 +214,8 @@ const createEventTool = defineTool({
       );
     }
   },
-});
 
-const updateEventTool = defineTool({
-  ...updateEventMeta,
-  handler: async (
+  update_event: async (
     {
       calendarId = "primary",
       eventId,
@@ -340,11 +318,8 @@ const updateEventTool = defineTool({
       );
     }
   },
-});
 
-const deleteEventTool = defineTool({
-  ...deleteEventMeta,
-  handler: async ({ calendarId = "primary", eventId }, extra) => {
+  delete_event: async ({ calendarId = "primary", eventId }, extra) => {
     const calendar = await getCalendarClient(extra.authInfo);
     assert(
       calendar,
@@ -365,11 +340,8 @@ const deleteEventTool = defineTool({
       );
     }
   },
-});
 
-const checkAvailabilityTool = defineTool({
-  ...checkAvailabilityMeta,
-  handler: async (
+  check_availability: async (
     { participants, startTimeRange, endTimeRange, excludeWeekends = false },
     extra
   ) => {
@@ -478,11 +450,8 @@ const checkAvailabilityTool = defineTool({
       );
     }
   },
-});
 
-const getUserTimezonesTool = defineTool({
-  ...getUserTimezonesMeta,
-  handler: async ({ emails }, extra) => {
+  get_user_timezones: async ({ emails }, extra) => {
     const calendar = await getCalendarClient(extra.authInfo);
     assert(
       calendar,
@@ -528,15 +497,6 @@ const getUserTimezonesTool = defineTool({
       },
     ]);
   },
-});
+};
 
-export const TOOLS = [
-  listCalendarsTool,
-  listEventsTool,
-  getEventTool,
-  createEventTool,
-  updateEventTool,
-  deleteEventTool,
-  checkAvailabilityTool,
-  getUserTimezonesTool,
-] as ToolDefinition[];
+export const TOOLS = buildTools(GOOGLE_CALENDAR_TOOLS_METADATA, handlers);

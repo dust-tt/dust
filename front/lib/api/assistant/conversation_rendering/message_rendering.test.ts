@@ -132,6 +132,7 @@ describe("renderAllMessages", () => {
       created: Date.now(),
       updated: Date.now(),
       unread: false,
+      lastReadMs: Date.now(),
       actionRequired: false,
       hasError: false,
       sId: "conv_1",
@@ -146,6 +147,7 @@ describe("renderAllMessages", () => {
       visibility: "unlisted",
       content: content as ConversationType["content"],
       triggerId: null,
+      metadata: {},
     } as ConversationType;
   }
 

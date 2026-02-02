@@ -15,6 +15,7 @@ import {
   TRACKING_AREAS,
   withTracking,
 } from "@app/lib/tracking";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 export async function getStaticProps() {
   return {
@@ -53,7 +54,9 @@ export default function Pricing() {
                 "hero_start_trial",
                 () => {
                   // eslint-disable-next-line react-hooks/immutability
-                  window.location.href = "/api/workos/login?screenHint=sign-up";
+                  window.location.href = appendUTMParams(
+                    "/api/workos/login?screenHint=sign-up"
+                  );
                 }
               )}
             />
@@ -70,7 +73,9 @@ export default function Pricing() {
                 object: "plan_card_start_trial",
                 action: TRACKING_ACTIONS.CLICK,
               });
-              window.location.href = "/api/workos/login?screenHint=sign-up";
+              window.location.href = appendUTMParams(
+                "/api/workos/login?screenHint=sign-up"
+              );
             }}
           />
         </div>

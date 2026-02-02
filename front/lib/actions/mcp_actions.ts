@@ -25,6 +25,7 @@ import {
   FALLBACK_INTERNAL_AUTO_SERVERS_TOOL_STAKE_LEVEL,
   FALLBACK_MCP_TOOL_STAKE_LEVEL,
   RETRY_ON_INTERRUPT_MAX_ATTEMPTS,
+  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/constants";
 import type {
   ClientSideMCPServerConfigurationType,
@@ -117,8 +118,6 @@ function isEmptyInputSchema(schema: JSONSchema): boolean {
 
 const MAX_TOOL_NAME_LENGTH = 64;
 
-export const TOOL_NAME_SEPARATOR = "__";
-
 // Define the new type here for now, or move to a dedicated types file later.
 export interface ServerToolsAndInstructions {
   serverName: string;
@@ -199,8 +198,7 @@ function makeServerSideMCPToolConfigurations(
     retryPolicy: tool.retryPolicy,
     mcpServerViewId: config.mcpServerViewId,
     internalMCPServerId: config.internalMCPServerId,
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    dataSources: config.dataSources || [], // Ensure dataSources is always an array
+    dataSources: config.dataSources ?? [], // Ensure dataSources is always an array
     tables: config.tables,
     availability: tool.availability,
     childAgentId: config.childAgentId,
@@ -213,6 +211,7 @@ function makeServerSideMCPToolConfigurations(
     mcpServerName: config.name,
     dustAppConfiguration: config.dustAppConfiguration,
     secretName: config.secretName,
+    dustProject: config.dustProject,
     ...(tool.timeoutMs && { timeoutMs: tool.timeoutMs }),
     argumentsRequiringApproval: toolsArgumentsRequiringApproval?.[tool.name],
   }));
@@ -735,7 +734,7 @@ function deduplicateMCPServerConfigurations({
     const viewId = isServerSideMCPServerConfiguration(config)
       ? config.mcpServerViewId
       : config.clientSideMcpServerId;
-    const key = `${viewId}:${config.name}`;
+    const key = `${viewId}:${slugify(config.name)}`;
 
     if (seen.has(key)) {
       return false;

@@ -1,6 +1,6 @@
 {
   "name": "@dust-tt/sparkle",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "scripts": {
     "build": "rm -rf dist && npm run tailwind && npm run build:esm && npm run build:cjs",
     "tailwind": "npx tailwindcss -i ./src/styles/tailwind.css -o dist/sparkle.css",
@@ -9,9 +9,19 @@
     "build:cjs": "node scripts/build-cjs.mjs",
     "storybook": "storybook dev -p 6006 --debug-webpack",
     "build-storybook": "storybook build",
-    "format:check": "prettier --check .",
-    "format": "prettier --write .",
-    "lint": "eslint ."
+    "format:check": "biome check --formatter-enabled=true --linter-enabled=false .",
+    "format": "biome format --write .",
+    "lint": "eslint .",
+    "watch": "npm-watch"
+  },
+  "watch": {
+    "build": {
+      "patterns": [
+        "src"
+      ],
+      "extensions": "ts,tsx,css",
+      "ignore": ""
+    }
   },
   "main": "dist/cjs/index.js",
   "types": "dist/esm/index.d.ts",
@@ -48,6 +58,7 @@
     "@babel/preset-env": "^7.22.9",
     "@babel/preset-react": "^7.22.5",
     "@babel/preset-typescript": "^7.22.5",
+    "@biomejs/biome": "^2.3.13",
     "@chromatic-com/storybook": "^3.2.5",
     "@radix-ui/react-focus-scope": "^1.0.3",
     "@storybook/addon-essentials": "^8.6.4",
@@ -83,8 +94,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.0",
     "eslint-plugin-storybook": "^0.8.0",
     "eslint-plugin-unused-imports": "^4.3.0",
-    "prettier": "^3.7.4",
-    "prettier-plugin-tailwindcss": "^0.7.2",
+    "npm-watch": "^0.11.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sass-loader": "^13.3.2",

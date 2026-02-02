@@ -59,9 +59,7 @@ export const CreateDropdown = ({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        {hasFeature("skills") && isBuilder(owner) && (
-          <DropdownMenuLabel label="Agents" />
-        )}
+        {isBuilder(owner) && <DropdownMenuLabel label="Agents" />}
         <DropdownMenuItem
           label="agent from scratch"
           icon={DocumentIcon}
@@ -94,7 +92,7 @@ export const CreateDropdown = ({
             onClick={triggerYAMLUpload}
           />
         )}
-        {hasFeature("skills") && isBuilder(owner) && (
+        {isBuilder(owner) && (
           <>
             <DropdownMenuLabel label="Skills" />
             <DropdownMenuItem

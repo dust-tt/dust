@@ -29,6 +29,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
         .describe("Labels to associate with this issue."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating issue",
+      done: "Create issue",
+    },
   },
   get_pull_request: {
     description:
@@ -44,6 +48,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       pullNumber: z.number().describe("The pull request number."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving pull request",
+      done: "Retrieve pull request",
+    },
   },
   create_pull_request_review: {
     description:
@@ -85,7 +93,11 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
         .describe("File comments to leave as part of the review.")
         .optional(),
     },
-    stake: "low",
+    stake: "high",
+    displayLabels: {
+      running: "Creating pull request review",
+      done: "Create pull request review",
+    },
   },
   list_organization_projects: {
     description:
@@ -98,6 +110,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing organization projects",
+      done: "List organization projects",
+    },
   },
   add_issue_to_project: {
     description:
@@ -132,6 +148,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Adding issue to project",
+      done: "Add issue to project",
+    },
   },
   comment_on_issue: {
     description: "Add a comment to an existing GitHub issue.",
@@ -148,6 +168,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
         .describe("The contents of the comment (GitHub markdown)."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Commenting on issue",
+      done: "Comment on issue",
+    },
   },
   get_issue: {
     description:
@@ -162,6 +186,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       issueNumber: z.number().describe("The issue number."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Retrieving issue",
+      done: "Retrieve issue",
+    },
   },
   list_issues: {
     description:
@@ -199,6 +227,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       before: z.string().optional().describe("The cursor to start before."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing issues",
+      done: "List issues",
+    },
   },
   search_advanced: {
     description:
@@ -223,6 +255,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       before: z.string().optional().describe("The cursor to start before."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching issues and pull requests",
+      done: "Search issues and pull requests",
+    },
   },
   list_pull_requests: {
     description:
@@ -256,6 +292,10 @@ export const GITHUB_TOOLS_METADATA = createToolsRecord({
       before: z.string().optional().describe("The cursor to start before."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing pull requests",
+      done: "List pull requests",
+    },
   },
 });
 
@@ -276,6 +316,7 @@ export const GITHUB_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GITHUB_TOOLS_METADATA).map((t) => [t.name, t.stake])

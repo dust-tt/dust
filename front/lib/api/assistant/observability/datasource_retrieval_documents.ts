@@ -28,6 +28,7 @@ export type DatasourceRetrievalDocumentData = {
   displayName: string;
   parentId: string | null;
   parents: string[];
+  sourceUrl: string | null;
   count: number;
 };
 
@@ -50,8 +51,8 @@ type DatasourceRetrievalDocumentsAggs = {
 const CORE_SEARCH_NODES_BATCH_SIZE = 200;
 
 function chunkArray<T>(items: T[], batchSize: number): T[][] {
-  if (batchSize <= 0) {
-    return [items];
+  if (items.length === 0 || batchSize <= 0) {
+    return items.length === 0 ? [] : [items];
   }
 
   const batches: T[][] = [];
@@ -129,28 +130,38 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     agentId,
     days,
     version,
-    mcpServerConfigId,
+    mcpServerConfigIds,
+    mcpServerName,
     dataSourceId,
     limit = 50,
   }: {
     agentId: string;
     days?: number;
     version?: string;
-    mcpServerConfigId: string;
+    mcpServerConfigIds: string[];
+    // For servers without config IDs (like data_sources_file_system), use name instead.
+    mcpServerName?: string;
     dataSourceId: string;
     limit?: number;
   }
 ): Promise<Result<DatasourceRetrievalDocuments, Error>> {
   const workspace = auth.getNonNullableWorkspace();
 
-  const mcpServerConfig = await AgentMCPServerConfigurationResource.fetchById(
-    auth,
-    mcpServerConfigId
-  );
-
-  if (!mcpServerConfig) {
+  // Need at least one filter: either by config IDs or by server name.
+  if (mcpServerConfigIds.length === 0 && !mcpServerName) {
     return new Ok({ documents: [], groups: [], total: 0 });
   }
+
+  // Fetch configs by sId (only for servers with real config IDs).
+  const mcpServerConfigs =
+    mcpServerConfigIds.length > 0
+      ? await AgentMCPServerConfigurationResource.fetchByIds(
+          auth,
+          mcpServerConfigIds
+        )
+      : [];
+
+  const mcpServerConfigModelIds = mcpServerConfigs.map((config) => config.id);
 
   const baseQuery = buildAgentAnalyticsBaseQuery({
     workspaceId: workspace.sId,
@@ -159,13 +170,27 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
     version,
   });
 
+  // Build server filter: by config IDs OR by server name.
+  const serverFilters: estypes.QueryDslQueryContainer[] = [];
+  if (mcpServerConfigModelIds.length > 0) {
+    serverFilters.push({
+      terms: { mcp_server_configuration_id: mcpServerConfigModelIds },
+    });
+  }
+  if (mcpServerName) {
+    serverFilters.push({
+      term: { mcp_server_name: mcpServerName },
+    });
+  }
+
   const query: estypes.QueryDslQueryContainer = {
     bool: {
       filter: [
         baseQuery,
         {
-          term: {
-            mcp_server_configuration_id: mcpServerConfig.id,
+          bool: {
+            should: serverFilters,
+            minimum_should_match: 1,
           },
         },
         {
@@ -224,6 +249,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
       displayName: bucket.key,
       parentId: null,
       parents: [bucket.key],
+      sourceUrl: null,
       count: bucket.doc_count,
     })
   );
@@ -260,6 +286,7 @@ export async function fetchDatasourceRetrievalDocumentsMetrics(
       displayName: getNodeTitle(node),
       parentId: node.parent_id,
       parents: node.parents,
+      sourceUrl: node.source_url ?? null,
     };
   });
 

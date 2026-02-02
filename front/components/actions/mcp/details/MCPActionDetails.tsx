@@ -36,47 +36,31 @@ import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/deta
 import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
-import {
-  MCPImageEditingActionDetails,
-  MCPImageGenerationActionDetails,
-} from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
+import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
 import { MCPListToolsActionDetails } from "@app/components/actions/mcp/details/MCPListToolsActionDetails";
 import { MCPRunAgentActionDetails } from "@app/components/actions/mcp/details/MCPRunAgentActionDetails";
 import { MCPSkillEnableActionDetails } from "@app/components/actions/mcp/details/MCPSkillEnableActionDetails";
 import { MCPTablesQueryActionDetails } from "@app/components/actions/mcp/details/MCPTablesQueryActionDetails";
 import { SearchResultDetails } from "@app/components/actions/mcp/details/MCPToolOutputDetails";
 import { MCPToolsetsEnableActionDetails } from "@app/components/actions/mcp/details/MCPToolsetsEnableActionDetails";
-import type { ToolExecutionDetailsProps } from "@app/components/actions/mcp/details/types";
+import type {
+  ActionDetailsDisplayContext,
+  ToolExecutionDetailsProps,
+} from "@app/components/actions/mcp/details/types";
 import { InternalActionIcons } from "@app/components/resources/resources_icons";
+import { ENABLE_SKILL_TOOL_NAME } from "@app/lib/actions/constants";
 import {
-  DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME,
-  ENABLE_SKILL_TOOL_NAME,
-} from "@app/lib/actions/constants";
-import {
-  AGENT_MEMORY_COMPACT_TOOL_NAME,
-  AGENT_MEMORY_EDIT_TOOL_NAME,
-  AGENT_MEMORY_ERASE_TOOL_NAME,
-  AGENT_MEMORY_RECORD_TOOL_NAME,
-  AGENT_MEMORY_RETRIEVE_TOOL_NAME,
   DATA_WAREHOUSES_DESCRIBE_TABLES_TOOL_NAME,
   DATA_WAREHOUSES_FIND_TOOL_NAME,
   DATA_WAREHOUSES_LIST_TOOL_NAME,
   DATA_WAREHOUSES_QUERY_TOOL_NAME,
-  EDIT_IMAGE_TOOL_NAME,
-  EXECUTE_DATABASE_QUERY_TOOL_NAME,
-  FILESYSTEM_CAT_TOOL_NAME,
-  FILESYSTEM_FIND_TOOL_NAME,
-  FILESYSTEM_LIST_TOOL_NAME,
-  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
   GENERATE_IMAGE_TOOL_NAME,
-  GET_DATABASE_SCHEMA_TOOL_NAME,
   getInternalMCPServerIconByName,
   INCLUDE_TOOL_NAME,
   INTERNAL_SERVERS_WITH_WEBSEARCH,
   PROCESS_TOOL_NAME,
   SEARCH_TOOL_NAME,
   SKILL_MANAGEMENT_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
   TOOLSETS_ENABLE_TOOL_NAME,
   TOOLSETS_LIST_TOOL_NAME,
   WEBBROWSER_TOOL_NAME,
@@ -96,6 +80,26 @@ import {
   isWebsearchInputType,
 } from "@app/lib/actions/mcp_internal_actions/types";
 import { MCP_SPECIFICATION } from "@app/lib/actions/utils";
+import {
+  AGENT_MEMORY_COMPACT_TOOL_NAME,
+  AGENT_MEMORY_EDIT_TOOL_NAME,
+  AGENT_MEMORY_ERASE_TOOL_NAME,
+  AGENT_MEMORY_RECORD_TOOL_NAME,
+  AGENT_MEMORY_RETRIEVE_TOOL_NAME,
+} from "@app/lib/api/actions/servers/agent_memory/metadata";
+import { CONVERSATION_CAT_FILE_ACTION_NAME } from "@app/lib/api/actions/servers/conversation_files/metadata";
+import {
+  FILESYSTEM_CAT_TOOL_NAME,
+  FILESYSTEM_FIND_TOOL_NAME,
+  FILESYSTEM_LIST_TOOL_NAME,
+  FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME,
+  FILESYSTEM_SEARCH_TOOL_NAME,
+} from "@app/lib/api/actions/servers/data_sources_file_system/metadata";
+import {
+  EXECUTE_DATABASE_QUERY_TOOL_NAME,
+  GET_DATABASE_SCHEMA_TOOL_NAME,
+  TABLE_QUERY_V2_SERVER_NAME,
+} from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { isValidJSON } from "@app/lib/utils/json";
 import type { LightWorkspaceType } from "@app/types";
 import { asDisplayName, isSupportedImageContentType } from "@app/types";
@@ -106,12 +110,33 @@ export interface MCPActionDetailsProps {
   owner: LightWorkspaceType;
   lastNotification: ProgressNotificationContentType | null;
   messageStatus?: "created" | "succeeded" | "failed" | "cancelled";
-  viewType: "conversation" | "sidebar";
+  displayContext: ActionDetailsDisplayContext;
+}
+
+function getActionLabel({
+  action,
+  displayContext,
+}: {
+  action: AgentMCPActionWithOutputType;
+  displayContext: ActionDetailsDisplayContext;
+}): string {
+  if (action.displayLabels) {
+    return displayContext === "conversation"
+      ? action.displayLabels.running
+      : action.displayLabels.done;
+  }
+
+  return (
+    (displayContext === "conversation" ? "Running a tool" : "Run a tool") +
+    (action.functionCallName
+      ? `: ${asDisplayName(action.functionCallName)}`
+      : "")
+  );
 }
 
 export function MCPActionDetails({
   action,
-  viewType,
+  displayContext,
   owner,
   lastNotification,
   messageStatus,
@@ -149,7 +174,7 @@ export function MCPActionDetails({
     owner,
     toolOutput: output,
     toolParams: params,
-    viewType,
+    displayContext,
   };
 
   if (
@@ -158,11 +183,14 @@ export function MCPActionDetails({
   ) {
     switch (toolName) {
       case SEARCH_TOOL_NAME:
+      case FILESYSTEM_SEARCH_TOOL_NAME:
         return (
           <SearchResultDetails
-            viewType={viewType}
+            displayContext={displayContext}
             actionName={
-              viewType === "conversation" ? "Searching data" : "Search data"
+              displayContext === "conversation"
+                ? "Searching data"
+                : "Search data"
             }
             actionOutput={output}
             visual={MagnifyingGlassIcon}
@@ -177,9 +205,9 @@ export function MCPActionDetails({
       case FILESYSTEM_FIND_TOOL_NAME:
         return (
           <SearchResultDetails
-            viewType={viewType}
+            displayContext={displayContext}
             actionName={
-              viewType === "conversation"
+              displayContext === "conversation"
                 ? "Browsing data sources"
                 : "Browse data sources"
             }
@@ -207,9 +235,9 @@ export function MCPActionDetails({
   ) {
     return (
       <SearchResultDetails
-        viewType={viewType}
+        displayContext={displayContext}
         actionName={
-          viewType === "conversation" ? "Including data" : "Include data"
+          displayContext === "conversation" ? "Including data" : "Include data"
         }
         actionOutput={output}
         visual={ClockIcon}
@@ -229,10 +257,12 @@ export function MCPActionDetails({
       case WEBSEARCH_TOOL_NAME:
         return (
           <SearchResultDetails
-            viewType={viewType}
+            displayContext={displayContext}
             query={isWebsearchInputType(params) ? params.query : null}
             actionName={
-              viewType === "conversation" ? "Searching the web" : "Web search"
+              displayContext === "conversation"
+                ? "Searching the web"
+                : "Web search"
             }
             actionOutput={output}
             visual={GlobeAltIcon}
@@ -261,13 +291,11 @@ export function MCPActionDetails({
     return <MCPExtractActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (internalMCPServerName === "image_generation") {
-    switch (toolName) {
-      case GENERATE_IMAGE_TOOL_NAME:
-        return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
-      case EDIT_IMAGE_TOOL_NAME:
-        return <MCPImageEditingActionDetails {...toolOutputDetailsProps} />;
-    }
+  if (
+    internalMCPServerName === "image_generation" &&
+    toolName === GENERATE_IMAGE_TOOL_NAME
+  ) {
+    return <MCPImageGenerationActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "run_agent") {
@@ -337,7 +365,7 @@ export function MCPActionDetails({
 
   if (
     internalMCPServerName === "conversation_files" &&
-    toolName === DEFAULT_CONVERSATION_CAT_FILE_ACTION_NAME
+    toolName === CONVERSATION_CAT_FILE_ACTION_NAME
   ) {
     return <MCPConversationCatFileDetails {...toolOutputDetailsProps} />;
   }
@@ -347,7 +375,7 @@ export function MCPActionDetails({
       owner={owner}
       lastNotification={lastNotification}
       messageStatus={messageStatus}
-      viewType={viewType}
+      displayContext={displayContext}
       action={{ ...action, output }}
     />
   );
@@ -356,18 +384,12 @@ export function MCPActionDetails({
 export function GenericActionDetails({
   owner,
   action,
-  viewType,
+  displayContext,
 }: MCPActionDetailsProps) {
   const inputs =
     Object.keys(action.params).length > 0
       ? JSON.stringify(action.params, undefined, 2)
       : null;
-
-  const actionName =
-    (viewType === "conversation" ? "Running a tool" : "Run a tool") +
-    (action.functionCallName
-      ? `: ${asDisplayName(action.functionCallName)}`
-      : "");
 
   const actionIcon =
     action.internalMCPServerName &&
@@ -377,11 +399,11 @@ export function GenericActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
-      actionName={actionName}
+      displayContext={displayContext}
+      actionName={getActionLabel({ action, displayContext })}
       visual={actionIcon ?? MCP_SPECIFICATION.cardIcon}
     >
-      {viewType !== "conversation" && (
+      {displayContext !== "conversation" && (
         <div className="dd-privacy-mask flex flex-col gap-4 py-4 pl-6">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>

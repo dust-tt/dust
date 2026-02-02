@@ -14,6 +14,8 @@ import React, {
   useRef,
   useState,
 } from "react";
+import type { Components } from "react-markdown";
+import type { PluggableList } from "react-markdown/lib/react-markdown";
 
 import { AgentInputBar } from "@app/components/assistant/conversation/AgentInputBar";
 import { ConversationErrorDisplay } from "@app/components/assistant/conversation/ConversationError";
@@ -48,6 +50,7 @@ import {
   useConversationParticipants,
   useConversations,
 } from "@app/lib/swr/conversations";
+import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { classNames } from "@app/lib/utils";
 import type {
   AgentGenerationCancelledEvent,
@@ -69,6 +72,8 @@ import {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
+import { findFirstUnreadMessageIndex } from "./utils";
+
 const DEFAULT_PAGE_LIMIT = 50;
 
 // A conversation must be unread and older than that to enable the suggestion of enabling notifications.
@@ -77,6 +82,8 @@ const DELAY_BEFORE_SUGGESTING_PUSH_NOTIFICATION_ACTIVATION = 60 * 60 * 1000; // 
 interface ConversationViewerProps {
   conversationId: string;
   agentBuilderContext?: VirtuosoMessageListContext["agentBuilderContext"];
+  additionalMarkdownComponents?: Components;
+  additionalMarkdownPlugins?: PluggableList;
   setPlanLimitReached?: (planLimitReached: boolean) => void;
   owner: WorkspaceType;
   user: UserType;
@@ -102,6 +109,8 @@ export const ConversationViewer = ({
   user,
   conversationId,
   agentBuilderContext,
+  additionalMarkdownComponents,
+  additionalMarkdownPlugins,
   setPlanLimitReached,
 }: ConversationViewerProps) => {
   const ref =
@@ -118,6 +127,12 @@ export const ConversationViewer = ({
   } = useConversation({
     conversationId,
     workspaceId: owner.sId,
+  });
+
+  const { spaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId: conversation?.spaceId ?? "",
+    disabled: !conversation?.spaceId,
   });
 
   const { markAsRead } = useConversationMarkAsRead({
@@ -201,27 +216,52 @@ export const ConversationViewer = ({
 
       // Fetch the message to scroll to from the URL hash.
       const hash = window.location.hash;
-      if (!hash || !hash.startsWith("#")) {
-        return;
-      }
+      // If we arrive on an unread conversation from a deep link, we scroll to the linked message.
+      // This is useful when sharing a message link to someone else.
+      if (hash && hash.startsWith("#")) {
+        const messageId = hash.substring(1); // Remove the '#' prefix.
+        if (!messageId) {
+          return;
+        }
 
-      const messageId = hash.substring(1); // Remove the '#' prefix.
-      if (!messageId) {
-        return;
-      }
+        // Find the message index in the current data.
+        const messageIndex = messagesToRender.findIndex(
+          (m) => m.sId === messageId
+        );
 
-      // Find the message index in the current data.
-      const messageIndex = messagesToRender.findIndex(
-        (m) => m.sId === messageId
-      );
+        if (messageIndex === -1) {
+          // nothing found to scroll to.
+          return;
+        }
+        setMessageIdToScrollTo(messageIndex);
+      } else if (conversation?.unread) {
+        const lastReadMs = conversation.lastReadMs;
 
-      if (messageIndex === -1) {
-        // nothing found to scroll to.
-        return;
+        if (lastReadMs === null) {
+          // Conversation has never been read, scroll to the beginning.
+          return;
+        }
+
+        const firstUnreadIndex = findFirstUnreadMessageIndex(
+          messagesToRender,
+          lastReadMs
+        );
+
+        if (firstUnreadIndex === -1) {
+          return;
+        }
+
+        setMessageIdToScrollTo(firstUnreadIndex);
       }
-      setMessageIdToScrollTo(messageIndex);
     }
-  }, [initialListData, messages, setInitialListData, isValidating]);
+  }, [
+    initialListData,
+    messages,
+    setInitialListData,
+    isValidating,
+    conversation?.unread,
+    conversation?.lastReadMs,
+  ]);
 
   // This is to handle we just fetched more messages by scrolling up.
   useEffect(() => {
@@ -346,9 +386,8 @@ export const ConversationViewer = ({
                   },
                   { revalidate: false }
                 );
-
-                void debouncedMarkAsRead(conversationId, false);
               }
+              void debouncedMarkAsRead(conversationId);
             }
             break;
           case "agent_message_new":
@@ -387,6 +426,7 @@ export const ConversationViewer = ({
             break;
 
           case "conversation_title":
+            void debouncedMarkAsRead(conversationId);
             void mutateConversation(
               (current) => {
                 if (current) {
@@ -423,7 +463,7 @@ export const ConversationViewer = ({
           case "agent_message_done":
             // Mark as read and do not mutate the list of convos in the sidebar to avoid useless network request.
             // Debounce the call as we might receive multiple events for the same conversation (as we replay the events).
-            void debouncedMarkAsRead(event.conversationId, false);
+            void debouncedMarkAsRead(event.conversationId);
 
             // Update the conversation hasError state in the local cache without making a network request.
             void mutateConversations(
@@ -487,6 +527,8 @@ export const ConversationViewer = ({
         input,
         mentions: mentions.map(toMentionType),
         contentFragments,
+        clientSideMCPServerIds: agentBuilderContext?.clientSideMCPServerIds,
+        skipToolsValidation: agentBuilderContext?.skipToolsValidation,
       };
 
       const lastMessageRank = Math.max(
@@ -609,12 +651,14 @@ export const ConversationViewer = ({
       return new Ok(undefined);
     },
     [
-      submitMessage,
-      user,
+      agentBuilderContext?.clientSideMCPServerIds,
+      agentBuilderContext?.skipToolsValidation,
       conversationId,
+      mutateConversations,
       sendNotification,
       setPlanLimitReached,
-      mutateConversations,
+      submitMessage,
+      user,
     ]
   );
 
@@ -669,6 +713,10 @@ export const ConversationViewer = ({
     );
   }, [feedbacks]);
 
+  const isProjectMember = conversation?.spaceId
+    ? (spaceInfo?.isMember ?? false) // Default false while loading (restrictive)
+    : undefined;
+
   const context: VirtuosoMessageListContext = useMemo(() => {
     return {
       user,
@@ -676,9 +724,16 @@ export const ConversationViewer = ({
       handleSubmit,
       conversation,
       draftKey: `conversation-${conversationId}`,
-      enableExtendedActions: !!conversation?.spaceId,
+      enableExtendedActions:
+        !!conversation?.spaceId && isProjectMember !== false,
       agentBuilderContext,
       feedbacksByMessageId,
+      additionalMarkdownComponents,
+      additionalMarkdownPlugins,
+      isProjectMember,
+      isProjectRestricted: spaceInfo?.isRestricted,
+      projectSpaceId: conversation?.spaceId ?? undefined,
+      projectSpaceName: spaceInfo?.name,
     };
   }, [
     user,
@@ -688,6 +743,11 @@ export const ConversationViewer = ({
     conversationId,
     agentBuilderContext,
     feedbacksByMessageId,
+    additionalMarkdownComponents,
+    additionalMarkdownPlugins,
+    isProjectMember,
+    spaceInfo?.isRestricted,
+    spaceInfo?.name,
   ]);
 
   return (

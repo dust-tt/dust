@@ -8,11 +8,11 @@ import {
   ValidationError,
 } from "sequelize";
 
-import {
-  DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
-  DEFAULT_WEBSEARCH_ACTION_NAME,
-} from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
+import {
+  WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
+  WEB_SEARCH_BROWSE_SERVER_NAME,
+} from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { createAgentActionConfiguration } from "@app/lib/api/assistant/configuration/actions";
 import {
   enrichAgentConfigurations,
@@ -65,6 +65,7 @@ import type {
   UserType,
 } from "@app/types";
 import {
+  CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG,
   CoreAPI,
   Err,
   isAdmin,
@@ -76,6 +77,60 @@ import {
   removeNulls,
 } from "@app/types";
 import type { TagType } from "@app/types/tag";
+
+// Placeholder constants for pending agents
+const PENDING_AGENT_PLACEHOLDER_NAME = "__PENDING__";
+const PENDING_AGENT_PLACEHOLDER_DESCRIPTION = "";
+const PENDING_AGENT_PLACEHOLDER_PICTURE_URL =
+  "https://dust.tt/static/systemavatar/dust_avatar_full.png";
+
+/**
+ * Creates a pending agent configuration.
+ * Pending agents are placeholders created when the agent builder is opened for a new agent,
+ * before it is saved for the first time. This allows capturing the sId early.
+ */
+export async function createPendingAgentConfiguration(
+  auth: Authenticator
+): Promise<{ sId: string }> {
+  const owner = auth.getNonNullableWorkspace();
+  const user = auth.getNonNullableUser();
+
+  const sId = generateRandomModelSId();
+
+  await withTransaction(async (t) => {
+    const agent = await AgentConfigurationModel.create(
+      {
+        sId,
+        version: 0,
+        status: "pending",
+        scope: "hidden",
+        name: PENDING_AGENT_PLACEHOLDER_NAME,
+        description: PENDING_AGENT_PLACEHOLDER_DESCRIPTION,
+        instructions: null,
+        providerId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.providerId,
+        modelId: CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.modelId,
+        temperature: 0.7,
+        reasoningEffort:
+          CLAUDE_4_5_SONNET_DEFAULT_MODEL_CONFIG.defaultReasoningEffort,
+        maxStepsPerRun: 8,
+        pictureUrl: PENDING_AGENT_PLACEHOLDER_PICTURE_URL,
+        workspaceId: owner.id,
+        authorId: user.id,
+        templateId: null,
+        requestedSpaceIds: [],
+      },
+      { transaction: t }
+    );
+
+    const group = await GroupResource.makeNewAgentEditorsGroup(auth, agent, {
+      transaction: t,
+    });
+    await auth.refresh({ transaction: t });
+    await group.setMembers(auth, { users: [user.toJSON()], transaction: t });
+  });
+
+  return { sId };
+}
 
 export async function getAgentConfigurationsWithVersion<
   V extends AgentFetchVariant,
@@ -417,6 +472,7 @@ export async function createAgentConfiguration(
       t: Transaction
     ): Promise<AgentConfigurationModel> => {
       let existingAgent = null;
+
       if (agentConfigurationId) {
         const [agentConfiguration, userRelation] = await Promise.all([
           AgentConfigurationModel.findOne({
@@ -424,7 +480,16 @@ export async function createAgentConfiguration(
               sId: agentConfigurationId,
               workspaceId: owner.id,
             },
-            attributes: ["scope", "version", "id", "sId"],
+            attributes: [
+              "scope",
+              "version",
+              "id",
+              "sId",
+              "status",
+              "authorId",
+              "workspaceId",
+              "createdAt",
+            ],
             order: [["version", "DESC"]],
             transaction: t,
             limit: 1,
@@ -442,52 +507,119 @@ export async function createAgentConfiguration(
         existingAgent = agentConfiguration;
 
         if (existingAgent) {
-          // Bump the version of the agent.
-          version = existingAgent.version + 1;
+          // Handle pending agent: update in place (don't bump version, preserve id for FK relationships)
+          // Otherwise: archive old versions and bump version
+          if (existingAgent.status === "pending") {
+            if (existingAgent.authorId === user.id) {
+              const timeToCreationMs =
+                Date.now() - existingAgent.createdAt.getTime();
+              logger.info(
+                {
+                  agentId: existingAgent.sId,
+                  workspaceId: owner.sId,
+                  timeToCreationMs,
+                },
+                "Agent created from pending status"
+              );
+            } else {
+              throw new Error(
+                "Cannot update a pending agent owned by another user."
+              );
+            }
+          } else {
+            // Regular update: bump version and archive old versions
+            version = existingAgent.version + 1;
+            await AgentConfigurationModel.update(
+              { status: "archived" },
+              {
+                where: {
+                  sId: agentConfigurationId,
+                  workspaceId: owner.id,
+                },
+                transaction: t,
+              }
+            );
+          }
         }
 
-        await AgentConfigurationModel.update(
-          { status: "archived" },
-          {
-            where: {
-              sId: agentConfigurationId,
-              workspaceId: owner.id,
-            },
-            transaction: t,
-          }
-        );
         userFavorite = userRelation?.favorite ?? false;
       }
 
       // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
       const sId = agentConfigurationId || generateRandomModelSId();
 
-      // Create Agent config.
-      const agentConfigurationInstance = await AgentConfigurationModel.create(
-        {
-          sId,
-          version,
-          status,
-          scope,
-          name,
-          description,
-          instructions,
-          providerId: model.providerId,
-          modelId: model.modelId,
-          temperature: model.temperature,
-          reasoningEffort: model.reasoningEffort,
-          maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
-          pictureUrl,
-          workspaceId: owner.id,
-          authorId: user.id,
-          templateId: template?.id,
-          requestedSpaceIds: requestedSpaceIds,
-          responseFormat: model.responseFormat,
-        },
-        {
+      // Create or update Agent config.
+      let agentConfigurationInstance: AgentConfigurationModel;
+
+      if (existingAgent && existingAgent.status === "pending") {
+        // Update pending agent in place to preserve id (and FK relationships like suggestions)
+        await AgentConfigurationModel.update(
+          {
+            version,
+            status,
+            scope,
+            name,
+            description,
+            instructions,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
+            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+            pictureUrl,
+            authorId: user.id,
+            templateId: template?.id,
+            requestedSpaceIds: requestedSpaceIds,
+            responseFormat: model.responseFormat,
+          },
+          {
+            where: {
+              id: existingAgent.id,
+              workspaceId: owner.id,
+            },
+            transaction: t,
+          }
+        );
+        // Reload the updated instance
+        const updatedAgent = await AgentConfigurationModel.findOne({
+          where: {
+            id: existingAgent.id,
+            workspaceId: owner.id,
+          },
           transaction: t,
+        });
+        if (!updatedAgent) {
+          throw new Error("Failed to reload updated agent configuration");
         }
-      );
+        agentConfigurationInstance = updatedAgent;
+      } else {
+        // Create new agent config
+        agentConfigurationInstance = await AgentConfigurationModel.create(
+          {
+            sId,
+            version,
+            status,
+            scope,
+            name,
+            description,
+            instructions,
+            providerId: model.providerId,
+            modelId: model.modelId,
+            temperature: model.temperature,
+            reasoningEffort: model.reasoningEffort,
+            maxStepsPerRun: MAX_STEPS_USE_PER_RUN_LIMIT,
+            pictureUrl,
+            workspaceId: owner.id,
+            authorId: user.id,
+            templateId: template?.id,
+            requestedSpaceIds: requestedSpaceIds,
+            responseFormat: model.responseFormat,
+          },
+          {
+            transaction: t,
+          }
+        );
+      }
 
       const existingTags = existingAgent
         ? await TagResource.listForAgent(auth, existingAgent.id)
@@ -548,20 +680,24 @@ export async function createAgentConfiguration(
               "Unexpected: agent should have exactly one editor group."
             );
           }
-          const result = await group.addGroupToAgentConfiguration({
-            auth,
-            agentConfiguration: agentConfigurationInstance,
-            transaction: t,
-          });
-          if (result.isErr()) {
-            logger.error(
-              {
-                workspaceId: owner.sId,
-                agentConfigurationId: existingAgent.sId,
-              },
-              `Error adding group to agent ${existingAgent.sId}: ${result.error}`
-            );
-            throw result.error;
+          // For pending agents updated in place, the group is already linked to the same agent ID
+          // For regular updates, we need to link the group to the new agent configuration
+          if (existingAgent.id !== agentConfigurationInstance.id) {
+            const result = await group.addGroupToAgentConfiguration({
+              auth,
+              agentConfiguration: agentConfigurationInstance,
+              transaction: t,
+            });
+            if (result.isErr()) {
+              logger.error(
+                {
+                  workspaceId: owner.sId,
+                  agentConfigurationId: existingAgent.sId,
+                },
+                `Error adding group to agent ${existingAgent.sId}: ${result.error}`
+              );
+              throw result.error;
+            }
           }
           const setMembersRes = await group.setMembers(auth, {
             users: editors,
@@ -776,8 +912,8 @@ export async function createGenericAgentConfiguration(
     auth,
     {
       type: "mcp_server_configuration",
-      name: DEFAULT_WEBSEARCH_ACTION_NAME,
-      description: DEFAULT_WEBSEARCH_ACTION_DESCRIPTION,
+      name: WEB_SEARCH_BROWSE_SERVER_NAME,
+      description: WEB_SEARCH_BROWSE_ACTION_DESCRIPTION,
       mcpServerViewId: webSearchMCPServerView.sId,
       dataSources: null,
       tables: null,

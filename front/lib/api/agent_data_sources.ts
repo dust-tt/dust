@@ -21,7 +21,8 @@ import type {
   ModelId,
   Result,
 } from "@app/types";
-import { assertNever, CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
+import { CONNECTOR_PROVIDERS, Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // To use in case of heavy db load emergency with these usages queries
 // If it is a problem, let's add caching
@@ -77,15 +78,9 @@ export async function getDataSourceViewsUsageByCategory({
   }
 
   const getAgentsForUser = async () =>
-    (
-      await GroupResource.findAgentIdsForGroups(
-        auth,
-        auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id)
-      )
-    ).map((g) => g.agentConfigurationId);
+    (await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())).map(
+      (g) => g.agentConfigurationId
+    );
 
   const getAgentWhereClauseAdmin = () => ({
     status: "active",

@@ -68,6 +68,7 @@ import { useDeleteConversation } from "@app/hooks/useDeleteConversation";
 import { useHideTriggeredConversations } from "@app/hooks/useHideTriggeredConversations";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { useProjectsSectionCollapsed } from "@app/hooks/useProjectsSectionCollapsed";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
 import { CONVERSATIONS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import type { AppRouter } from "@app/lib/platform";
@@ -140,7 +141,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const hasSpaceConversations = hasFeature("projects");
 
-  const { summary, mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+  const {
+    summary,
+    isLoading: isSummaryLoading,
+    mutate: mutateSpaceSummary,
+  } = useSpaceConversationsSummary({
     workspaceId: owner.sId,
     options: { disabled: !hasSpaceConversations },
   });
@@ -172,7 +177,8 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
 
   const { hideTriggeredConversations } = useHideTriggeredConversations();
 
-  const hasSkills = hasFeature("skills");
+  const { isProjectsSectionCollapsed, setProjectsSectionCollapsed } =
+    useProjectsSectionCollapsed();
 
   const isRestrictedFromAgentCreation =
     hasFeature("disallow_agent_creation_to_users") && !isBuilder(owner);
@@ -338,11 +344,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     if (!hasSpaceConversations) {
       return null;
     }
+    const projectCount = summary.length;
+    const showCount = isProjectsSectionCollapsed && projectCount > 0;
+
     return (
       <NavigationList className="px-2">
         <NavigationListCollapsibleSection
-          label="Projects"
-          defaultOpen
+          label={showCount ? `Projects (${projectCount})` : "Projects"}
+          type="collapse"
+          open={!isProjectsSectionCollapsed}
+          onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
             isAdmin(owner) ? (
               <Button
@@ -359,8 +370,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
             ) : null
           }
         >
-          {summary.length > 0 ? (
-            <ProjectsList owner={owner} summary={summary} />
+          {isSummaryLoading ? (
+            <div className="flex items-center justify-center">
+              <Spinner size="xs" />
+            </div>
+          ) : summary.length > 0 ? (
+            <ProjectsList
+              owner={owner}
+              summary={summary}
+              titleFilter={titleFilter}
+            />
           ) : (
             <NavigationListItem
               label="Create a Project"
@@ -371,7 +390,16 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
         </NavigationListCollapsibleSection>
       </NavigationList>
     );
-  }, [hasSpaceConversations, owner, summary, setIsCreateProjectModalOpen]);
+  }, [
+    hasSpaceConversations,
+    owner,
+    summary,
+    setIsCreateProjectModalOpen,
+    isProjectsSectionCollapsed,
+    setProjectsSectionCollapsed,
+    isSummaryLoading,
+    titleFilter,
+  ]);
 
   const conversationsList = useMemo(() => {
     return (
@@ -571,7 +599,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
                         />
                       </>
                     )}
-                    {hasSkills && isBuilder(owner) && (
+                    {isBuilder(owner) && (
                       <>
                         <DropdownMenuLabel>Skills</DropdownMenuLabel>
                         <DropdownMenuItem
@@ -939,7 +967,7 @@ const NavigationListWithInbox = forwardRef<
             action={
               <>
                 <Button
-                  size="xs"
+                  size="xmini"
                   icon={ChatBubbleLeftRightIcon}
                   variant="ghost"
                   aria-label="New Conversation"
@@ -950,7 +978,7 @@ const NavigationListWithInbox = forwardRef<
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="xs"
+                      size="xmini"
                       icon={MoreIcon}
                       variant="ghost"
                       aria-label="Conversations options"

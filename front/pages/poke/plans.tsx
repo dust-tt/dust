@@ -1,21 +1,24 @@
 import type { ReactElement } from "react";
 
 import { PlansPage } from "@app/components/poke/pages/PlansPage";
-import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { PokeLayoutNoWorkspace } from "@app/components/poke/PokeLayout";
+import type { AuthContextNoWorkspaceValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayoutNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
-    return {
-      props: {},
-    };
-  }
-);
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-export default function PlansPageNextJS() {
-  return <PlansPage />;
-}
+const Page = PlansPage as PageWithLayoutNoWorkspace;
 
-PlansPageNextJS.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Plans">{page}</PokeLayout>;
+Page.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextNoWorkspaceValue
+) => {
+  return (
+    <PokeLayoutNoWorkspace authContext={pageProps}>
+      {page}
+    </PokeLayoutNoWorkspace>
+  );
 };
+
+export default Page;

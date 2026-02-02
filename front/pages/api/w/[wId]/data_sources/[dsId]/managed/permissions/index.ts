@@ -16,11 +16,8 @@ import type {
   DataSourceType,
   WithAPIErrorResponse,
 } from "@app/types";
-import {
-  assertNever,
-  ConnectorsAPI,
-  isValidContentNodesViewType,
-} from "@app/types";
+import { ConnectorsAPI, isValidContentNodesViewType } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const SetConnectorPermissionsRequestBodySchema = t.type({
   resources: t.array(

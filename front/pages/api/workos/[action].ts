@@ -13,7 +13,9 @@ import { getWorkOS } from "@app/lib/api/workos/client";
 import { isOrganizationSelectionRequiredError } from "@app/lib/api/workos/types";
 import type { SessionCookie } from "@app/lib/api/workos/user";
 import { getSession } from "@app/lib/auth";
+import { DUST_HAS_SESSION } from "@app/lib/cookies";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
+import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { statsDClient } from "@app/logger/statsDClient";
 import { isString } from "@app/types";
@@ -84,9 +86,13 @@ async function handleLogin(req: NextApiRequest, res: NextApiResponse) {
       ? validatedReturnTo.sanitizedPath
       : null;
 
+    // Extract UTM params from query to preserve through OAuth flow
+    const utmParams = extractUTMParams(req.query);
+
     const state = {
       ...(sanitizedReturnTo ? { returnTo: sanitizedReturnTo } : {}),
       ...(organizationIdToUse ? { organizationId: organizationIdToUse } : {}),
+      ...(Object.keys(utmParams).length > 0 ? { utm: utmParams } : {}),
     };
 
     const authorizationUrl = getWorkOS().userManagement.getAuthorizationUrl({
@@ -288,23 +294,49 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     // In development (localhost), omit Secure flag as it requires HTTPS
     // Safari strictly enforces this and will not set cookies with Secure flag on HTTP
     const secureFlag = isDevelopment() ? "" : "; Secure";
+
+    // Indicator cookie for client-side session detection (UI only, not for auth).
+    // Not HttpOnly so it can be read by JavaScript. Max-Age matches workos_session (30 days).
+    const indicatorCookie = domain
+      ? `${DUST_HAS_SESSION}=1; Domain=${domain}; Path=/${secureFlag}; SameSite=Lax; Max-Age=2592000`
+      : `${DUST_HAS_SESSION}=1; Path=/${secureFlag}; SameSite=Lax; Max-Age=2592000`;
+
     if (domain) {
       res.setHeader("Set-Cookie", [
         `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
         `workos_session=${sealedCookie}; Domain=${domain}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
+        indicatorCookie,
       ]);
     } else {
       res.setHeader("Set-Cookie", [
         `workos_session=${sealedCookie}; Path=/; HttpOnly${secureFlag}; SameSite=Lax; Max-Age=2592000`,
+        indicatorCookie,
       ]);
     }
 
+    // Restore UTM params from state to the redirect URL for cross-domain tracking
+    const utmParams: Record<string, string> = stateObj.utm ?? {};
+    const appendUtmToUrl = (url: string): string => {
+      if (Object.keys(utmParams).length === 0) {
+        return url;
+      }
+      const [baseUrl, existingQuery] = url.split("?");
+      const searchParams = new URLSearchParams(existingQuery ?? "");
+      for (const [key, value] of Object.entries(utmParams)) {
+        if (!searchParams.has(key)) {
+          searchParams.set(key, value);
+        }
+      }
+      const queryString = searchParams.toString();
+      return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+    };
+
     if (sanitizedReturnTo) {
-      res.redirect(sanitizedReturnTo);
+      res.redirect(appendUtmToUrl(sanitizedReturnTo));
       return;
     }
 
-    res.redirect("/api/login");
+    res.redirect(appendUtmToUrl("/api/login"));
   } catch (error) {
     logger.error({ error }, "Error during WorkOS callback");
     statsDClient.increment("login.callback.error", 1);
@@ -329,14 +361,19 @@ async function handleLogout(req: NextApiRequest, res: NextApiResponse) {
   const domain = config.getWorkOSSessionCookieDomain();
   // In development (localhost), omit Secure flag as it requires HTTPS
   const secureFlag = isDevelopment() ? "" : "; Secure";
+
+  // Clear both session cookie and indicator cookie
   if (domain) {
     res.setHeader("Set-Cookie", [
       `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
       `workos_session=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Domain=${domain}; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
     ]);
   } else {
     res.setHeader("Set-Cookie", [
       `workos_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly${secureFlag}; SameSite=Lax`,
+      `${DUST_HAS_SESSION}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secureFlag}; SameSite=Lax`,
     ]);
   }
 

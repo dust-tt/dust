@@ -20,7 +20,7 @@ const Separator = React.forwardRef<
         "s-bg-separator dark:s-bg-separator-night",
         orientation === "horizontal"
           ? "s-h-[1px] s-min-w-full"
-          : "s-min-h-full s-w-[1px]",
+          : "s-min-h-full s-w-[1px] s-self-stretch",
         className ?? ""
       )}
       {...props}

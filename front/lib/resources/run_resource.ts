@@ -10,6 +10,7 @@ import { Op, Sequelize } from "sequelize";
 
 import { computeTokensCostForUsageInMicroUsd } from "@app/lib/api/assistant/token_pricing";
 import type { TokenUsage } from "@app/lib/api/llm/types/events";
+import { getModelConfigByModelId } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AppModel } from "@app/lib/resources/storage/models/apps";
@@ -28,7 +29,7 @@ import type {
   ModelProviderIdType,
   Result,
 } from "@app/types";
-import { Err, normalizeError, Ok, SUPPORTED_MODEL_CONFIGS } from "@app/types";
+import { Err, normalizeError, Ok } from "@app/types";
 
 type RunResourceWithApp = RunResource & { app: AppModel };
 
@@ -284,9 +285,7 @@ export class RunResource extends BaseResource<RunModel> {
   }
 
   async recordTokenUsage(usage: TokenUsage, modelId: ModelIdType) {
-    const modelConfig = SUPPORTED_MODEL_CONFIGS.find(
-      (config) => config.modelId === modelId
-    );
+    const modelConfig = getModelConfigByModelId(modelId);
 
     if (!modelConfig) {
       logger.warn({ modelId }, "Unsupported model for usage recording");

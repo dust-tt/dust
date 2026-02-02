@@ -8,6 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  Label,
+  SliderToggle,
   Spinner,
 } from "@dust-tt/sparkle";
 import { ioTsResolver } from "@hookform/resolvers/io-ts";
@@ -26,17 +28,22 @@ import { usePokePlans } from "@app/lib/swr/poke";
 import type {
   EnterpriseUpgradeFormType,
   ProgrammaticUsageConfigurationType,
+  SubscriptionType,
   WorkspaceType,
 } from "@app/types";
 import { EnterpriseUpgradeFormSchema, removeNulls } from "@app/types";
 
+const MICRO_USD_PER_DOLLAR = 1_000_000;
+
 interface EnterpriseUpgradeDialogProps {
   owner: WorkspaceType;
+  subscription: SubscriptionType;
   programmaticUsageConfig: ProgrammaticUsageConfigurationType | null;
 }
 
 export default function EnterpriseUpgradeDialog({
   owner,
+  subscription,
   programmaticUsageConfig,
 }: EnterpriseUpgradeDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -46,13 +53,32 @@ export default function EnterpriseUpgradeDialog({
   const { plans } = usePokePlans();
   const router = useAppRouter();
 
+  const freeCreditMicroUsd =
+    programmaticUsageConfig?.freeCreditMicroUsd ?? null;
+  const paygCapMicroUsd = programmaticUsageConfig?.paygCapMicroUsd ?? null;
+
   const form = useForm<EnterpriseUpgradeFormType>({
     resolver: ioTsResolver(EnterpriseUpgradeFormSchema),
     defaultValues: {
-      stripeSubscriptionId: "",
-      planCode: "",
+      stripeSubscriptionId: subscription.stripeSubscriptionId ?? "",
+      planCode: subscription.plan.code,
+      freeCreditsOverrideEnabled: freeCreditMicroUsd !== null,
+      freeCreditsDollars:
+        freeCreditMicroUsd !== null
+          ? freeCreditMicroUsd / MICRO_USD_PER_DOLLAR
+          : undefined,
+      defaultDiscountPercent:
+        programmaticUsageConfig?.defaultDiscountPercent ?? 0,
+      paygEnabled: paygCapMicroUsd !== null,
+      paygCapDollars:
+        paygCapMicroUsd !== null
+          ? paygCapMicroUsd / MICRO_USD_PER_DOLLAR
+          : undefined,
     },
   });
+
+  const freeCreditsOverrideEnabled = form.watch("freeCreditsOverrideEnabled");
+  const paygEnabled = form.watch("paygEnabled");
 
   const onSubmit = useCallback(
     (values: EnterpriseUpgradeFormType) => {
@@ -121,13 +147,6 @@ export default function EnterpriseUpgradeDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogContainer>
-          {!programmaticUsageConfig && (
-            <div className="mb-4 rounded-md border border-warning-200 bg-warning-100 p-3 text-warning-800">
-              Programmatic usage configuration must be set before upgrading to
-              enterprise. Please use the "Manage Programmatic Usage
-              Configuration" plugin first.
-            </div>
-          )}
           {error && <div className="text-warning">{error}</div>}
           {isSubmitting && (
             <div className="flex justify-center">
@@ -162,14 +181,70 @@ export default function EnterpriseUpgradeDialog({
                       placeholder="sub_1234567890"
                     />
                   </div>
+
+                  <div className="border-t pt-4">
+                    <h4 className="mb-4 font-medium">
+                      Programmatic Usage Configuration
+                    </h4>
+
+                    <div className="mb-4 flex items-center gap-2">
+                      <SliderToggle
+                        selected={freeCreditsOverrideEnabled}
+                        onClick={() =>
+                          form.setValue(
+                            "freeCreditsOverrideEnabled",
+                            !freeCreditsOverrideEnabled
+                          )
+                        }
+                      />
+                      <Label className="text-sm">Negotiated Free Credits</Label>
+                    </div>
+                    {freeCreditsOverrideEnabled && (
+                      <div className="mb-4 ml-6">
+                        <InputField
+                          control={form.control}
+                          name="freeCreditsDollars"
+                          title="Free Credits (USD)"
+                          type="number"
+                          placeholder="e.g., 100"
+                        />
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <InputField
+                        control={form.control}
+                        name="defaultDiscountPercent"
+                        title="Default Discount (%)"
+                        type="number"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="mb-4 flex items-center gap-2">
+                      <SliderToggle
+                        selected={paygEnabled}
+                        onClick={() =>
+                          form.setValue("paygEnabled", !paygEnabled)
+                        }
+                      />
+                      <Label className="text-sm">Pay-as-you-go</Label>
+                    </div>
+                    {paygEnabled && (
+                      <div className="ml-6">
+                        <InputField
+                          control={form.control}
+                          name="paygCapDollars"
+                          title="PAYG Spending Cap (USD)"
+                          type="number"
+                          placeholder="e.g., 1000"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <DialogFooter>
-                  <Button
-                    type="submit"
-                    variant="warning"
-                    label="Upgrade"
-                    disabled={!programmaticUsageConfig}
-                  />
+                  <Button type="submit" variant="warning" label="Upgrade" />
                 </DialogFooter>
               </form>
             </PokeForm>

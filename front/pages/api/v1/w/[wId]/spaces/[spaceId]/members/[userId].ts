@@ -7,7 +7,8 @@ import type { Authenticator } from "@app/lib/auth";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * @ignoreswagger
@@ -114,6 +115,14 @@ async function handler(
                 type: "invalid_request_error",
                 message:
                   "Users cannot be removed from system or global groups.",
+              },
+            });
+          case "group_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "group_not_found",
+                message: "The group was not found in the workspace.",
               },
             });
           default:

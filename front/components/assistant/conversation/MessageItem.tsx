@@ -170,19 +170,28 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               owner={context.owner}
               handleSubmit={context.handleSubmit}
               enableExtendedActions={context.enableExtendedActions}
+              additionalMarkdownComponents={
+                context.additionalMarkdownComponents
+              }
+              additionalMarkdownPlugins={context.additionalMarkdownPlugins}
             />
           )}
           {data.visibility !== "deleted" &&
-            data.richMentions.map((mention) => {
+            data.richMentions.map((mention, index) => {
               // To please the type checker
               if (!context.conversation) {
                 return null;
               }
 
-              if (mention.status === "pending") {
+              // :warning: make sure to use the index in the key, as the mention.id is the userId
+
+              if (
+                mention.status === "pending_conversation_access" ||
+                mention.status === "pending_project_membership"
+              ) {
                 return (
                   <MentionValidationRequired
-                    key={mention.id}
+                    key={index}
                     mention={mention}
                     message={data}
                     owner={context.owner}
@@ -196,12 +205,12 @@ export const MessageItem = React.forwardRef<HTMLDivElement, MessageItemProps>(
               ) {
                 return (
                   <MentionInvalid
-                    key={mention.id}
+                    key={index}
                     mention={mention}
                     message={data}
                     owner={context.owner}
                     triggeringUser={triggeringUser}
-                    conversationId={context.conversation.sId}
+                    conversation={context.conversation}
                   />
                 );
               }

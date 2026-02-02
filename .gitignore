@@ -26,6 +26,7 @@ mprocs.log
 front/.npm-cache
 AGENTS.local.md
 CLAUDE.local.md
+node_modules
 
 # Direnv
 .direnv/

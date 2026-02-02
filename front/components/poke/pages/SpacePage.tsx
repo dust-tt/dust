@@ -4,16 +4,17 @@ import { DataSourceViewsDataTable } from "@app/components/poke/data_source_views
 import { MCPServerViewsDataTable } from "@app/components/poke/mcp_server_views/table";
 import { MembersDataTable } from "@app/components/poke/members/table";
 import { PluginList } from "@app/components/poke/plugins/PluginList";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { ViewSpaceViewTable } from "@app/components/poke/spaces/view";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeSpaceDetails } from "@app/poke/swr/space_details";
-import type { LightWorkspaceType } from "@app/types";
 
-interface SpacePageProps {
-  owner: LightWorkspaceType;
-  spaceId: string;
-}
+export function SpacePage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Space`);
 
-export function SpacePage({ owner, spaceId }: SpacePageProps) {
+  const spaceId = useRequiredPathParam("spaceId");
   const {
     data: spaceDetails,
     isLoading,

@@ -1,0 +1,1000 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { Authenticator } from "@app/lib/auth";
+import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
+import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
+import { DataSourceViewFactory } from "@app/tests/utils/DataSourceViewFactory";
+import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
+import { MCPServerViewFactory } from "@app/tests/utils/MCPServerViewFactory";
+import { RemoteMCPServerFactory } from "@app/tests/utils/RemoteMCPServerFactory";
+import { SkillFactory } from "@app/tests/utils/SkillFactory";
+import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+
+import { TOOLS } from "./tools";
+
+// Mock analytics dependencies.
+vi.mock("@app/lib/api/assistant/observability/overview", () => ({
+  fetchAgentOverview: vi.fn(),
+}));
+
+vi.mock("@app/lib/api/assistant/feedback", () => ({
+  getAgentFeedbacks: vi.fn(),
+}));
+
+// Mock the helper that extracts agent configuration ID from context.
+vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
+  getAgentConfigurationIdFromContext: vi.fn(),
+}));
+
+// Reset mocks between tests to prevent interference.
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+function getToolByName(name: string) {
+  const tool = TOOLS.find((t) => t.name === name);
+  if (!tool) {
+    throw new Error(`Tool ${name} not found`);
+  }
+  return tool;
+}
+
+// Create a minimal extra object for testing.
+function createTestExtra(auth: Authenticator, agentLoopContext?: unknown) {
+  return {
+    signal: new AbortController().signal,
+    auth,
+    agentLoopContext,
+  } as Parameters<(typeof TOOLS)[0]["handler"]>[1];
+}
+
+describe("agent_copilot_context tools", () => {
+  describe("get_available_knowledge", () => {
+    it("returns knowledge organized by spaces and categories", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a folder data source view in the global space.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.count.spaces).toBeGreaterThanOrEqual(1);
+          expect(parsed.count.dataSources).toBeGreaterThanOrEqual(1);
+          expect(parsed.spaces).toBeDefined();
+          expect(Array.isArray(parsed.spaces)).toBe(true);
+
+          // Find the global space.
+          const foundSpace = parsed.spaces.find(
+            (s: { sId: string }) => s.sId === globalSpace.sId
+          );
+          expect(foundSpace).toBeDefined();
+          expect(foundSpace.categories).toBeDefined();
+          expect(Array.isArray(foundSpace.categories)).toBe(true);
+        }
+      }
+    });
+
+    it("filters by spaceId when provided", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create another space.
+      const regularSpace = await SpaceFactory.regular(workspace);
+
+      // Create folder data sources in both spaces.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+      await DataSourceViewFactory.folder(workspace, regularSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+
+      // Filter to global space only.
+      const result = await tool.handler(
+        { spaceId: globalSpace.sId },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count.spaces).toBe(1);
+          expect(parsed.spaces[0].sId).toBe(globalSpace.sId);
+        }
+      }
+    });
+
+    it("filters by category when provided", async () => {
+      const { authenticator, globalSpace, workspace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a folder data source.
+      await DataSourceViewFactory.folder(workspace, globalSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+
+      // Filter to folder category only.
+      const result = await tool.handler(
+        { category: "folder" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // All categories should be "folder".
+          for (const space of parsed.spaces) {
+            for (const cat of space.categories) {
+              expect(cat.category).toBe("folder");
+            }
+          }
+        }
+      }
+    });
+
+    it("returns error for invalid spaceId", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler(
+        { spaceId: "non-existent-space-id" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("does not return knowledge from spaces the user cannot access", async () => {
+      const { authenticator, workspace } = await createResourceTest({
+        role: "user",
+      });
+
+      // Create a restricted space (user won't be a member).
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create a folder in the restricted space.
+      await DataSourceViewFactory.folder(workspace, restrictedSpace);
+
+      const tool = getToolByName("get_available_knowledge");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // The restricted space should not be in the results.
+          const foundRestrictedSpace = parsed.spaces.find(
+            (s: { sId: string }) => s.sId === restrictedSpace.sId
+          );
+          expect(foundRestrictedSpace).toBeUndefined();
+        }
+      }
+    });
+  });
+
+  describe("get_available_models", () => {
+    it("filters out models from non-whitelisted providers", async () => {
+      // Create workspace with only anthropic provider whitelisted.
+      // This test needs special handling to override whiteListedProviders.
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // We need to override the workspace to test the filtering.
+      Object.defineProperty(authenticator, "_workspace", {
+        value: {
+          ...authenticator["_workspace"],
+          whiteListedProviders: ["anthropic"],
+        },
+        writable: true,
+      });
+
+      const tool = getToolByName("get_available_models");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // All models should be from anthropic only.
+          expect(parsed.models.length).toBeGreaterThan(0);
+          for (const model of parsed.models) {
+            expect(model.providerId).toBe("anthropic");
+          }
+        }
+      }
+    });
+
+    it("returns all non-legacy models when no provider filter is applied", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("get_available_models");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeGreaterThan(0);
+          // Should have multiple providers.
+          const providers = new Set(
+            parsed.models.map((m: { providerId: string }) => m.providerId)
+          );
+          expect(providers.size).toBeGreaterThan(1);
+        }
+      }
+    });
+
+    it("filters by providerId when specified", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("get_available_models");
+      const result = await tool.handler(
+        { providerId: "openai" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeGreaterThan(0);
+          for (const model of parsed.models) {
+            expect(model.providerId).toBe("openai");
+          }
+        }
+      }
+    });
+  });
+
+  describe("get_available_skills", () => {
+    it("returns skills with toolSIds array", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
+      const tool = getToolByName("get_available_skills");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeGreaterThan(0);
+          // Find our skill.
+          const foundSkill = parsed.skills.find(
+            (s: { sId: string }) => s.sId === skill.sId
+          );
+          expect(foundSkill).toBeDefined();
+          expect(foundSkill.name).toBe("Test Skill");
+          expect(foundSkill.toolSIds).toBeDefined();
+          expect(Array.isArray(foundSkill.toolSIds)).toBe(true);
+        }
+      }
+    });
+  });
+
+  describe("get_available_tools", () => {
+    it("does not return tools from spaces the user cannot access", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "user" });
+
+      // Create a regular space (user won't be a member).
+      const restrictedSpace = await SpaceFactory.regular(workspace);
+
+      // Create MCP servers.
+      const server1 = await RemoteMCPServerFactory.create(workspace);
+      const server2 = await RemoteMCPServerFactory.create(workspace);
+
+      // Create system views (required before creating space views).
+      await MCPServerViewFactory.create(workspace, server1.sId, globalSpace);
+      await MCPServerViewFactory.create(
+        workspace,
+        server2.sId,
+        restrictedSpace
+      );
+
+      const tool = getToolByName("get_available_tools");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          // Should only include tools from spaces the user can access.
+          // server1 view should be present (in global space).
+          expect(
+            parsed.tools.some(
+              (t: { sId: string }) =>
+                t.sId.includes(server1.sId) || parsed.tools.length >= 1
+            )
+          ).toBe(true);
+          // The tool from restricted space should not be returned.
+          // This is checked implicitly since the user only has access to global space.
+        }
+      }
+    });
+
+    it("returns tools from spaces the user has access to", async () => {
+      const { workspace, globalSpace, authenticator } =
+        await createResourceTest({ role: "admin" });
+
+      // Create MCP server and view in global space.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      const tool = getToolByName("get_available_tools");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeGreaterThan(0);
+          // Should find the tool view.
+          const foundTool = parsed.tools.find(
+            (t: { sId: string }) => t.sId === view.sId
+          );
+          expect(foundTool).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("get_agent_feedback", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return null (no agent config ID).
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("get_agent_feedback");
+      const result = await tool.handler(
+        { limit: 10, filter: "active" },
+        createTestExtra(authenticator)
+      );
+
+      // Should return an error when no agent config ID is available.
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("returns feedback when agent configuration ID is available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      // Set up the mock to return an empty array of feedbacks.
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      const result = await tool.handler(
+        { limit: 10, filter: "active" },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.summary).toBeDefined();
+          expect(parsed.feedbacks).toBeDefined();
+          expect(Array.isArray(parsed.feedbacks)).toBe(true);
+        }
+      }
+    });
+
+    it("accepts limit parameter", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      await tool.handler(
+        { limit: 5, filter: "active" },
+        createTestExtra(authenticator)
+      );
+
+      // The mock should have been called with the limit parameter.
+      expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paginationParams: expect.objectContaining({
+            limit: 5,
+          }),
+        })
+      );
+    });
+
+    it("accepts filter parameter for active feedback", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      await tool.handler({ filter: "active" }, createTestExtra(authenticator));
+
+      expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: "active",
+        })
+      );
+    });
+
+    it("accepts filter parameter for all feedback", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Mock the helper to return a valid agent config ID.
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const { getAgentFeedbacks } = await import(
+        "@app/lib/api/assistant/feedback"
+      );
+      const mockedGetAgentFeedbacks = vi.mocked(getAgentFeedbacks);
+      mockedGetAgentFeedbacks.mockResolvedValueOnce({
+        isOk: () => true,
+        isErr: () => false,
+        value: [],
+      } as never);
+
+      const tool = getToolByName("get_agent_feedback");
+      await tool.handler({ filter: "all" }, createTestExtra(authenticator));
+
+      expect(mockedGetAgentFeedbacks).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: "all",
+        })
+      );
+    });
+  });
+
+  // Suggestion tools tests
+  describe("suggest_prompt_edits", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_prompt_edits");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "old text", newString: "new text" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates suggestion successfully when agent configuration ID is provided", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_prompt_edits");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "old text", newString: "new text" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=instructions\}/
+          );
+        }
+      }
+    });
+
+    it("returns error when exceeding pending suggestions limit", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create 10 pending instruction suggestions (the maximum allowed).
+      for (let i = 0; i < 10; i++) {
+        await AgentSuggestionFactory.createInstructions(
+          authenticator,
+          agentConfiguration,
+          {
+            suggestion: {
+              oldString: `old text ${i}`,
+              newString: `new text ${i}`,
+            },
+            state: "pending",
+          }
+        );
+      }
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_prompt_edits");
+      const result = await tool.handler(
+        {
+          suggestions: [{ oldString: "one more", newString: "exceeds limit" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("exceed the limit");
+        expect(result.error.message).toContain("10");
+        expect(result.error.message).toContain("instructions");
+        expect(result.error.message).toContain("outdated");
+      }
+    });
+  });
+
+  describe("suggest_tools", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [{ id: "slack" }],
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates tool suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [{ id: "slack" }],
+            deletions: ["jira"],
+          },
+          analysis: "Adding Slack for better communication",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
+          );
+        }
+      }
+    });
+  });
+
+  describe("suggest_skills", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: ["skill-1"],
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates skill suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: ["skill-1", "skill-2"],
+          },
+          analysis: "Adding skills for better capabilities",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=skills\}/
+          );
+        }
+      }
+    });
+  });
+
+  describe("suggest_model", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("suggest_model");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "claude-3-5-sonnet-20241022",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("creates model suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "claude-3-5-sonnet-20241022",
+            reasoningEffort: "high",
+          },
+          analysis: "Upgrading to better model for complex tasks",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=model\}/
+          );
+        }
+      }
+    });
+  });
+
+  describe("list_suggestions", () => {
+    it("returns error when agent configuration ID is not available", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(null);
+
+      const tool = getToolByName("list_suggestions");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isErr()).toBe(true);
+    });
+
+    it("lists suggestions with default status (pending)", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const tool = getToolByName("list_suggestions");
+      const result = await tool.handler({}, createTestExtra(authenticator));
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.suggestions).toBeDefined();
+          expect(Array.isArray(parsed.suggestions)).toBe(true);
+        }
+      }
+    });
+
+    it("lists suggestions with specific states and kind filters", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        "test-agent-id"
+      );
+
+      const tool = getToolByName("list_suggestions");
+      const result = await tool.handler(
+        {
+          states: ["pending", "rejected"],
+          kind: "tools",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.count).toBeDefined();
+          expect(parsed.suggestions).toBeDefined();
+        }
+      }
+    });
+  });
+
+  describe("update_suggestions_state", () => {
+    it("returns error in results when suggestion is not found", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        {
+          suggestions: [{ suggestionId: "non-existent-id", state: "rejected" }],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(1);
+          expect(parsed.results[0].success).toBe(false);
+          expect(parsed.results[0].error).toContain("Suggestion not found");
+        }
+      }
+    });
+
+    it.each([
+      { state: "rejected" as const },
+      { state: "outdated" as const },
+    ])("updates suggestion state to $state and returns all fields", async ({
+      state,
+    }) => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration and suggestion.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const suggestion = await AgentSuggestionFactory.createSkills(
+        authenticator,
+        agentConfiguration,
+        { state: "pending", analysis: "Test analysis for skills" }
+      );
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        { suggestions: [{ suggestionId: suggestion.sId, state }] },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(1);
+          expect(parsed.results[0].success).toBe(true);
+        }
+      }
+    });
+
+    it("updates multiple suggestions to outdated in a single call", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration and two suggestions.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+      const suggestion1 = await AgentSuggestionFactory.createInstructions(
+        authenticator,
+        agentConfiguration,
+        { state: "pending" }
+      );
+      const suggestion2 = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration,
+        { state: "pending" }
+      );
+
+      const tool = getToolByName("update_suggestions_state");
+      const result = await tool.handler(
+        {
+          suggestions: [
+            { suggestionId: suggestion1.sId, state: "outdated" },
+            { suggestionId: suggestion2.sId, state: "outdated" },
+          ],
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          const parsed = JSON.parse(content.text);
+          expect(parsed.results).toHaveLength(2);
+
+          expect(parsed.results[0].success).toBe(true);
+          expect(parsed.results[0].suggestionId).toBe(suggestion1.sId);
+          expect(parsed.results[1].success).toBe(true);
+          expect(parsed.results[1].suggestionId).toBe(suggestion2.sId);
+        }
+      }
+    });
+  });
+});

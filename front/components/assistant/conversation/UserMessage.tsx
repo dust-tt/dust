@@ -14,6 +14,7 @@ import {
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
+  Toolbar,
   Tooltip,
   TrashIcon,
 } from "@dust-tt/sparkle";
@@ -25,7 +26,7 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
-import { Toolbar } from "@app/components/assistant/conversation/input_bar/toolbar/Toolbar";
+import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
 import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -88,7 +89,11 @@ function UserMessageEditor({
       />
 
       <BubbleMenu editor={editor} className="hidden sm:flex">
-        <Toolbar editor={editor} className="hidden sm:inline-flex" />
+        {editor && (
+          <Toolbar className="hidden sm:inline-flex">
+            <ToolBarContent editor={editor} />
+          </Toolbar>
+        )}
       </BubbleMenu>
 
       <div className="flex justify-end gap-2">
@@ -187,9 +192,16 @@ export function UserMessage({
     return (
       message.mentions.length === 0 &&
       isLastMessage &&
-      !hasHumansInteracting(methods.data.get())
+      !hasHumansInteracting(methods.data.get()) &&
+      message.user?.sId === currentUserId
     );
-  }, [message.mentions.length, isLastMessage, methods.data]);
+  }, [
+    message.mentions.length,
+    message.user?.sId,
+    isLastMessage,
+    methods.data,
+    currentUserId,
+  ]);
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
@@ -418,6 +430,10 @@ function ActionMenu({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
+  const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
+    useHover();
+  const shouldHideActions =
+    !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -466,7 +482,12 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+    <div
+      className={cn(
+        "absolute top-[80%] left-2.5 flex flex-wrap items-center gap-1 pb-3"
+      )}
+      ref={isReactionsHoveredRef}
+    >
       {!isDeleted && enableExtendedActions && (
         <>
           <MessageReactions
@@ -478,7 +499,7 @@ function ActionMenu({
             onEmojiSelect={onReactionToggle}
             className={cn(
               "opacity-100 transition-opacity duration-200",
-              !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+              shouldHideActions && "sm:opacity-0"
             )}
           />
         </>
@@ -491,12 +512,12 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="xs"
+              size="icon-xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(
                 "opacity-100 transition-opacity duration-200",
-                !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+                shouldHideActions && "sm:opacity-0"
               )}
             />
           </DropdownMenuTrigger>

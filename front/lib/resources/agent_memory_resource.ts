@@ -5,7 +5,7 @@ import type {
   Transaction,
 } from "sequelize";
 
-import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/actions/mcp_internal_actions/constants";
+import { AGENT_MEMORY_SERVER_NAME } from "@app/lib/api/actions/servers/agent_memory/metadata";
 import type { Authenticator } from "@app/lib/auth";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { AgentMemoryModel } from "@app/lib/resources/storage/models/agent_memories";
@@ -40,7 +40,8 @@ type AgentMemoryEntry = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface AgentMemoryResource extends ReadonlyAttributesType<AgentMemoryModel> {}
+export interface AgentMemoryResource
+  extends ReadonlyAttributesType<AgentMemoryModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class AgentMemoryResource extends BaseResource<AgentMemoryModel> {
   static model: ModelStaticWorkspaceAware<AgentMemoryModel> = AgentMemoryModel;

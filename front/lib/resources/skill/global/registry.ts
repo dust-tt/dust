@@ -6,6 +6,14 @@ import { framesSkill } from "@app/lib/resources/skill/global/frames";
 import { goDeepSkill } from "@app/lib/resources/skill/global/go_deep";
 import type { AllSkillConfigurationFindOptions } from "@app/lib/resources/skill/types";
 import type { ResourceSId } from "@app/lib/resources/string_ids";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
+import { removeNulls } from "@app/types";
+
+export type MCPServerDefinition = {
+  name: AutoInternalMCPServerNameType;
+  childAgentId?: string;
+  serverNameOverride?: string;
+};
 
 interface BaseGlobalSkillDefinition {
   readonly agentFacingDescription: string;
@@ -14,9 +22,10 @@ interface BaseGlobalSkillDefinition {
   readonly sId: string;
   readonly version: number;
   readonly icon: string;
-  readonly internalMCPServerNames?: AutoInternalMCPServerNameType[];
+  readonly mcpServers?: MCPServerDefinition[];
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isAutoEnabled?: boolean;
+  readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
 }
 
 type WithStaticInstructions<T extends BaseGlobalSkillDefinition> = T & {
@@ -84,39 +93,71 @@ function matchesFilter<T>(value: T, filter: T | T[]): boolean {
 }
 
 export class GlobalSkillsRegistry {
-  static getById(sId: string): GlobalSkillDefinition | undefined {
+  // Internal sync lookup that does not check restrictions.
+  // Use for methods that operate on already-fetched skills.
+  private static getByIdInternal(
+    sId: string
+  ): GlobalSkillDefinition | undefined {
     return GLOBAL_SKILLS_BY_ID.get(sId);
   }
 
-  static findAll(
+  static async getById(
+    auth: Authenticator,
+    sId: string
+  ): Promise<GlobalSkillDefinition | null> {
+    const skills = await this.findAll(auth, { sId });
+
+    return skills[0] ?? null;
+  }
+
+  static async findAll(
+    auth: Authenticator,
     where: AllSkillConfigurationFindOptions["where"] = {}
-  ): readonly GlobalSkillDefinition[] {
-    if (!where) {
-      return GLOBAL_SKILLS_ARRAY;
-    }
+  ): Promise<GlobalSkillDefinition[]> {
+    const skills: GlobalSkillDefinition[] = where
+      ? GLOBAL_SKILLS_ARRAY.filter((skill) => {
+          if (where.sId && !matchesFilter(skill.sId, where.sId)) {
+            return false;
+          }
 
-    return GLOBAL_SKILLS_ARRAY.filter((skill) => {
-      if (where.sId && !matchesFilter(skill.sId, where.sId)) {
-        return false;
+          if (where.name && !matchesFilter(skill.name, where.name)) {
+            return false;
+          }
+
+          if (where.status && !matchesFilter("active", where.status)) {
+            return false; // Global skills are always active.
+          }
+
+          return true;
+        })
+      : [...GLOBAL_SKILLS_ARRAY];
+
+    const allowedSkills = await concurrentExecutor(
+      skills,
+      async (skill) => {
+        if (skill.isRestricted) {
+          const isRestricted = await skill.isRestricted(auth);
+          if (isRestricted) {
+            return null;
+          }
+        }
+        return skill;
+      },
+      {
+        concurrency: 5,
       }
+    );
 
-      if (where.name && !matchesFilter(skill.name, where.name)) {
-        return false;
-      }
-
-      if (where.status && !matchesFilter("active", where.status)) {
-        return false; // Global skills are always active.
-      }
-
-      return true;
-    });
+    return removeNulls(allowedSkills);
   }
 
   static isSkillAutoEnabled(sId: string): boolean {
-    return this.getById(sId)?.isAutoEnabled ?? false;
+    return this.getByIdInternal(sId)?.isAutoEnabled ?? false;
   }
 
   static doesSkillInheritAgentConfigurationDataSources(sId: string): boolean {
-    return this.getById(sId)?.inheritAgentConfigurationDataSources ?? false;
+    return (
+      this.getByIdInternal(sId)?.inheritAgentConfigurationDataSources ?? false
+    );
   }
 }

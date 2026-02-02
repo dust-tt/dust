@@ -10,19 +10,24 @@ import {
 } from "@dust-tt/sparkle";
 import { useEffect, useRef, useState } from "react";
 
+import { RichTextArea, type RichTextAreaHandle } from "./RichTextArea";
+
 interface InputBarProps {
   placeholder?: string;
   className?: string;
+  instructionReference?: { start: number; end: number } | null;
+  onInstructionInserted?: () => void;
 }
 
 export function InputBar({
   placeholder = "Ask a question",
   className,
+  instructionReference,
+  onInstructionInserted,
 }: InputBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  const richTextAreaRef = useRef<RichTextAreaHandle | null>(null);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -43,13 +48,27 @@ export function InputBar({
     setIsFocused(true);
   };
 
+  useEffect(() => {
+    if (!instructionReference) {
+      return;
+    }
+
+    const { start, end } = instructionReference;
+    const label = `Snippet (${start}-${end})`;
+    richTextAreaRef.current?.insertInstructionSnippet({
+      id: `instruction-${start}-${end}`,
+      label,
+    });
+    onInstructionInserted?.();
+  }, [instructionReference, onInstructionInserted]);
+
   return (
     <div
       ref={containerRef}
       onClick={handleFocus}
       className={cn(
         "s-relative s-w-full s-max-w-4xl",
-        "s-rounded-3xl s-border s-bg-primary-50 s-transition-all",
+        "s-rounded-3xl s-border s-bg-primary-50/70 s-backdrop-blur-md s-transition-all",
         isFocused
           ? "s-border-highlight-300 s-ring-2 s-ring-highlight-300/50"
           : "s-border-border",
@@ -57,12 +76,14 @@ export function InputBar({
       )}
     >
       <div className="s-flex s-w-full s-flex-col">
-        <textarea
-          ref={textareaRef}
+        <RichTextArea
+          ref={richTextAreaRef}
           placeholder={placeholder}
           onFocus={handleFocus}
-          className="s-placeholder:s-text-muted-foreground s-h-full s-w-full s-resize-none s-border-0 s-bg-transparent s-p-5 s-text-foreground s-outline-none focus:s-outline-none focus:s-ring-0"
-          rows={1}
+          variant="compact"
+          showFormattingMenu
+          showAskCopilotMenu={false}
+          className="s-placeholder:s-text-muted-foreground"
         />
         <div className="s-flex s-w-full s-gap-2 s-p-2 s-pl-4">
           <Button

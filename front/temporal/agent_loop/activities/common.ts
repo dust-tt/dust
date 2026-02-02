@@ -19,9 +19,11 @@ import type {
   ConversationWithoutContentType,
   ToolErrorEvent,
 } from "@app/types";
-import { ConversationError } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
 
 export async function markAgentMessageAsFailed(
   agentMessageRow: AgentMessageModel,
@@ -149,11 +151,6 @@ async function processEventForUnreadState(
 ) {
   // If the event is a done event, we want to mark the conversation as unread for all participants.
   if (TERMINAL_AGENT_MESSAGE_EVENT_TYPES.includes(event.type)) {
-    // No excluded user because the message is created by the agent.
-    await ConversationResource.markAsUnreadForOtherParticipants(auth, {
-      conversation,
-    });
-
     // Publish the agent message done event that will be handled on the client-side.
     await publishConversationRelatedEvent({
       conversationId: conversation.sId,
@@ -304,14 +301,16 @@ export async function finalizeCancellation(
 ): Promise<void> {
   const runAgentDataRes = await getAgentLoopData(authType, agentLoopArgs);
   if (runAgentDataRes.isErr()) {
-    // We ignore conversation_not_found errors; the conversation might have been deleted since.
-    if (
-      runAgentDataRes.error instanceof ConversationError &&
-      runAgentDataRes.error.type === "conversation_not_found"
-    ) {
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
+        {
+          conversationId: agentLoopArgs.conversationId,
+          agentMessageId: agentLoopArgs.agentMessageId,
+        },
+        "Message or conversation was deleted, exiting"
+      );
       return;
     }
-
     throw new Error(
       `Failed to get run agent data: ${runAgentDataRes.error.message}`
     );

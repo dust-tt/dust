@@ -183,8 +183,8 @@ async function setupWorktree(
   return Ok(undefined);
 }
 
-// Phase 3: Start SDK
-async function startSdk(
+// Phase 3: Start build watchers (sparkle and SDK)
+async function startBuildWatchers(
   env: Environment,
   worktreePath: string,
   waitForReady: boolean,
@@ -194,19 +194,20 @@ async function startSdk(
   const workspaceBranch = env.metadata.workspaceBranch;
 
   try {
-    await startService(env, "sdk");
+    // Start both sparkle and SDK in parallel
+    await Promise.all([startService(env, "sparkle"), startService(env, "sdk")]);
     if (waitForReady) {
-      await waitForServiceReady(env, "sdk");
+      await Promise.all([waitForServiceReady(env, "sparkle"), waitForServiceReady(env, "sdk")]);
     }
   } catch (error) {
-    logger.error("Spawn failed during SDK startup, cleaning up...");
+    logger.error("Spawn failed during build watcher startup, cleaning up...");
     await cleanupPartialEnvironment(repoRoot, worktreePath, workspaceBranch, settings).catch((e) =>
       logger.warn(`Worktree cleanup failed: ${errorMessage(e)}`)
     );
     await deleteEnvironmentDir(env.name).catch((e) =>
       logger.warn(`Env cleanup failed: ${errorMessage(e)}`)
     );
-    return Err(new CommandError(`Failed to start SDK: ${errorMessage(error)}`));
+    return Err(new CommandError(`Failed to start build watchers: ${errorMessage(error)}`));
   }
 
   return Ok(undefined);
@@ -277,7 +278,7 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
   const worktreeResult = await setupWorktree(metadata, worktreePath, workspaceBranch, settings);
   if (!worktreeResult.ok) return worktreeResult;
 
-  // Phase 3: Start SDK
+  // Phase 3: Start build watchers (sparkle and SDK)
   const env: Environment = {
     name,
     metadata,
@@ -285,13 +286,18 @@ export async function spawnCommand(options: SpawnOptions): Promise<Result<void>>
     initialized: false,
   };
 
-  // Wait for SDK build if:
+  // Wait for build watchers if:
   // - --no-open is passed (forced, no UI to show progress)
   // - --wait is explicitly passed
-  // Otherwise, let the watch process run and show progress in terminal session
-  const shouldWaitForSdk = options.noOpen || options.wait;
-  const sdkResult = await startSdk(env, worktreePath, Boolean(shouldWaitForSdk), settings);
-  if (!sdkResult.ok) return sdkResult;
+  // Otherwise, let the watch processes run and show progress in terminal session
+  const shouldWaitForBuild = options.noOpen || options.wait;
+  const buildResult = await startBuildWatchers(
+    env,
+    worktreePath,
+    Boolean(shouldWaitForBuild),
+    settings
+  );
+  if (!buildResult.ok) return buildResult;
 
   logger.success(`Environment '${name}' created successfully!`);
   console.log();

@@ -11,7 +11,9 @@ import type { ConnectorResource } from "@connectors/resources/connector_resource
 import { MicrosoftBotConfigurationResource } from "@connectors/resources/microsoft_bot_resources";
 import type { ModelId } from "@connectors/types";
 
-export class MicrosoftBotConnectorStrategy implements ConnectorProviderStrategy<"microsoft_bot"> {
+export class MicrosoftBotConnectorStrategy
+  implements ConnectorProviderStrategy<"microsoft_bot">
+{
   async makeNew(
     connectorId: ModelId,
     blob: WithCreationAttributes<MicrosoftBotConfigurationModel>,

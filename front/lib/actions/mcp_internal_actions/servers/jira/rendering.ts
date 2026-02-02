@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 
 import { jsonToMarkdown } from "@app/lib/actions/mcp_internal_actions/utils";
+import logger from "@app/logger/logger";
 import { isStringArray } from "@app/types/shared/utils/general";
 
 import type { ADFContentNode, JiraComment, JiraIssue } from "./types";
@@ -354,6 +355,16 @@ function renderADFContentNode(node: ADFContentNode): string {
     }
 
     default:
+      // Keep track of unknown ADF nodes to see if there are new fields we need to handle
+      logger.info(
+        {
+          adfNodeType: node.type,
+          hasContent: !!node.content,
+          hasAttrs: !!node.attrs,
+          attrsKeys: node.attrs ? Object.keys(node.attrs) : [],
+        },
+        "[Jira MCP] Unknown ADF node type handled by catch-all"
+      );
       if (node.content) {
         return renderChildren(node.content);
       }

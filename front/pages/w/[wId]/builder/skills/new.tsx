@@ -6,7 +6,6 @@ import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { getFeatureFlags } from "@app/lib/auth";
 import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
 import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
@@ -30,13 +29,6 @@ export const getServerSideProps = withDefaultUserAuthRequirements<{
     : null;
 
   if (!owner || !auth.isBuilder() || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const featureFlags = await getFeatureFlags(owner);
-  if (!featureFlags.includes("skills")) {
     return {
       notFound: true,
     };

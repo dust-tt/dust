@@ -5,7 +5,8 @@ import { WorkspaceVerificationAttemptResource } from "@app/lib/resources/workspa
 import { rateLimiter } from "@app/lib/utils/rate_limiter";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
-import { assertNever, Err, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { VerificationErrorType } from "@app/types/workspace_verification";
 
 const MAX_ATTEMPTS_PER_PHONE = 3;

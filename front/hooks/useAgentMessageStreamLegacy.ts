@@ -11,11 +11,12 @@ import type {
   LightWorkspaceType,
   ModelId,
 } from "@app/types";
-import { assertNever, isLightAgentMessageWithActionsType } from "@app/types";
+import { isLightAgentMessageWithActionsType } from "@app/types";
 import type {
   AgentMCPActionType,
   AgentMCPActionWithOutputType,
 } from "@app/types/actions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentStateClassification =
   | "placeholder"
@@ -47,7 +48,9 @@ type AgentMessageStateEvent = (AgentMessageEvents | ToolNotificationEvent) & {
 
 type AgentMessageStateEventWithoutToolApproveExecution = Exclude<
   AgentMessageStateEvent,
-  { type: "tool_approve_execution" } | { type: "tool_personal_auth_required" }
+  | { type: "tool_approve_execution" }
+  | { type: "tool_personal_auth_required" }
+  | { type: "tool_file_auth_required" }
 >;
 
 function updateMessageWithAction(
@@ -327,7 +330,8 @@ export function useAgentMessageStreamLegacy({
 
       if (
         eventType === "tool_approve_execution" ||
-        eventType === "tool_personal_auth_required"
+        eventType === "tool_personal_auth_required" ||
+        eventType === "tool_file_auth_required"
       ) {
         if (customOnEventCallback) {
           customOnEventCallback(eventStr);

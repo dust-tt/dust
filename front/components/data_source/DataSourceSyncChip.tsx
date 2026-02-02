@@ -4,7 +4,8 @@ import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { DATASOURCE_QUOTA_PER_SEAT } from "@app/lib/plans/usage/types";
 import { timeAgoFrom } from "@app/lib/utils";
 import type { ConnectorType } from "@app/types";
-import { assertNever, fileSizeToHumanReadable } from "@app/types";
+import { fileSizeToHumanReadable } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface ConnectorSyncingChipProps {
   activeSeats: number;
@@ -114,16 +115,33 @@ export default function ConnectorSyncingChip({
       default:
         assertNever(connector.errorType);
     }
-  } else if (!connector.lastSyncSuccessfulTime) {
+  } else if (connector.pausedAt) {
     return (
-      <Chip color="info" isBusy>
-        Synchronizing
-        {connector.firstSyncProgress
-          ? ` (${connector.firstSyncProgress})`
-          : null}
-      </Chip>
+      <Tooltip
+        label="Synchronization is paused. New content won't be synced until resumed."
+        trigger={<Chip>Paused</Chip>}
+      />
     );
   } else {
-    return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
+    // Check if a sync is currently in progress
+    const isSyncInProgress =
+      connector.lastSyncStartTime !== undefined &&
+      (connector.lastSyncFinishTime === undefined ||
+        connector.lastSyncStartTime > connector.lastSyncFinishTime);
+
+    if (isSyncInProgress) {
+      return (
+        <Chip color="info" isBusy>
+          Synchronizing
+          {connector.firstSyncProgress
+            ? ` (${connector.firstSyncProgress})`
+            : null}
+        </Chip>
+      );
+    } else if (connector.lastSyncSuccessfulTime) {
+      return <Chip>{timeAgoFrom(connector.lastSyncSuccessfulTime)} ago</Chip>;
+    } else {
+      return <Chip color="info">Pending</Chip>;
+    }
   }
 }

@@ -12,7 +12,8 @@ import type {
   Result,
   WorkspaceType,
 } from "@app/types";
-import { assertNever, Err, getSmallWhitelistedModel } from "@app/types";
+import { Err, getSmallWhitelistedModel } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 function getModelForSuggestionType(
   owner: WorkspaceType,

@@ -11,17 +11,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
 import { useState } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { SuspensedCodeEditor } from "@app/components/SuspensedCodeEditor";
 import type { DataSourceType, SpaceType, WorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
-
-const CodeEditor = dynamic(
-  () => import("@uiw/react-textarea-code-editor").then((mod) => mod.default),
-  { ssr: false }
-);
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface ViewFolderAPIModalProps {
   dataSource: DataSourceType;
@@ -89,7 +84,7 @@ export function ViewFolderAPIModal({
         <SheetHeader>
           <SheetTitle>Data source API</SheetTitle>
         </SheetHeader>
-        <SheetContainer>
+        <SheetContainer className="pb-8">
           <div className="flex flex-col gap-6">
             <Page.P>
               <div className="rounded-lg bg-muted-background p-4 shadow-sm dark:bg-muted-background-night">
@@ -122,7 +117,7 @@ export function ViewFolderAPIModal({
                 Use the following cURL command to upsert a document to folder{" "}
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("upsert")}`}
@@ -156,7 +151,7 @@ export function ViewFolderAPIModal({
                 Use the following cURL command to search in folder{" "}
                 <span className="italic">{dataSource.name}</span>:
               </Page.P>
-              <CodeEditor
+              <SuspensedCodeEditor
                 data-color-mode={isDark ? "dark" : "light"}
                 readOnly={true}
                 value={`$ ${cURLRequest("search")}`}

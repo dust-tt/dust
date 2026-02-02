@@ -61,8 +61,10 @@ export function middleware(request: NextRequest) {
     });
   }
 
-  // Handle CORS only for public API endpoints.
-  if (url.startsWith("/api/v1")) {
+  // Handle CORS for API endpoints.
+  const needsCors = url.startsWith("/api/");
+
+  if (needsCors) {
     if (request.method === "OPTIONS") {
       // Handle preflight request.
       const response = new NextResponse(null, { status: 200 });
@@ -130,7 +132,6 @@ function setCorsHeaders(
     response.headers.set("Access-Control-Allow-Credentials", "true");
   } else {
     logger.info({ origin }, "Forbidden: Unauthorized Origin");
-
     return new NextResponse(null, {
       status: 403,
       statusText: "Forbidden: Unauthorized Origin",
@@ -139,7 +140,7 @@ function setCorsHeaders(
 
   response.headers.set(
     "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, OPTIONS"
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS"
   );
   response.headers.set(
     "Access-Control-Allow-Headers",

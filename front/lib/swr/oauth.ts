@@ -10,7 +10,8 @@ import type {
   Result,
   WithAPIErrorResponse,
 } from "@app/types";
-import { Err, isAPIErrorResponse, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { isAPIErrorResponse } from "@app/types/error";
 
 export const useFinalize = () => {
   const doFinalize = async (
@@ -65,7 +66,7 @@ export function useSlackIsLegacy({
     credentialId ? `?credentialId=${encodeURIComponent(credentialId)}` : ""
   }`;
 
-  const { data, error, mutate } = useSWRWithDefaults(
+  const { data, error, mutate, isLoading } = useSWRWithDefaults(
     url,
     slackIsLegacyFetcher,
     {
@@ -74,10 +75,9 @@ export function useSlackIsLegacy({
   );
 
   return {
-    isLegacySlackApp: data?.isLegacySlackApp ?? null,
-    error,
-    isLoading:
-      !error && !data && !!credentialId && !(disabled ?? !credentialId),
+    isLegacySlackApp: data?.isLegacySlackApp ?? false,
+    isError: !!error,
+    isLoading,
     mutateIsLegacy: mutate,
   };
 }

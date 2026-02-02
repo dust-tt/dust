@@ -87,10 +87,7 @@ module.exports = {
 
           // Handle fragments: <><XxxPage /></>
           if (jsxElement.type === "JSXFragment") {
-            if (
-              jsxElement.children &&
-              jsxElement.children.length > 0
-            ) {
+            if (jsxElement.children && jsxElement.children.length > 0) {
               for (const child of jsxElement.children) {
                 if (child.type === "JSXElement") {
                   jsxElement = child;

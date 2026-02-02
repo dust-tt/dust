@@ -3,18 +3,25 @@ import {
   HandThumbUpIcon,
   ValueCard,
 } from "@dust-tt/sparkle";
-import dynamic from "next/dynamic";
+import { lazy, Suspense } from "react";
 
 import { FeedbacksSection } from "@app/components/agent_builder/FeedbacksSection";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 
-const FeedbackDistributionChart = dynamic(
-  () =>
-    import("@app/components/agent_builder/observability/charts/FeedbackDistributionChart").then(
-      (mod) => mod.FeedbackDistributionChart
-    ),
-  { ssr: false }
+const FeedbackDistributionChart = lazy(() =>
+  import(
+    "@app/components/agent_builder/observability/charts/FeedbackDistributionChart"
+  ).then((mod) => ({
+    default: mod.FeedbackDistributionChart,
+  }))
 );
+
+function ChartFallback() {
+  return (
+    <div className="h-64 animate-pulse rounded-lg bg-muted-background dark:bg-muted-background-night" />
+  );
+}
+
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
 import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
 import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
@@ -82,11 +89,13 @@ export function AgentFeedback({
       </TabContentChildSectionLayout>
 
       <TabContentChildSectionLayout title="Charts">
-        <FeedbackDistributionChart
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={allowReactions}
-        />
+        <Suspense fallback={<ChartFallback />}>
+          <FeedbackDistributionChart
+            workspaceId={owner.sId}
+            agentConfigurationId={agentConfigurationId}
+            isCustomAgent={allowReactions}
+          />
+        </Suspense>
       </TabContentChildSectionLayout>
 
       {allowReactions && (

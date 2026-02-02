@@ -5,7 +5,7 @@
 
 import { isTextContent } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { rewriteContentForModel } from "@app/lib/actions/mcp_utils";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import {
   replaceMentionsWithAt,
@@ -120,6 +120,9 @@ export function getSteps(
   }
 ): Step[] {
   const supportedModel = getSupportedModelConfig(model);
+  if (!supportedModel) {
+    return [];
+  }
   const actions = removeNulls(message.actions);
 
   // We store for each step (identified by its index) the "contents" array (raw model outputs, including

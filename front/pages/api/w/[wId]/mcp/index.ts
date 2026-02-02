@@ -9,7 +9,7 @@ import {
   allowsMultipleInstancesOfInternalMCPServerByName,
   getInternalMCPServerInfo,
   isInternalMCPServerName,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { DEFAULT_REMOTE_MCP_SERVERS } from "@app/lib/actions/mcp_internal_actions/remote_servers";
 import { fetchRemoteServerMetaDataByURL } from "@app/lib/actions/mcp_metadata";
@@ -305,7 +305,7 @@ async function handler(
             });
 
           const alreadyUsed = installedMCPServers.some((mcpServer) =>
-            isInternalMCPServerOfName(mcpServer.internalMCPServerId, name)
+            matchesInternalMCPServerName(mcpServer.internalMCPServerId, name)
           );
 
           if (alreadyUsed) {

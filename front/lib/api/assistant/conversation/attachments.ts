@@ -19,12 +19,12 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
-  assertNever,
   DATA_SOURCE_NODE_ID,
   isContentNodeContentFragment,
   isExpiredContentFragment,
   isFileContentFragment,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type BaseConversationAttachmentType = {
   title: string;

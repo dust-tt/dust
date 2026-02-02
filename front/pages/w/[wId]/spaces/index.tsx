@@ -1,63 +1,22 @@
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { getPersistedNavigationSelection } from "@app/lib/persisted_navigation_selection";
-import { SpaceResource } from "@app/lib/resources/space_resource";
+import type { ReactElement } from "react";
 
-// This endpoint is used as a pass through to redirect to the global space.
-export const getServerSideProps = withDefaultUserAuthRequirements(
-  async (context, auth) => {
-    const owner = auth.getNonNullableWorkspace();
-    const subscription = auth.subscription();
+import { SpacesRedirectPage } from "@app/components/pages/spaces/SpacesRedirectPage";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 
-    if (!subscription) {
-      return {
-        notFound: true,
-      };
-    }
+export const getServerSideProps = appGetServerSideProps;
 
-    // Try to go to the last selected space.
-    const selection = await getPersistedNavigationSelection(
-      auth.getNonNullableUser()
-    );
-    if (selection.lastSpaceId) {
-      const space = await SpaceResource.fetchById(auth, selection.lastSpaceId);
-      if (space && space.canReadOrAdministrate(auth)) {
-        const redirectPath =
-          `/w/${owner.sId}/spaces/${space.sId}` +
-          (selection.lastSpaceCategory
-            ? `/categories/${selection.lastSpaceCategory}`
-            : "");
+const PageWithAuthLayout = SpacesRedirectPage as AppPageWithLayout;
 
-        return {
-          redirect: {
-            destination: redirectPath,
-            permanent: false,
-          },
-        };
-      }
-    }
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
 
-    if (owner.role === "admin") {
-      // Fall back to the system space (connection admin).
-      const space = await SpaceResource.fetchWorkspaceSystemSpace(auth);
-
-      return {
-        redirect: {
-          destination: `/w/${owner.sId}/spaces/${space.sId}`,
-          permanent: false,
-        },
-      };
-    } else {
-      // Fall back to the global space (company data).
-      const space = await SpaceResource.fetchWorkspaceGlobalSpace(auth);
-
-      return {
-        redirect: {
-          destination: `/w/${owner.sId}/spaces/${space.sId}`,
-          permanent: false,
-        },
-      };
-    }
-  }
-);
-
-export default function DefaultSpace() {}
+export default PageWithAuthLayout;

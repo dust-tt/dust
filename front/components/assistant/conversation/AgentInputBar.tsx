@@ -28,6 +28,7 @@ import {
   isMessageTemporayState,
   isUserMessage,
 } from "@app/components/assistant/conversation/types";
+import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useCancelMessage, useConversation } from "@app/lib/swr/conversations";
 import { useIsMobile } from "@app/lib/swr/useIsMobile";
 import {
@@ -44,15 +45,10 @@ export const AgentInputBar = ({
   context: VirtuosoMessageListContext;
 }) => {
   const [blockedActionIndex, setBlockedActionIndex] = useState<number>(0);
+  const [isStopping, setIsStopping] = useState<boolean>(false);
   const generationContext = useContext(GenerationContext);
   const { getBlockedActions, hasPendingValidations, startPulsingAction } =
     useBlockedActionsContext();
-
-  if (!generationContext) {
-    throw new Error(
-      "AssistantInputBarVirtuoso must be used within a GenerationContextProvider"
-    );
-  }
 
   const { mutateConversation } = useConversation({
     conversationId: context.conversation?.sId,
@@ -64,13 +60,10 @@ export const AgentInputBar = ({
     conversationId: context.conversation?.sId,
   });
 
-  const generatingMessages =
-    generationContext.getConversationGeneratingMessages(
-      context.conversation?.sId ?? ""
-    );
-
   const isMobile = useIsMobile();
   const methods = useVirtuosoMethods<VirtuosoMessage>();
+  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
+
   const lastUserMessage = methods.data
     .get()
     .filter(isUserMessage)
@@ -90,7 +83,7 @@ export const AgentInputBar = ({
       return [toRichAgentMentionType(draftAgent)];
     }
 
-    // we only prefill if there is only one agent mention in user's previous message
+    // We only prefill if there is only one agent mention in user's previous message.
     const shouldPrefill =
       lastUserMessage &&
       lastUserMessage.richMentions.length === 1 &&
@@ -102,8 +95,6 @@ export const AgentInputBar = ({
 
     return lastUserMessage.richMentions;
   }, [draftAgent, lastUserMessage]);
-
-  const { bottomOffset, listOffset, visibleListHeight } = useVirtuosoLocation();
 
   // Calculate positions and determine which user messages are navigable.
   const {
@@ -193,9 +184,6 @@ export const AgentInputBar = ({
     };
   }, [methods, listOffset, visibleListHeight, bottomOffset]);
 
-  const showStopButton = generatingMessages.length > 0;
-  const showMessageNavigation = !context.agentBuilderContext;
-  const showNavigationContainer = showStopButton || showMessageNavigation;
   const blockedActions = getBlockedActions(context.user.sId);
 
   // Keep blockedActionIndex in sync when blockedActions array changes.
@@ -206,7 +194,50 @@ export const AgentInputBar = ({
     }
   }, [blockedActionIndex, blockedActions.length]);
 
-  const [isStopping, setIsStopping] = useState<boolean>(false);
+  useEffect(() => {
+    if (
+      isStopping &&
+      generationContext &&
+      !generationContext.generatingMessages.some(
+        (m) => m.conversationId === context.conversation?.sId
+      )
+    ) {
+      setIsStopping(false);
+    }
+  }, [isStopping, generationContext, context.conversation]);
+
+  if (!generationContext) {
+    throw new Error(
+      "AssistantInputBarVirtuoso must be used within a GenerationContextProvider"
+    );
+  }
+
+  if (
+    context.isProjectMember === false &&
+    context.projectSpaceId &&
+    context.projectSpaceName
+  ) {
+    return (
+      <div className="relative z-20 mx-auto flex max-h-dvh w-full flex-col py-2 sm:w-full sm:max-w-4xl sm:py-4">
+        <ProjectJoinCTA
+          owner={context.owner}
+          spaceId={context.projectSpaceId}
+          spaceName={context.projectSpaceName}
+          isRestricted={context.isProjectRestricted ?? false}
+          userName={context.user.fullName}
+        />
+      </div>
+    );
+  }
+
+  const generatingMessages =
+    generationContext.getConversationGeneratingMessages(
+      context.conversation?.sId ?? ""
+    );
+
+  const showStopButton = generatingMessages.length > 0;
+  const showMessageNavigation = !context.agentBuilderContext;
+  const showNavigationContainer = showStopButton || showMessageNavigation;
 
   const getStopButtonLabel = () => {
     if (isStopping) {
@@ -220,7 +251,7 @@ export const AgentInputBar = ({
     if (!context.conversation) {
       return;
     }
-    setIsStopping(true); // we don't set it back to false immediately cause it takes a bit of time to cancel
+    setIsStopping(true); // We don't set it back to false immediately cause it takes a bit of time to cancel.
     await cancelMessage(
       generationContext.generatingMessages
         .filter((m) => m.conversationId === context.conversation?.sId)
@@ -228,17 +259,6 @@ export const AgentInputBar = ({
     );
     void mutateConversation();
   };
-
-  useEffect(() => {
-    if (
-      isStopping &&
-      !generationContext.generatingMessages.some(
-        (m) => m.conversationId === context.conversation?.sId
-      )
-    ) {
-      setIsStopping(false);
-    }
-  }, [isStopping, generationContext.generatingMessages, context.conversation]);
 
   return (
     <div
@@ -356,7 +376,7 @@ export const AgentInputBar = ({
         draftKey={context.draftKey}
         disableAutoFocus={isMobile}
         actions={context.agentBuilderContext?.actionsToShow}
-        isSubmitting={context.agentBuilderContext?.isSavingDraftAgent === true}
+        isSubmitting={context.agentBuilderContext?.isSubmitting === true}
       />
     </div>
   );

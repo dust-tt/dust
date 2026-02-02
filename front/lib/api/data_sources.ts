@@ -19,6 +19,7 @@ import {
 import type { Authenticator } from "@app/lib/auth";
 import { CONNECTOR_CONFIGURATIONS } from "@app/lib/connector_providers";
 import { MAX_NODE_TITLE_LENGTH } from "@app/lib/content_nodes_constants";
+import { isRemoteDatabase } from "@app/lib/data_sources";
 import { DustError } from "@app/lib/error";
 import { getDustDataSourcesBucket } from "@app/lib/file_storage";
 import { isGCSNotFoundError } from "@app/lib/file_storage/types";
@@ -55,7 +56,6 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import {
-  assertNever,
   ConnectorsAPI,
   CoreAPI,
   DEFAULT_EMBEDDING_PROVIDER_ID,
@@ -69,6 +69,7 @@ import {
   sectionFullText,
   validateUrl,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { ConversationResource } from "../resources/conversation_resource";
 
@@ -166,14 +167,23 @@ export async function getDataSources(
  */
 export async function softDeleteDataSourceAndLaunchScrubWorkflow(
   auth: Authenticator,
-  dataSource: DataSourceResource,
-  transaction?: Transaction
+  {
+    dataSource,
+    transaction,
+  }: {
+    dataSource: DataSourceResource;
+    transaction?: Transaction;
+  }
 ): Promise<
   Result<DataSourceType, { code: "unauthorized_deletion"; message: string }>
 > {
   const owner = auth.getNonNullableWorkspace();
+  const isAuthorized =
+    dataSource.space.canWrite(auth) ||
+    // Only allow to remote database connectors if the user is an admin.
+    (dataSource.space.canAdministrate(auth) && isRemoteDatabase(dataSource));
 
-  if (!auth.isBuilder()) {
+  if (!isAuthorized) {
     return new Err({
       code: "unauthorized_deletion",
       message: "Only builders can delete data sources.",

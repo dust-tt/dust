@@ -377,3 +377,56 @@
     font-weight: 600;
   }
 }
+
+/* Print styles for PDF export */
+@page {
+  margin: 2rem;
+}
+
+@media print {
+  /* Prevent page breaks inside cards, charts, and common container elements */
+  .recharts-wrapper,
+  .recharts-surface,
+  [class*="Card"],
+  [class*="card"],
+  table,
+  thead,
+  tbody,
+  tr,
+  figure,
+  img,
+  svg,
+  pre,
+  blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Ensure headings stay with following content */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  /* Keep table headers with content */
+  thead {
+    display: table-header-group;
+  }
+
+  /* Avoid orphan/widow lines */
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+
+  /* Hide elements that shouldn't appear in print */
+  .no-print {
+    display: none !important;
+  }
+
+  /* Ensure backgrounds print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

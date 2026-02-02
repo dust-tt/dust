@@ -41,6 +41,7 @@ export function ClientVisualizationWrapper({
     allowedOrigins,
     identifier,
     isFullHeight,
+    isPdfMode: false,
     dataAPI,
   };
 

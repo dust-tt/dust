@@ -63,11 +63,15 @@ export async function sendOnboardingConversation(
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ force: true }),
     }
   );
 
   if (response.ok) {
     const data = await response.json();
+    if (!data.conversationSId) {
+      return { isOk: false, error: "Failed to create onboarding conversation" };
+    }
     return { isOk: true, conversationSId: data.conversationSId };
   } else {
     return { isOk: false, error: "Error sending onboarding conversation" };

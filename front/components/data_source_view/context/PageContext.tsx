@@ -1,7 +1,7 @@
 import { createContext, useContext, useMemo, useReducer } from "react";
 
 import type { ConfigurationPagePageId } from "@app/components/agent_builder/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type PageState = {
   currentPageId: ConfigurationPagePageId;

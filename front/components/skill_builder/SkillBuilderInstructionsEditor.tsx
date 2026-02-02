@@ -5,8 +5,8 @@ import debounce from "lodash/debounce";
 import { useCallback, useEffect, useMemo } from "react";
 import { useController } from "react-hook-form";
 
-import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
 import { KNOWLEDGE_NODE_TYPE } from "@app/components/editor/extensions/skill_builder/KnowledgeNode";
+import type { KnowledgeItem } from "@app/components/editor/extensions/skill_builder/KnowledgeNodeView";
 import {
   SkillInstructionsEditorContent,
   useSkillInstructionsEditor,
@@ -151,9 +151,32 @@ export function SkillBuilderInstructionsEditor({
   });
 
   const handleAddKnowledge = useCallback(() => {
-    if (editor) {
-      editor.chain().focus().insertKnowledgeNode().run();
+    if (!editor) {
+      return;
     }
+
+    // Check if there's already an empty knowledge node (in search mode).
+    // If so, do nothing - clicking the button already dismissed it via handleInteractOutside.
+    const { doc } = editor.state;
+    let hasEmptyKnowledgeNode = false;
+    doc.descendants((node) => {
+      if (node.type.name === KNOWLEDGE_NODE_TYPE) {
+        const selectedItems = node.attrs?.selectedItems as
+          | KnowledgeItem[]
+          | undefined;
+        if (!selectedItems || selectedItems.length === 0) {
+          hasEmptyKnowledgeNode = true;
+          return false;
+        }
+      }
+      return true;
+    });
+
+    if (hasEmptyKnowledgeNode) {
+      return;
+    }
+
+    editor.chain().focus().insertKnowledgeNode().run();
   }, [editor]);
 
   useEffect(() => {

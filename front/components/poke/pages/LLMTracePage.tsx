@@ -9,15 +9,16 @@ import {
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
-import type { LightWorkspaceType } from "@app/types";
 
-interface LLMTracePageProps {
-  owner: LightWorkspaceType;
-  runId: string;
-}
+export function LLMTracePage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - LLM Trace`);
 
-export function LLMTracePage({ owner, runId }: LLMTracePageProps) {
+  const runId = useRequiredPathParam("runId");
   const { trace, isLLMTraceLoading, isLLMTraceError } = usePokeLLMTrace({
     workspace: owner,
     runId,

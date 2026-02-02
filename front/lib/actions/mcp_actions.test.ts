@@ -1,12 +1,12 @@
 import { assert, describe, expect, it } from "vitest";
 
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import type { ServerSideMCPServerConfigurationType } from "@app/lib/actions/mcp";
 import {
   getPrefixedToolName,
   getToolExtraFields,
   listToolsForServerSideMCPServer,
-  TOOL_NAME_SEPARATOR,
 } from "@app/lib/actions/mcp_actions";
 import { internalMCPServerNameToSId } from "@app/lib/actions/mcp_helper";
 import type { MCPConnectionParams } from "@app/lib/actions/mcp_metadata";
@@ -76,6 +76,7 @@ async function setupTest() {
     dustAppConfiguration: null,
     internalMCPServerId: internalMCPServer.id,
     secretName: null,
+    dustProject: null,
   };
 
   return {
@@ -196,6 +197,7 @@ describe("getPrefixedToolName", () => {
     dustAppConfiguration: null,
     internalMCPServerId: null,
     secretName: null,
+    dustProject: null,
   };
 
   it("should correctly prefix and slugify tool names", () => {

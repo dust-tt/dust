@@ -1,5 +1,7 @@
-import type { Result } from "../result";
-import { Err, Ok } from "../result";
+import removeMarkdown from "remove-markdown";
+
+import { replaceContentNodeMarkdownWithQuotedTitle } from "@app/lib/content_nodes";
+import { replaceMentionsWithAt } from "@app/lib/mentions/format";
 
 /**
  * Substring that ensures we don't cut a string in the middle of a unicode
@@ -47,6 +49,12 @@ export function pluralize(count: number) {
   return count !== 1 ? "s" : "";
 }
 
+export function stripMarkdown(text: string): string {
+  return removeMarkdown(
+    replaceMentionsWithAt(replaceContentNodeMarkdownWithQuotedTitle(text))
+  );
+}
+
 // Conjugates a verb based on a count, assuming it only comes down to adding an
 // "s" at the end, which does not work for all words (e.g., do -> does != dos).
 export function conjugate(count: number) {
@@ -90,20 +98,6 @@ export function truncate(text: string, length: number, omission = "...") {
   return text.length > length
     ? `${text.substring(0, length - omission.length)}${omission}`
     : text;
-}
-
-export function safeParseJSON(str: string): Result<object | null, Error> {
-  try {
-    const res = JSON.parse(str);
-
-    return new Ok(res);
-  } catch (err) {
-    if (err instanceof Error) {
-      return new Err(err);
-    }
-
-    return new Err(new Error("Unexpected error: JSON parsing failed."));
-  }
 }
 
 export function stripNullBytes(text: string): string {

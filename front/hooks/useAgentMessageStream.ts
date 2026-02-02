@@ -17,8 +17,8 @@ import type {
   LightAgentMessageWithActionsType,
   LightWorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Throttle the update of the message to avoid excessive re-renders.
 const updateMessageThrottled = _.throttle(
@@ -160,6 +160,7 @@ export function useAgentMessageStream({
           return;
 
         case "tool_personal_auth_required":
+        case "tool_file_auth_required":
         case "tool_approve_execution":
           break;
 

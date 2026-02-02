@@ -1,5 +1,4 @@
 import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
   isProgrammaticUsage,
   trackProgrammaticCost,
 } from "@app/lib/api/programmatic_usage_tracking";
@@ -19,6 +18,7 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import mainLogger from "@app/logger/logger";
 import logger from "@app/logger/logger";
 import type { UserMessageOrigin } from "@app/types";
+import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 
 export async function recordUsageActivity(workspaceId: string) {

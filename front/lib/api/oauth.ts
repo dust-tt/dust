@@ -50,7 +50,8 @@ export type OAuthError = {
   code:
     | "connection_creation_failed"
     | "connection_not_implemented"
-    | "connection_finalization_failed";
+    | "connection_finalization_failed"
+    | "credential_retrieval_failed";
   message: string;
   oAuthAPIError?: OAuthAPIError;
 };
@@ -87,7 +88,7 @@ const _PROVIDER_STRATEGIES: Record<OAuthProvider, BaseOAuthStrategyProvider> = {
   vanta: new VantaOAuthProvider(),
 };
 
-function getProviderStrategy(
+export function getProviderStrategy(
   provider: OAuthProvider
 ): BaseOAuthStrategyProvider {
   return _PROVIDER_STRATEGIES[provider];
@@ -121,12 +122,25 @@ export async function createConnectionAndGetSetupUrl(
   const userId = auth.getNonNullableUser().sId;
 
   if (providerStrategy.getRelatedCredential) {
-    const credentials = await providerStrategy.getRelatedCredential!(auth, {
-      extraConfig,
-      workspaceId,
-      userId,
-      useCase,
-    });
+    const credentialResult = await providerStrategy.getRelatedCredential!(
+      auth,
+      {
+        extraConfig,
+        workspaceId,
+        userId,
+        useCase,
+      }
+    );
+
+    // If getRelatedCredential returned an error, propagate it
+    if (credentialResult && credentialResult.isErr()) {
+      return new Err(credentialResult.error);
+    }
+
+    // credentialResult is either undefined or Ok at this point
+    const credentials = credentialResult?.isOk()
+      ? credentialResult.value
+      : undefined;
     if (credentials) {
       if (!providerStrategy.getUpdatedExtraConfig) {
         // You probably need to clean up the extra config to remove any sensitive data (such as client_secret).

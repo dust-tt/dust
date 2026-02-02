@@ -112,8 +112,8 @@ export async function getConversation(
     (content[m.rank] as any).push(m);
   }
 
-  const { actionRequired, unread } =
-    await ConversationResource.getActionRequiredAndUnreadForUser(
+  const { actionRequired, lastReadAt } =
+    await ConversationResource.getActionRequiredAndLastReadAtForUser(
       auth,
       conversation.id
     );
@@ -130,10 +130,12 @@ export async function getConversation(
     triggerId: conversation.triggerSId,
     content,
     actionRequired,
-    unread,
+    unread: lastReadAt === null || conversation.updatedAt > lastReadAt,
+    lastReadMs: lastReadAt?.getTime() ?? null,
     hasError: conversation.hasError,
     requestedGroupIds: [],
     requestedSpaceIds: conversation.getRequestedSpaceIdsFromModel(),
     spaceId: conversation.space?.sId ?? null,
+    metadata: conversation.metadata,
   });
 }

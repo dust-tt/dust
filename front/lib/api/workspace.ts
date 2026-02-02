@@ -6,7 +6,6 @@ import { MAX_SEARCH_EMAILS } from "@app/lib/memberships";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { getStripeSubscription } from "@app/lib/plans/stripe";
 import { getUsageToReportForSubscriptionItem } from "@app/lib/plans/usage";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
 import { REPORT_USAGE_METADATA_KEY } from "@app/lib/plans/usage/types";
 import { ExtensionConfigurationResource } from "@app/lib/resources/extension";
 import type { MembershipsPaginationParams } from "@app/lib/resources/membership_resource";
@@ -35,15 +34,8 @@ import type {
   WorkspaceSegmentationType,
   WorkspaceType,
 } from "@app/types";
-import {
-  ACTIVE_ROLES,
-  assertNever,
-  Err,
-  isBuilder,
-  md5,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { ACTIVE_ROLES, Err, isBuilder, md5, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { GroupResource } from "../resources/group_resource";
 import { frontSequelize } from "../resources/storage";
@@ -317,7 +309,7 @@ export async function checkWorkspaceSeatAvailabilityUsingAuth(
 }
 
 export async function evaluateWorkspaceSeatAvailability(
-  workspace: WorkspaceType | WorkspaceModel,
+  workspace: WorkspaceType | WorkspaceModel | WorkspaceResource,
   subscription: SubscriptionType
 ): Promise<boolean> {
   const { maxUsers } = subscription.plan.limits.users;
@@ -528,7 +520,9 @@ export async function checkSeatCountForWorkspace(
   }
   const { data: subscriptionItems } = stripeSubscription.items;
 
-  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
 
   for (const item of subscriptionItems) {
     const usageToReportRes = getUsageToReportForSubscriptionItem(item);

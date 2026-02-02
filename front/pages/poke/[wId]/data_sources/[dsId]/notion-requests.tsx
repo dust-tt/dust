@@ -1,45 +1,17 @@
-import type { InferGetServerSidePropsType } from "next";
 import type { ReactElement } from "react";
 
 import { NotionRequestsPage } from "@app/components/poke/pages/NotionRequestsPage";
 import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
-import type { LightWorkspaceType } from "@app/types";
-import { isString } from "@app/types";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayout } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSideProps } from "@app/lib/auth/pokeServerSideProps";
 
-export const getServerSideProps = withSuperUserAuthRequirements<{
-  owner: LightWorkspaceType;
-  dsId: string;
-}>(async (context, auth) => {
-  const owner = auth.getNonNullableWorkspace();
+export const getServerSideProps = pokeGetServerSideProps;
 
-  const { wId, dsId } = context.params ?? {};
-  if (!isString(wId) || !isString(dsId)) {
-    return {
-      notFound: true,
-    };
-  }
+const Page = NotionRequestsPage as PageWithLayout;
 
-  return {
-    props: {
-      owner,
-      dsId,
-    },
-  };
-});
-
-export default function NotionRequestsPageNextJS({
-  owner,
-  dsId,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  return <NotionRequestsPage owner={owner} dsId={dsId} />;
-}
-
-NotionRequestsPageNextJS.getLayout = (
-  page: ReactElement,
-  { owner }: { owner: LightWorkspaceType }
-) => {
-  return (
-    <PokeLayout title={`${owner.name} - Notion Requests`}>{page}</PokeLayout>
-  );
+Page.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return <PokeLayout authContext={pageProps}>{page}</PokeLayout>;
 };
+
+export default Page;

@@ -9,7 +9,6 @@ import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
-import UTMPageWrapper from "@app/components/UTMPageWrapper";
 import { isString } from "@app/types";
 
 export const getStaticProps: GetStaticProps = async () => {
@@ -49,7 +48,7 @@ export default function Contact() {
   );
 
   return (
-    <UTMPageWrapper>
+    <>
       <PageMetadata
         title="Contact Dust: Schedule a Demo for AI Agents"
         description="Get in touch with the Dust team. Schedule a demo call to learn how AI agents can help address your team's challenges and improve productivity."
@@ -72,7 +71,7 @@ export default function Contact() {
         </Grid>
         <TrustedBy />
       </div>
-    </UTMPageWrapper>
+    </>
   );
 }
 

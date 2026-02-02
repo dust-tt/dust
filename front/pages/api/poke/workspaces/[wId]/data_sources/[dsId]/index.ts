@@ -9,7 +9,7 @@ import { DataSourceViewResource } from "@app/lib/resources/data_source_view_reso
 import { apiError } from "@app/logger/withlogging";
 import type { DataSourceType } from "@app/types";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type DeleteDataSourceResponseBody = DataSourceType;
 
@@ -100,10 +100,9 @@ async function handler(
         });
       }
 
-      const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        auth,
-        dataSource
-      );
+      const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+        dataSource,
+      });
       if (delRes.isErr()) {
         switch (delRes.error.code) {
           case "unauthorized_deletion":

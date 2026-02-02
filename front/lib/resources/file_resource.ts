@@ -486,7 +486,7 @@ export class FileResource extends BaseResource<FileModel> {
       this.getCloudStoragePath(auth, version),
       {
         // Since we redirect, the use is immediate so expiry can be short.
-        expirationDelay: 10 * 1000,
+        expirationDelay: 30 * 1000,
         promptSaveAs: this.fileName ?? `dust_${this.sId}`,
       }
     );
@@ -955,7 +955,9 @@ export class FileResource extends BaseResource<FileModel> {
       });
 
       // Use processAndStoreFile to handle the content processing and storage.
-      const { processAndStoreFile } = await import("@app/lib/api/files/upload");
+      const { processAndStoreFile } = await import(
+        "@app/lib/api/files/processing"
+      );
       const result = await processAndStoreFile(auth, {
         file: newFile,
         content: {

@@ -8,11 +8,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import type { Authenticator } from "@app/lib/auth";
+import { notifyProjectMembersAdded } from "@app/lib/notifications/workflows/project-added-as-member";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
-import { assertNever, isString } from "@app/types";
+import { isString } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 /**
  * @ignoreswagger
@@ -160,12 +162,28 @@ async function handler(
                   "Users cannot be removed from system or global groups.",
               },
             });
+          case "group_not_found":
+            return apiError(req, res, {
+              status_code: 404,
+              api_error: {
+                type: "group_not_found",
+                message: "The group was not found in the workspace.",
+              },
+            });
           default:
             assertNever(updateRes.error.code);
         }
       }
 
       const usersJson = updateRes.value.map((user) => user.toJSON());
+
+      // Trigger notifications for newly added members (projects only).
+      if (space.isProject()) {
+        notifyProjectMembersAdded(auth, {
+          project: space.toJSON(),
+          addedUserIds: userIds,
+        });
+      }
 
       return res.status(200).json({
         space: space.toJSON(),

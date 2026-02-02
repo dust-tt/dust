@@ -41,13 +41,15 @@ export async function getSkillServers(
 
   return skills.flatMap((skill) =>
     [
-      ...skill.mcpServerViews,
-      ...(skill.extendedSkill?.mcpServerViews ?? []),
-    ].map((mcpServerView) => {
+      ...skill.mcpServerConfigurations,
+      ...(skill.extendedSkill?.mcpServerConfigurations ?? []),
+    ].map((config) => {
+      const { view, childAgentId, serverNameOverride } = config;
+
       const {
         requiresDataWarehouseConfiguration,
         requiresDataSourceConfiguration,
-      } = getMCPServerRequirements(mcpServerView.toJSON());
+      } = getMCPServerRequirements(view.toJSON());
 
       let applicableViews: DataSourceViewResource[];
       if (requiresDataWarehouseConfiguration) {
@@ -58,15 +60,17 @@ export async function getSkillServers(
         applicableViews = [];
       }
 
-      const dataSources = applicableViews.map((view) => ({
-        dataSourceViewId: view.sId,
+      const dataSources = applicableViews.map((dsView) => ({
+        dataSourceViewId: dsView.sId,
         workspaceId: auth.getNonNullableWorkspace().sId,
-        filter: view.toViewFilter(),
+        filter: dsView.toViewFilter(),
       }));
 
       return buildServerSideMCPServerConfiguration({
-        mcpServerView,
+        mcpServerView: view,
         dataSources,
+        childAgentId,
+        serverNameOverride,
       });
     })
   );

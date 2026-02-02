@@ -24,7 +24,6 @@ import {
   MentionModel,
   MessageModel,
 } from "@app/lib/models/agent/conversation";
-import { TriggerModel } from "@app/lib/models/agent/triggers/triggers";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
@@ -39,6 +38,7 @@ import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
+import { TriggerFactory } from "@app/tests/utils/TriggerFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import type {
   AgenticMessageData,
@@ -1219,7 +1219,131 @@ describe("createAgentMessages", () => {
       expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
     });
 
-    it("should allow agent mentions when agent uses open spaces other than conversation's space", async () => {
+    it("should allow agent mentions when agent uses global space other than conversation's space", async () => {
+      // Create a space for the conversation
+      const conversationSpace = await SpaceFactory.regular(workspace);
+      const user = auth.getNonNullableUser();
+      const adminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+      await conversationSpace.addMembers(adminAuth, {
+        userIds: [user.sId],
+      });
+
+      // Create a fresh authenticator after adding user to space to refresh permissions
+      const userAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // Fetch the global space
+      const globalSpace =
+        await SpaceResource.fetchWorkspaceGlobalSpace(adminAuth);
+      expect(globalSpace).not.toBeNull();
+      expect(globalSpace.isGlobal()).toBe(true);
+
+      // Refresh the conversation space to get updated permissions
+      const refreshedConversationSpace = await SpaceResource.fetchById(
+        userAuth,
+        conversationSpace.sId
+      );
+      expect(refreshedConversationSpace).not.toBeNull();
+
+      // Create conversation in the conversationSpace
+      const spaceConversation = await createConversation(userAuth, {
+        title: "Space Conversation",
+        visibility: "unlisted",
+        spaceId: refreshedConversationSpace!.id,
+      });
+
+      // Create agent configuration that uses both the conversation's space and the global space
+      const agentConfig = await AgentConfigurationFactory.createTestAgent(
+        userAuth,
+        {
+          name: "Global Space Agent",
+        }
+      );
+
+      const conversationSpaceModelId = getResourceIdFromSId(
+        refreshedConversationSpace!.sId
+      );
+      const globalSpaceModelId = getResourceIdFromSId(globalSpace.sId);
+      expect(conversationSpaceModelId).not.toBeNull();
+      expect(globalSpaceModelId).not.toBeNull();
+
+      await AgentConfigurationModel.update(
+        {
+          requestedSpaceIds: [conversationSpaceModelId!, globalSpaceModelId!],
+        },
+        {
+          where: {
+            workspaceId: workspace.id,
+            sId: agentConfig.sId,
+            version: agentConfig.version,
+          },
+        }
+      );
+
+      // Manually construct the updated agent config with requestedSpaceIds as sIds
+      // We can't use getAgentConfiguration because it filters by space access,
+      // and the agent now has global space requirements
+      const updatedAgentConfig: LightAgentConfigurationType = {
+        ...agentConfig,
+        requestedSpaceIds: [refreshedConversationSpace!.sId, globalSpace.sId],
+      };
+
+      const { userMessage } = await ConversationFactory.createUserMessage({
+        auth: userAuth,
+        workspace,
+        conversation: spaceConversation,
+        content: `Hello @${agentConfig.name}`,
+      });
+
+      const mentions: MentionType[] = [
+        {
+          configurationId: agentConfig.sId,
+        } satisfies AgentMention,
+      ];
+
+      const { agentMessages, richMentions } = await createAgentMessages(
+        userAuth,
+        {
+          conversation: spaceConversation,
+          metadata: {
+            type: "create",
+            mentions,
+            agentConfigurations: [updatedAgentConfig],
+            skipToolsValidation: false,
+            nextMessageRank: 1,
+            userMessage,
+          },
+        }
+      );
+
+      // Should create agent message successfully because global space is allowed
+      expect(agentMessages).toHaveLength(1);
+      expect(agentMessages[0].configuration.sId).toBe(agentConfig.sId);
+
+      // Verify richMentions are returned correctly
+      expect(richMentions).toHaveLength(1);
+      if (isRichAgentMention(richMentions[0])) {
+        expect(richMentions[0].id).toBe(agentConfig.sId);
+        expect(richMentions[0].status).toBe("approved");
+      }
+
+      // Verify mention was created with approved status
+      const mentionInDb = await MentionModel.findOne({
+        where: {
+          workspaceId: workspace.id,
+          messageId: userMessage.id,
+          agentConfigurationId: agentConfig.sId,
+        },
+      });
+      expect(mentionInDb).not.toBeNull();
+      expect(mentionInDb?.status).toBe("approved");
+    });
+
+    it("should reject agent mentions when agent uses open (non-global) spaces other than conversation's space", async () => {
       // Create a space for the conversation
       const conversationSpace = await SpaceFactory.regular(workspace);
       const user = auth.getNonNullableUser();
@@ -1263,6 +1387,8 @@ describe("createAgentMessages", () => {
       );
       expect(refreshedOpenSpace).not.toBeNull();
       expect(refreshedOpenSpace?.isOpen()).toBe(true);
+      // Verify it's not global
+      expect(refreshedOpenSpace?.isGlobal()).toBe(false);
 
       // Refresh the conversation space to get updated permissions
       const refreshedConversationSpace = await SpaceResource.fetchById(
@@ -1306,17 +1432,14 @@ describe("createAgentMessages", () => {
         }
       );
 
-      // Refresh agent config to get updated requestedSpaceIds
-      const updatedAgentConfigRes = await getAgentConfiguration(userAuth, {
-        agentId: agentConfig.sId,
-        agentVersion: agentConfig.version,
-        variant: "light",
-      });
-      expect(updatedAgentConfigRes).not.toBeNull();
-      if (!updatedAgentConfigRes) {
-        throw new Error("Failed to fetch updated agent configuration");
-      }
-      const updatedAgentConfig = updatedAgentConfigRes;
+      // Manually construct the updated agent config with requestedSpaceIds as sIds
+      const updatedAgentConfig: LightAgentConfigurationType = {
+        ...agentConfig,
+        requestedSpaceIds: [
+          refreshedConversationSpace!.sId,
+          refreshedOpenSpace!.sId,
+        ],
+      };
 
       const { userMessage } = await ConversationFactory.createUserMessage({
         auth: userAuth,
@@ -1346,18 +1469,17 @@ describe("createAgentMessages", () => {
         }
       );
 
-      // Should create agent message successfully because open spaces are allowed
-      expect(agentMessages).toHaveLength(1);
-      expect(agentMessages[0].configuration.sId).toBe(agentConfig.sId);
+      // Should NOT create agent message because open (non-global) spaces are rejected
+      expect(agentMessages).toHaveLength(0);
 
-      // Verify richMentions are returned correctly
+      // Verify richMentions shows the restriction
       expect(richMentions).toHaveLength(1);
       if (isRichAgentMention(richMentions[0])) {
         expect(richMentions[0].id).toBe(agentConfig.sId);
-        expect(richMentions[0].status).toBe("approved");
+        expect(richMentions[0].status).toBe("agent_restricted_by_space_usage");
       }
 
-      // Verify mention was created with approved status
+      // Verify mention was created with restricted status
       const mentionInDb = await MentionModel.findOne({
         where: {
           workspaceId: workspace.id,
@@ -1366,7 +1488,7 @@ describe("createAgentMessages", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("approved");
+      expect(mentionInDb?.status).toBe("agent_restricted_by_space_usage");
     });
   });
 });
@@ -1427,7 +1549,7 @@ describe("createUserMentions", () => {
       pictureUrl:
         mentionedUserJson.image ?? "/static/humanavatar/anonymous.png",
       description: mentionedUserJson.email,
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1496,13 +1618,13 @@ describe("createUserMentions", () => {
       id: user1.sId,
       type: "user",
       label: user1Json.fullName,
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(user2Mention).toMatchObject({
       id: user2.sId,
       type: "user",
       label: user2Json.fullName,
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(user1Mention!)).toBe(true);
     expect(isRichUserMention(user2Mention!)).toBe(true);
@@ -1616,7 +1738,7 @@ describe("createUserMentions", () => {
     expect(result[0]).toMatchObject({
       id: mentionedUser.sId,
       type: "user",
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1673,7 +1795,7 @@ describe("createUserMentions", () => {
     expect(result[0]).toMatchObject({
       id: mentionedUser.sId,
       type: "user",
-      status: "pending",
+      status: "pending_conversation_access",
     });
     expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1722,7 +1844,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
 
@@ -1735,7 +1857,7 @@ describe("createUserMentions", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
+      expect(mentionInDb?.status).toBe("pending_conversation_access");
     });
 
     it("should always auto approve mentions for existing participants", async () => {
@@ -1822,7 +1944,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -1840,16 +1962,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -1949,16 +2066,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -2039,7 +2151,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -2057,16 +2169,11 @@ describe("createUserMentions", () => {
         });
 
       // Create a trigger
-      const trigger = await TriggerModel.create({
-        workspaceId: workspace.id,
+      const trigger = await TriggerFactory.webhook(auth, {
         name: "Test Trigger",
-        kind: "webhook",
         agentConfigurationId: triggerAgentConfig.sId,
-        editor: auth.getNonNullableUser().id,
-        customPrompt: null,
         status: "enabled",
         configuration: { includePayload: true },
-        origin: "user",
       });
 
       // Create a conversation with triggerId
@@ -2147,7 +2254,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -2328,7 +2435,7 @@ describe("createUserMentions", () => {
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "pending_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
 
@@ -2341,7 +2448,7 @@ describe("createUserMentions", () => {
         },
       });
       expect(mentionInDb).not.toBeNull();
-      expect(mentionInDb?.status).toBe("pending");
+      expect(mentionInDb?.status).toBe("pending_conversation_access");
       expect(mentionInDb?.status).not.toBe(
         "user_restricted_by_conversation_access"
       );
@@ -2570,12 +2677,12 @@ describe("createUserMentions", () => {
         conversation: projectConversation,
       });
 
-      // Verify return value shows pending status (requires approval for non-members)
+      // Verify return value shows user_restricted_by_conversation_access status (requires approval for non-members)
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({
         id: mentionedUser.sId,
         type: "user",
-        status: "pending",
+        status: "user_restricted_by_conversation_access",
       });
       expect(isRichUserMention(result[0])).toBe(true);
     });
@@ -3428,7 +3535,7 @@ describe("validateUserMention", () => {
     });
   });
 
-  it("should add a participant with unread=true when approving a user mention", async () => {
+  it("should add a participant with lastReadAt=null when approving a user mention", async () => {
     // Create a second user who will be mentioned
     const mentionedUser = await UserFactory.basic();
     await MembershipFactory.associate(workspace, mentionedUser, {
@@ -3458,12 +3565,12 @@ describe("validateUserMention", () => {
       });
     });
 
-    // Create the mention with status "pending"
+    // Create the mention with status "pending_conversation_access"
     await MentionModel.create({
       messageId: userMessage.id,
       userId: mentionedUser.id,
       workspaceId: workspace.id,
-      status: "pending",
+      status: "pending_conversation_access",
     });
 
     // Verify the mentioned user is not a participant yet
@@ -3484,7 +3591,7 @@ describe("validateUserMention", () => {
 
     expect(result.isOk()).toBe(true);
 
-    // Verify the mentioned user is now a participant with unread=true
+    // Verify the mentioned user is now a participant with lastReadAt=null
     const participant = await ConversationParticipantModel.findOne({
       where: {
         workspaceId: workspace.id,
@@ -3494,7 +3601,7 @@ describe("validateUserMention", () => {
     });
 
     expect(participant).not.toBeNull();
-    expect(participant?.unread).toBe(true);
+    expect(participant?.lastReadAt).toBeNull();
     expect(participant?.action).toBe("subscribed");
   });
 
@@ -3528,12 +3635,12 @@ describe("validateUserMention", () => {
       });
     });
 
-    // Create the mention with status "pending"
+    // Create the mention with status "pending_conversation_access"
     await MentionModel.create({
       messageId: userMessage.id,
       userId: mentionedUser.id,
       workspaceId: workspace.id,
-      status: "pending",
+      status: "pending_conversation_access",
     });
 
     // Reject the mention
@@ -3619,12 +3726,12 @@ describe("validateUserMention", () => {
         });
       });
 
-      // Create the mention with status "pending"
+      // Create the mention with status "pending_project_membership"
       await MentionModel.create({
         messageId: userMessage.id,
         userId: mentionedUser.id,
         workspaceId: workspace.id,
-        status: "pending",
+        status: "pending_project_membership",
       });
 
       const mentionedUserAuth = await Authenticator.fromUserIdAndWorkspaceId(

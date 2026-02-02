@@ -8,9 +8,12 @@ import { renderLightWorkspaceType } from "@app/lib/workspace";
 import type {
   UserLookupRequestBodyType,
   UserLookupResponse,
+  WorkspaceLookupRequestBodyType,
+  WorkspaceLookupResponse,
 } from "@app/pages/api/lookup/[resource]";
 import type { Result } from "@app/types";
-import { Err, isAPIErrorResponse, Ok } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { isAPIErrorResponse } from "@app/types/error";
 
 interface UserLookup {
   email: string;
@@ -25,6 +28,7 @@ export async function hasEmailLocalRegionAffinity(
     MembershipInvitationResource.listPendingForEmail({
       email: userLookup.email,
     }),
+
     findWorkspaceWithVerifiedDomain({
       email: userLookup.email,
       email_verified: userLookup.email_verified,
@@ -108,6 +112,50 @@ async function lookupInOtherRegion(
     }
 
     return new Ok(data.exists);
+  } catch (error) {
+    if (error instanceof Error) {
+      return new Err(error);
+    }
+
+    return new Err(new Error("Unknown error in lookupInOtherRegion"));
+  }
+}
+
+export async function lookupWorkspace(
+  wId: string
+): Promise<Result<RegionType | null, Error>> {
+  const body: WorkspaceLookupRequestBodyType = {
+    workspace: wId,
+  };
+
+  const localLookup = await handleLookupWorkspace(body);
+  if (localLookup.workspace) {
+    return new Ok(config.getCurrentRegion());
+  }
+
+  const { url, name } = config.getOtherRegionInfo();
+
+  try {
+    // eslint-disable-next-line no-restricted-globals
+    const otherRegionResponse = await fetch(`${url}/api/lookup/workspace`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.getLookupApiSecret()}`,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const data: WorkspaceLookupResponse = await otherRegionResponse.json();
+    if (isAPIErrorResponse(data)) {
+      return new Err(new Error(data.error.message));
+    }
+
+    if (data.workspace) {
+      return new Ok(name);
+    }
+
+    return new Ok(null);
   } catch (error) {
     if (error instanceof Error) {
       return new Err(error);

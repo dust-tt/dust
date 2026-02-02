@@ -4,13 +4,14 @@ import { Stripe } from "stripe";
 import config from "@app/lib/api/config";
 import { PlanModel, SubscriptionModel } from "@app/lib/models/plan";
 import { isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { countActiveSeatsInWorkspace } from "@app/lib/plans/usage/seats";
+import { PHONE_TRIAL_ENABLED } from "@app/lib/plans/trial/constants";
 import {
   isEnterpriseReportUsage,
   isMauReportUsage,
   isSupportedReportUsage,
   SUPPORTED_REPORT_USAGE,
 } from "@app/lib/plans/usage/types";
+import { MembershipResource } from "@app/lib/resources/membership_resource";
 import logger from "@app/logger/logger";
 import type {
   BillingPeriod,
@@ -20,9 +21,9 @@ import type {
   UserType,
   WorkspaceType,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import { Err, isDevelopment, normalizeError, Ok } from "@app/types";
 import { SUPPORTED_CURRENCIES } from "@app/types/currency";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { StripePricingData } from "@app/types/stripe/pricing";
 
 const DEV_PRO_PLAN_PRODUCT_ID = "prod_OwKvN4XrUwFw5a";
@@ -199,17 +200,21 @@ export const createProPlanCheckoutSession = async ({
     );
   }
 
-  // Only allow a subscription to have a trial if the workspace never had a
-  // subscription before.
-  // The exception is that if they were under the grandfathered free plan,
-  // we do allow them to have a trial again.
-  let trialAllowed = true;
-  const existingSubscription = await SubscriptionModel.findOne({
-    where: { workspaceId: owner.id },
-    include: [PlanModel],
-  });
-  if (existingSubscription && !isOldFreePlan(existingSubscription.plan.code)) {
-    trialAllowed = false;
+  // Determine if Stripe trial is allowed.
+  // When phone trial is enabled, we don't offer Stripe trials (users get phone trial instead).
+  // When phone trial is disabled, we allow Stripe trial only if the workspace never had a
+  // subscription before (except for the grandfathered old free plan).
+  let stripeTrialDays: number | undefined = undefined;
+  if (!PHONE_TRIAL_ENABLED && plan.trialPeriodDays) {
+    const existingSubscription = await SubscriptionModel.findOne({
+      where: { workspaceId: owner.id },
+      include: [PlanModel],
+    });
+    const trialAllowed =
+      !existingSubscription || isOldFreePlan(existingSubscription.plan.code);
+    if (trialAllowed) {
+      stripeTrialDays = plan.trialPeriodDays;
+    }
   }
 
   const session = await stripe.checkout.sessions.create({
@@ -222,9 +227,7 @@ export const createProPlanCheckoutSession = async ({
         planCode: planCode,
         workspaceId: owner.sId,
       },
-      // If trialPeriodDays is 0, we send "undefined" to Stripe.
-      trial_period_days:
-        trialAllowed && plan.trialPeriodDays ? plan.trialPeriodDays : undefined,
+      trial_period_days: stripeTrialDays,
     },
     metadata: {
       planCode: planCode,
@@ -233,7 +236,9 @@ export const createProPlanCheckoutSession = async ({
     line_items: [
       {
         price: priceId,
-        quantity: await countActiveSeatsInWorkspace(owner.sId),
+        quantity: await MembershipResource.countActiveSeatsInWorkspace(
+          owner.sId
+        ),
       },
     ],
     allow_promotion_codes: true,
@@ -888,7 +893,9 @@ export async function reportActiveSeats(
   stripeSubscriptionItem: Stripe.SubscriptionItem,
   workspace: LightWorkspaceType
 ): Promise<void> {
-  const activeSeats = await countActiveSeatsInWorkspace(workspace.sId);
+  const activeSeats = await MembershipResource.countActiveSeatsInWorkspace(
+    workspace.sId
+  );
 
   await updateStripeQuantityForSubscriptionItem(
     stripeSubscriptionItem,

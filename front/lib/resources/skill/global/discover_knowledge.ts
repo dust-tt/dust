@@ -29,7 +29,10 @@ export const discoverKnowledgeSkill = {
   agentFacingDescription:
     "Search documents, browse folder hierarchies, read file contents, and query data warehouse tables with SQL.",
   instructions: DISCOVER_KNOWLEDGE_INSTRUCTIONS,
-  internalMCPServerNames: ["data_sources_file_system", "data_warehouses"],
+  mcpServers: [
+    { name: "data_sources_file_system" },
+    { name: "data_warehouses" },
+  ],
   version: 1,
   icon: "ActionBookOpenIcon",
   inheritAgentConfigurationDataSources: true,

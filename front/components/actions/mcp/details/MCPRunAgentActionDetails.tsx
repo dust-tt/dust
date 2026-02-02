@@ -52,7 +52,7 @@ export function MCPRunAgentActionDetails({
   owner,
   toolOutput,
   toolParams,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const addedMCPServerViewIds: string[] = useMemo(() => {
     if (!toolParams["toolsetsToAdd"]) {
@@ -203,9 +203,9 @@ export function MCPRunAgentActionDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? `Running @${agentName}`
           : `Run @${agentName}`
       }
@@ -217,7 +217,7 @@ export function MCPRunAgentActionDetails({
           : RobotIcon
       }
     >
-      {viewType === "conversation" ? (
+      {displayContext === "conversation" ? (
         query && (
           <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
             {query}

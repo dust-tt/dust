@@ -34,7 +34,8 @@ import { withTransaction } from "@connectors/types/shared/utils/sql_utils";
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebCrawlerConfigurationResource extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
+export interface WebCrawlerConfigurationResource
+  extends ReadonlyAttributesType<WebCrawlerConfigurationModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebCrawlerConfigurationResource extends BaseResource<WebCrawlerConfigurationModel> {
   static model: ModelStatic<WebCrawlerConfigurationModel> =

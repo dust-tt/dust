@@ -27,10 +27,10 @@ import {
 import { getAvatar } from "@app/lib/actions/mcp_icons";
 import {
   DATA_WAREHOUSE_SERVER_NAME,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
   SEARCH_SERVER_NAME,
-  TABLE_QUERY_V2_SERVER_NAME,
 } from "@app/lib/actions/mcp_internal_actions/constants";
+import { TABLE_QUERY_V2_SERVER_NAME } from "@app/lib/api/actions/servers/query_tables_v2/metadata";
 import { isRemoteDatabase } from "@app/lib/data_sources";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
@@ -90,11 +90,11 @@ export function ProcessingMethodSection() {
 
     if (mcpServerView) {
       const isTableOrWarehouseServer =
-        isInternalMCPServerOfName(
+        matchesInternalMCPServerName(
           mcpServerView.server.sId,
           TABLE_QUERY_V2_SERVER_NAME
         ) ||
-        isInternalMCPServerOfName(
+        matchesInternalMCPServerName(
           mcpServerView.server.sId,
           DATA_WAREHOUSE_SERVER_NAME
         );
@@ -139,7 +139,7 @@ export function ProcessingMethodSection() {
 
       if (allTablesOrDatabases) {
         const tableQueryServer = serversToDisplay.find((server) =>
-          isInternalMCPServerOfName(
+          matchesInternalMCPServerName(
             server.server.sId,
             TABLE_QUERY_V2_SERVER_NAME
           )

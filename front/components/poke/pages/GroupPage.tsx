@@ -2,15 +2,16 @@ import { LinkWrapper, Spinner } from "@dust-tt/sparkle";
 
 import { ViewGroupTable } from "@app/components/poke/groups/view";
 import { MembersDataTable } from "@app/components/poke/members/table";
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeGroupDetails } from "@app/poke/swr/group_details";
-import type { LightWorkspaceType } from "@app/types";
 
-interface GroupPageProps {
-  owner: LightWorkspaceType;
-  groupId: string;
-}
+export function GroupPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - Group`);
 
-export function GroupPage({ owner, groupId }: GroupPageProps) {
+  const groupId = useRequiredPathParam("groupId");
   const {
     data: groupDetails,
     isLoading,

@@ -58,7 +58,7 @@ async function handler(
         return apiError(req, res, {
           status_code: 404,
           api_error: {
-            type: "invalid_request_error",
+            type: "connector_credentials_not_found",
             message: "The credential you requested was not found.",
           },
         });
@@ -68,10 +68,11 @@ async function handler(
 
       if (credential.metadata.workspace_id !== owner.sId) {
         return apiError(req, res, {
-          status_code: 404,
+          status_code: 400,
           api_error: {
             type: "invalid_request_error",
-            message: "The credential you requested was not found.",
+            message:
+              "The credential you requested does not belong to your workspace.",
           },
         });
       }

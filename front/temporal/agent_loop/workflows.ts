@@ -23,6 +23,7 @@ import type * as instrumentationActivities from "@app/temporal/agent_loop/activi
 import type * as publishDeferredEventsActivities from "@app/temporal/agent_loop/activities/publish_deferred_events";
 import type * as runModelAndCreateWrapperActivities from "@app/temporal/agent_loop/activities/run_model_and_create_actions_wrapper";
 import type * as runToolActivities from "@app/temporal/agent_loop/activities/run_tool";
+import { RUN_MODEL_MAX_RETRIES } from "@app/temporal/agent_loop/config";
 import { makeAgentLoopConversationTitleWorkflowId } from "@app/temporal/agent_loop/lib/workflow_ids";
 import { cancelAgentLoopSignal } from "@app/temporal/agent_loop/signals";
 import { MAX_STEPS_USE_PER_RUN_LIMIT } from "@app/types/assistant/agent";
@@ -37,8 +38,6 @@ const toolActivityStartToCloseTimeoutMs =
 
 const TOOL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
 const MODEL_ACTIVITY_HEARTBEAT_TIMEOUT_MS = 60 * 1000;
-
-const RUN_MODEL_MAX_RETRIES = 10;
 
 import {
   OpenTelemetryInboundInterceptor,
@@ -283,7 +282,6 @@ async function executeStepIteration({
 }> {
   const result = await runModelAndCreateActionsActivity({
     authType,
-    autoRetryCount: 0,
     checkForResume: currentStep === startStep, // Only run resume the first time.
     runAgentArgs: agentLoopArgs,
     runIds,

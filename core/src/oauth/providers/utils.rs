@@ -1,5 +1,5 @@
 use crate::{
-    oauth::connection::{ConnectionProvider, PROVIDER_TIMEOUT_SECONDS},
+    oauth::connection::{provider_timeout_seconds, ConnectionProvider},
     utils,
 };
 use anyhow::Result;
@@ -32,7 +32,8 @@ pub async fn execute_request(
 ) -> Result<serde_json::Value, ProviderHttpRequestError> {
     let now = utils::now_secs();
 
-    let res = timeout(Duration::from_secs(PROVIDER_TIMEOUT_SECONDS), req.send())
+    let timeout_secs = provider_timeout_seconds(provider);
+    let res = timeout(Duration::from_secs(timeout_secs), req.send())
         .await
         .map_err(|_| ProviderHttpRequestError::Timeout)?
         .map_err(|e| ProviderHttpRequestError::NetworkError(e))?;
@@ -60,7 +61,7 @@ pub async fn execute_request(
         .to_lowercase();
 
     let body = timeout(
-        Duration::from_secs(PROVIDER_TIMEOUT_SECONDS - (utils::now_secs() - now)),
+        Duration::from_secs(timeout_secs - (utils::now_secs() - now)),
         res.bytes(),
     )
     .await

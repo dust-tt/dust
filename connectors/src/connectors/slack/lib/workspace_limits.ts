@@ -237,6 +237,9 @@ async function isExternalUserAllowed(
     slackClient,
     slackChannelId
   );
+  if (!slackConversationInfo) {
+    return { authorized: false, groupIds: [] };
+  }
 
   const isChannelPublic = !slackConversationInfo.channel?.is_private;
   if (!isChannelPublic) {

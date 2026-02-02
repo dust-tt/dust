@@ -1,12 +1,10 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { hasReachedProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
+import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";
 import { matchPayload, parseMatcherExpression } from "@app/lib/matcher";
-import { WebhookRequestModel } from "@app/lib/models/agent/triggers/webhook_request";
 import type { WebhookRequestTriggerStatus } from "@app/lib/models/agent/triggers/webhook_request_trigger";
-import { WebhookRequestTriggerModel } from "@app/lib/models/agent/triggers/webhook_request_trigger";
 import { TriggerResource } from "@app/lib/resources/trigger_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { WebhookRequestResource } from "@app/lib/resources/webhook_request_resource";
@@ -25,7 +23,6 @@ import { statsDClient } from "@app/logger/statsDClient";
 import { launchAgentTriggerWorkflow } from "@app/temporal/triggers/common/client";
 import type { ContentFragmentInputWithFileIdType, Result } from "@app/types";
 import {
-  assertNever,
   Err,
   errorToString,
   isString,
@@ -38,6 +35,7 @@ import type {
   WebhookTriggerType,
 } from "@app/types/assistant/triggers";
 import { isWebhookTrigger } from "@app/types/assistant/triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type { WebhookProvider } from "@app/types/triggers/webhooks";
 import { WEBHOOK_PRESETS } from "@app/types/triggers/webhooks";
 
@@ -276,12 +274,9 @@ async function checkWorkspaceRateLimit({
       errorMessage = message;
     }
   } else {
-    if (await hasReachedProgrammaticUsageLimits(auth)) {
-      errorMessage = auth.isAdmin()
-        ? "Your workspace has run out of programmatic usage credits. " +
-          "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
-        : "Your workspace has run out of programmatic usage credits. " +
-          "Please ask a Dust workspace admin to purchase more credits.";
+    const limitsResult = await checkProgrammaticUsageLimits(auth);
+    if (limitsResult.isErr()) {
+      errorMessage = limitsResult.error.message;
     }
   }
 
@@ -835,22 +830,13 @@ export async function fetchRecentWebhookRequestTriggersWithPayload(
   }[]
 > {
   const workspace = auth.getNonNullableWorkspace();
-  const webhookRequestTriggers = await WebhookRequestTriggerModel.findAll({
-    where: {
-      workspaceId: workspace.id,
+  const webhookRequestTriggers = await WebhookRequestResource.listForTriggerId(
+    auth,
+    {
       triggerId: trigger.id,
-    },
-    include: [
-      {
-        model: WebhookRequestModel,
-        as: "webhookRequest",
-        required: true,
-        attributes: ["id", "createdAt", "webhookSourceId"],
-      },
-    ],
-    order: [["createdAt", "DESC"]],
-    limit,
-  });
+      limit,
+    }
+  );
 
   // Fetch payloads from GCS for each request
   const bucket = getWebhookRequestsBucket();

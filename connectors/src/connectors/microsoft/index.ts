@@ -42,6 +42,7 @@ import {
   getRootNodesToSyncFromResources,
   populateDeltas,
 } from "@connectors/connectors/microsoft/temporal/activities";
+import { isGeneralExceptionError } from "@connectors/connectors/microsoft/temporal/cast_known_errors";
 import {
   launchMicrosoftFullSyncWorkflow,
   launchMicrosoftGarbageCollectionWorkflow,
@@ -127,9 +128,16 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
 
     await syncSucceeded(connector.id);
 
-    const res = await launchMicrosoftIncrementalSyncWorkflow(connector.id);
-    if (res.isErr()) {
-      throw res.error;
+    const incrementalSyncRes = await launchMicrosoftIncrementalSyncWorkflow(
+      connector.id
+    );
+    if (incrementalSyncRes.isErr()) {
+      throw incrementalSyncRes.error;
+    }
+
+    const gcRes = await launchMicrosoftGarbageCollectionWorkflow(connector.id);
+    if (gcRes.isErr()) {
+      throw gcRes.error;
     }
 
     return new Ok(connector.id.toString());
@@ -367,7 +375,17 @@ export class MicrosoftConnectorManager extends BaseConnectorManager<null> {
           )
         );
       }
-      // Unanhdled error, throwing to get a 500.
+      // 401 generalException indicates site-level permission changes or revoked access.
+      // See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when
+      if (isGeneralExceptionError(e)) {
+        return new Err(
+          new ConnectorManagerError(
+            "EXTERNAL_OAUTH_TOKEN_ERROR",
+            `Microsoft authorization error (general exception), re-authorize or check access (${e.message})`
+          )
+        );
+      }
+      // Unhandled error, throwing to get a 500.
       throw e;
     }
   }

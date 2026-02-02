@@ -1,21 +1,24 @@
 import type { ReactElement } from "react";
 
 import { KillPage } from "@app/components/poke/pages/KillPage";
-import PokeLayout from "@app/components/poke/PokeLayout";
-import { withSuperUserAuthRequirements } from "@app/lib/iam/session";
+import { PokeLayoutNoWorkspace } from "@app/components/poke/PokeLayout";
+import type { AuthContextNoWorkspaceValue } from "@app/lib/auth/AuthContext";
+import type { PageWithLayoutNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
+import { pokeGetServerSidePropsNoWorkspace } from "@app/lib/auth/pokeServerSideProps";
 
-export const getServerSideProps = withSuperUserAuthRequirements<object>(
-  async () => {
-    return {
-      props: {},
-    };
-  }
-);
+export const getServerSideProps = pokeGetServerSidePropsNoWorkspace;
 
-export default function KillPageNextJS() {
-  return <KillPage />;
-}
+const Page = KillPage as PageWithLayoutNoWorkspace;
 
-KillPageNextJS.getLayout = (page: ReactElement) => {
-  return <PokeLayout title="Kill Switches">{page}</PokeLayout>;
+Page.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextNoWorkspaceValue
+) => {
+  return (
+    <PokeLayoutNoWorkspace authContext={pageProps}>
+      {page}
+    </PokeLayoutNoWorkspace>
+  );
 };
+
+export default Page;

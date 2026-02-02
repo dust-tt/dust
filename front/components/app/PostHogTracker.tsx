@@ -3,10 +3,16 @@ import { PostHogProvider } from "posthog-js/react";
 import { useEffect, useMemo, useRef } from "react";
 import { useCookies } from "react-cookie";
 
-import { DUST_COOKIES_ACCEPTED, hasCookiesAccepted } from "@app/lib/cookies";
+import {
+  DUST_COOKIES_ACCEPTED,
+  DUST_HAS_SESSION,
+  hasCookiesAccepted,
+  hasSessionIndicator,
+} from "@app/lib/cookies";
 import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
 import { useWorkspaceActiveSubscription } from "@app/lib/swr/workspaces";
+import { getStoredUTMParams, MARKETING_PARAMS } from "@app/lib/utils/utm";
 import { isString } from "@app/types";
 
 const POSTHOG_KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -27,8 +33,11 @@ interface PostHogTrackerProps {
 
 export function PostHogTracker({ children }: PostHogTrackerProps) {
   const router = useAppRouter();
-  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED]);
-  const { user } = useUser();
+  const [cookies] = useCookies([DUST_COOKIES_ACCEPTED, DUST_HAS_SESSION]);
+  const hasSession = hasSessionIndicator(cookies[DUST_HAS_SESSION]);
+
+  // Only fetch user if session indicator is present to avoid 401 errors on public pages.
+  const { user } = useUser({ disabled: !hasSession });
 
   const cookieValue = cookies[DUST_COOKIES_ACCEPTED];
   const hasAcceptedCookies = hasCookiesAccepted(cookieValue, user);
@@ -103,6 +112,34 @@ export function PostHogTracker({ children }: PostHogTrackerProps) {
         if (!event) {
           return null;
         }
+
+        // Extract marketing parameters from URL first, then fall back to sessionStorage.
+        const storedParams = getStoredUTMParams();
+        if (event.properties.$current_url) {
+          try {
+            const url = new URL(event.properties.$current_url);
+            for (const param of MARKETING_PARAMS) {
+              const urlValue = url.searchParams.get(param);
+              const storedValue = storedParams[param];
+              if (urlValue) {
+                event.properties[param] = urlValue;
+              } else if (storedValue) {
+                event.properties[param] = storedValue;
+              }
+            }
+          } catch {
+            // Ignore URL parsing errors.
+          }
+        } else {
+          // No URL available, use sessionStorage values.
+          for (const param of MARKETING_PARAMS) {
+            const storedValue = storedParams[param];
+            if (storedValue) {
+              event.properties[param] = storedValue;
+            }
+          }
+        }
+
         // Strip query parameters from URLs for privacy.
         if (event.properties.$current_url) {
           event.properties.$current_url =

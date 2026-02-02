@@ -32,7 +32,8 @@ type CleanUpWorkspaceOptions = {
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface WebhookRequestResource extends ReadonlyAttributesType<WebhookRequestModel> {}
+export interface WebhookRequestResource
+  extends ReadonlyAttributesType<WebhookRequestModel> {}
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
@@ -169,6 +170,40 @@ export class WebhookRequestResource extends BaseResource<WebhookRequestModel> {
       },
       order: opts.order,
       limit: opts.limit,
+    });
+  }
+
+  /**
+   * Fetch webhook request triggers for a given trigger ID, including the associated
+   * webhook request data. Used for displaying recent webhook request history.
+   */
+  static async listForTriggerId(
+    auth: Authenticator,
+    {
+      triggerId,
+      limit,
+    }: {
+      triggerId: ModelId;
+      limit?: number;
+    }
+  ) {
+    const workspace = auth.getNonNullableWorkspace();
+
+    return WebhookRequestTriggerModel.findAll({
+      where: {
+        workspaceId: workspace.id,
+        triggerId,
+      },
+      include: [
+        {
+          model: WebhookRequestModel,
+          as: "webhookRequest",
+          required: true,
+          attributes: ["id", "createdAt", "webhookSourceId"],
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+      limit,
     });
   }
 

@@ -34,12 +34,24 @@ use tracing::{error, info};
 
 use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 
-// We hold the lock for at most 15s. In case of panic preventing the lock from being released, this
+// We hold the lock for at most 20s. In case of panic preventing the lock from being released, this
 // is the maximum time the lock will be held.
-static REDIS_LOCK_TTL_SECONDS: u64 = 15;
+static REDIS_LOCK_TTL_SECONDS: u64 = 20;
+// Default timeout for provider token operations. Some providers may override this.
 // To ensure we don't write without holding the lock providers must comply to this timeout when
 // operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
+
+/// Returns the timeout in seconds for a specific provider's token operations.
+/// Some providers (e.g., Atlassian) have slower auth servers and need longer timeouts.
+pub fn provider_timeout_seconds(provider: ConnectionProvider) -> u64 {
+    match provider {
+        ConnectionProvider::Jira
+        | ConnectionProvider::Confluence
+        | ConnectionProvider::ConfluenceTools => 15,
+        _ => PROVIDER_TIMEOUT_SECONDS,
+    }
+}
 // Buffer of time in ms before the expiry of an access token within which we will attempt to
 // refresh it.
 pub static ACCESS_TOKEN_REFRESH_BUFFER_MILLIS: u64 = 10 * 60 * 1000;

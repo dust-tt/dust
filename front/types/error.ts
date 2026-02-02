@@ -57,6 +57,7 @@ const API_ERROR_TYPES = [
   "connector_oauth_user_missing_rights",
   "connector_provider_not_supported",
   "connector_credentials_error",
+  "connector_credentials_not_found",
   "connector_operation_in_progress",
   "agent_configuration_not_found",
   "agent_group_permission_error",
@@ -147,6 +148,8 @@ const API_ERROR_TYPES = [
   "skill_not_found",
   // Projects
   "project_metadata_not_found",
+  // Suggestions
+  "agent_suggestion_not_found",
 ] as const;
 
 export type APIErrorType = (typeof API_ERROR_TYPES)[number];

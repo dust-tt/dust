@@ -104,26 +104,28 @@ const config: Config = {
     require("tailwindcss-animate"),
     require("@tailwindcss/container-queries"),
   ],
-  // We don't generate css based on generated contents so we try to include as many classes as possible. 
+  // We don't generate css based on generated contents so we try to include as many classes as possible.
   safelist: [
     {
-     pattern: /./, // This includes all the utility classes.
+      pattern: /./, // This includes all the utility classes.
     },
     {
       pattern: /text-(xs|sm|base|lg|xl|2xl|3xl)/,
-      variants: ['sm', 'md', 'lg'],
+      variants: ["sm", "md", "lg"],
     },
     {
       pattern: /(flex|grid|block|inline|hidden)/,
-      variants: ['sm', 'md', 'lg'],
+      variants: ["sm", "md", "lg"],
     },
     {
-      pattern: /bg-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
-      variants: ['hover'],
+      pattern:
+        /bg-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
+      variants: ["hover"],
     },
     {
-      pattern: /text-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
-      variants: ['hover'],
+      pattern:
+        /text-(slate|gray|zinc|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-(50|100|200|300|400|500|600|700|800|900)/,
+      variants: ["hover"],
     },
   ],
 };

@@ -1,0 +1,333 @@
+import type { JSONSchema7 as JSONSchema } from "json-schema";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
+
+import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
+import { MODEL_IDS } from "@app/types/assistant/models/models";
+import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import {
+  AGENT_SUGGESTION_KINDS,
+  AGENT_SUGGESTION_STATES,
+} from "@app/types/suggestions/agent_suggestion";
+
+export const AGENT_COPILOT_CONTEXT_TOOL_NAME = "agent_copilot_context" as const;
+
+// Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
+const KNOWLEDGE_CATEGORIES = ["managed", "folder", "website"] as const;
+
+// Suggestion tool schemas
+
+const InstructionsSuggestionSchema = z.object({
+  oldString: z
+    .string()
+    .describe("The exact text to find (including surrounding context)"),
+  newString: z.string().describe("The exact replacement text"),
+  expectedOccurrences: z
+    .number()
+    .optional()
+    .describe("Number of occurrences to replace."),
+  analysis: z
+    .string()
+    .optional()
+    .describe("Analysis or reasoning for this specific suggestion"),
+});
+
+const ToolAdditionSchema = z.object({
+  id: z.string().describe("The tool/server identifier"),
+  additionalConfiguration: z
+    .record(z.unknown())
+    .optional()
+    .describe("Optional configuration for the tool"),
+});
+
+const ToolsSuggestionSchema = z.object({
+  additions: z
+    .array(ToolAdditionSchema)
+    .optional()
+    .describe("Tools to add to the agent"),
+  deletions: z
+    .array(z.string())
+    .optional()
+    .describe("Tool IDs to remove from the agent"),
+});
+
+const SkillsSuggestionSchema = z.object({
+  additions: z
+    .array(z.string())
+    .optional()
+    .describe("Skill IDs to add to the agent"),
+  deletions: z
+    .array(z.string())
+    .optional()
+    .describe("Skill IDs to remove from the agent"),
+});
+
+const ModelSuggestionSchema = z.object({
+  modelId: z.enum(MODEL_IDS).describe("The model ID to suggest"),
+  reasoningEffort: z
+    .enum(REASONING_EFFORTS)
+    .optional()
+    .describe("Optional reasoning effort level"),
+});
+
+export const AGENT_COPILOT_CONTEXT_TOOLS_METADATA = createToolsRecord({
+  get_available_knowledge: {
+    description:
+      "Get the list of available knowledge sources that can be added to an agent. " +
+      "Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. " +
+      "Only includes sources accessible to the current user.",
+    schema: {
+      spaceId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional space ID to filter results to a specific space. If not provided, returns knowledge from all accessible spaces."
+        ),
+      category: z
+        .enum(KNOWLEDGE_CATEGORIES)
+        .optional()
+        .describe(
+          "Optional category to filter results. Options: 'managed' (connected data sources like Notion, Slack), 'folder' (custom folders), 'website' (crawled websites). If not provided, returns all categories."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available knowledge",
+      done: "List available knowledge",
+    },
+  },
+  get_available_models: {
+    description:
+      "Get the list of available models. Can optionally filter by provider.",
+    schema: {
+      providerId: z
+        .string()
+        .optional()
+        .describe(
+          "Optional provider ID to filter models (e.g., 'openai', 'anthropic', 'google_ai_studio', 'mistral')"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available models",
+      done: "List available models",
+    },
+  },
+  get_available_skills: {
+    description:
+      "Get the list of available skills that can be added to agents. Returns skills accessible to the current user across all spaces they have access to.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available skills",
+      done: "List available skills",
+    },
+  },
+  get_available_tools: {
+    description:
+      "Get the list of available tools (MCP servers) that can be added to agents. Returns tools accessible to the current user.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing available tools",
+      done: "List available tools",
+    },
+  },
+  get_agent_feedback: {
+    description: "Get user feedback for the agent.",
+    schema: {
+      limit: z
+        .number()
+        .optional()
+        .default(50)
+        .describe("Maximum number of feedback items to return (default: 50)"),
+      filter: z
+        .enum(["active", "all"])
+        .optional()
+        .default("active")
+        .describe(
+          "Filter type: 'active' for non-dismissed feedback only (default), 'all' for all feedback"
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent feedback",
+      done: "List agent feedback",
+    },
+  },
+  get_agent_insights: {
+    description:
+      "Get insight and analytics data for the agent, including the number of active users, " +
+      "the conversation and message counts, and the feedback statistics.",
+    schema: {
+      days: z
+        .number()
+        .optional()
+        .default(30)
+        .describe("Number of days to include in the analysis (default: 30)"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing agent insights",
+      done: "List agent insights",
+    },
+  },
+  // Suggestion tools
+  suggest_prompt_edits: {
+    description:
+      "Create suggestions to modify the agent's instructions/prompt. " +
+      "CRITICAL: Make SMALL, SCOPED edits - each oldString should be 1-3 lines max, targeting specific phrases or sentences. " +
+      "NEVER replace entire instruction blocks. " +
+      "Example: To improve clarity, create 3 separate suggestions: one to change 'respond with' → 'reply using', another to add a bullet point, another to rephrase a sentence. " +
+      "IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card(s).",
+    schema: {
+      suggestions: z
+        .array(InstructionsSuggestionSchema)
+        .describe(
+          "Array of small, scoped instruction modifications. Each should target 1-3 lines max. Each suggestion can have its own analysis."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting prompt edits",
+      done: "Suggest prompt edits",
+    },
+  },
+  suggest_tools: {
+    description:
+      "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+    schema: {
+      suggestion: ToolsSuggestionSchema.describe(
+        "The tool additions and/or deletions to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting tools",
+      done: "Suggest tools",
+    },
+  },
+  suggest_skills: {
+    description:
+      "Suggest adding or removing skills from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+    schema: {
+      suggestion: SkillsSuggestionSchema.describe(
+        "The skill additions and/or deletions to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting skills",
+      done: "Suggest skills",
+    },
+  },
+  suggest_model: {
+    description:
+      "Suggest changing the agent's LLM model configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+    schema: {
+      suggestion: ModelSuggestionSchema.describe(
+        "The model configuration to suggest"
+      ),
+      analysis: z
+        .string()
+        .optional()
+        .describe("Analysis or reasoning for the suggestion"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Suggesting model",
+      done: "Suggest model",
+    },
+  },
+  list_suggestions: {
+    description:
+      "List existing suggestions for the agent's configuration changes.",
+    schema: {
+      states: z
+        .array(z.enum(AGENT_SUGGESTION_STATES))
+        .optional()
+        .describe(
+          `Filter by suggestion states. Options: ${AGENT_SUGGESTION_STATES.join(", ")}. If not provided, returns all states.`
+        ),
+      kind: z
+        .enum(AGENT_SUGGESTION_KINDS)
+        .optional()
+        .describe(
+          `Filter by suggestion type. Options: ${AGENT_SUGGESTION_KINDS.join(", ")}. If not provided, returns all types.`
+        ),
+      limit: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .default(50)
+        .describe(
+          "Maximum number of suggestions to return. Results are ordered by creation date (most recent first). If not provided, returns all matching suggestions."
+        ),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing suggestions",
+      done: "List suggestions",
+    },
+  },
+  update_suggestions_state: {
+    description:
+      "Update the state of one or more suggestions. Use this to reject or mark suggestions as outdated.",
+    schema: {
+      suggestions: z
+        .array(
+          z.object({
+            suggestionId: z
+              .string()
+              .describe("The sId of the suggestion to update"),
+            state: z
+              .enum(["rejected", "outdated"])
+              .describe(
+                "The new state for the suggestion: 'rejected' or 'outdated'."
+              ),
+          })
+        )
+        .describe("Array of suggestions to update with their new states"),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Updating suggestion state",
+      done: "Update suggestion state",
+    },
+  },
+});
+
+export const AGENT_COPILOT_CONTEXT_SERVER = {
+  serverInfo: {
+    name: "agent_copilot_context",
+    version: "1.0.0",
+    description:
+      "Retrieve context about available models, skills, tools, and agent-specific feedback and insights. Create and manage suggestions for agent configuration changes.",
+    authorization: null,
+    icon: "ActionRobotIcon",
+    documentationUrl: null,
+    instructions: null,
+  },
+  tools: Object.values(AGENT_COPILOT_CONTEXT_TOOLS_METADATA).map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
+  })),
+  tools_stakes: Object.fromEntries(
+    Object.values(AGENT_COPILOT_CONTEXT_TOOLS_METADATA).map((t) => [
+      t.name,
+      t.stake,
+    ])
+  ),
+} as const satisfies ServerMetadata;

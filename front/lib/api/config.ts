@@ -21,6 +21,13 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
+  // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
+  getPokeAppUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("POKE_APP_URL") ??
+      `${config.getClientFacingUrl()}/poke`
+    );
+  },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
   getAuthRedirectBaseUrl: (): string => {
@@ -240,6 +247,13 @@ const config = {
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
+  getDocumentRendererUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("DOCUMENT_RENDERER_URL");
+  },
+  // Public viz URL (used by Gotenberg which routes through egress proxy).
+  getVizPublicUrl: (): string | undefined => {
+    return EnvironmentConfig.getOptionalEnvVariable("VIZ_PUBLIC_URL");
+  },
   // Status page.
   getStatusPageProvidersPageId: (): string => {
     return EnvironmentConfig.getEnvVariable("STATUS_PAGE_PROVIDERS_PAGE_ID");
@@ -365,6 +379,16 @@ const config = {
     return EnvironmentConfig.getOptionalEnvVariable(
       "TEMPORAL_CONNECTORS_NAMESPACE"
     );
+  },
+  getTemporalAgentNamespace: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("TEMPORAL_AGENT_NAMESPACE");
+  },
+  // Northflank sandbox.
+  getNorthflankApiToken: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_API_TOKEN");
+  },
+  getNorthflankProjectId: () => {
+    return EnvironmentConfig.getOptionalEnvVariable("NORTHFLANK_PROJECT_ID");
   },
 };
 

@@ -12,7 +12,7 @@ import type {
   SupportedResourceType,
 } from "@app/types";
 import type { LightWorkspaceType } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type ResourceTypeMap = {
   agents: LightAgentConfigurationType;

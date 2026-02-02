@@ -3,7 +3,12 @@ import { removeNulls } from "@dust-tt/client";
 import { Storage } from "@google-cloud/storage";
 import type { Client } from "@microsoft/microsoft-graph-client";
 import { GraphError } from "@microsoft/microsoft-graph-client";
+import { WorkflowNotFoundError } from "@temporalio/client";
 import * as _ from "lodash";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
+import { parser } from "stream-json";
+import Assembler from "stream-json/Assembler";
 
 import { getMicrosoftClient } from "@connectors/connectors/microsoft";
 import {
@@ -57,7 +62,7 @@ import {
   upsertDataSourceFolder,
 } from "@connectors/lib/data_sources";
 import { ExternalOAuthTokenError } from "@connectors/lib/error";
-import { heartbeat } from "@connectors/lib/temporal";
+import { getTemporalClient, heartbeat } from "@connectors/lib/temporal";
 import { getActivityLogger } from "@connectors/logger/logger";
 import { ConnectorResource } from "@connectors/resources/connector_resource";
 import {
@@ -75,6 +80,77 @@ interface DeltaDataInGCS {
   rootNodeIds: string[];
   sortedChangedItems: DriveItem[];
   totalItems: number;
+}
+
+// Creates a readable stream that yields JSON chunks for DeltaDataInGCS.
+// This avoids calling JSON.stringify on the entire object, which can fail
+// with "Invalid string length" for large arrays (JavaScript string limit ~512MB).
+function createDeltaJsonStream(
+  deltaLink: string,
+  rootNodeIds: string[],
+  sortedChangedItems: DriveItem[],
+  totalItems: number
+): Readable {
+  let index = 0;
+  let sentHeader = false;
+  let sentFooter = false;
+
+  return new Readable({
+    read() {
+      if (!sentHeader) {
+        // Write the opening of the JSON object and all fields except the array items
+        const header =
+          `{"deltaLink":${JSON.stringify(deltaLink)}` +
+          `,"rootNodeIds":${JSON.stringify(rootNodeIds)}` +
+          `,"totalItems":${totalItems}` +
+          `,"sortedChangedItems":[`;
+        this.push(header);
+        sentHeader = true;
+        return;
+      }
+
+      if (index < sortedChangedItems.length) {
+        // Write each item individually (each item is small enough to stringify)
+        const prefix = index > 0 ? "," : "";
+        this.push(prefix + JSON.stringify(sortedChangedItems[index]));
+        index++;
+        return;
+      }
+
+      if (!sentFooter) {
+        // Close the array and object
+        this.push("]}");
+        sentFooter = true;
+        return;
+      }
+
+      // Signal end of stream
+      this.push(null);
+    },
+  });
+}
+
+// Reads delta data from a GCS file using streaming JSON parsing.
+// This avoids calling buffer.toString() which can fail with "Invalid string length"
+// for very large files (JavaScript string limit ~512MB).
+// Uses stream-json's Assembler to reconstruct the object from a token stream.
+async function readDeltaFromGCSStream(
+  file: ReturnType<ReturnType<Storage["bucket"]>["file"]>
+): Promise<DeltaDataInGCS> {
+  return new Promise((resolve, reject) => {
+    const readStream = file.createReadStream();
+    const jsonParser = parser();
+    const assembler = Assembler.connectTo(jsonParser);
+
+    assembler.on("done", (asm: Assembler) => {
+      resolve(asm.current as DeltaDataInGCS);
+    });
+
+    readStream.on("error", reject);
+    jsonParser.on("error", reject);
+
+    readStream.pipe(jsonParser);
+  });
 }
 
 const FILES_SYNC_CONCURRENCY = 10;
@@ -526,131 +602,151 @@ export async function syncFiles({
   );
   const client = await getMicrosoftClient(connector.connectionId);
 
-  // TODO(pr): handle pagination
-  const childrenResult = await getFilesAndFolders(
-    logger,
-    client,
-    parent.internalId,
-    nextPageLink
-  );
-
-  const children = childrenResult.results;
-
-  const mimeTypesToSync = await getMimeTypesToSync({
-    pdfEnabled: providerConfig.pdfEnabled || false,
-    csvEnabled: providerConfig.csvEnabled || false,
-  });
-  const filesToSync = children.filter(
-    (item) =>
-      item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
-  );
-
-  const concurrency = getAdaptiveConcurrency(
-    filesToSync,
-    MAX_FILE_SIZE_TO_DOWNLOAD,
-    FILES_SYNC_CONCURRENCY
-  );
-
-  // sync files
-  const results = await concurrentExecutor(
-    filesToSync,
-    async (child) =>
-      syncOneFile({
-        connectorId,
-        dataSourceConfig,
-        providerConfig,
-        file: child,
-        parentInternalId,
-        startSyncTs,
-        heartbeat,
-      }),
-    { concurrency }
-  );
-
-  const count = results.filter((r) => r).length;
-
-  logger.info(
-    {
-      connectorId,
-      dataSourceId: dataSourceConfig.dataSourceId,
-      parent,
-      count,
-    },
-    `[SyncFiles] Successful sync.`
-  );
-
-  // do not update folders that were already seen
-  const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
-    connectorId,
-    children
-      .filter((item) => item.folder)
-      .map((item) => getDriveItemInternalId(item))
-  );
-
-  // compute folders that were already seen
-  const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
-  folderResources.forEach((f) => {
-    if (
-      isAlreadySeenItem({
-        driveItemResource: f,
-        startSyncTs,
-      })
-    ) {
-      alreadySeenResourcesById[f.internalId] = f;
-    }
-  });
-
-  const alreadySeenResources = Object.values(alreadySeenResourcesById);
-
-  const createdOrUpdatedResources =
-    await MicrosoftNodeResource.batchUpdateOrCreate(
-      connectorId,
-      children
-        .filter(
-          (item) =>
-            item.folder &&
-            // only create/update if resource unseen
-            !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
-        )
-        .map(
-          (item): MicrosoftNode => ({
-            ...itemToMicrosoftNode("folder", item),
-            // add parent information to new node resources
-            parentInternalId,
-          })
-        )
+  try {
+    // TODO(pr): handle pagination
+    const childrenResult = await getFilesAndFolders(
+      logger,
+      client,
+      parent.internalId,
+      nextPageLink
     );
 
-  const parentsOfParent = await getParents({
-    connectorId: parent.connectorId,
-    internalId: parent.internalId,
-    startSyncTs,
-  });
+    const children = childrenResult.results;
 
-  await concurrentExecutor(
-    createdOrUpdatedResources,
-    async (createdOrUpdatedResource) =>
-      upsertDataSourceFolder({
-        dataSourceConfig,
-        folderId: createdOrUpdatedResource.internalId,
-        parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
-        parentId: parentsOfParent[0],
-        title: createdOrUpdatedResource.name ?? "Untitled Folder",
-        mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
-        sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
-      }),
-    { concurrency: 5 }
-  );
+    const mimeTypesToSync = await getMimeTypesToSync({
+      pdfEnabled: providerConfig.pdfEnabled || false,
+      csvEnabled: providerConfig.csvEnabled || false,
+    });
+    const filesToSync = children.filter(
+      (item) =>
+        item.file?.mimeType && mimeTypesToSync.includes(item.file.mimeType)
+    );
 
-  return {
-    count,
-    // still visit children of already seen nodes; an already seen node does not
-    // mean all its children are already seen too
-    childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
-      (r) => r.internalId
-    ),
-    nextLink: childrenResult.nextLink,
-  };
+    const concurrency = getAdaptiveConcurrency(
+      filesToSync,
+      MAX_FILE_SIZE_TO_DOWNLOAD,
+      FILES_SYNC_CONCURRENCY
+    );
+
+    // sync files
+    const results = await concurrentExecutor(
+      filesToSync,
+      async (child) =>
+        syncOneFile({
+          connectorId,
+          dataSourceConfig,
+          providerConfig,
+          file: child,
+          parentInternalId,
+          startSyncTs,
+          heartbeat,
+        }),
+      { concurrency }
+    );
+
+    const count = results.filter((r) => r).length;
+
+    logger.info(
+      {
+        connectorId,
+        dataSourceId: dataSourceConfig.dataSourceId,
+        parent,
+        count,
+      },
+      `[SyncFiles] Successful sync.`
+    );
+
+    // do not update folders that were already seen
+    const folderResources = await MicrosoftNodeResource.fetchByInternalIds(
+      connectorId,
+      children
+        .filter((item) => item.folder)
+        .map((item) => getDriveItemInternalId(item))
+    );
+
+    // compute folders that were already seen
+    const alreadySeenResourcesById: Record<string, MicrosoftNodeResource> = {};
+    folderResources.forEach((f) => {
+      if (
+        isAlreadySeenItem({
+          driveItemResource: f,
+          startSyncTs,
+        })
+      ) {
+        alreadySeenResourcesById[f.internalId] = f;
+      }
+    });
+
+    const alreadySeenResources = Object.values(alreadySeenResourcesById);
+
+    const createdOrUpdatedResources =
+      await MicrosoftNodeResource.batchUpdateOrCreate(
+        connectorId,
+        children
+          .filter(
+            (item) =>
+              item.folder &&
+              // only create/update if resource unseen
+              !alreadySeenResourcesById[getDriveInternalIdFromItem(item)]
+          )
+          .map(
+            (item): MicrosoftNode => ({
+              ...itemToMicrosoftNode("folder", item),
+              // add parent information to new node resources
+              parentInternalId,
+            })
+          )
+      );
+
+    const parentsOfParent = await getParents({
+      connectorId: parent.connectorId,
+      internalId: parent.internalId,
+      startSyncTs,
+    });
+
+    await concurrentExecutor(
+      createdOrUpdatedResources,
+      async (createdOrUpdatedResource) =>
+        upsertDataSourceFolder({
+          dataSourceConfig,
+          folderId: createdOrUpdatedResource.internalId,
+          parents: [createdOrUpdatedResource.internalId, ...parentsOfParent],
+          parentId: parentsOfParent[0],
+          title: createdOrUpdatedResource.name ?? "Untitled Folder",
+          mimeType: INTERNAL_MIME_TYPES.MICROSOFT.FOLDER,
+          sourceUrl: createdOrUpdatedResource.webUrl ?? undefined,
+        }),
+      { concurrency: 5 }
+    );
+
+    return {
+      count,
+      // still visit children of already seen nodes; an already seen node does not
+      // mean all its children are already seen too
+      childNodes: [...createdOrUpdatedResources, ...alreadySeenResources].map(
+        (r) => r.internalId
+      ),
+      nextLink: childrenResult.nextLink,
+    };
+  } catch (e) {
+    if (isGeneralExceptionError(e)) {
+      logger.warn(
+        {
+          connectorId,
+          dataSourceId: dataSourceConfig.dataSourceId,
+          parent,
+        },
+        "Skipping syncFiles due to 401 generalException - possible site permission change. See https://learn.microsoft.com/en-us/answers/questions/5616949/receiving-general-exception-while-processing-when"
+      );
+      return {
+        count: 0,
+        childNodes: [],
+        nextLink: undefined,
+      };
+    }
+
+    throw e;
+  }
 }
 
 // Legacy activity, only for compatibilty.
@@ -796,11 +892,15 @@ export async function syncDeltaForRootNodesInDrive({
     const validMicrosoftNodes = microsoftNodes.filter(
       (node): node is { id: string } => node !== null
     );
-    validMicrosoftNodes.forEach((rootNode) => {
-      sortedChangedItems.push(
-        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
-      );
-    });
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const rootNode of validMicrosoftNodes) {
+      for (const item of sortForIncrementalUpdate(
+        uniqueChangedItems,
+        rootNode.id
+      )) {
+        sortedChangedItems.push(item);
+      }
+    }
     // if only parts of the drive are selected, look for folders that may
     // have been removed from selection and scrub them
     await scrubRemovedFolders({
@@ -1143,11 +1243,15 @@ export async function fetchDeltaForRootNodesInDrive({
     const validMicrosoftNodes = microsoftNodes.filter(
       (node): node is { id: string } => node !== null
     );
-    validMicrosoftNodes.forEach((rootNode) => {
-      sortedChangedItems.push(
-        ...sortForIncrementalUpdate(uniqueChangedItems, rootNode.id)
-      );
-    });
+    // Use for...of instead of push(...) to avoid stack overflow with large arrays
+    for (const rootNode of validMicrosoftNodes) {
+      for (const item of sortForIncrementalUpdate(
+        uniqueChangedItems,
+        rootNode.id
+      )) {
+        sortedChangedItems.push(item);
+      }
+    }
 
     // if only parts of the drive are selected, look for folders that may
     // have been removed from selection and scrub them
@@ -1166,34 +1270,29 @@ export async function fetchDeltaForRootNodesInDrive({
     return { gcsFilePath: null };
   }
 
+  const totalItems = sortedChangedItems.length;
+
   logger.info(
     {
       connectorId,
       driveId,
       gcsFilePath,
       resultsCount: results.length,
-      totalItems: sortedChangedItems.length,
+      totalItems,
     },
-    "Uploading to GCS delta file."
+    "Uploading to GCS delta file (streaming)."
   );
 
-  const deltaData: DeltaDataInGCS = {
+  // Use streaming JSON write to avoid "Invalid string length" error
+  // when the delta data is too large to stringify at once.
+  const jsonStream = createDeltaJsonStream(
     deltaLink,
     rootNodeIds,
     sortedChangedItems,
-    totalItems: sortedChangedItems.length,
-  };
-
-  const jsonData = JSON.stringify(deltaData);
-
-  logger.info(
-    {
-      jsonDataSize: jsonData.length,
-    },
-    "Delta file size."
+    totalItems
   );
 
-  await file.save(jsonData, {
+  const writeStream = file.createWriteStream({
     metadata: {
       contentType: "application/json",
       metadata: {
@@ -1205,13 +1304,15 @@ export async function fetchDeltaForRootNodesInDrive({
     },
   });
 
+  await pipeline(jsonStream, writeStream);
+
   logger.info(
     {
       connectorId,
       driveId,
       gcsFilePath,
       resultsCount: results.length,
-      totalItems: sortedChangedItems.length,
+      totalItems,
     },
     "Delta data fetched, processed, and uploaded to GCS"
   );
@@ -1921,8 +2022,9 @@ export async function processDeltaChangesFromGCS({
   const bucket = storage.bucket(connectorsConfig.getDustTmpSyncBucketName());
   const file = bucket.file(gcsFilePath);
 
-  const [content] = await file.download();
-  const changedItemsData = JSON.parse(content.toString()) as DeltaDataInGCS;
+  // Use streaming JSON parse to avoid "Invalid string length" error
+  // when the file is too large to convert to a string.
+  const changedItemsData = await readDeltaFromGCSStream(file);
 
   const { deltaLink, rootNodeIds, sortedChangedItems, totalItems } =
     changedItemsData;
@@ -2200,4 +2302,21 @@ export async function processDeltaChangesFromGCS({
     nextCursor,
     processedCount: currentBatch.length,
   };
+}
+
+export async function isMicrosoftFullSyncRunning(
+  connectorId: ModelId
+): Promise<boolean> {
+  const client = await getTemporalClient();
+  const workflowId = `microsoft-fullSync-${connectorId}`;
+  try {
+    const handle = client.workflow.getHandle(workflowId);
+    const description = await handle.describe();
+    return description.status.name === "RUNNING";
+  } catch (e) {
+    if (e instanceof WorkflowNotFoundError) {
+      return false;
+    }
+    throw e;
+  }
 }

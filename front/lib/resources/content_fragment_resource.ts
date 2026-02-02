@@ -46,14 +46,14 @@ import type {
   Result,
 } from "@app/types";
 import {
-  assertNever,
   CoreAPI,
   Err,
-  isSupportedImageContentType,
+  isLLMVisionSupportedImageContentType,
   normalizeError,
   Ok,
   removeNulls,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export const CONTENT_OUTDATED_MSG =
   "Content is outdated. Please refer to the latest version of this content.";
@@ -61,7 +61,8 @@ export const CONTENT_OUTDATED_MSG =
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // This design will be moved up to BaseResource once we transition away from Sequelize.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface ContentFragmentResource extends ReadonlyAttributesType<ContentFragmentModel> {}
+export interface ContentFragmentResource
+  extends ReadonlyAttributesType<ContentFragmentModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class ContentFragmentResource extends BaseResource<ContentFragmentModel> {
   static model: ModelStatic<ContentFragmentModel> = ContentFragmentModel;
@@ -570,7 +571,7 @@ export async function getContentFragmentFromAttachmentFile(
           conversationAttachmentId(attachment)
         );
 
-  if (isSupportedImageContentType(attachment.contentType)) {
+  if (isLLMVisionSupportedImageContentType(attachment.contentType)) {
     if (excludeImages || !model.supportsVision) {
       return new Ok({
         role: "content_fragment",
@@ -763,7 +764,7 @@ export async function renderLightContentFragmentForModel(
     };
   }
 
-  if (fileStringId && isSupportedImageContentType(contentType)) {
+  if (fileStringId && isLLMVisionSupportedImageContentType(contentType)) {
     if (excludeImages || !model.supportsVision) {
       return {
         role: "content_fragment",

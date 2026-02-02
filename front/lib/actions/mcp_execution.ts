@@ -43,13 +43,35 @@ import type {
   SupportedFileContentType,
 } from "@app/types";
 import {
-  assertNever,
   extensionsForContentType,
   isSupportedFileContentType,
   removeNulls,
   stripNullBytes,
   toWellFormed,
 } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+
+/**
+ * Recursively sanitizes all string values in an object by removing null bytes and lone surrogates.
+ * This prevents PostgreSQL errors when storing JSON with \u0000 characters.
+ */
+function sanitizeStringsDeep<T>(input: T): T {
+  if (typeof input === "string") {
+    return toWellFormed(stripNullBytes(input)) as T;
+  }
+  if (Array.isArray(input)) {
+    return input.map(sanitizeStringsDeep) as T;
+  }
+  if (input !== null && typeof input === "object") {
+    return Object.fromEntries(
+      Object.entries(input).map(([key, value]) => [
+        key,
+        sanitizeStringsDeep(value),
+      ])
+    ) as T;
+  }
+  return input;
+}
 
 export async function processToolNotification(
   notification: MCPProgressNotificationType,
@@ -73,7 +95,7 @@ export async function processToolNotification(
       output.contents.map((content) => ({
         workspaceId: action.workspaceId,
         agentMCPActionId: action.id,
-        content,
+        content: sanitizeStringsDeep(content),
       }))
     );
   }
@@ -283,6 +305,9 @@ export async function processToolResults(
                 ? toWellFormed(stripNullBytes(block.resource.text))
                 : null;
 
+            // Sanitize the entire resource object to remove null bytes from all string fields
+            const sanitizedResource = sanitizeStringsDeep(block.resource);
+
             // If the resource text is too large, we create a file and return a resource block that references the file.
             if (text && computeTextByteSize(text) > MAX_RESOURCE_CONTENT_SIZE) {
               const fileName =
@@ -302,7 +327,7 @@ export async function processToolResults(
                 content: {
                   type: block.type,
                   resource: {
-                    ...block.resource,
+                    ...sanitizedResource,
                     text: text,
                   },
                 },
@@ -313,7 +338,7 @@ export async function processToolResults(
               content: {
                 type: block.type,
                 resource: {
-                  ...block.resource,
+                  ...sanitizedResource,
                   ...(text ? { text } : {}),
                 },
               },

@@ -17,7 +17,7 @@ import type {
   SubscriptionType,
   WithAPIErrorResponse,
 } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 export type PostSubscriptionResponseBody = {
   plan: PlanType;

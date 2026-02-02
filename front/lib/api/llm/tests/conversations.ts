@@ -18,7 +18,8 @@ import type {
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
-import { assertNever, safeParseJSON } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const SYSTEM_PROMPT = "You are a helpful assistant.";
 
@@ -31,7 +32,7 @@ function createMockAuthenticator(): Authenticator {
     workspace: null,
     user: null,
     role: "none",
-    groups: [],
+    groupModelIds: [],
     subscription: null,
     authMethod: "internal",
   });

@@ -35,14 +35,37 @@ type ToolPersonalAuthError = {
 
 // Event sent when personal authentication is required for a tool call.
 // This is a non-terminal event that pauses the workflow until authentication is completed.
-export interface ToolPersonalAuthRequiredEvent extends ToolExecution<
-  MCPValidationMetadataType & {
-    mcpServerId: string;
-    mcpServerDisplayName: string;
-  }
-> {
+export interface ToolPersonalAuthRequiredEvent
+  extends ToolExecution<
+    MCPValidationMetadataType & {
+      mcpServerId: string;
+      mcpServerDisplayName: string;
+    }
+  > {
   type: "tool_personal_auth_required";
   authError: ToolPersonalAuthError;
+}
+
+type ToolFileAuthError = {
+  fileId: string;
+  fileName: string;
+  connectionId: string;
+  mimeType: string;
+  toolName: string;
+  message: string;
+};
+
+// Pauses agent execution to prompt user for file access consent (e.g., Google Drive).
+// Non-terminal because the tool can resume once the user authorizes the file.
+export interface ToolFileAuthRequiredEvent
+  extends ToolExecution<
+    MCPValidationMetadataType & {
+      mcpServerId: string;
+      mcpServerDisplayName: string;
+    }
+  > {
+  type: "tool_file_auth_required";
+  fileAuthError: ToolFileAuthError;
 }
 
 export interface MCPApproveExecutionEvent extends ToolExecution {

@@ -37,7 +37,11 @@ next-env.d.ts
 
 # build output
 dist/
+public/spa/
 
 # cache
 .cache/
 .eslintcache
+
+# Build-time custom models config (downloaded by CI)
+custom-models.json

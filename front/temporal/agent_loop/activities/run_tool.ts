@@ -12,9 +12,12 @@ import { updateResourceAndPublishEvent } from "@app/temporal/agent_loop/activiti
 import type { ToolExecutionResult } from "@app/temporal/agent_loop/lib/deferred_events";
 import { sliceConversationForAgentMessage } from "@app/temporal/agent_loop/lib/loop_utils";
 import type { ModelId } from "@app/types";
-import { assertNever, ConversationError } from "@app/types";
 import type { AgentLoopArgsWithTiming } from "@app/types/assistant/agent_run";
-import { getAgentLoopData } from "@app/types/assistant/agent_run";
+import {
+  getAgentLoopData,
+  isAgentLoopDataSoftDeleteError,
+} from "@app/types/assistant/agent_run";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const CONVERSATION_CACHE_TTL_MS = 5000;
 
@@ -52,17 +55,13 @@ export async function runToolActivity(
     },
   });
   if (runAgentDataRes.isErr()) {
-    // If the conversation is not found, we cannot run the tool and should stop execution here.
-    if (
-      runAgentDataRes.error instanceof ConversationError &&
-      runAgentDataRes.error.type === "conversation_not_found"
-    ) {
-      logger.warn(
+    if (isAgentLoopDataSoftDeleteError(runAgentDataRes.error)) {
+      logger.info(
         {
           actionId,
           runIds,
         },
-        "conversation_not_found while running tool, stopping execution"
+        "Message or conversation was deleted, exiting"
       );
       return { deferredEvents };
     }
@@ -208,9 +207,9 @@ export async function runToolActivity(
         return { deferredEvents, shouldPauseAgentLoop: true };
 
       case "tool_personal_auth_required":
+      case "tool_file_auth_required":
       case "tool_approve_execution":
-        // Update and publish deferred events for these types.
-        // Defer personal auth events to be sent after all tools complete.
+        // Batched for publishing after all parallel tools complete to avoid partial UI state.
         deferredEvents.push({
           event,
           context: {

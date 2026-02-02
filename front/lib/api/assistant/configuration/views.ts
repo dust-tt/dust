@@ -23,7 +23,7 @@ import type {
   WorkspaceType,
 } from "@app/types";
 import { compareAgentsForSort } from "@app/types";
-import { assertNever } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 const sortStrategies: Record<SortStrategyType, SortStrategy> = {
   alphabetical: {
@@ -284,12 +284,7 @@ async function fetchWorkspaceAgentConfigurationsForView(
   const user = auth.user();
 
   const agentIdsForGroups = user
-    ? await GroupResource.findAgentIdsForGroups(auth, [
-        ...auth
-          .groups()
-          .filter((g) => g.kind === "agent_editors")
-          .map((g) => g.id),
-      ])
+    ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
     : [];
 
   const agentIdsForUserAsEditor = agentIdsForGroups.map(

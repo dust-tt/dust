@@ -14,7 +14,7 @@ const MAX_PREVIEW_LINES = 10;
 
 export function MCPConversationCatFileDetails({
   toolOutput,
-  viewType,
+  displayContext,
 }: ToolExecutionDetailsProps) {
   const contentBlock = toolOutput?.find(isTextContent);
   const content = contentBlock?.text ?? null;
@@ -22,9 +22,9 @@ export function MCPConversationCatFileDetails({
   if (!content) {
     return (
       <ActionDetailsWrapper
-        viewType={viewType}
+        displayContext={displayContext}
         actionName={
-          viewType === "conversation"
+          displayContext === "conversation"
             ? "Reading conversation file"
             : "Read conversation file"
         }
@@ -43,15 +43,15 @@ export function MCPConversationCatFileDetails({
 
   return (
     <ActionDetailsWrapper
-      viewType={viewType}
+      displayContext={displayContext}
       actionName={
-        viewType === "conversation"
+        displayContext === "conversation"
           ? "Reading conversation file"
           : "Read conversation file"
       }
       visual={DocumentIcon}
     >
-      {viewType === "sidebar" && (
+      {displayContext === "sidebar" && (
         <div className="flex flex-col gap-4 pl-6 pt-4">
           <Collapsible defaultOpen={false}>
             <CollapsibleTrigger>

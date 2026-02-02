@@ -17,6 +17,8 @@ export const SYNC_STATE_PATH = join(CACHE_DIR, "sync-state.json");
 // Sync state schema for validation
 const SyncStateSchema = z.object({
   npm: z.object({
+    root: z.string().optional(),
+    // Legacy fields for backwards compatibility
     "sdks/js": z.string().optional(),
     front: z.string().optional(),
     connectors: z.string().optional(),

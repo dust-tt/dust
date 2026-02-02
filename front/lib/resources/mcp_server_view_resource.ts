@@ -43,17 +43,13 @@ import type {
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type { MCPOAuthUseCase, ModelId, Result } from "@app/types";
-import {
-  assertNever,
-  Err,
-  formatUserFullName,
-  Ok,
-  removeNulls,
-} from "@app/types";
+import { Err, formatUserFullName, Ok, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 // Attributes are marked as read-only to reflect the stateless nature of our Resource.
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
-export interface MCPServerViewResource extends ReadonlyAttributesType<MCPServerViewModel> {}
+export interface MCPServerViewResource
+  extends ReadonlyAttributesType<MCPServerViewModel> {}
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel> {
   static model: ModelStatic<MCPServerViewModel> = MCPServerViewModel;
@@ -363,7 +359,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     auth: Authenticator,
     spaceIds: string[],
     { includeGlobalSpace = false }: { includeGlobalSpace?: boolean } = {}
-  ) {
+  ): Promise<MCPServerViewResource[]> {
     const requestedSpaces = await SpaceResource.fetchByIds(auth, spaceIds);
 
     if (includeGlobalSpace) {
@@ -385,26 +381,50 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async listForSystemSpace(
     auth: Authenticator,
     options?: ResourceFindOptions<MCPServerViewModel>
-  ) {
+  ): Promise<MCPServerViewResource[]> {
     const systemSpace = await SpaceResource.fetchWorkspaceSystemSpace(auth);
 
     return this.listBySpace(auth, systemSpace, options);
+  }
+
+  static async listByMCPServers(
+    auth: Authenticator,
+    mcpServerIds: string[]
+  ): Promise<MCPServerViewResource[]> {
+    const serverTypesAndIds = mcpServerIds.map((mcpServerId) => ({
+      ...getServerTypeAndIdFromSId(mcpServerId),
+      mcpServerId,
+    }));
+
+    return this.baseFetch(auth, {
+      where: {
+        [Op.or]: [
+          {
+            serverType: "internal" as const,
+            internalMCPServerId: {
+              [Op.in]: serverTypesAndIds
+                .filter(({ serverType }) => serverType === "internal")
+                .map(({ mcpServerId }) => mcpServerId),
+            },
+          },
+          {
+            serverType: "remote",
+            remoteMCPServerId: {
+              [Op.in]: serverTypesAndIds
+                .filter(({ serverType }) => serverType === "remote")
+                .map(({ id }) => id),
+            },
+          },
+        ],
+      },
+    });
   }
 
   static async listByMCPServer(
     auth: Authenticator,
     mcpServerId: string
   ): Promise<MCPServerViewResource[]> {
-    const { serverType, id } = getServerTypeAndIdFromSId(mcpServerId);
-    if (serverType === "internal") {
-      return this.baseFetch(auth, {
-        where: { serverType: "internal", internalMCPServerId: mcpServerId },
-      });
-    } else {
-      return this.baseFetch(auth, {
-        where: { serverType: "remote", remoteMCPServerId: id },
-      });
-    }
+    return this.listByMCPServers(auth, [mcpServerId]);
   }
 
   // Auto internal MCP server are supposed to be created in the global space.
@@ -412,7 +432,7 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
   static async getMCPServerViewForAutoInternalTool(
     auth: Authenticator,
     name: AutoInternalMCPServerNameType
-  ) {
+  ): Promise<MCPServerViewResource | null> {
     const views = await this.listByMCPServer(
       auth,
       autoInternalMCPServerNameToSId({
@@ -422,6 +442,23 @@ export class MCPServerViewResource extends ResourceWithSpace<MCPServerViewModel>
     );
 
     return views.find((view) => view.space.kind === "global") ?? null;
+  }
+
+  static async getMCPServerViewsForAutoInternalTools(
+    auth: Authenticator,
+    names: AutoInternalMCPServerNameType[]
+  ): Promise<MCPServerViewResource[]> {
+    const views = await this.listByMCPServers(
+      auth,
+      names.map((name) =>
+        autoInternalMCPServerNameToSId({
+          name,
+          workspaceId: auth.getNonNullableWorkspace().id,
+        })
+      )
+    );
+
+    return views.filter((view) => view.space.kind === "global");
   }
 
   static async listMCPServerViewsAutoInternalForSpaces(

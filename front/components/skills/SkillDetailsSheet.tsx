@@ -45,7 +45,7 @@ export function SkillDetailsSheet({
 }: SkillDetailsProps) {
   return (
     <Sheet open={skill !== null} onOpenChange={onClose}>
-      <SheetContent size="lg">
+      <SheetContent size="lg" className="pb-4">
         <VisuallyHidden>
           <SheetTitle />
         </VisuallyHidden>

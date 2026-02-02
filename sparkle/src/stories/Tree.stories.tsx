@@ -140,7 +140,7 @@ export const TreeExample = () => {
                     type="leaf"
                     actions={
                       <div className="s-flex s-grow s-flex-row s-items-center s-justify-between">
-                        <Button size="mini" variant="outline" icon={EyeIcon} />
+                        <Button size="icon" variant="outline" icon={EyeIcon} />
                         <div className="s-flex s-flex-row s-items-center s-gap-1 s-text-sm s-text-muted-foreground">
                           <Icon visual={HistoryIcon} size="xs" />
                           1y

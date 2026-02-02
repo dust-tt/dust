@@ -1,6 +1,4 @@
-import Link from "next/link";
-
-import { useAppRouter } from "@app/lib/platform";
+import { LinkWrapper, useAppRouter } from "@app/lib/platform";
 
 interface UserHandleProps {
   user: {
@@ -22,12 +20,12 @@ export function UserHandle({ user }: UserHandleProps) {
   }
 
   return (
-    <Link
+    <LinkWrapper
       href={href}
       shallow
       className="max-w-[14rem] cursor-pointer truncate transition duration-200 hover:text-highlight active:text-highlight-600 sm:max-w-fit"
     >
       {user.name}
-    </Link>
+    </LinkWrapper>
   );
 }

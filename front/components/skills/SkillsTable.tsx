@@ -71,12 +71,14 @@ const editorsColumn = {
       ? editors.map((editor) => ({
           name: editor.fullName,
           visual: editor.image,
+          isRounded: true,
         }))
-      : // Only dust managed skills should have no editors
+      : // Only Dust-managed skills should have no editors
         [
           {
             name: "Dust",
             visual: DUST_AVATAR_URL,
+            isRounded: false,
           },
         ];
     return <DataTable.CellContent avatarStack={{ items, nbVisibleItems: 4 }} />;

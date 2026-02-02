@@ -113,6 +113,7 @@ function createMockConversation(
     depth: 0,
     visibility: "unlisted",
     unread: false,
+    lastReadMs: Date.now(),
     actionRequired: false,
     hasError: false,
     requestedSpaceIds: [],
@@ -124,6 +125,7 @@ function createMockConversation(
     } as any,
     content,
     triggerId: null,
+    metadata: {},
   };
 }
 

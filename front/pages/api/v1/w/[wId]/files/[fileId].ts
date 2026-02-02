@@ -3,7 +3,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import { getOrCreateConversationDataSourceFromFile } from "@app/lib/api/data_sources";
-import { processAndStoreFile } from "@app/lib/api/files/upload";
+import { processAndStoreFile } from "@app/lib/api/files/processing";
 import {
   isFileTypeUpsertableForUseCase,
   processAndUpsertToDataSource,
@@ -105,8 +105,12 @@ async function handler(
       });
     }
   }
-  if (file.useCase === "folders_document" && file.useCaseMetadata?.spaceId) {
-    // For folder documents, check if the user has access to the space
+  if (
+    (file.useCase === "folders_document" ||
+      file.useCase === "project_context") &&
+    file.useCaseMetadata?.spaceId
+  ) {
+    // For folder documents and project context, check if the user has access to the space
     const space = await SpaceResource.fetchById(
       auth,
       file.useCaseMetadata.spaceId

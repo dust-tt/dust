@@ -33,7 +33,7 @@ ProjectMetadataModel.init(
       allowNull: true,
     },
     urls: {
-      type: DataTypes.JSONB,
+      type: DataTypes.ARRAY(DataTypes.JSONB),
       allowNull: false,
       defaultValue: [],
     },

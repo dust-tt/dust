@@ -18,6 +18,7 @@ import { makeScript } from "@app/scripts/helpers";
 import { runOnAllWorkspaces } from "@app/scripts/workspace_helpers";
 import { storeAgentAnalytics } from "@app/temporal/analytics_queue/activities";
 import { LightWorkspaceType } from "@app/types";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 
 async function backfillAgentAnalytics(
   workspace: LightWorkspaceType,
@@ -275,11 +276,7 @@ makeScript(
   async ({ execute, workspaceId }, logger) => {
     if (workspaceId) {
       // Run on a single workspace
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          sId: workspaceId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchById(workspaceId);
 
       if (!workspace) {
         throw new Error(`Workspace not found: ${workspaceId}`);

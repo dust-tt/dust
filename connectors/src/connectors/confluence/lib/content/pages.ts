@@ -1,3 +1,4 @@
+import { removeNulls } from "@dust-tt/client";
 import { Op } from "sequelize";
 import TurndownService from "turndown";
 
@@ -109,8 +110,8 @@ export async function confluenceUpsertPageToDataSource({
     );
   }
 
-  // Use label names for tags instead of IDs.
-  const customTags = page.labels.results.map((l) => l.name);
+  // Use label names for tags instead of IDs (filter out null names).
+  const customTags = removeNulls(page.labels.results.map((l) => l.name));
 
   const tags = [
     `createdAt:${pageCreatedAt.getTime()}`,
@@ -128,7 +129,9 @@ export async function confluenceUpsertPageToDataSource({
     updatedAt: lastPageVersionCreatedAt,
     content: renderedMarkdown,
     additionalPrefixes: {
-      labels: page.labels.results.map((l) => l.name).join(", ") || "none",
+      labels:
+        removeNulls(page.labels.results.map((l) => l.name)).join(", ") ||
+        "none",
     },
   });
 

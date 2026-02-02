@@ -1,6 +1,9 @@
 import * as React from "react";
 
-import type { ButtonProps, ButtonSizeType } from "@sparkle/components/Button";
+import type {
+  ButtonProps,
+  RegularButtonSize,
+} from "@sparkle/components/Button";
 import { Button } from "@sparkle/components/Button";
 import { MicIcon, SquareIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
@@ -24,7 +27,7 @@ export interface VoicePickerProps {
   elapsedSeconds: number;
   onRecordStart: () => void | Promise<void>;
   onRecordStop: () => void | Promise<void>;
-  size?: Exclude<ButtonSizeType, "xmini" | "mini">;
+  size?: Exclude<RegularButtonSize, "xmini" | "mini">;
   disabled?: boolean;
   showStopLabel?: boolean;
   pressDelayMs?: number;

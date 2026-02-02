@@ -1,4 +1,4 @@
-import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/mcp_actions";
+import { TOOL_NAME_SEPARATOR } from "@app/lib/actions/constants";
 import { isSearchResultResourceType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { isToolExecutionStatusBlocked } from "@app/lib/actions/statuses";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
@@ -11,7 +11,7 @@ import {
 import { addTraceToLangfuseDataset } from "@app/lib/api/instrumentation/langfuse_datasets";
 import { isLLMTraceId } from "@app/lib/api/llm/traces/buffer";
 import type { AuthenticatorType } from "@app/lib/auth";
-import { Authenticator, getFeatureFlags } from "@app/lib/auth";
+import { Authenticator } from "@app/lib/auth";
 import type { AgentMessageFeedbackModel } from "@app/lib/models/agent/conversation";
 import {
   AgentMessageModel,
@@ -217,18 +217,15 @@ export async function storeAgentAnalytics(
 
   await storeToElasticsearch(document);
 
-  const featureFlags = await getFeatureFlags(auth.getNonNullableWorkspace());
-  if (featureFlags.includes("agent_tool_outputs_analytics")) {
-    const toolOutputs = await extractRetrievalDocuments(auth, {
-      agentMessageRow,
-      agentAgentMessageRow,
-      conversationRow,
-      actions,
-    });
+  const toolOutputs = await extractRetrievalDocuments(auth, {
+    agentMessageRow,
+    agentAgentMessageRow,
+    conversationRow,
+    actions,
+  });
 
-    if (toolOutputs.length > 0) {
-      await storeRetrievalOutputsToElasticsearch(toolOutputs);
-    }
+  if (toolOutputs.length > 0) {
+    await storeRetrievalOutputsToElasticsearch(toolOutputs);
   }
 }
 
@@ -323,6 +320,9 @@ async function collectToolUsageFromMessage(
   });
 }
 
+// Internal server that doesn't have a persistent DB configuration.
+const FILE_SYSTEM_SERVER_NAME = "data_sources_file_system";
+
 async function extractRetrievalDocuments(
   auth: Authenticator,
   {
@@ -347,14 +347,21 @@ async function extractRetrievalDocuments(
     return [];
   }
 
+  // Filter out file_system server actions - they don't have DB configurations.
+  // Note: file_system uses ID 1010 (positive), so we can't rely on id > 0 alone.
+  const actionsWithConfigs = searchActions.filter(
+    (a) => a.metadata.internalMCPServerName !== FILE_SYSTEM_SERVER_NAME
+  );
   const configIds = Array.from(
-    new Set(searchActions.map((a) => a.mcpServerConfigurationId))
+    new Set(actionsWithConfigs.map((a) => a.mcpServerConfigurationId))
   );
 
-  // Convert string IDs to numeric ModelIds at call site.
+  // Convert string IDs to numeric ModelIds.
+  // Filter out non-positive IDs as a defensive check - some internal servers
+  // may use fake negative IDs (e.g., -1) that don't exist in the database.
   const configModelIds: ModelId[] = configIds
     .map((id) => parseInt(id, 10))
-    .filter((id) => !isNaN(id));
+    .filter((id) => !isNaN(id) && id > 0);
 
   // Fetch MCP server configurations for analytics tracking.
   // Using standalone resource allows independent querying for reporting purposes.
@@ -378,7 +385,7 @@ async function extractRetrievalDocuments(
   };
 
   const partialDocuments: (typeof baseDocument & {
-    mcp_server_configuration_id: string;
+    mcp_server_configuration_id?: number;
     mcp_server_name: string;
     data_source_view_id: string;
     data_source_id: string;
@@ -387,16 +394,12 @@ async function extractRetrievalDocuments(
   const dataSourceViewIds = new Set<string>();
 
   for (const action of searchActions) {
-    const config = configMap.get(action.mcpServerConfigurationId);
-    if (!config) {
-      continue;
-    }
-
     const actionOutputItems = outputItemsByActionId.get(action.id);
     if (!actionOutputItems) {
       continue;
     }
 
+    const config = configMap.get(action.mcpServerConfigurationId);
     const mcpServerName =
       action.metadata.internalMCPServerName ??
       action.metadata.mcpServerId ??
@@ -428,7 +431,7 @@ async function extractRetrievalDocuments(
 
       partialDocuments.push({
         ...baseDocument,
-        mcp_server_configuration_id: config.id.toString(),
+        ...(config ? { mcp_server_configuration_id: config.id } : {}),
         mcp_server_name: mcpServerName,
         data_source_view_id: dataSourceViewId,
         data_source_id: dataSourceId,

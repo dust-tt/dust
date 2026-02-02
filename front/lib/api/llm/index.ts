@@ -14,8 +14,8 @@ import { XaiLLM } from "@app/lib/api/llm/clients/xai";
 import { isXaiWhitelistedModelId } from "@app/lib/api/llm/clients/xai/types";
 import type { LLM } from "@app/lib/api/llm/llm";
 import type { LLMParameters } from "@app/lib/api/llm/types/options";
+import { getModelConfigByModelId } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
-import { SUPPORTED_MODEL_CONFIGS } from "@app/types";
 
 export async function getLLM(
   auth: Authenticator,
@@ -30,10 +30,8 @@ export async function getLLM(
     context,
   }: LLMParameters
 ): Promise<LLM | null> {
-  const modelConfiguration = SUPPORTED_MODEL_CONFIGS.find(
-    (config) => config.modelId === modelId
-  );
-  if (!modelConfiguration) {
+  const modelConfig = getModelConfigByModelId(modelId);
+  if (!modelConfig) {
     return null;
   }
 

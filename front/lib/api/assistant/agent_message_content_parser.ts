@@ -1,6 +1,7 @@
+import assert from "assert";
 import escapeRegExp from "lodash/escapeRegExp";
 
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,
@@ -13,11 +14,11 @@ import {
   TOGETHERAI_DEEPSEEK_R1_MODEL_ID,
   TOGETHERAI_DEEPSEEK_V3_MODEL_ID,
 } from "@app/types";
-import { assertNever } from "@app/types";
 import {
   CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
   DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION,
 } from "@app/types/assistant/chain_of_thought_meta_prompt";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 type AgentMessageTokenClassification = GenerationTokensEvent["classification"];
 
@@ -299,6 +300,7 @@ export function getDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
+  assert(model, "Model configuration not found in getDelimitersConfiguration");
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;
@@ -325,6 +327,10 @@ export function getCoTDelimitersConfiguration({
   agentConfiguration: LightAgentConfigurationType;
 }): DelimitersConfiguration {
   const model = getSupportedModelConfig(agentConfiguration.model);
+  assert(
+    model,
+    "Model configuration not found in getCoTDelimitersConfiguration"
+  );
 
   if (DEEPSEEK_MODELS.includes(model.modelId)) {
     return DEEPSEEK_CHAIN_OF_THOUGHT_DELIMITERS_CONFIGURATION;

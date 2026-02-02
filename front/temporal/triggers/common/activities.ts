@@ -1,6 +1,6 @@
 import {
-  isMCPConfigurationForRunAgent,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import {
@@ -23,8 +23,9 @@ import type {
   ConversationType,
   Result,
 } from "@app/types";
-import { assertNever, Ok } from "@app/types";
+import { Ok } from "@app/types";
 import type { TriggerType } from "@app/types/assistant/triggers";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 import { makeTriggerScheduleId } from "../schedule/client";
 
@@ -54,7 +55,7 @@ async function shouldCreateIndividualConversations(
       }
       // Check the chain of agents
       if (
-        isMCPConfigurationForRunAgent(action) &&
+        isServerSideMCPServerConfigurationWithName(action, "run_agent") &&
         action.childAgentId &&
         // Avoid infinite loop
         !checkedAgentConfigurationIds.includes(action.childAgentId)

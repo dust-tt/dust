@@ -1,7 +1,8 @@
 import { cva } from "class-variance-authority";
 import React from "react";
 
-import { Button, MiniButtonProps } from "@sparkle/components/Button";
+import type { IconOnlyButtonProps } from "@sparkle/components/Button";
+import { Button } from "@sparkle/components/Button";
 import { LinkWrapperProps } from "@sparkle/components/LinkWrapper";
 import {
   noHrefLink,
@@ -11,7 +12,13 @@ import {
 import { XMarkIcon } from "@sparkle/icons/app";
 import { cn } from "@sparkle/lib/utils";
 
-export const CARD_VARIANTS = ["primary", "secondary", "tertiary"] as const;
+export const CARD_VARIANTS = [
+  "primary",
+  "secondary",
+  "tertiary",
+  "highlight",
+  "warning",
+] as const;
 export type CardVariantType = (typeof CARD_VARIANTS)[number];
 
 export const CARD_SIZES = ["xs", "sm", "md", "lg"] as const;
@@ -40,6 +47,18 @@ const cardVariants = cva(
           "s-bg-muted-background",
           "s-border-border/0",
           "dark:s-bg-muted-background-night",
+          "dark:s-border-border-night/0"
+        ),
+        highlight: cn(
+          "s-bg-highlight-50",
+          "s-border-border/0",
+          "dark:s-bg-highlight-50-night",
+          "dark:s-border-border-night/0"
+        ),
+        warning: cn(
+          "s-bg-warning-50",
+          "s-border-border/0",
+          "dark:s-bg-warning-50-night",
           "dark:s-border-border-night/0"
         ),
         secondary: cn(
@@ -90,7 +109,8 @@ interface CardLinkProps extends CommonProps, LinkWrapperProps {
 }
 
 interface CardButtonProps
-  extends CommonProps, React.ButtonHTMLAttributes<HTMLDivElement> {
+  extends CommonProps,
+    React.ButtonHTMLAttributes<HTMLDivElement> {
   href?: never;
   target?: never;
   rel?: never;
@@ -176,13 +196,15 @@ interface CardPropsBase {
 }
 
 interface CardPropsWithLink
-  extends CardPropsBase, Omit<CardLinkProps, keyof CardPropsBase> {
+  extends CardPropsBase,
+    Omit<CardLinkProps, keyof CardPropsBase> {
   href: string;
   onClick?: never;
 }
 
 interface CardPropsWithButton
-  extends CardPropsBase, Omit<CardButtonProps, keyof CardPropsBase> {
+  extends CardPropsBase,
+    Omit<CardButtonProps, keyof CardPropsBase> {
   href?: never;
 }
 
@@ -227,7 +249,7 @@ CardActions.displayName = "CardActions";
 
 export const CardActionButton = React.forwardRef<
   HTMLButtonElement,
-  MiniButtonProps
+  IconOnlyButtonProps
 >(({ className, variant = "outline", icon = XMarkIcon, ...props }, ref) => {
   return (
     <Button

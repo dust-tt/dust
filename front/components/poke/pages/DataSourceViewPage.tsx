@@ -1,20 +1,17 @@
 import { Input, Page, Spinner, TextArea } from "@dust-tt/sparkle";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
+import { useRequiredPathParam, useSearchParam } from "@app/lib/platform";
 import { classNames } from "@app/lib/utils";
 import { usePokeDocument } from "@app/poke/swr/document";
-import type { LightWorkspaceType } from "@app/types";
 
-interface DataSourceViewPageProps {
-  owner: LightWorkspaceType;
-  dsId: string;
-  documentId: string | null;
-}
+export function DataSourceViewPage() {
+  const owner = useWorkspace();
+  useSetPokePageTitle(`${owner.name} - View Document`);
 
-export function DataSourceViewPage({
-  owner,
-  dsId,
-  documentId,
-}: DataSourceViewPageProps) {
+  const dsId = useRequiredPathParam("dsId");
+  const documentId = useSearchParam("documentId");
   const {
     data: documentData,
     isLoading,

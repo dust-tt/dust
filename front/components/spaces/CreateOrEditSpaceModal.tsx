@@ -200,6 +200,7 @@ export function CreateOrEditSpaceModal({
         await doUpdate(space, {
           isRestricted,
           groupIds: selectedGroups.map((group) => group.sId),
+          editorGroupIds: [],
           managementMode: "group",
           name: trimmedName,
         });
@@ -207,6 +208,7 @@ export function CreateOrEditSpaceModal({
         await doUpdate(space, {
           isRestricted,
           memberIds: selectedMembers.map((vm) => vm.sId),
+          editorIds: [],
           managementMode: "manual",
           name: trimmedName,
         });

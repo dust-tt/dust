@@ -8,7 +8,6 @@ import { SimilarSkillsDisplay } from "@app/components/skill_builder/SimilarSkill
 import { useSkillBuilderContext } from "@app/components/skill_builder/SkillBuilderContext";
 import { useDebounceWithAbort } from "@app/hooks/useDebounce";
 import { useSimilarSkills, useSkills } from "@app/lib/swr/skill_configurations";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 const AGENT_FACING_DESCRIPTION_FIELD_NAME = "agentFacingDescription";
@@ -17,8 +16,6 @@ const MIN_DESCRIPTION_LENGTH = 10;
 
 export function SkillBuilderAgentFacingDescriptionSection() {
   const { owner, skillId } = useSkillBuilderContext();
-  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
-  const isSimilarSkillsEnabled = hasFeature("skills_similar_display");
 
   const { getSimilarSkills } = useSimilarSkills({ owner });
   const { skills } = useSkills({
@@ -100,13 +97,11 @@ export function SkillBuilderAgentFacingDescriptionSection() {
               );
             }}
           />
-          {isSimilarSkillsEnabled && (
-            <SimilarSkillsDisplay
-              owner={owner}
-              similarSkills={similarSkills}
-              isLoading={isLoading}
-            />
-          )}
+          <SimilarSkillsDisplay
+            owner={owner}
+            similarSkills={similarSkills}
+            isLoading={isLoading}
+          />
         </div>
       )}
     </BaseFormFieldSection>

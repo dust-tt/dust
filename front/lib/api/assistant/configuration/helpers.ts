@@ -1,6 +1,6 @@
 import { fetchMCPServerActionConfigurations } from "@app/lib/actions/configuration/mcp";
 import { getFavoriteStates } from "@app/lib/api/assistant/get_favorite_states";
-import { getSupportedModelConfig } from "@app/lib/assistant";
+import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getPublicUploadBucket } from "@app/lib/file_storage";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
@@ -114,12 +114,7 @@ export async function enrichAgentConfigurations<V extends AgentFetchVariant>(
   let editorIds = agentIdsForUserAsEditor;
   if (!editorIds) {
     const agentIdsForGroups = user
-      ? await GroupResource.findAgentIdsForGroups(auth, [
-          ...auth
-            .groups()
-            .filter((g) => g.kind === "agent_editors")
-            .map((g) => g.id),
-        ])
+      ? await GroupResource.findAgentIdsForGroups(auth, auth.groupModelIds())
       : [];
 
     editorIds = agentIdsForGroups.map((g) => g.agentConfigurationId);

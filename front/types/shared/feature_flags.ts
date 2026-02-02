@@ -8,6 +8,10 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Fallback to Vertex Anthropic for some Anthropic models",
     stage: "dust_only",
   },
+  custom_model_feature: {
+    description: "Access to custom models loaded from external config",
+    stage: "dust_only",
+  },
   dust_edge_global_agent: {
     description:
       "Access to dust-edge global agent that we use internally to test other models on dust",
@@ -22,17 +26,17 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Access to dust-oai global agent running OpenAI models",
     stage: "dust_only",
   },
+  dust_next_global_agent: {
+    description:
+      "Access to dust-next global agent running a custom model for internal testing",
+    stage: "dust_only",
+  },
   notion_private_integration: {
     description: "Setup Notion private integration tokens",
     stage: "on_demand",
   },
   agent_to_yaml: {
     description: "Export and Import agents to/from YAML format",
-    stage: "dust_only",
-  },
-  agent_tool_outputs_analytics: {
-    description:
-      "Store agent tool outputs (e.g., retrieved documents) in Elasticsearch for analytics",
     stage: "dust_only",
   },
   agent_builder_copilot: {
@@ -212,16 +216,6 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
       "Discord bot integration for workspace-level Discord integration",
     stage: "dust_only",
   },
-  skills: {
-    description:
-      "Access to Skills, which are packaged sets of instructions and tools",
-    stage: "dust_only",
-  },
-  skills_similar_display: {
-    description:
-      "Display similar skills when creating a new skill to avoid duplicates",
-    stage: "dust_only",
-  },
   projects: {
     description: "Enable use Spaces as Projects",
     stage: "dust_only",
@@ -230,12 +224,22 @@ export const WHITELISTABLE_FEATURES_CONFIG = {
     description: "Databricks MCP tool",
     stage: "on_demand",
   },
-  phone_trial_paywall: {
-    description: "Phone verification during trial sign-up",
+  statuspage_tool: {
+    description: "Statuspage MCP tool for incident management",
     stage: "dust_only",
   },
-  ukg_ready_mcp: {
-    description: "UKG Ready MCP tool for workforce management",
+  dust_academy: {
+    description: "Access to Dust Academy learning content",
+    stage: "on_demand",
+  },
+  sandbox_tools: {
+    description:
+      "Sandbox MCP tool for executing code in isolated Linux containers",
+    stage: "dust_only",
+  },
+  google_drive_write_enabled: {
+    description:
+      "Google Docs/Sheets/Slides write capabilities via drive.file scope",
     stage: "dust_only",
   },
 } as const satisfies Record<string, FeatureFlag>;

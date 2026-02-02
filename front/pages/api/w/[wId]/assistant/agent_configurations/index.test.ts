@@ -7,7 +7,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import { getResourceIdFromSId } from "@app/lib/resources/string_ids";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
-import { FeatureFlagFactory } from "@app/tests/utils/FeatureFlagFactory";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { GroupSpaceFactory } from "@app/tests/utils/GroupSpaceFactory";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -233,9 +232,6 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - Skills with restric
         method: "POST",
       });
 
-    // Enable skills feature flag
-    await FeatureFlagFactory.basic("skills", workspace);
-
     await SpaceFactory.defaults(authenticator);
     const restrictedSpace = await SpaceFactory.regular(workspace);
     await restrictedSpace.addMembers(authenticator, { userIds: [user.sId] });
@@ -396,6 +392,7 @@ describe("POST /api/w/[wId]/assistant/agent_configurations - additionalRequested
             additionalConfiguration: {},
             dustAppConfiguration: null,
             secretName: null,
+            dustProject: null,
           },
         ],
         editors: [{ sId: user.sId }],

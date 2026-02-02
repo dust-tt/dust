@@ -8,34 +8,11 @@ import {
   getUserFromSession,
   withDefaultUserAuthPaywallWhitelisted,
 } from "@app/lib/iam/session";
-import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
-import { WorkspaceHasDomainModel } from "@app/lib/resources/storage/models/workspace_has_domain";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { useUser } from "@app/lib/swr/user";
 import { renderLightWorkspaceType } from "@app/lib/workspace";
 import logger from "@app/logger/logger";
-import type { UserTypeWithWorkspaces, WorkspaceType } from "@app/types";
-
-// Fetch workspace details for scenarios where auto-join is disabled.
-async function fetchWorkspaceDetails(
-  user: UserTypeWithWorkspaces
-): Promise<WorkspaceHasDomainModel | null> {
-  const [, userEmailDomain] = user.email.split("@");
-  const workspaceWithVerifiedDomain = await WorkspaceHasDomainModel.findOne({
-    where: {
-      domain: userEmailDomain,
-    },
-    include: [
-      {
-        model: WorkspaceModel,
-        as: "workspace",
-        required: true,
-      },
-    ],
-  });
-
-  return workspaceWithVerifiedDomain;
-}
+import type { WorkspaceType } from "@app/types";
 
 export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   workspace: WorkspaceType;
@@ -60,14 +37,11 @@ export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
   let status: "auto-join-disabled" | "revoked";
   if (flow === "no-auto-join") {
     status = "auto-join-disabled";
-    const workspaceHasDomain = await fetchWorkspaceDetails(user);
-    workspace = workspaceHasDomain?.workspace
-      ? new WorkspaceResource(
-          WorkspaceResource.model,
-          workspaceHasDomain.workspace.get()
-        )
-      : null;
-    workspaceVerifiedDomain = workspaceHasDomain?.domain ?? null;
+    const [, userEmailDomain] = user.email.split("@");
+    const result =
+      await WorkspaceResource.fetchByDomainWithInfo(userEmailDomain);
+    workspace = result?.workspace ?? null;
+    workspaceVerifiedDomain = result?.domainInfo.domain ?? null;
 
     if (!workspace || !workspaceVerifiedDomain) {
       logger.error(

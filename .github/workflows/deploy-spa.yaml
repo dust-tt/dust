@@ -1,0 +1,76 @@
+name: Deploy SPA to Cloudflare Pages
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "SPA to deploy"
+        type: choice
+        options:
+          - poke
+          - app
+        required: true
+      region:
+        description: "Default region for API endpoint"
+        type: choice
+        options:
+          - eu
+          - us
+        default: "eu"
+        required: true
+
+concurrency:
+  group: deploy-spa-${{ inputs.app }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node Dependencies
+        uses: ./.github/actions/setup-node-deps
+        with:
+          build-sdks: "true"
+          build-sparkle: "true"
+
+      - name: Build SPA
+        working-directory: front-spa
+        env:
+          NEXT_PUBLIC_VIRTUOSO_LICENSE_KEY: ${{ secrets.VIRTUOSO_LICENSE_KEY }}
+          NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: ${{ secrets.DD_CLIENT_TOKEN }}
+          NEXT_PUBLIC_DATADOG_SERVICE: ${{ inputs.app }}-spa
+          NEXT_PUBLIC_COMMIT_HASH: ${{ github.sha }}
+        run: |
+          set -a
+          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.prod
+          # Map all NEXT_PUBLIC_* to VITE_* for SPA
+          for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
+            export "VITE_${var#NEXT_PUBLIC_}=${!var}"
+          done
+          set +a
+          npm run build:${{ inputs.app }}
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: front-spa
+          command: pages deploy dist/${{ inputs.app }} --project-name=${{ inputs.app }}-dust-tt
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        run: |
+          echo "### SPA Deployed :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: ${{ inputs.app }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://${{ inputs.app }}.dust.tt" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: ${{ inputs.region }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+

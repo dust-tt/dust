@@ -12,6 +12,7 @@ import {
 import type { ComponentProps } from "react";
 import React, { useCallback, useMemo, useState } from "react";
 
+import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { cn } from "@app/components/poke/shadcn/lib/utils";
 import { useSendNotification } from "@app/hooks/useNotification";
 import {
@@ -491,6 +492,8 @@ function ProductionCheckCard({
 }
 
 export function ProductionChecksPage() {
+  useSetPokePageTitle("Production Checks");
+
   const { checks, isProductionChecksLoading, mutateProductionChecks } =
     usePokeProductionChecks();
   const { runCheck, isCheckRunning } = useRunProductionCheck();

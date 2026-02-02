@@ -10,7 +10,8 @@ import type {
   ModelProviderIdType,
   Result,
 } from "@app/types";
-import { Err, Ok, safeParseJSON } from "@app/types";
+import { Err, Ok } from "@app/types";
+import { safeParseJSON } from "@app/types/shared/utils/json_utils";
 
 const PROMPT = `Based on the instructions provided, generate a JSON schema that will be embedded in the following JSON schema:
 \`\`\`

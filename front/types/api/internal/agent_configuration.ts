@@ -90,6 +90,13 @@ const TablesConfigurationsCodec = t.array(
   })
 );
 
+// Projects
+
+const ProjectConfigurationCodec = t.type({
+  workspaceId: t.string,
+  projectId: t.string,
+});
+
 // Actions
 
 const DustAppRunActionConfigurationSchema = t.type({
@@ -140,6 +147,7 @@ const MCPServerActionConfigurationSchema = t.type({
   ),
   dustAppConfiguration: t.union([DustAppRunActionConfigurationSchema, t.null]),
   secretName: t.union([t.string, t.null]),
+  dustProject: t.union([t.null, ProjectConfigurationCodec]),
 });
 
 const multiActionsCommonFields = {
@@ -192,6 +200,7 @@ export const PostOrPatchAgentConfigurationRequestBodySchema = t.type({
         t.literal("active"),
         t.literal("archived"),
         t.literal("draft"),
+        t.literal("pending"),
       ]),
       scope: t.union([t.literal("hidden"), t.literal("visible")]),
       model: t.intersection([ModelConfigurationSchema, IsSupportedModelSchema]),

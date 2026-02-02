@@ -25,7 +25,7 @@ const ModelProviderIdSchema = FlexibleEnumSchema<
   | "noop"
 >();
 
-const ModelLLMIdSchema = FlexibleEnumSchema<
+type KnownModelLLMId =
   | "gpt-3.5-turbo"
   | "gpt-4-turbo"
   | "gpt-4o-2024-08-06"
@@ -82,8 +82,12 @@ const ModelLLMIdSchema = FlexibleEnumSchema<
   | "grok-4-fast-reasoning-latest"
   | "grok-4-1-fast-non-reasoning-latest"
   | "grok-4-1-fast-reasoning-latest"
-  | "noop" // Noop
->();
+  | "noop"; // Noop
+
+// Cast to allow custom/unknown model IDs while preserving autocomplete.
+const ModelLLMIdSchema = FlexibleEnumSchema<KnownModelLLMId>() as z.ZodType<
+  KnownModelLLMId | (string & {})
+>;
 
 const EmbeddingProviderIdSchema = FlexibleEnumSchema<"openai" | "mistral">();
 
@@ -203,6 +207,8 @@ export const supportedImageFileFormats = {
   "image/png": [".png"],
   "image/gif": [".gif"],
   "image/webp": [".webp"],
+  "image/svg+xml": [".svg"],
+  "image/bmp": [".bmp"],
 } as const;
 
 export const supportedAudioFileFormats = {
@@ -321,6 +327,7 @@ const UserMessageOriginSchema = z
     "zapier",
     "zendesk",
     "onboarding_conversation",
+    "agent_copilot",
   ])
   .catch("api")
   .or(z.null())
@@ -643,7 +650,7 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "agent_builder_copilot"
   | "agent_management_tool"
   | "agent_to_yaml"
-  | "agent_tool_outputs_analytics"
+  | "custom_model_feature"
   | "anthropic_vertex_fallback"
   | "ashby_tool"
   | "claude_4_5_opus_feature"
@@ -657,11 +664,14 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "disable_run_logs"
   | "disallow_agent_creation_to_users"
   | "discord_bot"
+  | "dust_academy"
   | "dust_edge_global_agent"
   | "dust_quick_global_agent"
   | "dust_oai_global_agent"
+  | "dust_next_global_agent"
   | "fireworks_new_model_feature"
   | "front_tool"
+  | "google_drive_write_enabled"
   | "google_sheets_tool"
   | "hootl_subscriptions"
   | "http_client_tool"
@@ -676,23 +686,21 @@ const WhitelistableFeaturesSchema = FlexibleEnumSchema<
   | "openai_o1_feature"
   | "openai_o1_high_reasoning_feature"
   | "openai_usage_mcp"
-  | "phone_trial_paywall"
   | "restrict_agents_publishing"
   | "salesforce_synced_queries"
   | "salesforce_tool_write"
   | "salesforce_tool"
   | "salesloft_tool"
+  | "sandbox_tools"
   | "self_created_slack_app_connector_rollout"
   | "show_debug_tools"
-  | "skills_similar_display"
-  | "skills"
   | "slab_mcp"
   | "slack_bot_mcp"
   | "slack_enhanced_default_agent"
   | "slack_message_splitting"
   | "slideshow"
   | "snowflake_tool"
-  | "ukg_ready_mcp"
+  | "statuspage_tool"
   | "usage_data_api"
   | "xai_feature"
 >();
@@ -791,7 +799,9 @@ const GlobalAgentStatusSchema = FlexibleEnumSchema<
   | "disabled_free_workspace"
 >();
 
-const AgentStatusSchema = FlexibleEnumSchema<"active" | "archived" | "draft">();
+const AgentStatusSchema = FlexibleEnumSchema<
+  "active" | "archived" | "draft" | "pending"
+>();
 
 const AgentConfigurationStatusSchema = z.union([
   AgentStatusSchema,
@@ -1259,6 +1269,7 @@ export type MCPValidationMetadataPublicType = z.infer<
 
 const ToolExecutionBlockedStatusSchema = z.enum([
   "blocked_authentication_required",
+  "blocked_file_authorization_required",
   "blocked_validation_required",
   "blocked_child_action_input_required",
 ]);
@@ -2958,6 +2969,7 @@ const InternalAllowedIconSchema = FlexibleEnumSchema<
   | "SalesforceLogo"
   | "SlackLogo"
   | "SnowflakeLogo"
+  | "StatuspageLogo"
   | "StripeLogo"
   | "SupabaseLogo"
   | "UkgLogo"

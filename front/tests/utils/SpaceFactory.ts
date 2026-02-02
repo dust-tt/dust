@@ -4,8 +4,14 @@ import type { Authenticator } from "@app/lib/auth";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupFactory } from "@app/tests/utils/GroupFactory";
+import { UserFactory } from "@app/tests/utils/UserFactory";
 import type { WorkspaceType } from "@app/types";
-import { removeNulls } from "@app/types";
+import {
+  PROJECT_EDITOR_GROUP_PREFIX,
+  PROJECT_GROUP_PREFIX,
+  removeNulls,
+  SPACE_GROUP_PREFIX,
+} from "@app/types";
 
 export class SpaceFactory {
   static async defaults(auth: Authenticator) {
@@ -52,7 +58,7 @@ export class SpaceFactory {
   static async regular(workspace: WorkspaceType) {
     const name = "space " + faker.string.alphanumeric(8);
     const group = await GroupResource.makeNew({
-      name: `Group for space ${name}`,
+      name: `${SPACE_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
       kind: "regular",
     });
@@ -78,13 +84,26 @@ export class SpaceFactory {
     );
   }
 
-  static async project(workspace: WorkspaceType) {
+  static async project(workspace: WorkspaceType, creatorId?: number) {
     const name = "project " + faker.string.alphanumeric(8);
     const group = await GroupResource.makeNew({
-      name: `Group for space ${name}`,
+      name: `${PROJECT_GROUP_PREFIX} ${name}`,
       workspaceId: workspace.id,
       kind: "regular",
     });
+
+    // Create an editor group with the creator as a member if creatorId is provided
+    const defaultCreator = await UserFactory.basic();
+    const editorGroup = await GroupResource.makeNew(
+      {
+        name: `${PROJECT_EDITOR_GROUP_PREFIX} ${name}`,
+        workspaceId: workspace.id,
+        kind: "space_editors",
+      },
+      {
+        memberIds: [creatorId ?? defaultCreator.id],
+      }
+    );
 
     return SpaceResource.makeNew(
       {
@@ -92,7 +111,7 @@ export class SpaceFactory {
         kind: "project",
         workspaceId: workspace.id,
       },
-      { members: [group] }
+      { members: [group], editors: [editorGroup] }
     );
   }
 }

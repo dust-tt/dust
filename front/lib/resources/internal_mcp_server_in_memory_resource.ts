@@ -17,13 +17,12 @@ import {
   getInternalMCPServerMetadata,
   getInternalMCPServerNameAndWorkspaceId,
   isAutoInternalMCPServerName,
-  isInternalMCPServerOfName,
+  matchesInternalMCPServerName,
 } from "@app/lib/actions/mcp_internal_actions/constants";
 import { isEnabledForWorkspace } from "@app/lib/actions/mcp_internal_actions/enabled";
 import { extractMetadataFromServerVersion } from "@app/lib/actions/mcp_metadata_extraction";
 import type { MCPServerType } from "@app/lib/api/mcp";
 import type { Authenticator } from "@app/lib/auth";
-import { getFeatureFlags } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { InternalMCPServerCredentialModel } from "@app/lib/models/agent/actions/internal_mcp_server_credentials";
 import { MCPServerConnectionModel } from "@app/lib/models/agent/actions/mcp_server_connection";
@@ -57,25 +56,14 @@ export class InternalMCPServerInMemoryResource {
       return null;
     }
 
-    let availability = getAvailabilityOfInternalMCPServerById(id);
-
     const name = r.value.name;
-    // TODO(skills-GA): Remove this check once skills are GA.
-    // When skills feature flag is enabled, treat interactive_content and deep_dive
-    // as auto_hidden_builder since they are exposed through skills instead.
-    if (name === "interactive_content" || name === "deep_dive") {
-      const featureFlags = await getFeatureFlags(
-        auth.getNonNullableWorkspace()
-      );
-      if (featureFlags.includes("skills")) {
-        availability = "auto_hidden_builder";
-      }
-    }
 
     const isEnabled = await isEnabledForWorkspace(auth, name);
     if (!isEnabled) {
       return null;
     }
+
+    const availability = getAvailabilityOfInternalMCPServerById(id);
 
     const server = new this(id, availability);
 
@@ -88,8 +76,9 @@ export class InternalMCPServerInMemoryResource {
     } else {
       // TODO(SKILLS 2025-12-16 flav): Temporary dynamic import to avoid circular dependency.
       // Bigger refactoring to extract this logic from the resource will come later.
-      const { getCachedMetadata } =
-        await import("@app/lib/actions/mcp_cached_metadata");
+      const { getCachedMetadata } = await import(
+        "@app/lib/actions/mcp_cached_metadata"
+      );
       const cachedMetadata = await getCachedMetadata(auth, id);
       if (!cachedMetadata) {
         return null;
@@ -140,7 +129,7 @@ export class InternalMCPServerInMemoryResource {
 
       if (!allowsMultipleInstancesOfInternalMCPServerByName(name)) {
         const alreadyExistsForSameName = alreadyUsedIds.some((r) => {
-          return isInternalMCPServerOfName(r.internalMCPServerId, name);
+          return matchesInternalMCPServerName(r.internalMCPServerId, name);
         });
 
         if (alreadyExistsForSameName) {

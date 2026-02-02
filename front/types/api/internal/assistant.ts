@@ -10,6 +10,11 @@ const AgentMentionSchema = t.type({
 });
 const UserMentionSchema = t.type({ type: t.literal("user"), userId: t.string });
 
+const UserMessageOriginSchema = t.union([
+  t.literal("web"),
+  t.literal("agent_copilot"),
+]);
+
 export const MessageBaseSchema = t.type({
   content: t.refinement(
     t.string,
@@ -27,11 +32,17 @@ export const MessageBaseSchema = t.type({
       selectedMCPServerViewIds: t.array(t.string),
       selectedSkillIds: t.array(t.string),
       originMessageId: t.string,
+      origin: UserMessageOriginSchema,
     }),
   ]),
 });
 
-export const InternalPostMessagesRequestBodySchema = MessageBaseSchema;
+export const InternalPostMessagesRequestBodySchema = t.intersection([
+  MessageBaseSchema,
+  t.partial({
+    skipToolsValidation: t.boolean,
+  }),
+]);
 
 const ContentFragmentBaseSchema = t.intersection([
   t.type({
@@ -187,17 +198,25 @@ export type InternalPostContentFragmentRequestBodyType = t.TypeOf<
   typeof InternalPostContentFragmentRequestBodySchema
 >;
 
-export const InternalPostConversationsRequestBodySchema = t.type({
-  title: t.union([t.string, t.null]),
-  visibility: t.union([
-    t.literal("unlisted"),
-    t.literal("deleted"),
-    t.literal("test"),
-  ]),
-  spaceId: t.union([t.string, t.null]),
-  message: t.union([MessageBaseSchema, t.null]),
-  contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
-});
+const ConversationMetadataSchema = t.UnknownRecord;
+
+export const InternalPostConversationsRequestBodySchema = t.intersection([
+  t.type({
+    title: t.union([t.string, t.null]),
+    visibility: t.union([
+      t.literal("unlisted"),
+      t.literal("deleted"),
+      t.literal("test"),
+    ]),
+    spaceId: t.union([t.string, t.null]),
+    message: t.union([MessageBaseSchema, t.null]),
+    contentFragments: t.array(InternalPostContentFragmentRequestBodySchema),
+  }),
+  t.partial({
+    metadata: ConversationMetadataSchema,
+    skipToolsValidation: t.boolean,
+  }),
+]);
 
 export const InternalPostBuilderSuggestionsRequestBodySchema = t.union([
   t.type({

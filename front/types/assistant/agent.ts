@@ -2,6 +2,7 @@ import type {
   MCPServerConfigurationType,
   MCPToolConfigurationType,
 } from "@app/lib/actions/mcp";
+import type { GlobalSkillId } from "@app/lib/resources/skill/global/registry";
 import type {
   ModelIdType,
   ModelProviderIdType,
@@ -36,8 +37,11 @@ export type GlobalAgentStatus =
  *   version
  * - "draft" is used for the "try" button in builder, when the agent is not yet
  *   fully created / updated
+ * - "pending" is used when the agent builder is opened for a new agent, before
+ *   it is saved for the first time (allows capturing sId early). It allows having
+ *   a sId before creating the agent.
  */
-export type AgentStatus = "active" | "archived" | "draft";
+export type AgentStatus = "active" | "archived" | "draft" | "pending";
 export type AgentConfigurationStatus = AgentStatus | GlobalAgentStatus;
 
 /**
@@ -159,6 +163,7 @@ export type LightAgentConfigurationType = {
 export type AgentConfigurationType = LightAgentConfigurationType & {
   // If empty, no actions are performed, otherwise the actions are performed.
   actions: MCPServerConfigurationType[];
+  skills?: GlobalSkillId[];
 };
 
 export interface TemplateAgentConfigurationType {

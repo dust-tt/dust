@@ -11,20 +11,21 @@ import {
   getServerTypeAndIdFromSId,
 } from "@app/lib/actions/mcp_helper";
 import { getAvatar } from "@app/lib/actions/mcp_icons";
-import { isInternalMCPServerOfName } from "@app/lib/actions/mcp_internal_actions/constants";
+import { matchesInternalMCPServerName } from "@app/lib/actions/mcp_internal_actions/constants";
 import { getMCPServerRequirements } from "@app/lib/actions/mcp_internal_actions/input_configuration";
 import {
   isMCPServerConfiguration,
   isServerSideMCPServerConfiguration,
+  isServerSideMCPServerConfigurationWithName,
 } from "@app/lib/actions/types/guards";
 import type { MCPServerTypeWithViews } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { useMCPServers, useMCPServerViews } from "@app/lib/swr/mcp_servers";
 import { useAgentConfigurationSkills } from "@app/lib/swr/skills";
 import { useSpaces } from "@app/lib/swr/spaces";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { AgentConfigurationType, LightWorkspaceType } from "@app/types";
-import { asDisplayName, assertNever, removeNulls } from "@app/types";
+import { asDisplayName, removeNulls } from "@app/types";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 
 interface AssistantToolsSectionProps {
   agentConfiguration: AgentConfigurationType;
@@ -48,7 +49,7 @@ const isHiddenDustAction = (action: MCPServerConfigurationType) => {
   }
   if (isServerSideMCPServerConfiguration(action)) {
     return HIDDEN_DUST_ACTIONS.some((serverName) =>
-      isInternalMCPServerOfName(action.internalMCPServerId, serverName)
+      matchesInternalMCPServerName(action.internalMCPServerId, serverName)
     );
   }
   return false;
@@ -59,14 +60,12 @@ export function AssistantSkillsToolsSection({
   owner,
   isDustAgent,
 }: AssistantToolsSectionProps) {
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { mcpServers, isMCPServersLoading: isToolsLoading } = useMCPServers({
     owner,
   });
   const { skills, isSkillsLoading } = useAgentConfigurationSkills({
     owner,
     agentConfigurationId: agentConfiguration.sId,
-    disabled: !featureFlags.includes("skills"),
   });
 
   const { availableToolsets, isLoading: isToolsetsLoading } =
@@ -87,7 +86,7 @@ export function AssistantSkillsToolsSection({
   const sortedSkills = useMemo(() => _.sortBy(skills, "name"), [skills]);
 
   const hasTools = sortedActions.length > 0 || availableToolsets.length > 0;
-  const hasSkills = featureFlags.includes("skills") && skills.length > 0;
+  const hasSkills = skills.length > 0;
 
   return (
     <div className="flex flex-col gap-5">
@@ -182,10 +181,8 @@ function useAvailableToolsets({
 }) {
   const toolsetsAction = useMemo(
     () =>
-      agentConfiguration.actions.find(
-        (action) =>
-          isServerSideMCPServerConfiguration(action) &&
-          isInternalMCPServerOfName(action.internalMCPServerId, "toolsets")
+      agentConfiguration.actions.find((action) =>
+        isServerSideMCPServerConfigurationWithName(action, "toolsets")
       ),
     [agentConfiguration.actions]
   );

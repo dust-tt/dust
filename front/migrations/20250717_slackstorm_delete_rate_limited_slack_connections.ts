@@ -3,6 +3,7 @@ import { Authenticator } from "@app/lib/auth";
 import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceModel } from "@app/lib/resources/storage/models/data_source";
 import { WorkspaceModel } from "@app/lib/resources/storage/models/workspace";
+import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
 
 // Source: https://docs.google.com/spreadsheets/d/1dUnETLW0grjMe-zxuIb9PDlIYdIgt3eKWFQVUhdmkto
@@ -52,11 +53,7 @@ makeScript(
         continue;
       }
 
-      const workspace = await WorkspaceModel.findOne({
-        where: {
-          id: ds.workspaceId,
-        },
-      });
+      const workspace = await WorkspaceResource.fetchByModelId(ds.workspaceId);
       if (!workspace) {
         logger.warn(
           { connectorId, workspaceId: ds.workspaceId },
@@ -83,10 +80,9 @@ makeScript(
       }
 
       if (execute) {
-        const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-          auth,
-          dataSource
-        );
+        const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+          dataSource,
+        });
         if (delRes.isErr()) {
           logger.error(
             { error: delRes.error, connectorId },

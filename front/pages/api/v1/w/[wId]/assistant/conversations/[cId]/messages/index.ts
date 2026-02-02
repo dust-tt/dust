@@ -16,7 +16,7 @@ import {
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
-  hasReachedProgrammaticUsageLimits,
+  checkProgrammaticUsageLimits,
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage_tracking";
 import type { Authenticator } from "@app/lib/auth";
@@ -137,24 +137,17 @@ async function handler(
 
       const origin = context.origin ?? "api";
 
-      const hasReachedLimits = isProgrammaticUsage(auth, {
-        userMessageOrigin: origin,
-      })
-        ? await hasReachedProgrammaticUsageLimits(auth)
-        : false;
-      if (hasReachedLimits) {
-        const errorMessage = auth.isAdmin()
-          ? "Your workspace has run out of programmatic usage credits. " +
-            "Please purchase more credits in the Developers > Credits section of the Dust dashboard."
-          : "Your workspace has run out of programmatic usage credits. " +
-            "Please ask a Dust workspace admin to purchase more credits.";
-        return apiError(req, res, {
-          status_code: 429,
-          api_error: {
-            type: "rate_limit_error",
-            message: errorMessage,
-          },
-        });
+      if (isProgrammaticUsage(auth, { userMessageOrigin: origin })) {
+        const limitsResult = await checkProgrammaticUsageLimits(auth);
+        if (limitsResult.isErr()) {
+          return apiError(req, res, {
+            status_code: 429,
+            api_error: {
+              type: "rate_limit_error",
+              message: limitsResult.error.message,
+            },
+          });
+        }
       }
 
       if (isEmptyString(context.username)) {
