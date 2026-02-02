@@ -47,6 +47,12 @@ import { NewDatasetPage } from "@dust-tt/front/components/pages/spaces/apps/NewD
 import { RunPage } from "@dust-tt/front/components/pages/spaces/apps/RunPage";
 import { RunsPage } from "@dust-tt/front/components/pages/spaces/apps/RunsPage";
 
+// Builder/Agents pages
+import { CreateAgentPage } from "@dust-tt/front/components/pages/builder/agents/CreateAgentPage";
+import { EditAgentPage } from "@dust-tt/front/components/pages/builder/agents/EditAgentPage";
+import { ManageAgentsPage } from "@dust-tt/front/components/pages/builder/agents/ManageAgentsPage";
+import { NewAgentPage } from "@dust-tt/front/components/pages/builder/agents/NewAgentPage";
+
 const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
@@ -147,6 +153,12 @@ const router = createBrowserRouter(
         },
         { path: "spaces/:spaceId/apps/:aId/runs", element: <RunsPage /> },
         { path: "spaces/:spaceId/apps/:aId/runs/:runId", element: <RunPage /> },
+
+        // Builder/Agents
+        { path: "builder/agents", element: <ManageAgentsPage /> },
+        { path: "builder/agents/create", element: <CreateAgentPage /> },
+        { path: "builder/agents/new", element: <NewAgentPage /> },
+        { path: "builder/agents/:aId", element: <EditAgentPage /> },
       ],
     },
     { path: "*", element: <Navigate to="/" replace /> },
