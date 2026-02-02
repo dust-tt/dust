@@ -22,7 +22,7 @@ import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversation
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
   ConversationType,
@@ -46,13 +46,14 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
-  spaceInfo: GetSpaceResponseBody["space"];
+  spaceInfo: RichSpaceType;
   onSubmit: (
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
+  onOpenMembersPanel: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -62,7 +63,9 @@ export function SpaceConversationsTab({
   isConversationsLoading,
   spaceInfo,
   onSubmit,
+  onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
+  const { isEditor: isProjectEditor } = spaceInfo;
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -181,7 +184,12 @@ export function SpaceConversationsTab({
           <SpaceJournalEntry owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
-          {!hasHistory && <SpaceConversationsActions />}
+          {!hasHistory && (
+            <SpaceConversationsActions
+              isEditor={isProjectEditor}
+              onOpenMembersPanel={onOpenMembersPanel}
+            />
+          )}
 
           {/* Space conversations section */}
           <div className="w-full">
