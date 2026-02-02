@@ -157,43 +157,22 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
     : locationWithoutSpace;
 }
 
-function safeDecodeURIComponent(value: string): string {
+const SHAREPOINT_SITE_NAME_REGEX =
+  /^https?:\/\/[^/]*sharepoint\.com\/(?:\:f:\/r\/)?(?:sites|teams)\/([^/?#]+)/i;
+
+function extractSharePointSiteNameFromSourceUrl(sourceUrl: string): string | null {
+  const match = sourceUrl.match(SHAREPOINT_SITE_NAME_REGEX);
+  const encodedSiteName = match?.[1];
+  if (!encodedSiteName) {
+    return null;
+  }
+
   try {
-    return decodeURIComponent(value);
-  } catch (err) {
+    return decodeURIComponent(encodedSiteName);
+  } catch {
     // decodeURIComponent throws URIError for malformed escape sequences.
-    if (err instanceof URIError) {
-      return value;
-    }
-    throw err;
+    return encodedSiteName;
   }
-}
-
-function extractSharePointSiteNameFromSourceUrl(
-  sourceUrl: string
-): string | null {
-  let url: URL;
-  try {
-    url = new URL(sourceUrl);
-  } catch (err) {
-    if (err instanceof TypeError) {
-      return null;
-    }
-    throw err;
-  }
-
-  if (!url.hostname.includes("sharepoint.com")) {
-    return null;
-  }
-
-  const segments = url.pathname.split("/").filter(Boolean);
-  const sitesIndex = segments.findIndex((s) => s === "sites" || s === "teams");
-  if (sitesIndex === -1 || sitesIndex + 1 >= segments.length) {
-    return null;
-  }
-
-  const siteSegment = segments[sitesIndex + 1];
-  return siteSegment ? safeDecodeURIComponent(siteSegment) : null;
 }
 
 /**
@@ -208,7 +187,11 @@ export function getDisplayTitleForDataSourceViewContentNode(
     return node.title;
   }
 
-  if (node.type !== "folder" || node.parentInternalId !== null || !node.sourceUrl) {
+  if (
+    node.type !== "folder" ||
+    node.parentInternalId !== null ||
+    !node.sourceUrl
+  ) {
     return node.title;
   }
 
