@@ -9,6 +9,8 @@ import {
   BoltIcon,
   BookOpenIcon,
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Checkbox,
   CheckIcon,
   Chip,
@@ -98,6 +100,22 @@ const getRandomSubset = <T,>(items: T[], count: number) => {
   const shuffled = [...items].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, Math.min(count, items.length));
 };
+
+const insightsTimeRangeOptions = [
+  "Last 7 days",
+  "Last 14 days",
+  "Last 30 days",
+  "Last 90 days",
+];
+
+const insightsVersionOptions = [
+  "v1, Jan 20, 2026, 2:34 PM",
+  "v2, Jan 18, 2026, 9:12 AM",
+  "v3, Jan 15, 2026, 4:08 PM",
+  "v4, Jan 12, 2026, 11:43 AM",
+  "v5, Jan 9, 2026, 3:27 PM",
+  "v6, Jan 6, 2026, 8:55 AM",
+];
 
 const pickProjectsWithVisibility = <T,>(
   openItems: T[],
@@ -217,6 +235,15 @@ export default function AgentBuilder() {
   } | null>(null);
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
     () => new Set()
+  );
+  const [insightsSwitch, setInsightsSwitch] = useState<
+    "time-range" | "version"
+  >("time-range");
+  const [insightsTimeRange, setInsightsTimeRange] = useState(
+    insightsTimeRangeOptions[0]
+  );
+  const [insightsVersion, setInsightsVersion] = useState(
+    insightsVersionOptions[0]
   );
   const [tagSearch, setTagSearch] = useState("");
   const [spacesProjectsSearch, setSpacesProjectsSearch] = useState("");
@@ -1163,10 +1190,79 @@ export default function AgentBuilder() {
                 </TabsContent>
                 <TabsContent
                   value="insights"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground">
-                    Insights panel content.
+                  <div className="s-flex s-flex-col s-gap-4 s-p-4">
+                    <div className="s-flex s-flex-wrap s-items-center s-gap-2">
+                      <h3 className="s-heading-lg s-flex-1">Inisghts</h3>
+                      <ButtonsSwitchList
+                        size="sm"
+                        defaultValue={insightsSwitch}
+                        onValueChange={(value) => {
+                          setInsightsSwitch(
+                            value === "version" ? "version" : "time-range"
+                          );
+                        }}
+                      >
+                        <ButtonsSwitch
+                          value="time-range"
+                          label="By Timerange"
+                        />
+                        <ButtonsSwitch value="version" label="By version" />
+                      </ButtonsSwitchList>
+                    </div>
+                    <Tabs
+                      defaultValue="agent-analytics"
+                      className="s-flex s-flex-col s-gap-2"
+                    >
+                      <TabsList>
+                        <TabsTrigger
+                          value="agent-analytics"
+                          label="Analytics"
+                        />
+                        <TabsTrigger value="user-feedback" label="Feedback" />
+                        <div className="s-flex-1" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              isSelect
+                              label={
+                                insightsSwitch === "time-range"
+                                  ? insightsTimeRange
+                                  : insightsVersion
+                              }
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel
+                              label={
+                                insightsSwitch === "time-range"
+                                  ? "Time range"
+                                  : "Version"
+                              }
+                            />
+                            {(insightsSwitch === "time-range"
+                              ? insightsTimeRangeOptions
+                              : insightsVersionOptions
+                            ).map((item) => (
+                              <DropdownMenuItem
+                                key={item}
+                                label={item}
+                                onSelect={() => {
+                                  if (insightsSwitch === "time-range") {
+                                    setInsightsTimeRange(item);
+                                  } else {
+                                    setInsightsVersion(item);
+                                  }
+                                }}
+                              />
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TabsList>
+                    </Tabs>
                   </div>
                 </TabsContent>
                 <TabsContent
