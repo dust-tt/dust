@@ -12,7 +12,7 @@ const Tabs = TabsPrimitive.Root;
 const tabsTriggerVariants = cva(
   [
     "s-relative",
-    "after:s-absolute after:s-bottom-[-9px] after:s-left-1/2 after:s-h-[2px]",
+    "after:s-absolute after:s-bottom-[-10px] after:s-left-1/2 after:s-h-[2px]",
     "after:s-w-full after:s--translate-x-1/2",
     "after:s-bg-foreground after:s-opacity-0 data-[state=active]:after:s-opacity-100",
     "dark:after:s-bg-foreground-night",

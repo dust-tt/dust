@@ -229,7 +229,6 @@ const labelVariants = cva("", {
   ],
   defaultVariants: {
     size: "sm",
-    hasLighterFont: false,
   },
 });
 
@@ -258,7 +257,8 @@ const chevronVariantMap = {
 } as const;
 
 export interface MetaButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isRounded?: boolean;
@@ -332,7 +332,6 @@ const loadingContainerVariants = cva("-s-mx-0.5", {
   },
   defaultVariants: {
     size: "sm",
-    hasLighterFont: false,
   },
 });
 
