@@ -4,7 +4,6 @@ import {
   GET_MENTION_MARKDOWN_TOOL_NAME,
   SEARCH_AVAILABLE_USERS_TOOL_NAME,
 } from "@app/lib/api/actions/servers/common_utilities/metadata";
-import { createConversation } from "@app/lib/api/assistant/conversation";
 import {
   constructGuidelinesSection,
   constructProjectContextSection,
@@ -17,6 +16,7 @@ import { ConversationFactory } from "@app/tests/utils/ConversationFactory";
 import { createResourceTest } from "@app/tests/utils/generic_resource_tests";
 import type {
   AgentConfigurationType,
+  ConversationType,
   ConversationWithoutContentType,
   ModelConfigurationType,
   UserMessageType,
@@ -200,13 +200,13 @@ describe("constructPromptMultiActions - system prompt stability", () => {
   let workspace1: WorkspaceType;
   let agentConfig1: AgentConfigurationType;
   let userMessage1: UserMessageType;
-  let conversation1: ConversationWithoutContentType;
+  let conversation1: ConversationType;
 
   let authenticator2: Authenticator;
   let workspace2: WorkspaceType;
   let agentConfig2: AgentConfigurationType;
   let userMessage2: UserMessageType;
-  let conversation2: ConversationWithoutContentType;
+  let conversation2: ConversationType;
 
   let modelConfig: ModelConfigurationType;
 
@@ -224,10 +224,9 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       }
     );
 
-    conversation1 = await createConversation(authenticator1, {
-      title: "Test Conversation 1",
-      visibility: "unlisted",
-      spaceId: null,
+    conversation1 = await ConversationFactory.create(authenticator1, {
+      agentConfigurationId: agentConfig1.sId,
+      messagesCreatedAt: [],
     });
 
     const { userMessage: um1 } = await ConversationFactory.createUserMessage({
@@ -252,10 +251,9 @@ describe("constructPromptMultiActions - system prompt stability", () => {
       }
     );
 
-    conversation2 = await createConversation(authenticator2, {
-      title: "Test Conversation 2 - Different Title",
-      visibility: "unlisted",
-      spaceId: null,
+    conversation2 = await ConversationFactory.create(authenticator2, {
+      agentConfigurationId: agentConfig2.sId,
+      messagesCreatedAt: [],
     });
 
     const { userMessage: um2 } = await ConversationFactory.createUserMessage({
