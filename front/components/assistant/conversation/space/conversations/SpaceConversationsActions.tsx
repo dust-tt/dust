@@ -8,12 +8,12 @@ import {
 
 interface SpaceConversationsActionsProps {
   isEditor: boolean;
-  onOpenInvitePanel: () => void;
+  onOpenManagePanel: () => void;
 }
 
 export function SpaceConversationsActions({
   isEditor,
-  onOpenInvitePanel,
+  onOpenManagePanel,
 }: SpaceConversationsActionsProps) {
   const suggestions = [
     {
@@ -31,7 +31,7 @@ export function SpaceConversationsActions({
             label: "Invite members",
             icon: ContactsUserIcon,
             onClick: () => {
-              onOpenInvitePanel();
+              onOpenManagePanel();
             },
           },
         ]

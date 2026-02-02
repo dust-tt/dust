@@ -22,27 +22,28 @@ import {
   useUpdateProjectMetadata,
   useUpdateSpace,
 } from "@app/lib/swr/spaces";
-import type { LightWorkspaceType, SpaceType, SpaceUserType } from "@app/types";
+import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
+import type { LightWorkspaceType } from "@app/types";
 import type { PatchProjectMetadataBodyType } from "@app/types/api/internal/spaces";
 import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
-  space: SpaceType;
-  projectMembers: SpaceUserType[];
-  isPublic: boolean;
-  isProjectEditor: boolean;
-  onOpenInvitePanel?: () => void;
+  space: RichSpaceType;
+  onOpenManagePanel?: () => void;
 }
 
 export function SpaceAboutTab({
   owner,
   space,
-  projectMembers,
-  isPublic,
-  isProjectEditor,
-  onOpenInvitePanel,
+  onOpenManagePanel: onOpenManagePanel,
 }: SpaceAboutTabProps) {
+  const {
+    members: projectMembers,
+    isEditor: isProjectEditor,
+    isRestricted,
+  } = space;
+  const isPublic = !isRestricted;
   const [searchSelectedMembers, setSearchSelectedMembers] = useState("");
 
   const confirm = useContext(ConfirmContext);
@@ -188,12 +189,12 @@ export function SpaceAboutTab({
 
         <div className="flex items-center gap-2">
           <h3 className="heading-lg flex-1">Members</h3>
-          {isProjectEditor && onOpenInvitePanel && (
+          {isProjectEditor && onOpenManagePanel && (
             <Button
               label="Manage"
               variant="outline"
               icon={UserGroupIcon}
-              onClick={onOpenInvitePanel}
+              onClick={onOpenManagePanel}
             />
           )}
         </div>

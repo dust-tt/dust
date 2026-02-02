@@ -34,15 +34,16 @@ export type SpaceCategoryInfo = {
   count: number;
 };
 
+export type RichSpaceType = SpaceType & {
+  categories: { [key: string]: SpaceCategoryInfo };
+  canWrite: boolean;
+  canRead: boolean;
+  isMember: boolean;
+  members: SpaceUserType[];
+  isEditor: boolean;
+};
 export type GetSpaceResponseBody = {
-  space: SpaceType & {
-    categories: { [key: string]: SpaceCategoryInfo };
-    canWrite: boolean;
-    canRead: boolean;
-    isMember: boolean;
-    members: SpaceUserType[];
-    isEditor: boolean;
-  };
+  space: RichSpaceType;
 };
 
 export type PatchSpaceResponseBody = {

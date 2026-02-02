@@ -290,9 +290,8 @@ export function SpaceConversationsPage() {
             conversations={conversations}
             isConversationsLoading={isConversationsLoading}
             spaceInfo={spaceInfo}
-            isProjectEditor={spaceInfo.isEditor}
             onSubmit={handleConversationCreation}
-            onOpenInvitePanel={() => setIsInvitePanelOpen(true)}
+            onOpenManagePanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
 
@@ -313,10 +312,7 @@ export function SpaceConversationsPage() {
             key={spaceId}
             owner={owner}
             space={spaceInfo}
-            projectMembers={spaceInfo.members}
-            isPublic={!spaceInfo.isRestricted}
-            isProjectEditor={spaceInfo.isEditor}
-            onOpenInvitePanel={() => setIsInvitePanelOpen(true)}
+            onOpenManagePanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
       </Tabs>
