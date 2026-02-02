@@ -1,12 +1,4 @@
-import {
-  Button,
-  CheckIcon,
-  ContentMessage,
-  Icon,
-  InformationCircleIcon,
-  PlusIcon,
-  XMarkIcon,
-} from "@dust-tt/sparkle";
+import { ChatBubbleLeftRightIcon, RequestCard } from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -78,62 +70,41 @@ export function MentionValidationRequired({
     return null;
   }
 
+  const title = isProjectMembership
+    ? `Add ${mention.label} to this project?`
+    : `Invite ${mention.label} to this conversation?`;
+
+  const description = isMessageTemporayState(message) ? (
+    <>
+      <span className="s-font-semibold">@{message.configuration.name}</span>{" "}
+      mentioned <span className="s-font-semibold">{mention.label}</span>.
+      {isProjectMembership
+        ? " Do you want to add them to this project?"
+        : " Do you want to invite them? They'll see the full history and be able to reply."}
+    </>
+  ) : isProjectMembership ? (
+    "They'll have access to all project conversations."
+  ) : (
+    "They'll see the full history and be able to reply."
+  );
+
   return (
-    <ContentMessage variant="info" className="my-3 w-full max-w-full">
-      <div className="flex flex-col items-center gap-2 sm:flex-row">
-        <Icon visual={InformationCircleIcon} className="hidden sm:block" />
-        <div>
-          {isMessageTemporayState(message) ? (
-            <>
-              <span className="font-semibold">
-                @{message.configuration.name}
-              </span>{" "}
-              mentioned <span className="font-semibold">{mention.label}</span>.
-              {isProjectMembership ? (
-                <> Do you want to add them to this project?</>
-              ) : (
-                <>
-                  {" "}
-                  Do you want to invite them? They'll see the full history and
-                  be able to reply.
-                </>
-              )}
-            </>
-          ) : (
-            <>
-              {isProjectMembership ? (
-                <>
-                  Add <b>{mention.label}</b> to this project? They'll have
-                  access to all project conversations.
-                </>
-              ) : (
-                <>
-                  Invite <b>{mention.label}</b> to this conversation? They'll
-                  see the full history and be able to reply.
-                </>
-              )}
-            </>
-          )}
-        </div>
-        <div className="ml-auto flex gap-2">
-          <Button
-            label="No"
-            variant="outline"
-            size="xs"
-            icon={XMarkIcon}
-            disabled={isSubmitting}
-            onClick={handleReject}
-          />
-          <Button
-            label={isProjectMembership ? "Add to project" : "Yes"}
-            variant="highlight"
-            size="xs"
-            icon={isProjectMembership ? PlusIcon : CheckIcon}
-            disabled={isSubmitting}
-            onClick={handleApprove}
-          />
-        </div>
-      </div>
-    </ContentMessage>
+    <RequestCard
+      className="s-my-3"
+      icon={ChatBubbleLeftRightIcon}
+      title={title}
+      description={description}
+      primaryAction={{
+        label: isProjectMembership ? "Add to project" : "Invite",
+        onClick: handleApprove,
+        disabled: isSubmitting,
+        isLoading: isSubmitting,
+      }}
+      secondaryAction={{
+        label: "Decline",
+        onClick: handleReject,
+        disabled: isSubmitting,
+      }}
+    />
   );
 }
