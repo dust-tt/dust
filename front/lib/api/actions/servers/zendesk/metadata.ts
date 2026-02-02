@@ -64,7 +64,7 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
   },
   list_ticket_fields: {
     description:
-      "Lists all active Zendesk ticket fields (system and custom) including their IDs, titles, types, and status. " +
+      "Lists all active Zendesk ticket fields (system and custom) including their IDs, titles, types, and active status. " +
       "Returns both standard fields (subject, priority, status) and custom fields created for organization-specific data. " +
       'Field IDs are required for filtering by custom fields in search_tickets using custom_field_{id}:"value" syntax.',
     schema: {},

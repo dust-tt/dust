@@ -250,9 +250,11 @@ class ZendeskClient {
     return new Ok(result.value.ticket_fields.filter((f) => f.active));
   }
 
-  async listAllTicketFields(
-    includeInactive = false
-  ): Promise<Result<ZendeskTicketField[], Error>> {
+  async listAllTicketFields({
+    includeInactive = false,
+  }: { includeInactive?: boolean } = {}): Promise<
+    Result<ZendeskTicketField[], Error>
+  > {
     const result = await this.request(
       `ticket_fields.json`,
       ZendeskTicketFieldsResponseSchema

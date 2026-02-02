@@ -222,5 +222,5 @@ export function renderTicketFields(fields: ZendeskTicketField[]): string {
     );
   }
 
-  return lines.join("\n");
+  return lines.join("\n") + "\n";
 }
