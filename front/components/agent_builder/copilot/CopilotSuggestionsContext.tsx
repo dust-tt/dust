@@ -12,7 +12,7 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { applySuggestion, getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
@@ -145,7 +145,7 @@ export const CopilotSuggestionsProvider = ({
 
       const { oldString, newString } = suggestion.suggestion;
 
-      const applied = editor.commands.applySuggestion({
+      const applied = applySuggestion(editor, {
         id: suggestion.sId,
         find: oldString,
         replacement: newString,

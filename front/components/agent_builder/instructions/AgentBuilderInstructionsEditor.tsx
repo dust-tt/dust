@@ -257,11 +257,17 @@ export function AgentBuilderInstructionsEditor({
       }
 
       // Set content first if we have initial value
-      if (field.value) {
-        editor.commands.setContent(field.value, {
-          emitUpdate: false,
-          contentType: "markdown",
-        });
+      if (field.value && editor.markdown) {
+        // Parse markdown to document and set it directly via transaction
+        // with addToHistory: false to prevent undoing back to an empty document
+        const parsedContent = editor.markdown.parse(field.value);
+        if (parsedContent) {
+          const { tr } = editor.state;
+          const doc = editor.schema.nodeFromJSON(parsedContent);
+          tr.replaceWith(0, editor.state.doc.content.size, doc.content);
+          tr.setMeta("addToHistory", false);
+          editor.view.dispatch(tr);
+        }
       }
 
       // Then focus after content is set

@@ -1,108 +1,8 @@
-import type { JSONContent } from "@tiptap/core";
-import { Extension, Mark } from "@tiptap/core";
+import type { Editor, JSONContent } from "@tiptap/core";
+import { Extension, Node } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 
-// Generate a short label from suggestion ID for debugging.
-function getSuggestionLabel(suggestionId: string): string {
-  // Take last 4 chars of the ID for a short identifier.
-  return suggestionId.slice(-4);
-}
-
-// Mark for additions (blue background).
-export const SuggestionAdditionMark = Mark.create({
-  name: "suggestionAddition",
-
-  addAttributes() {
-    return {
-      suggestionId: {
-        default: null,
-      },
-    };
-  },
-
-  parseHTML() {
-    return [{ tag: "span.suggestion-addition" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
-    return [
-      "span",
-      {
-        ...HTMLAttributes,
-        class:
-          "suggestion-addition s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
-        contenteditable: "false",
-      },
-      [
-        "span",
-        {},
-        0, // Content placeholder.
-      ],
-      [
-        "sup",
-        {
-          class:
-            "s-ml-0.5 s-text-[9px] s-font-mono s-text-highlight-500 s-select-none",
-        },
-        label,
-      ],
-    ];
-  },
-});
-
-// Mark for deletions (red background + strikethrough).
-export const SuggestionDeletionMark = Mark.create({
-  name: "suggestionDeletion",
-
-  addAttributes() {
-    return {
-      suggestionId: {
-        default: null,
-      },
-    };
-  },
-
-  parseHTML() {
-    return [{ tag: "span.suggestion-deletion" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
-    return [
-      "span",
-      {
-        ...HTMLAttributes,
-        class:
-          "suggestion-deletion s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 s-line-through",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
-        contenteditable: "false",
-      },
-      [
-        "span",
-        {},
-        0, // Content placeholder.
-      ],
-      [
-        "sup",
-        {
-          class:
-            "s-ml-0.5 s-text-[9px] s-font-mono s-text-warning-500 s-select-none s-no-underline",
-          style: "text-decoration: none;",
-        },
-        label,
-      ],
-    ];
-  },
-});
-
-export interface SuggestionMatch {
-  start: number;
-  end: number;
-}
+// --- Types ---
 
 export interface ApplySuggestionOptions {
   id: string;
@@ -128,50 +28,361 @@ declare module "@tiptap/core" {
   }
 }
 
-/**
- * Gets the committed text content from the editor, excluding suggestion marks.
- * This returns the text as it would be without any pending suggestions.
- */
-export function getCommittedTextContent(editor: {
-  getJSON: () => JSONContent;
-}): string {
-  const json = editor.getJSON();
+// --- Escape Sequences ---
+// Used to preserve special characters in suggestion content during markdown parsing.
 
-  return extractCommittedText(json);
+const NEWLINE_ESCAPE = "⏎";
+const OPEN_BRACKET_ESCAPE = "⟦";
+const CLOSE_BRACKET_ESCAPE = "⟧";
+const CLOSING_TAG_SLASH_ESCAPE = "⁄";
+const ZERO_WIDTH_NON_JOINER = "\u200C";
+
+function escapeForSuggestion(text: string): string {
+  return text
+    .replace(/\n/g, NEWLINE_ESCAPE)
+    .replace(/\[/g, OPEN_BRACKET_ESCAPE)
+    .replace(/\]\{/g, CLOSE_BRACKET_ESCAPE + "{")
+    .replace(/<\//g, "<" + CLOSING_TAG_SLASH_ESCAPE);
 }
 
-function extractCommittedText(node: JSONContent): string {
-  if (node.type === "text") {
-    // Addition marks are suggested additions not yet accepted, exclude them.
-    // All other text (including deletion marks which are original text) is included.
-    const hasAdditionMark = node.marks?.some(
-      (mark) => mark.type === "suggestionAddition"
-    );
+function unescapeFromSuggestion(text: string): string {
+  return text
+    .split(CLOSE_BRACKET_ESCAPE)
+    .join("]")
+    .split(OPEN_BRACKET_ESCAPE)
+    .join("[")
+    .split("<" + CLOSING_TAG_SLASH_ESCAPE)
+    .join("</")
+    .split(NEWLINE_ESCAPE)
+    .join("\n");
+}
 
-    return hasAdditionMark ? "" : (node.text ?? "");
+// --- Helper Functions ---
+
+function getSuggestionLabel(suggestionId: string): string {
+  return suggestionId.slice(-4);
+}
+
+const CLOSING_TAG_ONLY_REGEX = /^<\/([A-Za-z_][A-Za-z0-9._:-]*)>$/;
+
+function escapeOpeningTagInBefore(before: string, tagName: string): string {
+  const target = `<${tagName}>`;
+  const idx = before.lastIndexOf(target);
+  if (idx === -1) {
+    return before;
+  }
+  const escaped = `<${ZERO_WIDTH_NON_JOINER}${tagName}>`;
+  return before.slice(0, idx) + escaped + before.slice(idx + target.length);
+}
+
+function stripZeroWidthNonJoiners(editor: Editor): void {
+  const { doc, tr, schema } = editor.state;
+  const operations: Array<{ pos: number; nodeSize: number; text: string }> = [];
+
+  doc.descendants((node, pos) => {
+    if (!node.isText || !node.text?.includes(ZERO_WIDTH_NON_JOINER)) {
+      return true;
+    }
+    const text = node.text.replace(new RegExp(ZERO_WIDTH_NON_JOINER, "g"), "");
+    if (text.length > 0) {
+      operations.push({ pos, nodeSize: node.nodeSize, text });
+    }
+    return true;
+  });
+
+  if (operations.length === 0) {
+    return;
+  }
+
+  operations.sort((a, b) => b.pos - a.pos);
+  for (const op of operations) {
+    tr.replaceWith(op.pos, op.pos + op.nodeSize, schema.text(op.text));
+  }
+
+  tr.setMeta("addToHistory", false);
+  editor.view.dispatch(tr);
+}
+
+function filterOutAdditions(node: JSONContent): JSONContent {
+  if (node.type === "suggestionAddition") {
+    return { type: "text", text: "" };
   }
 
   if (node.content) {
-    const childText = node.content.map(extractCommittedText).join("");
-
-    // Add appropriate spacing for block-level elements.
-    if (
-      node.type === "paragraph" ||
-      node.type === "heading" ||
-      node.type === "bulletList" ||
-      node.type === "orderedList"
-    ) {
-      return childText + "\n\n";
-    }
-    if (node.type === "listItem") {
-      return "- " + childText + "\n";
-    }
-
-    return childText;
+    return {
+      ...node,
+      content: node.content
+        .map(filterOutAdditions)
+        .filter((n) => !(n.type === "text" && n.text === "")),
+    };
   }
 
-  return "";
+  return node;
 }
+
+// --- Suggestion Nodes ---
+
+export const SuggestionAdditionNode = Node.create({
+  name: "suggestionAddition",
+  group: "inline",
+  inline: true,
+  atom: true,
+
+  addAttributes() {
+    return {
+      suggestionId: { default: null },
+      text: { default: "" },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: "span.suggestion-addition",
+        getAttrs: (element) => {
+          if (typeof element === "string") {
+            return false;
+          }
+          return {
+            suggestionId: element.getAttribute("data-suggestion-id"),
+            text: element.textContent ?? "",
+          };
+        },
+      },
+    ];
+  },
+
+  renderHTML({ node }) {
+    const label = getSuggestionLabel(node.attrs.suggestionId);
+    const text = node.attrs.text ?? "";
+    return [
+      "span",
+      {
+        class:
+          "suggestion-addition s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800",
+        "data-suggestion-id": node.attrs.suggestionId,
+        title: `Suggestion: ${node.attrs.suggestionId}`,
+        contenteditable: "false",
+      },
+      ["span", {}, text],
+      [
+        "sup",
+        {
+          class:
+            "s-ml-0.5 s-text-[9px] s-font-mono s-text-highlight-500 s-select-none",
+        },
+        label,
+      ],
+    ];
+  },
+
+  markdownTokenizer: {
+    name: "suggestionAddition",
+    level: "inline",
+    start: (src: string) => src.indexOf(":suggestion_addition"),
+    tokenize: (src: string) => {
+      const regex = /^:suggestion_addition\[([\s\S]*?)\]\{id=([^}]+)\}/;
+      const match = regex.exec(src);
+      if (!match) {
+        return undefined;
+      }
+      return {
+        type: "suggestionAddition",
+        raw: match[0],
+        text: match[1],
+        suggestionId: match[2],
+      };
+    },
+  },
+
+  parseMarkdown: (token: { text?: string; suggestionId?: string }) => {
+    const text = unescapeFromSuggestion(token.text ?? "");
+    return {
+      type: "suggestionAddition",
+      attrs: {
+        suggestionId: token.suggestionId,
+        text,
+      },
+    };
+  },
+
+  renderMarkdown: (node: { attrs?: { text?: string; suggestionId?: string } }) => {
+    const text = node.attrs?.text ?? "";
+    const suggestionId = node.attrs?.suggestionId ?? "";
+    const escapedText = escapeForSuggestion(text);
+    return `:suggestion_addition[${escapedText}]{id=${suggestionId}}`;
+  },
+});
+
+export const SuggestionDeletionNode = Node.create({
+  name: "suggestionDeletion",
+  group: "inline",
+  inline: true,
+  atom: true,
+
+  addAttributes() {
+    return {
+      suggestionId: { default: null },
+      text: { default: "" },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: "span.suggestion-deletion",
+        getAttrs: (element) => {
+          if (typeof element === "string") {
+            return false;
+          }
+          return {
+            suggestionId: element.getAttribute("data-suggestion-id"),
+            text: element.textContent ?? "",
+          };
+        },
+      },
+    ];
+  },
+
+  renderHTML({ node }) {
+    const label = getSuggestionLabel(node.attrs.suggestionId);
+    const text = node.attrs.text ?? "";
+    return [
+      "span",
+      {
+        class:
+          "suggestion-deletion s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 s-line-through",
+        "data-suggestion-id": node.attrs.suggestionId,
+        title: `Suggestion: ${node.attrs.suggestionId}`,
+        contenteditable: "false",
+      },
+      ["span", {}, text],
+      [
+        "sup",
+        {
+          class:
+            "s-ml-0.5 s-text-[9px] s-font-mono s-text-warning-500 s-select-none s-no-underline",
+          style: "text-decoration: none;",
+        },
+        label,
+      ],
+    ];
+  },
+
+  markdownTokenizer: {
+    name: "suggestionDeletion",
+    level: "inline",
+    start: (src: string) => src.indexOf(":suggestion_deletion"),
+    tokenize: (src: string) => {
+      const regex = /^:suggestion_deletion\[([\s\S]*?)\]\{id=([^}]+)\}/;
+      const match = regex.exec(src);
+      if (!match) {
+        return undefined;
+      }
+      return {
+        type: "suggestionDeletion",
+        raw: match[0],
+        text: match[1],
+        suggestionId: match[2],
+      };
+    },
+  },
+
+  parseMarkdown: (token: { text?: string; suggestionId?: string }) => {
+    const text = unescapeFromSuggestion(token.text ?? "");
+    return {
+      type: "suggestionDeletion",
+      attrs: {
+        suggestionId: token.suggestionId,
+        text,
+      },
+    };
+  },
+
+  renderMarkdown: (node: { attrs?: { text?: string; suggestionId?: string } }) => {
+    const text = node.attrs?.text ?? "";
+    const suggestionId = node.attrs?.suggestionId ?? "";
+    const escapedText = escapeForSuggestion(text);
+    return `:suggestion_deletion[${escapedText}]{id=${suggestionId}}`;
+  },
+});
+
+// --- Public Functions ---
+
+/**
+ * Get the committed text content from the editor, excluding pending additions.
+ * This returns the text as it would appear if all suggestions were rejected.
+ */
+export function getCommittedTextContent(editor: {
+  getJSON: () => JSONContent;
+  markdown?: Editor["markdown"];
+}): string {
+  const json = editor.getJSON();
+  const filteredJson = filterOutAdditions(json);
+
+  if (!editor.markdown) {
+    throw new Error("Markdown extension not found");
+  }
+
+  return editor.markdown.serialize(filteredJson);
+}
+
+/**
+ * Apply a suggestion to the editor by finding and marking text changes.
+ * Uses markdown string manipulation with custom tokenizers for proper structure handling.
+ */
+export function applySuggestion(
+  editor: Editor,
+  options: ApplySuggestionOptions
+): boolean {
+  const { id, find, replacement } = options;
+
+  const currentMarkdown = editor.getMarkdown();
+  const normalizedFind = find.replace(/\s+$/, "");
+  const normalizedReplacement = replacement.replace(/\s+$/, "");
+
+  const findIndex = currentMarkdown.indexOf(normalizedFind);
+  if (findIndex === -1) {
+    return false;
+  }
+
+  const escapedFind = escapeForSuggestion(normalizedFind);
+  const escapedReplacement = escapeForSuggestion(normalizedReplacement);
+
+  let before = currentMarkdown.substring(0, findIndex);
+  const after = currentMarkdown.substring(findIndex + normalizedFind.length);
+
+  // If deleting a closing tag, escape the matching opening tag to prevent
+  // the instructionBlock tokenizer from consuming it during re-parse.
+  const closingTagMatch = normalizedFind.match(CLOSING_TAG_ONLY_REGEX);
+  if (closingTagMatch) {
+    const tagName = closingTagMatch[1];
+    before = escapeOpeningTagInBefore(before, tagName);
+  }
+
+  const newMarkdown =
+    before +
+    `:suggestion_deletion[${escapedFind}]{id=${id}}` +
+    `:suggestion_addition[${escapedReplacement}]{id=${id}}` +
+    after;
+
+  editor.commands.setContent(newMarkdown, {
+    emitUpdate: false,
+    contentType: "markdown",
+  });
+
+  if (closingTagMatch) {
+    stripZeroWidthNonJoiners(editor);
+  }
+
+  if (editor.storage.instructionSuggestion) {
+    editor.storage.instructionSuggestion.activeSuggestionIds.push(id);
+  }
+
+  return true;
+}
+
+// --- Extension ---
 
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
@@ -183,129 +394,27 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addExtensions() {
-    return [SuggestionAdditionMark, SuggestionDeletionMark];
+    return [SuggestionAdditionNode, SuggestionDeletionNode];
   },
 
   addCommands() {
     return {
       applySuggestion:
         (options: ApplySuggestionOptions) =>
-        ({ tr, state, dispatch }) => {
-          const { id, find, replacement } = options;
-          const { doc, schema } = state;
-
-          // Normalize find string by trimming trailing whitespace/newlines.
-          // Backend may include trailing newlines that don't exist in editor.
-          const normalizedFind = find.replace(/\s+$/, "");
-
-          // Get full document text and find the position.
-          const fullText = doc.textContent;
-          const textIndex = fullText.indexOf(normalizedFind);
-
-          if (textIndex === -1) {
-            return false;
-          }
-
-          // Use normalizedFind for position mapping.
-          const findLength = normalizedFind.length;
-
-          // Map text offset to document position.
-          // We need to account for non-text content (block boundaries, etc.)
-          let from = -1;
-          let to = -1;
-          let currentTextOffset = 0;
-
-          doc.descendants((node, pos) => {
-            if (from !== -1 && to !== -1) {
-              return false;
-            }
-
-            if (node.isText && node.text) {
-              const nodeStart = currentTextOffset;
-              const nodeEnd = currentTextOffset + node.text.length;
-
-              // Check if find starts in this node.
-              if (
-                from === -1 &&
-                textIndex >= nodeStart &&
-                textIndex < nodeEnd
-              ) {
-                from = pos + (textIndex - nodeStart);
-              }
-
-              // Check if find ends in this node.
-              const findEnd = textIndex + findLength;
-              if (to === -1 && findEnd > nodeStart && findEnd <= nodeEnd) {
-                to = pos + (findEnd - nodeStart);
-              }
-
-              currentTextOffset = nodeEnd;
-            }
-            return true;
-          });
-
-          if (findLength === 0) {
-            // If no text nodes exist, insert at position 1 (after opening paragraph).
-            from = from === -1 ? 1 : from;
-            to = from;
-          }
-
-          if (from === -1 || to === -1) {
-            return false;
-          }
-
-          // Normalize replacement too.
-          const normalizedReplacement = replacement.replace(/\s+$/, "");
-
-          // Simple approach: show old text (red/strikethrough) then new text (blue).
-          // No word-level diffing, users accept/reject the whole suggestion.
-          const deletionMark = schema.marks.suggestionDeletion.create({
-            suggestionId: id,
-          });
-          const additionMark = schema.marks.suggestionAddition.create({
-            suggestionId: id,
-          });
-
-          // Apply the transaction: replace old text with [old marked as deletion] + [new marked as addition].
-          if (dispatch) {
-            tr.delete(from, to);
-
-            let insertPos = from;
-
-            // Insert old text with deletion mark (if not empty).
-            if (normalizedFind.length > 0) {
-              const deletionNode = schema.text(normalizedFind, [deletionMark]);
-              tr.insert(insertPos, deletionNode);
-              insertPos += deletionNode.nodeSize;
-            }
-
-            // Insert new text with addition mark (if not empty).
-            if (normalizedReplacement.length > 0) {
-              const additionNode = schema.text(normalizedReplacement, [
-                additionMark,
-              ]);
-              tr.insert(insertPos, additionNode);
-            }
-
-            dispatch(tr);
-          }
-
-          // Track this suggestion.
-          this.storage.activeSuggestionIds.push(id);
-
-          return true;
+        ({ editor }) => {
+          return applySuggestion(editor as Editor, options);
         },
 
       acceptSuggestion:
         (suggestionId: string) =>
-        ({ state, tr }) => {
-          // Accept: remove deletions (old text), keep additions (new text) without marks.
-          const modified = processSuggestionMarks(state, tr, suggestionId, {
-            markToDelete: "suggestionDeletion",
-            markToKeep: "suggestionAddition",
+        ({ state, tr, dispatch }) => {
+          const modified = processSuggestionNodes(state, tr, suggestionId, {
+            nodeToDelete: "suggestionDeletion",
+            nodeToKeep: "suggestionAddition",
           });
 
-          if (modified) {
+          if (modified && dispatch) {
+            dispatch(tr);
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
                 (id: string) => id !== suggestionId
@@ -317,14 +426,14 @@ export const InstructionSuggestionExtension = Extension.create({
 
       rejectSuggestion:
         (suggestionId: string) =>
-        ({ state, tr }) => {
-          // Reject: remove additions (new text), keep deletions (old text) without marks.
-          const modified = processSuggestionMarks(state, tr, suggestionId, {
-            markToDelete: "suggestionAddition",
-            markToKeep: "suggestionDeletion",
+        ({ state, tr, dispatch }) => {
+          const modified = processSuggestionNodes(state, tr, suggestionId, {
+            nodeToDelete: "suggestionAddition",
+            nodeToKeep: "suggestionDeletion",
           });
 
-          if (modified) {
+          if (modified && dispatch) {
+            dispatch(tr);
             this.storage.activeSuggestionIds =
               this.storage.activeSuggestionIds.filter(
                 (id: string) => id !== suggestionId
@@ -338,7 +447,6 @@ export const InstructionSuggestionExtension = Extension.create({
         () =>
         ({ commands }) => {
           const suggestionIds = [...this.storage.activeSuggestionIds];
-
           return suggestionIds.every((id) => commands.acceptSuggestion(id));
         },
 
@@ -346,59 +454,50 @@ export const InstructionSuggestionExtension = Extension.create({
         () =>
         ({ commands }) => {
           const suggestionIds = [...this.storage.activeSuggestionIds];
-
           return suggestionIds.every((id) => commands.rejectSuggestion(id));
         },
     };
   },
 });
 
-interface SuggestionMarkConfig {
-  markToDelete: "suggestionDeletion" | "suggestionAddition";
-  markToKeep: "suggestionDeletion" | "suggestionAddition";
+// --- Node Processing ---
+
+interface SuggestionNodeConfig {
+  nodeToDelete: "suggestionDeletion" | "suggestionAddition";
+  nodeToKeep: "suggestionDeletion" | "suggestionAddition";
 }
 
 interface SuggestionOperation {
-  type: "delete" | "removeMark";
+  type: "delete" | "unwrap";
   pos: number;
   nodeSize: number;
 }
 
-// Processes suggestion marks for accept/reject operations.
-// Deletes text with markToDelete, removes markToKeep from text while keeping the text.
-// Operations are collected first then applied in reverse order (from end to start)
-// to avoid position shifts from deletions invalidating subsequent operations.
-function processSuggestionMarks(
+function processSuggestionNodes(
   state: EditorState,
   tr: Transaction,
   suggestionId: string,
-  config: SuggestionMarkConfig
+  config: SuggestionNodeConfig
 ): boolean {
-  const { doc, schema } = state;
+  const { doc } = state;
   const operations: SuggestionOperation[] = [];
 
-  // First pass: collect all operations with their positions.
   doc.descendants((node, pos) => {
-    if (!node.isText || node.marks.length === 0) {
+    if (
+      node.type.name !== "suggestionDeletion" &&
+      node.type.name !== "suggestionAddition"
+    ) {
       return;
     }
 
-    const matchingMark = node.marks.find(
-      (mark) =>
-        (mark.type.name === "suggestionDeletion" ||
-          mark.type.name === "suggestionAddition") &&
-        mark.attrs.suggestionId === suggestionId
-    );
-
-    if (!matchingMark) {
+    if (node.attrs.suggestionId !== suggestionId) {
       return;
     }
 
-    const markTypeName = matchingMark.type.name;
-    if (markTypeName === config.markToDelete) {
+    if (node.type.name === config.nodeToDelete) {
       operations.push({ type: "delete", pos, nodeSize: node.nodeSize });
-    } else if (markTypeName === config.markToKeep) {
-      operations.push({ type: "removeMark", pos, nodeSize: node.nodeSize });
+    } else if (node.type.name === config.nodeToKeep) {
+      operations.push({ type: "unwrap", pos, nodeSize: node.nodeSize });
     }
   });
 
@@ -406,19 +505,26 @@ function processSuggestionMarks(
     return false;
   }
 
-  // Sort by position descending to process from end to start.
+  // Process from end to start to avoid position shifts
   operations.sort((a, b) => b.pos - a.pos);
 
-  // Second pass: apply operations in reverse order.
   for (const op of operations) {
     if (op.type === "delete") {
       tr.delete(op.pos, op.pos + op.nodeSize);
     } else {
-      tr.removeMark(
-        op.pos,
-        op.pos + op.nodeSize,
-        schema.marks[config.markToKeep]
-      );
+      const node = tr.doc.nodeAt(op.pos);
+      if (node) {
+        const textContent = node.attrs.text ?? "";
+        if (textContent) {
+          tr.replaceWith(
+            op.pos,
+            op.pos + op.nodeSize,
+            state.schema.text(textContent)
+          );
+        } else {
+          tr.delete(op.pos, op.pos + op.nodeSize);
+        }
+      }
     }
   }
 
