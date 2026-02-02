@@ -150,16 +150,22 @@ export function AnalyticsPage() {
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
-            title="Analytics"
+            title={
+              <div className="flex flex-row w-full justify-between">
+                <div>
+                  <Page.H variant="h3">Analytics</Page.H>
+                </div>
+                <div>
+                  <WorkspaceAnalyticsTimeRangeSelector
+                    period={period}
+                    onPeriodChange={setPeriod}
+                  />
+                </div>
+              </div>
+            }
             icon={BarChartIcon}
             description="Monitor workspace activity and usage"
           />
-          <div className="flex items-center justify-end">
-            <WorkspaceAnalyticsTimeRangeSelector
-              period={period}
-              onPeriodChange={setPeriod}
-            />
-          </div>
           <WorkspaceAnalyticsOverviewCards
             workspaceId={owner.sId}
             period={period}

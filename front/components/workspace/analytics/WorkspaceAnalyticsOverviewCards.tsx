@@ -1,4 +1,4 @@
-import { CardGrid, Spinner, ValueCard } from "@dust-tt/sparkle";
+import { Spinner, ValueCard } from "@dust-tt/sparkle";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { useWorkspaceAnalyticsOverview } from "@app/lib/swr/workspaces";
@@ -37,7 +37,7 @@ export function WorkspaceAnalyticsOverviewCards({
       : overview.activeUsers;
 
   return (
-    <CardGrid>
+    <div className="grid grid-cols-2 gap-6">
       <ValueCard
         title="Total members"
         className="h-24"
@@ -60,6 +60,6 @@ export function WorkspaceAnalyticsOverviewCards({
           </div>
         }
       />
-    </CardGrid>
+    </div>
   );
 }
