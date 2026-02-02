@@ -1,7 +1,6 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { SpaceActionsList } from "@app/components/spaces/SpaceActionsList";
-import type { SpaceLayoutPageProps } from "@app/components/spaces/SpaceLayout";
 import { SpaceLayout } from "@app/components/spaces/SpaceLayout";
 import { SystemSpaceActionsList } from "@app/components/spaces/SystemSpaceActionsList";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
@@ -32,19 +31,19 @@ export function SpaceActionsPage() {
     );
   }
 
-  const pageProps: SpaceLayoutPageProps = {
-    canReadInSpace,
-    canWriteInSpace,
-    category: "actions",
-    isAdmin,
-    owner,
-    plan,
-    space,
-    subscription,
-  };
-
   return (
-    <SpaceLayout pageProps={pageProps}>
+    <SpaceLayout
+      pageProps={{
+        canReadInSpace,
+        canWriteInSpace,
+        category: "actions",
+        isAdmin,
+        owner,
+        plan,
+        space,
+        subscription,
+      }}
+    >
       {space.kind === "system" ? (
         <SystemSpaceActionsList
           isAdmin={isAdmin}
