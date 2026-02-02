@@ -8,18 +8,18 @@ import {
 } from "recharts";
 import type { TooltipContentProps } from "recharts/types/component/Tooltip";
 
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import {
   CHART_HEIGHT,
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
-import { formatShortDate } from "@app/lib/utils/timestamps";
 import { useWorkspaceUsageMetrics } from "@app/lib/swr/workspaces";
+import { formatShortDate } from "@app/lib/utils/timestamps";
 
 interface WorkspaceUsageMetricsDatum {
   timestamp: number;

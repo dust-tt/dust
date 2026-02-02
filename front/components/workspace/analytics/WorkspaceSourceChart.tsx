@@ -1,7 +1,7 @@
 import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
-import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
 import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import {
