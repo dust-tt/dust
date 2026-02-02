@@ -350,6 +350,7 @@ const useCustomEditor = ({
     if (!editor) {
       return;
     }
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent
     editor.setOptions({
       editorProps: {
         handleKeyDown: (view, event) => {

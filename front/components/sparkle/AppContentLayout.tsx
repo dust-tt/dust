@@ -77,6 +77,7 @@ export default function AppContentLayout({
   const [loaded, setLoaded] = React.useState(false);
 
   React.useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
     setLoaded(true);
   }, []);
 

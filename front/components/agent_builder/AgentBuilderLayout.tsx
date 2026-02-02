@@ -32,6 +32,7 @@ export function AgentBuilderLayout({
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-you-might-not-need-an-effect/no-initialize-state
     setLoaded(true);
   }, []);
 
