@@ -254,14 +254,14 @@ UserConversationReadsModel.init(
 );
 ConversationModel.hasMany(UserConversationReadsModel, {
   foreignKey: { name: "conversationId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 UserConversationReadsModel.belongsTo(ConversationModel, {
   foreignKey: { name: "conversationId", allowNull: false },
 });
 UserModel.hasMany(UserConversationReadsModel, {
   foreignKey: { name: "userId", allowNull: false },
-  onDelete: "CASCADE",
+  onDelete: "RESTRICT",
 });
 UserConversationReadsModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },

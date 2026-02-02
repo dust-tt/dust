@@ -19,6 +19,7 @@ import {
   ConversationParticipantModel,
   MentionModel,
   MessageModel,
+  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -1631,6 +1632,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         transaction,
       });
       await ConversationParticipantModel.destroy({
+        where: {
+          workspaceId: owner.id,
+          conversationId: this.id,
+        },
+        transaction,
+      });
+      await UserConversationReadsModel.destroy({
         where: {
           workspaceId: owner.id,
           conversationId: this.id,
