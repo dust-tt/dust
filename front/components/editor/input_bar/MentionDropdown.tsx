@@ -34,6 +34,7 @@ export const MentionDropdown = forwardRef<
       onClose,
       owner,
       conversationId,
+      spaceId,
       includeCurrentUser,
       select,
     },
@@ -50,6 +51,7 @@ export const MentionDropdown = forwardRef<
     const { suggestions, isLoading } = useMentionSuggestions({
       workspaceId: owner.sId,
       conversationId,
+      spaceId,
       query,
       select,
       includeCurrentUser,
