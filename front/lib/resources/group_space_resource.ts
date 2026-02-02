@@ -9,6 +9,7 @@ import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   CombinedResourcePermissions,
   GroupPermission,
@@ -87,8 +88,10 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    const canAddResults = await Promise.all(
-      users.map((user) => this.canAddMember(auth, user.sId))
+    const canAddResults = await concurrentExecutor(
+      users,
+      async (user) => this.canAddMember(auth, user.sId),
+      { concurrency: 8 }
     );
     if (!canAddResults.every((result) => result)) {
       return new Err(
@@ -143,8 +146,10 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
       >
     >
   > {
-    const canRemoveResults = await Promise.all(
-      users.map((user) => this.canRemoveMember(auth, user.sId))
+    const canRemoveResults = await concurrentExecutor(
+      users,
+      async (user) => this.canRemoveMember(auth, user.sId),
+      { concurrency: 8 }
     );
     if (!canRemoveResults.every((result) => result)) {
       return new Err(
@@ -191,11 +196,15 @@ export abstract class GroupSpaceBaseResource extends BaseResource<GroupSpaceMode
     >
   > {
     // We can probably be smarter here and check only addition and removal permissions separately (only on added and removed users)
-    const canAddResults = await Promise.all(
-      users.map((user) => this.canAddMember(auth, user.sId))
+    const canAddResults = await concurrentExecutor(
+      users,
+      async (user) => this.canAddMember(auth, user.sId),
+      { concurrency: 8 }
     );
-    const canRemoveResults = await Promise.all(
-      users.map((user) => this.canRemoveMember(auth, user.sId))
+    const canRemoveResults = await concurrentExecutor(
+      users,
+      async (user) => this.canRemoveMember(auth, user.sId),
+      { concurrency: 8 }
     );
     if (
       !canAddResults.every((result) => result) ||
@@ -316,8 +325,9 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
       transaction,
     });
 
-    const groupSpacesResources = await Promise.all(
-      groupSpaces.map(async (groupSpace) => {
+    const groupSpacesResources = await concurrentExecutor(
+      groupSpaces,
+      async (groupSpace) => {
         const groupModels = await GroupModel.findAll({
           where: {
             id: groupSpace.groupId,
@@ -350,7 +360,8 @@ export class GroupSpaceMemberResource extends GroupSpaceBaseResource {
           space,
           group
         );
-      })
+      },
+      { concurrency: 8 }
     );
     return removeNulls(groupSpacesResources);
   }
@@ -525,8 +536,9 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
       },
     });
 
-    const groupSpacesResources = await Promise.all(
-      groupSpaces.map(async (groupSpace) => {
+    const groupSpacesResources = await concurrentExecutor(
+      groupSpaces,
+      async (groupSpace) => {
         const groupModels = await GroupModel.findAll({
           where: {
             id: groupSpace.groupId,
@@ -566,7 +578,8 @@ export class GroupSpaceEditorResource extends GroupSpaceBaseResource {
           space,
           group
         );
-      })
+      },
+      { concurrency: 8 }
     );
     return removeNulls(groupSpacesResources);
   }
