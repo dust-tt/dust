@@ -1,6 +1,5 @@
 import assert from "node:assert";
 
-import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
@@ -13,6 +12,8 @@ import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
 } from "@app/lib/api/key_cap_tracking";
+// Re-export for backwards compatibility
+export { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_es_filter";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -30,7 +31,6 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 
 export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
@@ -70,13 +70,6 @@ export const USER_USAGE_ORIGINS = Object.keys(
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "user"
 );
 
-const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
-  USAGE_ORIGINS_CLASSIFICATION
-).filter(
-  (origin) =>
-    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
-);
-
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
 const REDIS_ORIGIN = "public_api_limits";
@@ -104,40 +97,6 @@ export function isProgrammaticUsage(
   }
 
   return false;
-}
-
-export function getShouldTrackTokenUsageCostsESFilter(
-  auth: Authenticator
-): estypes.QueryDslQueryContainer {
-  const workspace = auth.getNonNullableWorkspace();
-
-  // Track for API keys, listed programmatic origins or unspecified user message origins.
-  // This must be in sync with the shouldTrackTokenUsageCosts function.
-  const shouldClauses: estypes.QueryDslQueryContainer[] = [
-    {
-      bool: {
-        must: [{ term: { auth_method: "api_key" } }],
-        must_not: [{ term: { context_origin: "zendesk" } }],
-      },
-    },
-    { bool: { must_not: { exists: { field: "context_origin" } } } },
-    { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
-  ];
-
-  return {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspace.sId } },
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-        {
-          bool: {
-            should: shouldClauses,
-            minimum_should_match: 1,
-          },
-        },
-      ],
-    },
-  };
 }
 
 export async function hasReachedProgrammaticUsageLimits(

@@ -10,10 +10,7 @@ import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
-import {
-  AGENT_MESSAGE_STATUSES_TO_TRACK,
-  getShouldTrackTokenUsageCostsESFilter,
-} from "./programmatic_usage_tracking";
+import { getShouldTrackTokenUsageCostsESFilter } from "./programmatic_usage_es_filter";
 
 // Markup multiplier to convert raw ES costs to costs with Dust markup
 const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
@@ -102,8 +99,6 @@ type UsageAggregations = {
 async function getTodayUsageFromESMicroUsd(
   auth: Authenticator
 ): Promise<Result<number, Error>> {
-  const workspace = auth.getNonNullableWorkspace();
-
   const now = new Date();
   const todayStartMs = Date.UTC(
     now.getUTCFullYear(),
@@ -118,12 +113,7 @@ async function getTodayUsageFromESMicroUsd(
 
   const query: estypes.QueryDslQueryContainer = {
     bool: {
-      filter: [
-        baseFilter,
-        { range: { timestamp: { gte: todayStartMs } } },
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-        { term: { workspace_id: workspace.sId } },
-      ],
+      filter: [baseFilter, { range: { timestamp: { gte: todayStartMs } } }],
     },
   };
 
