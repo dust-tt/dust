@@ -157,28 +157,43 @@ export function getLocationForDataSourceViewContentNodeWithSpace(
     : locationWithoutSpace;
 }
 
-function extractSharePointSiteNameFromSourceUrl(sourceUrl: string): string | null {
+function safeDecodeURIComponent(value: string): string {
   try {
-    const url = new URL(sourceUrl);
-    if (!url.hostname.includes("sharepoint.com")) {
+    return decodeURIComponent(value);
+  } catch (err) {
+    // decodeURIComponent throws URIError for malformed escape sequences.
+    if (err instanceof URIError) {
+      return value;
+    }
+    throw err;
+  }
+}
+
+function extractSharePointSiteNameFromSourceUrl(
+  sourceUrl: string
+): string | null {
+  let url: URL;
+  try {
+    url = new URL(sourceUrl);
+  } catch (err) {
+    if (err instanceof TypeError) {
       return null;
     }
+    throw err;
+  }
 
-    const segments = decodeURIComponent(url.pathname)
-      .split("/")
-      .filter(Boolean);
-
-    const sitesIndex = segments.findIndex(
-      (s) => s === "sites" || s === "teams"
-    );
-    if (sitesIndex === -1 || sitesIndex + 1 >= segments.length) {
-      return null;
-    }
-
-    return segments[sitesIndex + 1] || null;
-  } catch {
+  if (!url.hostname.includes("sharepoint.com")) {
     return null;
   }
+
+  const segments = url.pathname.split("/").filter(Boolean);
+  const sitesIndex = segments.findIndex((s) => s === "sites" || s === "teams");
+  if (sitesIndex === -1 || sitesIndex + 1 >= segments.length) {
+    return null;
+  }
+
+  const siteSegment = segments[sitesIndex + 1];
+  return siteSegment ? safeDecodeURIComponent(siteSegment) : null;
 }
 
 /**
