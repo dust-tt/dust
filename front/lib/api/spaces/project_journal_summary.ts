@@ -125,21 +125,14 @@ async function gatherProjectData(
   sections.push(`## Project Information`);
   sections.push(`- **Name**: ${space.name}`);
 
-  // Recent conversations - fetch all and sort/limit in memory
-  const allConversations = await ConversationResource.listConversationsInSpace(
-    auth,
-    {
+  // Recent conversations - fetch paginated (already sorted by updatedAt DESC)
+  const { conversations } =
+    await ConversationResource.listConversationsInSpacePaginated(auth, {
       spaceId: space.sId,
-    }
-  );
-
-  // Sort by updatedAt descending and take top 20
-  const conversations = allConversations
-    .sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )
-    .slice(0, 20);
+      pagination: {
+        limit: 20,
+      },
+    });
 
   if (conversations.length > 0) {
     sections.push(`\n## Recent Conversations (${conversations.length} total)`);
