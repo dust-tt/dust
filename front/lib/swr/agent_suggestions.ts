@@ -11,6 +11,7 @@ import {
 import type {
   GetSuggestionsQuery,
   GetSuggestionsResponseBody,
+  GetSuggestionsWithRelationsResponseBody,
   PatchSuggestionRequestBody,
   PatchSuggestionResponseBody,
 } from "@app/pages/api/w/[wId]/assistant/agent_configurations/[aId]/suggestions";
@@ -54,6 +55,45 @@ export function useAgentSuggestions({
     isSuggestionsError: !!error,
     isSuggestionsValidating: isValidating,
     mutateSuggestions: mutate,
+  };
+}
+
+export function useAgentSuggestionsWithRelations({
+  agentConfigurationId,
+  disabled,
+  state,
+  workspaceId,
+}: {
+  agentConfigurationId: string | null;
+  disabled?: boolean;
+  state?: GetSuggestionsQuery["states"];
+  workspaceId: string;
+}) {
+  const suggestionsWithRelationsFetcher: Fetcher<GetSuggestionsWithRelationsResponseBody> =
+    fetcher;
+
+  const urlParams = new URLSearchParams();
+  urlParams.append("withRelations", "true");
+  if (state) {
+    state.forEach((s) => urlParams.append("states", s));
+  }
+
+  const queryString = urlParams.toString();
+
+  const { data, error, mutate, isValidating, isLoading } = useSWRWithDefaults(
+    agentConfigurationId
+      ? `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions?${queryString}`
+      : null,
+    suggestionsWithRelationsFetcher,
+    { disabled }
+  );
+
+  return {
+    suggestionsWithRelations: data?.suggestions ?? emptyArray(),
+    isSuggestionsWithRelationsLoading: isLoading,
+    isSuggestionsWithRelationsError: !!error,
+    isSuggestionsWithRelationsValidating: isValidating,
+    mutateSuggestionsWithRelations: mutate,
   };
 }
 

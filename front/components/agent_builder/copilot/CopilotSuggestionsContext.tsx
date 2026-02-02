@@ -14,16 +14,16 @@ import React, {
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import {
-  useAgentSuggestions,
+  useAgentSuggestionsWithRelations,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import type { AgentSuggestionWithRelationsType } from "@app/types/suggestions/agent_suggestion";
 
 export interface CopilotSuggestionsContextType {
-  // Backend suggestions fetched via SWR.
-  suggestions: AgentSuggestionType[];
-  getSuggestion: (sId: string) => AgentSuggestionType | null;
+  // Backend suggestions fetched via SWR (with relations).
+  suggestions: AgentSuggestionWithRelationsType[];
+  getSuggestion: (sId: string) => AgentSuggestionWithRelationsType | null;
   triggerRefetch: () => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
@@ -70,13 +70,13 @@ export const CopilotSuggestionsProvider = ({
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
 
-  // Fetch all suggestions from the backend.
+  // Fetch all suggestions from the backend (with relations).
   const {
-    suggestions,
-    isSuggestionsLoading,
-    isSuggestionsValidating,
-    mutateSuggestions,
-  } = useAgentSuggestions({
+    suggestionsWithRelations: suggestions,
+    isSuggestionsWithRelationsLoading: isSuggestionsLoading,
+    isSuggestionsWithRelationsValidating: isSuggestionsValidating,
+    mutateSuggestionsWithRelations: mutateSuggestions,
+  } = useAgentSuggestionsWithRelations({
     agentConfigurationId,
     disabled: !hasCopilot,
     state: ["pending", "approved", "rejected"],

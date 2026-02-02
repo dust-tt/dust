@@ -10,6 +10,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
+import { cn } from "@sparkle/lib/utils";
 import * as PlatformLogos from "@sparkle/logo/platforms";
 
 const DEFAULT_APPLY_LABEL = "Apply";
@@ -39,7 +40,7 @@ const ACTION_CARD_STATES = [
   "rejected",
 ] as const;
 
-type ActionCardState = (typeof ACTION_CARD_STATES)[number];
+export type ActionCardState = (typeof ACTION_CARD_STATES)[number];
 
 // Props for markdown directive parsing (comma-separated strings)
 interface AvatarStackStringProps {
@@ -295,14 +296,18 @@ export function ActionCardBlock({
       className={containerVariants({ size })}
     >
       {showHeader && (
-        <div className="s-flex s-min-h-9 s-items-center s-justify-between">
-          <div className="s-flex s-items-center s-gap-2">
-            {resolvedVisual}
+        <div className="s-flex s-min-h-9 s-items-center s-justify-between s-gap-2">
+          <div className="s-flex s-min-w-0 s-items-center s-gap-2">
+            {resolvedVisual && (
+              <div className="s-mt-0.5 s-flex-shrink-0">{resolvedVisual}</div>
+            )}
             {resolvedTitle && (
               <div className={titleClasses}>{resolvedTitle}</div>
             )}
           </div>
-          {showActionsInHeader && actionButtons}
+          {showActionsInHeader && (
+            <div className="s-flex-shrink-0">{actionButtons}</div>
+          )}
         </div>
       )}
 
