@@ -76,8 +76,8 @@ export function MentionValidationRequired({
 
   const description = isMessageTemporayState(message) ? (
     <>
-      <span className="s-font-semibold">@{message.configuration.name}</span>{" "}
-      mentioned <span className="s-font-semibold">{mention.label}</span>.
+      <span className="font-semibold">@{message.configuration.name}</span>{" "}
+      mentioned <span className="font-semibold">{mention.label}</span>.
       {isProjectMembership
         ? " Do you want to add them to this project?"
         : " Do you want to invite them? They'll see the full history and be able to reply."}
@@ -90,7 +90,7 @@ export function MentionValidationRequired({
 
   return (
     <RequestCard
-      className="s-my-3"
+      className="my-3"
       icon={ChatBubbleLeftRightIcon}
       title={title}
       description={description}
