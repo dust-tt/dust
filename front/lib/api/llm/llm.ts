@@ -152,14 +152,16 @@ export abstract class LLM {
     const buffer = new LLMTraceBuffer(this.traceId, workspaceId, this.context);
 
     // Use custom trace input if provided, otherwise use the full conversation.
-    const traceInput =
-      this.getTraceInput?.(conversation) ??
-      buildDefaultTraceInput(prompt, conversation);
+    // Full conversation with system prompt for observation (actual LLM call details).
+    const observationInput = buildDefaultTraceInput(prompt, conversation);
+
+    // Simplified input for trace if custom getter provided.
+    const traceInput = this.getTraceInput?.(conversation) ?? observationInput;
 
     const generation = startObservation(
       "llm-completion",
       {
-        input: traceInput,
+        input: observationInput,
         model: this.modelId,
         modelParameters: {
           reasoningEffort: this.reasoningEffort ?? "",
