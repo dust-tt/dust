@@ -90,7 +90,7 @@ export function MentionValidationRequired({
 
   return (
     <RequestCard
-      className="my-3"
+      className="my-3 max-w-md"
       icon={ChatBubbleLeftRightIcon}
       title={title}
       description={description}
