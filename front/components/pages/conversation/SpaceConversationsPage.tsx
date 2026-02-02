@@ -291,7 +291,7 @@ export function SpaceConversationsPage() {
             isConversationsLoading={isConversationsLoading}
             spaceInfo={spaceInfo}
             onSubmit={handleConversationCreation}
-            onOpenManagePanel={() => setIsInvitePanelOpen(true)}
+            onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
 
@@ -312,7 +312,7 @@ export function SpaceConversationsPage() {
             key={spaceId}
             owner={owner}
             space={spaceInfo}
-            onOpenManagePanel={() => setIsInvitePanelOpen(true)}
+            onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
       </Tabs>

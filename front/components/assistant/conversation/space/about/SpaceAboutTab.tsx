@@ -30,13 +30,13 @@ import { PatchProjectMetadataBodySchema } from "@app/types/api/internal/spaces";
 interface SpaceAboutTabProps {
   owner: LightWorkspaceType;
   space: RichSpaceType;
-  onOpenManagePanel?: () => void;
+  onOpenMembersPanel?: () => void;
 }
 
 export function SpaceAboutTab({
   owner,
   space,
-  onOpenManagePanel: onOpenManagePanel,
+  onOpenMembersPanel,
 }: SpaceAboutTabProps) {
   const {
     members: projectMembers,
@@ -189,12 +189,12 @@ export function SpaceAboutTab({
 
         <div className="flex items-center gap-2">
           <h3 className="heading-lg flex-1">Members</h3>
-          {isProjectEditor && onOpenManagePanel && (
+          {isProjectEditor && onOpenMembersPanel && (
             <Button
               label="Manage"
               variant="outline"
               icon={UserGroupIcon}
-              onClick={onOpenManagePanel}
+              onClick={onOpenMembersPanel}
             />
           )}
         </div>

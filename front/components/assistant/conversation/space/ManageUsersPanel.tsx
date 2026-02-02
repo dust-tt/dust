@@ -76,7 +76,11 @@ export function ManageUsersPanel({
         isEditor: currentEditorIds.has(member.sId),
       }))
     );
-  }, [allWorkspaceMembers, currentProjectMembers, isOpen]);
+  }, [
+    allWorkspaceMembers,
+    currentProjectMembers,
+    isOpen, // reset the member list when opening/closing the panel
+  ]);
 
   const toggleUser = (userId: string) => {
     setMembers((prevMembers) =>
@@ -129,11 +133,13 @@ export function ManageUsersPanel({
   const selectedMembersCount = useMemo(() => {
     return members.filter((user) => user.isMember).length;
   }, [members]);
+  const saveButtonLabel =
+    "Save" + (selectedMembersCount > 0 ? ` (${selectedMembersCount})` : "");
+
+  // Determine if at least one editor is selected (can't save otherwise)
   const selectedEditorsCount = useMemo(() => {
     return members.filter((user) => user.isEditor).length;
   }, [members]);
-  const saveButtonLabel =
-    "Save" + (selectedMembersCount > 0 ? ` (${selectedMembersCount})` : "");
   const canSave = selectedEditorsCount > 0;
 
   return (
@@ -158,14 +164,6 @@ export function ManageUsersPanel({
                     Loading users...
                   </span>
                 </div>
-              ) : members.length === 0 ? (
-                <div className="flex items-center justify-center p-4">
-                  <span className="text-sm text-muted-foreground dark:text-muted-foreground-night">
-                    {searchText.trim()
-                      ? "No users found"
-                      : "All workspace members are already in this project"}
-                  </span>
-                </div>
               ) : (
                 members.map((user: UserWithMembershipStatus) => {
                   const isSelected = user.isMember;
@@ -174,11 +172,6 @@ export function ManageUsersPanel({
                       key={user.sId}
                       itemsAlignment="center"
                       onClick={() => toggleUser(user.sId)}
-                      className={
-                        isSelected
-                          ? "bg-primary-50 dark:bg-primary-50-night"
-                          : ""
-                      }
                     >
                       <div className="flex w-full items-center gap-3">
                         <Checkbox

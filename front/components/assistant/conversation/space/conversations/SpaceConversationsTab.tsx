@@ -54,7 +54,7 @@ interface SpaceConversationsTabProps {
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
-  onOpenManagePanel: () => void;
+  onOpenMembersPanel: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -64,7 +64,7 @@ export function SpaceConversationsTab({
   isConversationsLoading,
   spaceInfo,
   onSubmit,
-  onOpenManagePanel,
+  onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
   const { isEditor: isProjectEditor } = spaceInfo;
   const router = useAppRouter();
@@ -188,7 +188,7 @@ export function SpaceConversationsTab({
           {!hasHistory && (
             <SpaceConversationsActions
               isEditor={isProjectEditor}
-              onOpenManagePanel={onOpenManagePanel}
+              onOpenMembersPanel={onOpenMembersPanel}
             />
           )}
 

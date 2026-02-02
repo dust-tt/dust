@@ -75,7 +75,7 @@ export function MembersTable({
       const updateMember = await doUpdate(space, {
         isRestricted: space.isRestricted,
         memberIds: updatedMembers
-          .filter((m) => !m.isEditor)
+          .filter((member) => !member.isEditor)
           .map((member) => member.sId),
         editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
         managementMode: "manual",
@@ -116,9 +116,11 @@ export function MembersTable({
       const updateMember = await doUpdate(space, {
         isRestricted: space.isRestricted,
         memberIds: updatedMembers
-          .filter((m) => !m.isEditor)
+          .filter((member) => !member.isEditor)
           .map((member) => member.sId),
-        editorIds: updatedMembers.filter((m) => m.isEditor).map((m) => m.sId),
+        editorIds: updatedMembers
+          .filter((member) => member.isEditor)
+          .map((member) => member.sId),
         managementMode: "manual",
         name: space.name,
       });
@@ -226,7 +228,7 @@ export function MembersTable({
                   editorSettingItem = {
                     kind: "item",
                     label: editorLabel,
-                    disabled: rows.filter((row) => row.isEditor).length <= 1,
+                    disabled: rows.filter((row) => row.isEditor).length <= 1, // disable the "remove" action if it's the last editor
                     icon: XMarkIcon,
                     variant: "default",
                     onClick: async () => {
