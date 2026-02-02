@@ -21,7 +21,7 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { getRegionDisplay } from "@app/lib/poke/regions";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
@@ -302,9 +302,9 @@ function PokeSearchCommandUI({
                       (id: {item.id})
                     </span>
                     {showRegion && item.region && (
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      <Chip size="xs" color={getRegionChipColor(item.region)}>
                         {getRegionDisplay(item.region)}
-                      </span>
+                      </Chip>
                     )}
                   </div>
                   <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />

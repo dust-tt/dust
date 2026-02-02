@@ -1,5 +1,6 @@
 import {
   BookOpenIcon,
+  Chip,
   Icon,
   Input,
   LinkWrapper,
@@ -29,7 +30,7 @@ import {
   isOldFreePlan,
   isProPlanPrefix,
 } from "@app/lib/plans/plan_codes";
-import { getRegionDisplay } from "@app/lib/poke/regions";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion, usePokeWorkspaces } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import type { PokeWorkspaceWithRegion } from "@app/poke/swr/search";
@@ -65,9 +66,9 @@ function WorkspaceList({
                 <div className="flex items-center justify-between pb-2">
                   <h2 className="text-md flex-grow font-bold">{ws.name}</h2>
                   {showRegion && ws.region && (
-                    <span className="text-xs text-muted-foreground">
+                    <Chip size="xs" color={getRegionChipColor(ws.region)}>
                       {getRegionDisplay(ws.region)}
-                    </span>
+                    </Chip>
                   )}
                 </div>
                 <PokeTable>
