@@ -33,6 +33,7 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
+  showRegionPicker?: boolean;
   title: string;
 }
 
@@ -55,7 +56,12 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
+function PokeNavbar({
+  currentRegion,
+  regionUrls,
+  showRegionPicker = false,
+  title,
+}: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -82,7 +88,7 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
       </div>
       <div className="items-right flex items-center gap-4">
         <PokeFavoriteButton title={title} />
-        {currentRegion && (
+        {showRegionPicker && currentRegion && (
           <PokeRegionDropdown
             currentRegion={currentRegion}
             regionUrls={regionUrls}
