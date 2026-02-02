@@ -744,9 +744,7 @@ export function AgentMessage({
           name={agentConfiguration.name}
           timestamp={timestamp}
           infoChip={
-            (agentMessage.prunedContext ?? false) ? (
-              <PrunedContextChip />
-            ) : undefined
+            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
           }
           completionStatus={
             isDeleted ? undefined : (
@@ -772,9 +770,7 @@ export function AgentMessage({
           name={agentConfiguration.name}
           timestamp={timestamp}
           infoChip={
-            (agentMessage.prunedContext ?? false) ? (
-              <PrunedContextChip />
-            ) : undefined
+            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
           }
           completionStatus={
             isDeleted ? undefined : (
