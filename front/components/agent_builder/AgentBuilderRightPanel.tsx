@@ -1,7 +1,6 @@
 import {
   BarChartIcon,
   Button,
-  ListCheckIcon,
   MagicIcon,
   RobotIcon,
   ScrollArea,
@@ -16,8 +15,7 @@ import React, { useState } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { AgentBuilderCopilot } from "@app/components/agent_builder/AgentBuilderCopilot";
-import { AgentBuilderObservability } from "@app/components/agent_builder/AgentBuilderObservability";
-import { AgentBuilderPerformance } from "@app/components/agent_builder/AgentBuilderPerformance";
+import { AgentBuilderInsights } from "@app/components/agent_builder/AgentBuilderInsights";
 import { AgentBuilderPreview } from "@app/components/agent_builder/AgentBuilderPreview";
 import { AgentBuilderTemplate } from "@app/components/agent_builder/AgentBuilderTemplate";
 import { ObservabilityProvider } from "@app/components/agent_builder/observability/ObservabilityContext";
@@ -29,7 +27,6 @@ import { useFeatureFlags } from "@app/lib/swr/workspaces";
 type AgentBuilderRightPanelTabType =
   | "copilot"
   | "preview"
-  | "feedback"
   | "template"
   | "insights";
 
@@ -83,12 +80,6 @@ function PanelHeader({
                   label="Insights"
                   icon={BarChartIcon}
                   onClick={() => onTabChange("insights")}
-                />
-                <TabsTrigger
-                  value="feedback"
-                  label="Feedback"
-                  icon={ListCheckIcon}
-                  onClick={() => onTabChange("feedback")}
                 />
                 {hasTemplate && (
                   <TabsTrigger
@@ -153,13 +144,6 @@ function CollapsedTabs({
         tooltip="Insights"
         onClick={() => onTabSelect("insights")}
       />
-      <Button
-        icon={ListCheckIcon}
-        variant="ghost"
-        size="sm"
-        tooltip="Feedback"
-        onClick={() => onTabSelect("feedback")}
-      />
       {hasTemplate && (
         <Button
           icon={MagicIcon}
@@ -207,7 +191,7 @@ function ExpandedContent({
       <ObservabilityProvider>
         {selectedTab === "insights" &&
           (agentConfigurationSId ? (
-            <AgentBuilderObservability
+            <AgentBuilderInsights
               agentConfigurationSId={agentConfigurationSId}
             />
           ) : (
@@ -215,21 +199,7 @@ function ExpandedContent({
               <EmptyPlaceholder
                 icon={BarChartIcon}
                 title="Waiting for data"
-                description="Use your agent or share it with your team to see feedback data."
-              />
-            </TabContentLayout>
-          ))}
-        {selectedTab === "feedback" &&
-          (agentConfigurationSId ? (
-            <AgentBuilderPerformance
-              agentConfigurationSId={agentConfigurationSId}
-            />
-          ) : (
-            <TabContentLayout title="Feedback">
-              <EmptyPlaceholder
-                icon={ListCheckIcon}
-                title="Waiting for feedback"
-                description="When users give feedback on responses, you'll see it here."
+                description="Use your agent or share it with your team to see insights data."
               />
             </TabContentLayout>
           ))}
