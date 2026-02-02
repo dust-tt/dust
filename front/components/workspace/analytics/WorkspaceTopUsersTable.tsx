@@ -1,4 +1,4 @@
-import { DataTable, Spinner } from "@dust-tt/sparkle";
+import { DataTable, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -24,13 +24,16 @@ const columns: ColumnDef<TopUserRowData>[] = [
     cell: (info: TopUserInfo) => (
       <DataTable.CellContent>{info.row.original.name}</DataTable.CellContent>
     ),
+    meta: {
+      sizeRatio: 70,
+    },
   },
   {
     id: "messageCount",
     accessorKey: "messageCount",
     header: "Messages",
     meta: {
-      sizeRatio: 10,
+      sizeRatio: 15,
     },
     cell: (info: TopUserInfo) => (
       <DataTable.BasicCellContent label={`${info.row.original.messageCount}`} />
@@ -41,7 +44,7 @@ const columns: ColumnDef<TopUserRowData>[] = [
     accessorKey: "agentCount",
     header: "Agents used",
     meta: {
-      sizeRatio: 10,
+      sizeRatio: 15,
     },
     cell: (info: TopUserInfo) => (
       <DataTable.BasicCellContent label={`${info.row.original.agentCount}`} />
@@ -99,7 +102,11 @@ export function WorkspaceTopUsersTable({
           No user activity for this selection.
         </div>
       ) : (
-        <DataTable<TopUserRowData> data={rows} columns={columns} />
+        <ScrollableDataTable<TopUserRowData>
+          data={rows}
+          columns={columns}
+          maxHeight="max-h-125"
+        />
       )}
     </div>
   );

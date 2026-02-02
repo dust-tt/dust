@@ -1,4 +1,4 @@
-import { DataTable, Spinner } from "@dust-tt/sparkle";
+import { DataTable, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
@@ -25,7 +25,7 @@ const columns: ColumnDef<TopAgentRowData>[] = [
       <DataTable.CellContent>{info.row.original.name}</DataTable.CellContent>
     ),
     meta: {
-      sizeRatio: 80,
+      sizeRatio: 70,
     },
   },
   {
@@ -33,10 +33,13 @@ const columns: ColumnDef<TopAgentRowData>[] = [
     accessorKey: "messageCount",
     header: "Messages",
     meta: {
-      sizeRatio: 10,
+      sizeRatio: 15,
     },
     cell: (info: TopAgentInfo) => (
-      <DataTable.BasicCellContent label={`${info.row.original.messageCount}`} />
+      <DataTable.BasicCellContent
+        className="text-center"
+        label={`${info.row.original.messageCount}`}
+      />
     ),
   },
   {
@@ -44,7 +47,7 @@ const columns: ColumnDef<TopAgentRowData>[] = [
     accessorKey: "userCount",
     header: "Users",
     meta: {
-      sizeRatio: 10,
+      sizeRatio: 15,
     },
     cell: (info: TopAgentInfo) => (
       <DataTable.BasicCellContent label={`${info.row.original.userCount}`} />
@@ -101,7 +104,11 @@ export function WorkspaceTopAgentsTable({
           No agent activity for this selection.
         </div>
       ) : (
-        <DataTable<TopAgentRowData> data={rows} columns={columns} />
+        <ScrollableDataTable<TopAgentRowData>
+          data={rows}
+          columns={columns}
+          maxHeight="max-h-125"
+        />
       )}
     </div>
   );
