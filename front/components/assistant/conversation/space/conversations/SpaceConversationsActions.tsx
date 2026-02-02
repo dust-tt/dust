@@ -27,8 +27,8 @@ export function SpaceConversationsActions({
     ...(isEditor
       ? [
           {
-            id: "invite-members",
-            label: "Invite members",
+            id: "manage-members",
+            label: "Manage members",
             icon: ContactsUserIcon,
             onClick: () => {
               onOpenMembersPanel();
