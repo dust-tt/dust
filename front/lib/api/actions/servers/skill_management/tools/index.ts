@@ -46,7 +46,7 @@ const handlers: ToolHandlers<typeof SKILL_MANAGEMENT_TOOLS_METADATA> = {
       {
         type: "text" as const,
         text: alreadyEnabled
-          ? `Skill "${skill.name}" was already enabled.`
+          ? `Skill "${skill.name}" was already enabled. No action taken.`
           : `Skill "${skill.name}" has been enabled.`,
       },
     ]);
