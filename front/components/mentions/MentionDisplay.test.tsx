@@ -31,7 +31,7 @@ vi.mock("@dust-tt/sparkle", () => {
 });
 
 // Mock MentionDropdown to verify it wraps children when interactive.
-vi.mock("./MentionDropdown", () => ({
+vi.mock("@app/components/mentions/MentionDropdown", () => ({
   MentionDropdown: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="mention-dropdown">{children}</div>
   ),
