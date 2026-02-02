@@ -13756,26 +13756,13 @@
               "type": "string"
             },
             "title": {
-              "anyOf": [
-                {
-                  "anyOf": [
-                    {
-                      "not": {}
-                    },
-                    {
-                      "type": "string"
-                    }
-                  ]
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "description": "Optional title for the conversation"
+              "description": "Title for the conversation",
+              "type": "string"
             }
           },
           "required": [
-            "message"
+            "message",
+            "title"
           ],
           "type": "object"
         }
@@ -13919,39 +13906,6 @@
         }
       },
       {
-        "name": "read_journal_entry",
-        "description": "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {
-            "dustProject": {
-              "additionalProperties": false,
-              "properties": {
-                "mimeType": {
-                  "const": "application/vnd.dust.tool-input.dust-project",
-                  "type": "string"
-                },
-                "uri": {
-                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
-                  "type": "string"
-                }
-              },
-              "required": [
-                "uri",
-                "mimeType"
-              ],
-              "type": "object"
-            },
-            "limit": {
-              "description": "Maximum number of journal entries to return (default: 1)",
-              "type": "number"
-            }
-          },
-          "type": "object"
-        }
-      },
-      {
         "name": "update_file",
         "description": "Update the content of an existing file in the project context. This replaces the entire file content. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
@@ -14004,7 +13958,6 @@
       "edit_url": "low",
       "get_information": "never_ask",
       "list_files": "never_ask",
-      "read_journal_entry": "never_ask",
       "update_file": "high"
     }
   },
