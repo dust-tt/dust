@@ -219,6 +219,54 @@ ConversationParticipantModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
+export class UserConversationReadsModel extends WorkspaceAwareModel<UserConversationReadsModel> {
+  declare lastReadAt: Date;
+
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
+
+  declare conversation?: NonAttribute<ConversationModel>;
+  declare user?: NonAttribute<UserModel>;
+}
+UserConversationReadsModel.init(
+  {
+    lastReadAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "user_conversation_reads",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "userId", "conversationId"],
+        unique: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "userId"],
+      },
+    ],
+  }
+);
+ConversationModel.hasMany(UserConversationReadsModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "CASCADE",
+});
+UserConversationReadsModel.belongsTo(ConversationModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+UserModel.hasMany(UserConversationReadsModel, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "CASCADE",
+});
+UserConversationReadsModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: false },
+});
+
 export class UserMessageModel extends WorkspaceAwareModel<UserMessageModel> {
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
