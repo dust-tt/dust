@@ -7,9 +7,8 @@
 
 import { visit } from "unist-util-visit";
 
-import type { WorkspaceType } from "@app/types";
-
 import { MentionDisplay } from "@app/components/mentions/MentionDisplay";
+import type { WorkspaceType } from "@app/types";
 
 /*
  * Remark directive plugin for parsing mention directives.
