@@ -117,15 +117,11 @@ function constructToolsSection({
   model,
   agentConfiguration,
   serverToolsAndInstructions,
-  enabledSkills,
-  equippedSkills,
 }: {
   hasAvailableActions: boolean;
   model: ModelConfigurationType;
   agentConfiguration: AgentConfigurationType;
   serverToolsAndInstructions?: ServerToolsAndInstructions[];
-  enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
-  equippedSkills: SkillResource[];
 }): string {
   let toolsSection = "# TOOLS\n";
 
@@ -474,8 +470,6 @@ export function constructPromptMultiActions(
       model,
       agentConfiguration,
       serverToolsAndInstructions,
-      enabledSkills,
-      equippedSkills,
     }),
     constructSkillsSection({
       enabledSkills,
