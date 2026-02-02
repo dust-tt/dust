@@ -48,7 +48,7 @@ const barVariants = cva("s-flex s-flex-row s-items-center s-gap-3 s-px-4", {
 });
 
 interface BarProps extends VariantProps<typeof barVariants> {
-  title?: React.ReactNode;
+  title?: React.ReactElement | string;
   description?: React.ReactNode;
   tooltip?: string;
   leftActions?: React.ReactNode;
