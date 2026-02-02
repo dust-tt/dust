@@ -47,7 +47,6 @@ interface SpaceConversationsTabProps {
   conversations: ConversationType[];
   isConversationsLoading: boolean;
   spaceInfo: RichSpaceType;
-  isProjectEditor: boolean;
   onSubmit: (
     input: string,
     mentions: RichMention[],
