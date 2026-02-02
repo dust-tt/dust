@@ -88,15 +88,19 @@ export function usePokeSearchAllRegions({
 
         const settledResults = await Promise.allSettled(regionPromises);
         const allResults: PokeItemBase[] = [];
+        let hasErrors = false;
 
         for (const result of settledResults) {
           if (result.status === "fulfilled") {
             allResults.push(...result.value);
+          } else {
+            hasErrors = true;
           }
         }
 
         if (!cancelled) {
           setResults(allResults);
+          setIsError(hasErrors);
           setIsLoading(false);
         }
       } catch {
@@ -188,15 +192,19 @@ export function usePokeWorkspacesAllRegions({
 
         const settledResults = await Promise.allSettled(regionPromises);
         const allWorkspaces: PokeWorkspaceWithRegion[] = [];
+        let hasErrors = false;
 
         for (const result of settledResults) {
           if (result.status === "fulfilled") {
             allWorkspaces.push(...result.value);
+          } else {
+            hasErrors = true;
           }
         }
 
         if (!cancelled) {
           setWorkspaces(allWorkspaces);
+          setIsError(hasErrors);
           setIsLoading(false);
         }
       } catch {
