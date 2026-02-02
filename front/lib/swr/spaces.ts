@@ -8,6 +8,7 @@ import type {
 } from "@app/lib/api/pagination";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
+import { PROJECTS_UPDATED_EVENT } from "@app/lib/notifications/events";
 import { getSpaceName } from "@app/lib/spaces";
 import {
   emptyArray,
@@ -1033,4 +1034,47 @@ export function useGenerateProjectJournalEntry({
   };
 
   return doGenerate;
+}
+
+export function useLeaveProject({
+  owner,
+  spaceId,
+}: {
+  owner: LightWorkspaceType;
+  spaceId: string;
+}) {
+  const sendNotification = useSendNotification();
+  const { mutateSpaceInfo } = useSpaceInfo({
+    workspaceId: owner.sId,
+    spaceId,
+    disabled: true, // Needed just to mutate
+  });
+
+  const doLeave = async (): Promise<boolean> => {
+    const res = await clientFetch(
+      `/api/w/${owner.sId}/spaces/${spaceId}/leave`,
+      { method: "POST" }
+    );
+
+    if (res.ok) {
+      void mutateSpaceInfo();
+      window.dispatchEvent(new CustomEvent(PROJECTS_UPDATED_EVENT));
+      sendNotification({
+        type: "success",
+        title: "Left project",
+        description: "You have successfully left the project.",
+      });
+      return true;
+    } else {
+      const errorData = await getErrorFromResponse(res);
+      sendNotification({
+        type: "error",
+        title: "Could not leave project",
+        description: `Error: ${errorData.message}`,
+      });
+      return false;
+    }
+  };
+
+  return doLeave;
 }

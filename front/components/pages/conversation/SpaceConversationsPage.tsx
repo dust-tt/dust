@@ -13,6 +13,7 @@ import React, { useCallback, useState } from "react";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
+import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -231,15 +232,33 @@ export function SpaceConversationsPage() {
         onValueChange={(value) => handleTabChange(value as SpaceTab)}
         className="flex min-h-0 flex-1 flex-col pt-3"
       >
-        <TabsList className="px-6">
-          <TabsTrigger
-            value="conversations"
-            label="Conversations"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
-          <TabsTrigger value="settings" label="Settings" icon={Cog6ToothIcon} />
-        </TabsList>
+        <div className="flex items-center justify-between px-6">
+          <TabsList>
+            <TabsTrigger
+              value="conversations"
+              label="Conversations"
+              icon={ChatBubbleLeftRightIcon}
+            />
+            <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
+            <TabsTrigger
+              value="settings"
+              label="Settings"
+              icon={Cog6ToothIcon}
+            />
+          </TabsList>
+
+          {spaceInfo.kind === "project" && spaceInfo.isMember && (
+            <LeaveProjectButton
+              owner={owner}
+              spaceId={spaceInfo.sId}
+              spaceName={spaceInfo.name}
+              isRestricted={spaceInfo.isRestricted}
+              onLeaveSuccess={() => {
+                void router.push(getConversationRoute(owner.sId, "new"));
+              }}
+            />
+          )}
+        </div>
 
         <TabsContent value="conversations">
           <SpaceConversationsTab
