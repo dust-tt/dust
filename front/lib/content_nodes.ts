@@ -209,11 +209,26 @@ export function getDisplayTitleForDataSourceViewContentNode(
 export function getDisplayTitleForContentNode(node: ContentNode): string {
   // ContentNodeTree sometimes receives DataSourceViewContentNode items (which carry
   // connector metadata). When available, use the richer formatting.
-  const maybeDSVNode = node as unknown as Partial<DataSourceViewContentNode>;
-  if (maybeDSVNode.dataSourceView) {
-    return getDisplayTitleForDataSourceViewContentNode(
-      node as unknown as DataSourceViewContentNode
-    );
+  return isDataSourceViewContentNode(node)
+    ? getDisplayTitleForDataSourceViewContentNode(node)
+    : node.title;
+}
+
+function isDataSourceViewContentNode(
+  node: ContentNode
+): node is DataSourceViewContentNode {
+  const candidate = node as unknown as { dataSourceView?: unknown };
+  if (
+    !candidate.dataSourceView ||
+    typeof candidate.dataSourceView !== "object"
+  ) {
+    return false;
   }
-  return node.title;
+
+  const dataSourceView = candidate.dataSourceView as {
+    dataSource?: unknown;
+  };
+  return (
+    !!dataSourceView.dataSource && typeof dataSourceView.dataSource === "object"
+  );
 }
