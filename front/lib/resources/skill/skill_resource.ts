@@ -1848,7 +1848,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
     }
-  ): Promise<Result<void, Error>> {
+  ): Promise<Result<{ alreadyEnabled: boolean }, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
     const refs = await SkillResource.getSkillReferencesForAgent(
@@ -1879,9 +1879,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfigurationId: agentConfiguration.sId,
     };
 
+    // Check if this skill is already enabled for this agent in this conversation.
+    const existingConversationSkill = await ConversationSkillModel.findOne({
+      where: conversationSkillBlob,
+    });
+
+    if (existingConversationSkill) {
+      return new Ok({ alreadyEnabled: true });
+    }
+
     await ConversationSkillModel.create(conversationSkillBlob);
 
-    return new Ok(undefined);
+    return new Ok({ alreadyEnabled: false });
   }
 
   static async snapshotConversationSkillsForMessage(
