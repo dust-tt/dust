@@ -4,20 +4,33 @@ import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 
 import { PokeLayoutNoWorkspace } from "@dust-tt/front/components/poke/PokeLayout.tsx";
-import { usePokeAuthContext } from "@dust-tt/front/lib/swr/poke.ts";
+import {
+  usePokeAuthContext,
+  usePokeRegion,
+} from "@dust-tt/front/lib/swr/poke.ts";
+import { useEffect } from "react";
+import { useRegionContext } from "@app/lib/auth/RegionContext";
 
 interface PokeLayoutProps {
   children?: ReactNode;
 }
 
 export function PokePage({ children }: PokeLayoutProps) {
-  const { authContext, isAuthenticated, isLoading } = usePokeAuthContext();
+  const { authContext, isAuthenticated, isAuthContextLoading } =
+    usePokeAuthContext();
+  // Fetch region info and set URLs in context.
+  const { isRegionLoading } = usePokeRegion();
   const { isRedirecting } = useLoginRedirect({
-    isLoading,
+    isLoading: isAuthContextLoading,
     isAuthenticated,
   });
 
-  if (isLoading || isRedirecting || !authContext) {
+  if (
+    isAuthContextLoading ||
+    isRegionLoading ||
+    isRedirecting ||
+    !authContext
+  ) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Spinner size="xl" />

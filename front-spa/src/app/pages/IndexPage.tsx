@@ -7,17 +7,21 @@ import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
-  const { user, defaultWorkspaceId, isAuthContextLoading } = useAuthContext({});
+  const { authContext, isAuthenticated, isAuthContextLoading } =
+    useAuthContext();
 
-  const isAuthenticated = !!user;
   useLoginRedirect({
     isLoading: isAuthContextLoading,
     isAuthenticated,
   });
 
+  const defaultWorkspaceId = authContext?.defaultWorkspaceId;
+
   useEffect(() => {
     if (defaultWorkspaceId) {
-      navigate(`/w/${defaultWorkspaceId}/conversation/new`, { replace: true });
+      navigate(`/w/${defaultWorkspaceId}/conversation/new`, {
+        replace: true,
+      });
     }
   }, [defaultWorkspaceId, navigate]);
 

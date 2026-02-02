@@ -14,7 +14,6 @@ export interface AuthContextValue {
   subscription: SubscriptionType;
   isAdmin: boolean;
   isBuilder: boolean;
-  isSuperUser: boolean;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);

@@ -166,8 +166,8 @@ export function usePokeAuthContext() {
   return {
     authContext: data,
     isAuthenticated: !!data?.user && data.isSuperUser,
-    isLoading,
-    isError: !!error,
+    isAuthContextLoading: isLoading,
+    isAuthContextError: !!error,
   };
 }
 
@@ -180,7 +180,7 @@ export function usePokeWorkspaceAuthContext({ wId }: { wId: string }) {
   return {
     authContext: data,
     isAuthenticated: !!data?.user && data.isSuperUser,
-    isLoading,
-    isError: !!error,
+    isAuthContextLoading: isLoading,
+    isAuthContextError: !!error,
   };
 }

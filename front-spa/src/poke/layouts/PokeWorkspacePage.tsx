@@ -5,7 +5,10 @@ import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 
 import PokeLayout from "@dust-tt/front/components/poke/PokeLayout.tsx";
-import { usePokeWorkspaceAuthContext } from "@dust-tt/front/lib/swr/poke.ts";
+import {
+  usePokeRegion,
+  usePokeWorkspaceAuthContext,
+} from "@dust-tt/front/lib/swr/poke.ts";
 
 interface PokeLayoutProps {
   children?: ReactNode;
@@ -14,16 +17,23 @@ interface PokeLayoutProps {
 export function PokeWorkspacePage({ children }: PokeLayoutProps) {
   const wId = useRequiredPathParam("wId");
 
-  const { authContext, isAuthenticated, isLoading } =
+  const { authContext, isAuthenticated, isAuthContextLoading } =
     usePokeWorkspaceAuthContext({
       wId,
     });
+
+  const { isRegionLoading } = usePokeRegion();
   const { isRedirecting } = useLoginRedirect({
-    isLoading,
+    isLoading: isAuthContextLoading,
     isAuthenticated,
   });
 
-  if (isLoading || isRedirecting || !authContext) {
+  if (
+    isAuthContextLoading ||
+    isRegionLoading ||
+    isRedirecting ||
+    !authContext
+  ) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Spinner size="xl" />
