@@ -7,21 +7,19 @@ declare global {
 }
 
 // Pluggable base URL resolver.
-let baseUrlResolver: (() => string | undefined) | null = null;
+let baseUrlResolver: (() => string) | null = null;
 
-export function setBaseUrlResolver(
-  fn: (() => string | undefined) | null
-): void {
+export function setBaseUrlResolver(fn: (() => string) | null): void {
   baseUrlResolver = fn;
 }
 
-function getSpaBaseUrl(): string | undefined {
+function getSpaBaseUrl(): string {
   return typeof import.meta !== "undefined"
-    ? import.meta.env?.VITE_DUST_CLIENT_FACING_URL
-    : undefined;
+    ? (import.meta.env?.VITE_DUST_CLIENT_FACING_URL ?? "")
+    : "";
 }
 
-export function getApiBaseUrl(): string | undefined {
+export function getApiBaseUrl(): string {
   // Use custom resolver if set, otherwise fall back to SPA build-time URL.
   return baseUrlResolver ? baseUrlResolver() : getSpaBaseUrl();
 }
@@ -36,7 +34,11 @@ export function clientFetch(
   const baseUrl = getApiBaseUrl();
 
   // Only prepend base URL for relative paths (starting with /).
-  if (baseUrl && typeof input === "string" && input.startsWith("/")) {
+  if (
+    baseUrl.length > 0 &&
+    typeof input === "string" &&
+    input.startsWith("/")
+  ) {
     input = `${baseUrl}${input}`;
     init = { ...init, credentials: "include" };
   }

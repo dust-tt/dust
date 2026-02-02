@@ -97,7 +97,7 @@ export function useUnifiedSearch({
         params.append("cursor", cursor);
       }
 
-      const url = `${getApiBaseUrl() ?? ""}/api/w/${owner.sId}/search?${params.toString()}`;
+      const url = `${getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
       const eventSource = new EventSource(url, { withCredentials: true });
       eventSourceRef.current = eventSource;
 

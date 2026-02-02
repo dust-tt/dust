@@ -52,7 +52,7 @@ const stableEventSourceManager = {
       urlWithCommitHash.hash;
 
     const newSource = new EventSource(
-      `${getApiBaseUrl() ?? ""}${pathWithQueryAndHash}`,
+      `${getApiBaseUrl()}${pathWithQueryAndHash}`,
       { withCredentials: true }
     );
     this.sources.set(uniqueId, newSource);
