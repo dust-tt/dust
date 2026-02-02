@@ -1870,20 +1870,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       );
     }
 
-    // Check if this skill is already enabled for this agent in this conversation.
-    const existingConversationSkill = await ConversationSkillModel.findOne({
-      where: {
-        ...this.skillReference,
-        workspaceId: workspace.id,
-        conversationId: conversation.id,
-        agentConfigurationId: agentConfiguration.sId,
-      },
-    });
-
-    if (existingConversationSkill) {
-      return new Ok({ alreadyEnabled: true });
-    }
-
     const conversationSkillBlob: ConversationSkillCreationAttributes = {
       ...this.skillReference,
       workspaceId: workspace.id,
@@ -1892,6 +1878,15 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       source: "agent_enabled",
       agentConfigurationId: agentConfiguration.sId,
     };
+
+    // Check if this skill is already enabled for this agent in this conversation.
+    const existingConversationSkill = await ConversationSkillModel.findOne({
+      where: conversationSkillBlob,
+    });
+
+    if (existingConversationSkill) {
+      return new Ok({ alreadyEnabled: true });
+    }
 
     await ConversationSkillModel.create(conversationSkillBlob);
 
