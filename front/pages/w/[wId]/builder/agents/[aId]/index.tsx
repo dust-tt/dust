@@ -14,9 +14,7 @@ import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
 export const getServerSideProps = appGetServerSideProps;
 
-interface EditAgentProps {}
-
-function EditAgent(_props: EditAgentProps) {
+function EditAgent() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();
@@ -33,17 +31,9 @@ function EditAgent(_props: EditAgentProps) {
 
   if (
     isAgentConfigurationError ||
-    (!isAgentConfigurationLoading && !agentConfiguration)
+    (!isAgentConfigurationLoading && !agentConfiguration) ||
+    (agentConfiguration && !agentConfiguration.canEdit && !isAdmin)
   ) {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
-  }
-
-  if (agentConfiguration && !agentConfiguration.canEdit && !isAdmin) {
     void router.replace("/404");
     return (
       <div className="flex h-screen items-center justify-center">

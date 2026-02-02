@@ -33,9 +33,7 @@ import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
 export const getServerSideProps = appGetServerSideProps;
 
-interface CreateAgentProps {}
-
-function CreateAgent(_props: CreateAgentProps) {
+function CreateAgent() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { subscription } = useAuth();

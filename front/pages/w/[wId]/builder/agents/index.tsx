@@ -82,9 +82,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
   return AGENT_MANAGER_TABS.some((tabItem) => tabItem.id === tab);
 }
 
-interface WorkspaceAssistantsProps {}
-
-function WorkspaceAssistants(_props: WorkspaceAssistantsProps) {
+function WorkspaceAssistants() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { subscription, user, isBuilder } = useAuth();

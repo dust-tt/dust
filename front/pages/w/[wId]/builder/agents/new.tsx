@@ -29,9 +29,7 @@ function isBuilderFlow(value: string): value is BuilderFlow {
 
 export const getServerSideProps = appGetServerSideProps;
 
-interface CreateAgentProps {}
-
-function CreateAgent(_props: CreateAgentProps) {
+function CreateAgent() {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { user, isAdmin, isBuilder } = useAuth();
