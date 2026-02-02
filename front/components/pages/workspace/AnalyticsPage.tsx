@@ -183,7 +183,6 @@ export function AnalyticsPage() {
             includeInactive={includeInactive}
             onIncludeInactiveChange={setIncludeInactive}
           />
-          F
         </Page.Vertical>
       </AppCenteredLayout>
     </>
