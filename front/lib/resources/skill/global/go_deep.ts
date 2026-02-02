@@ -14,8 +14,8 @@ export const goDeepSkill = {
     "tasks requiring comprehensive research across multiple data sources, databases, or web " +
     "resources. Enable when the user asks for a deep dive, for a detailed response " +
     "or for thorough analysis. When in doubt, prefer enabling this skill than not. " +
-    "If you realize that the question is complex and already ran multiple " +
-    "steps of web or company data research, you can enable the Go deep skill midway.",
+    "If you realize that the question turns out to be complex and ran multiple steps (e.g. more " +
+    "than 3) of web or company data research, you can enable the Go deep skill midway.",
   instructions: getDeepDiveInstructions({ includeToolsetsPrompt: false }),
   mcpServers: [
     {
