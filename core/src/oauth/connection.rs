@@ -38,6 +38,8 @@ use super::{credential::Credential, providers::utils::ProviderHttpRequestError};
 // is the maximum time the lock will be held.
 static REDIS_LOCK_TTL_SECONDS: u64 = 20;
 // Default timeout for provider token operations. Some providers may override this.
+// To ensure we don't write without holding the lock providers must comply to this timeout when
+// operating on tokens.
 pub static PROVIDER_TIMEOUT_SECONDS: u64 = 10;
 
 /// Returns the timeout in seconds for a specific provider's token operations.
