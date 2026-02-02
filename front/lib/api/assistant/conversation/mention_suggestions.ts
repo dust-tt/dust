@@ -213,7 +213,7 @@ export const suggestionsOfMentions = async (
     }
   }
 
-  // If the conversation belogns to a project, get the project members.
+  // If the conversation belongs to a project, get the project members.
   // This aims to prioritize them in the suggestions
   if (spaceId) {
     const conversationSpace = await SpaceResource.fetchById(auth, spaceId);
