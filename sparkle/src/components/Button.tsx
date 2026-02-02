@@ -192,8 +192,8 @@ const labelVariants = cva("", {
     size: {
       "icon-xs": "s-hidden",
       icon: "s-hidden",
-      xmini: "s-hidden",
-      mini: "s-hidden",
+      xmini: "",
+      mini: "",
       xs: "",
       sm: "",
       md: "",
