@@ -16,7 +16,7 @@ export const getServerSideProps = appGetServerSideProps;
 
 interface EditAgentProps {}
 
-function EditAgent(_props: EditAgentProps): JSX.Element {
+function EditAgent(_props: EditAgentProps) {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { user, isAdmin } = useAuth();

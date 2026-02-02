@@ -35,7 +35,7 @@ export const getServerSideProps = appGetServerSideProps;
 
 interface CreateAgentProps {}
 
-function CreateAgent(_props: CreateAgentProps): JSX.Element {
+function CreateAgent(_props: CreateAgentProps) {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { subscription } = useAuth();

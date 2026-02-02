@@ -84,7 +84,7 @@ function isValidTab(tab: string): tab is AssistantManagerTabsType {
 
 interface WorkspaceAssistantsProps {}
 
-function WorkspaceAssistants(_props: WorkspaceAssistantsProps): JSX.Element {
+function WorkspaceAssistants(_props: WorkspaceAssistantsProps) {
   const router = useAppRouter();
   const owner = useWorkspace();
   const { subscription, user, isBuilder } = useAuth();
