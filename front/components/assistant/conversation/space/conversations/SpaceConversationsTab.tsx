@@ -16,13 +16,13 @@ import { SpaceConversationListItem } from "@app/components/assistant/conversatio
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { RichSpaceType } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
   ConversationType,
@@ -46,7 +46,10 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
-  spaceInfo: RichSpaceType;
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
+  spaceInfo: GetSpaceResponseBody["space"];
   onSubmit: (
     input: string,
     mentions: RichMention[],
@@ -61,6 +64,9 @@ export function SpaceConversationsTab({
   user,
   conversations,
   isConversationsLoading,
+  hasMore,
+  loadMore,
+  isLoadingMore,
   spaceInfo,
   onSubmit,
   onOpenMembersPanel,
@@ -277,6 +283,16 @@ export function SpaceConversationsTab({
                     </div>
                   );
                 })}
+                <InfiniteScroll
+                  nextPage={loadMore}
+                  hasMore={hasMore}
+                  showLoader={isLoadingMore}
+                  loader={
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner size="xs" />
+                    </div>
+                  }
+                />
               </div>
             </div>
           </div>

@@ -125,7 +125,6 @@ async function gatherProjectData(
   sections.push(`## Project Information`);
   sections.push(`- **Name**: ${space.name}`);
 
-  // Recent conversations - fetch paginated (already sorted by updatedAt DESC)
   const { conversations } =
     await ConversationResource.listConversationsInSpacePaginated(auth, {
       spaceId: space.sId,
