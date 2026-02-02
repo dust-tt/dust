@@ -90,12 +90,13 @@ export function SpaceAboutTab({
 
   const handleVisibilityToggle = async () => {
     const newIsPublic = !isPublic;
+    const title = newIsPublic ? "Switch to public?" : "Switch to restricted?";
     const message = newIsPublic
-      ? "Anyone in the workspace will be able to find and join this project. Are you sure?"
-      : "Only invited members will be able to access this project. Are you sure?";
+      ? "Everyone in the workspace will be able to see and join this project."
+      : "Access will be limited to invited members only.";
 
     const confirmed = await confirm({
-      title: "Change project visibility",
+      title,
       message,
       validateVariant: "warning",
     });
@@ -189,7 +190,7 @@ export function SpaceAboutTab({
           <h3 className="heading-lg flex-1">Members</h3>
           {isProjectEditor && onOpenInvitePanel && (
             <Button
-              label="Invite"
+              label="Manage"
               variant="outline"
               icon={UserGroupIcon}
               onClick={onOpenInvitePanel}

@@ -12,7 +12,7 @@ import React, { useCallback, useState } from "react";
 
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
-import { InviteUsersPanel } from "@app/components/assistant/conversation/space/InviteUsersPanel";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
 import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
@@ -116,27 +116,18 @@ export function SpaceConversationsPage() {
     setCurrentTab(tab);
   }, []);
 
-  const handleInviteMembers = useCallback(
-    async (selectedUserIds: string[]) => {
-      if (selectedUserIds.length === 0 || !spaceInfo) {
+  const handleManageMembers = useCallback(
+    async ({ members, editors }: { members: string[]; editors: string[] }) => {
+      if (editors.length === 0 || !spaceInfo) {
         setIsInvitePanelOpen(false);
         return;
       }
 
-      const currentMembers = spaceInfo.members ?? [];
-      const currentMemberIds = currentMembers
-        .filter((m) => !m.isEditor)
-        .map((m) => m.sId);
-      const currentEditorIds = currentMembers
-        .filter((m) => m.isEditor)
-        .map((m) => m.sId);
-      const newMemberIds = [...currentMemberIds, ...selectedUserIds];
-
       // Call the API to update the space with new members
       const updatedSpace = await doUpdateSpace(spaceInfo, {
         isRestricted: spaceInfo.isRestricted,
-        memberIds: newMemberIds,
-        editorIds: currentEditorIds,
+        memberIds: members,
+        editorIds: editors,
         managementMode: "manual",
         name: spaceInfo.name,
       });
@@ -329,13 +320,13 @@ export function SpaceConversationsPage() {
           />
         </TabsContent>
       </Tabs>
-      <InviteUsersPanel
+      <ManageUsersPanel
         isOpen={isInvitePanelOpen}
         owner={owner}
         space={spaceInfo}
-        currentMembers={spaceInfo.members}
+        currentProjectMembers={spaceInfo.members}
         onClose={() => setIsInvitePanelOpen(false)}
-        onInvite={handleInviteMembers}
+        onSave={handleManageMembers}
       />
     </div>
   );

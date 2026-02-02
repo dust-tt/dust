@@ -1,9 +1,11 @@
+import type { MenuItem } from "@dust-tt/sparkle";
 import {
   Avatar,
-  Checkbox,
+  CheckIcon,
+  Chip,
   DataTable,
   TrashIcon,
-  UserIcon,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useContext, useMemo } from "react";
@@ -127,6 +129,11 @@ export function MembersTable({
     [doUpdate, space, selectedMembers, sendNotifications, mutateSpaceInfo]
   );
 
+  const rows = useMemo(
+    () => getMemberTableRows(selectedMembers),
+    [selectedMembers]
+  );
+
   const columns: ColumnDef<MemberRowData>[] = useMemo(
     () => [
       {
@@ -164,24 +171,24 @@ export function MembersTable({
           return <DataTable.BasicCellContent label={info.row.original.email} />;
         },
       },
-      ...(isEditor
-        ? [
-            {
-              id: "editor",
-              header: "Editor",
-              meta: {
-                className: "w-20",
-              },
-              cell: (info: any) => {
-                return (
-                  <DataTable.CellContent>
-                    <Checkbox checked={info.row.original.isEditor} disabled />
-                  </DataTable.CellContent>
-                );
-              },
-            },
-          ]
-        : []),
+      {
+        id: "role",
+        header: "Role",
+        meta: {
+          className: "w-20",
+        },
+        cell: (info: any) => {
+          return (
+            <DataTable.CellContent>
+              {info.row.original.isEditor && (
+                <Chip color="green" size="mini">
+                  editor
+                </Chip>
+              )}
+            </DataTable.CellContent>
+          );
+        },
+      },
       {
         accessorKey: "joinedAt",
         header: "Joined at",
@@ -213,35 +220,53 @@ export function MembersTable({
                 className: "w-12",
               },
               cell: (info: any) => {
-                const editorLabel = info.row.original.isEditor
-                  ? "Remove from editors"
-                  : "Add as editor";
-                const editorMessage = info.row.original.isEditor
-                  ? `Are you sure you want to remove "${info.row.original.name}" from editors?`
-                  : `Are you sure you want to add "${info.row.original.name}" as an editor?`;
+                let editorSettingItem: MenuItem;
+                if (info.row.original.isEditor) {
+                  const editorLabel = "Remove from editors";
+                  editorSettingItem = {
+                    kind: "item",
+                    label: editorLabel,
+                    disabled: rows.filter((row) => row.isEditor).length <= 1,
+                    icon: XMarkIcon,
+                    variant: "default",
+                    onClick: async () => {
+                      const confirmed = await confirm({
+                        title: editorLabel,
+                        message: `Are you sure you want to remove "${info.row.original.name}" from editors?`,
+                        validateLabel: "Remove",
+                        validateVariant: "primary",
+                      });
+
+                      if (confirmed) {
+                        await toggleEditor(info.row.original.userId);
+                      }
+                    },
+                  };
+                } else {
+                  const editorLabel = "Set as editor";
+                  editorSettingItem = {
+                    kind: "item",
+                    label: editorLabel,
+                    icon: CheckIcon,
+                    variant: "default",
+                    onClick: async () => {
+                      const confirmed = await confirm({
+                        title: editorLabel,
+                        message: `Are you sure you want to add "${info.row.original.name}" as an editor?`,
+                        validateLabel: "Add",
+                        validateVariant: "primary",
+                      });
+
+                      if (confirmed) {
+                        await toggleEditor(info.row.original.userId);
+                      }
+                    },
+                  };
+                }
                 return (
                   <DataTable.MoreButton
                     menuItems={[
-                      {
-                        kind: "item",
-                        label: editorLabel,
-                        icon: info.row.original.isEditor ? TrashIcon : UserIcon,
-                        variant: "default",
-                        onClick: async () => {
-                          const confirmed = await confirm({
-                            title: editorLabel,
-                            message: editorMessage,
-                            validateLabel: info.row.original.isEditor
-                              ? "Remove"
-                              : "Add",
-                            validateVariant: "primary",
-                          });
-
-                          if (confirmed) {
-                            await toggleEditor(info.row.original.userId);
-                          }
-                        },
-                      },
+                      editorSettingItem,
                       {
                         kind: "item",
                         label: "Remove from project",
@@ -268,12 +293,7 @@ export function MembersTable({
           ]
         : []),
     ],
-    [isEditor, removeMember, confirm, toggleEditor]
-  );
-
-  const rows = useMemo(
-    () => getMemberTableRows(selectedMembers),
-    [selectedMembers]
+    [isEditor, removeMember, confirm, toggleEditor, rows]
   );
 
   return (
