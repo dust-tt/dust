@@ -2,7 +2,6 @@ import { isLeft } from "fp-ts/lib/Either";
 import * as reporter from "io-ts-reporters";
 import uniqBy from "lodash/uniqBy";
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import { getDataSourceViewsUsageByCategory } from "@app/lib/api/agent_data_sources";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
@@ -14,7 +13,6 @@ import { DataSourceResource } from "@app/lib/resources/data_source_resource";
 import { DataSourceViewResource } from "@app/lib/resources/data_source_view_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -116,29 +114,10 @@ async function handler(
       const { includeAllMembers } = req.query;
       const shouldIncludeAllMembers = includeAllMembers === "true";
 
-      const groupsToProcess = space.groups.filter((g) => {
-        return g.kind === "regular" || g.kind === "space_editors";
-      });
-
-      // Fetch all group memberships to get the startAt date (will be the joinedAt date returned for each member)
-      const allGroupMemberships = await GroupMembershipModel.findAll({
-        where: {
-          groupId: {
-            [Op.in]: groupsToProcess.map((g) => g.id),
-          },
-          workspaceId: auth.getNonNullableWorkspace().id,
-          ...(shouldIncludeAllMembers
-            ? {
-                startAt: { [Op.lte]: new Date() },
-                [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-              }
-            : {
-                status: "active",
-                startAt: { [Op.lte]: new Date() },
-                [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
-              }),
-        },
-      });
+      const { groupsToProcess, allGroupMemberships } =
+        await space.fetchManualGroupsMemberships(auth, {
+          shouldIncludeAllMembers,
+        });
 
       const membershipMap = new Map<number, Map<number, string>>();
       for (const membership of allGroupMemberships) {
