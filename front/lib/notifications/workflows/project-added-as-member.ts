@@ -115,7 +115,7 @@ export const projectAddedAsMemberWorkflow = workflow(
       async () => {
         return {
           subject: details.projectName,
-          body: `${details.userThatAddedYouFullname} added you to the project.`,
+          body: `${details.userThatAddedYouFullname} added you to project "${details.projectName}".`,
           primaryAction: {
             label: "View",
             redirect: {
@@ -142,7 +142,7 @@ export const projectAddedAsMemberWorkflow = workflow(
             id: payload.workspaceId,
             name: details.workspaceName,
           },
-          content: `${details.userThatAddedYouFullname} added you to the project "${details.projectName}".`,
+          content: `${details.userThatAddedYouFullname} added you to project "${details.projectName}".`,
           action: {
             label: "View project",
             url:
