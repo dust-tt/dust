@@ -35,6 +35,7 @@ import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assi
 import type { GetSpaceConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]";
 import type {
   ConversationError,
+  ConversationType,
   ConversationWithoutContentType,
   LightWorkspaceType,
 } from "@app/types";
@@ -122,30 +123,70 @@ export function useSpaceConversationsSummary({
   };
 }
 
+const DEFAULT_CONVERSATIONS_PAGE_SIZE = 20;
+
 export function useSpaceConversations({
   workspaceId,
   spaceId,
-  options,
+  limit = DEFAULT_CONVERSATIONS_PAGE_SIZE,
 }: {
   workspaceId: string;
   spaceId: string | null;
-  options?: { disabled: boolean };
+  limit?: number;
 }) {
-  const spaceConversationsFetcher: Fetcher<GetSpaceConversationsResponseBody> =
+  const conversationsFetcher: Fetcher<GetSpaceConversationsResponseBody> =
     fetcher;
 
-  const { data, error, mutate } = useSWRWithDefaults(
-    spaceId
-      ? `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}`
-      : null,
-    spaceConversationsFetcher,
-    options
-  );
+  const { data, error, mutate, size, setSize, isLoading, isValidating } =
+    useSWRInfiniteWithDefaults(
+      (
+        pageIndex: number,
+        previousPageData: GetSpaceConversationsResponseBody | null
+      ) => {
+        if (!spaceId) {
+          return null;
+        }
+
+        if (previousPageData === null) {
+          return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}`;
+        }
+
+        if (!previousPageData.hasMore) {
+          return null;
+        }
+
+        return `/api/w/${workspaceId}/assistant/conversations/spaces/${spaceId}?lastValue=${previousPageData.lastValue}`;
+      },
+      conversationsFetcher,
+      {
+        revalidateAll: false,
+        revalidateOnFocus: false,
+      }
+    );
+
+  const conversations = useMemo(() => {
+    if (!data) {
+      return emptyArray<ConversationType>();
+    }
+    return data.flatMap((page) => page.conversations);
+  }, [data]);
+
+  const hasMore = data ? (data[data.length - 1]?.hasMore ?? false) : false;
+
+  const loadMore = useCallback(() => {
+    if (hasMore && !isValidating) {
+      void setSize(size + 1);
+    }
+  }, [hasMore, isValidating, setSize, size]);
 
   return {
-    conversations: data?.conversations ?? emptyArray(),
+    conversations,
     isConversationsLoading: !error && !data,
     isConversationsError: error,
+    isLoadingMore: isValidating && size > 1,
+    isValidating,
+    hasMore,
+    loadMore,
     mutateConversations: mutate,
   };
 }

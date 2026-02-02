@@ -16,6 +16,7 @@ import { SpaceConversationListItem } from "@app/components/assistant/conversatio
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
@@ -45,6 +46,9 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
   spaceInfo: SpaceType;
   onSubmit: (
     input: string,
@@ -59,6 +63,9 @@ export function SpaceConversationsTab({
   user,
   conversations,
   isConversationsLoading,
+  hasMore,
+  loadMore,
+  isLoadingMore,
   spaceInfo,
   onSubmit,
 }: SpaceConversationsTabProps) {
@@ -258,6 +265,17 @@ export function SpaceConversationsTab({
                     </div>
                   );
                 })}
+                <InfiniteScroll
+                  nextPage={loadMore}
+                  hasMore={hasMore}
+                  showLoader={isLoadingMore}
+                  loader={
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner size="xs" />
+                    </div>
+                  }
+                  // options={{ rootMargin: "200px" }}
+                />
               </div>
             </div>
           </div>
