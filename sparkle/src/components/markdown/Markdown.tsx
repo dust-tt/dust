@@ -243,16 +243,23 @@ export function Markdown({
     [safeRehypeKatex, { output: "mathml" }],
   ] as PluggableList;
 
-  try {
-    return (
-      <div className="s-w-full">
-        <MarkdownContentContext.Provider
-          value={{
-            content: processedContent,
-            isStreaming,
-            isLastMessage,
-          }}
-        >
+  const fallback = (
+    <div className="s-w-full">
+      <Chip color="warning">There was an error parsing this markdown content</Chip>
+      {processedContent}
+    </div>
+  );
+
+  return (
+    <div className="s-w-full">
+      <MarkdownContentContext.Provider
+        value={{
+          content: processedContent,
+          isStreaming,
+          isLastMessage,
+        }}
+      >
+        <MarkdownErrorBoundary resetKey={processedContent} fallback={fallback}>
           <ReactMarkdown
             linkTarget="_blank"
             components={markdownComponents}
@@ -261,19 +268,10 @@ export function Markdown({
           >
             {processedContent}
           </ReactMarkdown>
-        </MarkdownContentContext.Provider>
-      </div>
-    );
-  } catch (error) {
-    return (
-      <div className="s-w-full">
-        <Chip color="warning">
-          There was an error parsing this markdown content
-        </Chip>
-        {processedContent}
-      </div>
-    );
-  }
+        </MarkdownErrorBoundary>
+      </MarkdownContentContext.Provider>
+    </div>
+  );
 }
 
 function LinkBlock({
@@ -299,6 +297,32 @@ function LinkBlock({
       {children}
     </a>
   );
+}
+
+class MarkdownErrorBoundary extends React.Component<
+  {
+    children: React.ReactNode;
+    fallback: React.ReactNode;
+    resetKey: string;
+  },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidUpdate(prevProps: Readonly<this["props"]>) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      // eslint-disable-next-line react/no-did-update-set-state
+      this.setState({ hasError: false });
+    }
+  }
+
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children;
+  }
 }
 
 type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "ref"> &
