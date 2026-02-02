@@ -22,6 +22,7 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
+import { getMicrosoftSharePointRootFolderDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
 import type { DataSourceViewContentNode } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
@@ -236,9 +237,13 @@ export function DataSourceSearchResults({
   const listItems: DataSourceListItem[] = useMemo(() => {
     return searchResults.map((node) => {
       const id = `${node.dataSourceView.sId}:${node.internalId}`;
+      const title =
+        node.dataSourceView.dataSource.connectorProvider === "microsoft"
+          ? getMicrosoftSharePointRootFolderDisplayTitle(node)
+          : node.title;
       return {
         id,
-        title: node.title,
+        title,
         icon: getVisualForDataSourceViewContentNode(node),
         onClick: node.expandable
           ? () => handleSearchResultClick(node)

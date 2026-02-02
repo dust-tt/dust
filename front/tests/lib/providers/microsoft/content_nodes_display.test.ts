@@ -1,12 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  getDisplayTitleForContentNode,
-  getDisplayTitleForDataSourceViewContentNode,
-} from "@app/lib/content_nodes";
+import { getMicrosoftSharePointRootFolderDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
 import type { DataSourceViewContentNode } from "@app/types";
 
-function makeMicrosoftRootFolderNode(
+function makeNode(
   overrides: Partial<DataSourceViewContentNode> = {}
 ): DataSourceViewContentNode {
   return {
@@ -52,53 +49,46 @@ function makeMicrosoftRootFolderNode(
   };
 }
 
-describe("SharePoint folder display titles", () => {
-  it("prefixes Microsoft SharePoint root folders with site name", () => {
-    const node = makeMicrosoftRootFolderNode();
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
+  it("prefixes SharePoint root folders with site name", () => {
+    const node = makeNode();
+    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
       "Project Alpha → 01 Engagement"
     );
   });
 
   it("supports SharePoint share links with /:f:/r/sites/...", () => {
-    const node = makeMicrosoftRootFolderNode({
+    const node = makeNode({
       sourceUrl:
         "https://tenant.sharepoint.com/:f:/r/sites/Customer%20X/Shared%20Documents/02%20Work%20Plans?csf=1&web=1",
       title: "02 Work Plans",
     });
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
       "Customer X → 02 Work Plans"
     );
   });
 
   it("supports SharePoint /teams/... paths", () => {
-    const node = makeMicrosoftRootFolderNode({
+    const node = makeNode({
       sourceUrl:
         "https://tenant.sharepoint.com/teams/Team%20Blue/Shared%20Documents/01%20Engagement",
     });
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
       "Team Blue → 01 Engagement"
     );
   });
 
   it("does not prefix non-root nodes", () => {
-    const node = makeMicrosoftRootFolderNode({ parentInternalId: "parent" });
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+    const node = makeNode({ parentInternalId: "parent" });
+    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
       "01 Engagement"
     );
   });
 
   it("does not prefix when sourceUrl is missing", () => {
-    const node = makeMicrosoftRootFolderNode({ sourceUrl: null });
-    expect(getDisplayTitleForDataSourceViewContentNode(node)).toBe(
+    const node = makeNode({ sourceUrl: null });
+    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
       "01 Engagement"
-    );
-  });
-
-  it("works through getDisplayTitleForContentNode (tree usage)", () => {
-    const node = makeMicrosoftRootFolderNode();
-    expect(getDisplayTitleForContentNode(node)).toBe(
-      "Project Alpha → 01 Engagement"
     );
   });
 });

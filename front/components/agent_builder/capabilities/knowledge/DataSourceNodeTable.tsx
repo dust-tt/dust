@@ -10,6 +10,7 @@ import {
   getLatestNodeFromNavigationHistory,
 } from "@app/components/data_source_view/context/utils";
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
+import { getMicrosoftSharePointRootFolderDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
 import { useInfiniteDataSourceViewContentNodes } from "@app/lib/swr/data_source_views";
 import type { ContentNodesViewType } from "@app/types";
 
@@ -55,9 +56,14 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const listItems: DataSourceListItem[] = useMemo(
     () =>
       childNodes.map((node) => {
+        const title =
+          node.dataSourceView.dataSource.connectorProvider === "microsoft"
+            ? getMicrosoftSharePointRootFolderDisplayTitle(node)
+            : node.title;
+
         return {
           id: node.internalId,
-          title: node.title,
+          title,
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,
           entry: {
