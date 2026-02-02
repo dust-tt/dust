@@ -1184,9 +1184,12 @@ describe("postUserMessage", () => {
         (g) => g.kind === "regular"
       );
       if (projectSpaceGroup) {
-        const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
-          user: memberUser.toJSON(),
-        });
+        const addRes = await projectSpaceGroup.dangerouslyAddMember(
+          internalAdminAuth,
+          {
+            user: memberUser.toJSON(),
+          }
+        );
         if (addRes.isErr()) {
           throw new Error(
             `Failed to add user to project space group: ${addRes.error.message}`

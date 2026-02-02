@@ -49,10 +49,14 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
     const editorGroup = project.groups.find((g) => g.kind === "space_editors");
 
     if (memberGroup) {
-      await memberGroup.addMembers(adminAuth, { users: [targetUser.toJSON()] });
+      await memberGroup.dangerouslyAddMembers(adminAuth, {
+        users: [targetUser.toJSON()],
+      });
     }
     if (options.asEditor && editorGroup) {
-      await editorGroup.addMembers(adminAuth, { users: [targetUser.toJSON()] });
+      await editorGroup.dangerouslyAddMembers(adminAuth, {
+        users: [targetUser.toJSON()],
+      });
     }
   }
 
@@ -63,7 +67,9 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
       const regularSpace = await SpaceFactory.regular(workspace);
       const memberGroup = regularSpace.groups.find((g) => g.kind === "regular");
       if (memberGroup) {
-        await memberGroup.addMembers(adminAuth, { users: [user.toJSON()] });
+        await memberGroup.dangerouslyAddMembers(adminAuth, {
+          users: [user.toJSON()],
+        });
       }
 
       req.query.spaceId = regularSpace.sId;

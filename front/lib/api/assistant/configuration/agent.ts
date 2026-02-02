@@ -122,7 +122,10 @@ export async function createPendingAgentConfiguration(
       transaction: t,
     });
     await auth.refresh({ transaction: t });
-    await group.setMembers(auth, { users: [user.toJSON()], transaction: t });
+    await group.dangerouslySetMembers(auth, {
+      users: [user.toJSON()],
+      transaction: t,
+    });
   });
 
   return { sId };
