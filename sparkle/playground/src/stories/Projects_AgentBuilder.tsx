@@ -9,14 +9,13 @@ import {
   BoltIcon,
   BookOpenIcon,
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   Checkbox,
   CheckIcon,
   Chip,
   CodeBlockIcon,
   TagBlockIcon,
-  ConversationContainer,
-  ConversationMessage,
-  CopilotIcon,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -37,10 +36,9 @@ import {
   ListItem,
   ListItemSection,
   ListOrdered2Icon,
-  DiffBlock,
-  Markdown,
   QuoteTextIcon,
   Separator,
+  ServerIcon,
   Sheet,
   SheetContainer,
   SheetContent,
@@ -50,6 +48,7 @@ import {
   SheetTitle,
   SidebarRightCloseIcon,
   SidebarRightOpenIcon,
+  LockIcon,
   SpaceClosedIcon as SpaceCloseIcon,
   SpaceOpenIcon,
   SpacesIcon,
@@ -73,11 +72,8 @@ import {
   useRef,
   useState,
 } from "react";
-import type { Components } from "react-markdown";
 
-import { customColors } from "@dust-tt/sparkle/lib/colors";
-
-import type { DiffChange } from "@dust-tt/sparkle";
+import { customColors } from "@sparkle/lib/colors";
 
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -87,52 +83,68 @@ import {
 } from "../components/RichTextArea";
 import {
   getRandomAgents,
-  mockCopilotConversationItems,
+  getRandomSpaces,
   mockInstructionCases,
   mockSpaces,
-  mockSuggestionChanges,
   mockUsers,
 } from "../data";
-import {
-  ActionCardBlock,
-  actionCardDirective,
-} from "../components/ActionCardBlock";
-
-function parseDiffString(content: string): DiffChange[] {
-  const lines = content.split("\n").filter((line) => line.trim());
-  const changes: DiffChange[] = [];
-  let currentOld: string | undefined;
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed.startsWith("- ")) {
-      if (currentOld) {
-        changes.push({ old: currentOld });
-      }
-      currentOld = trimmed.slice(2);
-    } else if (trimmed.startsWith("+ ")) {
-      const newText = trimmed.slice(2);
-      if (currentOld) {
-        changes.push({ old: currentOld, new: newText });
-        currentOld = undefined;
-      } else {
-        changes.push({ new: newText });
-      }
-    }
-  }
-
-  if (currentOld) {
-    changes.push({ old: currentOld });
-  }
-
-  return changes;
-}
 
 type MetadataRowProps = {
   label: string;
   action: React.ReactNode;
   description?: React.ReactNode;
   descriptionClassName?: string;
+};
+
+const getRandomSubset = <T,>(items: T[], count: number) => {
+  const shuffled = [...items].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, Math.min(count, items.length));
+};
+
+const insightsTimeRangeOptions = [
+  "Last 7 days",
+  "Last 14 days",
+  "Last 30 days",
+  "Last 90 days",
+];
+
+const insightsVersionOptions = [
+  "v1, Jan 20, 2026, 2:34 PM",
+  "v2, Jan 18, 2026, 9:12 AM",
+  "v3, Jan 15, 2026, 4:08 PM",
+  "v4, Jan 12, 2026, 11:43 AM",
+  "v5, Jan 9, 2026, 3:27 PM",
+  "v6, Jan 6, 2026, 8:55 AM",
+];
+
+const pickProjectsWithVisibility = <T,>(
+  openItems: T[],
+  restrictedItems: T[],
+  totalCount: number
+) => {
+  const totalAvailable = openItems.length + restrictedItems.length;
+  const total = Math.min(totalCount, totalAvailable);
+
+  if (!openItems.length || !restrictedItems.length || total < 2) {
+    return getRandomSubset([...openItems, ...restrictedItems], total);
+  }
+
+  const maxOpen = Math.min(openItems.length, total - 1);
+  const openCount = Math.floor(Math.random() * maxOpen) + 1;
+  const restrictedCount = Math.min(restrictedItems.length, total - openCount);
+
+  if (restrictedCount === 0) {
+    const adjustedOpen = Math.max(1, total - 1);
+    return [
+      ...getRandomSubset(openItems, Math.min(openItems.length, adjustedOpen)),
+      ...getRandomSubset(restrictedItems, 1),
+    ];
+  }
+
+  return [
+    ...getRandomSubset(openItems, openCount),
+    ...getRandomSubset(restrictedItems, restrictedCount),
+  ];
 };
 
 function MetadataRow({
@@ -162,19 +174,14 @@ function MetadataRow({
 }
 
 export default function AgentBuilder() {
+  const isRestrictedSpace = (spaceId: string) =>
+    spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
+
   const agent = useMemo(() => getRandomAgents(1)[0], []);
   const [agentName, setAgentName] = useState(agent?.name || "");
   const [agentDescription, setAgentDescription] = useState(
     agent?.description || ""
   );
-  const actionCardComponents: Components = useMemo(
-    () =>
-      ({
-        action_card: ActionCardBlock,
-      }) as Components,
-    []
-  );
-  const actionCardPlugins = useMemo(() => [actionCardDirective], []);
   const nameSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
     return getRandomAgents(count).map((suggestedAgent) => suggestedAgent.name);
@@ -204,7 +211,22 @@ export default function AgentBuilder() {
     return mockUsers.slice(0, count).map((user) => user.id);
   }, []);
   const tagItems = useMemo(() => mockSpaces.slice(0, 6), []);
-  const selectableSpaces = useMemo(() => mockSpaces.slice(0, 12), []);
+  const selectableSpaces = useMemo(() => {
+    const openCount = Math.floor(Math.random() * 7) + 2;
+    const restrictedCount = Math.floor(Math.random() * 3) + 1;
+    const openCandidates = mockSpaces.filter(
+      (space) => !isRestrictedSpace(space.id)
+    );
+    const restrictedCandidates = mockSpaces.filter((space) =>
+      isRestrictedSpace(space.id)
+    );
+    const openSpaces = getRandomSubset(openCandidates, openCount);
+    const restrictedSpaces = getRandomSubset(
+      restrictedCandidates,
+      restrictedCount
+    );
+    return [...openSpaces, ...restrictedSpaces];
+  }, []);
   const [isSpacesSheetOpen, setIsSpacesSheetOpen] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState<{
     id: string;
@@ -214,14 +236,24 @@ export default function AgentBuilder() {
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(
     () => new Set()
   );
+  const [insightsSwitch, setInsightsSwitch] = useState<
+    "time-range" | "version"
+  >("time-range");
+  const [insightsTimeRange, setInsightsTimeRange] = useState(
+    insightsTimeRangeOptions[0]
+  );
+  const [insightsVersion, setInsightsVersion] = useState(
+    insightsVersionOptions[0]
+  );
   const [tagSearch, setTagSearch] = useState("");
+  const [spacesProjectsSearch, setSpacesProjectsSearch] = useState("");
   const [selectedEditorIds, setSelectedEditorIds] = useState<Set<string>>(
     () => new Set(initialEditorIds)
   );
   const [isInviteEditorsOpen, setIsInviteEditorsOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(true);
   const [rightPanelRatio, setRightPanelRatio] = useState(0.4);
-  const [activeRightPanelTab, setActiveRightPanelTab] = useState("copilot");
+  const [activeRightPanelTab, setActiveRightPanelTab] = useState("testing");
   const [accessStatus, setAccessStatus] = useState<"published" | "unpublished">(
     "unpublished"
   );
@@ -233,9 +265,18 @@ export default function AgentBuilder() {
   const [isInstructionDirty, setIsInstructionDirty] = useState(false);
   const hasInstructionChangeRef = useRef(false);
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<Set<string>>(() => {
-    const defaultSpace = mockSpaces[0];
+    const defaultSpace = selectableSpaces[0];
     return defaultSpace ? new Set([defaultSpace.id]) : new Set();
   });
+  const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [draftSpaceIds, setDraftSpaceIds] = useState<Set<string>>(
+    () => new Set(selectedSpaceIds)
+  );
+  const [draftProjectIds, setDraftProjectIds] = useState<Set<string>>(
+    () => new Set(selectedProjectIds)
+  );
   const [instructionReference, setInstructionReference] = useState<{
     start: number;
     end: number;
@@ -260,18 +301,41 @@ export default function AgentBuilder() {
       .filter((user) => selectedEditorIds.has(user.id))
       .map((user) => user.fullName || `${user.firstName} ${user.lastName}`);
   }, [selectedEditorIds]);
-  const isRestrictedSpace = (spaceId: string) =>
-    spaceId.charCodeAt(spaceId.length - 1) % 2 === 0;
+  const isJoinedProject = (spaceId: string) => {
+    const match = spaceId.match(/\d+$/);
+    if (!match) {
+      return false;
+    }
+    return Number(match[0]) % 2 === 0;
+  };
 
   const selectedSpaces = useMemo(() => {
     return selectableSpaces.filter((space) => selectedSpaceIds.has(space.id));
   }, [selectableSpaces, selectedSpaceIds]);
+  const selectedProjects = useMemo(
+    () => mockSpaces.filter((space) => selectedProjectIds.has(space.id)),
+    [selectedProjectIds]
+  );
   const selectedTagNames = useMemo(() => {
     return tagItems
       .filter((tag) => selectedTagIds.has(tag.id))
       .map((tag) => tag.name);
   }, [tagItems, selectedTagIds]);
   const normalizedTagSearch = tagSearch.trim().toLowerCase();
+  const normalizedSpacesProjectsSearch = spacesProjectsSearch
+    .trim()
+    .toLowerCase();
+  const matchesSpacesProjectsSearch = (name: string, description: string) => {
+    if (!normalizedSpacesProjectsSearch) {
+      return true;
+    }
+    const normalizedName = name.toLowerCase();
+    const normalizedDescription = description.toLowerCase();
+    return (
+      normalizedName.includes(normalizedSpacesProjectsSearch) ||
+      normalizedDescription.includes(normalizedSpacesProjectsSearch)
+    );
+  };
   const filteredTagItems = useMemo(
     () =>
       tagItems.filter((tag) =>
@@ -291,6 +355,10 @@ export default function AgentBuilder() {
     () => filteredTagItems.filter((tag) => !recommendedTagIds.has(tag.id)),
     [filteredTagItems, recommendedTagIds]
   );
+  const selectableSpaceIds = useMemo(
+    () => new Set(selectableSpaces.map((space) => space.id)),
+    [selectableSpaces]
+  );
   const openSpaces = useMemo(
     () => selectableSpaces.filter((space) => !isRestrictedSpace(space.id)),
     [selectableSpaces]
@@ -299,6 +367,64 @@ export default function AgentBuilder() {
     () => selectableSpaces.filter((space) => isRestrictedSpace(space.id)),
     [selectableSpaces]
   );
+  const filteredOpenSpaces = useMemo(
+    () =>
+      openSpaces.filter((space) =>
+        matchesSpacesProjectsSearch(space.name, space.description)
+      ),
+    [openSpaces, normalizedSpacesProjectsSearch]
+  );
+  const filteredRestrictedSpaces = useMemo(
+    () =>
+      restrictedSpaces.filter((space) =>
+        matchesSpacesProjectsSearch(space.name, space.description)
+      ),
+    [restrictedSpaces, normalizedSpacesProjectsSearch]
+  );
+  const projectSpaces = useMemo(
+    () => mockSpaces.filter((space) => !selectableSpaceIds.has(space.id)),
+    [selectableSpaceIds]
+  );
+  const myProjects = useMemo(() => {
+    const count = Math.floor(Math.random() * 12) + 12;
+    const joined = projectSpaces.filter((space) => isJoinedProject(space.id));
+    const openJoined = joined.filter((space) => !isRestrictedSpace(space.id));
+    const restrictedJoined = joined.filter((space) =>
+      isRestrictedSpace(space.id)
+    );
+    return pickProjectsWithVisibility(openJoined, restrictedJoined, count);
+  }, [projectSpaces]);
+  const allProjects = useMemo(() => {
+    const count = Math.floor(Math.random() * 27) + 8;
+    const notJoined = projectSpaces.filter(
+      (space) => !isJoinedProject(space.id)
+    );
+    const openNotJoined = notJoined.filter(
+      (space) => !isRestrictedSpace(space.id)
+    );
+    const restrictedNotJoined = notJoined.filter((space) =>
+      isRestrictedSpace(space.id)
+    );
+    return pickProjectsWithVisibility(
+      openNotJoined,
+      restrictedNotJoined,
+      count
+    );
+  }, [projectSpaces]);
+  const filteredMyProjects = useMemo(
+    () =>
+      myProjects.filter((space) =>
+        matchesSpacesProjectsSearch(space.name, space.description)
+      ),
+    [myProjects, normalizedSpacesProjectsSearch]
+  );
+  const filteredAllProjects = useMemo(
+    () =>
+      allProjects.filter((space) =>
+        matchesSpacesProjectsSearch(space.name, space.description)
+      ),
+    [allProjects, normalizedSpacesProjectsSearch]
+  );
   const selectedEditorIdList = useMemo(
     () => Array.from(selectedEditorIds),
     [selectedEditorIds]
@@ -306,15 +432,6 @@ export default function AgentBuilder() {
 
   const allotmentRef = useRef<React.ComponentRef<typeof Allotment>>(null);
   const wasRightPanelOpen = useRef(isRightPanelOpen);
-
-  const initialInstruction = useMemo(() => {
-    if (!mockInstructionCases.length) {
-      return "";
-    }
-    return mockInstructionCases[
-      Math.floor(Math.random() * mockInstructionCases.length)
-    ];
-  }, []);
 
   const handleInstructionTextChange = useCallback(() => {
     if (!hasInstructionChangeRef.current) {
@@ -343,13 +460,12 @@ export default function AgentBuilder() {
   }, [isRightPanelOpen, rightPanelRatio]);
 
   useEffect(() => {
-    if (!initialInstruction) {
+    if (!isSpacesSheetOpen) {
       return;
     }
-    hasInstructionChangeRef.current = false;
-    setIsInstructionDirty(false);
-    richTextAreaRef.current?.setContent(initialInstruction);
-  }, [initialInstruction]);
+    setDraftSpaceIds(new Set(selectedSpaceIds));
+    setDraftProjectIds(new Set(selectedProjectIds));
+  }, [isSpacesSheetOpen, selectedSpaceIds, selectedProjectIds]);
 
   // Generate diff content for version history preview
   const versionDiffContent = useMemo(() => {
@@ -397,8 +513,8 @@ export default function AgentBuilder() {
     return `<p>${modifiedLines.join("<br>")}</p>`;
   }, []);
 
-  const toggleSpace = (spaceId: string) => {
-    setSelectedSpaceIds((prev) => {
+  const toggleDraftSpace = (spaceId: string) => {
+    setDraftSpaceIds((prev) => {
       const next = new Set(prev);
       if (next.has(spaceId)) {
         next.delete(spaceId);
@@ -415,6 +531,36 @@ export default function AgentBuilder() {
       next.delete(spaceId);
       return next;
     });
+    setDraftSpaceIds((prev) => {
+      const next = new Set(prev);
+      next.delete(spaceId);
+      return next;
+    });
+  };
+
+  const toggleDraftProject = (spaceId: string) => {
+    setDraftProjectIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(spaceId)) {
+        next.delete(spaceId);
+      } else {
+        next.add(spaceId);
+      }
+      return next;
+    });
+  };
+
+  const removeProject = (spaceId: string) => {
+    setSelectedProjectIds((prev) => {
+      const next = new Set(prev);
+      next.delete(spaceId);
+      return next;
+    });
+    setDraftProjectIds((prev) => {
+      const next = new Set(prev);
+      next.delete(spaceId);
+      return next;
+    });
   };
 
   const handleAskCopilot = (payload: {
@@ -423,7 +569,7 @@ export default function AgentBuilder() {
     end: number;
   }) => {
     setIsRightPanelOpen(true);
-    setActiveRightPanelTab("copilot");
+    setActiveRightPanelTab("testing");
     setInstructionReference({
       start: payload.start,
       end: payload.end,
@@ -458,7 +604,6 @@ export default function AgentBuilder() {
     );
   };
   const rightPanelTabs = [
-    { value: "copilot", label: "Copilot", icon: CopilotIcon },
     { value: "testing", label: "Test", icon: TestTubeIcon },
     { value: "insights", label: "Insights", icon: BarChartIcon },
   ];
@@ -580,6 +725,7 @@ export default function AgentBuilder() {
                       onSuggestionsChange={setHasSuggestionsState}
                       onTextChange={handleInstructionTextChange}
                       scrollContainer={scrollContainer}
+                      className="s-min-h-[400px]"
                       topBar={
                         <div className="s-flex s-flex-1 s-flex-wrap s-items-center s-gap-2 s-px-3 s-py-2">
                           <Button
@@ -703,42 +849,49 @@ export default function AgentBuilder() {
                       title="Spaces"
                       description="Set what knowledge and capabilities the agent can access."
                     />
-                    {selectedSpaces.length > 0 ? (
-                      <div className="s-flex s-flex-wrap s-gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Manage"
-                          icon={SpacesIcon}
-                          onClick={() => setIsSpacesSheetOpen(true)}
-                        />
-                        {[...selectedSpaces]
-                          .sort(
-                            (a, b) =>
-                              Number(isRestrictedSpace(a.id)) -
-                              Number(isRestrictedSpace(b.id))
-                          )
-                          .map((space) => {
-                            const isRestricted = isRestrictedSpace(space.id);
-                            return (
-                              <Chip
-                                key={space.id}
-                                icon={
-                                  isRestricted ? SpaceCloseIcon : SpaceOpenIcon
-                                }
-                                size="sm"
-                                color={isRestricted ? "rose" : ""}
-                                label={space.name}
-                                onRemove={() => removeSpace(space.id)}
-                              />
-                            );
-                          })}
-                      </div>
-                    ) : (
-                      <div className="s-copy-sm s-text-muted-foreground">
-                        No spaces selected.
-                      </div>
-                    )}
+                    <div className="s-flex s-flex-wrap s-gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        label="Manage"
+                        icon={SpacesIcon}
+                        onClick={() => setIsSpacesSheetOpen(true)}
+                      />
+                      {[...selectedSpaces]
+                        .sort(
+                          (a, b) =>
+                            Number(isRestrictedSpace(a.id)) -
+                            Number(isRestrictedSpace(b.id))
+                        )
+                        .map((space) => {
+                          const isRestricted = isRestrictedSpace(space.id);
+                          return (
+                            <Chip
+                              key={space.id}
+                              icon={
+                                isRestricted ? SpaceCloseIcon : SpaceOpenIcon
+                              }
+                              size="sm"
+                              color={isRestricted ? "rose" : ""}
+                              label={space.name}
+                              onRemove={() => removeSpace(space.id)}
+                            />
+                          );
+                        })}
+                      {selectedProjects.map((project) => {
+                        const isRestricted = isRestrictedSpace(project.id);
+                        return (
+                          <Chip
+                            key={project.id}
+                            icon={isRestricted ? SpaceCloseIcon : SpaceOpenIcon}
+                            size="sm"
+                            color={isRestricted ? "rose" : ""}
+                            label={project.name}
+                            onRemove={() => removeProject(project.id)}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                   <div className="s-flex s-flex-col s-gap-2">
                     <SectionHeader
@@ -1019,116 +1172,15 @@ export default function AgentBuilder() {
                   ))}
                 </TabsList>
                 <TabsContent
-                  value="copilot"
+                  value="testing"
                   className="s-flex s-min-h-0 s-flex-1 s-flex-col"
                 >
-                  <div className="s-flex s-min-h-0 s-flex-1 s-overflow-y-auto s-p-3">
-                    <ConversationContainer>
-                      {mockCopilotConversationItems.map((item) => {
-                        const diffStart = "[[diff]]";
-                        const diffEnd = "[[/diff]]";
-                        const hasDiffBlock =
-                          item.type === "agent" &&
-                          item.content.includes(diffStart) &&
-                          item.content.includes(diffEnd);
-
-                        if (!hasDiffBlock) {
-                          return (
-                            <ConversationMessage
-                              key={item.id}
-                              type={item.type}
-                              name={item.name}
-                              timestamp={item.timestamp}
-                            >
-                              {item.type === "agent" ? (
-                                <Markdown
-                                  content={item.content}
-                                  additionalMarkdownComponents={
-                                    actionCardComponents
-                                  }
-                                  additionalMarkdownPlugins={actionCardPlugins}
-                                />
-                              ) : (
-                                item.content
-                              )}
-                            </ConversationMessage>
-                          );
-                        }
-
-                        const [before, rest] = item.content.split(diffStart);
-                        const [diffContent, after = ""] = rest.split(diffEnd);
-                        const trimmedBefore = before.trim();
-                        const trimmedAfter = after.trim();
-
-                        return (
-                          <ConversationMessage
-                            key={item.id}
-                            type={item.type}
-                            name={item.name}
-                            timestamp={item.timestamp}
-                          >
-                            <div className="s-flex s-flex-col s-gap-3">
-                              {trimmedBefore ? (
-                                <Markdown
-                                  content={trimmedBefore}
-                                  additionalMarkdownComponents={
-                                    actionCardComponents
-                                  }
-                                  additionalMarkdownPlugins={actionCardPlugins}
-                                />
-                              ) : null}
-                              <DiffBlock
-                                changes={parseDiffString(diffContent)}
-                              />
-                              {trimmedAfter ? (
-                                <Markdown
-                                  content={trimmedAfter}
-                                  additionalMarkdownComponents={
-                                    actionCardComponents
-                                  }
-                                  additionalMarkdownPlugins={actionCardPlugins}
-                                />
-                              ) : null}
-                            </div>
-                          </ConversationMessage>
-                        );
-                      })}
-                    </ConversationContainer>
-                  </div>
-                  <div className="s-p-4">
-                    <div className="s-flex s-flex-col s-items-center s-gap-3">
-                      <div className="s-flex s-flex-wrap s-items-center s-gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Suggest"
-                          onClick={() => {
-                            richTextAreaRef.current?.applyRandomSuggestions(
-                              mockSuggestionChanges
-                            );
-                            setTimeout(checkForSuggestions, 100);
-                          }}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          label="Add fake"
-                          onClick={() => {
-                            if (!mockInstructionCases.length) {
-                              return;
-                            }
-                            const index = Math.floor(
-                              Math.random() * mockInstructionCases.length
-                            );
-                            richTextAreaRef.current?.setContent(
-                              mockInstructionCases[index]
-                            );
-                          }}
-                        />
-                      </div>
+                  <div className="s-flex s-flex-1 s-items-end s-justify-center s-p-4">
+                    <div className="s-flex s-w-full s-flex-col s-items-end s-gap-3">
                       <InputBar
-                        placeholder="Ask Copilot to help build your agent"
+                        placeholder="Test your agent"
                         instructionReference={instructionReference}
+                        className="s-shadow-lg"
                         onInstructionInserted={() =>
                           setInstructionReference(null)
                         }
@@ -1137,19 +1189,80 @@ export default function AgentBuilder() {
                   </div>
                 </TabsContent>
                 <TabsContent
-                  value="testing"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
-                >
-                  <div className="s-copy-sm s-text-muted-foreground">
-                    Testing panel content.
-                  </div>
-                </TabsContent>
-                <TabsContent
                   value="insights"
-                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto s-px-6 s-py-6"
+                  className="s-flex s-flex-1 s-flex-col s-overflow-y-auto"
                 >
-                  <div className="s-copy-sm s-text-muted-foreground">
-                    Insights panel content.
+                  <div className="s-flex s-flex-col s-gap-4 s-p-4">
+                    <div className="s-flex s-flex-wrap s-items-center s-gap-2">
+                      <h3 className="s-heading-lg s-flex-1">Inisghts</h3>
+                      <ButtonsSwitchList
+                        size="sm"
+                        defaultValue={insightsSwitch}
+                        onValueChange={(value) => {
+                          setInsightsSwitch(
+                            value === "version" ? "version" : "time-range"
+                          );
+                        }}
+                      >
+                        <ButtonsSwitch
+                          value="time-range"
+                          label="By Timerange"
+                        />
+                        <ButtonsSwitch value="version" label="By version" />
+                      </ButtonsSwitchList>
+                    </div>
+                    <Tabs
+                      defaultValue="agent-analytics"
+                      className="s-flex s-flex-col s-gap-2"
+                    >
+                      <TabsList>
+                        <TabsTrigger
+                          value="agent-analytics"
+                          label="Analytics"
+                        />
+                        <TabsTrigger value="user-feedback" label="Feedback" />
+                        <div className="s-flex-1" />
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              isSelect
+                              label={
+                                insightsSwitch === "time-range"
+                                  ? insightsTimeRange
+                                  : insightsVersion
+                              }
+                            />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel
+                              label={
+                                insightsSwitch === "time-range"
+                                  ? "Time range"
+                                  : "Version"
+                              }
+                            />
+                            {(insightsSwitch === "time-range"
+                              ? insightsTimeRangeOptions
+                              : insightsVersionOptions
+                            ).map((item) => (
+                              <DropdownMenuItem
+                                key={item}
+                                label={item}
+                                onSelect={() => {
+                                  if (insightsSwitch === "time-range") {
+                                    setInsightsTimeRange(item);
+                                  } else {
+                                    setInsightsVersion(item);
+                                  }
+                                }}
+                              />
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TabsList>
+                    </Tabs>
                   </div>
                 </TabsContent>
                 <TabsContent
@@ -1194,91 +1307,163 @@ export default function AgentBuilder() {
             <SheetDescription>
               Choose the spaces you want the agent to have access to.
             </SheetDescription>
+            <Input
+              placeholder="Search spaces and projects"
+              value={spacesProjectsSearch}
+              onChange={(event) => setSpacesProjectsSearch(event.target.value)}
+              className="s-mt-4"
+            />
           </SheetHeader>
           <SheetContainer isListSelector>
-            <div className="s-flex s-flex-col">
-              <ListItemSection size="sm">Open</ListItemSection>
-              <ListGroup>
-                {openSpaces.map((space) => {
-                  const isSelected = selectedSpaceIds.has(space.id);
-                  return (
-                    <ListItem
-                      key={space.id}
-                      itemsAlignment="center"
-                      onClick={() => toggleSpace(space.id)}
-                      className={
-                        isSelected
-                          ? "s-bg-primary-50 dark:s-bg-primary-50-night"
-                          : ""
-                      }
-                    >
-                      <Icon visual={SpaceOpenIcon} size="sm" />
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                        <span className="s-heading-sm s-truncate s-text-foreground">
-                          {space.name}
-                        </span>
-                        <span className="s-truncate s-text-xs s-text-muted-foreground">
-                          {space.description}
-                        </span>
-                      </div>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(
-                          checked: boolean | "indeterminate"
-                        ) => {
-                          if (checked !== "indeterminate") {
-                            toggleSpace(space.id);
+            <div className="s-flex s-flex-col s-gap-4">
+              <div className="s-flex s-flex-col">
+                <ListItemSection size="sm">Spaces</ListItemSection>
+                <ListGroup>
+                  {[...filteredOpenSpaces, ...filteredRestrictedSpaces].map(
+                    (space) => {
+                      const isSelected = draftSpaceIds.has(space.id);
+                      return (
+                        <ListItem
+                          key={space.id}
+                          itemsAlignment="center"
+                          onClick={() => toggleDraftSpace(space.id)}
+                          className={
+                            isSelected
+                              ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                              : ""
                           }
-                        }}
-                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </ListGroup>
-              <ListItemSection size="sm">Restricted</ListItemSection>
-              <ListGroup>
-                {restrictedSpaces.map((space) => {
-                  const isSelected = selectedSpaceIds.has(space.id);
-                  return (
-                    <ListItem
-                      key={space.id}
-                      itemsAlignment="center"
-                      onClick={() => toggleSpace(space.id)}
-                      className={
-                        isSelected
-                          ? "s-bg-primary-50 dark:s-bg-primary-50-night"
-                          : ""
-                      }
-                    >
-                      <Icon visual={SpaceCloseIcon} size="sm" />
-                      <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
-                        <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
-                          {space.name}
-                        </span>
-                        <span className="s-truncate s-text-xs s-text-muted-foreground">
-                          {space.description}
-                        </span>
-                      </div>
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(
-                          checked: boolean | "indeterminate"
-                        ) => {
-                          if (checked !== "indeterminate") {
-                            toggleSpace(space.id);
+                        >
+                          <Icon
+                            visual={
+                              isRestrictedSpace(space.id)
+                                ? LockIcon
+                                : ServerIcon
+                            }
+                            size="sm"
+                          />
+                          <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                            <span className="s-heading-sm s-truncate s-text-foreground">
+                              {space.name}
+                            </span>
+                            <span className="s-truncate s-text-xs s-text-muted-foreground">
+                              {space.description}
+                            </span>
+                          </div>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(
+                              checked: boolean | "indeterminate"
+                            ) => {
+                              if (checked !== "indeterminate") {
+                                toggleDraftSpace(space.id);
+                              }
+                            }}
+                            onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                              e.stopPropagation();
+                            }}
+                          />
+                        </ListItem>
+                      );
+                    }
+                  )}
+                </ListGroup>
+                <ListItemSection size="sm">My projects</ListItemSection>
+                <ListGroup>
+                  {filteredMyProjects.map((space) => {
+                    const isSelected = draftProjectIds.has(space.id);
+                    return (
+                      <ListItem
+                        key={space.id}
+                        itemsAlignment="center"
+                        onClick={() => toggleDraftProject(space.id)}
+                        className={
+                          isSelected
+                            ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                            : ""
+                        }
+                      >
+                        <Icon
+                          visual={
+                            isRestrictedSpace(space.id)
+                              ? SpaceCloseIcon
+                              : SpaceOpenIcon
                           }
-                        }}
-                        onClick={(e: MouseEvent<HTMLButtonElement>) => {
-                          e.stopPropagation();
-                        }}
-                      />
-                    </ListItem>
-                  );
-                })}
-              </ListGroup>
+                          size="sm"
+                        />
+                        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                            {space.name}
+                          </span>
+                          <span className="s-truncate s-text-xs s-text-muted-foreground">
+                            {space.description}
+                          </span>
+                        </div>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(
+                            checked: boolean | "indeterminate"
+                          ) => {
+                            if (checked !== "indeterminate") {
+                              toggleDraftProject(space.id);
+                            }
+                          }}
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </ListGroup>
+                <ListItemSection size="sm">All projects</ListItemSection>
+                <ListGroup>
+                  {filteredAllProjects.map((space) => {
+                    const isSelected = draftProjectIds.has(space.id);
+                    return (
+                      <ListItem
+                        key={space.id}
+                        itemsAlignment="center"
+                        onClick={() => toggleDraftProject(space.id)}
+                        className={
+                          isSelected
+                            ? "s-bg-primary-50 dark:s-bg-primary-50-night"
+                            : ""
+                        }
+                      >
+                        <Icon
+                          visual={
+                            isRestrictedSpace(space.id)
+                              ? SpaceCloseIcon
+                              : SpaceOpenIcon
+                          }
+                          size="sm"
+                        />
+                        <div className="s-flex s-min-w-0 s-flex-1 s-flex-col">
+                          <span className="s-truncate s-text-sm s-font-medium s-text-foreground">
+                            {space.name}
+                          </span>
+                          <span className="s-truncate s-text-xs s-text-muted-foreground">
+                            {space.description}
+                          </span>
+                        </div>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(
+                            checked: boolean | "indeterminate"
+                          ) => {
+                            if (checked !== "indeterminate") {
+                              toggleDraftProject(space.id);
+                            }
+                          }}
+                          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+                            e.stopPropagation();
+                          }}
+                        />
+                      </ListItem>
+                    );
+                  })}
+                </ListGroup>
+              </div>
             </div>
           </SheetContainer>
           <SheetFooter
@@ -1290,7 +1475,11 @@ export default function AgentBuilder() {
             rightButtonProps={{
               label: "Save",
               variant: "highlight",
-              onClick: () => setIsSpacesSheetOpen(false),
+              onClick: () => {
+                setSelectedSpaceIds(new Set(draftSpaceIds));
+                setSelectedProjectIds(new Set(draftProjectIds));
+                setIsSpacesSheetOpen(false);
+              },
             }}
           />
         </SheetContent>

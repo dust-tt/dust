@@ -32,7 +32,7 @@ const useButtonsSwitch = () => {
 const listStyles = cva(
   cn(
     "s-inline-flex s-items-center s-gap-1",
-    "s-bg-primary-100 dark:s-bg-primary-900"
+    "s-bg-muted dark:s-bg-muted-night"
   ),
   {
     variants: {
@@ -54,7 +54,8 @@ const listStyles = cva(
 );
 
 export interface ButtonsSwitchListProps
-  extends React.HTMLAttributes<HTMLDivElement>,
+  extends
+    React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
   disabled?: boolean;
@@ -115,8 +116,10 @@ export const ButtonsSwitchList = React.forwardRef<
 );
 ButtonsSwitchList.displayName = "ButtonsSwitchList";
 
-interface ButtonsSwitchProps
-  extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
+interface ButtonsSwitchProps extends Omit<
+  React.ComponentProps<typeof Button>,
+  "size" | "variant"
+> {
   value: string;
   label?: string;
   icon?: React.ComponentProps<typeof Button>["icon"];
@@ -150,7 +153,7 @@ export const ButtonsSwitch = React.forwardRef<
       role="tab"
       aria-selected={isActive}
       size={size}
-      variant={isActive ? "outline" : "ghost-secondary"}
+      variant={isActive ? "outline" : "ghost"}
       label={label}
       icon={icon}
       className={className}

@@ -6,7 +6,6 @@ import {
   Card,
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleLeftRightIcon,
-  CheckDoubleIcon,
   Cog6ToothIcon,
   ContactsUserIcon,
   DropdownMenu,
@@ -14,15 +13,18 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuPortal,
+  DropdownMenuSearchbar,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   HeartIcon,
+  InboxIcon,
   LightbulbIcon,
   ListSelectIcon,
   LogoutIcon,
+  Icon,
   MagnifyingGlassIcon,
   MoreIcon,
   NavigationList,
@@ -32,9 +34,14 @@ import {
   NavigationListItemAction,
   PencilSquareIcon,
   PlusIcon,
+  PuzzleIcon,
   ScrollArea,
   ScrollBar,
-  SearchInput,
+  Sheet,
+  SheetContainer,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
   SidebarLayout,
   type SidebarLayoutRef,
   SidebarLeftCloseIcon,
@@ -48,12 +55,20 @@ import {
   TabsTrigger,
   TrashIcon,
   UserIcon,
+  Spinner,
+  AtomIcon,
 } from "@dust-tt/sparkle";
+import {
+  SearchInput,
+  SearchInputWithPopover,
+} from "@dust-tt/sparkle/components/SearchInput";
+import { UniversalSearchItem } from "@dust-tt/sparkle/components/UniversalSearchItem";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { ConversationView } from "../components/ConversationView";
 import { CreateRoomDialog } from "../components/CreateRoomDialog";
 import { GroupConversationView } from "../components/GroupConversationView";
+import { InboxView } from "../components/InboxView";
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
 import {
@@ -70,10 +85,13 @@ import {
   getUserById,
   mockAgents,
   mockConversations,
+  mockSpaces,
   mockUsers,
   type Space,
   type User,
 } from "../data";
+import { getDataSourcesBySpaceId } from "../data/dataSources";
+import type { DataSource } from "../data/types";
 
 type Collaborator =
   | { type: "agent"; data: Agent }
@@ -82,6 +100,75 @@ type Collaborator =
 type Participant =
   | { type: "user"; data: User }
   | { type: "agent"; data: Agent };
+
+type UniversalSearchItem =
+  | {
+      type: "document";
+      dataSource: DataSource;
+      space: Space;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "conversation";
+      conversation: Conversation;
+      creator?: User;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "project";
+      space: Space;
+      title: string;
+      description: string;
+      score: number;
+    }
+  | {
+      type: "person";
+      user: User;
+      title: string;
+      description: string;
+      score: number;
+    };
+
+const fakeDocumentFirstLines = [
+  "Introduction: This document outlines the initial scope and goals.",
+  "Summary: Key findings are consolidated in the sections below.",
+  "Overview: A first pass at the requirements and assumptions.",
+  "Draft note: Please review the proposed changes and provide feedback.",
+  "Excerpt: The following section captures the primary constraints.",
+  "Context: This file compiles the core decisions made so far.",
+  "Opening: A quick recap of the current state and next steps.",
+  "First line: The document begins with a brief background statement.",
+];
+
+function getFakeDocumentFirstLine(dataSource: DataSource): string {
+  const seed = `${dataSource.id}-${dataSource.fileName}`;
+  const index = seed
+    .split("")
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return (
+    fakeDocumentFirstLines[index % fakeDocumentFirstLines.length] ||
+    "Overview: This document contains a summary of the content."
+  );
+}
+
+function getBaseConversationId(
+  conversation: Conversation,
+  allConversations: Conversation[]
+): string {
+  const expandedIdMatch = conversation.id.match(/^(.+)-(\d+)$/);
+  if (expandedIdMatch) {
+    const potentialBase = expandedIdMatch[1];
+    const baseExists = allConversations.some((c) => c.id === potentialBase);
+    if (baseExists) {
+      return potentialBase;
+    }
+  }
+  return conversation.id;
+}
 
 function getRandomParticipants(conversation: Conversation): Participant[] {
   const allParticipants: Participant[] = [];
@@ -111,14 +198,26 @@ function getRandomParticipants(conversation: Conversation): Participant[] {
   return shuffled.slice(0, count);
 }
 
+function getRandomCreator(conversation: Conversation): User | null {
+  if (conversation.userParticipants.length === 0) {
+    return null;
+  }
+  const creatorId =
+    conversation.userParticipants[
+      Math.floor(Math.random() * conversation.userParticipants.length)
+    ];
+  return getUserById(creatorId) || null;
+}
+
 function DustMain() {
   const [activeTab, setActiveTab] = useState<"chat" | "spaces" | "admin">(
     "chat"
   );
   const [searchText, setSearchText] = useState("");
+  const [projectSearchText, setProjectSearchText] = useState("");
   const [agentSearchText, setAgentSearchText] = useState("");
   const [peopleSearchText, setPeopleSearchText] = useState("");
-  const [documentSearchText, setDocumentSearchText] = useState("");
+  const [universalSearchText, setUniversalSearchText] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [spaces, setSpaces] = useState<Space[]>([]);
@@ -127,6 +226,14 @@ function DustMain() {
   >("new-conversation");
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [previousSpaceId, setPreviousSpaceId] = useState<string | null>(null);
+  const [selectedView, setSelectedView] = useState<
+    "inbox" | "space" | "conversation" | null
+  >("inbox");
+  const [cameFromInbox, setCameFromInbox] = useState<boolean>(false);
+  const [isUniversalSearchOpen, setIsUniversalSearchOpen] = useState(false);
+  const [selectedDataSource, setSelectedDataSource] =
+    useState<DataSource | null>(null);
+  const [isDocumentSheetOpen, setIsDocumentSheetOpen] = useState(false);
   const [conversationsWithMessages, setConversationsWithMessages] = useState<
     Conversation[]
   >([]);
@@ -187,8 +294,8 @@ function DustMain() {
 
     setCollaborators(mixedCollaborators);
 
-    // Generate random number of spaces between 3 and 9
-    const spaceCount = Math.floor(Math.random() * (9 - 3 + 1)) + 3;
+    // Generate random number of joined projects between 2 and 12
+    const spaceCount = Math.floor(Math.random() * (12 - 2 + 1)) + 2;
     const randomSpaces = getRandomSpaces(spaceCount);
     setSpaces(randomSpaces);
 
@@ -196,6 +303,30 @@ function DustMain() {
     const convsWithMessages = createConversationsWithMessages(randomUser.id);
     setConversationsWithMessages(convsWithMessages);
   }, []);
+
+  const isProjectJoined = (spaceId: string) => {
+    return spaces.some((space) => space.id === spaceId);
+  };
+
+  const joinProject = (space: Space) => {
+    setSpaces((prev) => {
+      if (prev.some((item) => item.id === space.id)) {
+        return prev;
+      }
+      return [...prev, space];
+    });
+  };
+
+  const leaveProject = (spaceId: string) => {
+    setSpaces((prev) => prev.filter((space) => space.id !== spaceId));
+    if (selectedSpaceId === spaceId) {
+      setSelectedSpaceId(null);
+      setSelectedConversationId(null);
+      setSelectedView("inbox");
+      setPreviousSpaceId(null);
+      setCameFromInbox(false);
+    }
+  };
 
   // Auto-select newly created space when it's added to the spaces array
   useEffect(() => {
@@ -210,6 +341,258 @@ function DustMain() {
   const allConversations = useMemo(() => {
     return [...conversationsWithMessages, ...mockConversations];
   }, [conversationsWithMessages]);
+
+  const documentDataSources = useMemo(() => {
+    const seeds = [
+      "global-documents",
+      "global-documents-1",
+      "global-documents-2",
+      "global-documents-3",
+    ];
+    for (const seed of seeds) {
+      const dataSources = getDataSourcesBySpaceId(seed);
+      if (dataSources.length > 0) {
+        return dataSources;
+      }
+    }
+    return [];
+  }, []);
+  const defaultDocumentSpace = mockSpaces[0];
+
+  const universalSearchResults = useMemo((): UniversalSearchItem[] => {
+    const trimmed = universalSearchText.trim();
+    if (!trimmed) {
+      return [];
+    }
+
+    const searchLower = trimmed.toLowerCase();
+
+    const documentResults = defaultDocumentSpace
+      ? documentDataSources.reduce<UniversalSearchItem[]>((acc, dataSource) => {
+          const title = dataSource.fileName;
+          const description = getFakeDocumentFirstLine(dataSource);
+          const titleMatch = title.toLowerCase().includes(searchLower);
+          const descriptionMatch = description
+            .toLowerCase()
+            .includes(searchLower);
+          if (titleMatch || descriptionMatch) {
+            acc.push({
+              type: "document",
+              dataSource,
+              space: defaultDocumentSpace,
+              title,
+              description,
+              score: titleMatch ? 2 : 1,
+            });
+          }
+          return acc;
+        }, [])
+      : [];
+
+    const projectResults = mockSpaces.reduce<UniversalSearchItem[]>(
+      (acc, space) => {
+        const title = space.name;
+        const description = space.description;
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "project",
+            space,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
+    );
+
+    const peopleResults = mockUsers.reduce<UniversalSearchItem[]>(
+      (acc, user) => {
+        const title = user.fullName;
+        const description = user.email;
+        const titleMatch = title.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "person",
+            user,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
+    );
+
+    const conversationResults = allConversations.reduce<UniversalSearchItem[]>(
+      (acc, conversation) => {
+        const creator = getRandomCreator(conversation);
+        const title = conversation.title;
+        const description = conversation.description ?? "";
+        const searchableTitle = creator
+          ? `${creator.fullName} ${title}`
+          : title;
+        const titleMatch = searchableTitle.toLowerCase().includes(searchLower);
+        const descriptionMatch = description
+          .toLowerCase()
+          .includes(searchLower);
+        if (titleMatch || descriptionMatch) {
+          acc.push({
+            type: "conversation",
+            conversation,
+            creator: creator || undefined,
+            title,
+            description,
+            score: titleMatch ? 2 : 1,
+          });
+        }
+        return acc;
+      },
+      []
+    );
+
+    return [
+      ...documentResults,
+      ...projectResults,
+      ...peopleResults,
+      ...conversationResults,
+    ].sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.title.localeCompare(b.title);
+    });
+  }, [
+    allConversations,
+    defaultDocumentSpace,
+    documentDataSources,
+    mockUsers,
+    universalSearchText,
+  ]);
+
+  const handleUniversalSearchSelect = (item: UniversalSearchItem) => {
+    if (item.type === "document") {
+      setSelectedDataSource(item.dataSource);
+      setIsDocumentSheetOpen(true);
+      setIsUniversalSearchOpen(false);
+      return;
+    }
+
+    if (item.type === "project") {
+      setSelectedSpaceId(item.space.id);
+      setSelectedView("space");
+      setSelectedConversationId(null);
+      setPreviousSpaceId(null);
+      setCameFromInbox(false);
+      setIsUniversalSearchOpen(false);
+      return;
+    }
+
+    if (item.type === "person") {
+      setIsUniversalSearchOpen(false);
+      return;
+    }
+
+    const baseConversationId = getBaseConversationId(
+      item.conversation,
+      allConversations
+    );
+    setSelectedConversationId(baseConversationId);
+    setSelectedView("conversation");
+    setSelectedSpaceId(item.conversation.spaceId ?? null);
+    setPreviousSpaceId(null);
+    setCameFromInbox(false);
+    setIsUniversalSearchOpen(false);
+  };
+
+  const UniversalSearchResultItem = ({
+    item,
+    selected,
+  }: {
+    item: UniversalSearchItem;
+    selected: boolean;
+  }) => {
+    const getVisual = () => {
+      if (item.type === "document") {
+        return item.dataSource.icon ? (
+          <Icon visual={item.dataSource.icon} size="md" />
+        ) : null;
+      }
+
+      if (item.type === "project") {
+        return <Icon visual={SpaceOpenIcon} size="md" />;
+      }
+
+      if (item.type === "person") {
+        return (
+          <Avatar
+            name={item.user.fullName}
+            visual={item.user.portrait}
+            size="xs"
+            isRounded={true}
+          />
+        );
+      }
+
+      return item.creator ? (
+        <Avatar
+          name={item.creator.fullName}
+          visual={item.creator.portrait}
+          size="xs"
+          isRounded={true}
+        />
+      ) : (
+        <Icon visual={ChatBubbleLeftRightIcon} size="md" />
+      );
+    };
+
+    const getTitle = () => {
+      if (item.type === "conversation" && item.creator) {
+        return (
+          <>
+            <span className="s-shrink-0">{item.creator.fullName}</span>
+            <span className="s-min-w-0 s-truncate s-text-muted-foreground dark:s-text-muted-foreground-night">
+              {item.title}
+            </span>
+          </>
+        );
+      }
+      return <span className="s-min-w-0 s-truncate">{item.title}</span>;
+    };
+
+    return (
+      <UniversalSearchItem
+        onClick={() => handleUniversalSearchSelect(item)}
+        selected={selected}
+        hasSeparator={false}
+        visual={getVisual()}
+        title={getTitle()}
+        description={item.description}
+      />
+    );
+  };
+
+  // Calculate unread count for Inbox (same logic as InboxView)
+  const unreadCount = useMemo(() => {
+    const now = new Date();
+    const twoDaysAgo = new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000);
+
+    return allConversations.filter((conv) => {
+      // Must have a spaceId
+      if (!conv.spaceId) return false;
+      // For demo: consider conversations updated in the last 2 days as "unread"
+      return conv.updatedAt >= twoDaysAgo;
+    }).length;
+  }, [allConversations]);
 
   const filteredConversations = useMemo(() => {
     if (!searchText.trim()) {
@@ -310,7 +693,8 @@ function DustMain() {
   }, [searchText, sortedCollaborators]);
 
   const sortedSpaces = useMemo(() => {
-    return [...spaces].sort((a, b) => {
+    const sourceSpaces = searchText.trim() ? mockSpaces : spaces;
+    return [...sourceSpaces].sort((a, b) => {
       // Determine if restricted based on space ID
       const isRestrictedA = a.id.charCodeAt(a.id.length - 1) % 2 === 0;
       const isRestrictedB = b.id.charCodeAt(b.id.length - 1) % 2 === 0;
@@ -323,7 +707,7 @@ function DustMain() {
       // Then sort alphabetically by name
       return a.name.localeCompare(b.name);
     });
-  }, [spaces]);
+  }, [searchText, spaces]);
 
   const filteredSpaces = useMemo(() => {
     if (!searchText.trim()) {
@@ -337,6 +721,21 @@ function DustMain() {
     );
   }, [searchText, sortedSpaces]);
 
+  const filteredProjects = useMemo(() => {
+    const allSpaces = [...mockSpaces].sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+    if (!projectSearchText.trim()) {
+      return allSpaces;
+    }
+    const lowerSearch = projectSearchText.toLowerCase();
+    return allSpaces.filter(
+      (space) =>
+        space.name.toLowerCase().includes(lowerSearch) ||
+        space.description.toLowerCase().includes(lowerSearch)
+    );
+  }, [projectSearchText]);
+
   // Find selected conversation from all conversations
   const selectedConversation = useMemo(() => {
     if (!selectedConversationId) return null;
@@ -346,36 +745,16 @@ function DustMain() {
   }, [selectedConversationId, allConversations]);
 
   // Find selected space
-  const selectedSpace = useMemo(() => {
+  const selectedProject = useMemo(() => {
     if (!selectedSpaceId) return null;
-    return spaces.find((s) => s.id === selectedSpaceId) || null;
-  }, [selectedSpaceId, spaces]);
+    return mockSpaces.find((space) => space.id === selectedSpaceId) || null;
+  }, [selectedSpaceId]);
 
   // Get conversations for selected space
   const spaceConversations = useMemo(() => {
     if (!selectedSpaceId) return [];
     return getConversationsBySpaceId(selectedSpaceId);
   }, [selectedSpaceId]);
-
-  // Select 2-5 random conversations for inbox with status assignment
-  const inboxConversations = useMemo(() => {
-    if (filteredConversations.length === 0) return [];
-
-    // Randomly select 2-5 conversations
-    const count = Math.floor(Math.random() * 4) + 2; // 2-5
-    const shuffled = [...filteredConversations].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(
-      0,
-      Math.min(count, filteredConversations.length)
-    );
-
-    // Assign statuses: ~25% probability of "blocked", rest "idle"
-    return selected.map((conversation) => {
-      const status: "idle" | "unread" | "blocked" | "error" =
-        Math.random() < 0.25 ? "blocked" : "idle";
-      return { conversation, status };
-    });
-  }, [filteredConversations]);
 
   const getConversationMoreMenu = (conversation: Conversation) => {
     const participants = getRandomParticipants(conversation);
@@ -479,15 +858,17 @@ function DustMain() {
         }
         className="s-flex s-min-h-0 s-flex-1 s-flex-col"
       >
-        <TabsList className="s-mt-3 s-px-2">
-          <TabsTrigger
-            value="chat"
-            label="Chat"
-            icon={ChatBubbleLeftRightIcon}
-          />
-          <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
-          <TabsTrigger value="admin" icon={Cog6ToothIcon} />
-        </TabsList>
+        <div className="s-flex s-h-14 s-items-end s-border-b s-border-border s-px-2 dark:s-border-border-night">
+          <TabsList border={false}>
+            <TabsTrigger
+              value="chat"
+              label="Chat"
+              icon={ChatBubbleLeftRightIcon}
+            />
+            <TabsTrigger value="spaces" label="Spaces" icon={SpaceOpenIcon} />
+            <TabsTrigger value="admin" icon={Cog6ToothIcon} />
+          </TabsList>
+        </div>
         <TabsContent
           value="chat"
           className="s-flex s-min-h-0 s-flex-1 s-flex-col"
@@ -495,7 +876,7 @@ function DustMain() {
           <ScrollArea className="s-flex-1">
             <ScrollBar orientation="vertical" size="minimal" />
             {/* Search Bar */}
-            <div className="s-flex s-gap-2 s-p-2 s-px-2">
+            <div className="s-flex s-gap-2 s-p-2 s-px-2 s-items-center">
               <SearchInput
                 name="conversation-search"
                 value={searchText}
@@ -509,50 +890,107 @@ function DustMain() {
                 size="sm"
                 icon={ChatBubbleBottomCenterTextIcon}
                 label="New"
+                onClick={handleNewConversation}
               />
-            </div>
-            {inboxConversations.length > 0 && (
-              <NavigationListCollapsibleSection
-                label="Inbox"
-                className="s-border-b s-border-t s-border-border s-bg-background/50 s-px-2 s-pb-2 dark:s-bg-background-night/50"
-                actionOnHover={false}
-                action={
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
-                    size="xmini"
-                    icon={CheckDoubleIcon}
                     variant="ghost"
-                    aria-label="Mark all as read"
-                    tooltip="Mark all as read"
+                    size="mini"
+                    icon={MoreIcon}
+                    aria-label="More options"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      // Add action logic here
                     }}
                   />
-                }
-              >
-                {inboxConversations.map(({ conversation, status }) => (
-                  <NavigationListItem
-                    key={conversation.id}
-                    label={conversation.title}
-                    selected={conversation.id === selectedConversationId}
-                    status={status}
-                    moreMenu={getConversationMoreMenu(conversation)}
-                    onClick={() => {
-                      // Clear previousSpaceId when navigating from sidebar
-                      setPreviousSpaceId(null);
-                      setSelectedConversationId(conversation.id);
-                      setSelectedSpaceId(null);
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuLabel label="Agents" />
+                  <DropdownMenuItem
+                    label="New agent"
+                    icon={PlusIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                     }}
                   />
-                ))}
-              </NavigationListCollapsibleSection>
-            )}
+                  <DropdownMenuItem
+                    label="Edit agent"
+                    icon={PencilSquareIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage agents"
+                    icon={ContactsUserIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Skills" />
+                  <DropdownMenuItem
+                    label="New skill"
+                    icon={PlusIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Manage skills"
+                    icon={PuzzleIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel label="Conversations" />
+                  <DropdownMenuItem
+                    label="Edit conversations"
+                    icon={ListSelectIcon}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                  <DropdownMenuItem
+                    label="Clear conversation history"
+                    icon={TrashIcon}
+                    variant="warning"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  />
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             {/* Collapsible Sections */}
             <NavigationList className="s-px-2">
+              {!searchText.trim() && (
+                <NavigationListItem
+                  label="Inbox"
+                  icon={InboxIcon}
+                  selected={selectedView === "inbox"}
+                  count={unreadCount > 0 ? unreadCount : undefined}
+                  onClick={() => {
+                    setSelectedView("inbox");
+                    setSelectedSpaceId(null);
+                    setSelectedConversationId(null);
+                    setPreviousSpaceId(null);
+                    setCameFromInbox(false);
+                  }}
+                />
+              )}
               {(filteredSpaces.length > 0 || !searchText.trim()) && (
                 <NavigationListCollapsibleSection
-                  label="Rooms"
+                  label="Projects"
                   type="collapse"
                   defaultOpen={true}
                   action={
@@ -582,23 +1020,36 @@ function DustMain() {
                           />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem
-                            label="Browse"
-                            icon={PencilSquareIcon}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
+                          <DropdownMenuSearchbar
+                            name="project-search"
+                            value={projectSearchText}
+                            onChange={setProjectSearchText}
+                            placeholder="Search projects"
                           />
-                          <DropdownMenuItem
-                            icon={PlusIcon}
-                            label="Create"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setIsCreateRoomDialogOpen(true);
-                            }}
-                          />
+                          <DropdownMenuSeparator />
+                          {filteredProjects.length > 0 ? (
+                            [...filteredProjects]
+                              .sort((a, b) => a.name.localeCompare(b.name))
+                              .map((space) => (
+                                <DropdownMenuItem
+                                  key={space.id}
+                                  label={space.name}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSelectedSpaceId(space.id);
+                                    setSelectedView("space");
+                                    setSelectedConversationId(null);
+                                    setPreviousSpaceId(null);
+                                    setCameFromInbox(false);
+                                  }}
+                                />
+                              ))
+                          ) : (
+                            <div className="s-flex s-h-24 s-items-center s-justify-center s-text-sm s-text-muted-foreground">
+                              No projects found
+                            </div>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </>
@@ -647,6 +1098,8 @@ function DustMain() {
                         onClick={() => {
                           setSelectedSpaceId(space.id);
                           setSelectedConversationId(null);
+                          setSelectedView("space");
+                          setCameFromInbox(false);
                         }}
                       />
                     );
@@ -669,6 +1122,7 @@ function DustMain() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+                          handleNewConversation();
                         }}
                       />
                       <DropdownMenu>
@@ -729,6 +1183,8 @@ function DustMain() {
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
+                            setSelectedView("conversation");
+                            setCameFromInbox(false);
                           }}
                         />
                       ))}
@@ -748,6 +1204,8 @@ function DustMain() {
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
+                            setSelectedView("conversation");
+                            setCameFromInbox(false);
                           }}
                         />
                       ))}
@@ -767,6 +1225,8 @@ function DustMain() {
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
+                            setSelectedView("conversation");
+                            setCameFromInbox(false);
                           }}
                         />
                       ))}
@@ -786,6 +1246,8 @@ function DustMain() {
                             setPreviousSpaceId(null);
                             setSelectedConversationId(conversation.id);
                             setSelectedSpaceId(null);
+                            setSelectedView("conversation");
+                            setCameFromInbox(false);
                           }}
                         />
                       ))}
@@ -937,7 +1399,7 @@ function DustMain() {
         </DropdownMenu>
         <Button
           variant="ghost-secondary"
-          size="icon"
+          size="mini"
           icon={isSidebarCollapsed ? SidebarLeftOpenIcon : SidebarLeftCloseIcon}
           onClick={() => sidebarLayoutRef.current?.toggle()}
         />
@@ -950,10 +1412,25 @@ function DustMain() {
     if (previousSpaceId) {
       setSelectedSpaceId(previousSpaceId);
       setSelectedConversationId(null);
+      setSelectedView("space");
+      setCameFromInbox(false);
       // Optionally clear previousSpaceId, or keep it for future navigation
       // setPreviousSpaceId(null);
+    } else if (cameFromInbox) {
+      // Return to inbox if we came from there
+      setSelectedView("inbox");
+      setSelectedConversationId(null);
+      setCameFromInbox(false);
     }
   };
+
+  function handleNewConversation() {
+    setSelectedConversationId("new-conversation");
+    setSelectedView(null);
+    setSelectedSpaceId(null);
+    setPreviousSpaceId(null);
+    setCameFromInbox(false);
+  }
 
   // Handle room creation flow
   const handleRoomNameNext = (name: string, isPublic: boolean) => {
@@ -1046,17 +1523,41 @@ function DustMain() {
         users={mockUsers}
         agents={mockAgents}
         conversationsWithMessages={conversationsWithMessages}
-        showBackButton={!!previousSpaceId}
+        showBackButton={!!previousSpaceId || cameFromInbox}
         onBack={handleConversationBack}
-        projectTitle={selectedSpace?.name}
+        projectTitle={previousSpaceId ? selectedProject?.name : undefined}
       />
-    ) : // Priority 2: Show space view if a space is selected
-    selectedSpace && selectedSpaceId ? (
+    ) : // Priority 2: Show inbox view if inbox is selected
+    selectedView === "inbox" ? (
+      <InboxView
+        spaces={spaces}
+        conversations={allConversations}
+        users={mockUsers}
+        agents={mockAgents}
+        onConversationClick={(conversation) => {
+          // Store that we came from inbox before navigating to conversation
+          setPreviousSpaceId(null);
+          setSelectedView("conversation");
+          setSelectedConversationId(conversation.id);
+          setCameFromInbox(true);
+        }}
+        onSpaceClick={(space) => {
+          setSelectedSpaceId(space.id);
+          setSelectedView("space");
+          setSelectedConversationId(null);
+          setCameFromInbox(false);
+        }}
+      />
+    ) : // Priority 3: Show space view if a space is selected
+    selectedProject && selectedSpaceId ? (
       <GroupConversationView
-        space={selectedSpace}
+        space={selectedProject}
         conversations={spaceConversations}
         users={mockUsers}
         agents={mockAgents}
+        isProjectJoined={isProjectJoined(selectedSpaceId)}
+        onJoinProject={() => joinProject(selectedProject)}
+        onLeaveProject={() => leaveProject(selectedSpaceId)}
         spaceMemberIds={
           spaceMembers.has(selectedSpaceId)
             ? spaceMembers.get(selectedSpaceId)!
@@ -1070,7 +1571,9 @@ function DustMain() {
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
           setPreviousSpaceId(selectedSpaceId);
+          setSelectedView("conversation");
           setSelectedConversationId(conversation.id);
+          setCameFromInbox(false);
           // Keep selectedSpaceId set so the space NavigationItem stays selected
         }}
         onInviteMembers={() => handleInviteMembers(selectedSpaceId)}
@@ -1090,12 +1593,58 @@ function DustMain() {
             <div className="s-heading-lg s-text-foreground">
               Universal search
             </div>
-            <SearchInput
+            <SearchInputWithPopover
               name="document-search"
-              value={documentSearchText}
-              onChange={setDocumentSearchText}
+              value={universalSearchText}
+              stickyTopContent={
+                <>
+                  <Button size="xs" label="All" variant={"primary"} />
+                  <Button size="xs" label="Projects" variant={"ghost"} />
+                  <Button size="xs" label="Conversations" variant={"ghost"} />
+                  <Button size="xs" label="People" variant={"ghost"} />
+                  <Button size="xs" label="Documents" variant={"ghost"} />
+                  <div className="s-w-full s-flex-1" />
+                  <Button
+                    size="xs"
+                    icon={MagnifyingGlassIcon}
+                    label="Ask @dust"
+                    variant={"outline"}
+                  />
+                  <Button
+                    size="xs"
+                    icon={AtomIcon}
+                    label="Start a DeepDive"
+                    variant={"highlight"}
+                  />
+                </>
+              }
+              stickyBottomContent={
+                <div className="s-heading-sm s-flex s-items-center s-gap-3 s-px-1.5 s-py-1 s-text-muted-foreground">
+                  <Spinner size="sm" />
+                  Searching some more...
+                </div>
+              }
+              onChange={(value) => {
+                setUniversalSearchText(value);
+                if (!value.trim()) {
+                  setIsUniversalSearchOpen(false);
+                }
+              }}
+              open={isUniversalSearchOpen}
+              onOpenChange={setIsUniversalSearchOpen}
               placeholder="Find company documents, Agents, People…"
               className="s-w-full"
+              items={universalSearchResults}
+              availableHeight
+              noResults={
+                universalSearchText.trim()
+                  ? "No results found"
+                  : "Start typing to search"
+              }
+              onItemSelect={handleUniversalSearchSelect}
+              renderItem={(item, selected) => (
+                <UniversalSearchResultItem item={item} selected={selected} />
+              )}
             />
           </div>
           <div className="s-heading-lg s-text-foreground">Chat with…</div>
@@ -1143,6 +1692,30 @@ function DustMain() {
         }
         hasMultipleSelect={true}
       />
+      <Sheet
+        open={isDocumentSheetOpen}
+        onOpenChange={(open: boolean) => {
+          setIsDocumentSheetOpen(open);
+          if (!open) {
+            setSelectedDataSource(null);
+          }
+        }}
+      >
+        <SheetContent size="lg" side="right">
+          <SheetHeader>
+            <SheetTitle>
+              {selectedDataSource?.fileName || "Document View"}
+            </SheetTitle>
+          </SheetHeader>
+          <SheetContainer>
+            <div className="s-flex s-flex-col s-items-center s-justify-center s-py-16">
+              <p className="s-text-foreground dark:s-text-foreground-night">
+                Document View
+              </p>
+            </div>
+          </SheetContainer>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

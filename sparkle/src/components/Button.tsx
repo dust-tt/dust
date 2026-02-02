@@ -160,13 +160,13 @@ const buttonVariants = cva(
         ),
       },
       size: {
-        "icon-xs": "s-h-6 s-w-6 s-label-xs s-gap-1 s-shrink-0",
-        icon: "s-h-7 s-w-7 s-label-xs s-gap-1.5 s-shrink-0",
-        xmini: "s-h-6 s-px-1.5 s-label-xs s-gap-1 s-shrink-0",
-        mini: "s-h-7 s-px-2 s-label-xs s-gap-1.5 s-shrink-0",
-        xs: "s-h-7 s-px-2.5 s-label-xs s-gap-1.5 s-shrink-0",
-        sm: "s-h-9 s-px-3 s-label-sm s-gap-2 s-shrink-0",
-        md: "s-h-12 s-px-4 s-py-2 s-label-base s-gap-2.5 s-shrink-0",
+        "icon-xs": "s-h-6 s-w-6 s-gap-1 s-shrink-0",
+        icon: "s-h-7 s-w-7 s-gap-1.5 s-shrink-0",
+        xmini: "s-h-6 s-px-1.5 s-gap-1 s-shrink-0",
+        mini: "s-h-7 s-px-2 s-gap-1.5 s-shrink-0",
+        xs: "s-h-7 s-px-2.5 s-gap-1.5 s-shrink-0",
+        sm: "s-h-9 s-px-3 s-gap-2 s-shrink-0",
+        md: "s-h-12 s-px-4 s-py-2 s-gap-2.5 s-shrink-0",
       },
       rounded: {
         "icon-xs": "s-rounded-lg",
@@ -190,15 +190,43 @@ const buttonVariants = cva(
 const labelVariants = cva("", {
   variants: {
     size: {
-      "icon-xs": "s-label-xs s-hidden",
-      icon: "s-label-xs s-hidden",
-      xmini: "s-label-xs",
-      mini: "s-label-xs",
-      xs: "s-label-xs",
-      sm: "s-label-sm",
-      md: "s-label-base",
+      "icon-xs": "s-hidden",
+      icon: "s-hidden",
+      xmini: "s-hidden",
+      mini: "s-hidden",
+      xs: "",
+      sm: "",
+      md: "",
+    },
+    hasLighterFont: {
+      true: "",
+      false: "",
     },
   },
+  compoundVariants: [
+    { size: "xmini", hasLighterFont: false, className: "s-label-xs" },
+    { size: "mini", hasLighterFont: false, className: "s-label-xs" },
+    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
+    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
+    { size: "md", hasLighterFont: false, className: "s-label-base" },
+    {
+      size: "xmini",
+      hasLighterFont: true,
+      className: "s-text-xs s-font-normal",
+    },
+    {
+      size: "mini",
+      hasLighterFont: true,
+      className: "s-text-xs s-font-normal",
+    },
+    { size: "xs", hasLighterFont: true, className: "s-text-xs s-font-normal" },
+    { size: "sm", hasLighterFont: true, className: "s-text-sm s-font-normal" },
+    {
+      size: "md",
+      hasLighterFont: true,
+      className: "s-text-base s-font-normal",
+    },
+  ],
   defaultVariants: {
     size: "sm",
   },
@@ -229,7 +257,8 @@ const chevronVariantMap = {
 } as const;
 
 export interface MetaButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+  extends
+    React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   isRounded?: boolean;
@@ -334,6 +363,7 @@ type CommonButtonProps = Omit<MetaButtonProps, "children"> &
     isCounter?: boolean;
     counterValue?: string;
     isRounded?: boolean;
+    hasLighterFont?: boolean;
   };
 
 export type IconOnlyButtonProps = CommonButtonProps & {
@@ -367,6 +397,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       counterValue,
       size = "sm",
       isRounded = false,
+      hasLighterFont = false,
       href,
       target,
       rel,
@@ -427,7 +458,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           <div
             className={cn(
               "s-flex s-items-center s-gap-2",
-              labelVariants({ size })
+              labelVariants({ size, hasLighterFont })
             )}
           >
             {label}
