@@ -115,6 +115,7 @@ function isMessageEventParams(
     case "generation_tokens":
     case "tool_approve_execution":
     case "tool_error":
+    case "tool_file_auth_required":
     case "tool_notification":
     case "tool_params":
     case "tool_personal_auth_required":

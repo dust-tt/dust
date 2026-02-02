@@ -94,6 +94,19 @@ export async function publishDeferredEventsActivity(
         }
         break;
 
+      case "tool_file_auth_required":
+        // Publish the file auth required event.
+        // Similar to tool_personal_auth_required but for file-specific authorization.
+        eventToPublish = {
+          ...event,
+          metadata: {
+            ...event.metadata,
+            // Override the message id to root the event to the right channel.
+            pubsubMessageId: deferredEvent.context.agentMessageId,
+          },
+        };
+        break;
+
       case "tool_approve_execution":
         eventToPublish = {
           ...event,

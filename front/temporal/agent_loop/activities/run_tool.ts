@@ -207,9 +207,9 @@ export async function runToolActivity(
         return { deferredEvents, shouldPauseAgentLoop: true };
 
       case "tool_personal_auth_required":
+      case "tool_file_auth_required":
       case "tool_approve_execution":
-        // Update and publish deferred events for these types.
-        // Defer personal auth events to be sent after all tools complete.
+        // Batched for publishing after all parallel tools complete to avoid partial UI state.
         deferredEvents.push({
           event,
           context: {
