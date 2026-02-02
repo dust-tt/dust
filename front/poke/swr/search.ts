@@ -71,49 +71,43 @@ export function usePokeSearchAllRegions({
 
     const queryParams = new URLSearchParams({ search });
 
-    const fetchAllRegions = async () => {
-      const regionPromises = SUPPORTED_REGIONS.map(async (region) => {
-        const baseUrl = regionUrls[region];
-        const url = `${baseUrl}/api/poke/search?${queryParams.toString()}`;
+    const run = async () => {
+      try {
+        const regionPromises = SUPPORTED_REGIONS.map(async (region) => {
+          const baseUrl = regionUrls[region];
+          const url = `${baseUrl}/api/poke/search?${queryParams.toString()}`;
 
-        const response = await clientFetch(url, { credentials: "include" });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch from ${region}`);
+          const response = await clientFetch(url, { credentials: "include" });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch from ${region}`);
+          }
+
+          const data: GetPokeSearchItemsResponseBody = await response.json();
+          return data.results.map((item) => ({ ...item, region }));
+        });
+
+        const settledResults = await Promise.allSettled(regionPromises);
+        const allResults: PokeItemBase[] = [];
+
+        for (const result of settledResults) {
+          if (result.status === "fulfilled") {
+            allResults.push(...result.value);
+          }
         }
 
-        const data: GetPokeSearchItemsResponseBody = await response.json();
-        // Tag each result with its source region
-        return data.results.map((item) => ({
-          ...item,
-          region,
-        }));
-      });
-
-      const settledResults = await Promise.allSettled(regionPromises);
-      const allResults: PokeItemBase[] = [];
-
-      for (const result of settledResults) {
-        if (result.status === "fulfilled") {
-          allResults.push(...result.value);
-        }
-      }
-
-      return allResults;
-    };
-
-    fetchAllRegions()
-      .then((allResults) => {
         if (!cancelled) {
           setResults(allResults);
           setIsLoading(false);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setIsError(true);
           setIsLoading(false);
         }
-      });
+      }
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
@@ -177,49 +171,43 @@ export function usePokeWorkspacesAllRegions({
       queryParams.set("limit", String(limit));
     }
 
-    const fetchAllRegions = async () => {
-      const regionPromises = SUPPORTED_REGIONS.map(async (region) => {
-        const baseUrl = regionUrls[region];
-        const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
+    const run = async () => {
+      try {
+        const regionPromises = SUPPORTED_REGIONS.map(async (region) => {
+          const baseUrl = regionUrls[region];
+          const url = `${baseUrl}/api/poke/workspaces?${queryParams.toString()}`;
 
-        const response = await clientFetch(url, { credentials: "include" });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch from ${region}`);
+          const response = await clientFetch(url, { credentials: "include" });
+          if (!response.ok) {
+            throw new Error(`Failed to fetch from ${region}`);
+          }
+
+          const data: GetPokeWorkspacesResponseBody = await response.json();
+          return data.workspaces.map((ws) => ({ ...ws, region }));
+        });
+
+        const settledResults = await Promise.allSettled(regionPromises);
+        const allWorkspaces: PokeWorkspaceWithRegion[] = [];
+
+        for (const result of settledResults) {
+          if (result.status === "fulfilled") {
+            allWorkspaces.push(...result.value);
+          }
         }
 
-        const data: GetPokeWorkspacesResponseBody = await response.json();
-        // Tag each workspace with its source region
-        return data.workspaces.map((ws) => ({
-          ...ws,
-          region,
-        }));
-      });
-
-      const settledResults = await Promise.allSettled(regionPromises);
-      const allWorkspaces: PokeWorkspaceWithRegion[] = [];
-
-      for (const result of settledResults) {
-        if (result.status === "fulfilled") {
-          allWorkspaces.push(...result.value);
-        }
-      }
-
-      return allWorkspaces;
-    };
-
-    fetchAllRegions()
-      .then((allWorkspaces) => {
         if (!cancelled) {
           setWorkspaces(allWorkspaces);
           setIsLoading(false);
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) {
           setIsError(true);
           setIsLoading(false);
         }
-      });
+      }
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
