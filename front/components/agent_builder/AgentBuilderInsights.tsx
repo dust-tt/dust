@@ -1,41 +1,44 @@
 import { cn, LoadingBlock } from "@dust-tt/sparkle";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { AgentObservability } from "@app/components/observability/AgentObservability";
+import { CombinedInsightsContent } from "@app/components/observability/CombinedInsightsContent";
 import { useAgentConfiguration } from "@app/lib/swr/assistants";
 
-interface AgentBuilderObservabilityProps {
+interface AgentBuilderInsightsProps {
   agentConfigurationSId: string;
 }
 
-export function AgentBuilderObservability({
+export function AgentBuilderInsights({
   agentConfigurationSId,
-}: AgentBuilderObservabilityProps) {
+}: AgentBuilderInsightsProps) {
   const { owner } = useAgentBuilderContext();
+
   const { agentConfiguration, isAgentConfigurationLoading } =
     useAgentConfiguration({
       workspaceId: owner.sId,
       agentConfigurationId: agentConfigurationSId,
     });
 
-  if (!agentConfiguration) {
-    return null;
+  if (isAgentConfigurationLoading || !agentConfiguration) {
+    return (
+      <div className="grid grid-cols-1 gap-6 p-4">
+        <ChartContainerSkeleton />
+        <ChartContainerSkeleton />
+        <ChartContainerSkeleton />
+      </div>
+    );
   }
 
-  return isAgentConfigurationLoading || !agentConfiguration ? (
-    <div className="grid grid-cols-1 gap-6">
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-      <ChartContainerSkeleton />
-    </div>
-  ) : (
-    <AgentObservability
-      owner={owner}
-      agentConfigurationId={agentConfiguration.sId}
-      isCustomAgent={agentConfiguration.scope !== "global"}
-    />
+  const isCustomAgent = agentConfiguration.scope !== "global";
+
+  return (
+    <section className="flex h-full flex-col overflow-y-auto p-4">
+      <CombinedInsightsContent
+        owner={owner}
+        agentConfigurationId={agentConfiguration.sId}
+        isCustomAgent={isCustomAgent}
+      />
+    </section>
   );
 }
 

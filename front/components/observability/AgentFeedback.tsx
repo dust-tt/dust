@@ -33,6 +33,7 @@ interface AgentFeedbackProps {
   agentConfigurationId: string;
   allowReactions: boolean;
   title?: string;
+  hideHeader?: boolean;
 }
 
 export function AgentFeedback({
@@ -40,6 +41,7 @@ export function AgentFeedback({
   agentConfigurationId,
   allowReactions,
   title = "Feedback",
+  hideHeader = false,
 }: AgentFeedbackProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
   const { agentAnalytics } = useAgentAnalytics({
@@ -52,17 +54,8 @@ export function AgentFeedback({
         : undefined,
   });
 
-  return (
-    <TabContentLayout
-      title={title}
-      headerAction={
-        <SharedObservabilityFilterSelector
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={allowReactions}
-        />
-      }
-    >
+  const content = (
+    <>
       <TabContentChildSectionLayout title="Overview">
         <ValueCard
           title="Reactions"
@@ -104,6 +97,25 @@ export function AgentFeedback({
           agentConfigurationId={agentConfigurationId}
         />
       )}
+    </>
+  );
+
+  if (hideHeader) {
+    return <div className="flex flex-col gap-6 pt-4">{content}</div>;
+  }
+
+  return (
+    <TabContentLayout
+      title={title}
+      headerAction={
+        <SharedObservabilityFilterSelector
+          workspaceId={owner.sId}
+          agentConfigurationId={agentConfigurationId}
+          isCustomAgent={allowReactions}
+        />
+      }
+    >
+      {content}
     </TabContentLayout>
   );
 }
