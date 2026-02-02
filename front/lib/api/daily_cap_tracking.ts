@@ -3,6 +3,7 @@ import type { estypes } from "@elastic/elasticsearch";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
+import { executeWithLock } from "@app/lib/lock";
 import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
@@ -13,11 +14,9 @@ import {
   getShouldTrackTokenUsageCostsESFilter,
 } from "./programmatic_usage_tracking";
 
-// $1,000 in microUSD - default daily cap for non-PAYG workspaces
-const DEFAULT_DAILY_CAP_NON_PAYG_MICRO_USD = 1_000_000_000;
-
-// $1,000 in microUSD - minimum daily cap for PAYG workspaces
-const MIN_DAILY_CAP_PAYG_MICRO_USD = 1_000_000_000;
+// $1,000 in microUSD - default daily cap for non-PAYG workspaces, also used as
+// minimum daily cap for PAYG workspaces
+const DEFAULT_DAILY_CAP_MICRO_USD = 1_000_000_000;
 
 // 20% of PAYG cap - fraction used to compute default daily cap for PAYG
 const PAYG_DAILY_CAP_FRACTION = 0.2;
@@ -59,13 +58,13 @@ export async function getDefaultDailyCapMicroUsd(
   const paygCapMicroUsd = config?.paygCapMicroUsd ?? null;
 
   if (paygCapMicroUsd === null) {
-    return DEFAULT_DAILY_CAP_NON_PAYG_MICRO_USD;
+    return DEFAULT_DAILY_CAP_MICRO_USD;
   }
 
   const fractionOfPaygCap = Math.floor(
     paygCapMicroUsd * PAYG_DAILY_CAP_FRACTION
   );
-  return Math.max(MIN_DAILY_CAP_PAYG_MICRO_USD, fractionOfPaygCap);
+  return Math.max(DEFAULT_DAILY_CAP_MICRO_USD, fractionOfPaygCap);
 }
 
 /**
@@ -140,6 +139,7 @@ async function getTodayUsageFromESMicroUsd(
 
 /**
  * Get daily usage from Redis cache, initializing from ES if missing.
+ * Uses locking to prevent multiple concurrent ES queries on cache miss.
  * Fails close: returns Err on Redis/ES errors to block API calls.
  */
 async function getDailyUsageMicroUsd(
@@ -158,16 +158,45 @@ async function getDailyUsageMicroUsd(
     return new Ok(parseInt(cached, 10));
   }
 
-  // Cache miss - fetch from ES and initialize Redis
-  const usageResult = await getTodayUsageFromESMicroUsd(auth);
-  if (usageResult.isErr()) {
-    return usageResult;
+  // Cache miss - use lock to prevent multiple concurrent ES queries
+  const lockKey = `daily-usage-init:${workspace.sId}`;
+  try {
+    await executeWithLock(
+      lockKey,
+      async () => {
+        // Double-check cache after acquiring lock (another request may have populated it)
+        const cachedAfterLock = await redis.get(redisKey);
+        if (cachedAfterLock !== null) {
+          return;
+        }
+
+        const usageResult = await getTodayUsageFromESMicroUsd(auth);
+        if (usageResult.isErr()) {
+          throw usageResult.error;
+        }
+
+        const ttlSeconds = getSecondsUntilMidnightUTC();
+        await redis.set(redisKey, usageResult.value.toString(), {
+          EX: ttlSeconds,
+        });
+      },
+      10_000 // 10s timeout for lock acquisition
+    );
+  } catch (err) {
+    return new Err(
+      err instanceof Error ? err : new Error("Failed to initialize daily usage")
+    );
   }
 
-  const ttlSeconds = getSecondsUntilMidnightUTC();
-  await redis.set(redisKey, usageResult.value.toString(), { EX: ttlSeconds });
+  // Read the value that was just set (or was set by another request)
+  const finalCached = await redis.get(redisKey);
+  if (finalCached === null) {
+    return new Err(
+      new Error("Failed to read daily usage after initialization")
+    );
+  }
 
-  return new Ok(usageResult.value);
+  return new Ok(parseInt(finalCached, 10));
 }
 
 /**
