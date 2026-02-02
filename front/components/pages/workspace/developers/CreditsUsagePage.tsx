@@ -4,6 +4,7 @@ import {
   cn,
   ContentMessage,
   ExclamationCircleIcon,
+  Hoverable,
   Page,
 } from "@dust-tt/sparkle";
 import { lazy, Suspense, useMemo, useState } from "react";
@@ -379,21 +380,21 @@ export function CreditsUsagePage() {
                 Monitor usage and credits for programmatic usage (API keys,
                 automated workflows, etc.). Usage cost is based on token
                 consumption, according to our{" "}
-                <a
+                <Hoverable
                   href="/home/api-pricing"
                   target="_blank"
-                  className="text-primary underline hover:text-primary-dark"
+                  variant="primary"
                 >
                   pricing page
-                </a>
+                </Hoverable>
                 . Learn more in the{" "}
-                <a
+                <Hoverable
                   href="https://docs.dust.tt/docs/programmatic-usage"
                   target="_blank"
-                  className="text-primary underline hover:text-primary-dark"
+                  variant="primary"
                 >
                   programmatic usage documentation
-                </a>
+                </Hoverable>
                 .
               </p>
             </div>
