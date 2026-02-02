@@ -1,5 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
@@ -11,6 +12,9 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+// Markup multiplier to convert raw ES costs to costs with Dust markup
+const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
 
 async function fetchKeyMonthlyCap({
   workspace,
@@ -93,8 +97,10 @@ async function getLast29DaysKeyUsageMicroUsd(
     return new Err(new Error(`ES query failed: ${result.error.message}`));
   }
 
-  const totalCost = result.value.aggregations?.total_cost?.value ?? 0;
-  return new Ok(Math.round(totalCost));
+  // ES stores raw cost; apply markup to match Redis increments
+  const rawCost = result.value.aggregations?.total_cost?.value ?? 0;
+  const costWithMarkup = Math.round(rawCost * MARKUP_MULTIPLIER);
+  return new Ok(costWithMarkup);
 }
 
 // Per-key usage tracking uses a hybrid Redis + ES approach:
