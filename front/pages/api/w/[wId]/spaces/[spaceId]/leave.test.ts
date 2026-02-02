@@ -4,7 +4,6 @@ import { describe, expect, it } from "vitest";
 
 import { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { createPrivateApiMockRequest } from "@app/tests/utils/generic_private_api_tests";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
@@ -143,18 +142,10 @@ describe("POST /api/w/[wId]/spaces/[spaceId]/leave", () => {
       expect(res._getStatusCode()).toBe(200);
       expect(res._getJSONData().success).toBe(true);
 
-      // Verify user was removed from member group
       const memberGroup = project.groups.find((g) => g.kind === "regular");
       if (memberGroup) {
-        const membership = await GroupMembershipModel.findOne({
-          where: {
-            groupId: memberGroup.id,
-            userId: user.id,
-            workspaceId: workspace.id,
-          },
-          order: [["createdAt", "DESC"]],
-        });
-        expect(membership?.endAt).not.toBeNull();
+        const isMember = await memberGroup.isMember(user);
+        expect(isMember).toBe(false);
       }
     });
 

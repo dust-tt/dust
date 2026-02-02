@@ -1375,6 +1375,57 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  /**
+   * Allows the authenticated user to leave the group.
+   *
+   * Unlike removeMembers(), this method does not require admin/editor permissions.
+   * Users can always remove themselves from groups they are members of.
+   *
+   * Only works for "regular" and "space_editors" groups.
+   */
+  async leaveGroup(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<
+    Result<undefined, DustError<"user_not_member" | "system_or_global_group">>
+  > {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (this.kind !== "regular" && this.kind !== "space_editors") {
+      return new Err(
+        new DustError(
+          "system_or_global_group",
+          "Users can only leave regular or space_editors groups."
+        )
+      );
+    }
+
+    const now = new Date();
+
+    const [updatedCount] = await GroupMembershipModel.update(
+      { endAt: now },
+      {
+        where: {
+          groupId: this.id,
+          userId: user.id,
+          workspaceId: workspace.id,
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
+        transaction,
+      }
+    );
+
+    if (updatedCount === 0) {
+      return new Err(
+        new DustError("user_not_member", "User is not a member of this group.")
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
   async setMembers(
     auth: Authenticator,
     {

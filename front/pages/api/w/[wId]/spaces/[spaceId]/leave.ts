@@ -1,11 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import { Op } from "sequelize";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { withResourceFetchingFromRoute } from "@app/lib/api/resource_wrappers";
 import type { Authenticator } from "@app/lib/auth";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 
@@ -44,7 +42,6 @@ async function handler(
       }
 
       const user = auth.getNonNullableUser();
-      const workspace = auth.getNonNullableWorkspace();
 
       // Get the member group (kind: "regular") and editor group (kind: "space_editors")
       const memberGroup = space.groups.find((g) => g.kind === "regular");
@@ -67,25 +64,21 @@ async function handler(
         }
       }
 
-      // Remove user from both member and editor groups
       const groupsToLeave = [memberGroup, editorGroup].filter(
         (g): g is NonNullable<typeof g> => g !== undefined
       );
 
-      const now = new Date();
       for (const group of groupsToLeave) {
-        await GroupMembershipModel.update(
-          { endAt: now },
-          {
-            where: {
-              groupId: group.id,
-              userId: user.id,
-              workspaceId: workspace.id,
-              startAt: { [Op.lte]: now },
-              [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        const result = await group.leaveGroup(auth);
+        if (result.isErr() && result.error.code !== "user_not_member") {
+          return apiError(req, res, {
+            status_code: 500,
+            api_error: {
+              type: "internal_server_error",
+              message: result.error.message,
             },
-          }
-        );
+          });
+        }
       }
 
       return res.status(200).json({ success: true });
