@@ -1,21 +1,20 @@
 import {
   Button,
   ContentMessage,
+  Input,
   ScrollArea,
   SearchInput,
   SliderToggle,
-  TextArea,
   UserGroupIcon,
 } from "@dust-tt/sparkle";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useContext, useEffect, useState } from "react";
-import { FormProvider, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import { DeleteSpaceDialog } from "@app/components/assistant/conversation/space/about/DeleteSpaceDialog";
 import { MembersTable } from "@app/components/assistant/conversation/space/about/MembersTable";
-import { ProjectUrlsSection } from "@app/components/assistant/conversation/space/about/ProjectUrlsSection";
 import { ConfirmContext } from "@app/components/Confirm";
-import { BaseFormFieldSection } from "@app/components/shared/BaseFormFieldSection";
+import { useSpaceConversationsSummary } from "@app/lib/swr/conversations";
 import {
   useProjectMetadata,
   useSpaceInfo,
@@ -48,8 +47,6 @@ export function SpaceAboutTab({
 
   const confirm = useContext(ConfirmContext);
 
-  // Project metadata form
-  const [isSavingMetadata, setIsSavingMetadata] = useState(false);
   const { projectMetadata, isProjectMetadataLoading } = useProjectMetadata({
     workspaceId: owner.sId,
     spaceId: space.sId,
@@ -59,10 +56,16 @@ export function SpaceAboutTab({
     spaceId: space.sId,
   });
 
+  const [projectName, setProjectName] = useState(space.name);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [projectDescription, setProjectDescription] = useState(
+    projectMetadata?.description ?? ""
+  );
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+
   const form = useForm<PatchProjectMetadataBodyType>({
     resolver: zodResolver(PatchProjectMetadataBodySchema),
     defaultValues: {
-      description: "",
       urls: [],
     },
   });
@@ -71,9 +74,9 @@ export function SpaceAboutTab({
   useEffect(() => {
     if (projectMetadata) {
       form.reset({
-        description: projectMetadata.description ?? "",
         urls: projectMetadata.urls ?? [],
       });
+      setProjectDescription(projectMetadata.description ?? "");
     }
   }, [projectMetadata, form]);
 
@@ -82,12 +85,51 @@ export function SpaceAboutTab({
     workspaceId: owner.sId,
     spaceId: space.sId,
   });
-
-  const onSaveMetadata = form.handleSubmit(async (data) => {
-    setIsSavingMetadata(true);
-    await doUpdateMetadata(data);
-    setIsSavingMetadata(false);
+  const { mutate: mutateSpaceSummary } = useSpaceConversationsSummary({
+    workspaceId: owner.sId,
   });
+
+  const onSaveName = async () => {
+    const confirmed = await confirm({
+      title: "Update project name?",
+      message: `The project name will be changed to "${projectName}".`,
+      validateVariant: "warning",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    const updated = await doUpdate(space, {
+      isRestricted,
+      memberIds: projectMembers.filter((m) => !m.isEditor).map((m) => m.sId),
+      editorIds: projectMembers.filter((m) => m.isEditor).map((m) => m.sId),
+      managementMode: "manual",
+      name: projectName,
+    });
+
+    if (updated) {
+      await mutateSpaceInfo();
+      // Optimistically update the space name in the sidebar without refetching
+      void mutateSpaceSummary();
+      setIsEditingName(false);
+    }
+  };
+
+  const onSaveDescription = async () => {
+    const confirmed = await confirm({
+      title: "Update project description?",
+      message: "The project description will be updated.",
+      validateVariant: "warning",
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    await doUpdateMetadata({ description: projectDescription });
+    setIsEditingDescription(false);
+  };
 
   const handleVisibilityToggle = async () => {
     const newIsPublic = !isPublic;
@@ -122,50 +164,72 @@ export function SpaceAboutTab({
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto px-6">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 py-8">
-        <h3 className="heading-2xl">Settings</h3>
-        <FormProvider {...form}>
-          <form onSubmit={onSaveMetadata} className="flex flex-col gap-y-4">
-            <BaseFormFieldSection
-              fieldName="description"
-              title="Description"
-              helpText="Describe what this project is about"
-            >
-              {({ registerRef, registerProps, onChange, errorMessage }) => (
-                <TextArea
-                  ref={registerRef}
-                  placeholder={
-                    isProjectMetadataLoading
-                      ? "Loading..."
-                      : "Describe what this project is about..."
-                  }
-                  disabled={isProjectMetadataLoading}
-                  error={errorMessage}
-                  onChange={onChange}
-                  rows={3}
-                  {...registerProps}
+        <div className="heading-2xl">Settings</div>
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Name</div>
+          <div className="flex w-full min-w-0 gap-2">
+            <Input
+              value={projectName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setProjectName(e.target.value);
+                setIsEditingName(e.target.value !== space.name);
+              }}
+              placeholder="Enter project name"
+              containerClassName="flex-1"
+            />
+            {isEditingName && (
+              <>
+                <Button label="Save" variant="highlight" onClick={onSaveName} />
+                <Button
+                  label="Cancel"
+                  variant="outline"
+                  onClick={() => {
+                    setProjectName(space.name);
+                    setIsEditingName(false);
+                  }}
                 />
-              )}
-            </BaseFormFieldSection>
-
-            <ProjectUrlsSection disabled={isProjectMetadataLoading} />
-
-            <div className="flex justify-end">
-              <Button
-                variant="primary"
-                size="sm"
-                label={isSavingMetadata ? "Saving..." : "Save changes"}
-                type="submit"
-                disabled={
-                  isSavingMetadata ||
-                  isProjectMetadataLoading ||
-                  !form.formState.isDirty
-                }
-              />
-            </div>
-          </form>
-        </FormProvider>
-
-        <div className="border-t pt-4" />
+              </>
+            )}
+          </div>
+        </div>
+        <div className="flex w-full flex-col gap-2">
+          <div className="heading-lg">Description</div>
+          <div className="flex w-full min-w-0 gap-2">
+            <Input
+              value={projectDescription}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                setProjectDescription(e.target.value);
+                setIsEditingDescription(
+                  e.target.value !== projectMetadata?.description
+                );
+              }}
+              placeholder={
+                isProjectMetadataLoading
+                  ? "Loading..."
+                  : "Describe what this project is about..."
+              }
+              disabled={isProjectMetadataLoading}
+              containerClassName="flex-1"
+            />
+            {isEditingDescription && (
+              <>
+                <Button
+                  label="Save"
+                  variant="highlight"
+                  onClick={onSaveDescription}
+                />
+                <Button
+                  label="Cancel"
+                  variant="outline"
+                  onClick={() => {
+                    setProjectDescription(projectMetadata?.description ?? "");
+                    setIsEditingDescription(false);
+                  }}
+                />
+              </>
+            )}
+          </div>
+        </div>
 
         <div className="flex w-full flex-col gap-2">
           <h3 className="heading-lg">Visibility</h3>
