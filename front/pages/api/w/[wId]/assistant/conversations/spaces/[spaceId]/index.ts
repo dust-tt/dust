@@ -82,6 +82,8 @@ async function handler(
       });
 
       // Fetch full conversation details for the paginated results
+      // We're doing N+1 queries here, very bad for scaling
+      // TODO(@jd) - Find a better way
       const spaceConversationsFull = await concurrentExecutor(
         spaceConversations,
         async (c) => getConversation(auth, c.sId),
