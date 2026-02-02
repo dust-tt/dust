@@ -12,9 +12,7 @@ export const getRegionDisplay = (region: RegionType): string => {
   }
 };
 
-export const getRegionChipColor = (
-  region: RegionType
-): "blue" | "green" => {
+export const getRegionChipColor = (region: RegionType): "blue" | "green" => {
   switch (region) {
     case "europe-west1":
       return "blue";
