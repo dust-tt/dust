@@ -1,7 +1,7 @@
 import type { DataSourceViewContentNode } from "@app/types";
 
 const SHAREPOINT_SITE_NAME_REGEX =
-  /^https?:\/\/[^/]*sharepoint\.com\/(?::f:\/r\/)?(?:sites|teams)\/([^/?#]+)/i;
+  /^https?:\/\/[^/]*sharepoint\.[^/]+\/(?::f:\/r\/)?(?:sites|teams)\/([^/?#]+)/i;
 
 function extractSharePointSiteNameFromSourceUrl(
   sourceUrl: string

@@ -57,6 +57,16 @@ describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
     );
   });
 
+  it("supports sovereign SharePoint domains (e.g. sharepoint.us)", () => {
+    const node = makeNode({
+      sourceUrl:
+        "https://tenant.sharepoint.us/sites/Project%20Alpha/Shared%20Documents/01%20Engagement",
+    });
+    expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
+      "Project Alpha → 01 Engagement"
+    );
+  });
+
   it("supports SharePoint share links with /:f:/r/sites/...", () => {
     const node = makeNode({
       sourceUrl:
