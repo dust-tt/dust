@@ -16913,11 +16913,16 @@
       },
       {
         "name": "list_ticket_fields",
-        "description": "Lists all active Zendesk ticket fields (system and custom) including their IDs, titles, types, and status. Returns both standard fields (subject, priority, status) and custom fields created for organization-specific data. Field IDs are required for filtering by custom fields in search_tickets using custom_field_{id}:\"value\" syntax.",
+        "description": "Lists ticket field definitions with their ID, title, type, and whether they are active. Includes built-in fields (Subject, Priority, Status) and custom fields. Returns active fields by default. Set includeInactive=true for all fields.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
-          "properties": {},
+          "properties": {
+            "includeInactive": {
+              "description": "Include inactive fields. Defaults to false.",
+              "type": "boolean"
+            }
+          },
           "type": "object"
         }
       },

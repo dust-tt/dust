@@ -157,14 +157,14 @@ const handlers: ToolHandlers<typeof ZENDESK_TOOLS_METADATA> = {
     ]);
   },
 
-  list_ticket_fields: async (_, { authInfo }) => {
+  list_ticket_fields: async ({ includeInactive }, { authInfo }) => {
     const clientResult = getZendeskClient(authInfo);
     if (clientResult.isErr()) {
       return clientResult;
     }
     const client = clientResult.value;
 
-    const result = await client.listAllTicketFields();
+    const result = await client.listAllTicketFields({ includeInactive });
 
     if (result.isErr()) {
       return new Err(
