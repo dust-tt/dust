@@ -153,25 +153,6 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Edit project URL",
     },
   },
-  read_journal_entry: {
-    description:
-      "Reads all journal entries for this project. Returns the journal entries with their content, and timestamps.",
-    schema: {
-      limit: z
-        .number()
-        .optional()
-        .describe("Maximum number of journal entries to return (default: 1)"),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "never_ask",
-    displayLabels: {
-      running: "Reading journal entries",
-      done: "Read journal entries",
-    },
-  },
   get_information: {
     description:
       "Get comprehensive information about the project context, including project URL, description, URLs, file count, and file list.",
@@ -194,11 +175,7 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       message: z
         .string()
         .describe("The message content to post in the new conversation"),
-      title: z
-        .string()
-        .optional()
-        .nullable()
-        .describe("Optional title for the conversation"),
+      title: z.string().describe("Title for the conversation"),
       agentId: z
         .string()
         .optional()

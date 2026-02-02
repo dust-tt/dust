@@ -25,7 +25,6 @@ import config from "@app/lib/api/config";
 import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import {
@@ -533,51 +532,6 @@ export function createProjectContextManagementTools(
       }, "Failed to edit project URL");
     },
 
-    read_journal_entry: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { limit = 10 } = params;
-
-        const entries = await ProjectJournalEntryResource.fetchBySpace(
-          auth,
-          space.id,
-          { limit }
-        );
-
-        if (entries.length === 0) {
-          return new Ok(
-            makeSuccessResponse({
-              success: true,
-              entries: [],
-              count: 0,
-              message: "No journal entries exist for this project",
-            })
-          );
-        }
-
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            entries: entries.map((entry) => ({
-              journalEntry: entry.journalEntry,
-              createdAt: entry.createdAt.toISOString(),
-              updatedAt: entry.updatedAt.toISOString(),
-            })),
-            count: entries.length,
-            message: `Successfully retrieved ${entries.length} journal ${entries.length === 1 ? "entry" : "entries"}`,
-          })
-        );
-      }, "Failed to read project journal entries");
-    },
-
     get_information: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
@@ -674,7 +628,7 @@ export function createProjectContextManagementTools(
 
         // Create conversation in the project space
         const conversation = await createConversation(auth, {
-          title: params.title ?? null,
+          title: params.title,
           visibility: "unlisted",
           spaceId: space.id,
         });
