@@ -41,4 +41,3 @@ export interface StateFile {
   totalCount: number;
   lastPageIds?: string[];
 }
-

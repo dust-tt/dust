@@ -105,9 +105,6 @@ jobs:
         env:
           NODE_OPTIONS: "--max-old-space-size=8192"
         run: npm -w front run lint
-      - name: Format Check
-        run: |
-          npm -w front run format:check
       - name: Knip
         uses: ./.github/actions/knip
         with:

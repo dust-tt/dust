@@ -35,57 +35,57 @@ export function NavigationWarningDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className='sm:max-w-md' showCloseButton={false}>
+      <DialogContent className="sm:max-w-md" showCloseButton={false}>
         <DialogHeader>
-          <div className='flex items-center gap-3'>
-            <div className='flex h-10 w-10 items-center justify-center rounded-full bg-amber-100'>
-              <AlertTriangleIcon className='h-5 w-5 text-amber-600' />
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100">
+              <AlertTriangleIcon className="h-5 w-5 text-amber-600" />
             </div>
-            <DialogTitle className='text-left'>
+            <DialogTitle className="text-left">
               External Link Warning
             </DialogTitle>
           </div>
-          <DialogDescription className='text-left'>
+          <DialogDescription className="text-left">
             You are about to navigate to an external website. Please verify the
             URL before proceeding.
           </DialogDescription>
         </DialogHeader>
 
-        <div className='space-y-4'>
-          <div className='rounded-md border bg-gray-50 p-3'>
-            <div className='flex items-center gap-2 text-sm text-gray-600 mb-1'>
-              <ExternalLinkIcon className='h-4 w-4' />
+        <div className="space-y-4">
+          <div className="rounded-md border bg-gray-50 p-3">
+            <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+              <ExternalLinkIcon className="h-4 w-4" />
               Destination URL:
             </div>
-            <div className='font-mono text-sm break-all bg-white p-2 rounded border'>
+            <div className="font-mono text-sm break-all bg-white p-2 rounded border">
               {url}
             </div>
           </div>
 
           {urlObj && (
-            <div className='text-sm text-gray-600'>
-              <div className='flex items-center gap-2'>
+            <div className="text-sm text-gray-600">
+              <div className="flex items-center gap-2">
                 <span>Domain:</span>
-                <span className='font-medium text-gray-900'>
+                <span className="font-medium text-gray-900">
                   {urlObj.hostname}
                 </span>
               </div>
               {urlObj.protocol !== "https:" && (
-                <div className='flex items-center gap-1 mt-1 text-amber-600'>
-                  <AlertTriangleIcon className='h-3 w-3' />
-                  <span className='text-xs'>This connection is not secure</span>
+                <div className="flex items-center gap-1 mt-1 text-amber-600">
+                  <AlertTriangleIcon className="h-3 w-3" />
+                  <span className="text-xs">This connection is not secure</span>
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter className='flex-row justify-end gap-2'>
-          <Button variant='outline' onClick={onCancel}>
+        <DialogFooter className="flex-row justify-end gap-2">
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={onConfirm} className='gap-2'>
-            <ExternalLinkIcon className='h-4 w-4' />
+          <Button onClick={onConfirm} className="gap-2">
+            <ExternalLinkIcon className="h-4 w-4" />
             Continue
           </Button>
         </DialogFooter>
