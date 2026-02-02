@@ -1382,6 +1382,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Users can always remove themselves from groups they are members of.
    *
    * Only works for "regular" and "space_editors" groups.
+   * TODO(remy): Replace this with dangerouslyRemoveMembers once available
    */
   async leaveGroup(
     auth: Authenticator,
@@ -1433,6 +1434,7 @@ export class GroupResource extends BaseResource<GroupModel> {
    * Users can add themselves to groups (for self-join flows like joining public projects).
    *
    * Only works for "regular" groups.
+   * TODO(remy): Replace this with dangerouslyAddMembers once available
    */
   async joinGroup(
     auth: Authenticator,
