@@ -500,7 +500,7 @@ async function createServer(
           const convoUrl = getConversationRoute(
             auth.getNonNullableWorkspace().sId,
             conversationId,
-            config.getClientFacingUrl()
+            config.getAppUrl()
           );
           const { citationsOffset } = agentLoopContext.runContext.stepContext;
 

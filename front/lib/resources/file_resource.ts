@@ -737,10 +737,10 @@ export class FileResource extends BaseResource<FileModel> {
     );
 
     if (this.contentType === frameContentType) {
-      return `${config.getClientFacingUrl()}/share/frame/${shareableFileToken}`;
+      return `${config.getAppUrl()}/share/frame/${shareableFileToken}`;
     }
 
-    return `${config.getClientFacingUrl()}/share/file/${shareableFileToken}`;
+    return `${config.getAppUrl()}/share/file/${shareableFileToken}`;
   }
 
   async setShareScope(

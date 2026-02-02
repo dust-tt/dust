@@ -21,6 +21,16 @@ const config = {
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
   },
+  // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
+  // Use this for page URLs, not API endpoints.
+  getAppUrl: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
+      return config.getClientFacingUrl();
+    }
+
+    return process.env.NEXT_PUBLIC_DUST_APP_URL;
+  },
   // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
   getPokeAppUrl: (): string => {
     return (

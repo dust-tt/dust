@@ -16,6 +16,12 @@ export const apiConfig = {
   getDustClientFacingUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL");
   },
+  getDustAppUrl: (): string => {
+    return (
+      EnvironmentConfig.getOptionalEnvVariable("DUST_APP_URL") ??
+      EnvironmentConfig.getEnvVariable("DUST_CLIENT_FACING_URL")
+    );
+  },
   getTextExtractionUrl: (): string => {
     return EnvironmentConfig.getEnvVariable("TEXT_EXTRACTION_URL");
   },
