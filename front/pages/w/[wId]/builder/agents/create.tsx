@@ -9,64 +9,43 @@ import {
   SearchInput,
   Spinner,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import { useMemo, useState } from "react";
 
 import { AgentTemplateGrid } from "@app/components/agent_builder/AgentTemplateGrid";
 import { AgentTemplateModal } from "@app/components/agent_builder/AgentTemplateModal";
 import { getUniqueTemplateTags } from "@app/components/agent_builder/utils";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { appLayoutBack } from "@app/components/sparkle/AppContentLayout";
 import { AppLayoutSimpleCloseTitle } from "@app/components/sparkle/AppLayoutTitle";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
 import { useYAMLUpload } from "@app/hooks/useYAMLUpload";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useAppRouter, useSearchParam } from "@app/lib/platform";
 import { useAssistantTemplates } from "@app/lib/swr/assistants";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeParamFromRouter } from "@app/lib/utils/router_util";
-import type {
-  SubscriptionType,
-  TemplateTagCodeType,
-  TemplateTagsType,
-  WorkspaceType,
-} from "@app/types";
+import type { TemplateTagCodeType } from "@app/types";
 import { isTemplateTagCodeArray, TEMPLATES_TAGS_CONFIG } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  templateTagsMapping: TemplateTagsType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const plan = auth.plan();
-  const subscription = auth.subscription();
-  if (!owner || !plan || !auth.isUser() || !subscription) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = appGetServerSideProps;
 
-  return {
-    props: {
-      owner,
-      subscription,
-      templateTagsMapping: TEMPLATES_TAGS_CONFIG,
-    },
-  };
-});
+interface CreateAgentProps {}
 
-export default function CreateAgent({
-  owner,
-  subscription,
-  templateTagsMapping,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
+function CreateAgent(_props: CreateAgentProps): JSX.Element {
+  const router = useAppRouter();
+  const owner = useWorkspace();
+  const { subscription } = useAuth();
+  const templateTagsMapping = TEMPLATES_TAGS_CONFIG;
+  const initialTemplateId = useSearchParam("templateId");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState<TemplateTagCodeType[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
-    (router.query.templateId as string) ?? null
+    initialTemplateId
   );
   const { isUploading: isUploadingYAML, triggerYAMLUpload } = useYAMLUpload({
     owner,
@@ -241,6 +220,15 @@ export default function CreateAgent({
   );
 }
 
-CreateAgent.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const PageWithAuthLayout = CreateAgent as AppPageWithLayout;
+
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default PageWithAuthLayout;
