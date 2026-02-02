@@ -11,6 +11,7 @@ import type { ProxyAgent } from "undici";
 
 import {
   getConnectionForMCPServer,
+  getResolvedAuthForMCPServer,
   MCPServerPersonalAuthenticationRequiredError,
   MCPServerRequiresAdminAuthenticationError,
 } from "@app/lib/actions/mcp_authentication";
@@ -205,7 +206,7 @@ export async function connectToMCPServer(
                 );
               }
 
-              const c = await getConnectionForMCPServer(auth, {
+              const c = await getResolvedAuthForMCPServer(auth, {
                 mcpServerId: params.mcpServerId,
                 connectionType:
                   params.oAuthUseCase === "personal_actions"
@@ -213,19 +214,44 @@ export async function connectToMCPServer(
                     : "workspace",
               });
               if (c.isOk()) {
-                const authInfo: AuthInfo = {
-                  token: c.value.access_token,
-                  expiresAt: c.value.access_token_expiry ?? undefined,
-                  clientId: "",
-                  scopes: [],
-                  extra: {
-                    ...c.value.connection.metadata,
-                    connectionType:
-                      params.oAuthUseCase === "personal_actions"
-                        ? "personal"
-                        : "workspace",
-                  },
-                };
+                const connectionType =
+                  params.oAuthUseCase === "personal_actions"
+                    ? "personal"
+                    : "workspace";
+                const authInfo: AuthInfo =
+                  c.value.authType === "oauth"
+                    ? {
+                        token: c.value.access_token,
+                        expiresAt: c.value.access_token_expiry ?? undefined,
+                        clientId: "",
+                        scopes: [],
+                        extra: {
+                          ...c.value.connection.metadata,
+                          connectionType,
+                        },
+                      }
+                    : {
+                        token: "",
+                        expiresAt: undefined,
+                        clientId: "",
+                        scopes: [],
+                        extra: {
+                          connectionType,
+                          snowflake_auth_type: "keypair",
+                          snowflake_account: c.value.credentials.account,
+                          snowflake_username: c.value.credentials.username,
+                          snowflake_role: c.value.credentials.role,
+                          snowflake_warehouse: c.value.credentials.warehouse,
+                          snowflake_private_key: c.value.credentials.private_key,
+                          ...(c.value.credentials.private_key_passphrase !==
+                          undefined
+                            ? {
+                                snowflake_private_key_passphrase:
+                                  c.value.credentials.private_key_passphrase,
+                              }
+                            : {}),
+                        },
+                      };
 
                 client.setAuthInfo(authInfo);
                 server.setAuthInfo(authInfo);
@@ -261,6 +287,18 @@ export async function connectToMCPServer(
                   if (
                     adminConnectionRes.isErr() &&
                     adminConnectionRes.error.message === "connection_not_found"
+                  ) {
+                    return new Err(
+                      new MCPServerRequiresAdminAuthenticationError(
+                        params.mcpServerId,
+                        metadata.authorization.provider,
+                        scope
+                      )
+                    );
+                  }
+                  if (
+                    adminConnectionRes.isOk() &&
+                    !adminConnectionRes.value.connectionId
                   ) {
                     return new Err(
                       new MCPServerRequiresAdminAuthenticationError(

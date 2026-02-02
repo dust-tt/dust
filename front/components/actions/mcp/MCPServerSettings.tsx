@@ -128,6 +128,10 @@ export function MCPServerSettings({
                 : {OAUTH_USE_CASE_TO_DESCRIPTION["personal_actions"]}
               </>
             )}
+            <div className="mt-2 text-xs">
+              Authentication method:{" "}
+              {connection.authType === "keypair" ? "Key-pair (RSA)" : "OAuth"}
+            </div>
           </div>
         </div>
       )}

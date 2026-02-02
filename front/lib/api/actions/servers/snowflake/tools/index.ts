@@ -24,13 +24,58 @@ function getClientFromAuthInfo(
 ): Result<SnowflakeClient, MCPError> {
   const account = authInfo?.extra?.snowflake_account;
   const warehouse = authInfo?.extra?.snowflake_warehouse;
-  const token = authInfo?.token;
+  const authType = authInfo?.extra?.snowflake_auth_type;
 
-  if (typeof account !== "string" || typeof warehouse !== "string" || !token) {
+  if (typeof account !== "string" || typeof warehouse !== "string") {
     return new Err(CONNECTION_ERROR);
   }
 
-  return new Ok(new SnowflakeClient(account, token, warehouse));
+  if (authType === "keypair") {
+    const username = authInfo?.extra?.snowflake_username;
+    const role = authInfo?.extra?.snowflake_role;
+    const privateKey = authInfo?.extra?.snowflake_private_key;
+    const privateKeyPassphrase =
+      authInfo?.extra?.snowflake_private_key_passphrase;
+
+    if (
+      typeof username !== "string" ||
+      typeof role !== "string" ||
+      typeof privateKey !== "string" ||
+      (privateKeyPassphrase !== undefined &&
+        typeof privateKeyPassphrase !== "string")
+    ) {
+      return new Err(CONNECTION_ERROR);
+    }
+
+    return new Ok(
+      new SnowflakeClient({
+        account,
+        warehouse,
+        auth: {
+          type: "keypair",
+          username,
+          role,
+          privateKey,
+          ...(privateKeyPassphrase !== undefined
+            ? { privateKeyPassphrase }
+            : {}),
+        },
+      })
+    );
+  }
+
+  const token = authInfo?.token;
+  if (!token) {
+    return new Err(CONNECTION_ERROR);
+  }
+
+  return new Ok(
+    new SnowflakeClient({
+      account,
+      warehouse,
+      auth: { type: "oauth", accessToken: token },
+    })
+  );
 }
 
 const handlers: ToolHandlers<typeof SNOWFLAKE_TOOLS_METADATA> = {

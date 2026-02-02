@@ -107,6 +107,7 @@ export const SNOWFLAKE_SERVER = {
     authorization: {
       provider: "snowflake",
       supported_use_cases: ["personal_actions", "platform_actions"],
+      supported_auth_methods: ["oauth", "keypair"],
     },
     icon: "SnowflakeLogo",
     documentationUrl: "https://docs.dust.tt/docs/snowflake-tool",

@@ -108,6 +108,13 @@ makeScript(
       return;
     }
 
+    if (!mcpServerConnection.connectionId) {
+      logger.error(
+        `MCP server connection is not configured for OAuth for internal server ID: ${mcpServerView.internalMCPServerId}`
+      );
+      return;
+    }
+
     // Get the OAuth access token
     const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
     const tokenResult = await oauthApi.getAccessToken({

@@ -17,6 +17,7 @@ import { isOAuthProvider } from "@app/types";
 export type AuthorizationInfo = {
   provider: OAuthProvider;
   supported_use_cases: MCPOAuthUseCase[];
+  supported_auth_methods?: Array<"oauth" | "keypair">;
   scope?: string;
   // API-layer only: injected in responses to signal whether a prerequisite
   // workspace-level connection exists for personal OAuth flows.

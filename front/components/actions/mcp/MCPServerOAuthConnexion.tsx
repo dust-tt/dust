@@ -49,12 +49,14 @@ interface MCPServerOAuthConnexionProps {
   // It's managed via useState in the dialog (workflow state), not in form state.
   authorization: AuthorizationInfo;
   documentationUrl?: string;
+  hideUseCaseSelection?: boolean;
 }
 
 export function MCPServerOAuthConnexion({
   toolName,
   authorization,
   documentationUrl,
+  hideUseCaseSelection = false,
 }: MCPServerOAuthConnexionProps) {
   const { setError, clearErrors, setValue, control } =
     useFormContext<MCPServerOAuthFormValues>();
@@ -189,27 +191,29 @@ export function MCPServerOAuthConnexion({
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="w-full space-y-4">
-        <div className="heading-lg text-foreground dark:text-foreground-night">
-          {supportsBoth ? "How do you want to connect?" : "Connection type"}
+      {!hideUseCaseSelection && (
+        <div className="w-full space-y-4">
+          <div className="heading-lg text-foreground dark:text-foreground-night">
+            {supportsBoth ? "How do you want to connect?" : "Connection type"}
+          </div>
+          <div className="grid w-full grid-cols-2 gap-4">
+            <UseCaseCard
+              useCaseType="personal_actions"
+              isSelected={useCase === "personal_actions"}
+              isSupported={supportsPersonalActions}
+              toolName={toolName}
+              onSelect={handleUseCaseSelect}
+            />
+            <UseCaseCard
+              useCaseType="platform_actions"
+              isSelected={useCase === "platform_actions"}
+              isSupported={supportsPlatformActions}
+              toolName={toolName}
+              onSelect={handleUseCaseSelect}
+            />
+          </div>
         </div>
-        <div className="grid w-full grid-cols-2 gap-4">
-          <UseCaseCard
-            useCaseType="personal_actions"
-            isSelected={useCase === "personal_actions"}
-            isSupported={supportsPersonalActions}
-            toolName={toolName}
-            onSelect={handleUseCaseSelect}
-          />
-          <UseCaseCard
-            useCaseType="platform_actions"
-            isSelected={useCase === "platform_actions"}
-            isSupported={supportsPlatformActions}
-            toolName={toolName}
-            onSelect={handleUseCaseSelect}
-          />
-        </div>
-      </div>
+      )}
 
       <ProviderSetupInstructions
         provider={authorization.provider}
@@ -270,7 +274,7 @@ interface UseCaseCardProps {
   onSelect: (useCase: MCPOAuthUseCase) => void;
 }
 
-function UseCaseCard({
+export function UseCaseCard({
   useCaseType,
   isSelected,
   isSupported,

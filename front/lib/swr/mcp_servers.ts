@@ -659,17 +659,21 @@ export function useCreateMCPServerConnection({
   const { mutate } = useMutateMCPServersViewsForAdmin(owner);
 
   const sendNotification = useSendNotification();
+  type AuthRef =
+    | { connectionId: string; credentialId?: never }
+    | { credentialId: string; connectionId?: never };
+
   const createMCPServerConnection = async ({
     connectionId,
+    credentialId,
     mcpServerId,
     mcpServerDisplayName,
     provider,
   }: {
-    connectionId: string;
     mcpServerId: string;
     mcpServerDisplayName: string;
     provider: OAuthProvider;
-  }): Promise<PostConnectionResponseBody | null> => {
+  } & AuthRef): Promise<PostConnectionResponseBody | null> => {
     const response = await clientFetch(
       `/api/w/${owner.sId}/mcp/connections/${connectionType}`,
       {
@@ -679,6 +683,7 @@ export function useCreateMCPServerConnection({
         },
         body: JSON.stringify({
           connectionId,
+          credentialId,
           mcpServerId,
           provider,
         }),

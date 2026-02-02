@@ -1,3 +1,4 @@
+import { createPrivateKey } from "crypto";
 import type {
   Connection,
   ConnectionOptions,
@@ -54,17 +55,86 @@ function getRowStringMultiKey(
 
 export class SnowflakeClient {
   private account: string;
-  private accessToken: string;
   private warehouse: string;
+  private auth:
+    | { type: "oauth"; accessToken: string }
+    | {
+        type: "keypair";
+        username: string;
+        role: string;
+        privateKey: string;
+        privateKeyPassphrase?: string;
+      };
 
-  constructor(account: string, accessToken: string, warehouse: string) {
+  constructor({
+    account,
+    warehouse,
+    auth,
+  }: {
+    account: string;
+    warehouse: string;
+    auth: SnowflakeClient["auth"];
+  }) {
     this.account = account.trim();
-    this.accessToken = accessToken;
     this.warehouse = warehouse.trim();
+    this.auth = auth;
   }
 
   /**
-   * Create a Snowflake connection using OAuth authentication.
+   * Normalize a PEM private key to an unencrypted PKCS#8 PEM (what snowflake-sdk expects).
+   */
+  private normalizePrivateKey(): Result<string, Error> {
+    if (this.auth.type !== "keypair") {
+      return new Err(new Error("Private key is only available for key-pair auth"));
+    }
+
+    const trimmedKey = this.auth.privateKey.trim();
+    if (/-----BEGIN PUBLIC KEY-----/.test(trimmedKey)) {
+      return new Err(
+        new Error(
+          "A public key was provided. Please supply a private key PEM (-----BEGIN PRIVATE KEY----- or -----BEGIN RSA PRIVATE KEY-----)."
+        )
+      );
+    }
+
+    const isEncrypted = /-----BEGIN ENCRYPTED PRIVATE KEY-----/.test(trimmedKey);
+    const passphraseProvided = this.auth.privateKeyPassphrase !== undefined;
+    const passphraseToUse = passphraseProvided
+      ? this.auth.privateKeyPassphrase
+      : "";
+
+    try {
+      const privateKeyObject = createPrivateKey({
+        key: trimmedKey,
+        format: "pem",
+        passphrase: passphraseToUse,
+      });
+
+      return new Ok(
+        privateKeyObject
+          .export({
+            format: "pem",
+            type: "pkcs8",
+          })
+          .toString()
+      );
+    } catch (err) {
+      const detail =
+        err instanceof Error && err.message ? ` Original error: ${err.message}` : "";
+      const hint =
+        isEncrypted && !passphraseProvided
+          ? " Encrypted key detected but no passphrase was supplied. If your passphrase is intentionally empty, submit an empty passphrase."
+          : "";
+      return new Err(
+        new Error(
+          `Invalid private key or passphrase.${hint} Provide a valid PEM key (PKCS#8 or RSA) and, if encrypted, the correct passphrase.${detail}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Create a Snowflake connection using OAuth or key-pair authentication.
    * Uses proxy for static IP whitelisting support.
    */
   private async connect(): Promise<Result<Connection, Error>> {
@@ -77,8 +147,6 @@ export class SnowflakeClient {
       const connectionOptions: ConnectionOptions = {
         // Replace any `_` with `-` in the account name for nginx proxy
         account: this.account.replace(/_/g, "-"),
-        authenticator: "OAUTH",
-        token: this.accessToken,
         warehouse: this.warehouse,
 
         // Use proxy if defined to have all requests coming from the same IP.
@@ -91,6 +159,21 @@ export class SnowflakeClient {
           "PROXY_USER_PASSWORD"
         ),
       };
+
+      if (this.auth.type === "oauth") {
+        connectionOptions.authenticator = "OAUTH";
+        connectionOptions.token = this.auth.accessToken;
+      } else {
+        connectionOptions.authenticator = "SNOWFLAKE_JWT";
+        connectionOptions.username = this.auth.username;
+        connectionOptions.role = this.auth.role;
+
+        const normalizedKeyRes = this.normalizePrivateKey();
+        if (normalizedKeyRes.isErr()) {
+          return normalizedKeyRes;
+        }
+        connectionOptions.privateKey = normalizedKeyRes.value;
+      }
 
       const connection = await new Promise<Connection>((resolve, reject) => {
         const connectTimeoutMs = 15000;

@@ -11,7 +11,8 @@ export class MCPServerConnectionModel extends WorkspaceAwareModel<MCPServerConne
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
-  declare connectionId: string;
+  declare connectionId: string | null;
+  declare credentialId: string | null;
   declare connectionType: "workspace" | "personal";
 
   declare userId: ForeignKey<UserModel["id"]>;
@@ -39,7 +40,11 @@ MCPServerConnectionModel.init(
     },
     connectionId: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
+    },
+    credentialId: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     connectionType: {
       type: DataTypes.STRING,
@@ -96,6 +101,17 @@ MCPServerConnectionModel.init(
     ],
     hooks: {
       beforeValidate: (config: MCPServerConnectionModel) => {
+        const hasConnectionId =
+          typeof config.connectionId === "string" && config.connectionId !== "";
+        const hasCredentialId =
+          typeof config.credentialId === "string" && config.credentialId !== "";
+
+        if (hasConnectionId === hasCredentialId) {
+          throw new Error(
+            "Exactly one of connectionId or credentialId must be provided."
+          );
+        }
+
         if (config.serverType) {
           switch (config.serverType) {
             case "internal":

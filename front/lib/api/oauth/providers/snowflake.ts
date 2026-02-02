@@ -62,6 +62,15 @@ async function getWorkspaceConnectionForMCPServer(
     });
   }
 
+  if (!mcpServerConnectionRes.value.connectionId) {
+    return new Err({
+      code: "credential_retrieval_failed",
+      message:
+        "Workspace Snowflake MCP connection is configured for key-pair authentication. " +
+        "Personal Snowflake connections are OAuth-only. Please ask an admin to configure OAuth for this Snowflake MCP server.",
+    });
+  }
+
   const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
   const connectionRes = await oauthApi.getAccessToken({
     connectionId: mcpServerConnectionRes.value.connectionId,

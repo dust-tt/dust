@@ -26,6 +26,13 @@ export async function listWorkspaceConnectedMCPServerIds(
   const serverIds = new Set<string>();
 
   for (const connection of workspaceConnections) {
+    // Workspace OAuth prerequisites are satisfied only by OAuth-backed connections.
+    // Key-pair connections are intentionally not considered a valid prerequisite for
+    // personal OAuth flows.
+    if (!connection.connectionId) {
+      continue;
+    }
+
     if (connection.internalMCPServerId) {
       serverIds.add(connection.internalMCPServerId);
       continue;
