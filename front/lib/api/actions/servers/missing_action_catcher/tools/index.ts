@@ -27,10 +27,11 @@ export function createMissingActionCatcherTools(
           return new Err(
             new MCPError(
               `Tool "${actionName}" not found. ` +
-                "This answer to the function call is a catch-all. " +
-                "Please verify that the function name is correct : " +
-                "pay attention to case sensitivity and separators between words in the name. " +
-                "It's safe to retry automatically with another name.",
+                "This answer to the function call is a catch-all.\n" +
+                "  1. Please verify that the function name is correct: " +
+                "pay attention to case sensitivity and separators between words in the name.\n" +
+                "  2. If the function comes from a skill, enable the skill first.\n" +
+                "This action can safely be retried with another name.",
               { tracked: false }
             )
           );
