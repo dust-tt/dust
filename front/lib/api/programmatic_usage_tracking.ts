@@ -6,6 +6,10 @@ import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import {
+  hasReachedDailyUsageCap,
+  incrementDailyUsageMicroUsd,
+} from "@app/lib/api/daily_cap_tracking";
+import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
 } from "@app/lib/api/key_cap_tracking";
@@ -144,7 +148,7 @@ export async function hasReachedProgrammaticUsageLimits(
 
 /**
  * Check if programmatic usage limits have been reached.
- * Checks both workspace credits and per-key caps.
+ * Checks workspace credits, per-key caps, and daily cap.
  * Returns Ok if no limit reached, Err with message if a limit was reached.
  */
 export async function checkProgrammaticUsageLimits(
@@ -171,6 +175,17 @@ export async function checkProgrammaticUsageLimits(
         "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
       : "This API key has reached its monthly usage cap. " +
         "Please ask a Dust workspace admin to increase the cap.";
+    return new Err(new Error(message));
+  }
+
+  // Finally check daily cap.
+  const dailyCapReached = await hasReachedDailyUsageCap(auth);
+  if (dailyCapReached) {
+    const message = isAdmin
+      ? "Your workspace has reached its daily programmatic usage cap. " +
+        "The cap will reset at midnight UTC, or you can increase it in admin settings."
+      : "Your workspace has reached its daily programmatic usage cap. " +
+        "Please contact your Dust workspace admin.";
     return new Err(new Error(message));
   }
 
@@ -479,6 +494,10 @@ export async function trackProgrammaticCost(
   if (keyAuth) {
     await incrementRedisKeyUsageMicroUsd(keyAuth.id, costWithMarkupMicroUsd);
   }
+
+  // Increment daily usage tracking.
+  const workspace = auth.getNonNullableWorkspace();
+  await incrementDailyUsageMicroUsd(workspace.sId, costWithMarkupMicroUsd);
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(

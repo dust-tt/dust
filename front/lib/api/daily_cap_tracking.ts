@@ -1,0 +1,274 @@
+import type { estypes } from "@elastic/elasticsearch";
+
+import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import { runOnRedis } from "@app/lib/api/redis";
+import type { Authenticator } from "@app/lib/auth";
+import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/programmatic_usage_configuration_resource";
+import logger from "@app/logger/logger";
+import type { Result } from "@app/types";
+import { Err, Ok } from "@app/types";
+
+import {
+  AGENT_MESSAGE_STATUSES_TO_TRACK,
+  getShouldTrackTokenUsageCostsESFilter,
+} from "./programmatic_usage_tracking";
+
+// $1,000 in microUSD - default daily cap for non-PAYG workspaces
+const DEFAULT_DAILY_CAP_NON_PAYG_MICRO_USD = 1_000_000_000;
+
+// $1,000 in microUSD - minimum daily cap for PAYG workspaces
+const MIN_DAILY_CAP_PAYG_MICRO_USD = 1_000_000_000;
+
+// 20% of PAYG cap - fraction used to compute default daily cap for PAYG
+const PAYG_DAILY_CAP_FRACTION = 0.2;
+
+const DAILY_USAGE_REDIS_ORIGIN = "daily_usage_tracking" as const;
+const getDailyUsageRedisKey = (workspaceId: string) =>
+  `workspace-daily-usage:${workspaceId}`;
+
+/**
+ * Calculate seconds until midnight UTC.
+ * Used to set TTL on Redis keys so they expire at 00:00 UTC.
+ */
+function getSecondsUntilMidnightUTC(): number {
+  const now = new Date();
+  const midnight = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      0,
+      0,
+      0
+    )
+  );
+  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+}
+
+/**
+ * Get the default daily cap based on PAYG status.
+ * - Non-PAYG: $1,000/day
+ * - PAYG: max($1,000, 20% of PAYG cap)/day
+ */
+export async function getDefaultDailyCapMicroUsd(
+  auth: Authenticator
+): Promise<number> {
+  const config =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  const paygCapMicroUsd = config?.paygCapMicroUsd ?? null;
+
+  if (paygCapMicroUsd === null) {
+    return DEFAULT_DAILY_CAP_NON_PAYG_MICRO_USD;
+  }
+
+  const fractionOfPaygCap = Math.floor(
+    paygCapMicroUsd * PAYG_DAILY_CAP_FRACTION
+  );
+  return Math.max(MIN_DAILY_CAP_PAYG_MICRO_USD, fractionOfPaygCap);
+}
+
+/**
+ * Get the effective daily cap (configured or default).
+ */
+export async function getEffectiveDailyCapMicroUsd(
+  auth: Authenticator
+): Promise<number> {
+  const config =
+    await ProgrammaticUsageConfigurationResource.fetchByWorkspaceId(auth);
+
+  if (
+    config?.dailyCapMicroUsd !== null &&
+    config?.dailyCapMicroUsd !== undefined
+  ) {
+    return config.dailyCapMicroUsd;
+  }
+
+  return getDefaultDailyCapMicroUsd(auth);
+}
+
+type UsageAggregations = {
+  total_cost?: estypes.AggregationsSumAggregate;
+};
+
+/**
+ * Get today's usage from Elasticsearch (used to initialize Redis).
+ * Today is defined as UTC day.
+ */
+async function getTodayUsageFromESMicroUsd(
+  auth: Authenticator
+): Promise<Result<number, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+
+  const now = new Date();
+  const todayStartMs = Date.UTC(
+    now.getUTCFullYear(),
+    now.getUTCMonth(),
+    now.getUTCDate(),
+    0,
+    0,
+    0
+  );
+
+  const baseFilter = getShouldTrackTokenUsageCostsESFilter(auth);
+
+  const query: estypes.QueryDslQueryContainer = {
+    bool: {
+      filter: [
+        baseFilter,
+        { range: { timestamp: { gte: todayStartMs } } },
+        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
+        { term: { workspace_id: workspace.sId } },
+      ],
+    },
+  };
+
+  const result = await searchAnalytics<never, UsageAggregations>(query, {
+    aggregations: {
+      total_cost: { sum: { field: "tokens.cost_micro_usd" } },
+    },
+    size: 0,
+  });
+
+  if (result.isErr()) {
+    return new Err(new Error(`ES query failed: ${result.error.message}`));
+  }
+
+  const totalCost = result.value.aggregations?.total_cost?.value ?? 0;
+  return new Ok(Math.round(totalCost));
+}
+
+/**
+ * Get daily usage from Redis cache, initializing from ES if missing.
+ * Fails close: returns Err on Redis/ES errors to block API calls.
+ */
+async function getDailyUsageMicroUsd(
+  auth: Authenticator
+): Promise<Result<number, Error>> {
+  const workspace = auth.getNonNullableWorkspace();
+  const redisKey = getDailyUsageRedisKey(workspace.sId);
+
+  const redis = await runOnRedis(
+    { origin: DAILY_USAGE_REDIS_ORIGIN },
+    async (client) => client
+  );
+
+  const cached = await redis.get(redisKey);
+  if (cached !== null) {
+    return new Ok(parseInt(cached, 10));
+  }
+
+  // Cache miss - fetch from ES and initialize Redis
+  const usageResult = await getTodayUsageFromESMicroUsd(auth);
+  if (usageResult.isErr()) {
+    return usageResult;
+  }
+
+  const ttlSeconds = getSecondsUntilMidnightUTC();
+  await redis.set(redisKey, usageResult.value.toString(), { EX: ttlSeconds });
+
+  return new Ok(usageResult.value);
+}
+
+/**
+ * Increment daily usage counter after programmatic cost is tracked.
+ */
+export async function incrementDailyUsageMicroUsd(
+  workspaceId: string,
+  amountMicroUsd: number
+): Promise<void> {
+  if (amountMicroUsd <= 0) {
+    return;
+  }
+
+  try {
+    await runOnRedis({ origin: DAILY_USAGE_REDIS_ORIGIN }, async (redis) => {
+      const key = getDailyUsageRedisKey(workspaceId);
+      const exists = await redis.exists(key);
+      if (exists) {
+        await redis.incrBy(key, amountMicroUsd);
+      }
+      // If key does not exist, skip increment.
+      // This can happen if the key expired at midnight UTC while processing.
+      // The usage will be picked up on the next cap check via ES.
+    });
+  } catch (err) {
+    // Fail silently: Redis unavailable should not block the API call
+    logger.error(
+      {
+        workspaceId,
+        amountMicroUsd,
+        error: err,
+      },
+      "[Daily Cap Tracking] Failed to increment daily usage in Redis"
+    );
+  }
+}
+
+/**
+ * Check if a workspace has reached its daily usage cap.
+ * Returns true if:
+ * - usage >= cap
+ * - Redis/ES query fails (fail close)
+ */
+export async function hasReachedDailyUsageCap(
+  auth: Authenticator
+): Promise<boolean> {
+  const workspace = auth.getNonNullableWorkspace();
+  const cap = await getEffectiveDailyCapMicroUsd(auth);
+
+  const usageResult = await getDailyUsageMicroUsd(auth);
+
+  if (usageResult.isErr()) {
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        error: usageResult.error.message,
+      },
+      "[Daily Cap Tracking] Failed to get daily usage, failing close"
+    );
+    return true;
+  }
+
+  const usage = usageResult.value;
+  const hasReached = usage >= cap;
+
+  if (hasReached) {
+    logger.info(
+      {
+        workspaceId: workspace.sId,
+        usageMicroUsd: usage,
+        capMicroUsd: cap,
+      },
+      "[Daily Cap Tracking] Workspace has reached daily usage cap"
+    );
+  }
+
+  return hasReached;
+}
+
+/**
+ * Get the remaining daily cap in microUsd for a workspace.
+ * Returns max(0, cap - usage).
+ * Returns 0 on Redis/ES errors (fail close).
+ */
+export async function getRemainingDailyCapMicroUsd(
+  auth: Authenticator
+): Promise<number> {
+  const cap = await getEffectiveDailyCapMicroUsd(auth);
+  const usageResult = await getDailyUsageMicroUsd(auth);
+
+  if (usageResult.isErr()) {
+    const workspace = auth.getNonNullableWorkspace();
+    logger.error(
+      {
+        workspaceId: workspace.sId,
+        error: usageResult.error.message,
+      },
+      "[Daily Cap Tracking] Failed to get daily usage for remaining cap, failing close"
+    );
+    return 0;
+  }
+
+  return Math.max(0, cap - usageResult.value);
+}
