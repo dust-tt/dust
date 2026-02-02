@@ -1,7 +1,12 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  getShouldTrackTokenUsageCostsESFilter,
+  getSecondsUntilMidnightUTC,
+  MARKUP_MULTIPLIER,
+  type UsageAggregations,
+} from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -9,11 +14,6 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
-
-import { getShouldTrackTokenUsageCostsESFilter } from "./programmatic_usage_es_filter";
-
-// Markup multiplier to convert raw ES costs to costs with Dust markup
-const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
 
 // $1,000 in microUSD - default daily cap for non-PAYG workspaces, also used as
 // minimum daily cap for PAYG workspaces
@@ -25,25 +25,6 @@ const PAYG_DAILY_CAP_FRACTION = 0.2;
 const DAILY_USAGE_REDIS_ORIGIN = "daily_usage_tracking" as const;
 const getDailyUsageRedisKey = (workspaceId: string) =>
   `workspace-daily-usage:${workspaceId}`;
-
-/**
- * Calculate seconds until midnight UTC.
- * Used to set TTL on Redis keys so they expire at 00:00 UTC.
- */
-function getSecondsUntilMidnightUTC(): number {
-  const now = new Date();
-  const midnight = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      0,
-      0,
-      0
-    )
-  );
-  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
-}
 
 /**
  * Get the default daily cap based on PAYG status.
@@ -86,10 +67,6 @@ export async function getEffectiveDailyCapMicroUsd(
 
   return getDefaultDailyCapMicroUsd(auth);
 }
-
-type UsageAggregations = {
-  total_cost?: estypes.AggregationsSumAggregate;
-};
 
 /**
  * Get today's usage from Elasticsearch (used to initialize Redis).

@@ -1,7 +1,11 @@
 import type { estypes } from "@elastic/elasticsearch";
 
-import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import {
+  getSecondsUntilMidnightUTC,
+  MARKUP_MULTIPLIER,
+  type UsageAggregations,
+} from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -12,9 +16,6 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 import { Err, Ok } from "@app/types";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
-
-// Markup multiplier to convert raw ES costs to costs with Dust markup
-const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
 
 async function fetchKeyMonthlyCap({
   workspace,
@@ -53,10 +54,6 @@ export const invalidateKeyCapCache = invalidateCacheWithRedis(
   fetchKeyMonthlyCap,
   keyCapCacheResolver
 );
-
-type UsageAggregations = {
-  total_cost?: estypes.AggregationsSumAggregate;
-};
 
 /**
  * Get the total usage in microUsd for a key over the last 29 days.
@@ -109,25 +106,6 @@ async function getLast29DaysKeyUsageMicroUsd(
 // - Redis keys expire at midnight UTC, triggering a fresh ES sync daily
 const KEY_USAGE_REDIS_ORIGIN = "key_usage_tracking";
 const getKeyUsageRedisKey = (keyId: ModelId) => `key-usage:${keyId}`;
-
-/**
- * Calculate seconds until midnight UTC.
- * Used to set TTL on Redis keys so they expire at 00:00 UTC.
- */
-function getSecondsUntilMidnightUTC(): number {
-  const now = new Date();
-  const midnight = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      0,
-      0,
-      0
-    )
-  );
-  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
-}
 
 /**
  * Get usage from Redis cache, initializing from ES if missing.

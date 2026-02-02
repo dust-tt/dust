@@ -12,8 +12,7 @@ import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
 } from "@app/lib/api/key_cap_tracking";
-// Re-export for backwards compatibility
-export { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_es_filter";
+import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -32,43 +31,7 @@ import type {
 } from "@app/types";
 import { Err, Ok } from "@app/types";
 
-export const USAGE_ORIGINS_CLASSIFICATION: Record<
-  UserMessageOrigin,
-  "programmatic" | "user"
-> = {
-  api: "programmatic",
-  cli: "user",
-  cli_programmatic: "programmatic",
-  email: "user",
-  excel: "programmatic",
-  extension: "user",
-  gsheet: "programmatic",
-  make: "programmatic",
-  n8n: "programmatic",
-  powerpoint: "programmatic",
-  raycast: "user",
-  slack: "user",
-  slack_workflow: "programmatic",
-  teams: "user",
-  transcript: "user",
-  triggered_programmatic: "programmatic",
-  triggered: "user",
-  web: "user",
-  zapier: "programmatic",
-  zendesk: "user",
-  onboarding_conversation: "user",
-  agent_copilot: "user",
-  project_butler: "user",
-};
-
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
-
-export const USER_USAGE_ORIGINS = Object.keys(
-  USAGE_ORIGINS_CLASSIFICATION
-).filter(
-  (origin) =>
-    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "user"
-);
 
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";

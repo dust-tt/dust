@@ -1,5 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
+import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
 import type { Authenticator } from "@app/lib/auth";
 import type { UserMessageOrigin } from "@app/types";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
@@ -7,9 +8,8 @@ import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 /**
  * Classification of user message origins into "programmatic" or "user" categories.
  * Used to determine whether token usage costs should be tracked for billing.
- * NOTE: This must be kept in sync with USAGE_ORIGINS_CLASSIFICATION in programmatic_usage_tracking.ts
  */
-const USAGE_ORIGINS_CLASSIFICATION: Record<
+export const USAGE_ORIGINS_CLASSIFICATION: Record<
   UserMessageOrigin,
   "programmatic" | "user"
 > = {
@@ -35,7 +35,15 @@ const USAGE_ORIGINS_CLASSIFICATION: Record<
   zendesk: "user",
   onboarding_conversation: "user",
   agent_copilot: "user",
+  project_butler: "user",
 };
+
+export const USER_USAGE_ORIGINS = Object.keys(
+  USAGE_ORIGINS_CLASSIFICATION
+).filter(
+  (origin) =>
+    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "user"
+);
 
 const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
   USAGE_ORIGINS_CLASSIFICATION
@@ -43,6 +51,35 @@ const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
   (origin) =>
     USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
 );
+
+// Markup multiplier to convert raw ES costs to costs with Dust markup.
+export const MARKUP_MULTIPLIER = 1 + DUST_MARKUP_PERCENT / 100;
+
+/**
+ * Calculate seconds until midnight UTC.
+ * Used to set TTL on Redis keys so they expire at 00:00 UTC.
+ */
+export function getSecondsUntilMidnightUTC(): number {
+  const now = new Date();
+  const midnight = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1,
+      0,
+      0,
+      0
+    )
+  );
+  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
+}
+
+/**
+ * ES aggregation type for cost queries.
+ */
+export type UsageAggregations = {
+  total_cost?: estypes.AggregationsSumAggregate;
+};
 
 /**
  * Build ES filter for programmatic usage tracking.
