@@ -363,9 +363,9 @@ export function CreditsUsagePage() {
         paygUsage={
           isEnterprise
             ? {
-              consumed: creditsByType.payg.consumed,
-              total: creditsByType.payg.total,
-            }
+                consumed: creditsByType.payg.consumed,
+                total: creditsByType.payg.total,
+              }
             : null
         }
       />
