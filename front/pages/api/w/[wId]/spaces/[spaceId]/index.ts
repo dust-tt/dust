@@ -113,7 +113,8 @@ async function handler(
       categories["apps"].count = apps.length;
       categories["actions"].count = actionsCount;
 
-      const includeAllMembers = req.query.includeAllMembers === "true";
+      const { includeAllMembers } = req.query;
+      const shouldIncludeAllMembers = includeAllMembers === "true";
 
       const groupsToProcess = space.groups.filter((g) => {
         return g.kind === "regular" || g.kind === "space_editors";
@@ -126,7 +127,7 @@ async function handler(
             [Op.in]: groupsToProcess.map((g) => g.id),
           },
           workspaceId: auth.getNonNullableWorkspace().id,
-          ...(includeAllMembers
+          ...(shouldIncludeAllMembers
             ? {
                 startAt: { [Op.lte]: new Date() },
                 [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: new Date() } }],
@@ -154,7 +155,7 @@ async function handler(
           await concurrentExecutor(
             groupsToProcess,
             async (group) => {
-              const members = includeAllMembers
+              const members = shouldIncludeAllMembers
                 ? await group.getAllMembers(auth)
                 : await group.getActiveMembers(auth);
               const groupMemberships = membershipMap.get(group.id);

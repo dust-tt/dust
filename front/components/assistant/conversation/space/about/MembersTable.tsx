@@ -33,6 +33,8 @@ type MemberRowData = {
   onClick?: () => void;
 };
 
+type MemberRowInfo = { row: { original: MemberRowData } };
+
 function getMemberTableRows(allUsers: SpaceUserType[]): MemberRowData[] {
   return allUsers.map((user) => ({
     userId: user.sId,
@@ -146,7 +148,7 @@ export function MembersTable({
         meta: {
           className: "w-full",
         },
-        cell: (info) => {
+        cell: (info: MemberRowInfo) => {
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
@@ -169,7 +171,7 @@ export function MembersTable({
         meta: {
           className: "w-[250px]",
         },
-        cell: (info) => {
+        cell: (info: MemberRowInfo) => {
           return <DataTable.BasicCellContent label={info.row.original.email} />;
         },
       },
@@ -179,7 +181,7 @@ export function MembersTable({
         meta: {
           className: "w-20",
         },
-        cell: (info: any) => {
+        cell: (info: MemberRowInfo) => {
           return (
             <DataTable.CellContent>
               {info.row.original.isEditor && (
@@ -196,7 +198,7 @@ export function MembersTable({
         meta: {
           className: "w-[140px]",
         },
-        cell: (info) => {
+        cell: (info: MemberRowInfo) => {
           const date = new Date(info.row.original.joinedAt);
           return (
             <DataTable.BasicCellContent
@@ -219,7 +221,7 @@ export function MembersTable({
               meta: {
                 className: "w-12",
               },
-              cell: (info: any) => {
+              cell: (info: MemberRowInfo) => {
                 let editorSettingItem: MenuItem;
                 if (info.row.original.isEditor) {
                   const editorLabel = "Remove from editors";
