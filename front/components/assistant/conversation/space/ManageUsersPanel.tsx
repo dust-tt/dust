@@ -114,13 +114,26 @@ export function ManageUsersPanel({
   };
 
   const handleSave = () => {
+    // Preserve existing members/editors who weren't loaded in the members list
+    const loadedMemberIds = new Set(members.map((m) => m.sId));
+    const unloadedMembers = currentProjectMembers
+      .filter((m) => !loadedMemberIds.has(m.sId))
+      .map((m) => m.sId);
+    const unloadedEditors = currentProjectMembers
+      .filter((m) => !loadedMemberIds.has(m.sId) && m.isEditor)
+      .map((m) => m.sId);
+
+    // Add loaded members that are selected
+    const loadedMembersToSave = members
+      .filter((m) => m.isMember && !m.isEditor)
+      .map((m) => m.sId);
+    const loadedEditorsToSave = members
+      .filter((m) => m.isMember && m.isEditor)
+      .map((m) => m.sId);
+
     onSave({
-      members: members
-        .filter((m) => m.isMember && !m.isEditor)
-        .map((m) => m.sId),
-      editors: members
-        .filter((m) => m.isMember && m.isEditor)
-        .map((m) => m.sId),
+      members: [...unloadedMembers, ...loadedMembersToSave],
+      editors: [...unloadedEditors, ...loadedEditorsToSave],
     });
   };
 
