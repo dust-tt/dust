@@ -465,6 +465,7 @@ export function isUserMessageContextValid(
 
   switch (context.origin) {
     case "api":
+    case "project_butler":
       return true;
     case "excel":
     case "gsheet":
@@ -1489,7 +1490,7 @@ export async function softDeleteUserMessage(
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = await getRelatedContentFragments(
+    const relatedContentFragments = getRelatedContentFragments(
       conversation,
       message
     );

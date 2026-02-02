@@ -302,9 +302,6 @@ export async function triggerFromEmail({
     });
   }
 
-  // console.log("USER_MESSAGE", userMessage);
-  // console.log("REST_OF_THREAD", restOfThread, restOfThread.length);
-
   if (restOfThread.length > 0) {
     const cfRes = await toFileContentFragment(auth, {
       contentFragment: {

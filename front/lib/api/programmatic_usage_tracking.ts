@@ -54,6 +54,7 @@ export const USAGE_ORIGINS_CLASSIFICATION: Record<
   zendesk: "user",
   onboarding_conversation: "user",
   agent_copilot: "user",
+  project_butler: "user",
 };
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
