@@ -22,6 +22,7 @@ import {
   getLocationForDataSourceViewContentNode,
   getVisualForDataSourceViewContentNode,
 } from "@app/lib/content_nodes";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { DataSourceViewContentNode } from "@app/types";
 import { isDataSourceViewCategoryWithoutApps } from "@app/types";
 
@@ -238,7 +239,7 @@ export function DataSourceSearchResults({
       const id = `${node.dataSourceView.sId}:${node.internalId}`;
       return {
         id,
-        title: node.title,
+        title: getDisplayTitleForDataSourceViewContentNode(node),
         icon: getVisualForDataSourceViewContentNode(node),
         onClick: node.expandable
           ? () => handleSearchResultClick(node)
