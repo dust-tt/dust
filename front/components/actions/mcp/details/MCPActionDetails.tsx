@@ -33,7 +33,6 @@ import {
   FilesystemPathDetails,
 } from "@app/components/actions/mcp/details/MCPDataSourcesFileSystemActionDetails";
 import { MCPDataWarehousesBrowseDetails } from "@app/components/actions/mcp/details/MCPDataWarehousesBrowseDetails";
-import { MCPDeepDiveActionDetails } from "@app/components/actions/mcp/details/MCPDeepDiveActionDetails";
 import { MCPExtractActionDetails } from "@app/components/actions/mcp/details/MCPExtractActionDetails";
 import { MCPGetDatabaseSchemaActionDetails } from "@app/components/actions/mcp/details/MCPGetDatabaseSchemaActionDetails";
 import { MCPImageGenerationActionDetails } from "@app/components/actions/mcp/details/MCPImageGenerationActionDetails";
@@ -300,10 +299,6 @@ export function MCPActionDetails({
 
   if (internalMCPServerName === "run_agent") {
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
-  }
-
-  if (internalMCPServerName === "deep_dive") {
-    return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
   if (internalMCPServerName === "agent_memory") {

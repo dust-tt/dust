@@ -74,10 +74,6 @@ import {
   WEB_SEARCH_BROWSE_SERVER_NAME,
 } from "@app/lib/api/actions/servers/web_search_browse/metadata";
 import { ZENDESK_SERVER } from "@app/lib/api/actions/servers/zendesk/metadata";
-import {
-  DEEP_DIVE_NAME,
-  DEEP_DIVE_SERVER_INSTRUCTIONS,
-} from "@app/lib/api/assistant/global_agents/configurations/dust/consts";
 import type {
   InternalMCPServerDefinitionType,
   MCPToolRetryPolicyType,
@@ -142,7 +138,6 @@ export const AVAILABLE_INTERNAL_MCP_SERVER_NAMES = [
   "databricks",
   "data_sources_file_system",
   DATA_WAREHOUSE_SERVER_NAME,
-  "deep_dive",
   "extract_data",
   "file_generation",
   "freshservice",
@@ -536,28 +531,6 @@ export const INTERNAL_MCP_SERVERS = {
       // TBD if turned into a global skill or not.
       // eslint-disable-next-line dust/no-mcp-server-instructions
       instructions: SLIDESHOW_INSTRUCTIONS,
-    },
-  },
-  deep_dive: {
-    id: 29,
-    availability: "auto_hidden_builder",
-    isRestricted: ({ isDeepDiveDisabled }) => isDeepDiveDisabled,
-    allowMultipleInstances: false,
-    isPreview: false,
-    tools_stakes: undefined,
-    tools_arguments_requiring_approval: undefined,
-    tools_retry_policies: undefined,
-    timeoutMs: undefined,
-    serverInfo: {
-      name: "deep_dive",
-      version: "0.1.0",
-      description: `Hand off complex questions to the @${DEEP_DIVE_NAME} agent for comprehensive analysis across company data, databases, and web sources—thorough analysis that may take several minutes.`,
-      authorization: null,
-      icon: "ActionAtomIcon",
-      documentationUrl: "https://docs.dust.tt/docs/go-deep",
-      // Will be removed as soon as we add the ability to add skills to global agents.
-      // eslint-disable-next-line dust/no-mcp-server-instructions
-      instructions: DEEP_DIVE_SERVER_INSTRUCTIONS,
     },
   },
   slack_bot: {
