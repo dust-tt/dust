@@ -12,8 +12,6 @@ import { lazy, Suspense } from "react";
 
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
@@ -75,14 +73,12 @@ interface AgentObservabilityProps {
   owner: LightWorkspaceType;
   agentConfigurationId: string;
   isCustomAgent: boolean;
-  hideHeader?: boolean;
 }
 
 export function AgentObservability({
   owner,
   agentConfigurationId,
   isCustomAgent,
-  hideHeader = false,
 }: AgentObservabilityProps) {
   const { period, mode, selectedVersion } = useObservabilityContext();
 
@@ -111,8 +107,8 @@ export function AgentObservability({
       disabled: !isTimeRangeMode,
     });
 
-  const content = (
-    <>
+  return (
+    <div className="flex flex-col gap-6 pt-4">
       <TabContentChildSectionLayout title="Overview">
         {isTimeRangeMode && (
           <div className="mb-4">
@@ -268,25 +264,6 @@ export function AgentObservability({
           />
         </Suspense>
       </TabContentChildSectionLayout>
-    </>
-  );
-
-  if (hideHeader) {
-    return <div className="flex flex-col gap-6 pt-4">{content}</div>;
-  }
-
-  return (
-    <TabContentLayout
-      title="Insights"
-      headerAction={
-        <SharedObservabilityFilterSelector
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-      }
-    >
-      {content}
-    </TabContentLayout>
+    </div>
   );
 }
