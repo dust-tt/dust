@@ -12,8 +12,6 @@ import { getResourcePrefix } from "@app/lib/resources/string_ids";
 // The actual tool name is dynamic: `run_<agent_name>`.
 export const RUN_AGENT_PLACEHOLDER_TOOL_NAME = "run_agent" as const;
 
-export const RUN_AGENT_DEFAULT_TOOL_STAKE = "never_ask" as const;
-
 export const RUN_AGENT_CONFIGURABLE_PROPERTIES = {
   executionMode: z
     .object({
@@ -106,8 +104,8 @@ export const RUN_AGENT_SERVER = {
     },
   ],
   // Default stake for dynamically created run_agent tools.
-  // The actual tool name is dynamic but all run_agent tools have the same stake.
+  // The actual tool name is dynamic, but all run_agent tools have the same stake.
   tools_stakes: {
-    [RUN_AGENT_PLACEHOLDER_TOOL_NAME]: RUN_AGENT_DEFAULT_TOOL_STAKE,
+    [RUN_AGENT_PLACEHOLDER_TOOL_NAME]: "never_ask",
   },
 } as const satisfies ServerMetadata;
