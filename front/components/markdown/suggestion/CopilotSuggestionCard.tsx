@@ -14,10 +14,7 @@ import React from "react";
 
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import type { ModelConfigurationType } from "@app/types/assistant/models/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentSuggestionKind,
@@ -71,37 +68,6 @@ function InstructionsSuggestionCard({
   );
 }
 
-// Tool card for a single tool (addition or deletion)
-function ToolActionCard({
-  tool,
-  isAddition,
-  state,
-  analysis,
-}: {
-  tool: MCPServerViewType;
-  isAddition: boolean;
-  state: ActionCardState;
-  analysis?: string | null;
-}) {
-  const serverName = getMcpServerViewDisplayName(tool);
-
-  return (
-    <ActionCardBlock
-      title={
-        isAddition
-          ? `Add ${serverName} tool`
-          : `Remove ${serverName} tool`
-      }
-      visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
-      description={analysis ?? undefined}
-      state={state}
-      applyLabel={isAddition ? "Add" : "Remove"}
-      rejectLabel="Dismiss"
-      actionsPosition="header"
-    />
-  );
-}
-
 // Tools suggestion: renders separate card per addition/deletion
 function ToolsSuggestionCards({
   agentSuggestion,
@@ -113,52 +79,37 @@ function ToolsSuggestionCards({
 
   return (
     <>
-      {relations.additions.map((tool) => (
-        <ToolActionCard
-          key={`add-${tool.sId}`}
-          tool={tool}
-          isAddition={true}
-          state={cardState}
-          analysis={analysis}
-        />
-      ))}
-      {relations.deletions.map((tool) => (
-        <ToolActionCard
-          key={`del-${tool.sId}`}
-          tool={tool}
-          isAddition={false}
-          state={cardState}
-          analysis={analysis}
-        />
-      ))}
+      {relations.additions.map((tool) => {
+        const serverName = getMcpServerViewDisplayName(tool);
+        return (
+          <ActionCardBlock
+            key={`add-${tool.sId}`}
+            title={`Add ${serverName} tool`}
+            visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
+            description={analysis ?? undefined}
+            state={cardState}
+            applyLabel="Add"
+            rejectLabel="Dismiss"
+            actionsPosition="header"
+          />
+        );
+      })}
+      {relations.deletions.map((tool) => {
+        const serverName = getMcpServerViewDisplayName(tool);
+        return (
+          <ActionCardBlock
+            key={`del-${tool.sId}`}
+            title={`Remove ${serverName} tool`}
+            visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
+            description={analysis ?? undefined}
+            state={cardState}
+            applyLabel="Remove"
+            rejectLabel="Dismiss"
+            actionsPosition="header"
+          />
+        );
+      })}
     </>
-  );
-}
-
-// Skill card for a single skill (addition or deletion)
-function SkillActionCard({
-  skill,
-  isAddition,
-  state,
-  analysis,
-}: {
-  skill: SkillType;
-  isAddition: boolean;
-  state: ActionCardState;
-  analysis?: string | null;
-}) {
-  return (
-    <ActionCardBlock
-      title={
-        isAddition ? `Add ${skill.name} skill` : `Remove ${skill.name} skill`
-      }
-      visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
-      description={analysis ?? undefined}
-      state={state}
-      applyLabel={isAddition ? "Add" : "Remove"}
-      rejectLabel="Dismiss"
-      actionsPosition="header"
-    />
   );
 }
 
@@ -177,48 +128,30 @@ function SkillsSuggestionCards({
   return (
     <>
       {relations.additions.map((skill) => (
-        <SkillActionCard
+        <ActionCardBlock
           key={`add-${skill.sId}`}
-          skill={skill}
-          isAddition={true}
+          title={`Add ${skill.name} skill`}
+          visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
+          description={analysis ?? undefined}
           state={cardState}
-          analysis={analysis}
+          applyLabel="Add"
+          rejectLabel="Dismiss"
+          actionsPosition="header"
         />
       ))}
       {relations.deletions.map((skill) => (
-        <SkillActionCard
+        <ActionCardBlock
           key={`del-${skill.sId}`}
-          skill={skill}
-          isAddition={false}
+          title={`Remove ${skill.name} skill`}
+          visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
+          description={analysis ?? undefined}
           state={cardState}
-          analysis={analysis}
+          applyLabel="Remove"
+          rejectLabel="Dismiss"
+          actionsPosition="header"
         />
       ))}
     </>
-  );
-}
-
-// Model card
-function ModelActionCard({
-  model,
-  state,
-  analysis,
-}: {
-  model: ModelConfigurationType | null;
-  state: ActionCardState;
-  analysis?: string | null;
-}) {
-  const modelName = model?.displayName ?? model?.modelId ?? "Unknown model";
-
-  return (
-    <ActionCardBlock
-      title={`Change model to: ${modelName}`}
-      description={analysis ?? undefined}
-      state={state}
-      applyLabel="Change"
-      rejectLabel="Dismiss"
-      actionsPosition="header"
-    />
   );
 }
 
@@ -230,12 +163,17 @@ function ModelSuggestionCard({
 }) {
   const { relations, state, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
+  const modelName =
+    relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
 
   return (
-    <ModelActionCard
-      model={relations.model}
+    <ActionCardBlock
+      title={`Change model to: ${modelName}`}
+      description={analysis ?? undefined}
       state={cardState}
-      analysis={analysis}
+      applyLabel="Change"
+      rejectLabel="Dismiss"
+      actionsPosition="header"
     />
   );
 }

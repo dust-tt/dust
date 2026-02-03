@@ -1,23 +1,15 @@
-import assert from "assert";
 import type { NextApiRequest, NextApiResponse } from "next";
 import { z } from "zod";
 
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
-import { getModelConfigByModelId } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
-import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
 import type { WithAPIErrorResponse } from "@app/types";
 import { isString } from "@app/types";
-import type {
-  AgentSuggestionType,
-  AgentSuggestionWithRelationsType,
-  SkillSuggestionRelations,
-  ToolSuggestionRelations,
-} from "@app/types/suggestions/agent_suggestion";
+import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 const PatchSuggestionRequestBodySchema = z.object({
   suggestionIds: z.array(z.string()).min(1),
@@ -44,7 +36,6 @@ const GetSuggestionsQuerySchema = z.object({
   states: stringOrArrayToArray.optional(),
   kind: z.enum(["instructions", "tools", "skills", "model"]).optional(),
   limit: z.string().optional(),
-  withRelations: z.enum(["true"]).optional(),
 });
 
 export type GetSuggestionsQuery = z.infer<typeof GetSuggestionsQuerySchema>;
@@ -53,17 +44,11 @@ export interface GetSuggestionsResponseBody {
   suggestions: AgentSuggestionType[];
 }
 
-export interface GetSuggestionsWithRelationsResponseBody {
-  suggestions: AgentSuggestionWithRelationsType[];
-}
-
 async function handler(
   req: NextApiRequest,
   res: NextApiResponse<
     WithAPIErrorResponse<
-      | PatchSuggestionResponseBody
-      | GetSuggestionsResponseBody
-      | GetSuggestionsWithRelationsResponseBody
+      PatchSuggestionResponseBody | GetSuggestionsResponseBody
     >
   >,
   auth: Authenticator
@@ -128,7 +113,7 @@ async function handler(
         });
       }
 
-      const { states, kind, limit, withRelations } = queryValidation.data;
+      const { states, kind, limit } = queryValidation.data;
 
       const parsedLimit = limit ? parseInt(limit, 10) : undefined;
       if (parsedLimit !== undefined && isNaN(parsedLimit)) {
@@ -151,50 +136,6 @@ async function handler(
             limit: parsedLimit,
           }
         );
-
-      if (withRelations === "true") {
-        const suggestionsWithRelations = await concurrentExecutor(
-          suggestions,
-          async (suggestion): Promise<AgentSuggestionWithRelationsType> => {
-            const baseJson = suggestion.toJSON();
-
-            switch (baseJson.kind) {
-              case "tools": {
-                const { additions, deletions } =
-                  await suggestion.listRelatedMcpServerViews(auth);
-                const toolsRelations: ToolSuggestionRelations = {
-                  additions: additions.map((view) => view.toJSON()),
-                  deletions: deletions.map((view) => view.toJSON()),
-                };
-                return { ...baseJson, relations: toolsRelations };
-              }
-
-              case "skills": {
-                const { additions, deletions } =
-                  await suggestion.listRelatedSkills(auth);
-                const skillsRelations: SkillSuggestionRelations = {
-                  additions: additions.map((skill) => skill.toJSON(auth)),
-                  deletions: deletions.map((skill) => skill.toJSON(auth)),
-                };
-                return { ...baseJson, relations: skillsRelations };
-              }
-
-              case "model": {
-                const model = getModelConfigByModelId(
-                  baseJson.suggestion.modelId
-                );
-                assert(model, "Model not found");
-                return { ...baseJson, relations: { model } };
-              }
-
-              case "instructions":
-                return { ...baseJson, relations: null };
-            }
-          },
-          { concurrency: 10 }
-        );
-        return res.status(200).json({ suggestions: suggestionsWithRelations });
-      }
 
       return res
         .status(200)

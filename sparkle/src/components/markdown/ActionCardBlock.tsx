@@ -10,7 +10,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@sparkle/components/Collapsible";
-import { cn } from "@sparkle/lib/utils";
 import * as PlatformLogos from "@sparkle/logo/platforms";
 
 const DEFAULT_APPLY_LABEL = "Apply";

@@ -14,8 +14,6 @@ import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { AgentSuggestionModel } from "@app/lib/models/agent/agent_suggestion";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import type { ReadonlyAttributesType } from "@app/lib/resources/storage/types";
 import { getResourceIdFromSId, makeSId } from "@app/lib/resources/string_ids";
 import type { ResourceFindOptions } from "@app/lib/resources/types";
@@ -26,11 +24,7 @@ import type {
   AgentSuggestionState,
   AgentSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
-import {
-  isSkillsSuggestion,
-  isToolsSuggestion,
-  parseAgentSuggestionData,
-} from "@app/types/suggestions/agent_suggestion";
+import { parseAgentSuggestionData } from "@app/types/suggestions/agent_suggestion";
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-declaration-merging
 export interface AgentSuggestionResource
@@ -395,48 +389,5 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       source: this.source,
       ...suggestionData,
     };
-  }
-
-  async listRelatedMcpServerViews(auth: Authenticator): Promise<{
-    additions: MCPServerViewResource[];
-    deletions: MCPServerViewResource[];
-  }> {
-    assert(isToolsSuggestion(this.suggestion), "Expected tools suggestion");
-
-    const additionIds = new Set(this.suggestion.additions?.map((a) => a.id));
-    const deletionIds = new Set(this.suggestion.deletions);
-    const viewIds = [...additionIds, ...deletionIds];
-
-    const mcpServerViews = await MCPServerViewResource.fetchByIds(
-      auth,
-      viewIds
-    );
-
-    const additions = mcpServerViews.filter((view) =>
-      additionIds.has(view.sId)
-    );
-    const deletions = mcpServerViews.filter((view) =>
-      deletionIds.has(view.sId)
-    );
-
-    return { additions, deletions };
-  }
-
-  async listRelatedSkills(auth: Authenticator): Promise<{
-    additions: SkillResource[];
-    deletions: SkillResource[];
-  }> {
-    assert(isSkillsSuggestion(this.suggestion), "Expected skill suggestion");
-
-    const additionIds = new Set(this.suggestion.additions);
-    const deletionIds = new Set(this.suggestion.deletions);
-    const viewIds = [...additionIds, ...deletionIds];
-
-    const skills = await SkillResource.fetchByIds(auth, viewIds);
-
-    const additions = skills.filter((view) => additionIds.has(view.sId));
-    const deletions = skills.filter((view) => deletionIds.has(view.sId));
-
-    return { additions, deletions };
   }
 }
