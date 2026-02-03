@@ -121,6 +121,14 @@ export const CopilotSuggestionsProvider = ({
               mcpServerViewsMap.get(id)
             )
           );
+          const expectedRelations =
+            (suggestion.suggestion.additions?.length ?? 0) +
+            (suggestion.suggestion.deletions?.length ?? 0);
+          const resolvedRelations = additions.length + deletions.length;
+          if (expectedRelations !== resolvedRelations) {
+            return null;
+          }
+
           return { ...suggestion, relations: { additions, deletions } };
         }
 
@@ -135,6 +143,14 @@ export const CopilotSuggestionsProvider = ({
               skillsMap.get(id)
             )
           );
+          const expectedRelations =
+            (suggestion.suggestion.additions?.length ?? 0) +
+            (suggestion.suggestion.deletions?.length ?? 0);
+          const resolvedRelations = additions.length + deletions.length;
+          if (expectedRelations !== resolvedRelations) {
+            return null;
+          }
+
           return { ...suggestion, relations: { additions, deletions } };
         }
 
@@ -143,6 +159,7 @@ export const CopilotSuggestionsProvider = ({
           if (!model) {
             return null;
           }
+
           return { ...suggestion, relations: { model } };
         }
 

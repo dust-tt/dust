@@ -78,7 +78,7 @@ function ToolsSuggestionCards({
   const cardState = mapSuggestionStateToCardState(state);
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {relations.additions.map((tool) => {
         const serverName = getMcpServerViewDisplayName(tool);
         return (
@@ -109,7 +109,7 @@ function ToolsSuggestionCards({
           />
         );
       })}
-    </>
+    </div>
   );
 }
 
@@ -126,7 +126,7 @@ function SkillsSuggestionCards({
   const cardState = mapSuggestionStateToCardState(state);
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       {relations.additions.map((skill) => (
         <ActionCardBlock
           key={`add-${skill.sId}`}
@@ -151,7 +151,7 @@ function SkillsSuggestionCards({
           actionsPosition="header"
         />
       ))}
-    </>
+    </div>
   );
 }
 
