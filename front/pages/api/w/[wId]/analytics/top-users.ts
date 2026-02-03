@@ -14,7 +14,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
-  limit: z.coerce.number().positive().max(50).optional().default(10),
+  limit: z.coerce.number().positive().max(100).optional().default(25),
 });
 
 export type WorkspaceTopUserRow = {
@@ -44,7 +44,7 @@ type TopUserBucket = {
 
 function getUserDisplayName(user: UserResource | undefined): string {
   if (!user) {
-    return "Unknown user";
+    return "Programmatic usage";
   }
   const fullName = user.fullName();
   if (fullName) {
@@ -53,7 +53,7 @@ function getUserDisplayName(user: UserResource | undefined): string {
   if (user.username) {
     return user.username;
   }
-  return user.email || "Unknown user";
+  return user.email || "Programmatic usage";
 }
 
 async function handler(
