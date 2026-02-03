@@ -55,29 +55,47 @@ describe("constructGuidelinesSection", () => {
       );
 
       // Should include the critical warning
-      expect(result).toContain(
-        "CRITICAL: You MUST use the tools - DO NOT guess the format"
-      );
-      expect(result).toContain(
-        "Attempting to guess or construct the format manually WILL FAIL"
-      );
+      expect(result).toEqual(`# GUIDELINES
 
-      // Should explain the format distinction
-      expect(result).toContain(
-        "Format distinction (for reference only - NEVER construct manually)"
-      );
-      expect(result).toContain(
-        "Agent mentions: `:mention[Name]{sId=agent_id}` (no suffix)"
-      );
-      expect(result).toContain(
-        "User mentions: `:mention_user[Name]{sId=user_id}` (note the `_user` suffix)"
-      );
+## MATH FORMULAS
+When generating LaTeX/Math formulas exclusively rely on the $$ escape sequence. Single dollar $ escape sequences are not supported and parentheses are not sufficient to denote mathematical formulas:
+BAD: \\( \\Delta \\)
+GOOD: $$ \\Delta $$.
 
-      // Should include common mistakes section
-      expect(result).toContain("Common mistakes to AVOID:");
-      expect(result).toContain(
-        "❌ WRONG: `:mention[John Doe]{sId=user_123}` (missing _user suffix)"
-      );
+## RENDERING MARKDOWN CODE BLOCKS
+When rendering code blocks, always use quadruple backticks (\`\`\`\`). To render nested code blocks, always use triple backticks (\`\`\`) for the inner code blocks.
+## RENDERING MARKDOWN IMAGES
+When rendering markdown images, always use the file id of the image, which can be extracted from the corresponding \`<attachment id="{FILE_ID}" type... title...>\` tag in the conversation history. Also, always use the file title which can similarly be extracted from the same \`<attachment id... type... title="{TITLE}">\` tag in the conversation history.
+Every image markdown should follow this pattern ![{TITLE}]({FILE_ID}).
+
+## MENTIONING USERS
+You can notify users in this conversation by mentioning them (also called "pinging").
+
+User mentions require a specific markdown format. You MUST use the tools below - attempting to guess or construct the format manually will fail silently and the user will NOT be notified.
+
+### Required 2-step process:
+1. Call \`search_available_users\` with a search term (or empty string "" to list all users)
+   - Returns JSON array: [{"id": "user_123", "label": "John Doe", "type": "user", ...}]
+   - Extract the "id" and "label" fields from the user you want to mention
+2. Call \`get_mention_markdown\` with the exact id and label from step 1
+   - Pass: { mention: { id: "user_123", label: "John Doe" } }
+   - Returns the correct mention string to include in your response
+
+### Format distinction (for reference only - never construct manually):
+- Agent mentions: \`:mention[Name]{sId=agent_id}\` (no suffix)
+- User mentions: \`:mention_user[Name]{sId=user_id}\` (note the \`_user\` suffix)
+- The \`_user\` suffix is critical - wrong format = no notification sent
+
+### Common mistakes to avoid:
+WRONG: \`:mention[John Doe]{sId=user_123}\` (missing _user suffix)
+WRONG: \`@John Doe\` (only works in Slack/Teams, not web)
+WRONG: Constructing the format yourself without tools
+CORRECT: Always use search_available_users + get_mention_markdown
+
+### When to mention users:
+- In multi-user conversations, prefix your response with a mention to address specific users directly
+- Only use mentions when you want to ping/notify the user (they receive a notification)
+- To simply refer to someone without notifying them, use their name as plain text`);
 
       // Should NOT tell to use simple @username
       expect(result).not.toContain("Use a simple @username to mention users");
