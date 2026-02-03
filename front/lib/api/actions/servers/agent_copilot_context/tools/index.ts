@@ -136,6 +136,77 @@ async function checkPendingSuggestionLimit(
   return { allowed: true };
 }
 
+interface AvailableTool {
+  sId: string;
+  name: string;
+  description: string;
+  serverType: MCPServerViewType["serverType"];
+  availability: MCPServerViewType["server"]["availability"];
+}
+
+/**
+ * Lists available tools (MCP server views) that can be added to agents.
+ * Returns tools from all spaces the user is a member of, filtered to only
+ * include tools with "manual" or "auto" availability.
+ */
+async function listAvailableTools(
+  auth: Authenticator
+): Promise<AvailableTool[]> {
+  // Get all spaces the user is member of.
+  const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
+
+  // Fetch all MCP server views from those spaces.
+  const mcpServerViews = await MCPServerViewResource.listBySpaces(
+    auth,
+    userSpaces
+  );
+
+  return mcpServerViews
+    .map((v) => v.toJSON())
+    .filter((v): v is MCPServerViewType => v !== null)
+    .filter(
+      (v) =>
+        v.server.availability === "manual" || v.server.availability === "auto"
+    )
+    .map((mcpServerView) => ({
+      sId: mcpServerView.sId,
+      name: getMcpServerViewDisplayName(mcpServerView),
+      description: getMcpServerViewDescription(mcpServerView),
+      serverType: mcpServerView.serverType,
+      availability: mcpServerView.server.availability,
+    }));
+}
+
+interface AvailableSkill {
+  sId: string;
+  name: string;
+  userFacingDescription: string | null;
+  agentFacingDescription: string | null;
+  icon: string | null;
+  toolSIds: string[];
+}
+
+/**
+ * Lists available skills that can be added to agents.
+ * Returns active skills from the workspace that the user has access to.
+ */
+async function listAvailableSkills(
+  auth: Authenticator
+): Promise<AvailableSkill[]> {
+  const skills = await SkillResource.listByWorkspace(auth, {
+    status: "active",
+  });
+
+  return skills.map((skill) => ({
+    sId: skill.sId,
+    name: skill.name,
+    userFacingDescription: skill.userFacingDescription,
+    agentFacingDescription: skill.agentFacingDescription,
+    icon: skill.icon,
+    toolSIds: skill.mcpServerViews.map((v) => v.sId),
+  }));
+}
+
 const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
   get_available_knowledge: async ({ spaceId, category }, extra) => {
     const auth = extra.auth;
@@ -291,18 +362,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    const skills = await SkillResource.listByWorkspace(auth, {
-      status: "active",
-    });
-
-    const skillList = skills.map((skill) => ({
-      sId: skill.sId,
-      name: skill.name,
-      userFacingDescription: skill.userFacingDescription,
-      agentFacingDescription: skill.agentFacingDescription,
-      icon: skill.icon,
-      toolSIds: skill.mcpServerViews.map((v) => v.sId),
-    }));
+    const skillList = await listAvailableSkills(auth);
 
     return new Ok([
       {
@@ -325,31 +385,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       return new Err(new MCPError("Authentication required"));
     }
 
-    // Get all spaces the user is member of.
-    const userSpaces = await SpaceResource.listWorkspaceSpacesAsMember(auth);
-
-    // Fetch all MCP server views from those spaces.
-    // Similar to the logic in pages/api/w/[wId]/mcp/views/index.ts
-    const mcpServerViews = await MCPServerViewResource.listBySpaces(
-      auth,
-      userSpaces
-    );
-
-    const serverViews = mcpServerViews
-      .map((v) => v.toJSON())
-      .filter((v): v is MCPServerViewType => v !== null)
-      .filter(
-        (v) =>
-          v.server.availability === "manual" || v.server.availability === "auto"
-      );
-
-    const toolList = serverViews.map((mcpServerView) => ({
-      sId: mcpServerView.sId,
-      name: getMcpServerViewDisplayName(mcpServerView),
-      description: getMcpServerViewDescription(mcpServerView),
-      serverType: mcpServerView.serverType,
-      availability: mcpServerView.server.availability,
-    }));
+    const toolList = await listAvailableTools(auth);
 
     return new Ok([
       {
@@ -630,6 +666,29 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    // Validate that all tool IDs in additions and deletions exist and are accessible.
+    const toolAdditions = params.suggestion.additions ?? [];
+    const toolDeletions = params.suggestion.deletions ?? [];
+    const allToolIds = [...toolAdditions.map((t) => t.id), ...toolDeletions];
+
+    if (allToolIds.length > 0) {
+      const availableTools = await listAvailableTools(auth);
+      const availableToolIds = new Set(availableTools.map((t) => t.sId));
+      const invalidToolIds = allToolIds.filter(
+        (id) => !availableToolIds.has(id)
+      );
+
+      if (invalidToolIds.length > 0) {
+        return new Err(
+          new MCPError(
+            `The following tool IDs are invalid or not accessible: ${invalidToolIds.join(", ")}. ` +
+              `Use get_available_tools to see the list of available tools.`,
+            { tracked: false }
+          )
+        );
+      }
+    }
+
     // Check pending suggestion limit before proceeding.
     const limitCheck = await checkPendingSuggestionLimit(
       auth,
@@ -701,6 +760,29 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
           { tracked: false }
         )
       );
+    }
+
+    // Validate that all skill IDs in additions and deletions exist and are accessible.
+    const skillAdditions = params.suggestion.additions ?? [];
+    const skillDeletions = params.suggestion.deletions ?? [];
+    const allSkillIds = [...skillAdditions, ...skillDeletions];
+
+    if (allSkillIds.length > 0) {
+      const availableSkills = await listAvailableSkills(auth);
+      const availableSkillIds = new Set(availableSkills.map((s) => s.sId));
+      const invalidSkillIds = allSkillIds.filter(
+        (id) => !availableSkillIds.has(id)
+      );
+
+      if (invalidSkillIds.length > 0) {
+        return new Err(
+          new MCPError(
+            `The following skill IDs are invalid or not accessible: ${invalidSkillIds.join(", ")}. ` +
+              `Use get_available_skills to see the list of available skills.`,
+            { tracked: false }
+          )
+        );
+      }
     }
 
     // Check pending suggestion limit before proceeding.

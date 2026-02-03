@@ -652,7 +652,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [{ id: "slack" }],
+            additions: [{ id: "non-existent-tool" }],
           },
         },
         createTestExtra(authenticator)
@@ -662,6 +662,52 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("creates tool suggestion successfully", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid MCP server and view.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [{ id: view.sId }],
+          },
+          analysis: "Adding tool for better capabilities",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
+          );
+        }
+      }
+    });
+
+    it("returns error when suggesting non-existent tool", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a real agent configuration.
@@ -679,23 +725,17 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [{ id: "slack" }],
-            deletions: ["jira"],
+            additions: [{ id: "non-existent-tool-id" }],
           },
-          analysis: "Adding Slack for better communication",
         },
         createTestExtra(authenticator)
       );
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toMatch(
-            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
-          );
-        }
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("non-existent-tool-id");
+        expect(result.error.message).toContain("invalid or not accessible");
+        expect(result.error.message).toContain("get_available_tools");
       }
     });
   });
@@ -713,7 +753,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: ["skill-1"],
+            additions: ["non-existent-skill"],
           },
         },
         createTestExtra(authenticator)
@@ -723,6 +763,50 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("creates skill suggestion successfully", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill for Suggestion",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [skill.sId],
+          },
+          analysis: "Adding skills for better capabilities",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=skills\}/
+          );
+        }
+      }
+    });
+
+    it("returns error when suggesting non-existent skill", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a real agent configuration.
@@ -740,22 +824,17 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: ["skill-1", "skill-2"],
+            additions: ["non-existent-skill-id"],
           },
-          analysis: "Adding skills for better capabilities",
         },
         createTestExtra(authenticator)
       );
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toMatch(
-            /:agent_suggestion\[\]\{sId=\S+ kind=skills\}/
-          );
-        }
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("non-existent-skill-id");
+        expect(result.error.message).toContain("invalid or not accessible");
+        expect(result.error.message).toContain("get_available_skills");
       }
     });
   });
