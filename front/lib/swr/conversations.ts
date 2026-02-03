@@ -123,7 +123,7 @@ export function useSpaceConversationsSummary({
   };
 }
 
-const DEFAULT_CONVERSATIONS_PAGE_SIZE = 20;
+const DEFAULT_CONVERSATIONS_PAGE_SIZE = 12;
 
 export function useSpaceConversations({
   workspaceId,
