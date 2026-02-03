@@ -1,44 +1,12 @@
 import {
-  Chip,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@dust-tt/sparkle";
-import { JsonViewer } from "@textea/json-viewer";
 
-import { useTheme } from "@app/components/sparkle/ThemeContext";
+import { ToolCallsView } from "@app/components/poke/llm_traces/ToolCallsView";
 import type { LLMTraceOutput } from "@app/lib/api/llm/traces/types";
 import { isString } from "@app/types";
-
-interface ToolCallsViewProps {
-  toolCalls: NonNullable<LLMTraceOutput["toolCalls"]>;
-}
-
-function ToolCallsView({ toolCalls }: ToolCallsViewProps) {
-  const { isDark } = useTheme();
-
-  return (
-    <div className="space-y-3">
-      {toolCalls.map((toolCall, index) => (
-        <div key={index} className="rounded border p-3">
-          <div className="mb-2">
-            <Chip
-              color="green"
-              size="xs"
-              label={`tool_call: ${toolCall.name}`}
-            />
-          </div>
-          <JsonViewer
-            theme={isDark ? "dark" : "light"}
-            value={toolCall.arguments}
-            rootName={false}
-            defaultInspectDepth={2}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
 
 interface OutputTabProps {
   output: LLMTraceOutput | undefined;

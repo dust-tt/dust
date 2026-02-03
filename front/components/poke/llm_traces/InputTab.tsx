@@ -7,11 +7,11 @@ import {
 import { JsonViewer } from "@textea/json-viewer";
 import type { ComponentProps } from "react";
 
+import { ToolCallCard } from "@app/components/poke/llm_traces/ToolCallsView";
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
 import type {
   Content,
-  FunctionCallType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
@@ -46,39 +46,6 @@ function ContentArrayView({ contents }: ContentArrayViewProps) {
   );
 }
 
-interface FunctionCallCardProps {
-  functionCall: FunctionCallType;
-}
-
-function ToolCallCard({ functionCall }: FunctionCallCardProps) {
-  const { isDark } = useTheme();
-
-  let parsedArgs: unknown;
-  try {
-    parsedArgs = JSON.parse(functionCall.arguments);
-  } catch {
-    parsedArgs = functionCall.arguments;
-  }
-
-  return (
-    <div className="rounded border p-3">
-      <Chip
-        color="green"
-        size="xs"
-        label={`tool_call: ${functionCall.name}`}
-        className="mb-2"
-      />
-      <JsonViewer
-        theme={isDark ? "dark" : "light"}
-        value={parsedArgs}
-        rootName={false}
-        defaultInspectDepth={2}
-        className="p-2"
-      />
-    </div>
-  );
-}
-
 interface MessageContentProps {
   message: ModelMessageTypeMultiActionsWithoutContentFragment;
 }
@@ -104,7 +71,7 @@ function MessageContent({ message }: MessageContentProps) {
             </pre>
           ))}
           {functionCalls.map((fc, i) => (
-            <ToolCallCard key={i} functionCall={fc} />
+            <ToolCallCard key={i} toolCall={fc} />
           ))}
         </div>
       );
