@@ -14,8 +14,11 @@ import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getModelConfigByModelId } from "@app/lib/api/models";
 import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
@@ -75,11 +78,16 @@ export const CopilotSuggestionsProvider = ({
 
   const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
   const { skills: allSkills } = useSkillsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
 
-  // Create a Map for O(1) skill lookups by sId
   const allSkillsMap = useMemo(
     () => new Map(allSkills.map((skill) => [skill.sId, skill])),
     [allSkills]
+  );
+
+  const mcpServerViewsMap = useMemo(
+    () => new Map(mcpServerViews.map((view) => [view.sId, view])),
+    [mcpServerViews]
   );
 
   // Fetch all suggestions from the backend.
@@ -229,9 +237,76 @@ export const CopilotSuggestionsProvider = ({
             setValue("skills", filteredSkills, { shouldDirty: true });
           }
         }
+      } else if (suggestion.kind === "tools") {
+        const { additions, deletions } = suggestion.suggestion;
+        const currentActions = getValues("actions");
+
+        if (additions && additions.length > 0) {
+          const currentToolIds = new Set(
+            currentActions.map((a) => a.configuration?.mcpServerViewId)
+          );
+          const actionsToAdd: AgentBuilderFormData["actions"] = [];
+
+          for (const toolAddition of additions) {
+            const mcpServerView = mcpServerViewsMap.get(toolAddition.id);
+            if (!mcpServerView) {
+              continue;
+            }
+
+            // Skip if already added
+            if (currentToolIds.has(mcpServerView.sId)) {
+              continue;
+            }
+            const action = getDefaultMCPAction(mcpServerView);
+            actionsToAdd.push(action);
+          }
+
+          if (actionsToAdd.length > 0) {
+            setValue("actions", [...currentActions, ...actionsToAdd], {
+              shouldDirty: true,
+            });
+          }
+        }
+
+        if (deletions && deletions.length > 0) {
+          const updatedActions = getValues("actions");
+          const deletionSet = new Set(deletions);
+          const filteredActions = updatedActions.filter(
+            (a) => !deletionSet.has(a.configuration?.mcpServerViewId ?? "")
+          );
+          if (filteredActions.length !== updatedActions.length) {
+            setValue("actions", filteredActions, { shouldDirty: true });
+          }
+        }
+      } else if (suggestion.kind === "model") {
+        const { modelId, reasoningEffort } = suggestion.suggestion;
+        const modelConfig = getModelConfigByModelId(modelId);
+        if (modelConfig) {
+          const currentSettings = getValues("generationSettings");
+          setValue(
+            "generationSettings",
+            {
+              ...currentSettings,
+              modelSettings: {
+                modelId: modelConfig.modelId,
+                providerId: modelConfig.providerId,
+              },
+              reasoningEffort:
+                reasoningEffort ?? modelConfig.defaultReasoningEffort,
+            },
+            { shouldDirty: true }
+          );
+        }
       }
     },
-    [patchSuggestions, suggestions, getValues, setValue, allSkillsMap]
+    [
+      patchSuggestions,
+      suggestions,
+      getValues,
+      setValue,
+      allSkillsMap,
+      mcpServerViewsMap,
+    ]
   );
 
   const rejectSuggestion = useCallback(
