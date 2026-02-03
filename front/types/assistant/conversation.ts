@@ -96,7 +96,9 @@ export type UserMessageOrigin =
   // TODO onboarding_conversation and agent_copilot aren't message origins. They have been used
   // as a hack but should be removed and most likely handled as message metadata (to be created).
   | "onboarding_conversation"
-  | "agent_copilot";
+  | "agent_copilot"
+  // for internal use, for the butler in projects
+  | "project_butler";
 
 export type UserMessageContext = {
   username: string;
@@ -283,9 +285,16 @@ export function isAgentMessageType(arg: MessageType): arg is AgentMessageType {
  */
 
 /**
- * Visibility of a conversation. Test visibility is for conversations happening
- * when a user 'tests' an agent not in their list using the "test" button:
- * those conversations do not show in users' histories.
+ * Visibility of a conversation.
+ *  - 'unlisted' default value
+ *  - 'deleted' conversations are soft-deleted and not visible to any user.
+ *  - 'test' for conversations happening when a user 'tests' an agent not in their list using the "test" button: those conversations do not show in users' histories.
+ *
+ * :warning: test is also used for conversations created by the platform (like the journal entry generation)
+ *
+ * TODO:
+ *  - rename unlisted to visible
+ *  - test to hidden
  */
 export type ConversationVisibility = "unlisted" | "deleted" | "test";
 
