@@ -104,7 +104,7 @@ export function MCPRunAgentActionDetails({
       const output = lastNotification.data.output;
       if (isStoreResourceProgressOutput(output)) {
         const runAgentQueryResource = output.contents.find(
-          isRunAgentQueryResourceType
+          isRunAgentQueryResourceType,
         );
         if (runAgentQueryResource) {
           setQuery(runAgentQueryResource.resource.text);
@@ -183,7 +183,7 @@ export function MCPRunAgentActionDetails({
   };
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [getCiteDirective(), agentMentionDirective],
-    []
+    [],
   );
 
   const additionalMarkdownComponents: Components = useMemo(
@@ -192,7 +192,7 @@ export function MCPRunAgentActionDetails({
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
     }),
-    [owner]
+    [owner],
   );
 
   if (!childAgent) {
@@ -245,7 +245,7 @@ export function MCPRunAgentActionDetails({
                 <ContentMessage title="Added Tools" variant="primary" size="lg">
                   {addedMCPServerViewIds.map((id) => {
                     const mcpServerView = mcpServerViews.find(
-                      (v) => v.sId === id
+                      (v) => v.sId === id,
                     );
                     if (!mcpServerView) {
                       return null;
@@ -293,75 +293,75 @@ export function MCPRunAgentActionDetails({
                   )}
                 </div>
                 <CollapsibleContent>
-                    <div className="flex flex-col gap-4">
-                      {chainOfThought && (
-                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                          <ContentMessage
-                            title="Agent thoughts"
-                            variant="primary"
-                            size="lg"
+                  <div className="flex flex-col gap-4">
+                    {chainOfThought && (
+                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                        <ContentMessage
+                          title="Agent thoughts"
+                          variant="primary"
+                          size="lg"
+                        >
+                          <Markdown
+                            content={chainOfThought}
+                            isStreaming={isStreamingChainOfThought}
+                            forcedTextSize="text-sm"
+                            textColor="text-muted-foreground"
+                            isLastMessage={false}
+                          />
+                        </ContentMessage>
+                      </div>
+                    )}
+                    {response && (
+                      <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
+                        <ContentMessage
+                          title="Response"
+                          variant="primary"
+                          size="lg"
+                        >
+                          <CitationsContext.Provider
+                            value={{
+                              references,
+                              updateActiveReferences,
+                            }}
                           >
                             <Markdown
-                              content={chainOfThought}
-                              isStreaming={isStreamingChainOfThought}
+                              content={response}
+                              isStreaming={isStreamingResponse}
                               forcedTextSize="text-sm"
                               textColor="text-muted-foreground"
                               isLastMessage={false}
+                              additionalMarkdownPlugins={
+                                additionalMarkdownPlugins
+                              }
+                              additionalMarkdownComponents={
+                                additionalMarkdownComponents
+                              }
                             />
-                          </ContentMessage>
-                        </div>
-                      )}
-                      {response && (
-                        <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
-                          <ContentMessage
-                            title="Response"
-                            variant="primary"
-                            size="lg"
-                          >
-                            <CitationsContext.Provider
-                              value={{
-                                references,
-                                updateActiveReferences,
-                              }}
-                            >
-                              <Markdown
-                                content={response}
-                                isStreaming={isStreamingResponse}
-                                forcedTextSize="text-sm"
-                                textColor="text-muted-foreground"
-                                isLastMessage={false}
-                                additionalMarkdownPlugins={
-                                  additionalMarkdownPlugins
-                                }
-                                additionalMarkdownComponents={
-                                  additionalMarkdownComponents
-                                }
-                              />
-                            </CitationsContext.Provider>
+                          </CitationsContext.Provider>
 
-                            {activeReferences.length > 0 && (
-                              <div className="mt-4">
-                                <CitationGrid variant="grid">
-                                  {activeReferences
-                                    .sort((a, b) => a.index - b.index)
-                                    .map(({ document, index }) => (
-                                      <AttachmentCitation
-                                        key={index}
-                                        attachmentCitation={markdownCitationToAttachmentCitation(
-                                          document
-                                        )}
-                                        owner={owner}
-                                        conversationId={null}
-                                      />
-                                    ))}
-                                </CitationGrid>
-                              </div>
-                            )}
-                          </ContentMessage>
-                        </div>
-                      )}
-                    </div>
-                  </CollapsibleContent>
+                          {activeReferences.length > 0 && (
+                            <div className="mt-4">
+                              <CitationGrid variant="grid">
+                                {activeReferences
+                                  .sort((a, b) => a.index - b.index)
+                                  .map(({ document, index }) => (
+                                    <AttachmentCitation
+                                      key={index}
+                                      attachmentCitation={markdownCitationToAttachmentCitation(
+                                        document,
+                                      )}
+                                      owner={owner}
+                                      conversationId={null}
+                                    />
+                                  ))}
+                              </CitationGrid>
+                            </div>
+                          )}
+                        </ContentMessage>
+                      </div>
+                    )}
+                  </div>
+                </CollapsibleContent>
               </Collapsible>
             )}
             {generatedFiles.length > 0 && (
