@@ -132,7 +132,7 @@ export function LLMTracePage() {
               color={
                 trace.output.finishReason === "error" ? "warning" : "green"
               }
-              label={`Status: ${trace.output.finishReason}`}
+              label={`Finish reason: ${trace.output.finishReason}`}
               size="sm"
             />
           )}
