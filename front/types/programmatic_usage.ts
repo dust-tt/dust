@@ -4,4 +4,5 @@ export type ProgrammaticUsageConfigurationType = {
   freeCreditMicroUsd: number | null;
   defaultDiscountPercent: number;
   paygCapMicroUsd: number | null;
+  dailyCapMicroUsd: number | null;
 };

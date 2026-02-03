@@ -10,6 +10,7 @@ import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspa
  * - freeCreditMicroUsd: Monthly amount awarded as free credits to the workspace (0-10,000,000,000 microUSD, nullable)
  * - defaultDiscountPercent: Discount applied when computing usage cost for this workspace (0-100%)
  * - paygCapMicroUsd: Pay-as-you-go cap in microUSD enterprise only feature - even in payg you want a ceiling
+ * - dailyCapMicroUsd: Daily spending cap in microUSD (nullable = use default algorithm)
  */
 export class ProgrammaticUsageConfigurationModel extends WorkspaceAwareModel<ProgrammaticUsageConfigurationModel> {
   declare createdAt: CreationOptional<Date>;
@@ -17,9 +18,11 @@ export class ProgrammaticUsageConfigurationModel extends WorkspaceAwareModel<Pro
   declare freeCreditMicroUsd: number | null;
   declare defaultDiscountPercent: number;
   declare paygCapMicroUsd: number | null;
+  declare dailyCapMicroUsd: number | null;
 }
 
 const MAX_FREE_AMOUNT_MICRO_USD = 10_000_000_000;
+const MAX_DAILY_CAP_MICRO_USD = 10_000_000_000; // $10,000
 
 ProgrammaticUsageConfigurationModel.init(
   {
@@ -67,6 +70,23 @@ ProgrammaticUsageConfigurationModel.init(
           if (value !== null && value <= 0) {
             throw new Error(
               "paygCapMicroUsd must be strictly positive when set"
+            );
+          }
+        },
+      },
+    },
+    dailyCapMicroUsd: {
+      type: DataTypes.BIGINT,
+      allowNull: true,
+      defaultValue: null,
+      validate: {
+        isValidDailyCap(value: number | null) {
+          if (
+            value !== null &&
+            (value <= 0 || value > MAX_DAILY_CAP_MICRO_USD)
+          ) {
+            throw new Error(
+              `dailyCapMicroUsd must be between 1 and ${MAX_DAILY_CAP_MICRO_USD}`
             );
           }
         },
