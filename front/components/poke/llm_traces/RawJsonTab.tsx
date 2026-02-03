@@ -19,7 +19,7 @@ export function RawJsonTab({ trace }: RawJsonTabProps) {
 
   return (
     <div>
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 pt-4 flex justify-end">
         <Button
           label={isCopied ? "Copied!" : "Copy JSON"}
           variant="outline"
@@ -33,6 +33,7 @@ export function RawJsonTab({ trace }: RawJsonTabProps) {
         value={trace}
         rootName="trace"
         defaultInspectDepth={3}
+        className="p-4"
       />
     </div>
   );

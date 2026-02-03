@@ -74,6 +74,7 @@ function ToolCallCard({ functionCall }: FunctionCallCardProps) {
         value={parsedArgs}
         rootName={false}
         defaultInspectDepth={2}
+        className="p-2"
       />
     </div>
   );
@@ -125,6 +126,7 @@ function MessageContent({ message }: MessageContentProps) {
               value={parsed}
               rootName={false}
               defaultInspectDepth={2}
+              className="p-2"
             />
           );
         }
@@ -184,6 +186,7 @@ function SpecificationCard({ spec }: SpecificationCardProps) {
         value={spec}
         rootName={false}
         defaultInspectDepth={1}
+        className="p-2"
       />
     </div>
   );
