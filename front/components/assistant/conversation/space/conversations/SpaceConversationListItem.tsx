@@ -57,7 +57,19 @@ export function SpaceConversationListItem({
   const countUnreadMessages = useMemo(() => {
     return conversation.content.filter((versions) => {
       const message = versions[versions.length - 1];
-      return message.created > (conversation.lastReadMs ?? 0);
+      if (conversation.lastReadMs === null) {
+        return true;
+      }
+      if (message.created > conversation.lastReadMs) {
+        return true;
+      }
+      if (
+        message.type === "agent_message" &&
+        (message.completedTs ?? 0) > conversation.lastReadMs
+      ) {
+        return true;
+      }
+      return false;
     }).length;
   }, [conversation.content, conversation.lastReadMs]);
 
