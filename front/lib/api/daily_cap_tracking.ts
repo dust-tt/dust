@@ -1,11 +1,11 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { UsageAggregations } from "@app/lib/api/programmatic_usage_common";
 import {
-  getShouldTrackTokenUsageCostsESFilter,
   getSecondsUntilMidnightUTC,
+  getShouldTrackTokenUsageCostsESFilter,
   MARKUP_MULTIPLIER,
-  type UsageAggregations,
 } from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
