@@ -84,7 +84,7 @@ async function handler(
         });
       }
 
-      const { fileName } = req.body as { fileName?: string };
+      const { fileName } = req.body;
       if (!isString(fileName) || fileName.trim() === "") {
         return apiError(req, res, {
           status_code: 400,
