@@ -1,14 +1,17 @@
 import {
-  Button,
   Chip,
-  ClipboardCheckIcon,
-  ClipboardIcon,
-  CodeBlock,
+  ExternalLinkIcon,
   Page,
   Spinner,
-  useCopyToClipboard,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@dust-tt/sparkle";
 
+import { InputTab } from "@app/components/poke/llm_traces/InputTab";
+import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
+import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
@@ -23,8 +26,6 @@ export function LLMTracePage() {
     workspace: owner,
     runId,
   });
-
-  const [isCopiedJSON, copyJSON] = useCopyToClipboard();
 
   if (isLLMTraceLoading) {
     return (
@@ -62,10 +63,14 @@ export function LLMTracePage() {
     return `${inputStr} → ${outputStr}`;
   };
 
+  function formatTimestamp(timestamp: string): string {
+    return new Date(timestamp).toLocaleString();
+  }
+
   return (
     <div className="max-w-6xl">
       <Page.Vertical align="stretch">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">LLM Trace</h1>
             <div className="text-sm text-muted-foreground">
@@ -74,8 +79,17 @@ export function LLMTracePage() {
           </div>
         </div>
 
-        {/* Summary Cards */}
         <div className="flex flex-wrap gap-2">
+          {trace.context.agentConfigurationId && (
+            <Chip
+              color="rose"
+              label={`Agent: ${trace.context.agentConfigurationId}`}
+              size="sm"
+              // The link below may not exist, it's a best effort proposal.
+              href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
+              icon={ExternalLinkIcon}
+            />
+          )}
           <Chip
             color="blue"
             label={`Model: ${trace.input.modelId}`}
@@ -117,31 +131,52 @@ export function LLMTracePage() {
           )}
         </div>
 
-        {/* Actions */}
-        <div className="flex space-x-2">
-          <Button
-            label={isCopiedJSON ? "Copied!" : "Copy JSON"}
-            variant="outline"
-            size="sm"
-            icon={isCopiedJSON ? ClipboardCheckIcon : ClipboardIcon}
-            onClick={() => copyJSON(JSON.stringify(trace, null, 2))}
-          />
-        </div>
+        {trace.error && (
+          <div className="rounded-lg border border-red-300 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
+            <div className="mb-2 flex items-center gap-2">
+              <span className="font-semibold text-red-800 dark:text-red-200">
+                Error
+              </span>
+              {trace.error.partialCompletion && (
+                <Chip color="warning" label="Partial completion" size="xs" />
+              )}
+            </div>
+            <p className="text-smin text-red-700 dark:text-red-300">
+              {trace.error.message}
+            </p>
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+              Timestamp: {formatTimestamp(trace.error.timestamp)}
+              {trace.error.providerRunId && (
+                <span className="ml-4">
+                  Provider Run ID: {trace.error.providerRunId}
+                </span>
+              )}
+            </p>
+          </div>
+        )}
 
-        {/* JSON Viewer */}
-        <div className="rounded-lg border">
-          <div className="border-b bg-muted px-4 py-2">
-            <h3 className="font-medium">Full Trace Data</h3>
-          </div>
-          <div className="p-4">
-            <CodeBlock
-              wrapLongLines
-              className="language-json max-h-96 overflow-auto"
-            >
-              {JSON.stringify(trace, null, 2)}
-            </CodeBlock>
-          </div>
-        </div>
+        <Tabs defaultValue="input">
+          <TabsList>
+            <TabsTrigger
+              value="input"
+              label={`Input (${trace.input.conversation.messages.length} messages)`}
+            />
+            <TabsTrigger value="output" label="Output"  />
+            <TabsTrigger value="raw" label="Raw JSON"  />
+          </TabsList>
+
+          <TabsContent value="input">
+            <InputTab input={trace.input} />
+          </TabsContent>
+
+          <TabsContent value="output">
+            <OutputTab output={trace.output} />
+          </TabsContent>
+
+          <TabsContent value="raw">
+            <RawJsonTab trace={trace} />
+          </TabsContent>
+        </Tabs>
       </Page.Vertical>
     </div>
   );
