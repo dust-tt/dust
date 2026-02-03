@@ -29,7 +29,7 @@ export const ConversationContainer = React.forwardRef<
       )}
       {...props}
     >
-      <div className="s-flex s-w-full s-max-w-4xl s-flex-col s-gap-6 s-p-2 @sm/conversation:s-gap-8 @md/conversation:s-gap-10">
+      <div className="s-flex s-w-full s-max-w-4xl s-flex-col">
         {children}
       </div>
     </div>
@@ -79,7 +79,7 @@ const messageVariants = cva("s-flex s-w-full s-flex-col s-rounded-2xl", {
 const buttonsVariants = cva("s-flex s-justify-start s-gap-2 s-pt-2", {
   variants: {
     type: {
-      user: "s-justify-end",
+      user: "s-justify-start",
       agent: "s-justify-start",
     },
   },

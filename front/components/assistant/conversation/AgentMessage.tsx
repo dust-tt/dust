@@ -1,15 +1,18 @@
 import {
   ArrowPathIcon,
   Button,
-  ButtonGroup,
-  ButtonGroupDropdown,
   Chip,
   ClipboardCheckIcon,
   ClipboardIcon,
+  cn,
   ConversationMessageAvatar,
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   ExclamationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
@@ -21,7 +24,7 @@ import {
 } from "@dust-tt/sparkle";
 import { useVirtuosoMethods } from "@virtuoso.dev/message-list";
 import { marked } from "marked";
-import React, { useCallback, useContext, useMemo } from "react";
+import React, { useCallback, useContext, useMemo, useState } from "react";
 import type { Components } from "react-markdown";
 import type { PluggableList } from "react-markdown/lib/react-markdown";
 
@@ -67,6 +70,7 @@ import {
 } from "@app/components/markdown/VisualizationBlock";
 import { useAgentMessageStream } from "@app/hooks/useAgentMessageStream";
 import { useDeleteAgentMessage } from "@app/hooks/useDeleteAgentMessage";
+import { useHover } from "@app/hooks/useHover";
 import { useSendNotification } from "@app/hooks/useNotification";
 import { useRetryMessage } from "@app/hooks/useRetryMessage";
 import config from "@app/lib/api/config";
@@ -123,7 +127,6 @@ interface AgentMessageProps {
     mentions: RichMention[],
     contentFragments: ContentFragmentsType
   ) => Promise<Result<undefined, DustError>>;
-  enableExtendedActions: boolean;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
 }
@@ -137,7 +140,6 @@ export function AgentMessage({
   user,
   triggeringUser,
   handleSubmit,
-  enableExtendedActions,
   additionalMarkdownComponents,
   additionalMarkdownPlugins,
 }: AgentMessageProps) {
@@ -150,8 +152,11 @@ export function AgentMessage({
     { index: number; document: MCPReferenceCitation }[]
   >([]);
   const [isCopied, copy] = useCopyToClipboard();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
   const confirm = useContext(ConfirmContext);
+  const { ref: agentMessageHoveredRef, isHovering: isAgentMessageHovered } =
+    useHover();
 
   const { enqueueBlockedAction, removeAllBlockedActionsForMessage } =
     useBlockedActionsContext();
@@ -535,128 +540,6 @@ export function AgentMessage({
     [retryMessage]
   );
 
-  // Add feedback buttons first (thumbs up/down)
-  if (shouldShowFeedback) {
-    messageButtons.push(
-      <FeedbackSelector
-        key="feedback-selector"
-        {...messageFeedback}
-        owner={owner}
-        agentConfigurationId={agentMessage.configuration.sId}
-        isGlobalAgent={isGlobalAgent}
-      />
-    );
-  }
-
-  // Add copy button or split button with dropdown
-  if (shouldShowCopy && (shouldShowRetry || canDeleteAgentMessage)) {
-    const dropdownItems = [];
-
-    if (enableExtendedActions) {
-      dropdownItems.push({
-        label: "Copy message link",
-        icon: LinkIcon,
-        onSelect: handleCopyMessageLink,
-      });
-    }
-
-    if (shouldShowRetry) {
-      dropdownItems.push({
-        label: "Retry",
-        icon: ArrowPathIcon,
-        onSelect: () => {
-          void retryHandler({
-            conversationId,
-            messageId: agentMessage.sId,
-          });
-        },
-        disabled: isRetryHandlerProcessing || shouldStream,
-      });
-    }
-
-    if (canDeleteAgentMessage) {
-      dropdownItems.push({
-        label: "Delete message",
-        icon: TrashIcon,
-        onSelect: handleDeleteAgentMessage,
-        disabled: isDeleting,
-        variant: "warning" as const,
-      });
-    }
-
-    messageButtons.push(
-      <ButtonGroup key="split-button-group">
-        <Button
-          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="outline"
-          size="xs"
-          onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-          className="text-muted-foreground"
-        />
-        <ButtonGroupDropdown
-          trigger={
-            <Button
-              variant="outline"
-              size="xs"
-              icon={MoreIcon}
-              className="text-muted-foreground"
-            />
-          }
-          items={dropdownItems}
-          align="end"
-        />
-      </ButtonGroup>
-    );
-  } else {
-    if (shouldShowCopy) {
-      messageButtons.push(
-        <Button
-          key="copy-msg-button"
-          tooltip={isCopied ? "Copied!" : "Copy to clipboard"}
-          variant="ghost-secondary"
-          size="xs"
-          onClick={handleCopyToClipboard}
-          icon={isCopied ? ClipboardCheckIcon : ClipboardIcon}
-          className="text-muted-foreground"
-        />
-      );
-
-      if (enableExtendedActions) {
-        messageButtons.push(
-          <Button
-            key="copy-msg-link-button"
-            tooltip="Copy message link"
-            variant="ghost-secondary"
-            size="xs"
-            onClick={handleCopyMessageLink}
-            icon={LinkIcon}
-            className="text-muted-foreground"
-          />
-        );
-      }
-    }
-
-    if (shouldShowRetry) {
-      messageButtons.push(
-        <Button
-          key="retry-msg-button"
-          tooltip="Retry"
-          variant="ghost-secondary"
-          size="xs"
-          onClick={() => {
-            void retryHandler({
-              conversationId,
-              messageId: agentMessage.sId,
-            });
-          }}
-          icon={ArrowPathIcon}
-          className="text-muted-foreground"
-          disabled={isRetryHandlerProcessing || shouldStream}
-        />
-      );
-    }
-  }
 
   const { configuration: agentConfiguration } = agentMessage;
 
@@ -730,52 +613,127 @@ export function AgentMessage({
     ? undefined
     : formatTimestring(agentMessage.completedTs ?? agentMessage.created);
 
-  return (
-    <ConversationMessageContainer messageType="agent" type="agent">
-      <div className="inline-flex items-center gap-2 @sm:hidden">
-        <ConversationMessageAvatar
-          avatarUrl={agentConfiguration.pictureUrl}
-          name={agentConfiguration.name}
-          isBusy={agentMessage.status === "created"}
-          isDisabled={isArchived}
-          type="agent"
-        />
-        <ConversationMessageTitle
-          name={agentConfiguration.name}
-          timestamp={timestamp}
-          infoChip={
-            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
-          }
-          completionStatus={
-            isDeleted ? undefined : (
-              <AgentMessageCompletionStatus agentMessage={agentMessage} />
-            )
-          }
-          renderName={renderName}
-        />
-      </div>
+  const shouldHideActions =
+    !isAgentMessageHovered && !isMenuOpen && !shouldStream;
 
+  const dropdownActions = [
+    ...(shouldShowCopy
+      ? [
+          {
+            icon: isCopied ? ClipboardCheckIcon : ClipboardIcon,
+            label: isCopied ? "Copied!" : "Copy to clipboard",
+            onClick: () => void handleCopyToClipboard(),
+          },
+          {
+            icon: LinkIcon,
+            label: "Copy message link",
+            onClick: handleCopyMessageLink,
+          },
+        ]
+      : []),
+    ...(shouldShowRetry
+      ? [
+          {
+            icon: ArrowPathIcon,
+            label: "Retry",
+            onClick: () => {
+              void retryHandler({
+                conversationId,
+                messageId: agentMessage.sId,
+              });
+            },
+            disabled: isRetryHandlerProcessing || shouldStream,
+          },
+        ]
+      : []),
+    ...(canDeleteAgentMessage
+      ? [
+          {
+            icon: TrashIcon,
+            label: "Delete message",
+            onClick: () => void handleDeleteAgentMessage(),
+            disabled: isDeleting,
+          },
+        ]
+      : []),
+  ];
+
+  return (
+    <ConversationMessageContainer
+      messageType="agent"
+      type="agent"
+      className={cn(
+        "!flex-row gap-3 rounded-2xl -mx-3 px-2 py-1 transition-colors duration-200",
+        isAgentMessageHovered &&
+          "bg-muted-background/70 py-2 -my-1 dark:bg-muted-background-night/70"
+      )}
+      ref={agentMessageHoveredRef}
+    >
       <ConversationMessageAvatar
-        className="hidden @sm:flex"
         avatarUrl={agentConfiguration.pictureUrl}
         name={agentConfiguration.name}
         isBusy={agentMessage.status === "created"}
         isDisabled={isArchived}
         type="agent"
       />
-
-      <div className="flex w-full min-w-0 flex-col gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
         <ConversationMessageTitle
-          className="hidden @sm:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
           infoChip={
             agentMessage.prunedContext ? <PrunedContextChip /> : undefined
           }
           completionStatus={
-            isDeleted ? undefined : (
-              <AgentMessageCompletionStatus agentMessage={agentMessage} />
-            )
+            <div className="flex items-center gap-2">
+              {!isDeleted && shouldShowFeedback && (
+                <div
+                  className={cn(
+                    "opacity-100 transition-opacity duration-200",
+                    shouldHideActions && "sm:opacity-0"
+                  )}
+                >
+                  <FeedbackSelector
+                    {...messageFeedback}
+                    owner={owner}
+                    agentConfigurationId={agentMessage.configuration.sId}
+                    isGlobalAgent={isGlobalAgent}
+                  />
+                </div>
+              )}
+              {!isDeleted && dropdownActions.length > 0 && (
+                <DropdownMenu
+                  open={isMenuOpen}
+                  onOpenChange={(open) => setIsMenuOpen(open)}
+                >
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      icon={MoreIcon}
+                      size="xs"
+                      variant="outline"
+                      aria-label="Message actions"
+                      className={cn(
+                        "opacity-100 transition-opacity duration-200",
+                        shouldHideActions && "sm:opacity-0"
+                      )}
+                    />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {dropdownActions.map((action, index) => (
+                      <DropdownMenuItem
+                        key={index}
+                        icon={action.icon}
+                        label={action.label}
+                        onClick={action.onClick}
+                        disabled={action.disabled}
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {!isDeleted && (
+                <AgentMessageCompletionStatus agentMessage={agentMessage} />
+              )}
+            </div>
           }
           renderName={renderName}
         />
@@ -883,15 +841,15 @@ function AgentMessageContent({
       methods.data.map((m) =>
         isMessageTemporayState(m) && m.sId === sId
           ? {
-              ...m,
-              status: "created",
-              error: null,
-              // Reset the agent state to "acting" to allow for streaming to continue.
-              streaming: {
-                ...m.streaming,
-                agentState: "acting",
-              },
-            }
+            ...m,
+            status: "created",
+            error: null,
+            // Reset the agent state to "acting" to allow for streaming to continue.
+            streaming: {
+              ...m.streaming,
+              agentState: "acting",
+            },
+          }
           : m
       );
 

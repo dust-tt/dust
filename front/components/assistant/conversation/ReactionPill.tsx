@@ -36,12 +36,12 @@ export function ReactionPill({
       trigger={
         <Button
           label={`${emoji} ${count}`}
-          size="xmini"
+          size="xs"
           variant="outline"
           onClick={onClick}
           className={cn(
             hasCurrentUserReacted &&
-              "border-blue-200 bg-blue-50 hover:border-blue-200 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900 hover:dark:border-blue-700 dark:hover:bg-blue-800"
+              "border-primary-200 bg-primary-50 hover:border-primary-200 hover:bg-primary-100 dark:border-primary-700 dark:bg-primary-900 hover:dark:border-primary-700 dark:hover:bg-primary-800"
           )}
         />
       }

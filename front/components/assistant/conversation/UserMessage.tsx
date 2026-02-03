@@ -10,10 +10,15 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  EmojiPicker,
+  EmotionLaughIcon,
   Icon,
   LinkIcon,
   MoreIcon,
   PencilSquareIcon,
+  PopoverContent,
+  PopoverRoot,
+  PopoverTrigger,
   Toolbar,
   Tooltip,
   TrashIcon,
@@ -27,7 +32,6 @@ import React, { useCallback, useContext, useMemo, useState } from "react";
 import { AgentSuggestion } from "@app/components/assistant/conversation/AgentSuggestion";
 import { DeletedMessage } from "@app/components/assistant/conversation/DeletedMessage";
 import { ToolBarContent } from "@app/components/assistant/conversation/input_bar/toolbar/ToolbarContent";
-import { MessageEmojiPicker } from "@app/components/assistant/conversation/MessageEmojiPicker";
 import { MessageReactions } from "@app/components/assistant/conversation/MessageReactions";
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
 import {
@@ -40,6 +44,7 @@ import { UserMessageMarkdown } from "@app/components/assistant/UserMessageMarkdo
 import { ConfirmContext } from "@app/components/Confirm";
 import type { EditorService } from "@app/components/editor/input_bar/useCustomEditor";
 import useCustomEditor from "@app/components/editor/input_bar/useCustomEditor";
+import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useDeleteMessage } from "@app/hooks/useDeleteMessage";
 import { useEditUserMessage } from "@app/hooks/useEditUserMessage";
 import { useHover } from "@app/hooks/useHover";
@@ -118,7 +123,6 @@ function UserMessageEditor({
 interface UserMessageProps {
   citations?: React.ReactElement[];
   conversationId: string;
-  enableExtendedActions: boolean;
   currentUserId: string;
   isLastMessage: boolean;
   message: UserMessageTypeWithContentFragments;
@@ -129,7 +133,6 @@ interface UserMessageProps {
 export function UserMessage({
   citations,
   conversationId,
-  enableExtendedActions,
   currentUserId,
   isLastMessage,
   message,
@@ -276,43 +279,54 @@ export function UserMessage({
           messageType={isCurrentUser ? "me" : "user"}
           type="user"
           className={cn(
-            isCurrentUser ? "ml-auto" : undefined,
-            "relative",
-            "s-pb-6",
-            "s-pb-4"
+            "!flex-row -mx-3 gap-3 rounded-2xl px-2 py-1 transition-colors duration-200",
+            isUserMessageHovered &&
+              "bg-muted-background/70 py-2 -my-1 dark:bg-muted-background-night/70"
           )}
           ref={userMessageHoveredRef}
         >
           <ConversationMessageAvatar
-            className="flex"
             avatarUrl={pictureUrl}
             name={name}
             type="user"
           />
-          <div className="flex min-w-0 flex-col gap-1">
-            <div className="inline-flex items-center justify-between gap-0.5">
-              <ConversationMessageTitle
-                name={name}
-                timestamp={timestamp}
-                infoChip={
-                  displayChip ? (
-                    <>
-                      {isTriggeredOrigin(message.context.origin) && (
-                        <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
-                          <TriggerChip message={message} />
-                        </span>
-                      )}
-                      {message.version > 0 && (
-                        <span className="text-xs text-faint dark:text-muted-foreground-night">
-                          (edited)
-                        </span>
-                      )}
-                    </>
-                  ) : undefined
-                }
-                renderName={renderName}
-              />
-            </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <ConversationMessageTitle
+              name={name}
+              timestamp={timestamp}
+              infoChip={
+                displayChip ? (
+                  <>
+                    {isTriggeredOrigin(message.context.origin) && (
+                      <span className="inline-block leading-none text-muted-foreground dark:text-muted-foreground-night">
+                        <TriggerChip message={message} />
+                      </span>
+                    )}
+                    {message.version > 0 && (
+                      <span className="text-xs text-faint dark:text-muted-foreground-night">
+                        (edited)
+                      </span>
+                    )}
+                  </>
+                ) : undefined
+              }
+              completionStatus={
+                <MessageActions
+                  isDeleted={isDeleted}
+                  showActions={showActions}
+                  isUserMessageHovered={isUserMessageHovered}
+                  message={message}
+                  handleEditMessage={handleEditMessage}
+                  handleDeleteMessage={handleDeleteMessage}
+                  canDelete={canDelete}
+                  canEdit={canEdit}
+                  conversationId={conversationId}
+                  owner={owner}
+                  onReactionToggle={onReactionToggle}
+                />
+              }
+              renderName={renderName}
+            />
             <ConversationMessageContent
               citations={citations}
               type="user"
@@ -328,21 +342,15 @@ export function UserMessage({
                 />
               )}
             </ConversationMessageContent>
+            {!isDeleted && (message.reactions?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap items-center gap-1">
+                <MessageReactions
+                  reactions={message.reactions ?? []}
+                  onReactionClick={onReactionToggle}
+                />
+              </div>
+            )}
           </div>
-          <ActionMenu
-            isDeleted={isDeleted}
-            showActions={showActions}
-            isUserMessageHovered={isUserMessageHovered}
-            message={message}
-            onReactionToggle={onReactionToggle}
-            enableExtendedActions={enableExtendedActions}
-            handleEditMessage={handleEditMessage}
-            handleDeleteMessage={handleDeleteMessage}
-            canDelete={canDelete}
-            canEdit={canEdit}
-            conversationId={conversationId}
-            owner={owner}
-          />
         </ConversationMessageContainer>
       )}
 
@@ -401,39 +409,37 @@ function TriggerChip({ message }: { message?: UserMessageType }) {
   );
 }
 
-function ActionMenu({
+function MessageActions({
   isDeleted,
-  enableExtendedActions,
   showActions,
   canEdit,
   canDelete,
   handleEditMessage,
   handleDeleteMessage,
   message,
-  onReactionToggle,
   isUserMessageHovered,
   conversationId,
   owner,
+  onReactionToggle,
 }: {
   isDeleted: boolean;
-  enableExtendedActions: boolean;
   showActions: boolean;
   canEdit: boolean;
   canDelete: boolean;
   handleEditMessage: () => void;
   handleDeleteMessage: () => void;
   message: UserMessageTypeWithContentFragments;
-  onReactionToggle: (emoji: string) => void;
   isUserMessageHovered: boolean;
   conversationId: string;
   owner: WorkspaceType;
+  onReactionToggle: (emoji: string) => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEmojiPickerOpen, setIsEmojiPickerOpen] = useState(false);
   const sendNotification = useSendNotification();
-  const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
-    useHover();
+  const theme = useTheme();
   const shouldHideActions =
-    !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
+    !isUserMessageHovered && !isMenuOpen && !isEmojiPickerOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
@@ -451,15 +457,11 @@ function ActionMenu({
 
   const actions = showActions
     ? [
-        ...(enableExtendedActions
-          ? [
-              {
-                icon: LinkIcon,
-                label: "Copy message link",
-                onClick: handleCopyMessageLink,
-              },
-            ]
-          : []),
+        {
+          icon: LinkIcon,
+          label: "Copy message link",
+          onClick: handleCopyMessageLink,
+        },
         ...(canEdit
           ? [
               {
@@ -481,30 +483,41 @@ function ActionMenu({
       ]
     : [];
 
+  if (isDeleted) {
+    return null;
+  }
+
   return (
-    <div
-      className={cn(
-        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
-      )}
-      ref={isReactionsHoveredRef}
-    >
-      {!isDeleted && enableExtendedActions && (
-        <>
-          <MessageReactions
-            reactions={message.reactions ?? []}
-            onReactionClick={onReactionToggle}
-          />
-          <MessageEmojiPicker
-            key="emoji-picker"
-            onEmojiSelect={onReactionToggle}
+    <div className="flex items-center gap-2">
+      <PopoverRoot
+        open={isEmojiPickerOpen}
+        onOpenChange={setIsEmojiPickerOpen}
+        modal={false}
+      >
+        <PopoverTrigger asChild>
+          <Button
+            tooltip="Add reaction"
+            variant="outline"
+            size="xs"
+            icon={EmotionLaughIcon}
             className={cn(
               "opacity-100 transition-opacity duration-200",
               shouldHideActions && "sm:opacity-0"
             )}
           />
-        </>
-      )}
-      {!isDeleted && actions && actions.length > 0 && (
+        </PopoverTrigger>
+        <PopoverContent fullWidth>
+          <EmojiPicker
+            theme={theme.isDark ? "dark" : "light"}
+            previewPosition="none"
+            onEmojiSelect={(emoji) => {
+              onReactionToggle(emoji.native);
+              setIsEmojiPickerOpen(false);
+            }}
+          />
+        </PopoverContent>
+      </PopoverRoot>
+      {actions.length > 0 && (
         <DropdownMenu
           open={isMenuOpen}
           onOpenChange={(open) => setIsMenuOpen(open)}
@@ -512,7 +525,7 @@ function ActionMenu({
           <DropdownMenuTrigger asChild>
             <Button
               icon={MoreIcon}
-              size="icon-xs"
+              size="xs"
               variant="outline"
               aria-label="Message actions"
               className={cn(

@@ -64,7 +64,7 @@ export function MessageReactions({
           trigger={
             <Button
               label={`+${hiddenReactions.length}`}
-              size="xmini"
+              size="xs"
               variant="outline"
               aria-label="More reactions"
             />

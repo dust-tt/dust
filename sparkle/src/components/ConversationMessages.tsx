@@ -7,23 +7,23 @@ import { cn } from "@sparkle/lib/utils";
 type ConversationMessageType = "user" | "agent";
 type MessageType = "me" | "user" | "agent";
 
-const wrapperVariants = cva("s-flex s-flex-col s-@container @sm:s-flex-row", {
+const wrapperVariants = cva("s-flex s-flex-col s-@container", {
   variants: {
     messageType: {
-      agent: "s-pr-0",
-      me: "s-pl-9",
-      user: "s-pr-9",
+      agent: "",
+      me: "",
+      user: "",
     },
   },
   defaultVariants: {
     messageType: "agent",
   },
 });
-const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full", {
+const messageVariants = cva("s-flex s-rounded-2xl s-max-w-full s-flex-col", {
   variants: {
     type: {
-      user: "s-bg-muted-background dark:s-bg-muted-background-night s-p-3 s-gap-2 s-w-fit",
-      agent: "s-w-full s-gap-3 s-p-4 @sm:s-flex-row s-flex-col",
+      user: "s-gap-2",
+      agent: "s-w-full s-gap-3",
     },
   },
   defaultVariants: {
