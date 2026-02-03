@@ -67,6 +67,10 @@ const meta = {
       description: "Whether the button should display a brief pulse",
       control: "boolean",
     },
+    hasLighterFont: {
+      description: "Whether the label uses a normal font weight",
+      control: "boolean",
+    },
     counterValue: {
       description: "Value to display in the counter (if isCounter is true)",
       control: "text",
@@ -97,6 +101,7 @@ export const ExampleButton: Story = {
     isPulsing: false,
     isSelect: false,
     briefPulse: false,
+    hasLighterFont: false,
     disabled: false,
     isCounter: false,
     counterValue: "1",

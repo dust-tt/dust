@@ -6,8 +6,8 @@ import type { LightWorkspaceType } from "@app/types";
 
 import { agentMentionDirective, getAgentMentionPlugin } from "./plugin";
 
-// Mock MentionDisplay to simplify rendering verification.
-vi.mock("../ui/MentionDisplay", () => ({
+// Mock MentionDisplay to simplify rendering verification (plugin imports from @app/components/mentions/MentionDisplay).
+vi.mock("@app/components/mentions/MentionDisplay", () => ({
   MentionDisplay: ({ mention, owner, interactive, showTooltip }: any) => (
     <div
       data-testid="mention-display"

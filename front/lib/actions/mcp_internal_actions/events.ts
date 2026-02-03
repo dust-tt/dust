@@ -46,6 +46,28 @@ export interface ToolPersonalAuthRequiredEvent
   authError: ToolPersonalAuthError;
 }
 
+type ToolFileAuthError = {
+  fileId: string;
+  fileName: string;
+  connectionId: string;
+  mimeType: string;
+  toolName: string;
+  message: string;
+};
+
+// Pauses agent execution to prompt user for file access consent (e.g., Google Drive).
+// Non-terminal because the tool can resume once the user authorizes the file.
+export interface ToolFileAuthRequiredEvent
+  extends ToolExecution<
+    MCPValidationMetadataType & {
+      mcpServerId: string;
+      mcpServerDisplayName: string;
+    }
+  > {
+  type: "tool_file_auth_required";
+  fileAuthError: ToolFileAuthError;
+}
+
 export interface MCPApproveExecutionEvent extends ToolExecution {
   type: "tool_approve_execution";
 }

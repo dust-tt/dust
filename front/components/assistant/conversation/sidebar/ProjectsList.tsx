@@ -1,6 +1,10 @@
-import { NavigationListItem } from "@dust-tt/sparkle";
+import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
 import { memo, useContext } from "react";
 
+import {
+  ProjectMenu,
+  useProjectMenu,
+} from "@app/components/assistant/conversation/ProjectMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
@@ -33,6 +37,9 @@ const ProjectListItem = memo(
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
 
+    const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
+      useProjectMenu();
+
     const activeConversationId = useActiveConversationId();
     const { conversation } = useConversation({
       conversationId: activeConversationId,
@@ -60,6 +67,18 @@ const ProjectListItem = memo(
             shallow: true,
           });
         }}
+        moreMenu={
+          <ProjectMenu
+            activeSpaceId={space.sId}
+            space={space}
+            owner={owner}
+            trigger={<NavigationListItemAction />}
+            isProjectDisplayed={router.query.cId === space.sId}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
+          />
+        }
       />
     );
   }

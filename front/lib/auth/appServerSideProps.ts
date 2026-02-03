@@ -17,7 +17,6 @@ export const appGetServerSideProps =
         user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
-        isSuperUser: false,
       },
     };
   });
@@ -37,7 +36,6 @@ export const appGetServerSidePropsForBuilders =
         user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
-        isSuperUser: false,
       },
     };
   });
@@ -57,7 +55,6 @@ export const appGetServerSidePropsForAdmin =
         user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
-        isSuperUser: false,
       },
     };
   });

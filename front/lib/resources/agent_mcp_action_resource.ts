@@ -23,6 +23,7 @@ import {
   TOOL_EXECUTION_BLOCKED_STATUSES,
 } from "@app/lib/actions/statuses";
 import type { StepContext } from "@app/lib/actions/types";
+import { isFileAuthorizationInfo } from "@app/lib/actions/types";
 import { isLightServerSideMCPToolConfiguration } from "@app/lib/actions/types/guards";
 import { getAgentConfigurationsWithVersion } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -406,6 +407,48 @@ export class AgentMCPActionResource extends BaseResource<AgentMCPActionModel> {
           ...baseActionParams,
           status: action.status,
           authorizationInfo,
+          metadata: {
+            ...baseActionParams.metadata,
+            mcpServerId,
+            mcpServerDisplayName,
+          },
+        });
+      } else if (action.status === "blocked_file_authorization_required") {
+        // TODO: Implement file authorization info extraction from action context
+        // For now, skip as this status won't be reached until tools emit it
+        if (!mcpServerId || !mcpServerDisplayName) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId: conversation.sId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `MCP server view not found for blocked file auth action ${action.id}`
+          );
+          continue;
+        }
+
+        const fileAuthInfo = action.stepContext.fileAuthorizationInfo;
+
+        // Validate file auth info exists and has correct shape - it's stored dynamically in stepContext.
+        if (!isFileAuthorizationInfo(fileAuthInfo)) {
+          logger.warn(
+            {
+              actionId: action.id,
+              conversationId: conversation.sId,
+              messageId: agentMessage.message.sId,
+              workspaceId: owner.id,
+            },
+            `File authorization info not found for blocked action ${action.id}`
+          );
+          continue;
+        }
+
+        blockedActionsList.push({
+          ...baseActionParams,
+          status: action.status,
+          fileAuthorizationInfo: fileAuthInfo,
           metadata: {
             ...baseActionParams.metadata,
             mcpServerId,

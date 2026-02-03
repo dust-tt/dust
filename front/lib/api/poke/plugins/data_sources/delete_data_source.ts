@@ -58,10 +58,9 @@ export const deleteDataSourcePlugin = createPlugin({
       );
     }
 
-    const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-      auth,
-      dataSource
-    );
+    const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+      dataSource,
+    });
 
     if (delRes.isErr()) {
       return new Err(

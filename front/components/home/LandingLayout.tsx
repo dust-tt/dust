@@ -22,7 +22,7 @@ import {
 import { useGeolocation } from "@app/lib/swr/geo";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames, getFaviconPath } from "@app/lib/utils";
-import { extractUTMParams } from "@app/lib/utils/utm";
+import { appendUTMParams, extractUTMParams } from "@app/lib/utils/utm";
 
 export interface LandingLayoutProps {
   shape: number;
@@ -149,7 +149,9 @@ export default function LandingLayout({
                   "go_to_app",
                   () => {
                     // eslint-disable-next-line react-hooks/immutability
-                    window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                    window.location.href = appendUTMParams(
+                      `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
+                    );
                   }
                 )}
               />
@@ -164,7 +166,9 @@ export default function LandingLayout({
                     "sign_in",
                     () => {
                       // eslint-disable-next-line react-hooks/immutability
-                      window.location.href = `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`;
+                      window.location.href = appendUTMParams(
+                        `/api/workos/login?returnTo=${encodeURIComponent(postLoginReturnToUrl)}`
+                      );
                     }
                   )}
                 />

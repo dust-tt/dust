@@ -18,11 +18,13 @@ export const mentionPluginKey = new PluginKey("mention-suggestion");
 export function createMentionSuggestion({
   owner,
   conversationId,
+  spaceId,
   select,
   includeCurrentUser = false,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
+  spaceId?: string;
   includeCurrentUser?: boolean;
   select: {
     agents: boolean;
@@ -56,6 +58,7 @@ export function createMentionSuggestion({
               ...props,
               owner,
               conversationId,
+              spaceId,
               includeCurrentUser,
               onClose: closeDropdown,
               select,
@@ -71,6 +74,7 @@ export function createMentionSuggestion({
             onClose: closeDropdown,
             owner,
             conversationId,
+            spaceId,
           });
         },
 

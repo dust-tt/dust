@@ -325,9 +325,9 @@ function tokenUsage(
 ): TokenUsageEvent {
   const cachedTokens = usage.cache_read_input_tokens ?? 0;
   const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const uncachedInputTokens = usage.input_tokens ?? 0;
   // Include all input tokens to keep consistency with core implementation
-  const inputTokens =
-    (usage.input_tokens ?? 0) + cachedTokens + cacheCreationTokens;
+  const inputTokens = uncachedInputTokens + cachedTokens + cacheCreationTokens;
 
   return {
     type: "token_usage",
@@ -336,6 +336,7 @@ function tokenUsage(
       outputTokens: usage.output_tokens,
       cachedTokens,
       cacheCreationTokens,
+      uncachedInputTokens,
       totalTokens: inputTokens + usage.output_tokens,
     },
     metadata,

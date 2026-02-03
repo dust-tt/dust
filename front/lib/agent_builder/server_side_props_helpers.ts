@@ -133,6 +133,7 @@ async function getMCPServerActionConfiguration(
   builderAction.configuration.additionalConfiguration =
     action.additionalConfiguration;
   builderAction.configuration.secretName = action.secretName;
+  builderAction.configuration.dustProject = action.dustProject;
 
   return { ...builderAction, id: action.sId };
 }

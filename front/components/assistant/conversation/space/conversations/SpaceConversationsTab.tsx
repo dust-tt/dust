@@ -16,18 +16,20 @@ import { SpaceConversationListItem } from "@app/components/assistant/conversatio
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
+import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
 import { useSearchConversations } from "@app/hooks/useSearchConversations";
 import { useAppRouter } from "@app/lib/platform";
 import { getConversationRoute } from "@app/lib/utils/router";
+import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
   ConversationType,
   ConversationWithoutContentType,
   Result,
   RichMention,
-  SpaceType,
   UserType,
   WorkspaceType,
 } from "@app/types";
@@ -45,13 +47,17 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
-  spaceInfo: SpaceType;
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
+  spaceInfo: GetSpaceResponseBody["space"];
   onSubmit: (
     input: string,
     mentions: RichMention[],
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
+  onOpenMembersPanel: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -59,9 +65,14 @@ export function SpaceConversationsTab({
   user,
   conversations,
   isConversationsLoading,
+  hasMore,
+  loadMore,
+  isLoadingMore,
   spaceInfo,
   onSubmit,
+  onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
+  const { isEditor: isProjectEditor } = spaceInfo;
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -157,20 +168,35 @@ export function SpaceConversationsTab({
             <h2 className="heading-2xl text-foreground dark:text-foreground-night">
               {spaceInfo.name}
             </h2>
-            <InputBar
-              owner={owner}
-              user={user}
-              onSubmit={onSubmit}
-              draftKey={`space-${spaceInfo.sId}-new-conversation`}
-              space={spaceInfo}
-              disableAutoFocus={false}
-            />
+            {spaceInfo.isMember ? (
+              <InputBar
+                owner={owner}
+                user={user}
+                onSubmit={onSubmit}
+                draftKey={`space-${spaceInfo.sId}-new-conversation`}
+                space={spaceInfo}
+                disableAutoFocus={false}
+              />
+            ) : (
+              <ProjectJoinCTA
+                owner={owner}
+                spaceId={spaceInfo.sId}
+                spaceName={spaceInfo.name}
+                isRestricted={spaceInfo.isRestricted}
+                userName={user.fullName}
+              />
+            )}
           </div>
 
           <SpaceJournalEntry owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
-          {!hasHistory && <SpaceConversationsActions />}
+          {!hasHistory && (
+            <SpaceConversationsActions
+              isEditor={isProjectEditor}
+              onOpenMembersPanel={onOpenMembersPanel}
+            />
+          )}
 
           {/* Space conversations section */}
           <div className="w-full">
@@ -258,6 +284,16 @@ export function SpaceConversationsTab({
                     </div>
                   );
                 })}
+                <InfiniteScroll
+                  nextPage={loadMore}
+                  hasMore={hasMore}
+                  showLoader={isLoadingMore}
+                  loader={
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner size="xs" />
+                    </div>
+                  }
+                />
               </div>
             </div>
           </div>

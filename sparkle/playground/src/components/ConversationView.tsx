@@ -1,15 +1,24 @@
 import {
   ArrowLeftIcon,
   Bar,
+  Breadcrumbs,
   Button,
   ConversationContainer,
   ConversationMessage,
+  Dialog,
+  DialogContainer,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   FolderIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
+  Input,
   MoreIcon,
 } from "@dust-tt/sparkle";
-import { useEffect, useRef } from "react";
+import type { BreadcrumbItem } from "@dust-tt/sparkle";
+import { useEffect, useRef, useState } from "react";
 
 import { getAgentById } from "../data/agents";
 import type { Agent, Conversation, Message, User } from "../data/types";
@@ -25,6 +34,7 @@ interface ConversationViewProps {
   showBackButton?: boolean;
   onBack?: () => void;
   conversationTitle?: string;
+  projectTitle?: string;
 }
 
 function formatTimestamp(date: Date): string {
@@ -72,9 +82,28 @@ export function ConversationView({
   showBackButton = false,
   onBack,
   conversationTitle,
+  projectTitle,
 }: ConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [pendingTitle, setPendingTitle] = useState("");
+  const [displayTitle, setDisplayTitle] = useState(
+    conversationTitle || conversation.title || "Conversation"
+  );
+
+  useEffect(() => {
+    const nextTitle = conversationTitle || conversation.title || "Conversation";
+    setDisplayTitle(nextTitle);
+    if (!isRenameDialogOpen) {
+      setPendingTitle(nextTitle);
+    }
+  }, [
+    conversation.id,
+    conversation.title,
+    conversationTitle,
+    isRenameDialogOpen,
+  ]);
 
   // Get messages for this conversation, or randomly select from conversationsWithMessages
   const messagesToDisplay: Message[] = (() => {
@@ -159,44 +188,87 @@ export function ConversationView({
     }
   }, [conversation.id, messagesToDisplay.length]);
 
+  const breadcrumbItems: BreadcrumbItem[] = [];
+
+  if (showBackButton && projectTitle) {
+    if (onBack) {
+      breadcrumbItems.push({
+        label: projectTitle,
+        icon: ArrowLeftIcon,
+        onClick: onBack,
+      });
+    } else {
+      breadcrumbItems.push({
+        label: projectTitle,
+        icon: ArrowLeftIcon,
+      });
+    }
+  }
+
+  breadcrumbItems.push({
+    label: displayTitle,
+    onClick: () => {
+      setPendingTitle(displayTitle);
+      setIsRenameDialogOpen(true);
+    },
+  });
+
   return (
     <div className="s-flex s-h-full s-w-full s-flex-col s-overflow-hidden">
       <Bar
-        title={
-          <span className="s-text-base s-font-normal s-text-muted-foreground">
-            {conversationTitle || conversation.title || "Conversation"}
-          </span>
+        title=" "
+        description={
+          <Breadcrumbs items={breadcrumbItems} size="sm" hasLighterFont />
         }
         size="sm"
-        leftActions={
-          showBackButton && (
-            <Button
-              size="xmini"
-              variant="ghost"
-              icon={ArrowLeftIcon}
-              onClick={onBack}
-            />
-          )
-        }
         rightActions={
           <div className="s-flex s-gap-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              icon={FolderIcon}
-              onClick={onBack}
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              icon={MoreIcon}
-              onClick={onBack}
-            />
+            <Button size="sm" variant="ghost" icon={FolderIcon} />
+            <Button size="sm" variant="ghost" icon={MoreIcon} />
           </div>
         }
         position="top"
         variant="default"
       />
+      <Dialog
+        open={isRenameDialogOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) {
+            setIsRenameDialogOpen(false);
+          }
+        }}
+      >
+        <DialogContent size="md">
+          <DialogHeader>
+            <DialogTitle>Rename conversation</DialogTitle>
+          </DialogHeader>
+          <DialogContainer>
+            <Input
+              value={pendingTitle}
+              onChange={(event) => setPendingTitle(event.target.value)}
+              placeholder="Conversation title"
+            />
+          </DialogContainer>
+          <DialogFooter
+            leftButtonProps={{
+              label: "Cancel",
+              variant: "outline",
+              onClick: () => setIsRenameDialogOpen(false),
+            }}
+            rightButtonProps={{
+              label: "Save",
+              variant: "highlight",
+              onClick: () => {
+                const trimmedTitle = pendingTitle.trim();
+                if (trimmedTitle) {
+                  setDisplayTitle(trimmedTitle);
+                }
+                setIsRenameDialogOpen(false);
+              },
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       {/* Messages container - scrollable */}
       <div

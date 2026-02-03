@@ -1375,6 +1375,125 @@ export class GroupResource extends BaseResource<GroupModel> {
     });
   }
 
+  /**
+   * Allows the authenticated user to leave the group.
+   *
+   * Unlike removeMembers(), this method does not require admin/editor permissions.
+   * Users can always remove themselves from groups they are members of.
+   *
+   * Only works for "regular" and "space_editors" groups.
+   * TODO(remy): Replace this with dangerouslyRemoveMembers once available
+   */
+  async leaveGroup(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<
+    Result<undefined, DustError<"user_not_member" | "system_or_global_group">>
+  > {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (this.kind !== "regular" && this.kind !== "space_editors") {
+      return new Err(
+        new DustError(
+          "system_or_global_group",
+          "Users can only leave regular or space_editors groups."
+        )
+      );
+    }
+
+    const now = new Date();
+
+    const [updatedCount] = await GroupMembershipModel.update(
+      { endAt: now },
+      {
+        where: {
+          groupId: this.id,
+          userId: user.id,
+          workspaceId: workspace.id,
+          startAt: { [Op.lte]: now },
+          [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        },
+        transaction,
+      }
+    );
+
+    if (updatedCount === 0) {
+      return new Err(
+        new DustError("user_not_member", "User is not a member of this group.")
+      );
+    }
+
+    return new Ok(undefined);
+  }
+
+  /**
+   * Allows the authenticated user to join the group.
+   *
+   * Unlike addMembers(), this method does not require admin/editor permissions.
+   * Users can add themselves to groups (for self-join flows like joining public projects).
+   *
+   * Only works for "regular" groups.
+   * TODO(remy): Replace this with dangerouslyAddMembers once available
+   */
+  async joinGroup(
+    auth: Authenticator,
+    { transaction }: { transaction?: Transaction } = {}
+  ): Promise<
+    Result<
+      undefined,
+      DustError<"user_already_member" | "system_or_global_group">
+    >
+  > {
+    const user = auth.getNonNullableUser();
+    const workspace = auth.getNonNullableWorkspace();
+
+    if (this.kind !== "regular") {
+      return new Err(
+        new DustError(
+          "system_or_global_group",
+          "Users can only self-join regular groups."
+        )
+      );
+    }
+
+    const now = new Date();
+
+    const existingMembership = await GroupMembershipModel.findOne({
+      where: {
+        groupId: this.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: { [Op.lte]: now },
+        [Op.or]: [{ endAt: null }, { endAt: { [Op.gt]: now } }],
+        status: "active",
+      },
+      transaction,
+    });
+
+    if (existingMembership) {
+      return new Err(
+        new DustError(
+          "user_already_member",
+          "User is already a member of this group."
+        )
+      );
+    }
+
+    await GroupMembershipModel.create(
+      {
+        groupId: this.id,
+        userId: user.id,
+        workspaceId: workspace.id,
+        startAt: now,
+        status: "active",
+      },
+      { transaction }
+    );
+
+    return new Ok(undefined);
+  }
+
   async setMembers(
     auth: Authenticator,
     {

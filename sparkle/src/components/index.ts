@@ -183,6 +183,8 @@ export {
 export { PriceTable } from "./PriceTable";
 export { RadioGroup, RadioGroupCustomItem, RadioGroupItem } from "./RadioGroup";
 export { RainbowEffect } from "./RainbowEffect";
+export type { RequestCardProps } from "./RequestCard";
+export { RequestCard } from "./RequestCard";
 export {
   ResizableHandle,
   ResizablePanel,
@@ -232,6 +234,8 @@ export {
 } from "./Tooltip";
 export { Tree } from "./Tree";
 export { TypingAnimation } from "./TypingAnimation";
+export type { UniversalSearchItemProps } from "./UniversalSearchItem";
+export { UniversalSearchItem } from "./UniversalSearchItem";
 export { ValueCard } from "./ValueCard";
 export type { VoicePickerProps, VoicePickerStatus } from "./VoicePicker";
 export { VoicePicker } from "./VoicePicker";

@@ -1077,7 +1077,9 @@ export default function AgentBuilder() {
                                   additionalMarkdownPlugins={actionCardPlugins}
                                 />
                               ) : null}
-                              <DiffBlock changes={parseDiffString(diffContent)} />
+                              <DiffBlock
+                                changes={parseDiffString(diffContent)}
+                              />
                               {trimmedAfter ? (
                                 <Markdown
                                   content={trimmedAfter}
@@ -1300,9 +1302,11 @@ export default function AgentBuilder() {
         title="Select editors"
         actionLabel="Save"
         initialSelectedUserIds={selectedEditorIdList}
+        initialEditorUserIds={selectedEditorIdList}
+        hasMultipleSelect={true}
         onClose={() => setIsInviteEditorsOpen(false)}
-        onInvite={(selectedUserIds) => {
-          setSelectedEditorIds(new Set(selectedUserIds));
+        onInvite={(_selectedUserIds, editorUserIds) => {
+          setSelectedEditorIds(new Set(editorUserIds));
           setIsInviteEditorsOpen(false);
         }}
       />

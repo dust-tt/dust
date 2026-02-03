@@ -85,6 +85,11 @@ export type VirtuosoMessageListContext = {
   feedbacksByMessageId: Record<string, AgentMessageFeedbackType>;
   additionalMarkdownComponents?: Components;
   additionalMarkdownPlugins?: PluggableList;
+  // Project membership fields (undefined for non-project conversations)
+  isProjectMember?: boolean;
+  isProjectRestricted?: boolean;
+  projectSpaceId?: string;
+  projectSpaceName?: string;
 };
 
 export const isTriggeredOrigin = (origin?: UserMessageOrigin | null) => {

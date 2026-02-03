@@ -19,6 +19,7 @@ import {
   ConversationParticipantModel,
   MentionModel,
   MessageModel,
+  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { BaseResource } from "@app/lib/resources/base_resource";
@@ -178,6 +179,7 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         workspaceId: workspace.id,
       },
       limit: options.limit,
+      order: options.order,
     });
 
     const uniqueSpaceIds = uniq([
@@ -304,6 +306,28 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
       ])
     );
+  }
+
+  private static async enrichWithParticipation(
+    auth: Authenticator,
+    conversations: ConversationResource[]
+  ): Promise<void> {
+    if (conversations.length === 0 || !auth.user()) {
+      return;
+    }
+
+    const conversationIds = conversations.map((c) => c.id);
+    const participationMap = await this.fetchParticipationMapForUser(
+      auth,
+      conversationIds
+    );
+
+    conversations.forEach((c) => {
+      const participation = participationMap.get(c.id);
+      if (participation) {
+        c.userParticipation = participation;
+      }
+    });
   }
 
   static async fetchByIds(
@@ -713,29 +737,95 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       return [];
     }
 
-    // Fetch all conversations in the space (not filtered by user participation)
     const conversations = await this.baseFetchWithAuthorization(auth, options, {
       where: {
         spaceId: spaceModelId,
       },
+      order: [["updatedAt", "DESC"]],
     });
 
-    // Fetch participation map for the user for these conversations
-    const conversationIds = conversations.map((c) => c.id);
-    const participationMap =
-      conversationIds.length > 0 && auth.user()
-        ? await this.fetchParticipationMapForUser(auth, conversationIds)
-        : new Map<number, UserParticipation>();
-
-    // Attach participation data to resources where the user is a participant
-    conversations.forEach((c) => {
-      const participation = participationMap.get(c.id);
-      if (participation) {
-        c.userParticipation = participation;
-      }
-    });
+    await this.enrichWithParticipation(auth, conversations);
 
     return conversations;
+  }
+
+  static async listConversationsInSpacePaginated(
+    auth: Authenticator,
+    {
+      spaceId,
+      options,
+      pagination,
+    }: {
+      spaceId: string;
+      options?: FetchConversationOptions;
+      pagination: {
+        limit: number;
+        lastValue?: string;
+        orderDirection?: "asc" | "desc";
+      };
+    }
+  ): Promise<{
+    conversations: ConversationResource[];
+    hasMore: boolean;
+    lastValue: string | null;
+  }> {
+    const emptyResult = {
+      conversations: [],
+      hasMore: false,
+      lastValue: null,
+    };
+
+    const spaceModelId = getResourceIdFromSId(spaceId);
+    if (spaceModelId === null) {
+      return emptyResult;
+    }
+
+    const orderDirection = pagination.orderDirection ?? "desc";
+
+    const whereClause: WhereOptions<InferAttributes<ConversationModel>> = {
+      spaceId: spaceModelId,
+    };
+
+    if (pagination.lastValue) {
+      const timestampMs = parseInt(pagination.lastValue, 10);
+      if (!Number.isNaN(timestampMs)) {
+        const operator = orderDirection === "desc" ? Op.lt : Op.gt;
+        whereClause.updatedAt = {
+          [operator]: new Date(timestampMs),
+        };
+      }
+    }
+
+    // Fetch limit + 1 to determine if there are more results
+    const fetchLimit = pagination.limit + 1;
+
+    const conversations = await this.baseFetchWithAuthorization(auth, options, {
+      where: whereClause,
+      order: [["updatedAt", orderDirection === "desc" ? "DESC" : "ASC"]],
+      limit: fetchLimit,
+    });
+
+    let hasMore = false;
+    let resultConversations = conversations;
+
+    if (conversations.length > pagination.limit) {
+      hasMore = true;
+      resultConversations = conversations.slice(0, pagination.limit);
+    }
+
+    await this.enrichWithParticipation(auth, resultConversations);
+
+    const lastConversation =
+      resultConversations[resultConversations.length - 1];
+    const lastValue = lastConversation
+      ? lastConversation.updatedAt.getTime().toString()
+      : null;
+
+    return {
+      conversations: resultConversations,
+      hasMore,
+      lastValue,
+    };
   }
 
   static async listConversationsForTrigger(
@@ -886,6 +976,15 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         transaction,
       }
     );
+    await UserConversationReadsModel.upsert(
+      {
+        conversationId: conversation.id,
+        userId: auth.getNonNullableUser().id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        lastReadAt: new Date(),
+      },
+      { transaction }
+    );
     return new Ok(updated);
   }
 
@@ -997,6 +1096,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
           },
           { transaction: t }
         );
+        if (lastReadAt) {
+          await UserConversationReadsModel.upsert(
+            {
+              conversationId: conversation.id,
+              userId: user.id,
+              workspaceId: auth.getNonNullableWorkspace().id,
+              lastReadAt,
+            },
+            { transaction: t }
+          );
+        }
         status = "added";
       }
     }, transaction);
@@ -1548,6 +1658,13 @@ export class ConversationResource extends BaseResource<ConversationModel> {
         },
         transaction,
       });
+      await UserConversationReadsModel.destroy({
+        where: {
+          workspaceId: owner.id,
+          conversationId: this.id,
+        },
+        transaction,
+      });
       await ConversationResource.model.destroy({
         where: {
           workspaceId: owner.id,
@@ -1583,15 +1700,54 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversationIds = conversations.map((c) => c.id);
 
+    const userModelId = auth.getNonNullableUser().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
+
     await ConversationParticipantModel.update(
       { lastReadAt: new Date(), actionRequired: false },
       {
         where: {
           conversationId: { [Op.in]: conversationIds },
-          workspaceId: auth.getNonNullableWorkspace().id,
-          userId: auth.getNonNullableUser().id,
+          workspaceId: workspaceModelId,
+          userId: userModelId,
         },
       }
+    );
+
+    // Update the existing UserConversationReads entries
+    const existingReads = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: { [Op.in]: conversationIds },
+        userId: userModelId,
+        workspaceId: workspaceModelId,
+      },
+    });
+
+    await UserConversationReadsModel.update(
+      { lastReadAt: new Date() },
+      {
+        where: {
+          id: {
+            [Op.in]: existingReads.map((read) => read.id),
+          },
+        },
+      }
+    );
+
+    // Create entries for conversations that do not have one yet
+    const conversationIdsWithExistingReads = new Set(
+      existingReads.map((read) => read.conversationId)
+    );
+    const conversationIdsNeedingNewReads = conversationIds.filter(
+      (id) => !conversationIdsWithExistingReads.has(id)
+    );
+    await UserConversationReadsModel.bulkCreate(
+      conversationIdsNeedingNewReads.map((conversationId) => ({
+        conversationId,
+        userId: userModelId,
+        workspaceId: workspaceModelId,
+        lastReadAt: new Date(),
+      }))
     );
 
     return new Ok(undefined);

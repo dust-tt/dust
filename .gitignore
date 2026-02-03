@@ -23,7 +23,7 @@ front/public/sitemap.xml
 front/public/robots.txt
 mprocs.log
 **/tsconfig.tsbuildinfo
-front/.npm-cache
+**/.npm-cache
 AGENTS.local.md
 CLAUDE.local.md
 node_modules

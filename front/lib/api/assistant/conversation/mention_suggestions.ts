@@ -9,7 +9,9 @@ import {
   SUGGESTION_PRIORITY,
 } from "@app/lib/mentions/editor/suggestion";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
+import { SpaceResource } from "@app/lib/resources/space_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import type {
   RichAgentMentionInConversation,
   RichMention,
@@ -124,6 +126,7 @@ export const suggestionsOfMentions = async (
   {
     query,
     conversationId,
+    spaceId,
     select = {
       agents: true,
       users: true,
@@ -132,6 +135,7 @@ export const suggestionsOfMentions = async (
   }: {
     query: string;
     conversationId?: string | null;
+    spaceId?: string | null;
     select?: {
       agents: boolean;
       users: boolean;
@@ -150,6 +154,7 @@ export const suggestionsOfMentions = async (
   const userSuggestions: RichUserMentionInConversation[] = [];
   let participantUsers: RichUserMentionInConversation[] = [];
   let participantAgents: RichAgentMentionInConversation[] = [];
+  const projectMemberIds: Set<string> = new Set();
 
   // Get conversation participants if conversationId is provided
   // This aims to prioritize them in the suggestions
@@ -208,6 +213,20 @@ export const suggestionsOfMentions = async (
     }
   }
 
+  // If the conversation belongs to a project, get the project members.
+  // This aims to prioritize them in the suggestions
+  if (spaceId) {
+    const conversationSpace = await SpaceResource.fetchById(auth, spaceId);
+
+    const allMembers = await concurrentExecutor(
+      conversationSpace?.groups.filter((g) => g.kind !== "global") ?? [],
+      (group) => group.getActiveMembers(auth),
+      { concurrency: 8 }
+    );
+
+    allMembers.flat().forEach((m) => projectMemberIds.add(m.sId));
+  }
+
   if (select.agents) {
     const agentConfigurations = await getAgentConfigurationsForView({
       auth,
@@ -247,6 +266,7 @@ export const suggestionsOfMentions = async (
         .map((u) => ({
           ...toRichUserMentionType(u.toJSON()),
           isParticipant: participantUsers.some((pu) => pu.id === u.sId),
+          isProjectMember: spaceId ? projectMemberIds.has(u.sId) : undefined,
           lastActivityAt:
             participantUsers.find((pu) => pu.id === u.sId)?.lastActivityAt ?? 0,
         }));

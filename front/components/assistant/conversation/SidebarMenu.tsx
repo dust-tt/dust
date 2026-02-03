@@ -87,7 +87,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isBuilder } from "@app/types";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;
@@ -355,7 +355,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
           open={!isProjectsSectionCollapsed}
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
-            isAdmin(owner) ? (
+            summary.length > 0 ? (
               <Button
                 size="xs"
                 icon={PlusIcon}
