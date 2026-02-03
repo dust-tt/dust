@@ -13,6 +13,7 @@ import {
   withErrorHandling,
 } from "@app/lib/api/actions/servers/project_context_management/helpers";
 import { PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_context_management/metadata";
+import { formatConversationsForDisplay } from "@app/lib/api/actions/servers/project_context_management/tools/conversation_formatting";
 import {
   createConversation,
   postUserMessage,
@@ -21,12 +22,15 @@ import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
+import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import config from "@app/lib/api/config";
 import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
+import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
+import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import {
   getConversationRoute,
   getSpaceConversationsRoute,
@@ -679,6 +683,77 @@ export function createProjectContextManagementTools(
           })
         );
       }, "Failed to create conversation");
+    },
+
+    search_unread: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getProjectSpace(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const { daysBack = 30, limit = 20 } = params;
+
+        // Calculate the cutoff date for the time window
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysBack);
+
+        // List conversations in the project space updated since cutoff
+        const spaceConversations =
+          await ConversationResource.listConversationsInSpace(auth, {
+            spaceId: space.sId,
+            options: {
+              updatedSince: cutoffDate.getTime(),
+            },
+          });
+
+        // Fetch full conversations with content
+        const conversationResults = await concurrentExecutor(
+          spaceConversations,
+          async (c) => getConversation(auth, c.sId, false),
+          { concurrency: 10 }
+        );
+
+        // Extract successful conversations
+        const conversationsFull = conversationResults
+          .filter((r) => r.isOk())
+          .map((r) => r.value);
+
+        // Filter for unread conversations based on the unread flag, and apply limit
+        const unreadConversations = conversationsFull.filter((c) => c.unread);
+
+        // Apply limit
+        const limitedConversations = unreadConversations.slice(0, limit);
+
+        if (limitedConversations.length === 0) {
+          return new Ok([
+            {
+              type: "text" as const,
+              text: `No unread conversations found in project "${space.name}" from the last ${daysBack} days.`,
+            },
+          ]);
+        }
+
+        const formattedConversations = formatConversationsForDisplay(
+          limitedConversations,
+          auth.getNonNullableWorkspace().sId
+        );
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            count: limitedConversations.length,
+            total: unreadConversations.length,
+            daysBack,
+            conversations: formattedConversations,
+            message: `Found ${limitedConversations.length} unread conversation(s) in project "${space.name}"${unreadConversations.length > limit ? ` (showing first ${limit} of ${unreadConversations.length})` : ""}.`,
+          })
+        );
+      }, "Failed to search unread conversations");
     },
   };
 

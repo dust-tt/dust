@@ -13899,6 +13899,45 @@
         }
       },
       {
+        "name": "search_unread",
+        "description": "Search for unread conversations in the project. Returns conversations that have been updated since the user last read them, within an optional time window (defaults to 30 days).",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "daysBack": {
+              "default": 30,
+              "description": "Number of days to look back for unread conversations (default: 30 days)",
+              "type": "number"
+            },
+            "dustProject": {
+              "additionalProperties": false,
+              "properties": {
+                "mimeType": {
+                  "const": "application/vnd.dust.tool-input.dust-project",
+                  "type": "string"
+                },
+                "uri": {
+                  "pattern": "^project:\\/\\/dust\\/w\\/(\\w+)\\/projects\\/(\\w+)$",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "uri",
+                "mimeType"
+              ],
+              "type": "object"
+            },
+            "limit": {
+              "default": 20,
+              "description": "Maximum number of conversations to return (default: 20, max: 100)",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "update_file",
         "description": "Update the content of an existing file in the project context. This replaces the entire file content. Provide either 'content' (text string) or 'sourceFileId' (ID of an existing file from the conversation to copy from).",
         "inputSchema": {
@@ -13951,6 +13990,7 @@
       "edit_url": "low",
       "get_information": "never_ask",
       "list_files": "never_ask",
+      "search_unread": "never_ask",
       "update_file": "high"
     }
   },
