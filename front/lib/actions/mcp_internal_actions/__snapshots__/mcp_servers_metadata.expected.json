@@ -4757,7 +4757,8 @@
       "get_spreadsheet": "never_ask",
       "get_worksheet": "never_ask",
       "list_drives": "never_ask",
-      "search_files": "never_ask"
+      "search_files": "never_ask",
+      "update_document": "low"
     }
   },
   {
