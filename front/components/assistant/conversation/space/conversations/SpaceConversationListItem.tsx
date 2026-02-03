@@ -15,6 +15,8 @@ import {
 } from "@app/types";
 import { stripMarkdown } from "@app/types";
 
+import { isMessageUnread } from "../../utils";
+
 interface SpaceConversationListItemProps {
   conversation: ConversationType;
   owner: WorkspaceType;
@@ -57,7 +59,7 @@ export function SpaceConversationListItem({
   const countUnreadMessages = useMemo(() => {
     return conversation.content.filter((versions) => {
       const message = versions[versions.length - 1];
-      return message.created > (conversation.lastReadMs ?? 0);
+      return isMessageUnread(message, conversation.lastReadMs);
     }).length;
   }, [conversation.content, conversation.lastReadMs]);
 
