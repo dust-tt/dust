@@ -1,7 +1,14 @@
+import {
+  Chip,
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceOutput } from "@app/lib/api/llm/traces/types";
+import { isString } from "@app/types";
 
 interface ToolCallsViewProps {
   toolCalls: NonNullable<LLMTraceOutput["toolCalls"]>;
@@ -13,14 +20,9 @@ function ToolCallsView({ toolCalls }: ToolCallsViewProps) {
   return (
     <div className="space-y-3">
       {toolCalls.map((toolCall, index) => (
-        <div key={index} className="rounded-lg border p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <code className="rounded bg-purple-100 px-2 py-0.5 text-sm font-semibold dark:bg-purple-900">
-              {toolCall.name}
-            </code>
-            <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-              ID: {toolCall.id}
-            </span>
+        <div key={index} className="rounded border p-3">
+          <div className="mb-2">
+            <Chip color="green" size="xs" label={`tool_call: ${toolCall.name}`} />
           </div>
           <JsonViewer
             theme={isDark ? "dark" : "light"}
@@ -48,8 +50,8 @@ export function OutputTab({ output }: OutputTabProps) {
   }
 
   const hasContent =
-    output.content !== undefined ||
-    output.reasoning !== undefined ||
+    isString(output.content)  ||
+    isString(output.reasoning) ||
     (output.toolCalls && output.toolCalls.length > 0);
 
   if (!hasContent) {
@@ -61,29 +63,57 @@ export function OutputTab({ output }: OutputTabProps) {
   }
 
   return (
-    <div className="space-y-6 pt-4">
-      {output.content && (
-        <div>
-          <h3 className="mb-2 text-lg font-medium">Content</h3>
-          <pre className="whitespace-pre-wrap text-sm">
-            {output.content}
-          </pre>
+    <div className="space-y-4 pt-4">
+      {isString(output.content) && (
+        <div className="rounded-lg border p-4">
+          <Collapsible defaultOpen={true}>
+            <CollapsibleTrigger>
+              <h3 className="text-lg font-medium">
+                Content ({output.content.length.toLocaleString()} chars)
+              </h3>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-4 max-h-125 overflow-auto">
+                <pre className="whitespace-pre-wrap text-sm">
+                  {output.content}
+                </pre>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
-      {output.reasoning && (
-        <div>
-          <h3 className="mb-2 text-lg font-medium">Reasoning</h3>
-          <pre className="whitespace-pre-wrap text-sm">
-            {output.reasoning}
-          </pre>
+      {isString(output.reasoning) && (
+        <div className="rounded-lg border p-4">
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
+              <h3 className="text-lg font-medium">
+                Reasoning ({output.reasoning.length.toLocaleString()} chars)
+              </h3>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-4 max-h-125 overflow-auto">
+                <pre className="whitespace-pre-wrap text-sm">
+                  {output.reasoning}
+                </pre>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
       {output.toolCalls && output.toolCalls.length > 0 && (
-        <div>
-          <h3 className="mb-2 text-lg font-medium">
-            Tool Calls ({output.toolCalls.length})
-          </h3>
-          <ToolCallsView toolCalls={output.toolCalls} />
+        <div className="rounded-lg border p-4">
+          <Collapsible defaultOpen={true}>
+            <CollapsibleTrigger>
+              <h3 className="text-lg font-medium">
+                Tool Calls ({output.toolCalls.length})
+              </h3>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-4">
+                <ToolCallsView toolCalls={output.toolCalls} />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
     </div>
