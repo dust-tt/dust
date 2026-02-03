@@ -46,6 +46,7 @@ import type {
   Result,
   UserType,
 } from "@app/types";
+import { removeNulls } from "@app/types";
 import { ConversationError, Err, normalizeError, Ok } from "@app/types";
 
 export type FetchConversationOptions = {
@@ -183,6 +184,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     });
 
     const uniqueSpaceIds = uniq([
+      // Include spaceId from conversations.
+      ...removeNulls(conversations.map((c) => c.spaceId)),
       // Include requestedSpaceIds from conversations.
       ...conversations.flatMap((c) => c.requestedSpaceIds),
     ]);

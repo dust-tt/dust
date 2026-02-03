@@ -1563,6 +1563,157 @@ describe("Space Handling", () => {
         "This conversation is associated with a space but the related space is not loaded. Action: make sure to load the space when fetching the conversation."
       );
     });
+
+    it("should load space when fetching conversation with fetchById", async () => {
+      const { workspace, user, globalSpace, authenticator } =
+        await createResourceTest({
+          role: "admin",
+        });
+
+      // Create a space
+      const projectSpace = await SpaceFactory.regular(workspace);
+      const addMembersRes = await projectSpace.addMembers(authenticator, {
+        userIds: [user.sId],
+      });
+      assert(addMembersRes.isOk(), "Failed to add user to project space");
+
+      // Re-authenticate to refresh permissions
+      const authWithSpace = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // Create a conversation with both spaceId and requestedSpaceIds
+      const agents = await setupTestAgents(workspace, user);
+      const conversation = await ConversationFactory.create(authWithSpace, {
+        agentConfigurationId: agents[0].sId,
+        spaceId: projectSpace.id,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(1)],
+      });
+
+      // Fetch the conversation using fetchById
+      const fetchedConversation = await ConversationResource.fetchById(
+        authWithSpace,
+        conversation.sId
+      );
+
+      // The space should be loaded and accessible without throwing
+      expect(fetchedConversation).not.toBeNull();
+      expect(fetchedConversation!.space).not.toBeNull();
+      expect(fetchedConversation!.space?.sId).toBe(projectSpace.sId);
+
+      // Clean up
+      await destroyConversation(authWithSpace, {
+        conversationId: conversation.sId,
+      });
+    });
+
+    it("should load space when fetching conversations with listConversationsInSpace", async () => {
+      const { workspace, user, globalSpace, authenticator } =
+        await createResourceTest({
+          role: "admin",
+        });
+
+      // Create a space
+      const projectSpace = await SpaceFactory.regular(workspace);
+      const addMembersRes = await projectSpace.addMembers(authenticator, {
+        userIds: [user.sId],
+      });
+      assert(addMembersRes.isOk(), "Failed to add user to project space");
+
+      // Re-authenticate to refresh permissions
+      const authWithSpace = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // Create a conversation in the project space
+      const agents = await setupTestAgents(workspace, user);
+      const conversation = await ConversationFactory.create(authWithSpace, {
+        agentConfigurationId: agents[0].sId,
+        spaceId: projectSpace.id,
+        requestedSpaceIds: [globalSpace.id],
+        messagesCreatedAt: [dateFromDaysAgo(1)],
+      });
+
+      // List conversations in the space
+      const conversations = await ConversationResource.listConversationsInSpace(
+        authWithSpace,
+        {
+          spaceId: projectSpace.sId,
+        }
+      );
+
+      // Find our conversation
+      const foundConversation = conversations.find(
+        (c) => c.sId === conversation.sId
+      );
+
+      // The space should be loaded and accessible without throwing
+      expect(foundConversation).toBeDefined();
+      expect(foundConversation!.space).not.toBeNull();
+      expect(foundConversation!.space?.sId).toBe(projectSpace.sId);
+
+      // Clean up
+      await destroyConversation(authWithSpace, {
+        conversationId: conversation.sId,
+      });
+    });
+
+    it("should load space even when spaceId is not in requestedSpaceIds", async () => {
+      const { workspace, user, authenticator } = await createResourceTest({
+        role: "admin",
+      });
+
+      // Create two different spaces
+      const projectSpace = await SpaceFactory.regular(workspace);
+      const otherSpace = await SpaceFactory.regular(workspace);
+
+      const addToProjectRes = await projectSpace.addMembers(authenticator, {
+        userIds: [user.sId],
+      });
+      assert(addToProjectRes.isOk(), "Failed to add user to project space");
+
+      const addToOtherRes = await otherSpace.addMembers(authenticator, {
+        userIds: [user.sId],
+      });
+      assert(addToOtherRes.isOk(), "Failed to add user to other space");
+
+      // Re-authenticate to refresh permissions
+      const authWithSpaces = await Authenticator.fromUserIdAndWorkspaceId(
+        user.sId,
+        workspace.sId
+      );
+
+      // Create a conversation where spaceId != requestedSpaceIds
+      const agents = await setupTestAgents(workspace, user);
+      const conversation = await ConversationFactory.create(authWithSpaces, {
+        agentConfigurationId: agents[0].sId,
+        spaceId: projectSpace.id, // Conversation is IN this space
+        requestedSpaceIds: [otherSpace.id], // But requires access to a different space
+        messagesCreatedAt: [dateFromDaysAgo(1)],
+      });
+
+      // Fetch the conversation
+      const fetchedConversation = await ConversationResource.fetchById(
+        authWithSpaces,
+        conversation.sId
+      );
+
+      // Both spaces should be accessible
+      expect(fetchedConversation).not.toBeNull();
+      expect(fetchedConversation!.space).not.toBeNull();
+      expect(fetchedConversation!.space?.sId).toBe(projectSpace.sId);
+
+      // The spaceId (projectSpace) should be loaded even though it's not in requestedSpaceIds
+      expect(() => fetchedConversation!.space).not.toThrow();
+
+      // Clean up
+      await destroyConversation(authWithSpaces, {
+        conversationId: conversation.sId,
+      });
+    });
   });
 
   describe("getRequestedSpaceIdsFromModel", () => {
