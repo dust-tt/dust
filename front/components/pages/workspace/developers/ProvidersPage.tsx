@@ -13,7 +13,7 @@ import {
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   APP_MODEL_PROVIDER_IDS,
   modelProviders,

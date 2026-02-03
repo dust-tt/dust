@@ -24,7 +24,6 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
-  useFeatureFlags,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
   useWorkspaceVerifiedDomains,
@@ -149,7 +148,6 @@ export function MembersPage() {
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { verifiedDomains, isVerifiedDomainsLoading } =
     useWorkspaceVerifiedDomains({ workspaceId: owner.sId });
   const { hasAvailableSeats, isSeatAvailabilityLoading } =
