@@ -171,7 +171,7 @@ function Verify() {
         return;
       }
 
-      void router.push(`/w/${workspace.sId}/welcome`);
+      void router.push(`/w/${workspace.sId}/conversation/new?welcome=true`);
     } catch {
       setPhoneError("Network error. Please try again.");
     } finally {

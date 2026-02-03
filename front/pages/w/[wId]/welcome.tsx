@@ -227,6 +227,7 @@ function FavoritePlatformsStep({
         <Button
           label="Next"
           disabled={isSubmitting}
+          isLoading={isSubmitting}
           size="sm"
           onClick={onSubmit}
         />
@@ -263,6 +264,7 @@ function FavoritePlatformsStep({
         <div className="flex justify-end">
           <Button
             label="Next"
+            isLoading={isSubmitting}
             disabled={isSubmitting}
             size="md"
             onClick={onSubmit}
