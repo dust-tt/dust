@@ -219,6 +219,7 @@ export async function deleteMessageReaction(
       userContextUsername: context.username,
       userContextFullName: context.fullName,
       reaction,
+      workspaceId: owner.id,
     },
   });
   return deletedReaction === 1;
