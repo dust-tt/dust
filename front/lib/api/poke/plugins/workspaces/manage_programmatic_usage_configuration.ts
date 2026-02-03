@@ -3,8 +3,8 @@ import type Stripe from "stripe";
 import { z } from "zod";
 
 import { MAX_DISCOUNT_PERCENT } from "@app/lib/api/assistant/token_pricing";
-import { getDefaultDailyCapMicroUsd } from "@app/lib/api/daily_cap_tracking";
 import { createPlugin } from "@app/lib/api/poke/types";
+import { getDefaultDailyCapMicroUsd } from "@app/lib/api/programmatic_usage/daily_cap";
 import type { Authenticator } from "@app/lib/auth";
 import {
   calculateFreeCreditAmountMicroUsd,

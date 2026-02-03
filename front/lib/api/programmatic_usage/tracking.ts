@@ -4,15 +4,15 @@ import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage/common";
 import {
   hasReachedDailyUsageCap,
   incrementDailyUsageMicroUsd,
-} from "@app/lib/api/daily_cap_tracking";
+} from "@app/lib/api/programmatic_usage/daily_cap";
 import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
-} from "@app/lib/api/key_cap_tracking";
-import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage_common";
+} from "@app/lib/api/programmatic_usage/key_cap";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
