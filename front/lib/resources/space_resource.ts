@@ -13,11 +13,9 @@ import { DustError } from "@app/lib/error";
 import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-  GroupSpaceViewerResource,
-} from "@app/lib/resources/group_space_resource";
+import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
+import { GroupSpaceViewerResource } from "@app/lib/resources/group_space_viewer_resource";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
 import { GroupSpaceModel } from "@app/lib/resources/storage/models/group_spaces";
 import { GroupModel } from "@app/lib/resources/storage/models/groups";
@@ -626,6 +624,11 @@ export class SpaceResource extends BaseResource<SpaceModel> {
       if (managementMode === "manual") {
         const memberIds = params.memberIds;
         const editorIds = params.editorIds;
+
+        assert(
+          memberIds.every((id) => !editorIds.includes(id)),
+          "A user cannot be both a member and an editor of the same space."
+        );
 
         // Handle member-based management
         const users = await UserResource.fetchByIds(memberIds);

@@ -122,6 +122,12 @@ export async function createPendingAgentConfiguration(
       transaction: t,
     });
     await auth.refresh({ transaction: t });
+    if (!group.canWrite(auth)) {
+      throw new DustError(
+        "unauthorized",
+        "User does not have write permission for the agent editors group."
+      );
+    }
     await group.dangerouslySetMembers(auth, {
       users: [user.toJSON()],
       transaction: t,

@@ -4,10 +4,8 @@ import { loadAllModels } from "@app/admin/db";
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import { GroupResource } from "@app/lib/resources/group_resource";
-import {
-  GroupSpaceEditorResource,
-  GroupSpaceMemberResource,
-} from "@app/lib/resources/group_space_resource";
+import { GroupSpaceEditorResource } from "@app/lib/resources/group_space_editor_resource";
+import { GroupSpaceMemberResource } from "@app/lib/resources/group_space_member_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { frontSequelize } from "@app/lib/resources/storage";
 import { GroupMembershipModel } from "@app/lib/resources/storage/models/group_memberships";
