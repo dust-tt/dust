@@ -164,32 +164,6 @@ export const NavigationSidebar = React.forwardRef<
                                 target={menu.target}
                                 onClick={() => handleTabClick(menu.href)}
                               />
-                              {menu.subMenuLabel && (
-                                <div
-                                  className={classNames(
-                                    "grow pb-3 pl-14 pr-4 pt-2 text-sm uppercase",
-                                    "text-muted-foreground dark:text-muted-foreground-night"
-                                  )}
-                                >
-                                  {menu.subMenuLabel}
-                                </div>
-                              )}
-                              {menu.subMenu && (
-                                <div className="mb-2 flex flex-col">
-                                  {menu.subMenu.map((nav) => (
-                                    <NavigationListItem
-                                      key={nav.id}
-                                      selected={nav.current}
-                                      label={nav.label}
-                                      icon={nav.icon}
-                                      className="grow pl-14 pr-4"
-                                      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-                                      href={nav.href ? nav.href : undefined}
-                                      onClick={() => handleTabClick(nav.href)}
-                                    />
-                                  ))}
-                                </div>
-                              )}
                             </React.Fragment>
                           ))}
                       </React.Fragment>
