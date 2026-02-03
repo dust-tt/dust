@@ -183,6 +183,9 @@ export const GOOGLE_DRIVE_SERVER = {
   serverInfo: {
     name: "google_drive",
     version: "1.0.0",
+    // TODO(google_drive_write): Update description to mention write capabilities
+    // when google_drive_write_enabled feature flag is removed and write is GA:
+    // "Search, read, and create files in Google Drive (Docs, Sheets, Presentations)."
     description: "Search and read files (Docs, Sheets, Presentations).",
     authorization: {
       provider: "google_drive",

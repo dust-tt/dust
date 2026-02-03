@@ -5,7 +5,10 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { makeFileAuthorizationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeFileAuthorizationError,
+  makePersonalAuthenticationError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   getDocsClient,
   getDriveClient,
@@ -66,20 +69,25 @@ function handleFileAccessError(
 
 /**
  * Handles permission errors from Google Drive API calls for write operations.
- * Returns an MCPError with appropriate messaging for 403/permission errors.
+ * Returns OAuth re-auth prompt for 403/permission errors.
  */
-function handlePermissionError(err: unknown): MCPError {
+function handlePermissionError(err: unknown): ToolHandlerResult {
   const error = normalizeError(err);
+
   if (
     error.message?.includes("403") ||
     error.message?.toLowerCase().includes("permission")
   ) {
-    return new MCPError(
-      "Insufficient permissions. Please go to Settings > Connections, disconnect Google Drive, and reconnect to enable write access.",
-      { tracked: false }
+    // Request both scopes - write tools only exist when FF is enabled
+    return new Ok(
+      makePersonalAuthenticationError(
+        "google_drive",
+        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+      ).content
     );
   }
-  return new MCPError(error.message || "Operation failed");
+
+  return new Err(new MCPError(error.message || "Operation failed"));
 }
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
@@ -355,7 +363,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 
@@ -383,7 +391,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 
@@ -409,7 +417,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 };
