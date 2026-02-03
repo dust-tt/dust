@@ -10,6 +10,7 @@ import assert from "assert";
 import _ from "lodash";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
@@ -32,7 +33,6 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
-import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
   RUN_AGENT_PLACEHOLDER_TOOL_NAME,
