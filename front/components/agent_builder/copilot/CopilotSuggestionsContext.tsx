@@ -225,6 +225,21 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
+    // Get current pending instruction suggestion IDs.
+    const currentPendingIds = new Set(
+      suggestions
+        .filter((s) => s.state === "pending" && s.kind === "instructions")
+        .map((s) => s.sId)
+    );
+
+    // Remove marks for suggestions that were applied but are no longer pending.
+    for (const appliedId of appliedSuggestionsRef.current) {
+      if (!currentPendingIds.has(appliedId)) {
+        editor.commands.rejectSuggestion(appliedId);
+        appliedSuggestionsRef.current.delete(appliedId);
+      }
+    }
+
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
       if (
@@ -249,9 +264,12 @@ export const CopilotSuggestionsProvider = ({
 
       if (applied) {
         appliedSuggestionsRef.current.add(suggestion.sId);
+      } else {
+        // Text no longer matches - mark as outdated.
+        void patchSuggestions([suggestion.sId], "outdated");
       }
     }
-  }, [suggestions, isSuggestionsLoading, isEditorReady]);
+  }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
 
   const acceptSuggestion = useCallback(
     async (sId: string) => {
