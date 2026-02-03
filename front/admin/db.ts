@@ -30,6 +30,7 @@ import {
   MentionModel,
   MessageModel,
   MessageReactionModel,
+  UserConversationReadsModel,
   UserMessageModel,
 } from "@app/lib/models/agent/conversation";
 import { GroupAgentModel } from "@app/lib/models/agent/group_agent";
@@ -141,6 +142,7 @@ async function main() {
 
   await ConversationModel.sync({ alter: true });
   await ConversationParticipantModel.sync({ alter: true });
+  await UserConversationReadsModel.sync({ alter: true });
 
   await DataSourceModel.sync({ alter: true });
   await DataSourceViewModel.sync({ alter: true });
