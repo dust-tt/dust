@@ -62,13 +62,12 @@ function ToolCallCard({ functionCall }: FunctionCallCardProps) {
 
   return (
     <div className="rounded border p-3">
-      <div className="mb-2">
-        <Chip
-          color="green"
-          size="xs"
-          label={`tool_call: ${functionCall.name}`}
-        />
-      </div>
+      <Chip
+        color="green"
+        size="xs"
+        label={`tool_call: ${functionCall.name}`}
+        className="mb-2"
+      />
       <JsonViewer
         theme={isDark ? "dark" : "light"}
         value={parsedArgs}
