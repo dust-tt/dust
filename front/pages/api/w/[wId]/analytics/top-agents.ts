@@ -14,7 +14,7 @@ import type { WithAPIErrorResponse } from "@app/types";
 
 const QuerySchema = z.object({
   days: z.coerce.number().positive().optional().default(DEFAULT_PERIOD_DAYS),
-  limit: z.coerce.number().positive().max(50).optional().default(10),
+  limit: z.coerce.number().positive().max(100).optional().default(25),
 });
 
 export type WorkspaceTopAgentRow = {

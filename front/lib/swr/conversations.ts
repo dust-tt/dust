@@ -950,7 +950,7 @@ export function useConversationMarkAsRead({
         clearTimeout(timeout);
       }
     };
-  }, [conversation?.sId, markAsRead, conversation?.spaceId]);
+  }, [markAsRead, conversation]);
 
   return {
     markAsRead,

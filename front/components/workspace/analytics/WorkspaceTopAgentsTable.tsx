@@ -68,7 +68,7 @@ export function WorkspaceTopAgentsTable({
     useWorkspaceTopAgents({
       workspaceId,
       days: period,
-      limit: 10,
+      limit: 100,
       disabled: !workspaceId,
     });
 
@@ -88,7 +88,7 @@ export function WorkspaceTopAgentsTable({
           Top agents
         </h3>
         <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Agents with the most messages in this time range.
+          Top 100 agents with the most messages in this time range.
         </p>
       </div>
       {isTopAgentsLoading ? (
@@ -107,7 +107,7 @@ export function WorkspaceTopAgentsTable({
         <ScrollableDataTable<TopAgentRowData>
           data={rows}
           columns={columns}
-          maxHeight="max-h-125"
+          maxHeight="max-h-64"
         />
       )}
     </div>

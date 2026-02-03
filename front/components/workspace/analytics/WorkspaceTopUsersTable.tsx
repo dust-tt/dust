@@ -65,7 +65,7 @@ export function WorkspaceTopUsersTable({
     {
       workspaceId,
       days: period,
-      limit: 10,
+      limit: 100,
       disabled: !workspaceId,
     }
   );
@@ -86,7 +86,7 @@ export function WorkspaceTopUsersTable({
           Top users
         </h3>
         <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Users with the most messages in this time range.
+          Top 100 users with the most messages in this time range.
         </p>
       </div>
       {isTopUsersLoading ? (
@@ -105,7 +105,7 @@ export function WorkspaceTopUsersTable({
         <ScrollableDataTable<TopUserRowData>
           data={rows}
           columns={columns}
-          maxHeight="max-h-125"
+          maxHeight="max-h-64"
         />
       )}
     </div>

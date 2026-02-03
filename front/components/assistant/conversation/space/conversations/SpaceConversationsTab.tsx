@@ -78,6 +78,7 @@ export function SpaceConversationsTab({
 
   const { markAllAsRead, isMarkingAllAsRead } = useMarkAllConversationsAsRead({
     owner,
+    spaceId: spaceInfo.sId,
   });
 
   const [isSearchPopoverOpen, setIsSearchPopoverOpen] = useState(false);
