@@ -1,0 +1,33 @@
+{
+  "name": "@dust-tt/llm-router",
+  "version": "0.1.0",
+  "description": "LLM Router with strict linting and formatting",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "biome lint --write .",
+    "format": "biome format --write .",
+    "format:check": "biome check .",
+    "check": "tsc --noEmit && npm run format:check"
+  },
+  "keywords": [
+    "llm",
+    "router"
+  ],
+  "author": "Dust",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
+    "typescript": "^5.9.3"
+  }
+}
