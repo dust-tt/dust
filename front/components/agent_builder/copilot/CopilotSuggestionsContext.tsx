@@ -270,12 +270,15 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
+      // Refresh suggestions to update card states
+      void mutateSuggestions();
+
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
     },
-    [patchSuggestions, suggestions]
+    [patchSuggestions, suggestions, mutateSuggestions]
   );
 
   const rejectSuggestion = useCallback(
@@ -295,12 +298,15 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
+      // Refresh suggestions to update card states
+      void mutateSuggestions();
+
       if (suggestion.kind === "instructions") {
         editor.commands.rejectSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
     },
-    [patchSuggestions, suggestions]
+    [patchSuggestions, suggestions, mutateSuggestions]
   );
 
   const acceptAllInstructionSuggestions = useCallback(async () => {
