@@ -208,7 +208,7 @@ async function createServer(
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: RUN_AGENT_TOOL_NAME,
+          toolNameForMonitoring: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
           agentLoopContext,
           enableAlerting: true,
         },
@@ -239,7 +239,7 @@ async function createServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: RUN_AGENT_TOOL_NAME,
+        toolNameForMonitoring: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
