@@ -88,8 +88,16 @@ export function LLMTracePage() {
               color="rose"
               label={`Agent: ${trace.context.agentConfigurationId}`}
               size="sm"
-              // The link below may not exist, it's a best effort proposal.
               href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
+              icon={ExternalLinkIcon}
+            />
+          )}
+          {trace.context.conversationId && (
+            <Chip
+              color="golden"
+              label={`Conversation`}
+              size="sm"
+              href={`/poke/${owner.sId}/conversation/${trace.context.conversationId}`}
               icon={ExternalLinkIcon}
             />
           )}
