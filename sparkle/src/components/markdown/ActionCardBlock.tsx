@@ -39,7 +39,7 @@ const ACTION_CARD_STATES = [
   "rejected",
 ] as const;
 
-export type ActionCardState = (typeof ACTION_CARD_STATES)[number];
+type ActionCardState = (typeof ACTION_CARD_STATES)[number];
 
 // Props for markdown directive parsing (comma-separated strings)
 interface AvatarStackStringProps {
@@ -133,7 +133,7 @@ const titleClassVariants = cva("", {
     status: {
       default: "s-heading-sm s-text-foreground dark:s-text-foreground-night",
       resolved:
-        "s-text-sm s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
+        "s-text-base s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
       disabled: "s-heading-sm s-text-faint dark:s-text-faint-night",
     },
   },
@@ -145,8 +145,8 @@ const titleClassVariants = cva("", {
 const descriptionClassVariants = cva("", {
   variants: {
     status: {
-      default: "s-text-sm s-text-foreground dark:s-text-foreground-night",
-      disabled: "s-text-sm s-text-faint dark:s-text-faint-night",
+      default: "s-text-foreground dark:s-text-foreground-night",
+      disabled: "s-text-faint dark:s-text-faint-night",
     },
   },
   defaultVariants: {
@@ -295,18 +295,14 @@ export function ActionCardBlock({
       className={containerVariants({ size })}
     >
       {showHeader && (
-        <div className="s-flex s-min-h-9 s-items-center s-justify-between s-gap-2">
-          <div className="s-flex s-min-w-0 s-items-center s-gap-2">
-            {resolvedVisual && (
-              <div className="s-mt-0.5 s-flex-shrink-0">{resolvedVisual}</div>
-            )}
+        <div className="s-flex s-min-h-9 s-items-center s-justify-between">
+          <div className="s-flex s-items-center s-gap-2">
+            {resolvedVisual}
             {resolvedTitle && (
               <div className={titleClasses}>{resolvedTitle}</div>
             )}
           </div>
-          {showActionsInHeader && (
-            <div className="s-flex-shrink-0">{actionButtons}</div>
-          )}
+          {showActionsInHeader && actionButtons}
         </div>
       )}
 

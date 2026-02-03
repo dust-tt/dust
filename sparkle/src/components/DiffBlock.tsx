@@ -1,5 +1,5 @@
 import { cva } from "class-variance-authority";
-import React, { useLayoutEffect, useRef, useState } from "react";
+import React from "react";
 
 import { cn } from "../lib/utils";
 import { Button } from "./Button";
@@ -35,14 +35,14 @@ export function DiffBlock({
   className,
   collapsedLines = DEFAULT_COLLAPSED_LINES,
 }: DiffBlockProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [isCollapsible, setIsCollapsible] = useState(false);
-  const [collapsedHeight, setCollapsedHeight] = useState<number>();
-  const [expandedHeight, setExpandedHeight] = useState<number>();
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isCollapsible, setIsCollapsible] = React.useState(false);
+  const [collapsedHeight, setCollapsedHeight] = React.useState<number>();
+  const [expandedHeight, setExpandedHeight] = React.useState<number>();
 
-  useLayoutEffect(() => {
+  React.useLayoutEffect(() => {
     const element = contentRef.current;
     const container = containerRef.current;
     if (!element || !container) {
