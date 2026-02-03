@@ -14,13 +14,12 @@ import {
   triggerFromEmail,
   userAndWorkspacesFromEmail,
 } from "@app/lib/api/assistant/email_trigger";
+import apiConfig from "@app/lib/api/config";
 import { Authenticator } from "@app/lib/auth";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { Result, WithAPIErrorResponse } from "@app/types";
 import { Err, isSupportedFileContentType, Ok, removeNulls } from "@app/types";
-
-const { EMAIL_WEBHOOK_SECRET = "" } = process.env;
 
 // Disabling Next.js's body parser as formidable has its own
 export const config = {
@@ -144,7 +143,10 @@ async function handler(
       );
       const [username, password] = credentials.split(":");
 
-      if (username !== "sendgrid" || password !== EMAIL_WEBHOOK_SECRET) {
+      if (
+        username !== "sendgrid" ||
+        password !== apiConfig.getEmailWebhookSecret()
+      ) {
         return apiError(req, res, {
           status_code: 403,
           api_error: {

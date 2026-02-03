@@ -49,9 +49,9 @@ export type EmailReplyContext = {
   originalText: string;
   fromEmail: string;
   fromFull: string;
-  agentConfigurationSId: string;
-  workspaceSId: string;
-  conversationSId: string;
+  agentConfigurationId: string;
+  workspaceId: string;
+  conversationId: string;
 };
 
 function isEmailReplyContext(value: unknown): value is EmailReplyContext {
@@ -64,32 +64,35 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
     typeof v.originalText === "string" &&
     typeof v.fromEmail === "string" &&
     typeof v.fromFull === "string" &&
-    typeof v.agentConfigurationSId === "string" &&
-    typeof v.workspaceSId === "string" &&
-    typeof v.conversationSId === "string"
+    typeof v.agentConfigurationId === "string" &&
+    typeof v.workspaceId === "string" &&
+    typeof v.conversationId === "string"
   );
 }
 
-function makeEmailReplyContextKey(agentMessageSId: string): string {
-  return `${EMAIL_REPLY_CONTEXT_PREFIX}:${agentMessageSId}`;
+function makeEmailReplyContextKey(
+  workspaceId: string,
+  agentMessageId: string
+): string {
+  return `${EMAIL_REPLY_CONTEXT_PREFIX}:${workspaceId}:${agentMessageId}`;
 }
 
 /**
  * Store email reply context in Redis for later use when agent message completes.
  */
 export async function storeEmailReplyContext(
-  agentMessageSId: string,
+  agentMessageId: string,
   context: EmailReplyContext
 ): Promise<void> {
   const redis = await getRedisClient({ origin: REDIS_ORIGIN });
-  const key = makeEmailReplyContextKey(agentMessageSId);
+  const key = makeEmailReplyContextKey(context.workspaceId, agentMessageId);
 
   await redis.set(key, JSON.stringify(context), {
     EX: EMAIL_REPLY_CONTEXT_TTL_SECONDS,
   });
 
   logger.info(
-    { agentMessageSId, key },
+    { agentMessageId, key },
     "[email] Stored email reply context in Redis"
   );
 }
@@ -99,10 +102,11 @@ export async function storeEmailReplyContext(
  * Returns null if not found (expired or never stored).
  */
 export async function getAndDeleteEmailReplyContext(
-  agentMessageSId: string
+  workspaceId: string,
+  agentMessageId: string
 ): Promise<EmailReplyContext | null> {
   const redis = await getRedisClient({ origin: REDIS_ORIGIN });
-  const key = makeEmailReplyContextKey(agentMessageSId);
+  const key = makeEmailReplyContextKey(workspaceId, agentMessageId);
 
   const value = await redis.get(key);
   if (!value) {
@@ -117,7 +121,7 @@ export async function getAndDeleteEmailReplyContext(
     parsed = JSON.parse(value);
   } catch {
     logger.warn(
-      { agentMessageSId, key },
+      { agentMessageId, key },
       "[email] Failed to parse email reply context JSON from Redis"
     );
     return null;
@@ -125,7 +129,7 @@ export async function getAndDeleteEmailReplyContext(
 
   if (!isEmailReplyContext(parsed)) {
     logger.warn(
-      { agentMessageSId, key },
+      { agentMessageId, key },
       "[email] Invalid email reply context structure from Redis"
     );
     return null;
@@ -599,9 +603,9 @@ export async function triggerFromEmail({
         originalText: email.text,
         fromEmail: email.envelope.from,
         fromFull: email.envelope.full,
-        agentConfigurationSId: agentConfig.sId,
-        workspaceSId: workspace.sId,
-        conversationSId: conversation.sId,
+        agentConfigurationId: agentConfig.sId,
+        workspaceId: workspace.sId,
+        conversationId: conversation.sId,
       });
     }
   }

@@ -5,8 +5,8 @@ import {
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
 import {
-  emailReplyOnCompletionActivity,
-  emailReplyOnErrorActivity,
+  sendEmailReplyOnCompletion,
+  sendEmailReplyOnError,
 } from "@app/temporal/agent_loop/activities/email_reply";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
@@ -24,7 +24,7 @@ export async function finalizeSuccessfulAgentLoopActivity(
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
     conversationUnreadNotificationActivity(authType, agentLoopArgs),
     handleMentions(authType, agentLoopArgs),
-    emailReplyOnCompletionActivity(authType, agentLoopArgs),
+    sendEmailReplyOnCompletion(authType, agentLoopArgs),
   ]);
 }
 
@@ -38,7 +38,11 @@ export async function finalizeCancelledAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    emailReplyOnErrorActivity(agentLoopArgs, "Agent execution was cancelled."),
+    sendEmailReplyOnError(
+      authType,
+      agentLoopArgs,
+      "Agent execution was cancelled."
+    ),
   ]);
 }
 
@@ -53,7 +57,8 @@ export async function finalizeErroredAgentLoopActivity(
     snapshotAgentMessageSkills(authType, agentLoopArgs),
     launchAgentMessageAnalytics(authType, agentLoopArgs),
     launchTrackProgrammaticUsage(authType, agentLoopArgs),
-    emailReplyOnErrorActivity(
+    sendEmailReplyOnError(
+      authType,
       agentLoopArgs,
       `Agent execution failed: ${error.message}`
     ),

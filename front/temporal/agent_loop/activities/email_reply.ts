@@ -10,15 +10,13 @@ import {
   getAndDeleteEmailReplyContext,
   replyToEmail,
 } from "@app/lib/api/assistant/email_trigger";
+import config from "@app/lib/api/config";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { isDevelopment } from "@app/types";
 import type { AgentLoopArgs } from "@app/types/assistant/agent_run";
 import { getAgentLoopData } from "@app/types/assistant/agent_run";
-
-const { DUST_CLIENT_FACING_URL = "", PRODUCTION_DUST_WORKSPACE_ID = "" } =
-  process.env;
 
 /**
  * Reconstructs a minimal InboundEmail from the stored context.
@@ -59,13 +57,14 @@ function checkEmailReplyGating(
     );
     return false;
   }
+  const productionDustWorkspaceId = config.getProductionDustWorkspaceId();
   if (
     !isDevelopment() &&
-    PRODUCTION_DUST_WORKSPACE_ID &&
-    context.workspaceSId !== PRODUCTION_DUST_WORKSPACE_ID
+    productionDustWorkspaceId &&
+    context.workspaceId !== productionDustWorkspaceId
   ) {
     logger.warn(
-      { agentMessageId, workspaceSId: context.workspaceSId },
+      { agentMessageId, workspaceId: context.workspaceId },
       "[email] Workspace not gated for email replies, skipping reply"
     );
     return false;
@@ -77,7 +76,7 @@ function checkEmailReplyGating(
  * Send an email reply after agent message completion.
  * This is a fire-and-forget operation: failures are logged but don't fail the workflow.
  */
-export async function emailReplyOnCompletionActivity(
+export async function sendEmailReplyOnCompletion(
   authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs
 ): Promise<void> {
@@ -88,6 +87,7 @@ export async function emailReplyOnCompletionActivity(
     }
 
     const context = await getAndDeleteEmailReplyContext(
+      authType.workspaceId,
       agentLoopArgs.agentMessageId
     );
     if (!context) {
@@ -121,7 +121,7 @@ export async function emailReplyOnCompletionActivity(
 
     // Get agent configuration for the reply sender name.
     const agentConfiguration = await getAgentConfiguration(auth, {
-      agentId: context.agentConfigurationSId,
+      agentId: context.agentConfigurationId,
       variant: "light",
     });
 
@@ -135,10 +135,10 @@ export async function emailReplyOnCompletionActivity(
 
     // Build the full HTML with conversation link.
     const conversationLink = getConversationRoute(
-      context.workspaceSId,
+      context.workspaceId,
       conversation.sId,
       undefined,
-      DUST_CLIENT_FACING_URL
+      config.getClientFacingUrl()
     );
     const fullHtmlContent = `<div><div>${htmlContent}</div><br/><a href="${conversationLink}">Open in Dust</a></div>`;
 
@@ -175,7 +175,8 @@ export async function emailReplyOnCompletionActivity(
  * This mirrors the prior behavior where errors were reported back to the sender.
  * Fire-and-forget: failures are logged but don't fail the workflow.
  */
-export async function emailReplyOnErrorActivity(
+export async function sendEmailReplyOnError(
+  authType: AuthenticatorType,
   agentLoopArgs: AgentLoopArgs,
   errorMessage: string
 ): Promise<void> {
@@ -185,6 +186,7 @@ export async function emailReplyOnErrorActivity(
     }
 
     const context = await getAndDeleteEmailReplyContext(
+      authType.workspaceId,
       agentLoopArgs.agentMessageId
     );
     if (!context) {
