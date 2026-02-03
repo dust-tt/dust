@@ -226,6 +226,8 @@ const NewAgentPage = withSuspense(
   "NewAgentPage"
 );
 
+import { AdminLayout } from "@spa/app/layouts/AdminLayout";
+
 const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
@@ -246,28 +248,28 @@ const router = createBrowserRouter(
           ],
         },
 
-        // Workspace settings
-        { path: "workspace", element: <WorkspaceSettingsPage /> },
-
-        // Members
-        { path: "members", element: <MembersPage /> },
-
-        // Analytics
-        { path: "analytics", element: <AnalyticsPage /> },
-
-        // Subscription
-        { path: "subscription", element: <SubscriptionPage /> },
-        { path: "subscription/manage", element: <ManageSubscriptionPage /> },
         {
-          path: "subscription/payment_processing",
-          element: <PaymentProcessingPage />,
+          path: "",
+          element: <AdminLayout />,
+          children: [
+            { path: "members", element: <MembersPage /> },
+            { path: "workspace", element: <WorkspaceSettingsPage /> },
+            { path: "analytics", element: <AnalyticsPage /> },
+            { path: "subscription", element: <SubscriptionPage /> },
+            {
+              path: "subscription/manage",
+              element: <ManageSubscriptionPage />,
+            },
+            {
+              path: "subscription/payment_processing",
+              element: <PaymentProcessingPage />,
+            },
+            { path: "developers/api-keys", element: <APIKeysPage /> },
+            { path: "developers/credits-usage", element: <CreditsUsagePage /> },
+            { path: "developers/providers", element: <ProvidersPage /> },
+            { path: "developers/dev-secrets", element: <SecretsPage /> },
+          ],
         },
-
-        // Developers
-        { path: "developers/api-keys", element: <APIKeysPage /> },
-        { path: "developers/credits-usage", element: <CreditsUsagePage /> },
-        { path: "developers/providers", element: <ProvidersPage /> },
-        { path: "developers/dev-secrets", element: <SecretsPage /> },
 
         // Labs
         { path: "labs", element: <LabsPage /> },
