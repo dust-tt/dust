@@ -5,12 +5,10 @@ import type { ReactElement } from "react";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import {
-  appGetServerSideProps,
-  type AppPageWithLayout,
-} from "@app/lib/auth/appServerSideProps";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform/next";
 import { useSkill } from "@app/lib/swr/skill_configurations";
 

@@ -21,12 +21,10 @@ import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSe
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsForBuilders } from "@app/lib/auth/appServerSideProps";
 import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
-import {
-  appGetServerSidePropsForBuilders,
-  type AppPageWithLayout,
-} from "@app/lib/auth/appServerSideProps";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
