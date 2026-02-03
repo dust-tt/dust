@@ -29,26 +29,74 @@ Use the \`${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` tool to create JavaScri
 - Supported file extensions: .js, .jsx, .ts, .tsx
 - Files are automatically made available to the user for execution
 
-The tool supports two creation modes via the \`mode\` parameter:
-
-**Template mode** (\`mode: "template"\`):
-- References existing content from knowledge via \`<knowledge id="...">\` tags
-- Pass the ID from the knowledge tag to the \`source\` parameter
-- Content is fetched server-side without consuming context tokens
-- Example: \`<knowledge id="template_node_id">\` → \`source: "template_node_id"\`
-- Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to customize
-- This approach works well when adapting existing templates (preserves structure/style, no token cost for base content)
+The tool supports two creation modes via the \`mode\` parameter. The mode determines where the
+React component code comes from:
 
 **Inline mode** (\`mode: "inline"\`):
-- Provide the file content directly in the \`source\` parameter
-- The full code is passed as a string
-- Typical use cases: No suitable template exists, complete rewrite needed, or full code visibility required upfront
+Use when: Creating new visualizations from scratch or providing code you've written.
+How it works: You provide the complete React component code directly as a string in the source parameter.
+Example:
+\`\`\`
+${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_name: "SineCosineChart.tsx",
+  mime_type: "${VIZ_MIME_TYPE}",
+  mode: "inline",
+  source: \`[React component code]\`
+})
+\`\`\`
+Typical use cases: No suitable template exists, complete rewrite needed, or full code visibility required upfront.
+
+
+**Template mode** (\`mode: "template"\`):
+Use when: Reusing existing React code already stored in the company's knowledge base (data sources).
+How it works:
+- Reference existing content by its ID (found in <knowledge id="..."> tags from company data searches)
+- Pass that ID to the source parameter
+- Content is fetched server-side without consuming context tokens
+- You can then customize it using \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\`
+Example:
+\`\`\`
+// After finding code with <knowledge id="template_node_id">
+${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_name: "NewVisualization.tsx",
+  mime_type: "${VIZ_MIME_TYPE}",
+  mode: "template",
+  source: "template_node_id",  // ID from the knowledge tag
+  description: "Sales dashboard"
+})
+\`\`\`
+Common pattern: Create from template, then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to customize.
+This approach works well when adapting existing templates (preserves structure/style, no token cost for base content).
+Typical use cases: Suitable template exists, adapting existing code, saving tokens on large files.
 
 ### Updating Existing Files:
 - To modify existing Interactive Content files, always use \`${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` first to read the current content
 - Then use \`${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}\` to make targeted changes by replacing specific text
 - The edit tool requires exact text matching - include surrounding context for unique identification
 - Never attempt to edit without first retrieving the current file content
+
+Example:
+
+**Step 1: Retrieve the current file content first**
+\`\`\`
+${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
+  file_id: "fil_abc123"
+})
+// This returns the current file content. Examine it carefully to identify the exact text to replace.
+\`\`\`
+
+**Step 2: Make targeted edits using the retrieved content**
+\`\`\`
+edit_interactive_content_file({
+  file_id: "fil_abc123",
+  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
+  expected_replacements: 1,
+})
+\`\`\`
+
+The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
+
 
 ### Validation
 
@@ -115,49 +163,6 @@ ${VIZ_MISCELLANEOUS_GUIDELINES}
 ${VIZ_USE_FILE_EXAMPLES}
 
 Examples:
-
-**Creating a file from a knowledge template:**
-\`\`\`
-${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_name: "NewVisualization.tsx",
-  mime_type: "${VIZ_MIME_TYPE}",
-  mode: "template",
-  source: "template_node_id",  // ID from <knowledge id="...">
-  description: "Sales dashboard"
-})
-\`\`\`
-
-**Creating a file with inline content:**
-\`\`\`
-${CREATE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_name: "SineCosineChart.tsx",
-  mime_type: "${VIZ_MIME_TYPE}",
-  mode: "inline",
-  source: \`[React component code]\`
-})
-\`\`\`
-
-Example File Editing Workflow:
-
-**Step 1: Retrieve the current file content first**
-\`\`\`
-${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123"
-})
-// This returns the current file content - examine it carefully to identify the exact text to replace
-\`\`\`
-
-**Step 2: Make targeted edits using the retrieved content**
-\`\`\`
-${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
-  file_id: "fil_abc123",
-  old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
-  expected_replacements: 1,
-})
-\`\`\`
-
-The edit tool requires exact text matching, so retrieving the current content first ensures your edits will succeed.
 
 ${VIZ_CHART_EXAMPLES}
 `;
