@@ -57,7 +57,11 @@ export const frontSequelize = new SequelizeWithComments(
     pool: {
       // Default is 5.
       // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
-      max: 25,
+      // In test environment, use a much smaller pool to avoid exhausting
+      // PostgreSQL's max_connections when running tests in parallel with sharding.
+      // Each forked test process creates its own pool, so:
+      // 3 shards × ~10 test files per shard × 3 connections = ~90 connections (under default max_connections of 100)
+      max: process.env.NODE_ENV === "test" ? 3 : 25,
       acquire: 30000,
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
