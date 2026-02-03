@@ -7,7 +7,7 @@ import {
 import {
   sendEmailReplyOnCompletion,
   sendEmailReplyOnError,
-} from "@app/temporal/agent_loop/activities/email_reply";
+} from "@app/lib/api/assistant/email_reply";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
