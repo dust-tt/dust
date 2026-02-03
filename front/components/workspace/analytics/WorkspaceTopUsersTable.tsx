@@ -92,7 +92,7 @@ export function WorkspaceTopUsersTable({
           Top users
         </h3>
         <p className="text-xs text-muted-foreground dark:text-muted-foreground-night">
-          Users with the most messages in this time range.
+          Top 100 users with the most messages in this time range.
         </p>
       </div>
       {isTopUsersLoading ? (
