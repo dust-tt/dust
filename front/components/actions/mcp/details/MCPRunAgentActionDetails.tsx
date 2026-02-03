@@ -104,7 +104,7 @@ export function MCPRunAgentActionDetails({
       const output = lastNotification.data.output;
       if (isStoreResourceProgressOutput(output)) {
         const runAgentQueryResource = output.contents.find(
-          isRunAgentQueryResourceType,
+          isRunAgentQueryResourceType
         );
         if (runAgentQueryResource) {
           setQuery(runAgentQueryResource.resource.text);
@@ -183,7 +183,7 @@ export function MCPRunAgentActionDetails({
   };
   const additionalMarkdownPlugins: PluggableList = useMemo(
     () => [getCiteDirective(), agentMentionDirective],
-    [],
+    []
   );
 
   const additionalMarkdownComponents: Components = useMemo(
@@ -192,7 +192,7 @@ export function MCPRunAgentActionDetails({
       // Warning: we can't rename easily `mention` to agent_mention, because the messages DB contains this name
       mention: getAgentMentionPlugin(owner),
     }),
-    [owner],
+    [owner]
   );
 
   if (!childAgent) {
@@ -245,7 +245,7 @@ export function MCPRunAgentActionDetails({
                 <ContentMessage title="Added Tools" variant="primary" size="lg">
                   {addedMCPServerViewIds.map((id) => {
                     const mcpServerView = mcpServerViews.find(
-                      (v) => v.sId === id,
+                      (v) => v.sId === id
                     );
                     if (!mcpServerView) {
                       return null;
@@ -348,7 +348,7 @@ export function MCPRunAgentActionDetails({
                                     <AttachmentCitation
                                       key={index}
                                       attachmentCitation={markdownCitationToAttachmentCitation(
-                                        document,
+                                        document
                                       )}
                                       owner={owner}
                                       conversationId={null}
