@@ -131,6 +131,8 @@ function ToolsSuggestionCards({
             state={cardState}
             applyLabel="Add"
             rejectLabel="Dismiss"
+            acceptedTitle={`${serverName} tool added`}
+            rejectedTitle={`${serverName} tool dismissed`}
             actionsPosition="header"
             onClickAccept={() => handleAcceptAddition(tool)}
             onClickReject={handleReject}
@@ -148,6 +150,8 @@ function ToolsSuggestionCards({
             state={cardState}
             applyLabel="Remove"
             rejectLabel="Dismiss"
+            acceptedTitle={`${serverName} tool removed`}
+            rejectedTitle={`${serverName} tool dismissed`}
             actionsPosition="header"
             onClickAccept={() => handleAcceptDeletion(tool)}
             onClickReject={handleReject}
@@ -215,6 +219,8 @@ function SkillsSuggestionCards({
           state={cardState}
           applyLabel="Add"
           rejectLabel="Dismiss"
+          acceptedTitle={`${skill.name} skill added`}
+          rejectedTitle={`${skill.name} skill dismissed`}
           actionsPosition="header"
           onClickAccept={() => handleAcceptAddition(skill)}
           onClickReject={handleReject}
@@ -229,6 +235,8 @@ function SkillsSuggestionCards({
           state={cardState}
           applyLabel="Remove"
           rejectLabel="Dismiss"
+          acceptedTitle={`${skill.name} skill removed`}
+          rejectedTitle={`${skill.name} skill dismissed`}
           actionsPosition="header"
           onClickAccept={() => handleAcceptDeletion(skill)}
           onClickReject={handleReject}
@@ -295,6 +303,8 @@ function ModelSuggestionCard({
       state={cardState}
       applyLabel="Change"
       rejectLabel="Dismiss"
+      acceptedTitle={`Model changed to ${modelName}`}
+      rejectedTitle={`${modelName} model dismissed`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}

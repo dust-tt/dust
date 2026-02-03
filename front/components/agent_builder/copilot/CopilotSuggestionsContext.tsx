@@ -1,5 +1,4 @@
 import type { Editor } from "@tiptap/react";
-import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
 import React, {
   createContext,
@@ -29,15 +28,16 @@ import type {
 
 export interface CopilotSuggestionsContextType {
   // Backend suggestions fetched via SWR.
-  suggestions: AgentSuggestionType[];
-  getSuggestion: (sId: string) => AgentSuggestionWithRelationsType | null;
-  triggerRefetch: () => void;
+  getSuggestionWithRelations: (
+    sId: string
+  ) => AgentSuggestionWithRelationsType | null;
+  getPendingSuggestions: () => AgentSuggestionType[];
+  triggerRefetch: (sId: string) => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
 
   // Refetch tracking (persists across component remounts).
   hasAttemptedRefetch: (sId: string) => boolean;
-  markRefetchAttempted: (sId: string) => void;
 
   // Editor registration for applying instruction suggestions.
   registerEditor: (editor: Editor) => void;
@@ -81,14 +81,15 @@ export const CopilotSuggestionsProvider = ({
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
 
+  // Local state for processed (accepted/rejected) suggestions - prevents card "blink"
+  const [processedSuggestions, setProcessedSuggestions] = useState<
+    Map<string, AgentSuggestionType>
+  >(new Map());
+
   const hasAttemptedRefetch = useCallback(
     (sId: string) => refetchAttemptedRef.current.has(sId),
     []
   );
-
-  const markRefetchAttempted = useCallback((sId: string) => {
-    refetchAttemptedRef.current.add(sId);
-  }, []);
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
@@ -111,14 +112,35 @@ export const CopilotSuggestionsProvider = ({
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
-    state: ["pending", "approved", "rejected"],
+    state: ["pending"],
     workspaceId: owner.sId,
   });
 
-  // Resolve a suggestion with its relations from context.
+  // Convert backend suggestions to Map for O(1) lookups
+  const suggestionsMap = useMemo(
+    () => new Map(suggestions.map((s) => [s.sId, s])),
+    [suggestions]
+  );
+
+  // Get suggestion: check local state first, then backend
   const getSuggestion = useCallback(
+    (sId: string) => processedSuggestions.get(sId) ?? suggestionsMap.get(sId),
+    [processedSuggestions, suggestionsMap]
+  );
+
+  // Get all suggestions (local state takes precedence over backend)
+  const getAllSuggestions = useCallback(() => {
+    const all = new Map(suggestionsMap);
+    for (const [sId, s] of processedSuggestions) {
+      all.set(sId, s);
+    }
+    return [...all.values()];
+  }, [suggestionsMap, processedSuggestions]);
+
+  // Resolve a suggestion with its relations from context.
+  const getSuggestionWithRelations = useCallback(
     (sId: string): AgentSuggestionWithRelationsType | null => {
-      const suggestion = suggestions.find((s) => s.sId === sId);
+      const suggestion = getSuggestion(sId);
       if (!suggestion) {
         return null;
       }
@@ -181,12 +203,30 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: null };
       }
     },
-    [suggestions, skillsMap, mcpServerViewsMap]
+    [getSuggestion, skillsMap, mcpServerViewsMap]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
-  const triggerRefetch = useMemo(
-    () => debounce(() => void mutateSuggestions(), 100),
+  // Marks sIds as attempted only AFTER the fetch completes to avoid error flash.
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const attemptedRefetchRef = useRef<Set<string>>(new Set());
+
+  const triggerRefetch = useCallback(
+    (sId: string) => {
+      attemptedRefetchRef.current.add(sId);
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(async () => {
+        await mutateSuggestions();
+        for (const id of attemptedRefetchRef.current) {
+          refetchAttemptedRef.current.add(id);
+        }
+        attemptedRefetchRef.current.clear();
+      }, 100);
+    },
     [mutateSuggestions]
   );
 
@@ -260,25 +300,43 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
-      const suggestion = suggestions.find((s) => s.sId === sId);
+      const suggestion = getSuggestion(sId);
       if (!suggestion) {
         return;
       }
 
-      const result = await patchSuggestions([sId], "approved");
-      if (!result || result.suggestions.length === 0) {
-        return;
-      }
-
-      // Refresh suggestions to update card states
-      void mutateSuggestions();
+      // Optimistic update
+      setProcessedSuggestions((prev) => {
+        const next = new Map(prev);
+        next.set(sId, { ...suggestion, state: "approved" });
+        return next;
+      });
 
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
+
+      const result = await patchSuggestions([sId], "approved");
+      if (!result || result.suggestions.length === 0) {
+        // Revert on error
+        setProcessedSuggestions((prev) => {
+          const next = new Map(prev);
+          next.set(sId, suggestion);
+          return next;
+        });
+        if (suggestion.kind === "instructions") {
+          // Re-apply suggestion in editor
+          editor.commands.applySuggestion({
+            id: sId,
+            find: suggestion.suggestion.oldString,
+            replacement: suggestion.suggestion.newString,
+          });
+          appliedSuggestionsRef.current.add(sId);
+        }
+      }
     },
-    [patchSuggestions, suggestions, mutateSuggestions]
+    [patchSuggestions, getSuggestion]
   );
 
   const rejectSuggestion = useCallback(
@@ -288,25 +346,43 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
-      const suggestion = suggestions.find((s) => s.sId === sId);
+      const suggestion = getSuggestion(sId);
       if (!suggestion) {
         return;
       }
 
-      const result = await patchSuggestions([sId], "rejected");
-      if (!result || result.suggestions.length === 0) {
-        return;
-      }
-
-      // Refresh suggestions to update card states
-      void mutateSuggestions();
+      // Optimistic update
+      setProcessedSuggestions((prev) => {
+        const next = new Map(prev);
+        next.set(sId, { ...suggestion, state: "rejected" });
+        return next;
+      });
 
       if (suggestion.kind === "instructions") {
         editor.commands.rejectSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
+
+      const result = await patchSuggestions([sId], "rejected");
+      if (!result || result.suggestions.length === 0) {
+        // Revert on error
+        setProcessedSuggestions((prev) => {
+          const next = new Map(prev);
+          next.set(sId, suggestion);
+          return next;
+        });
+        if (suggestion.kind === "instructions") {
+          // Re-apply suggestion in editor
+          editor.commands.applySuggestion({
+            id: sId,
+            find: suggestion.suggestion.oldString,
+            replacement: suggestion.suggestion.newString,
+          });
+          appliedSuggestionsRef.current.add(sId);
+        }
+      }
     },
-    [patchSuggestions, suggestions, mutateSuggestions]
+    [patchSuggestions, getSuggestion]
   );
 
   const acceptAllInstructionSuggestions = useCallback(async () => {
@@ -315,22 +391,53 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
-    const instructionSuggestionIds = suggestions
-      .filter((s) => s.kind === "instructions" && s.state === "pending")
-      .map((s) => s.sId);
+    const instructionSuggestions = getAllSuggestions().filter(
+      (s) => s.kind === "instructions" && s.state === "pending"
+    );
 
-    if (instructionSuggestionIds.length === 0) {
+    if (instructionSuggestions.length === 0) {
       return;
     }
 
-    const result = await patchSuggestions(instructionSuggestionIds, "approved");
-    if (result) {
-      editor.commands.acceptAllSuggestions();
-      for (const sId of instructionSuggestionIds) {
-        appliedSuggestionsRef.current.delete(sId);
+    const sIds = instructionSuggestions.map((s) => s.sId);
+
+    // Optimistic update
+    setProcessedSuggestions((prev) => {
+      const next = new Map(prev);
+      for (const s of instructionSuggestions) {
+        next.set(s.sId, { ...s, state: "approved" });
+      }
+      return next;
+    });
+
+    editor.commands.acceptAllSuggestions();
+    for (const sId of sIds) {
+      appliedSuggestionsRef.current.delete(sId);
+    }
+
+    const result = await patchSuggestions(sIds, "approved");
+    if (!result) {
+      // Revert on error
+      setProcessedSuggestions((prev) => {
+        const next = new Map(prev);
+        for (const s of instructionSuggestions) {
+          next.set(s.sId, s);
+        }
+        return next;
+      });
+      // Re-apply suggestions in editor
+      for (const s of instructionSuggestions) {
+        if (s.kind === "instructions") {
+          editor.commands.applySuggestion({
+            id: s.sId,
+            find: s.suggestion.oldString,
+            replacement: s.suggestion.newString,
+          });
+          appliedSuggestionsRef.current.add(s.sId);
+        }
       }
     }
-  }, [patchSuggestions, suggestions]);
+  }, [patchSuggestions, getAllSuggestions]);
 
   const rejectAllInstructionSuggestions = useCallback(async () => {
     const editor = editorRef.current;
@@ -338,22 +445,53 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
-    const instructionSuggestionIds = suggestions
-      .filter((s) => s.kind === "instructions" && s.state === "pending")
-      .map((s) => s.sId);
+    const instructionSuggestions = getAllSuggestions().filter(
+      (s) => s.kind === "instructions" && s.state === "pending"
+    );
 
-    if (instructionSuggestionIds.length === 0) {
+    if (instructionSuggestions.length === 0) {
       return;
     }
 
-    const result = await patchSuggestions(instructionSuggestionIds, "rejected");
-    if (result) {
-      editor.commands.rejectAllSuggestions();
-      for (const sId of instructionSuggestionIds) {
-        appliedSuggestionsRef.current.delete(sId);
+    const sIds = instructionSuggestions.map((s) => s.sId);
+
+    // Optimistic update
+    setProcessedSuggestions((prev) => {
+      const next = new Map(prev);
+      for (const s of instructionSuggestions) {
+        next.set(s.sId, { ...s, state: "rejected" });
+      }
+      return next;
+    });
+
+    editor.commands.rejectAllSuggestions();
+    for (const sId of sIds) {
+      appliedSuggestionsRef.current.delete(sId);
+    }
+
+    const result = await patchSuggestions(sIds, "rejected");
+    if (!result) {
+      // Revert on error
+      setProcessedSuggestions((prev) => {
+        const next = new Map(prev);
+        for (const s of instructionSuggestions) {
+          next.set(s.sId, s);
+        }
+        return next;
+      });
+      // Re-apply suggestions in editor
+      for (const s of instructionSuggestions) {
+        if (s.kind === "instructions") {
+          editor.commands.applySuggestion({
+            id: s.sId,
+            find: s.suggestion.oldString,
+            replacement: s.suggestion.newString,
+          });
+          appliedSuggestionsRef.current.add(s.sId);
+        }
       }
     }
-  }, [patchSuggestions, suggestions]);
+  }, [patchSuggestions, getAllSuggestions]);
 
   const getCommittedInstructions = useCallback(() => {
     const editor = editorRef.current;
@@ -363,15 +501,19 @@ export const CopilotSuggestionsProvider = ({
     return getCommittedTextContent(editor);
   }, []);
 
+  const getPendingSuggestions = useCallback(
+    () => getAllSuggestions().filter((s) => s.state === "pending"),
+    [getAllSuggestions]
+  );
+
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
-      suggestions,
-      getSuggestion,
+      getSuggestionWithRelations,
+      getPendingSuggestions,
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
       hasAttemptedRefetch,
-      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,
@@ -380,13 +522,12 @@ export const CopilotSuggestionsProvider = ({
       rejectAllInstructionSuggestions,
     }),
     [
-      suggestions,
-      getSuggestion,
+      getSuggestionWithRelations,
+      getPendingSuggestions,
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
       hasAttemptedRefetch,
-      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,
