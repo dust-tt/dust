@@ -25,8 +25,16 @@ function formatDuration(durationMs: number) {
     : `${durationMs}ms`;
 }
 
-function formatTokenUsage({inputTokens, uncachedInputTokens, outputTokens }: TokenUsage) {
-  const inputStr = inputTokens.toLocaleString() + (uncachedInputTokens ? ` (uncached: ${uncachedInputTokens.toLocaleString()})` : "");
+function formatTokenUsage({
+  inputTokens,
+  uncachedInputTokens,
+  outputTokens,
+}: TokenUsage) {
+  const inputStr =
+    inputTokens.toLocaleString() +
+    (uncachedInputTokens
+      ? ` (uncached: ${uncachedInputTokens.toLocaleString()})`
+      : "");
   const outputStr = outputTokens.toLocaleString();
   return `${inputStr} → ${outputStr}`;
 }
@@ -118,9 +126,7 @@ export function LLMTracePage() {
           {trace.output?.tokenUsage && (
             <Chip
               color="highlight"
-              label={`Tokens: ${formatTokenUsage(
-                trace.output.tokenUsage
-              )}`}
+              label={`Tokens: ${formatTokenUsage(trace.output.tokenUsage)}`}
               size="sm"
             />
           )}
