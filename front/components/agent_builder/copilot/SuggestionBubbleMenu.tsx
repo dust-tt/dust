@@ -15,117 +15,96 @@ interface SuggestionBubbleMenuProps {
  */
 export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   const suggestionsContext = useCopilotSuggestions();
-  const [selectedSuggestionId, setSelectedSuggestionId] = useState<
-    string | null
-  >(null);
-  const [hoveredSuggestionId, setHoveredSuggestionId] = useState<string | null>(
-    null
-  );
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
-    isVisible: boolean;
+    visible: boolean;
   } | null>(null);
-  const activeSuggestionIdRef = useRef<string | null>(null);
-  const containerRef = useRef<HTMLElement | null>(null);
+  const activeIdRef = useRef<string | null>(null);
 
-  // Selected takes priority over hovered.
-  const activeSuggestionId = selectedSuggestionId ?? hoveredSuggestionId;
+  const activeId = selectedId ?? hoveredId;
 
   useEffect(() => {
-    activeSuggestionIdRef.current = activeSuggestionId;
-  }, [activeSuggestionId]);
+    activeIdRef.current = activeId;
+  }, [activeId]);
 
-  // Find the scrollable container on mount.
-  useEffect(() => {
-    const scrollable = editor.view.dom.closest<HTMLElement>(".overflow-auto");
-    containerRef.current = scrollable;
-  }, [editor]);
-
-  // Get suggestion ID from a target element.
   const getSuggestionId = useCallback(
     (target: EventTarget | null): string | null => {
       if (!(target instanceof HTMLElement)) {
         return null;
       }
-
-      const element = target.closest<HTMLElement>("[data-suggestion-id]");
-      return element?.dataset.suggestionId ?? null;
+      return (
+        target.closest<HTMLElement>("[data-suggestion-id]")?.dataset
+          .suggestionId ?? null
+      );
     },
     []
   );
 
-  // Calculate the combined bounding rect of all elements with the given suggestion ID.
-  const getSuggestionBoundingRect = useCallback(
-    (suggestionId: string): DOMRect | null => {
-      const elements = editor.view.dom.querySelectorAll<HTMLElement>(
-        `[data-suggestion-id="${suggestionId}"]`
-      );
-
-      if (elements.length === 0) {
-        return null;
-      }
-
-      let minLeft = Infinity;
-      let minTop = Infinity;
-      let maxRight = -Infinity;
-      let maxBottom = -Infinity;
-
-      for (const el of elements) {
-        const rect = el.getBoundingClientRect();
-        minLeft = Math.min(minLeft, rect.left);
-        minTop = Math.min(minTop, rect.top);
-        maxRight = Math.max(maxRight, rect.right);
-        maxBottom = Math.max(maxBottom, rect.bottom);
-      }
-
-      return new DOMRect(
-        minLeft,
-        minTop,
-        maxRight - minLeft,
-        maxBottom - minTop
-      );
-    },
-    [editor]
-  );
-
   const updateMenuPosition = useCallback(() => {
-    const suggestionId = activeSuggestionIdRef.current;
+    const suggestionId = activeIdRef.current;
     if (!suggestionId) {
       setMenuPosition(null);
       return;
     }
 
-    const rect = getSuggestionBoundingRect(suggestionId);
-    if (!rect) {
+    const editorDom = editor.view.dom;
+
+    // Find all elements for this suggestion.
+    const elements = editorDom.querySelectorAll<HTMLElement>(
+      `[data-suggestion-id="${suggestionId}"]`
+    );
+
+    if (elements.length === 0) {
       setMenuPosition(null);
       return;
     }
 
-    const container = containerRef.current;
+    // Get the editor's bounding rect (the scrollable container).
+    const editorRect = editorDom.getBoundingClientRect();
 
-    // Check if suggestion is visible within the scrollable container.
-    let isVisible = true;
-    if (container) {
-      const containerRect = container.getBoundingClientRect();
-      isVisible =
-        rect.bottom > containerRect.top && rect.top < containerRect.bottom;
+    // Find the combined bounds of all suggestion elements.
+    let maxBottom = -Infinity;
+    let minLeft = Infinity;
+    let minTop = Infinity;
+
+    for (const el of elements) {
+      const rect = el.getBoundingClientRect();
+      maxBottom = Math.max(maxBottom, rect.bottom);
+      minLeft = Math.min(minLeft, rect.left);
+      minTop = Math.min(minTop, rect.top);
     }
 
-    // Position at bottom-left of the combined suggestion block.
+    // Check if suggestion is visible within the editor viewport.
+    const visible =
+      maxBottom > editorRect.top &&
+      minTop < editorRect.bottom &&
+      maxBottom <= editorRect.bottom + 50; // Allow menu to show if suggestion bottom is near viewport bottom
+
+    // Position relative to the editor's parent wrapper (which has position: relative).
+    // We need to account for the editor's position within the wrapper.
+    const wrapper = editorDom.parentElement;
+    if (!wrapper) {
+      setMenuPosition(null);
+      return;
+    }
+
+    const wrapperRect = wrapper.getBoundingClientRect();
+
     setMenuPosition({
-      top: rect.bottom + 8,
-      left: rect.left,
-      isVisible,
+      top: maxBottom - wrapperRect.top + 8,
+      left: minLeft - wrapperRect.left,
+      visible,
     });
-  }, [getSuggestionBoundingRect]);
+  }, [editor]);
 
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
       const id = getSuggestionId(event.target);
-
       if (id) {
-        setHoveredSuggestionId((prev) => (prev === id ? prev : id));
+        setHoveredId(id);
       }
     },
     [getSuggestionId]
@@ -134,80 +113,68 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   const handleClick = useCallback(
     (event: MouseEvent) => {
       const id = getSuggestionId(event.target);
-
-      if (id) {
-        setSelectedSuggestionId(id);
-      } else {
-        setSelectedSuggestionId(null);
-      }
+      setSelectedId(id);
     },
     [getSuggestionId]
   );
 
-  // Attach mouse event listeners.
   useEffect(() => {
-    const editorElement = editor.view.dom;
-
-    editorElement.addEventListener("mousemove", handleMouseMove);
-    editorElement.addEventListener("click", handleClick);
-
+    const el = editor.view.dom;
+    el.addEventListener("mousemove", handleMouseMove);
+    el.addEventListener("click", handleClick);
     return () => {
-      editorElement.removeEventListener("mousemove", handleMouseMove);
-      editorElement.removeEventListener("click", handleClick);
+      el.removeEventListener("mousemove", handleMouseMove);
+      el.removeEventListener("click", handleClick);
     };
   }, [editor, handleMouseMove, handleClick]);
 
-  // Update position when active suggestion changes.
   useEffect(() => {
     updateMenuPosition();
-  }, [activeSuggestionId, updateMenuPosition]);
+  }, [activeId, updateMenuPosition]);
 
-  // Update position on scroll (any scrollable parent).
   useEffect(() => {
-    if (!activeSuggestionId) {
+    if (!activeId) {
       return;
     }
 
-    const handleScroll = () => {
-      updateMenuPosition();
-    };
+    const editorDom = editor.view.dom;
+    const handleScroll = () => updateMenuPosition();
 
-    // Listen on window for any scroll event (capture phase to catch all).
-    window.addEventListener("scroll", handleScroll, true);
+    editorDom.addEventListener("scroll", handleScroll);
     window.addEventListener("resize", handleScroll);
 
     return () => {
-      window.removeEventListener("scroll", handleScroll, true);
+      editorDom.removeEventListener("scroll", handleScroll);
       window.removeEventListener("resize", handleScroll);
     };
-  }, [activeSuggestionId, updateMenuPosition]);
+  }, [activeId, editor, updateMenuPosition]);
 
   // Update the editor's highlighted suggestion.
   useEffect(() => {
-    editor.commands.setHighlightedSuggestion(activeSuggestionId);
-  }, [editor, activeSuggestionId]);
+    editor.commands.setHighlightedSuggestion(activeId);
+  }, [editor, activeId]);
 
   const handleAccept = useCallback(() => {
-    if (activeSuggestionId && suggestionsContext) {
-      suggestionsContext.acceptSuggestion(activeSuggestionId);
-      setSelectedSuggestionId(null);
-      setHoveredSuggestionId(null);
+    if (activeId && suggestionsContext) {
+      suggestionsContext.acceptSuggestion(activeId);
+      setSelectedId(null);
+      setHoveredId(null);
     }
-  }, [activeSuggestionId, suggestionsContext]);
+  }, [activeId, suggestionsContext]);
 
   const handleReject = useCallback(() => {
-    if (activeSuggestionId && suggestionsContext) {
-      suggestionsContext.rejectSuggestion(activeSuggestionId);
-      setSelectedSuggestionId(null);
-      setHoveredSuggestionId(null);
+    if (activeId && suggestionsContext) {
+      suggestionsContext.rejectSuggestion(activeId);
+      setSelectedId(null);
+      setHoveredId(null);
     }
-  }, [activeSuggestionId, suggestionsContext]);
+  }, [activeId, suggestionsContext]);
 
   if (
     !suggestionsContext ||
-    !activeSuggestionId ||
+    !activeId ||
     !menuPosition ||
-    !menuPosition.isVisible
+    !menuPosition.visible
   ) {
     return null;
   }
@@ -215,7 +182,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   return (
     <div
       style={{
-        position: "fixed",
+        position: "absolute",
         top: menuPosition.top,
         left: menuPosition.left,
         zIndex: 50,
