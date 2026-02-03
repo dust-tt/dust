@@ -432,6 +432,9 @@ export async function connectToMCPServer(
       };
       try {
         await connectToRemoteMCPServer(mcpClient, url, req);
+
+        // Test if OAuth is required - some servers allow connect() but require auth for operations
+        await mcpClient.listTools();
       } catch (e: unknown) {
         if (e instanceof MCPOAuthRequiredError) {
           logger.info(
