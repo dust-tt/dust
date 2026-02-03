@@ -37,7 +37,11 @@ import {
   removeNulls,
 } from "@app/types";
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
-import type { AgentSuggestionState } from "@app/types/suggestions/agent_suggestion";
+import type {
+  AgentSuggestionState,
+  SkillsSuggestionType,
+  ToolsSuggestionType,
+} from "@app/types/suggestions/agent_suggestion";
 
 // Knowledge categories relevant for agent builder (excluding apps, actions, triggers)
 const KNOWLEDGE_CATEGORIES: DataSourceViewCategory[] = [
@@ -666,27 +670,19 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Validate that all tool IDs in additions and deletions exist and are accessible.
-    const toolAdditions = params.suggestion.additions ?? [];
-    const toolDeletions = params.suggestion.deletions ?? [];
-    const allToolIds = [...toolAdditions.map((t) => t.id), ...toolDeletions];
+    // Validate that the tool ID exists and is accessible.
+    const { action, toolId } = params.suggestion;
+    const availableTools = await listAvailableTools(auth);
+    const availableToolIds = new Set(availableTools.map((t) => t.sId));
 
-    if (allToolIds.length > 0) {
-      const availableTools = await listAvailableTools(auth);
-      const availableToolIds = new Set(availableTools.map((t) => t.sId));
-      const invalidToolIds = allToolIds.filter(
-        (id) => !availableToolIds.has(id)
+    if (!availableToolIds.has(toolId)) {
+      return new Err(
+        new MCPError(
+          `The tool ID "${toolId}" is invalid or not accessible. ` +
+            `Use get_available_tools to see the list of available tools.`,
+          { tracked: false }
+        )
       );
-
-      if (invalidToolIds.length > 0) {
-        return new Err(
-          new MCPError(
-            `The following tool IDs are invalid or not accessible: ${invalidToolIds.join(", ")}. ` +
-              `Use get_available_tools to see the list of available tools.`,
-            { tracked: false }
-          )
-        );
-      }
     }
 
     // Check pending suggestion limit before proceeding.
@@ -714,23 +710,26 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
+    const suggestion: ToolsSuggestionType = { action, toolId };
+
     try {
-      const suggestion = await AgentSuggestionResource.createSuggestionForAgent(
-        auth,
-        agentConfiguration,
-        {
-          kind: "tools",
-          suggestion: params.suggestion,
-          analysis: params.analysis ?? null,
-          state: "pending",
-          source: "copilot",
-        }
-      );
+      const createdSuggestion =
+        await AgentSuggestionResource.createSuggestionForAgent(
+          auth,
+          agentConfiguration,
+          {
+            kind: "tools",
+            suggestion,
+            analysis: params.analysis ?? null,
+            state: "pending",
+            source: "copilot",
+          }
+        );
 
       return new Ok([
         {
           type: "text" as const,
-          text: `:agent_suggestion[]{sId=${suggestion.sId} kind=${suggestion.kind}}`,
+          text: `:agent_suggestion[]{sId=${createdSuggestion.sId} kind=${createdSuggestion.kind}}`,
         },
       ]);
     } catch (error) {
@@ -762,27 +761,19 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
       );
     }
 
-    // Validate that all skill IDs in additions and deletions exist and are accessible.
-    const skillAdditions = params.suggestion.additions ?? [];
-    const skillDeletions = params.suggestion.deletions ?? [];
-    const allSkillIds = [...skillAdditions, ...skillDeletions];
+    // Validate that the skill ID exists and is accessible.
+    const { action, skillId } = params.suggestion;
+    const availableSkills = await listAvailableSkills(auth);
+    const availableSkillIds = new Set(availableSkills.map((s) => s.sId));
 
-    if (allSkillIds.length > 0) {
-      const availableSkills = await listAvailableSkills(auth);
-      const availableSkillIds = new Set(availableSkills.map((s) => s.sId));
-      const invalidSkillIds = allSkillIds.filter(
-        (id) => !availableSkillIds.has(id)
+    if (!availableSkillIds.has(skillId)) {
+      return new Err(
+        new MCPError(
+          `The skill ID "${skillId}" is invalid or not accessible. ` +
+            `Use get_available_skills to see the list of available skills.`,
+          { tracked: false }
+        )
       );
-
-      if (invalidSkillIds.length > 0) {
-        return new Err(
-          new MCPError(
-            `The following skill IDs are invalid or not accessible: ${invalidSkillIds.join(", ")}. ` +
-              `Use get_available_skills to see the list of available skills.`,
-            { tracked: false }
-          )
-        );
-      }
     }
 
     // Check pending suggestion limit before proceeding.
@@ -816,7 +807,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
         agentConfiguration,
         {
           kind: "skills",
-          suggestion: params.suggestion,
+          suggestion: { action, skillId },
           analysis: params.analysis ?? null,
           state: "pending",
           source: "copilot",

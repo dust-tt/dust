@@ -115,7 +115,8 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     blob: Omit<
       CreationAttributes<AgentSuggestionModel>,
       "workspaceId" | "agentConfigurationId"
-    >
+    >,
+    { transaction }: { transaction?: Transaction } = {}
   ): Promise<AgentSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -134,11 +135,14 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       throw new Error("User does not have permission to edit this agent");
     }
 
-    const suggestion = await AgentSuggestionModel.create({
-      ...blob,
-      agentConfigurationId: agentConfiguration.id,
-      workspaceId: owner.id,
-    });
+    const suggestion = await AgentSuggestionModel.create(
+      {
+        ...blob,
+        agentConfigurationId: agentConfiguration.id,
+        workspaceId: owner.id,
+      },
+      { transaction }
+    );
 
     return new this(
       AgentSuggestionModel,
@@ -389,5 +393,14 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       source: this.source,
       ...suggestionData,
     };
+  }
+
+  /**
+   * Lists all suggestions for the workspace.
+   */
+  static async listAll(
+    auth: Authenticator
+  ): Promise<AgentSuggestionResource[]> {
+    return this.baseFetch(auth, {});
   }
 }

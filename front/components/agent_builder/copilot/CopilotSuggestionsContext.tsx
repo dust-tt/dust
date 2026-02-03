@@ -20,7 +20,6 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { removeNulls } from "@app/types";
 import type {
   AgentInstructionsSuggestionType,
   AgentSuggestionType,
@@ -141,47 +140,21 @@ export const CopilotSuggestionsProvider = ({
 
       switch (suggestion.kind) {
         case "tools": {
-          const additions = removeNulls(
-            (suggestion.suggestion.additions ?? []).map((a) =>
-              mcpServerViewsMap.get(a.id)
-            )
-          );
-          const deletions = removeNulls(
-            (suggestion.suggestion.deletions ?? []).map((id) =>
-              mcpServerViewsMap.get(id)
-            )
-          );
-          const expectedRelations =
-            (suggestion.suggestion.additions?.length ?? 0) +
-            (suggestion.suggestion.deletions?.length ?? 0);
-          const resolvedRelations = additions.length + deletions.length;
-          if (expectedRelations !== resolvedRelations) {
+          const tool = mcpServerViewsMap.get(suggestion.suggestion.toolId);
+          if (!tool) {
             return null;
           }
 
-          return { ...suggestion, relations: { additions, deletions } };
+          return { ...suggestion, relations: { tool } };
         }
 
         case "skills": {
-          const additions = removeNulls(
-            (suggestion.suggestion.additions ?? []).map((id) =>
-              skillsMap.get(id)
-            )
-          );
-          const deletions = removeNulls(
-            (suggestion.suggestion.deletions ?? []).map((id) =>
-              skillsMap.get(id)
-            )
-          );
-          const expectedRelations =
-            (suggestion.suggestion.additions?.length ?? 0) +
-            (suggestion.suggestion.deletions?.length ?? 0);
-          const resolvedRelations = additions.length + deletions.length;
-          if (expectedRelations !== resolvedRelations) {
+          const skill = skillsMap.get(suggestion.suggestion.skillId);
+          if (!skill) {
             return null;
           }
 
-          return { ...suggestion, relations: { additions, deletions } };
+          return { ...suggestion, relations: { skill } };
         }
 
         case "model": {

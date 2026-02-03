@@ -3,11 +3,8 @@
     "agentName": "MeteoWithSuggestions",
     "kind": "tools",
     "suggestion": {
-      "additions": [
-        {
-          "id": "web_search_&_browse"
-        }
-      ]
+      "action": "add",
+      "toolId": "web_search_&_browse"
     },
     "analysis": "The agent could benefit from web search capabilities to provide real-time weather information instead of relying only on training data."
   },
@@ -41,7 +38,8 @@
     "agentName": "MeteoWithSuggestions",
     "kind": "skills",
     "suggestion": {
-      "additions": ["frames"]
+      "action": "add",
+      "skillId": "frames"
     },
     "analysis": "Adding the Frames skill would allow the agent to create interactive weather visualizations like temperature charts, precipitation graphs, and forecast timelines."
   }

@@ -28,19 +28,21 @@ export const AGENT_SUGGESTION_SOURCES = ["reinforcement", "copilot"] as const;
 
 export type AgentSuggestionSource = (typeof AGENT_SUGGESTION_SOURCES)[number];
 
-const ToolAdditionSchema = z.object({
-  id: z.string(),
-  additionalConfiguration: z.record(z.unknown()).optional(),
-});
-
-const ToolsSuggestionSchema = z.object({
-  additions: z.array(ToolAdditionSchema).optional(),
-  deletions: z.array(z.string()).optional(),
-});
+const ToolsSuggestionSchema = z.union([
+  z.object({
+    action: z.literal("add"),
+    toolId: z.string(),
+    additionalConfiguration: z.record(z.unknown()).optional(),
+  }),
+  z.object({
+    action: z.literal("remove"),
+    toolId: z.string(),
+  }),
+]);
 
 const SkillsSuggestionSchema = z.object({
-  additions: z.array(z.string()).optional(),
-  deletions: z.array(z.string()).optional(),
+  action: z.enum(["add", "remove"]),
+  skillId: z.string(),
 });
 
 const InstructionsSuggestionSchema = z.object({
@@ -59,7 +61,6 @@ const ModelSuggestionSchema = z.object({
   reasoningEffort: z.enum(REASONING_EFFORTS).optional(),
 });
 
-export type ToolAdditionType = z.infer<typeof ToolAdditionSchema>;
 export type ToolsSuggestionType = z.infer<typeof ToolsSuggestionSchema>;
 export type SkillsSuggestionType = z.infer<typeof SkillsSuggestionSchema>;
 export type InstructionsSuggestionType = z.infer<
@@ -132,13 +133,11 @@ export type AgentInstructionsSuggestionType = Extract<
 >;
 
 export interface ToolSuggestionRelations {
-  additions: MCPServerViewType[];
-  deletions: MCPServerViewType[];
+  tool: MCPServerViewType;
 }
 
 export interface SkillSuggestionRelations {
-  additions: SkillType[];
-  deletions: SkillType[];
+  skill: SkillType;
 }
 
 export interface ModelSuggestionRelations {

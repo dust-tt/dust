@@ -6,10 +6,7 @@ import {
 import { getAgentConfiguration } from "@app/lib/api/assistant/configuration/agent";
 import { AgentSuggestionResource } from "@app/lib/resources/agent_suggestion_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
-import type {
-  ToolAdditionType,
-  ToolsSuggestionType,
-} from "@app/types/suggestions/agent_suggestion";
+import type { ToolsSuggestionType } from "@app/types/suggestions/agent_suggestion";
 
 import type { CreatedAgent, SeedContext, SuggestionAsset } from "./types";
 
@@ -28,13 +25,8 @@ async function resolveMCPServerViewIds(
 ): Promise<ToolsSuggestionType> {
   const { auth } = ctx;
 
-  if (!suggestion.additions || suggestion.additions.length === 0) {
-    return suggestion;
-  }
-
   // Filter additions that are internal MCP server names that need resolution
-  const serverNamesToResolve = suggestion.additions
-    .map((a) => a.id)
+  const serverNamesToResolve = [suggestion.toolId]
     .filter((id) => isInternalMCPServerName(id))
     .filter((id): id is AutoInternalMCPServerNameType =>
       isAutoInternalMCPServerName(id)
@@ -61,20 +53,11 @@ async function resolveMCPServerViewIds(
   }
 
   // Resolve the tool IDs
-  const resolvedAdditions: ToolAdditionType[] = suggestion.additions.map(
-    (addition) => {
-      const resolvedId = serverNameToViewSId.get(addition.id);
-      if (resolvedId) {
-        return { ...addition, id: resolvedId };
-      }
-      // If not found in the map, keep the original ID (it might already be a valid sId)
-      return addition;
-    }
-  );
+  const resolvedToolId = serverNameToViewSId.get(suggestion.toolId);
 
   return {
     ...suggestion,
-    additions: resolvedAdditions,
+    toolId: resolvedToolId ?? suggestion.toolId,
   };
 }
 
