@@ -11,6 +11,7 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 
 // Redirect component that preserves query params
 function RedirectWithSearchParams({ to }: { to: string }) {
@@ -232,8 +233,6 @@ const NewAgentPage = withSuspense(
   () => import("@dust-tt/front/components/pages/builder/agents/NewAgentPage"),
   "NewAgentPage"
 );
-
-import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 
 const router = createBrowserRouter(
   [
