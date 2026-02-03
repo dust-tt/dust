@@ -19,7 +19,6 @@ import {
   buildIntegrationRegistry,
   getAllCategories,
 } from "@app/components/home/content/Integration/utils/integrationRegistry";
-import { FinalCTASection } from "@app/components/home/content/shared/FinalCTASection";
 import { Grid, H1, H2, P } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
@@ -241,23 +240,6 @@ export default function IntegrationsPage({
     );
   }, [integrationsByCategory]);
 
-  const finalCTAConfig = {
-    config: {
-      title: "Ready to automate your workflows?",
-      subtitle:
-        "Connect your favorite tools to Dust and let AI agents handle the rest.",
-      primaryCTA: {
-        label: "Start free trial",
-        href: "/home",
-      },
-      secondaryCTA: {
-        label: "Talk to sales",
-        href: "/home/booking",
-      },
-      trustText: "14-day free trial. No credit card required.",
-    },
-  };
-
   return (
     <>
       <PageMetadata
@@ -422,8 +404,38 @@ export default function IntegrationsPage({
           )}
         </div>
 
-        {/* Final CTA */}
-        <FinalCTASection {...finalCTAConfig} />
+        {/* Final CTA - Full width blue section */}
+        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-primary-800 py-20 md:py-28">
+          <div className="mx-auto max-w-4xl px-6">
+            <div className="flex flex-col items-center justify-center text-center">
+              <H2 className="mb-4 text-4xl font-medium text-white sm:text-5xl md:text-6xl">
+                Ready to automate your workflows?
+              </H2>
+              <P size="lg" className="mb-8 max-w-2xl text-blue-100">
+                Connect your favorite tools to Dust and let AI agents handle the
+                rest.
+              </P>
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <Link href="/home/pricing" shallow={true}>
+                  <Button
+                    variant="highlight"
+                    size="md"
+                    label="Start Free Trial"
+                    className="w-full sm:w-auto"
+                  />
+                </Link>
+                <Link href="/home/contact" shallow={true}>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label="Contact Sales"
+                    className="w-full sm:w-auto"
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );

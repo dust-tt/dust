@@ -1,4 +1,9 @@
-import { Button, ExternalLinkIcon, RocketIcon } from "@dust-tt/sparkle";
+import {
+  Button,
+  ChevronLeftIcon,
+  ExternalLinkIcon,
+  RocketIcon,
+} from "@dust-tt/sparkle";
 import Link from "next/link";
 
 import { Grid, H1, P } from "@app/components/home/ContentComponents";
@@ -32,7 +37,17 @@ export function IntegrationHeroSection({
 
   return (
     <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-white">
-      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-16 md:pb-16 md:pt-24">
+      <div className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-12 pt-8 md:pb-16 md:pt-12">
+        {/* Back link */}
+        <div className="mb-8">
+          <Link
+            href="/integrations"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+            Back to all integrations
+          </Link>
+        </div>
         <Grid>
           <div
             className={cn(

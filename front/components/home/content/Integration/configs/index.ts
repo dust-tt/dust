@@ -4,10 +4,10 @@ import type { IntegrationEnrichment } from "../types";
 // These provide additional SEO content, use cases, and FAQs
 export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   slack: {
-    seoTitle: "AI Assistant for Slack",
+    seoTitle: "AI Agent for Slack",
     seoSubtitle:
       "Connect Slack to Dust AI agents. Get instant answers, automate workflows, and boost team productivity.",
-    tagline: "Your AI-powered Slack assistant",
+    tagline: "Your AI-powered Slack agent",
     longDescription:
       "Connect Slack to Dust and get AI-powered assistance directly in your channels. Ask questions, automate workflows, and boost team productivity.",
     useCases: [
@@ -24,7 +24,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
         icon: "ActionDocumentTextIcon",
       },
       {
-        title: "Onboarding Assistant",
+        title: "Onboarding Agent",
         description:
           "Help new team members find information and get up to speed quickly.",
         icon: "ActionLightbulbIcon",
@@ -54,7 +54,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "AI-Powered Notion Automation",
     seoSubtitle:
       "Connect Notion to Dust AI. Search docs, create pages, and automate your knowledge base.",
-    tagline: "Your AI-powered Notion assistant",
+    tagline: "Your AI-powered Notion agent",
     longDescription:
       "Connect Notion to Dust and let AI agents help you search, create, and organize your knowledge base automatically.",
     useCases: [
@@ -92,10 +92,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   github: {
-    seoTitle: "AI Coding Assistant for GitHub",
+    seoTitle: "AI Coding Agent for GitHub",
     seoSubtitle:
       "Connect GitHub to Dust AI. Automate issues, PRs, and code reviews with AI agents.",
-    tagline: "Your AI-powered GitHub assistant",
+    tagline: "Your AI-powered GitHub agent",
     longDescription:
       "Connect GitHub to Dust and accelerate your development workflow with AI-powered issue management, code reviews, and documentation.",
     useCases: [
@@ -133,10 +133,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   salesforce: {
-    seoTitle: "AI Sales Assistant for Salesforce",
+    seoTitle: "AI Sales Agent for Salesforce",
     seoSubtitle:
       "Connect Salesforce to Dust AI. Automate CRM tasks, update records, and get sales insights.",
-    tagline: "Your AI-powered Salesforce assistant",
+    tagline: "Your AI-powered Salesforce agent",
     longDescription:
       "Connect Salesforce to Dust and let AI agents automate your CRM workflows, update records, and provide actionable sales insights.",
     useCases: [
@@ -175,10 +175,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   google_drive: {
-    seoTitle: "AI Document Assistant for Google Drive",
+    seoTitle: "AI Document Agent for Google Drive",
     seoSubtitle:
       "Connect Google Drive to Dust AI. Search, summarize, and analyze documents with AI.",
-    tagline: "Your AI-powered Google Drive assistant",
+    tagline: "Your AI-powered Google Drive agent",
     longDescription:
       "Connect Google Drive to Dust and unlock AI-powered document search, summarization, and analysis across your entire drive.",
     useCases: [
@@ -220,7 +220,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "AI Customer Support for Zendesk",
     seoSubtitle:
       "Connect Zendesk to Dust AI. Automate ticket responses, routing, and customer support.",
-    tagline: "Your AI-powered Zendesk assistant",
+    tagline: "Your AI-powered Zendesk agent",
     longDescription:
       "Connect Zendesk to Dust and transform your customer support with AI-powered ticket automation, smart routing, and instant resolutions.",
     useCases: [
@@ -261,7 +261,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "AI Customer Support for Intercom",
     seoSubtitle:
       "Connect Intercom to Dust AI. Automate conversations, resolve tickets, and boost support efficiency.",
-    tagline: "Your AI-powered Intercom assistant",
+    tagline: "Your AI-powered Intercom agent",
     longDescription:
       "Connect Intercom to Dust and supercharge your customer support with AI-powered conversation handling and instant resolutions.",
     useCases: [
@@ -290,7 +290,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "Query Snowflake with AI",
     seoSubtitle:
       "Connect Snowflake to Dust AI. Ask questions in plain English and get instant data insights.",
-    tagline: "Your AI-powered Snowflake assistant",
+    tagline: "Your AI-powered Snowflake agent",
     longDescription:
       "Connect Snowflake to Dust and query your data warehouse using natural language. No SQL required.",
     useCases: [
@@ -331,7 +331,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "Query BigQuery with AI",
     seoSubtitle:
       "Connect BigQuery to Dust AI. Analyze data with natural language. No SQL required.",
-    tagline: "Your AI-powered BigQuery assistant",
+    tagline: "Your AI-powered BigQuery agent",
     longDescription:
       "Connect BigQuery to Dust and unlock AI-powered data analysis. Ask questions in plain English and get insights instantly.",
     useCases: [
@@ -356,10 +356,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   gong: {
-    seoTitle: "AI Meeting Assistant for Gong",
+    seoTitle: "AI Meeting Agent for Gong",
     seoSubtitle:
       "Connect Gong to Dust AI. Analyze sales calls, extract insights, and improve team performance.",
-    tagline: "Your AI-powered Gong assistant",
+    tagline: "Your AI-powered Gong agent",
     longDescription:
       "Connect Gong to Dust and unlock AI-powered analysis of your sales calls. Extract key insights, action items, and coaching opportunities.",
     useCases: [
@@ -384,10 +384,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   "google-meet": {
-    seoTitle: "AI Meeting Assistant for Google Meet",
+    seoTitle: "AI Meeting Agent for Google Meet",
     seoSubtitle:
       "Connect Google Meet to Dust AI. Summarize meetings, extract action items, and never miss follow-ups.",
-    tagline: "Your AI-powered Google Meet assistant",
+    tagline: "Your AI-powered Google Meet agent",
     longDescription:
       "Connect Google Meet recordings to Dust and let AI automatically summarize your meetings, extract action items, and sync insights to your workspace.",
     useCases: [
@@ -426,10 +426,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   modjo: {
-    seoTitle: "AI Meeting Assistant for Modjo",
+    seoTitle: "AI Meeting Agent for Modjo",
     seoSubtitle:
       "Connect Modjo to Dust AI. Analyze sales calls, extract insights, and accelerate deals.",
-    tagline: "Your AI-powered Modjo assistant",
+    tagline: "Your AI-powered Modjo agent",
     longDescription:
       "Connect Modjo call recordings to Dust and let AI analyze your sales conversations, extract key insights, and help close more deals.",
     useCases: [
@@ -456,10 +456,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   gmail: {
-    seoTitle: "AI Email Assistant for Gmail",
+    seoTitle: "AI Email Agent for Gmail",
     seoSubtitle:
       "Connect Gmail to Dust AI. Draft replies, summarize threads, and manage your inbox with AI.",
-    tagline: "Your AI-powered Gmail assistant",
+    tagline: "Your AI-powered Gmail agent",
     longDescription:
       "Connect Gmail to Dust and let AI help you draft emails, summarize threads, and stay on top of your inbox.",
     useCases: [
@@ -488,7 +488,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "AI Calendar Management with Google Calendar",
     seoSubtitle:
       "Connect Google Calendar to Dust AI. Automate scheduling, manage meetings, and save time.",
-    tagline: "Your AI-powered calendar assistant",
+    tagline: "Your AI-powered calendar agent",
     longDescription:
       "Connect Google Calendar to Dust and let AI manage your meetings, find availability, and automate scheduling tasks.",
     useCases: [
@@ -514,10 +514,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   jira: {
-    seoTitle: "AI Coding Assistant for Jira",
+    seoTitle: "AI Coding Agent for Jira",
     seoSubtitle:
       "Connect Jira to Dust AI. Automate issues, track projects, and boost team productivity.",
-    tagline: "Your AI-powered Jira assistant",
+    tagline: "Your AI-powered Jira agent",
     longDescription:
       "Connect Jira to Dust and accelerate your project management with AI-powered issue creation, updates, and insights.",
     useCases: [
@@ -544,10 +544,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   confluence: {
-    seoTitle: "AI Coding Assistant for Confluence",
+    seoTitle: "AI Coding Agent for Confluence",
     seoSubtitle:
       "Connect Confluence to Dust AI. Search docs, create pages, and manage your wiki with AI.",
-    tagline: "Your AI-powered Confluence assistant",
+    tagline: "Your AI-powered Confluence agent",
     longDescription:
       "Connect Confluence to Dust and transform your wiki with AI-powered search, content creation, and knowledge management.",
     useCases: [
@@ -573,10 +573,10 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
   },
 
   hubspot: {
-    seoTitle: "AI Sales Assistant for HubSpot",
+    seoTitle: "AI Sales Agent for HubSpot",
     seoSubtitle:
       "Connect HubSpot to Dust AI. Automate CRM tasks, enrich contacts, and close more deals.",
-    tagline: "Your AI-powered HubSpot assistant",
+    tagline: "Your AI-powered HubSpot agent",
     longDescription:
       "Connect HubSpot to Dust and supercharge your CRM with AI-powered contact enrichment, deal tracking, and sales automation.",
     useCases: [
@@ -604,7 +604,7 @@ export const INTEGRATION_ENRICHMENTS: Record<string, IntegrationEnrichment> = {
     seoTitle: "AI Customer Support for Freshservice",
     seoSubtitle:
       "Connect Freshservice to Dust AI. Automate IT tickets, resolve issues faster, and improve service.",
-    tagline: "Your AI-powered Freshservice assistant",
+    tagline: "Your AI-powered Freshservice agent",
     longDescription:
       "Connect Freshservice to Dust and transform your IT service management with AI-powered ticket automation and smart resolutions.",
     useCases: [

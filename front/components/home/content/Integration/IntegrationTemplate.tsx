@@ -1,9 +1,11 @@
+import { Button } from "@dust-tt/sparkle";
 import Head from "next/head";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import type { ReactElement } from "react";
 
 import { FAQSection } from "@app/components/home/content/shared/FAQSection";
-import { FinalCTASection } from "@app/components/home/content/shared/FinalCTASection";
+import { H2 } from "@app/components/home/ContentComponents";
 import type { LandingLayoutProps } from "@app/components/home/LandingLayout";
 import LandingLayout from "@app/components/home/LandingLayout";
 import { PageMetadata } from "@app/components/home/PageMetadata";
@@ -85,23 +87,6 @@ export default function IntegrationTemplate({
     enrichment?.longDescription ??
     getDefaultSEOMetaDescription(integration.name, integration.category);
 
-  // Default CTA config
-  const finalCTAConfig = {
-    config: {
-      title: `Get started with ${integration.name}`,
-      subtitle: `Connect ${integration.name} to Dust and let AI agents handle your workflows.`,
-      primaryCTA: {
-        label: "Start free trial",
-        href: "/home",
-      },
-      secondaryCTA: {
-        label: "Talk to sales",
-        href: "/home/booking",
-      },
-      trustText: "14-day free trial. No credit card required.",
-    },
-  };
-
   return (
     <>
       <PageMetadata
@@ -178,8 +163,34 @@ export default function IntegrationTemplate({
           </div>
         )}
 
-        {/* Final CTA */}
-        <FinalCTASection {...finalCTAConfig} />
+        {/* Final CTA - Full width blue section */}
+        <div className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen bg-primary-800 py-20 md:py-28">
+          <div className="mx-auto max-w-4xl px-6">
+            <div className="flex flex-col items-center justify-center text-center">
+              <H2 className="mb-8 text-4xl font-medium text-white sm:text-5xl md:text-6xl">
+                Get started with {integration.name}
+              </H2>
+              <div className="flex flex-col gap-3 sm:flex-row sm:gap-4">
+                <Link href="/home/pricing" shallow={true}>
+                  <Button
+                    variant="highlight"
+                    size="md"
+                    label="Start Free Trial"
+                    className="w-full sm:w-auto"
+                  />
+                </Link>
+                <Link href="/home/contact" shallow={true}>
+                  <Button
+                    variant="outline"
+                    size="md"
+                    label="Contact Sales"
+                    className="w-full sm:w-auto"
+                  />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </>
   );
