@@ -275,26 +275,24 @@ export function MCPRunAgentActionDetails({
             )}
             {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
             {childAgent && (chainOfThought || response) && (
-              <div className="relative">
-                {conversationUrl && (
-                  <div className="absolute right-0">
+              <Collapsible defaultOpen={true}>
+                <div className="flex items-center justify-between py-2">
+                  <CollapsibleTrigger>
+                    <span className="text-sm font-semibold text-foreground dark:text-foreground-night">
+                      @{childAgent.name}'s Answer
+                    </span>
+                  </CollapsibleTrigger>
+                  {conversationUrl && (
                     <Button
                       icon={ExternalLinkIcon}
                       label="View full conversation"
                       variant="outline"
                       onClick={() => window.open(conversationUrl, "_blank")}
                       size="xs"
-                      className="!p-1"
                     />
-                  </div>
-                )}
-                <Collapsible defaultOpen={true}>
-                  <CollapsibleTrigger>
-                    <span className="p-1 text-sm font-semibold text-foreground dark:text-foreground-night">
-                      @{childAgent.name}'s Answer
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
+                  )}
+                </div>
+                <CollapsibleContent>
                     <div className="flex flex-col gap-4">
                       {chainOfThought && (
                         <div className="text-sm font-normal text-muted-foreground dark:text-muted-foreground-night">
@@ -364,8 +362,7 @@ export function MCPRunAgentActionDetails({
                       )}
                     </div>
                   </CollapsibleContent>
-                </Collapsible>
-              </div>
+              </Collapsible>
             )}
             {generatedFiles.length > 0 && (
               <div className="flex flex-col gap-2">
