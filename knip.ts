@@ -27,7 +27,6 @@ const config: KnipConfig = {
         "pino-pretty",
         "posthog-node",
         "eslint-plugin-dust",
-        "sqlite3", // used during the build process by sequelize
         "@dust-tt/client",
         "lefthook", // used as pre-commit hook
         "@northflank/js-client", // sandbox client not wired up yet
