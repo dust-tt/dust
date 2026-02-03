@@ -13,7 +13,7 @@ import React, { useCallback, useState } from "react";
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
 import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
-import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
+import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -27,11 +27,11 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
 
-type SpaceTab = "conversations" | "context" | "settings";
+type SpaceTab = "conversations" | "knowledge" | "settings";
 
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
-  const { subscription, user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const router = useAppRouter();
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
@@ -72,7 +72,15 @@ export function SpaceConversationsPage() {
       return "conversations";
     }
     const hash = window.location.hash.slice(1); // Remove the # prefix
-    if (hash === "context" || hash === "settings" || hash === "conversations") {
+    // Backward compatibility: treat "context" as "knowledge"
+    if (hash === "context") {
+      return "knowledge";
+    }
+    if (
+      hash === "knowledge" ||
+      hash === "settings" ||
+      hash === "conversations"
+    ) {
       return hash;
     }
     return "conversations";
@@ -234,10 +242,6 @@ export function SpaceConversationsPage() {
     );
   }
 
-  // Extract permissions from spaceInfo (now includes canRead and canWrite from API)
-  const canReadInSpace = spaceInfo.canRead ?? spaceInfo.isMember;
-  const canWriteInSpace = spaceInfo.canWrite ?? false;
-
   return (
     <div className="flex h-full w-full flex-col">
       <Tabs
@@ -252,7 +256,11 @@ export function SpaceConversationsPage() {
               label="Conversations"
               icon={ChatBubbleLeftRightIcon}
             />
-            <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
+            <TabsTrigger
+              value="knowledge"
+              label="Knowledge"
+              icon={BookOpenIcon}
+            />
             <TabsTrigger
               value="settings"
               label="Settings"
@@ -286,16 +294,8 @@ export function SpaceConversationsPage() {
           />
         </TabsContent>
 
-        <TabsContent value="context">
-          <SpaceContextTab
-            owner={owner}
-            space={spaceInfo}
-            systemSpace={systemSpace}
-            plan={subscription.plan}
-            isAdmin={isAdmin}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-          />
+        <TabsContent value="knowledge">
+          <SpaceKnowledgeTab owner={owner} space={spaceInfo} />
         </TabsContent>
 
         <TabsContent value="settings">
