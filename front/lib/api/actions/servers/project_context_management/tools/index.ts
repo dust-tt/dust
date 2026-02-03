@@ -31,10 +31,7 @@ import { FileResource } from "@app/lib/resources/file_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import {
-  getConversationRoute,
-  getSpaceConversationsRoute,
-} from "@app/lib/utils/router";
+import { getConversationRoute, getProjectRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import type { SupportedFileContentType, UserMessageOrigin } from "@app/types";
 import {
@@ -569,7 +566,7 @@ export function createProjectContextManagementTools(
           }));
 
         // Construct project URL
-        const projectPath = getSpaceConversationsRoute(owner.sId, space.sId);
+        const projectPath = getProjectRoute(owner.sId, space.sId);
         const projectUrl = `${config.getAppUrl()}${projectPath}`;
 
         return new Ok(

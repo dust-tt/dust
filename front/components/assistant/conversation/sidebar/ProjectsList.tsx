@@ -12,7 +12,7 @@ import { getSpaceIcon } from "@app/lib/spaces";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import { getProjectRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { SpaceType, WorkspaceType } from "@app/types";
 
@@ -35,7 +35,7 @@ const ProjectListItem = memo(
     const router = useAppRouter();
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
-    const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
+    const spacePath = getProjectRoute(owner.sId, space.sId);
 
     const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
       useProjectMenu();

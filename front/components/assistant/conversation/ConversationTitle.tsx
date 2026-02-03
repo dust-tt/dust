@@ -12,7 +12,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
 import { useUser } from "@app/lib/swr/user";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import { getProjectRoute } from "@app/lib/utils/router";
 import type { WorkspaceType } from "@app/types";
 
 import { EditConversationTitleDialog } from "./EditConversationTitleDialog";
@@ -60,7 +60,7 @@ export function ConversationTitle({ owner }: { owner: WorkspaceType }) {
               aria-label={`Back to ${spaceInfo?.name}`}
               onClick={() => {
                 void router.push(
-                  getSpaceConversationsRoute(owner.sId, conversation.spaceId!),
+                  getProjectRoute(owner.sId, conversation.spaceId!),
                   undefined,
                   {
                     shallow: true,
