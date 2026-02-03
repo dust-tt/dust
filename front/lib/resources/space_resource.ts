@@ -10,6 +10,7 @@ import { Op } from "sequelize";
 
 import type { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
+import { AgentProjectConfigurationModel } from "@app/lib/models/agent/actions/projects";
 import { BaseResource } from "@app/lib/resources/base_resource";
 import { GroupResource } from "@app/lib/resources/group_resource";
 import {
@@ -468,6 +469,14 @@ export class SpaceResource extends BaseResource<SpaceModel> {
         concurrency: 8,
       }
     );
+
+    await AgentProjectConfigurationModel.destroy({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        projectId: this.id,
+      },
+      transaction,
+    });
 
     await SpaceModel.destroy({
       where: {
