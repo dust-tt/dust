@@ -15,6 +15,7 @@ export type MessageWithTokens = ModelMessageTypeMultiActions & {
 
 export type InteractionWithTokens = {
   messages: MessageWithTokens[];
+  prunedContext?: boolean;
 };
 
 /**
@@ -70,9 +71,15 @@ export function progressivelyPruneInteraction(
     }
   }
 
+  let prunedContext = false;
+
   // Prune from oldest to newest, recalculating tokens each time.
   let prunedMessages = [...interaction.messages];
   for (const index of toolResultIndices) {
+    // If very last tool result is pruned, we mark prunedContext as true.
+    if (index === toolResultIndices[toolResultIndices.length - 1]) {
+      prunedContext = true;
+    }
     const message = prunedMessages[index];
     if (message.role === "function") {
       // Create a new array with the pruned message.
@@ -96,6 +103,7 @@ export function progressivelyPruneInteraction(
 
   return {
     messages: prunedMessages,
+    prunedContext,
   };
 }
 

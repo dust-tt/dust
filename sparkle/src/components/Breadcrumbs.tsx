@@ -1,3 +1,4 @@
+import { cva } from "class-variance-authority";
 import type { ComponentType } from "react";
 import React from "react";
 
@@ -16,6 +17,34 @@ import { cn } from "@sparkle/lib";
 const LABEL_TRUNCATE_LENGTH_MIDDLE = 15;
 const LABEL_TRUNCATE_LENGTH_END = 30;
 const ELLIPSIS_STRING = "...";
+
+const breadcrumbTextVariants = cva("", {
+  variants: {
+    isLast: {
+      true: "s-text-foreground dark:s-text-foreground-night",
+      false: "s-text-muted-foreground dark:s-text-muted-foreground-night",
+    },
+    size: {
+      xs: "",
+      sm: "",
+    },
+    hasLighterFont: {
+      true: "",
+      false: "",
+    },
+  },
+  compoundVariants: [
+    { size: "xs", hasLighterFont: true, className: "s-text-xs" },
+    { size: "sm", hasLighterFont: true, className: "s-text-sm" },
+    { size: "xs", hasLighterFont: false, className: "s-label-xs" },
+    { size: "sm", hasLighterFont: false, className: "s-label-sm" },
+  ],
+  defaultVariants: {
+    size: "sm",
+    hasLighterFont: true,
+    isLast: false,
+  },
+});
 
 type BaseBreadcrumbItem = {
   icon?: ComponentType<{ className?: string }>;
@@ -57,6 +86,7 @@ interface BreadcrumbItemProps {
   isLast: boolean;
   itemsHidden?: BreadcrumbItem[];
   size?: "xs" | "sm";
+  hasLighterFont?: boolean;
 }
 
 function BreadcrumbItem({
@@ -64,6 +94,7 @@ function BreadcrumbItem({
   isLast,
   itemsHidden,
   size = "sm",
+  hasLighterFont = true,
 }: BreadcrumbItemProps) {
   if (item.label === ELLIPSIS_STRING) {
     return (
@@ -74,6 +105,7 @@ function BreadcrumbItem({
             label={ELLIPSIS_STRING}
             icon={item.icon}
             size={size}
+            hasLighterFont={hasLighterFont}
           />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
@@ -93,12 +125,11 @@ function BreadcrumbItem({
     );
   }
 
-  const commonClassName = cn(
-    isLast
-      ? "s-text-foreground dark:s-text-foreground-night"
-      : "s-text-muted-foreground dark:s-text-muted-foreground-night",
-    isLast && (size === "xs" ? "s-label-xs" : "s-label-sm")
-  );
+  const textClassName = breadcrumbTextVariants({
+    isLast,
+    size,
+    hasLighterFont,
+  });
 
   const truncatedLabel = truncateTextToLength(
     item.label,
@@ -112,11 +143,11 @@ function BreadcrumbItem({
       <Button
         href={item.href}
         icon={item.icon}
-        className={commonClassName}
-        variant="ghost"
+        variant={isLast ? "ghost" : "ghost-secondary"}
         label={truncatedLabel}
         tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
+        hasLighterFont={hasLighterFont}
       />
     );
   }
@@ -126,11 +157,11 @@ function BreadcrumbItem({
       <Button
         onClick={item.onClick}
         icon={item.icon}
-        className={commonClassName}
-        variant="ghost"
+        variant={isLast ? "ghost" : "ghost-secondary"}
         label={truncatedLabel}
         tooltip={isLabelTruncated ? item.label : undefined}
         size={size}
+        hasLighterFont={hasLighterFont}
       />
     );
   }
@@ -143,13 +174,13 @@ function BreadcrumbItem({
           size={ICON_SIZE_MAP[size]}
           className={cn("-s-mx-0.5")}
         />
-        <div className={cn("", commonClassName)}>{item.label}</div>
+        <div className={textClassName}>{item.label}</div>
       </div>
     );
   }
 
   return (
-    <div className={cn("s-px-2 s-py-1.5", commonClassName)}>{item.label}</div>
+    <div className={cn("s-px-2 s-py-1.5", textClassName)}>{item.label}</div>
   );
 }
 
@@ -157,6 +188,7 @@ interface BreadcrumbProps {
   items: BreadcrumbItem[];
   className?: string;
   size?: "xs" | "sm";
+  hasLighterFont?: boolean;
 }
 
 interface BreadcrumbsAccumulator {
@@ -168,6 +200,7 @@ export function Breadcrumbs({
   items,
   className,
   size = "sm",
+  hasLighterFont = true,
 }: BreadcrumbProps) {
   const { itemsShown, itemsHidden } = items.reduce(
     (acc: BreadcrumbsAccumulator, item, index) => {
@@ -197,6 +230,7 @@ export function Breadcrumbs({
               isLast={index === itemsShown.length - 1}
               itemsHidden={itemsHidden}
               size={size}
+              hasLighterFont={hasLighterFont}
             />
             {index === itemsShown.length - 1 ? null : (
               <Icon

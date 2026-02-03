@@ -192,9 +192,16 @@ export function UserMessage({
     return (
       message.mentions.length === 0 &&
       isLastMessage &&
-      !hasHumansInteracting(methods.data.get())
+      !hasHumansInteracting(methods.data.get()) &&
+      message.user?.sId === currentUserId
     );
-  }, [message.mentions.length, isLastMessage, methods.data]);
+  }, [
+    message.mentions.length,
+    message.user?.sId,
+    isLastMessage,
+    methods.data,
+    currentUserId,
+  ]);
 
   const isDeleted = message.visibility === "deleted";
   const isCurrentUser = message.user?.sId === currentUserId;
@@ -270,9 +277,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative",
-            "s-pb-6",
-            "s-pb-4"
+            "relative min-w-60 max-w-3xl"
           )}
           ref={userMessageHoveredRef}
         >
@@ -423,13 +428,17 @@ function ActionMenu({
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const sendNotification = useSendNotification();
+  const { ref: isReactionsHoveredRef, isHovering: isReactionsHovered } =
+    useHover();
+  const shouldHideActions =
+    !isUserMessageHovered && !isReactionsHovered && !isMenuOpen;
 
   const handleCopyMessageLink = () => {
     const messageUrl = `${getConversationRoute(
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     )}#${message.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
@@ -471,7 +480,12 @@ function ActionMenu({
     : [];
 
   return (
-    <div className="absolute -bottom-3.5 left-2.5 flex flex-wrap items-center gap-1">
+    <div
+      className={cn(
+        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
+      )}
+      ref={isReactionsHoveredRef}
+    >
       {!isDeleted && enableExtendedActions && (
         <>
           <MessageReactions
@@ -483,7 +497,7 @@ function ActionMenu({
             onEmojiSelect={onReactionToggle}
             className={cn(
               "opacity-100 transition-opacity duration-200",
-              !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+              shouldHideActions && "sm:opacity-0"
             )}
           />
         </>
@@ -501,7 +515,7 @@ function ActionMenu({
               aria-label="Message actions"
               className={cn(
                 "opacity-100 transition-opacity duration-200",
-                !isUserMessageHovered && !isMenuOpen && "sm:opacity-0"
+                shouldHideActions && "sm:opacity-0"
               )}
             />
           </DropdownMenuTrigger>

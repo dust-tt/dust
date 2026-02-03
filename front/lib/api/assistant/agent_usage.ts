@@ -3,7 +3,7 @@ import _ from "lodash";
 import type { RedisClientType } from "redis";
 
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage_tracking";
+import { USER_USAGE_ORIGINS } from "@app/lib/api/programmatic_usage/common";
 import { getRedisClient } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";

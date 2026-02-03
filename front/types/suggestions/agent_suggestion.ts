@@ -1,7 +1,10 @@
 import { z } from "zod";
 
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { MODEL_IDS } from "@app/types/assistant/models/models";
 import { REASONING_EFFORTS } from "@app/types/assistant/models/reasoning";
+import type { ModelConfigurationType } from "@app/types/assistant/models/types";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 
 export const AGENT_SUGGESTION_KINDS = [
   "instructions",
@@ -117,15 +120,36 @@ const BaseAgentSuggestionSchema = z.object({
   source: z.enum(AGENT_SUGGESTION_SOURCES),
 });
 
-/**
- * Full schema for agent suggestions including base fields and discriminated data.
- */
 export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
   AgentSuggestionDataSchema
 );
 
-/**
- * Discriminated union for agent suggestions based on "kind" field.
- * Use switch(suggestion.kind) to narrow the suggestion type.
- */
 export type AgentSuggestionType = z.infer<typeof AgentSuggestionSchema>;
+
+export interface ToolSuggestionRelations {
+  additions: MCPServerViewType[];
+  deletions: MCPServerViewType[];
+}
+
+export interface SkillSuggestionRelations {
+  additions: SkillType[];
+  deletions: SkillType[];
+}
+
+export interface ModelSuggestionRelations {
+  model: ModelConfigurationType;
+}
+
+export type AgentSuggestionWithRelationsType =
+  | (Extract<AgentSuggestionType, { kind: "tools" }> & {
+      relations: ToolSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "skills" }> & {
+      relations: SkillSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "model" }> & {
+      relations: ModelSuggestionRelations;
+    })
+  | (Extract<AgentSuggestionType, { kind: "instructions" }> & {
+      relations: null;
+    });

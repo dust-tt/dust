@@ -62,3 +62,8 @@ export const CONVERSATION_NOTIFICATION_METADATA_KEYS = {
  * Novu workflow trigger ID for conversation unread notifications.
  */
 export const CONVERSATION_UNREAD_TRIGGER_ID = "conversation-unread";
+
+/**
+ * Novu workflow trigger ID for project added as member notifications.
+ */
+export const PROJECT_ADDED_AS_MEMBER_TRIGGER_ID = "project-added-as-member";

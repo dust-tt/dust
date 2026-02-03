@@ -1,15 +1,34 @@
 import { Authenticator } from "@app/lib/auth";
+import type { GroupResource } from "@app/lib/resources/group_resource";
+import type { MembershipResource } from "@app/lib/resources/membership_resource";
+import type { SpaceResource } from "@app/lib/resources/space_resource";
 import type { UserResource } from "@app/lib/resources/user_resource";
 import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { SpaceFactory } from "@app/tests/utils/SpaceFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
-import type { MembershipRoleType } from "@app/types";
+import type { LightWorkspaceType, MembershipRoleType } from "@app/types";
 
 /**
  * This helper sets up a test workspace with a user and membership.
  */
-export const createResourceTest = async ({
+export const createResourceTest: ({
+  role,
+  isSuperUser,
+}: {
+  role?: MembershipRoleType;
+  isSuperUser?: boolean;
+}) => Promise<{
+  workspace: LightWorkspaceType;
+  user: UserResource;
+  membership: MembershipResource;
+  globalGroup: GroupResource;
+  systemGroup: GroupResource;
+  globalSpace: SpaceResource;
+  systemSpace: SpaceResource;
+  conversationsSpace: SpaceResource;
+  authenticator: Authenticator;
+}> = async ({
   role = "user",
   isSuperUser = false,
 }: {

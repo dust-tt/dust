@@ -45,6 +45,7 @@ type ListItemProps = {
   hasSeparatorIfLast?: boolean;
   groupName?: string;
   itemsAlignment?: "start" | "center";
+  ignorePressSelector?: string;
 };
 
 export function ListItem({
@@ -55,7 +56,17 @@ export function ListItem({
   hasSeparatorIfLast = false,
   groupName = "list-item",
   itemsAlignment = "start",
+  ignorePressSelector,
 }: ListItemProps) {
+  const [isPressed, setIsPressed] = React.useState(false);
+
+  const shouldIgnorePress = (target: EventTarget | null) => {
+    if (!ignorePressSelector || !(target instanceof HTMLElement)) {
+      return false;
+    }
+    return Boolean(target.closest(ignorePressSelector));
+  };
+
   return (
     <div
       className={cn(
@@ -66,9 +77,18 @@ export function ListItem({
           interactive: !!onClick,
         }),
         `s-group/${groupName}`,
+        isPressed && "s-bg-primary-100 dark:s-bg-primary-100-night",
         className
       )}
       onClick={onClick}
+      onMouseDown={(event) => {
+        if (!onClick || shouldIgnorePress(event.target)) {
+          return;
+        }
+        setIsPressed(true);
+      }}
+      onMouseUp={() => setIsPressed(false)}
+      onMouseLeave={() => setIsPressed(false)}
     >
       {children}
     </div>

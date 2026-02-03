@@ -29,12 +29,10 @@ export const MCP_SERVERS_FOR_GLOBAL_AGENTS: readonly AutoInternalMCPServerNameTy
     "web_search_&_browse",
     "search",
     "data_sources_file_system",
-    "interactive_content",
     "run_agent",
     "toolsets",
     "data_warehouses",
     "slideshow",
-    "deep_dive",
     "agent_memory",
   ] as const;
 

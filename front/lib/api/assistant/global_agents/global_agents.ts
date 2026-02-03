@@ -25,6 +25,7 @@ import {
   _getDustQuickGlobalAgent,
 } from "@app/lib/api/assistant/global_agents/configurations/dust/dust";
 import { _getNoopAgent } from "@app/lib/api/assistant/global_agents/configurations/dust/noop";
+import { isDeepDiveDisabledByAdmin } from "@app/lib/api/assistant/global_agents/configurations/dust/utils";
 import { _getGeminiProGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/google";
 import { _getHelperGlobalAgent } from "@app/lib/api/assistant/global_agents/configurations/helper";
 import {
@@ -133,6 +134,7 @@ function getGlobalAgent({
   availableToolsets,
   copilotMCPServerViews,
   copilotUserMetadata,
+  hasDeepDive,
 }: {
   auth: Authenticator;
   sId: string | number;
@@ -145,6 +147,7 @@ function getGlobalAgent({
     context: MCPServerViewResource;
   } | null;
   copilotUserMetadata: CopilotUserMetadata | null;
+  hasDeepDive: boolean;
 }): AgentConfigurationType | null {
   const settings =
     globalAgentSettings.find((settings) => settings.agentId === sId) ?? null;
@@ -347,6 +350,7 @@ function getGlobalAgent({
         mcpServerViews,
         memories,
         availableToolsets,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_EDGE:
@@ -356,6 +360,7 @@ function getGlobalAgent({
         mcpServerViews,
         memories,
         availableToolsets,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_QUICK:
@@ -365,6 +370,7 @@ function getGlobalAgent({
         mcpServerViews,
         memories,
         availableToolsets,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_OAI:
@@ -374,6 +380,7 @@ function getGlobalAgent({
         mcpServerViews,
         memories,
         availableToolsets,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DUST_NEXT:
@@ -383,6 +390,7 @@ function getGlobalAgent({
         mcpServerViews,
         memories,
         availableToolsets,
+        hasDeepDive,
       });
       break;
     case GLOBAL_AGENTS_SID.DEEP_DIVE:
@@ -477,6 +485,8 @@ export async function getGlobalAgents(
   if (!plan) {
     throw new Error("Unexpected `auth` without `plan`.");
   }
+
+  const isDeepDiveDisabled = await isDeepDiveDisabledByAdmin(auth);
 
   const [preFetchedDataSources, globalAgentSettings, mcpServerViews] =
     await Promise.all([
@@ -622,6 +632,7 @@ export async function getGlobalAgents(
       availableToolsets,
       copilotMCPServerViews,
       copilotUserMetadata,
+      hasDeepDive: !isDeepDiveDisabled,
     })
   );
 

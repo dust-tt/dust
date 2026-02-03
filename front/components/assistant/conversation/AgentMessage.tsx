@@ -11,10 +11,12 @@ import {
   ConversationMessageContainer,
   ConversationMessageContent,
   ConversationMessageTitle,
+  ExclamationCircleIcon,
   InteractiveImageGrid,
   LinkIcon,
   MoreIcon,
   StopIcon,
+  Tooltip,
   TrashIcon,
   useCopyToClipboard,
 } from "@dust-tt/sparkle";
@@ -37,6 +39,7 @@ import { ErrorMessage } from "@app/components/assistant/conversation/ErrorMessag
 import type { FeedbackSelectorBaseProps } from "@app/components/assistant/conversation/FeedbackSelector";
 import { FeedbackSelector } from "@app/components/assistant/conversation/FeedbackSelector";
 import { GenerationContext } from "@app/components/assistant/conversation/GenerationContextProvider";
+import { GoogleDriveFileAuthorizationRequired } from "@app/components/assistant/conversation/GoogleDriveFileAuthorizationRequired";
 import { useAutoOpenInteractiveContent } from "@app/components/assistant/conversation/interactive_content/useAutoOpenInteractiveContent";
 import { MCPServerPersonalAuthenticationRequired } from "@app/components/assistant/conversation/MCPServerPersonalAuthenticationRequired";
 import { MCPToolValidationRequired } from "@app/components/assistant/conversation/MCPToolValidationRequired";
@@ -91,6 +94,22 @@ import {
   isSupportedImageContentType,
 } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+
+function PrunedContextChip() {
+  return (
+    <Tooltip
+      label="Some tool results were too large and removed to keep this conversation within its context size limit. The answer may be less accurate or miss details."
+      trigger={
+        <Chip
+          label="Answer may be inaccurate"
+          size="xs"
+          color="golden"
+          icon={ExclamationCircleIcon}
+        />
+      }
+    />
+  );
+}
 
 interface AgentMessageProps {
   conversationId: string;
@@ -201,6 +220,32 @@ export function AgentMessage({
             });
             break;
 
+          case "tool_file_auth_required":
+            const { fileAuthError } = eventPayload.data;
+
+            enqueueBlockedAction({
+              messageId: sId,
+              blockedAction: {
+                status: "blocked_file_authorization_required",
+                actionId: eventPayload.data.actionId,
+                fileAuthorizationInfo: {
+                  fileId: fileAuthError.fileId,
+                  fileName: fileAuthError.fileName,
+                  connectionId: fileAuthError.connectionId,
+                  mimeType: fileAuthError.mimeType,
+                },
+                configurationId: eventPayload.data.configurationId,
+                conversationId: eventPayload.data.conversationId,
+                created: eventPayload.data.created,
+                inputs: eventPayload.data.inputs,
+                messageId: eventPayload.data.messageId,
+                metadata: eventPayload.data.metadata,
+                stake: eventPayload.data.stake,
+                userId: eventPayload.data.userId,
+              },
+            });
+            break;
+
           case "agent_message_success":
           case "agent_generation_cancelled":
           case "agent_error":
@@ -216,6 +261,7 @@ export function AgentMessage({
           case "tool_error":
           case "tool_notification":
           case "tool_params":
+          case "agent_context_pruned":
             // Do nothing
             break;
           default:
@@ -368,7 +414,7 @@ export function AgentMessage({
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     )}#${agentMessage.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({
@@ -716,6 +762,9 @@ export function AgentMessage({
         <ConversationMessageTitle
           name={agentConfiguration.name}
           timestamp={timestamp}
+          infoChip={
+            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+          }
           completionStatus={
             isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
@@ -739,6 +788,9 @@ export function AgentMessage({
           className="hidden @sm:flex"
           name={agentConfiguration.name}
           timestamp={timestamp}
+          infoChip={
+            agentMessage.prunedContext ? <PrunedContextChip /> : undefined
+          }
           completionStatus={
             isDeleted ? undefined : (
               <AgentMessageCompletionStatus agentMessage={agentMessage} />
@@ -943,6 +995,22 @@ function AgentMessageContent({
             mcpServerId={blockedAction.metadata.mcpServerId}
             provider={blockedAction.authorizationInfo.provider}
             scope={blockedAction.authorizationInfo.scope}
+            retryHandler={() =>
+              retryHandlerWithResetState({
+                conversationId: blockedAction.conversationId,
+                messageId: blockedAction.messageId,
+              })
+            }
+          />
+        );
+
+      case "blocked_file_authorization_required":
+        return (
+          <GoogleDriveFileAuthorizationRequired
+            triggeringUser={triggeringUser}
+            owner={owner}
+            fileAuthorizationInfo={blockedAction.fileAuthorizationInfo}
+            mcpServerId={blockedAction.metadata.mcpServerId}
             retryHandler={() =>
               retryHandlerWithResetState({
                 conversationId: blockedAction.conversationId,

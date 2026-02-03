@@ -124,10 +124,7 @@ module.exports = {
         const paramsIdentifiers = new Set();
 
         // Find params extraction patterns in the function body
-        if (
-          functionNode.body &&
-          functionNode.body.type === "BlockStatement"
-        ) {
+        if (functionNode.body && functionNode.body.type === "BlockStatement") {
           for (const statement of functionNode.body.body) {
             // Look for: const { wId, dsId } = context.params ?? {};
             if (
@@ -135,10 +132,7 @@ module.exports = {
               statement.declarations.length > 0
             ) {
               const varDecl = statement.declarations[0];
-              if (
-                varDecl.id.type === "ObjectPattern" &&
-                varDecl.init
-              ) {
+              if (varDecl.id.type === "ObjectPattern" && varDecl.init) {
                 // Check if it's from context.params
                 const init = varDecl.init;
                 let isFromParams = false;
@@ -220,10 +214,7 @@ module.exports = {
             // Check if the value is a simple param or owner
             if (!isSimpleParamValue(prop.value, paramsIdentifiers)) {
               // Allow shorthand properties where name matches a param
-              if (
-                prop.shorthand &&
-                paramsIdentifiers.has(propName)
-              ) {
+              if (prop.shorthand && paramsIdentifiers.has(propName)) {
                 continue;
               }
               if (prop.shorthand && propName === "owner") {

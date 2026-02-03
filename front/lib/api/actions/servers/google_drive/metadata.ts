@@ -172,6 +172,29 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
   },
+  create_comment: {
+    description: "Add a comment to a Google Drive file (Doc, Sheet, or Slide).",
+    schema: {
+      fileId: z.string().describe("The ID of the file to comment on."),
+      content: z.string().describe("The text content of the comment."),
+    },
+    stake: "low",
+  },
+  update_document: {
+    description:
+      "Update an existing Google Docs document by appending or replacing content.",
+    schema: {
+      documentId: z.string().describe("The ID of the document to update."),
+      content: z.string().describe("The text content to insert."),
+      mode: z
+        .enum(["append", "replace"])
+        .default("append")
+        .describe(
+          "How to update the document: 'append' adds content at the end, 'replace' replaces all existing content."
+        ),
+    },
+    stake: "medium",
+  },
 });
 
 const ALL_TOOLS_METADATA = {
@@ -183,6 +206,9 @@ export const GOOGLE_DRIVE_SERVER = {
   serverInfo: {
     name: "google_drive",
     version: "1.0.0",
+    // TODO(google_drive_write): Update description to mention write capabilities
+    // when google_drive_write_enabled feature flag is removed and write is GA:
+    // "Search, read, and create files in Google Drive (Docs, Sheets, Presentations)."
     description: "Search and read files (Docs, Sheets, Presentations).",
     authorization: {
       provider: "google_drive",

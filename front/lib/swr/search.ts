@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import type { ToolSearchResult } from "@app/lib/search/tools/types";
 import { emptyArray } from "@app/lib/swr/swr";
 import type {
@@ -96,8 +97,8 @@ export function useUnifiedSearch({
         params.append("cursor", cursor);
       }
 
-      const url = `/api/w/${owner.sId}/search?${params.toString()}`;
-      const eventSource = new EventSource(url);
+      const url = `${getApiBaseUrl()}/api/w/${owner.sId}/search?${params.toString()}`;
+      const eventSource = new EventSource(url, { withCredentials: true });
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {

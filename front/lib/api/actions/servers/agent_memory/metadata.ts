@@ -25,7 +25,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .array(z.string())
         .describe("The array of new memory entries to record."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
   [AGENT_MEMORY_ERASE_TOOL_NAME]: {
     description: "Erase memory entries by indexes for the current user",
@@ -34,7 +34,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         .array(z.number())
         .describe("The indexes of the memory entries to erase."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
   [AGENT_MEMORY_EDIT_TOOL_NAME]: {
     description:
@@ -53,7 +53,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         )
         .describe("The array of memory entries to edit."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
   [AGENT_MEMORY_COMPACT_TOOL_NAME]: {
     description:
@@ -72,7 +72,7 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
         )
         .describe("The array of memory entries to compact/edit."),
     },
-    stake: "low",
+    stake: "never_ask",
   },
 });
 

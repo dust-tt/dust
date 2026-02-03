@@ -51,8 +51,7 @@ const buttonGroupVariants = cva("s-inline-flex s-w-fit s-items-stretch", {
 });
 
 export interface ButtonGroupProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof buttonGroupVariants> {
   disabled?: boolean;
 }

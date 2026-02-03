@@ -16,7 +16,10 @@
   "scripts": {
     "clean": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
     "install:all": "npm install",
-    "knip": "knip"
+    "knip": "knip",
+    "format": "npx @biomejs/biome format --write .",
+    "format:check": "npx @biomejs/biome check --formatter-enabled=true --linter-enabled=false .",
+    "format:lefthook": "npx @biomejs/biome format --write"
   },
   "engines": {
     "node": ">=20.0.0",

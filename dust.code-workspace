@@ -26,6 +26,7 @@
       "settings": {
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true
@@ -39,6 +40,7 @@
         "typescript.preferences.useLabelDetailsInCompletion": true,
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true,
@@ -54,6 +56,7 @@
         "typescript.preferences.useLabelDetailsInCompletion": true,
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true,
@@ -68,6 +71,7 @@
       "settings": {
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true
@@ -80,6 +84,7 @@
       "settings": {
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true
@@ -92,6 +97,7 @@
       "settings": {
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true
@@ -104,6 +110,7 @@
       "settings": {
         "typescript.preferences.includePackageJsonAutoImports": "off",
         "typescript.experimental.useTsgo": true,
+        "editor.defaultFormatter": "biomejs.biome",
         "files.exclude": {
           "**/node_modules": true,
           "**/dist": true
@@ -153,6 +160,25 @@
       "**/target": true
     },
     "files.autoSave": "onFocusChange",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "biomejs.biome",
+    "[typescript]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[typescriptreact]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[javascriptreact]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[json]": {
+      "editor.defaultFormatter": "biomejs.biome"
+    },
+    "[rust]": {
+      "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    }
   }
 }

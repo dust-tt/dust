@@ -5,6 +5,7 @@ import {
   handleMembershipInvite,
   handleRegularSignupFlow,
 } from "@app/lib/api/signup";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -12,6 +13,7 @@ import { createOrUpdateUser, fetchUserFromSession } from "@app/lib/iam/users";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { MembershipResource } from "@app/lib/resources/membership_resource";
 import { ServerSideTracking } from "@app/lib/tracking/server";
+import { extractUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
 import { apiError, withLogging } from "@app/logger/withlogging";
 import type { LightWorkspaceType, WithAPIErrorResponse } from "@app/types";
@@ -38,6 +40,9 @@ async function handler(
 
   const { inviteToken, wId } = req.query;
   const { isSSO, workspaceId } = session;
+
+  // Extract UTM params to preserve through login redirects
+  const utmParams = extractUTMParams(req.query);
 
   // Use the workspaceId from the query if it exists, otherwise use the workspaceId from the workos session.
   const targetWorkspaceId = typeof wId === "string" ? wId : workspaceId;
@@ -102,7 +107,7 @@ async function handler(
     if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
-        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+        `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
       return;
     }
@@ -156,7 +161,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
+          `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -167,7 +172,7 @@ async function handler(
       }
 
       res.redirect(
-        `/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `${getApiBaseUrl()}/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
       );
       return;
     }
@@ -190,6 +195,7 @@ async function handler(
 
   const redirectOptions: Parameters<typeof buildPostLoginUrl>[1] = {
     welcome: user.lastLoginAt === null,
+    utmParams: Object.keys(utmParams).length > 0 ? utmParams : undefined,
   };
 
   await user.recordLoginActivity();
@@ -222,14 +228,24 @@ const buildPostLoginUrl = (
   options?: {
     welcome?: boolean;
     conversationId?: string;
+    utmParams?: Record<string, string>;
   }
 ) => {
   let path = `/w/${workspaceId}`;
   if (options?.welcome) {
     path += "/welcome";
   }
+
+  const searchParams = new URLSearchParams();
   if (options?.conversationId) {
-    path += `?cId=${options.conversationId}`;
+    searchParams.set("cId", options.conversationId);
   }
-  return path;
+  if (options?.utmParams) {
+    for (const [key, value] of Object.entries(options.utmParams)) {
+      searchParams.set(key, value);
+    }
+  }
+
+  const queryString = searchParams.toString();
+  return queryString ? `${path}?${queryString}` : path;
 };

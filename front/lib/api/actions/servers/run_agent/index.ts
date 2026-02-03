@@ -10,6 +10,7 @@ import assert from "assert";
 import _ from "lodash";
 
 import { MCPError } from "@app/lib/actions/mcp_errors";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { MCPProgressNotificationType } from "@app/lib/actions/mcp_internal_actions/output_schemas";
 import { getOrCreateConversation } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/conversation";
 import { isTransientStreamError } from "@app/lib/actions/mcp_internal_actions/servers/run_agent/network_errors";
@@ -33,9 +34,8 @@ import {
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
 import {
-  parseAgentConfigurationUri,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
-  RUN_AGENT_TOOL_NAME,
+  RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
 } from "@app/lib/api/actions/servers/run_agent/metadata";
 import {
@@ -61,6 +61,14 @@ import {
 } from "@app/types";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+
+function parseAgentConfigurationUri(uri: string): Result<string, Error> {
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
+  if (!match) {
+    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
+  }
+  return new Ok(match[2]);
+}
 
 function isRunAgentHandoffMode(
   agentLoopContext?: AgentLoopContextType
@@ -151,14 +159,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
-function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
-  return createRunAgentServer(auth, agentLoopContext);
-}
-
-async function createRunAgentServer(
+async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
@@ -207,7 +208,7 @@ async function createRunAgentServer(
       withToolLogging(
         auth,
         {
-          toolNameForMonitoring: RUN_AGENT_TOOL_NAME,
+          toolNameForMonitoring: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
           agentLoopContext,
           enableAlerting: true,
         },
@@ -238,7 +239,7 @@ async function createRunAgentServer(
     withToolLogging(
       auth,
       {
-        toolNameForMonitoring: RUN_AGENT_TOOL_NAME,
+        toolNameForMonitoring: RUN_AGENT_PLACEHOLDER_TOOL_NAME,
         agentLoopContext,
         enableAlerting: true,
       },
@@ -274,14 +275,13 @@ async function createRunAgentServer(
           conversation: mainConversation,
         } = agentLoopContext.runContext;
 
-        const parsedChildAgentId = parseAgentConfigurationUri(uri);
-        if (!parsedChildAgentId) {
+        const parsedChildAgentIdRes = parseAgentConfigurationUri(uri);
+        if (parsedChildAgentIdRes.isErr()) {
           return finalizeAndReturn(
-            new Err(
-              new MCPError(`Invalid URI for an agent configuration: ${uri}`)
-            )
+            new Err(new MCPError(parsedChildAgentIdRes.error.message))
           );
         }
+        const parsedChildAgentId = parsedChildAgentIdRes.value;
 
         const user = auth.user();
 
@@ -500,7 +500,7 @@ async function createRunAgentServer(
           const convoUrl = getConversationRoute(
             auth.getNonNullableWorkspace().sId,
             conversationId,
-            config.getClientFacingUrl()
+            config.getAppUrl()
           );
           const { citationsOffset } = agentLoopContext.runContext.stepContext;
 

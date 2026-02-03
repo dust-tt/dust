@@ -3,12 +3,6 @@ import { EnvironmentConfig } from "@app/types/shared/utils/config";
 
 export const PRODUCTION_DUST_API = "https://dust.tt";
 
-// Body parser limit for document upsert endpoints. This must accommodate the largest allowed
-// document text content (MAX_LARGE_DOCUMENT_TXT_LEN = 5MB in connectors) plus JSON serialization
-// overhead. JSON encoding can expand content significantly due to escaping of special characters
-// (newlines, quotes, backslashes, Unicode). We use 16MB to handle worst-case ~3x expansion.
-export const DOCUMENT_UPSERT_BODY_PARSER_LIMIT = "16mb";
-
 const config = {
   getClientFacingUrl: (): string => {
     // We override the NEXT_PUBLIC_DUST_CLIENT_FACING_URL in `front-internal` to ensure that the
@@ -26,6 +20,16 @@ const config = {
       throw new Error("NEXT_PUBLIC_DUST_CLIENT_FACING_URL is not set");
     }
     return process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL;
+  },
+  // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
+  // Use this for page URLs, not API endpoints.
+  getAppUrl: (): string => {
+    // Using process.env here to make sure the function is usable on the client side.
+    if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
+      return config.getClientFacingUrl();
+    }
+
+    return process.env.NEXT_PUBLIC_DUST_APP_URL;
   },
   // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
   getPokeAppUrl: (): string => {

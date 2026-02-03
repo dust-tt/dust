@@ -5,15 +5,15 @@
   "scripts": {
     "dev:poke": "VITE_APP_NAME=poke VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
     "dev:app": "VITE_APP_NAME=app VITE_DUST_CLIENT_FACING_URL=$DUST_CLIENT_FACING_URL vite",
-    "build:poke": "VITE_APP_NAME=poke vite build",
+    "build:poke": "VITE_APP_NAME=poke vite build && cp public-poke/_redirects dist/poke/_redirects",
     "build:app": "VITE_APP_NAME=app vite build",
     "build": "npm run build:poke && npm run build:app",
     "preview:poke": "VITE_APP_NAME=poke vite preview",
     "preview:app": "VITE_APP_NAME=app vite preview",
     "lint": "eslint --cache --cache-location .cache/eslint --cache-strategy content .",
     "lint:fix": "eslint --fix .",
-    "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format": "biome format --write .",
+    "format:check": "biome format ."
   },
   "dependencies": {
     "@dust-tt/front": "*",
@@ -23,6 +23,7 @@
     "react-router-dom": "^7.0.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.3.8",
     "@eslint/js": "^9.39.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/forms": "^0.5.3",
@@ -36,8 +37,6 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.3.0",
     "postcss": "^8.5.6",
-    "prettier": "^3.7.4",
-    "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwind-scrollbar-hide": "^1.1.7",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",

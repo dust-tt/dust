@@ -52,6 +52,7 @@ import {
   makeSId,
 } from "@app/lib/resources/string_ids";
 import { UserResource } from "@app/lib/resources/user_resource";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { withTransaction } from "@app/lib/utils/sql_utils";
 import type {
@@ -1457,11 +1458,39 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
   async archive(auth: Authenticator): Promise<{ affectedCount: number }> {
     assert(this.canWrite(auth), "User is not authorized to archive this skill");
 
-    // We preserve AgentSkillModel and ConversationSkillModel relationships
-    // so they can be restored when the skill is unarchived.
-    const [affectedCount] = await this.update({ status: "archived" });
+    const workspace = auth.getNonNullableWorkspace();
 
-    return { affectedCount };
+    return withTransaction(async (transaction) => {
+      // Rename any existing archived skill with the same name to avoid unique constraint violation.
+      const existingArchivedSkill = await this.model.findOne({
+        where: {
+          workspaceId: workspace.id,
+          name: this.name,
+          status: "archived",
+        },
+        transaction,
+      });
+
+      if (existingArchivedSkill) {
+        const timestamp = formatTimestampToFriendlyDate(
+          existingArchivedSkill.updatedAt.getTime(),
+          "compactWithDay"
+        );
+        await existingArchivedSkill.update(
+          { name: `${existingArchivedSkill.name} (archived on ${timestamp})` },
+          { transaction }
+        );
+      }
+
+      // We preserve AgentSkillModel and ConversationSkillModel relationships
+      // so they can be restored when the skill is unarchived.
+      const [affectedCount] = await this.update(
+        { status: "archived" },
+        transaction
+      );
+
+      return { affectedCount };
+    });
   }
 
   async restore(auth: Authenticator): Promise<{ affectedCount: number }> {
@@ -1819,7 +1848,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfiguration: AgentConfigurationType;
       conversation: ConversationType;
     }
-  ): Promise<Result<void, Error>> {
+  ): Promise<Result<{ alreadyEnabled: boolean }, Error>> {
     const workspace = auth.getNonNullableWorkspace();
 
     const refs = await SkillResource.getSkillReferencesForAgent(
@@ -1850,9 +1879,18 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       agentConfigurationId: agentConfiguration.sId,
     };
 
+    // Check if this skill is already enabled for this agent in this conversation.
+    const existingConversationSkill = await ConversationSkillModel.findOne({
+      where: conversationSkillBlob,
+    });
+
+    if (existingConversationSkill) {
+      return new Ok({ alreadyEnabled: true });
+    }
+
     await ConversationSkillModel.create(conversationSkillBlob);
 
-    return new Ok(undefined);
+    return new Ok({ alreadyEnabled: false });
   }
 
   static async snapshotConversationSkillsForMessage(

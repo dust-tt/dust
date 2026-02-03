@@ -21,16 +21,19 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
 import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
+import {
+  addBackwardCompatibleConversationFields,
+  addBackwardCompatibleConversationWithoutContentFields,
+  normalizeConversationVisibility,
+} from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -295,8 +298,7 @@ async function handler(
 
       let conversation = await createConversation(auth, {
         title: title ?? null,
-        // Temporary translation layer for deprecated "workspace" visibility.
-        visibility: visibility === "workspace" ? "unlisted" : visibility,
+        visibility: normalizeConversationVisibility(visibility),
         depth,
         spaceId: null,
       });
@@ -475,16 +477,7 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation: {
-          ...conversation,
-          url: getConversationRoute(
-            conversation.owner.sId,
-            conversation.sId,
-            undefined,
-            config.getClientFacingUrl()
-          ),
-          requestedGroupIds: [], // Remove once all old SDKs users are updated
-        },
+        conversation: addBackwardCompatibleConversationFields(conversation),
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });
@@ -503,17 +496,12 @@ async function handler(
       const conversations =
         await ConversationResource.listConversationsForUser(auth);
       res.status(200).json({
-        conversations: conversations.map((c) => ({
-          ...c.toJSON(),
-
-          // Theses 2 properties are excluded from the ConversationWithoutContentType used internally (as they are not needed anywhere).
-          // They are still returned for the public API to stay backward compatible.
-          visibility: "unlisted", // Hardcoded as "deleted" conversations are not returned by the API
-          owner: auth.getNonNullableWorkspace(),
-
-          // This one is no excluded (yet)
-          requestedGroupIds: [], // No need to leak to the public API. Hardcoded as an empty array. Can be removed once the chrome extension is updated.
-        })),
+        conversations: conversations.map((c) =>
+          addBackwardCompatibleConversationWithoutContentFields(
+            auth,
+            c.toJSON()
+          )
+        ),
       });
       return;
 

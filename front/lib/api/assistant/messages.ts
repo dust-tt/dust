@@ -624,10 +624,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         actions,
         content,
         chainOfThought,
-        rawContents: textContents.map((c) => ({
-          step: c.step,
-          content: c.content.value,
-        })),
         contents: agentStepContents,
         parsedContents,
         error,
@@ -641,6 +637,7 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
           actions
         ),
         reactions: reactionsByMessageId[message.id] ?? [],
+        prunedContext: agentMessage.prunedContext ?? false,
       } satisfies AgentMessageType;
 
       if (viewType === "full") {

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { USED_MODEL_CONFIGS } from "@app/components/providers/types";
 import type { Authenticator } from "@app/lib/auth";
 import { AgentConfigurationFactory } from "@app/tests/utils/AgentConfigurationFactory";
 import { AgentSuggestionFactory } from "@app/tests/utils/AgentSuggestionFactory";
@@ -28,7 +29,7 @@ vi.mock("@app/lib/api/actions/servers/agent_copilot_helpers", () => ({
 
 // Reset mocks between tests to prevent interference.
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 function getToolByName(name: string) {
@@ -651,7 +652,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [{ id: "slack" }],
+            additions: [{ id: "non-existent-tool" }],
           },
         },
         createTestExtra(authenticator)
@@ -661,6 +662,52 @@ describe("agent_copilot_context tools", () => {
     });
 
     it("creates tool suggestion successfully", async () => {
+      const { authenticator, workspace, globalSpace } =
+        await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      // Create a valid MCP server and view.
+      const server = await RemoteMCPServerFactory.create(workspace);
+      const view = await MCPServerViewFactory.create(
+        workspace,
+        server.sId,
+        globalSpace
+      );
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_tools");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: [{ id: view.sId }],
+          },
+          analysis: "Adding tool for better capabilities",
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        const content = result.value[0];
+        expect(content.type).toBe("text");
+        if (content.type === "text") {
+          expect(content.text).toMatch(
+            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
+          );
+        }
+      }
+    });
+
+    it("returns error when suggesting non-existent tool", async () => {
       const { authenticator } = await createResourceTest({ role: "admin" });
 
       // Create a real agent configuration.
@@ -678,23 +725,17 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: [{ id: "slack" }],
-            deletions: ["jira"],
+            additions: [{ id: "non-existent-tool-id" }],
           },
-          analysis: "Adding Slack for better communication",
         },
         createTestExtra(authenticator)
       );
 
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        const content = result.value[0];
-        expect(content.type).toBe("text");
-        if (content.type === "text") {
-          expect(content.text).toMatch(
-            /:agent_suggestion\[\]\{sId=\S+ kind=tools\}/
-          );
-        }
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("non-existent-tool-id");
+        expect(result.error.message).toContain("invalid or not accessible");
+        expect(result.error.message).toContain("get_available_tools");
       }
     });
   });
@@ -712,7 +753,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: ["skill-1"],
+            additions: ["non-existent-skill"],
           },
         },
         createTestExtra(authenticator)
@@ -728,6 +769,13 @@ describe("agent_copilot_context tools", () => {
       const agentConfiguration =
         await AgentConfigurationFactory.createTestAgent(authenticator);
 
+      // Create a valid skill.
+      const skill = await SkillFactory.create(authenticator, {
+        name: "Test Skill for Suggestion",
+        userFacingDescription: "A test skill",
+        agentFacingDescription: "Agent facing description",
+      });
+
       const { getAgentConfigurationIdFromContext } = await import(
         "@app/lib/api/actions/servers/agent_copilot_helpers"
       );
@@ -739,7 +787,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            additions: ["skill-1", "skill-2"],
+            additions: [skill.sId],
           },
           analysis: "Adding skills for better capabilities",
         },
@@ -757,6 +805,38 @@ describe("agent_copilot_context tools", () => {
         }
       }
     });
+
+    it("returns error when suggesting non-existent skill", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_skills");
+      const result = await tool.handler(
+        {
+          suggestion: {
+            additions: ["non-existent-skill-id"],
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("non-existent-skill-id");
+        expect(result.error.message).toContain("invalid or not accessible");
+        expect(result.error.message).toContain("get_available_skills");
+      }
+    });
   });
 
   describe("suggest_model", () => {
@@ -772,7 +852,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-3-5-sonnet-20241022",
+            modelId: "claude-sonnet-4-5-20250929",
           },
         },
         createTestExtra(authenticator)
@@ -799,7 +879,7 @@ describe("agent_copilot_context tools", () => {
       const result = await tool.handler(
         {
           suggestion: {
-            modelId: "claude-3-5-sonnet-20241022",
+            modelId: "claude-sonnet-4-5-20250929",
             reasoningEffort: "high",
           },
           analysis: "Upgrading to better model for complex tasks",
@@ -816,6 +896,81 @@ describe("agent_copilot_context tools", () => {
             /:agent_suggestion\[\]\{sId=\S+ kind=model\}/
           );
         }
+      }
+    });
+
+    it("returns error when suggesting a model not available in the UI", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      // gpt-4o-mini is in SUPPORTED_MODEL_CONFIGS but not in USED_MODEL_CONFIGS
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "gpt-4o-mini",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain("gpt-4o-mini");
+        expect(result.error.message).toContain("get_available_models");
+      }
+    });
+
+    it("returns error when suggesting a model from a non-whitelisted provider", async () => {
+      const { authenticator } = await createResourceTest({ role: "admin" });
+
+      // Override the workspace to only whitelist anthropic provider.
+      Object.defineProperty(authenticator, "_workspace", {
+        value: {
+          ...authenticator["_workspace"],
+          whiteListedProviders: ["anthropic"],
+        },
+        writable: true,
+      });
+
+      // Create a real agent configuration.
+      const agentConfiguration =
+        await AgentConfigurationFactory.createTestAgent(authenticator);
+
+      const { getAgentConfigurationIdFromContext } = await import(
+        "@app/lib/api/actions/servers/agent_copilot_helpers"
+      );
+      vi.mocked(getAgentConfigurationIdFromContext).mockReturnValueOnce(
+        agentConfiguration.sId
+      );
+
+      const tool = getToolByName("suggest_model");
+      // gpt-5 is in USED_MODEL_CONFIGS but openai is not whitelisted
+      expect(USED_MODEL_CONFIGS.some((m) => m.modelId === "gpt-5")).toBe(true);
+      const result = await tool.handler(
+        {
+          suggestion: {
+            modelId: "gpt-5",
+          },
+        },
+        createTestExtra(authenticator)
+      );
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.message).toContain("Invalid model ID");
+        expect(result.error.message).toContain("gpt-5");
       }
     });
   });

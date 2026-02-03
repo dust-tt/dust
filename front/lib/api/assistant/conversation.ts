@@ -28,9 +28,9 @@ import {
   publishMessageEventsOnMessagePostOrEdit,
 } from "@app/lib/api/assistant/streaming/events";
 import { maybeUpsertFileAttachment } from "@app/lib/api/files/attachments";
-import { getRemainingKeyCapMicroUsd } from "@app/lib/api/key_cap_tracking";
 import { getSupportedModelConfig } from "@app/lib/api/models";
-import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage_tracking";
+import { getRemainingKeyCapMicroUsd } from "@app/lib/api/programmatic_usage/key_cap";
+import { isProgrammaticUsage } from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { getFeatureFlags } from "@app/lib/auth";
 import { extractFromString } from "@app/lib/mentions/format";
@@ -465,6 +465,7 @@ export function isUserMessageContextValid(
 
   switch (context.origin) {
     case "api":
+    case "project_butler":
       return true;
     case "excel":
     case "gsheet":
@@ -512,6 +513,7 @@ export async function postUserMessage(
     context,
     agenticMessageData,
     skipToolsValidation,
+    doNotAssociateUser,
   }: {
     conversation: ConversationType;
     content: string;
@@ -519,6 +521,7 @@ export async function postUserMessage(
     context: UserMessageContext;
     agenticMessageData?: AgenticMessageData;
     skipToolsValidation: boolean;
+    doNotAssociateUser?: boolean;
   }
 ): Promise<
   Result<
@@ -542,6 +545,29 @@ export async function postUserMessage(
         message: "The conversation does not exist.",
       },
     });
+  }
+
+  if (isProjectConversation(conversation)) {
+    // Check if the user is a member of the space.
+    const space = await SpaceResource.fetchById(auth, conversation.spaceId);
+    if (!space) {
+      return new Err({
+        status_code: 404,
+        api_error: {
+          type: "space_not_found",
+          message: "Space not found",
+        },
+      });
+    }
+    if (!space.isMember(auth)) {
+      return new Err({
+        status_code: 403,
+        api_error: {
+          type: "workspace_auth_error",
+          message: "You are not a member of the project.",
+        },
+      });
+    }
   }
 
   // Check plan and rate limit.
@@ -651,7 +677,7 @@ export async function postUserMessage(
       content,
       metadata: {
         type: "create",
-        user: user?.toJSON() ?? null,
+        user: doNotAssociateUser ? null : (user?.toJSON() ?? null),
         rank: nextMessageRank++,
         context,
         agenticMessageData,
@@ -1464,7 +1490,7 @@ export async function softDeleteUserMessage(
   const userMessage = await withTransaction(async (t) => {
     await getConversationRankVersionLock(auth, conversation, t);
 
-    const relatedContentFragments = await getRelatedContentFragments(
+    const relatedContentFragments = getRelatedContentFragments(
       conversation,
       message
     );

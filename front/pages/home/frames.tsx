@@ -16,6 +16,7 @@ import { PageMetadata } from "@app/components/home/PageMetadata";
 import TrustedBy from "@app/components/home/TrustedBy";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
 import { classNames } from "@app/lib/utils";
+import { appendUTMParams } from "@app/lib/utils/utm";
 
 const SECTION_CLASSES = "py-12 md:py-16";
 const CONTAINER_CLASSES = "container mx-auto px-6";
@@ -489,11 +490,16 @@ function JustUseDustSection() {
               variant="highlight"
               size="md"
               label="Start free trial"
-              href="/api/workos/login?screenHint=sign-up"
               className="w-full sm:w-auto"
               onClick={withTracking(
                 TRACKING_AREAS.FRAMES,
-                "cta_start_free_trial"
+                "cta_start_free_trial",
+                () => {
+                  // eslint-disable-next-line react-hooks/immutability
+                  window.location.href = appendUTMParams(
+                    "/api/workos/login?screenHint=sign-up"
+                  );
+                }
               )}
             />
             <Button

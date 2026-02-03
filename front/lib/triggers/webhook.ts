@@ -1,5 +1,5 @@
 import { toFileContentFragment } from "@app/lib/api/assistant/conversation/content_fragment";
-import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage_tracking";
+import { checkProgrammaticUsageLimits } from "@app/lib/api/programmatic_usage/tracking";
 import { Authenticator } from "@app/lib/auth";
 import type { DustError } from "@app/lib/error";
 import { getWebhookRequestsBucket } from "@app/lib/file_storage";

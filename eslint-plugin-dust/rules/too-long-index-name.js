@@ -37,10 +37,10 @@ module.exports = {
         ) {
           const options = node.arguments[1];
           const modelNameProp = options.properties.find(
-            (p) => p.key.name === "modelName",
+            (p) => p.key.name === "modelName"
           );
           const indexesProp = options.properties.find(
-            (p) => p.key.name === "indexes",
+            (p) => p.key.name === "indexes"
           );
 
           if (!modelNameProp || !indexesProp) return;
@@ -53,7 +53,7 @@ module.exports = {
 
             // Skip if index has a name property
             const nameProp = index.properties.find(
-              (p) => p.key.name === "name",
+              (p) => p.key.name === "name"
             );
             if (nameProp) {
               if (
@@ -68,7 +68,7 @@ module.exports = {
             }
 
             const fieldsProp = index.properties.find(
-              (p) => p.key.name === "fields",
+              (p) => p.key.name === "fields"
             );
             if (!fieldsProp) return;
 

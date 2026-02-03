@@ -6,7 +6,7 @@ import {
   Logo,
 } from "@dust-tt/sparkle";
 import type { ComponentProps } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
@@ -17,8 +17,14 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import type { RegionType } from "@app/lib/api/regions/config";
+import {
+  useRegionContext,
+  useRegionContextSafe,
+} from "@app/lib/auth/RegionContext";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
+import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
-import { usePokeSearch } from "@app/poke/swr/search";
+import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
 import type { PokeItemBase } from "@app/types";
 import { isDevelopment } from "@app/types";
 
@@ -27,6 +33,7 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
+  showRegionPicker?: boolean;
   title: string;
 }
 
@@ -49,7 +56,12 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
+function PokeNavbar({
+  currentRegion,
+  regionUrls,
+  showRegionPicker = false,
+  title,
+}: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -76,7 +88,7 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
       </div>
       <div className="items-right flex items-center gap-4">
         <PokeFavoriteButton title={title} />
-        {currentRegion && (
+        {showRegionPicker && currentRegion && (
           <PokeRegionDropdown
             currentRegion={currentRegion}
             regionUrls={regionUrls}
@@ -90,27 +102,133 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
 
 export default PokeNavbar;
 
+/**
+ * Entry point that renders the appropriate search command based on mode.
+ * - SPA mode: Multi-region search with region switching
+ * - NextJS mode: Single-region search (legacy)
+ */
 export function PokeSearchCommand() {
+  const regionContext = useRegionContextSafe();
+
+  // SPA mode has region context available.
+  if (regionContext) {
+    return <PokeSearchCommandSPA />;
+  }
+
+  return <PokeSearchCommandLegacy />;
+}
+
+/**
+ * SPA mode: Search across all regions in parallel.
+ */
+function PokeSearchCommandSPA() {
+  const [open, setOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const { regionInfo, setRegionInfo } = useRegionContext();
+  const { regionData } = usePokeRegion();
+  const regionUrls = regionData?.regionUrls ?? null;
+
+  const { isError, isLoading, results } = usePokeSearchAllRegions({
+    disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,
+    search: searchTerm,
+    regionUrls,
+  });
+
+  const handleItemClick = useCallback(
+    (item: PokeItemBase) => {
+      // Switch region if the item is from a different region.
+      if (item.region && item.region !== regionInfo?.name && regionUrls) {
+        setRegionInfo({ name: item.region, url: regionUrls[item.region] });
+      }
+      setOpen(false);
+    },
+    [regionInfo, setRegionInfo, regionUrls]
+  );
+
+  return (
+    <PokeSearchCommandUI
+      open={open}
+      onOpenChange={setOpen}
+      searchTerm={searchTerm}
+      onSearchTermChange={setSearchTerm}
+      results={results}
+      isLoading={isLoading}
+      isError={isError}
+      onItemClick={handleItemClick}
+      showRegion
+    />
+  );
+}
+
+/**
+ * NextJS mode: Single-region search (legacy).
+ */
+function PokeSearchCommandLegacy() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
   const { isError, isLoading, results } = usePokeSearch({
-    // Disable search until the user has typed at least MIN_SEARCH_CHARACTERS characters.
     disabled: searchTerm.length < MIN_SEARCH_CHARACTERS,
     search: searchTerm,
   });
 
+  const handleItemClick = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  return (
+    <PokeSearchCommandUI
+      open={open}
+      onOpenChange={setOpen}
+      searchTerm={searchTerm}
+      onSearchTermChange={setSearchTerm}
+      results={results}
+      isLoading={isLoading}
+      isError={isError}
+      onItemClick={handleItemClick}
+      showRegion={false}
+    />
+  );
+}
+
+interface PokeSearchCommandUIProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  searchTerm: string;
+  onSearchTermChange: (term: string) => void;
+  results: PokeItemBase[];
+  isLoading: boolean;
+  isError: boolean;
+  onItemClick: (item: PokeItemBase) => void;
+  showRegion: boolean;
+}
+
+/**
+ * Shared UI component for the search command dialog.
+ */
+function PokeSearchCommandUI({
+  open,
+  onOpenChange,
+  searchTerm,
+  onSearchTermChange,
+  results,
+  isLoading,
+  isError,
+  onItemClick,
+  showRegion,
+}: PokeSearchCommandUIProps) {
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setOpen((open) => !open);
+        onOpenChange(!open);
       }
     };
     document.addEventListener("keydown", down);
 
     return () => document.removeEventListener("keydown", down);
-  }, [open, results]);
+  }, [open, onOpenChange]);
 
   return (
     <>
@@ -118,17 +236,17 @@ export function PokeSearchCommand() {
         variant="outline"
         size="sm"
         label="Search (⌘K)"
-        onClick={() => setOpen(true)}
+        onClick={() => onOpenChange(true)}
       />
       <PokeCommandDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         className="bg-muted-background sm:max-w-[600px]"
         shouldFilter={false}
       >
         <PokeCommandInput
           placeholder="Type a command or search..."
-          onValueChange={(value) => setSearchTerm(value.trim())}
+          onValueChange={(value) => onSearchTermChange(value.trim())}
           className="border-none focus:outline-none focus:ring-0"
         />
         <PokeCommandList>
@@ -178,7 +296,7 @@ export function PokeSearchCommand() {
           )}
 
           {results.map((item, index) => {
-            const CommandItem = () => (
+            const CommandItemContent = () => (
               <PokeCommandItem value={item.name} index={index}>
                 <div className="flex w-full items-center justify-between gap-3 px-2 text-foreground dark:text-foreground-night">
                   <div className="flex min-w-0 items-baseline gap-3">
@@ -189,18 +307,27 @@ export function PokeSearchCommand() {
                     <span className="font-mono text-xs text-muted-foreground dark:text-muted-foreground-night">
                       (id: {item.id})
                     </span>
+                    {showRegion && item.region && (
+                      <Chip size="xs" color={getRegionChipColor(item.region)}>
+                        {getRegionDisplay(item.region)}
+                      </Chip>
+                    )}
                   </div>
                   <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />
                 </div>
               </PokeCommandItem>
             );
 
+            const key = `${item.region ?? "default"}-${item.id}`;
+
             return item.link ? (
-              <LinkWrapper href={item.link} key={item.id}>
-                <CommandItem />
-              </LinkWrapper>
+              <div key={key} onClick={() => onItemClick(item)}>
+                <LinkWrapper href={item.link}>
+                  <CommandItemContent />
+                </LinkWrapper>
+              </div>
             ) : (
-              <CommandItem />
+              <CommandItemContent key={key} />
             );
           })}
         </PokeCommandList>

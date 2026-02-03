@@ -120,6 +120,11 @@ export type UserTypeWithExtensionWorkspaces = UserType & {
   selectedWorkspace?: string;
 };
 
+export type SpaceUserType = UserType & {
+  isEditor?: boolean;
+  joinedAt?: string;
+};
+
 export type UserMetadataType = {
   key: string;
   value: string;

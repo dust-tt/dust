@@ -208,3 +208,19 @@ export function renderTicketComments(
 
   return lines.join("\n");
 }
+
+export function renderTicketFields(fields: ZendeskTicketField[]): string {
+  if (fields.length === 0) {
+    return "No ticket fields found.";
+  }
+
+  const lines = [`Found ${fields.length} ticket field(s):\n`];
+
+  for (const field of fields) {
+    lines.push(
+      `- ID: ${field.id} | Title: ${field.title} | Type: ${field.type} | Active: ${field.active}`
+    );
+  }
+
+  return lines.join("\n") + "\n";
+}

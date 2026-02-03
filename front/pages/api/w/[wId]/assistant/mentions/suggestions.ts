@@ -26,7 +26,9 @@ async function handler(
     });
   }
 
-  const { select: selectParam, current } = req.query;
+  const { select: selectParam, current, spaceId: spaceIdParam } = req.query;
+
+  const spaceId = isString(spaceIdParam) ? spaceIdParam : undefined;
 
   const { query: queryParam } = req.query;
   const query = isString(queryParam) ? queryParam.trim().toLowerCase() : "";
@@ -48,6 +50,7 @@ async function handler(
     query,
     select,
     current: current === "true",
+    spaceId,
   });
 
   return res.status(200).json({ suggestions });

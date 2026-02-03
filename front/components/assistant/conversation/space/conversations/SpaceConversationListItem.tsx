@@ -15,6 +15,8 @@ import {
 } from "@app/types";
 import { stripMarkdown } from "@app/types";
 
+import { isMessageUnread } from "../../utils";
+
 interface SpaceConversationListItemProps {
   conversation: ConversationType;
   owner: WorkspaceType;
@@ -29,16 +31,19 @@ export function SpaceConversationListItem({
     .map((m) => m[m.length - 1])
     .find(isUserMessageType);
 
+  // Compute the reply section avatars.
   const avatars = useMemo(() => {
     const avatars: Parameters<typeof Avatar.Stack>[0]["avatars"] = [];
     // Lookup the messages in reverse order and collect the users and agents icons
-    for (const versions of conversation.content) {
+    // Slice to skip the first message as it's not a reply.
+    for (const versions of conversation.content.slice(1)) {
       const message = versions[versions.length - 1];
       if (isUserMessageType(message)) {
         avatars.push({
           isRounded: true,
-          name: message.user?.fullName ?? "",
-          visual: message.user?.image ?? "",
+          name: message.user?.fullName ?? message.context?.fullName ?? "",
+          visual:
+            message.user?.image ?? message.context?.profilePictureUrl ?? "",
         });
       } else if (isAgentMessageType(message)) {
         avatars.push({
@@ -48,15 +53,29 @@ export function SpaceConversationListItem({
         });
       }
     }
-    return uniqBy(avatars, "visual").reverse();
+    return uniqBy(avatars.reverse(), "visual");
   }, [conversation.content]);
+
+  const countUnreadMessages = useMemo(() => {
+    return conversation.content.filter((versions) => {
+      const message = versions[versions.length - 1];
+      return isMessageUnread(message, conversation.lastReadMs);
+    }).length;
+  }, [conversation.content, conversation.lastReadMs]);
 
   // TODO(conversations-groups) Are we sure we want to require a user message?
   if (!firstUserMessage) {
     return null;
   }
 
-  const conversationCreator = firstUserMessage.user;
+  const creatorName =
+    firstUserMessage.user?.fullName ??
+    firstUserMessage.context?.fullName ??
+    "Unknown";
+  const creatorVisual =
+    firstUserMessage.user?.image ??
+    firstUserMessage.context?.profilePictureUrl ??
+    undefined;
 
   const conversationLabel =
     conversation.title ??
@@ -69,7 +88,7 @@ export function SpaceConversationListItem({
   const agentAndUserMessages = conversation.content.filter(
     (versions) => !isContentFragmentType(versions[versions.length - 1])
   );
-  const messageCount = agentAndUserMessages.length;
+  const replyCount = agentAndUserMessages.length - 1;
 
   return (
     <>
@@ -81,22 +100,20 @@ export function SpaceConversationListItem({
           description: stripMarkdown(firstUserMessage.content),
           updatedAt: new Date(conversation.updated),
         }}
-        creator={
-          conversationCreator
-            ? {
-                fullName: conversationCreator.fullName,
-                portrait: conversationCreator.image ?? undefined,
-              }
-            : undefined
-        }
+        creator={{
+          fullName: creatorName,
+          portrait: creatorVisual,
+        }}
         time={time}
         replySection={
-          <ReplySection
-            totalMessages={messageCount}
-            newMessages={0} // todo(projects) count unread messages
-            avatars={avatars}
-            lastMessageBy={avatars[avatars.length - 1]?.name ?? "Unknown"}
-          />
+          replyCount > 0 ? (
+            <ReplySection
+              totalMessages={replyCount}
+              newMessages={countUnreadMessages}
+              avatars={avatars}
+              lastMessageBy={avatars[0]?.name ?? "Unknown"}
+            />
+          ) : null
         }
         onClick={async () => {
           await router.push(

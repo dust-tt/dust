@@ -15,7 +15,7 @@
     "agentName": "MeteoWithSuggestions",
     "kind": "model",
     "suggestion": {
-      "modelId": "claude-3-5-haiku-20241022"
+      "modelId": "claude-haiku-4-5-20251001"
     },
     "analysis": "Weather queries are typically straightforward and don't require the full capabilities of Sonnet. Haiku would be more cost-effective while still providing good responses."
   },
@@ -36,5 +36,13 @@
       "newString": "Be friendly and informative. When discussing weather conditions, also mention any relevant safety tips (e.g., UV protection on sunny days, staying hydrated during heat waves)."
     },
     "analysis": "Adding safety tips would make the agent more helpful and proactive about user wellbeing."
+  },
+  {
+    "agentName": "MeteoWithSuggestions",
+    "kind": "skills",
+    "suggestion": {
+      "additions": ["frames"]
+    },
+    "analysis": "Adding the Frames skill would allow the agent to create interactive weather visualizations like temperature charts, precipitation graphs, and forecast timelines."
   }
 ]

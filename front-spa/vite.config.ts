@@ -62,6 +62,23 @@ function stubModulesPlugin(): Plugin {
   };
 }
 
+// Plugin to rename output HTML to index.html for SPA deployment
+function renameHtmlPlugin(sourceHtml: string): Plugin {
+  return {
+    name: "rename-html",
+    enforce: "post",
+    generateBundle(_, bundle) {
+      if (sourceHtml === "index.html") return;
+      const htmlAsset = bundle[sourceHtml];
+      if (htmlAsset) {
+        htmlAsset.fileName = "index.html";
+        delete bundle[sourceHtml];
+        bundle["index.html"] = htmlAsset;
+      }
+    },
+  };
+}
+
 // Plugin to serve the correct HTML file in dev mode (SPA fallback)
 function serveHtmlPlugin(htmlFile: string): Plugin {
   return {
@@ -119,7 +136,12 @@ export default defineConfig(({ mode }) => {
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),
-    plugins: [stubModulesPlugin(), serveHtmlPlugin(htmlEntry), react()],
+    plugins: [
+      stubModulesPlugin(),
+      serveHtmlPlugin(htmlEntry),
+      renameHtmlPlugin(htmlEntry),
+      react(),
+    ],
     define: {
       ...envVarDefines,
       // Fallback for any remaining process.env access

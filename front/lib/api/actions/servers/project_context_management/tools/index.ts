@@ -14,6 +14,10 @@ import {
 } from "@app/lib/api/actions/servers/project_context_management/helpers";
 import { PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA } from "@app/lib/api/actions/servers/project_context_management/metadata";
 import {
+  createConversation,
+  postUserMessage,
+} from "@app/lib/api/assistant/conversation";
+import {
   getAttachmentFromToolOutput,
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
@@ -21,16 +25,19 @@ import config from "@app/lib/api/config";
 import { upsertProjectContextFile } from "@app/lib/api/projects";
 import type { Authenticator } from "@app/lib/auth";
 import { FileResource } from "@app/lib/resources/file_resource";
-import { ProjectJournalEntryResource } from "@app/lib/resources/project_journal_entry_resource";
 import { ProjectMetadataResource } from "@app/lib/resources/project_metadata_resource";
 import type { SpaceResource } from "@app/lib/resources/space_resource";
-import { getSpaceConversationsRoute } from "@app/lib/utils/router";
+import {
+  getConversationRoute,
+  getSpaceConversationsRoute,
+} from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
-import type { SupportedFileContentType } from "@app/types";
+import type { SupportedFileContentType, UserMessageOrigin } from "@app/types";
 import {
   Err,
   isAllSupportedFileContentType,
   isSupportedFileContentType,
+  isUserMessageType,
   Ok,
 } from "@app/types";
 
@@ -525,51 +532,6 @@ export function createProjectContextManagementTools(
       }, "Failed to edit project URL");
     },
 
-    read_journal_entry: async (params) => {
-      return withErrorHandling(async () => {
-        const contextRes = await getProjectSpace(auth, {
-          agentLoopContext,
-          dustProject: params.dustProject,
-        });
-        if (contextRes.isErr()) {
-          return contextRes;
-        }
-
-        const { space } = contextRes.value;
-        const { limit = 10 } = params;
-
-        const entries = await ProjectJournalEntryResource.fetchBySpace(
-          auth,
-          space.id,
-          { limit }
-        );
-
-        if (entries.length === 0) {
-          return new Ok(
-            makeSuccessResponse({
-              success: true,
-              entries: [],
-              count: 0,
-              message: "No journal entries exist for this project",
-            })
-          );
-        }
-
-        return new Ok(
-          makeSuccessResponse({
-            success: true,
-            entries: entries.map((entry) => ({
-              journalEntry: entry.journalEntry,
-              createdAt: entry.createdAt.toISOString(),
-              updatedAt: entry.updatedAt.toISOString(),
-            })),
-            count: entries.length,
-            message: `Successfully retrieved ${entries.length} journal ${entries.length === 1 ? "entry" : "entries"}`,
-          })
-        );
-      }, "Failed to read project journal entries");
-    },
-
     get_information: async (params) => {
       return withErrorHandling(async () => {
         const contextRes = await getProjectSpace(auth, {
@@ -604,7 +566,7 @@ export function createProjectContextManagementTools(
 
         // Construct project URL
         const projectPath = getSpaceConversationsRoute(owner.sId, space.sId);
-        const projectUrl = `${config.getClientFacingUrl()}${projectPath}`;
+        const projectUrl = `${config.getAppUrl()}${projectPath}`;
 
         return new Ok(
           makeSuccessResponse({
@@ -622,6 +584,101 @@ export function createProjectContextManagementTools(
           })
         );
       }, "Failed to get project information");
+    },
+
+    create_conversation: async (params) => {
+      return withErrorHandling(async () => {
+        const contextRes = await getWritableProjectContext(auth, {
+          agentLoopContext,
+          dustProject: params.dustProject,
+        });
+        if (contextRes.isErr()) {
+          return contextRes;
+        }
+
+        const { space } = contextRes.value;
+        const user = auth.getNonNullableUser();
+        const owner = auth.getNonNullableWorkspace();
+
+        // Get origin and timezone from the current conversation
+        let origin: UserMessageOrigin = "web";
+        let timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+        if (agentLoopContext?.runContext?.conversation?.content) {
+          const userMessage = agentLoopContext.runContext.conversation.content
+            .flat()
+            .findLast(isUserMessageType);
+          if (userMessage?.context) {
+            origin = userMessage.context.origin ?? origin;
+            timezone = userMessage.context.timezone ?? timezone;
+          }
+        }
+
+        // Get agent configuration name & profile picture URL
+        const agentName =
+          agentLoopContext?.runContext?.agentConfiguration?.name ?? "Agent";
+
+        const agentProfilePictureUrl =
+          agentLoopContext?.runContext?.agentConfiguration?.pictureUrl ?? null;
+
+        // Build mentions if agentId is provided
+        const mentions = params.agentId
+          ? [{ configurationId: params.agentId }]
+          : [];
+
+        // Create conversation in the project space
+        const conversation = await createConversation(auth, {
+          title: params.title,
+          visibility: "unlisted",
+          spaceId: space.id,
+        });
+
+        // Post user message
+        const messageRes = await postUserMessage(auth, {
+          conversation,
+          content: params.message,
+          mentions,
+          context: {
+            username: agentName,
+            fullName: `@${agentName} on behalf of ${user.fullName()}`,
+            email: null,
+            profilePictureUrl: agentProfilePictureUrl,
+            timezone,
+            origin,
+            clientSideMCPServerIds: [],
+            selectedMCPServerViewIds: [],
+            lastTriggerRunAt: null,
+          },
+          skipToolsValidation: false,
+          doNotAssociateUser: true,
+        });
+
+        if (messageRes.isErr()) {
+          return new Err(
+            new MCPError(
+              `Failed to post message: ${messageRes.error.api_error.message}`,
+              { tracked: false }
+            )
+          );
+        }
+
+        const conversationUrl = getConversationRoute(
+          owner.sId,
+          conversation.sId,
+          undefined,
+          config.getAppUrl()
+        );
+
+        return new Ok(
+          makeSuccessResponse({
+            success: true,
+            conversationId: conversation.sId,
+            conversationUrl,
+            userMessageId: messageRes.value.userMessage.sId,
+            message: `Conversation created successfully in project "${space.name}"`,
+          })
+        );
+      }, "Failed to create conversation");
     },
   };
 

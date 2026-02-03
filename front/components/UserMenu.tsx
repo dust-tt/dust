@@ -35,6 +35,7 @@ import {
   sendOnboardingConversation,
   showDebugTools,
 } from "@app/lib/development";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type {
@@ -202,7 +203,7 @@ export function UserMenu({ user, owner, subscription }: UserMenuProps) {
             window.DD_RUM?.onReady(() => {
               window.DD_RUM?.clearUser();
             });
-            window.location.href = "/api/workos/logout";
+            window.location.href = `${getApiBaseUrl()}/api/workos/logout`;
           }}
         />
 

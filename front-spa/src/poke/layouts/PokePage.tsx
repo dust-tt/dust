@@ -1,5 +1,4 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useLoginRedirect } from "@spa/hooks/useLoginRedirect";
 import type { ReactNode } from "react";
 import { Outlet } from "react-router-dom";
 
@@ -11,13 +10,9 @@ interface PokeLayoutProps {
 }
 
 export function PokePage({ children }: PokeLayoutProps) {
-  const { authContext, isAuthenticated, isLoading } = usePokeAuthContext();
-  const { isRedirecting } = useLoginRedirect({
-    isLoading,
-    isAuthenticated,
-  });
+  const { authContext, isAuthenticated } = usePokeAuthContext();
 
-  if (isLoading || isRedirecting || !authContext) {
+  if (!isAuthenticated || !authContext) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
         <Spinner size="xl" />

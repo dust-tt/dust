@@ -100,10 +100,9 @@ async function handler(
         });
       }
 
-      const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(
-        auth,
-        dataSource
-      );
+      const delRes = await softDeleteDataSourceAndLaunchScrubWorkflow(auth, {
+        dataSource,
+      });
       if (delRes.isErr()) {
         switch (delRes.error.code) {
           case "unauthorized_deletion":

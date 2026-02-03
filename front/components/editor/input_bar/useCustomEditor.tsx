@@ -172,6 +172,7 @@ export interface CustomEditorProps {
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
   owner: WorkspaceType;
   conversationId?: string | null;
+  spaceId?: string;
   // If provided, large pasted text will be routed to this callback along with selection bounds
   onLongTextPaste?: (payload: {
     text: string;
@@ -185,11 +186,13 @@ export interface CustomEditorProps {
 export const buildEditorExtensions = ({
   owner,
   conversationId,
+  spaceId,
   onInlineText,
   onUrlDetected,
 }: {
   owner: WorkspaceType;
   conversationId?: string | null;
+  spaceId?: string;
   onInlineText?: (fileId: string, textContent: string) => void;
   onUrlDetected?: (candidate: UrlCandidate | NodeCandidate | null) => void;
 }) => {
@@ -258,6 +261,7 @@ export const buildEditorExtensions = ({
       suggestion: createMentionSuggestion({
         owner,
         conversationId,
+        spaceId,
         select: {
           agents: true,
           users: true,
@@ -292,6 +296,7 @@ const useCustomEditor = ({
   onUrlDetected,
   owner,
   conversationId,
+  spaceId,
   onLongTextPaste,
   longTextPasteCharsThreshold,
   onInlineText,
@@ -302,6 +307,7 @@ const useCustomEditor = ({
       extensions: buildEditorExtensions({
         owner,
         conversationId,
+        spaceId,
         onInlineText,
         onUrlDetected,
       }),

@@ -16,6 +16,7 @@ const config: KnipConfig = {
       ignoreFiles: [
         "**/vite.config.js",
         "**/esbuild.worker.ts",
+        "hooks/useGooglePicker.ts", // Google Picker not used currently, will be re-added later
         "components/home/content/Product/BlogSection.tsx", // Temporarily disabled due to broken blog.dust.tt images
         "lib/api/sandbox/client.ts", // Sandbox client not wired up yet
       ],
@@ -27,7 +28,6 @@ const config: KnipConfig = {
         "pino-pretty",
         "posthog-node",
         "eslint-plugin-dust",
-        "sqlite3", // used during the build process by sequelize
         "@dust-tt/client",
         "lefthook", // used as pre-commit hook
         "@northflank/js-client", // sandbox client not wired up yet

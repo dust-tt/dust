@@ -424,6 +424,27 @@ export async function runModelActivity(
     "[LLM stream] Starting (agent loop)"
   );
 
+  if (
+    modelConversationRes.value.prunedContext === true &&
+    !agentMessageRow.prunedContext
+  ) {
+    await agentMessageRow.update({
+      prunedContext: true,
+    });
+
+    await updateResourceAndPublishEvent(auth, {
+      event: {
+        type: "agent_context_pruned",
+        created: Date.now(),
+        configurationId: agentConfiguration.sId,
+        messageId: agentMessage.sId,
+      },
+      agentMessageRow,
+      conversation,
+      step,
+    });
+  }
+
   const getOutputFromActionResponse = await getOutputFromLLMStream(auth, {
     modelConversationRes,
     conversation,
@@ -548,6 +569,7 @@ export async function runModelActivity(
         completedTs,
         agentMessage.actions
       ),
+      prunedContext: agentMessageRow.prunedContext ?? false,
     } satisfies AgentMessageType;
 
     await updateResourceAndPublishEvent(auth, {

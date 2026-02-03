@@ -11,6 +11,7 @@ import OnboardingLayout from "@app/components/sparkle/OnboardingLayout";
 import config from "@app/lib/api/config";
 import { fetchUsersFromWorkOSWithEmails } from "@app/lib/api/workos/user";
 import { getWorkspaceInfos } from "@app/lib/api/workspace";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { makeGetServerSidePropsRequirementsWrapper } from "@app/lib/iam/session";
 import { MembershipInvitationResource } from "@app/lib/resources/membership_invitation_resource";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
@@ -109,7 +110,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
       if (res.isErr()) {
         return {
           redirect: {
-            destination: `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
+            destination: `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=email-invite&reason=${res.error.code}`)}`,
             permanent: false,
           },
         };
@@ -141,7 +142,7 @@ export const getServerSideProps = makeGetServerSidePropsRequirementsWrapper({
 
   return {
     props: {
-      baseUrl: config.getClientFacingUrl(),
+      baseUrl: config.getAppUrl(),
       signInUrl,
       userExists,
       onboardingType,

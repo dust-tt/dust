@@ -32,7 +32,7 @@ const useButtonsSwitch = () => {
 const listStyles = cva(
   cn(
     "s-inline-flex s-items-center s-gap-1",
-    "s-bg-primary-100 dark:s-bg-primary-900"
+    "s-bg-muted dark:s-bg-muted-night"
   ),
   {
     variants: {
@@ -150,7 +150,7 @@ export const ButtonsSwitch = React.forwardRef<
       role="tab"
       aria-selected={isActive}
       size={size}
-      variant={isActive ? "outline" : "ghost-secondary"}
+      variant={isActive ? "outline" : "ghost"}
       label={label}
       icon={icon}
       className={className}

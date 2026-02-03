@@ -72,7 +72,7 @@ export function ChartContainer({
           </div>
         </div>
         {description && (
-          <div className="my-3 text-xs text-muted-foreground dark:text-muted-foreground-night">
+          <div className="mb-3 text-xs text-muted-foreground dark:text-muted-foreground-night">
             {description}
           </div>
         )}

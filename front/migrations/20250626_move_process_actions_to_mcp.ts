@@ -181,8 +181,10 @@ function createResultOutputItem(
   const extractResult =
     "PROCESSED OUTPUTS:\n" +
     (outputs.data && outputs.data.length > 0
-      ? // @ts-ignore
-        outputs.data.map((d) => JSON.stringify(d)).join("\n")
+      ? outputs.data
+          // @ts-ignore
+          .map((d) => JSON.stringify(d))
+          .join("\n")
       : "(none)");
 
   const resultResource: ExtractResultResourceType = {

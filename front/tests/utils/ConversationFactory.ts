@@ -292,7 +292,6 @@ export class ConversationFactory {
       configuration: agentConfig,
       skipToolsValidation: false,
       actions: [],
-      rawContents: [],
       contents: [],
       parsedContents: {},
       reactions: [],

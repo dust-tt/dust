@@ -862,6 +862,206 @@ describe("postUserMessage", () => {
       expect(launchAgentLoopWorkflow).not.toHaveBeenCalled();
     }
   });
+
+  describe("project conversation member constraint", () => {
+    let projectSpace: Awaited<ReturnType<typeof SpaceFactory.project>>;
+    let nonMemberAuth: Authenticator;
+    let memberAuth: Authenticator;
+    let projectConversation: ConversationType;
+
+    beforeEach(async () => {
+      // Create a project space
+      projectSpace = await SpaceFactory.project(workspace);
+
+      // Create a non-member user
+      const nonMemberUser = await UserFactory.basic();
+      await MembershipFactory.associate(workspace, nonMemberUser, {
+        role: "user",
+      });
+      nonMemberAuth = await Authenticator.fromUserIdAndWorkspaceId(
+        nonMemberUser.sId,
+        workspace.sId
+      );
+
+      // Create a member user (the auth user from the parent describe block)
+      const memberUser = auth.getNonNullableUser();
+      const internalAdminAuth = await Authenticator.internalAdminForWorkspace(
+        workspace.sId
+      );
+
+      // Add member user to the project space group
+      const projectSpaceGroup = projectSpace.groups.find(
+        (g) => g.kind === "regular"
+      );
+      if (projectSpaceGroup) {
+        const addRes = await projectSpaceGroup.addMember(internalAdminAuth, {
+          user: memberUser.toJSON(),
+        });
+        if (addRes.isErr()) {
+          throw new Error(
+            `Failed to add user to project space group: ${addRes.error.message}`
+          );
+        }
+      }
+
+      // Refresh auth to get updated groups
+      await auth.refresh();
+      memberAuth = auth;
+
+      // Create a conversation in the project space
+      const conversationWithoutContent = await ConversationFactory.create(
+        memberAuth,
+        {
+          agentConfigurationId: agentConfig1.sId,
+          messagesCreatedAt: [],
+          spaceId: projectSpace.id,
+        }
+      );
+
+      const fetchedConversationResult = await getConversation(
+        memberAuth,
+        conversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      projectConversation = fetchedConversationResult.value;
+    });
+
+    it("should allow posting a message when user is a project member", async () => {
+      const user = memberAuth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const result = await postUserMessage(memberAuth, {
+        conversation: projectConversation,
+        content: "Hello from a project member",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.userMessage.content).toBe(
+          "Hello from a project member"
+        );
+      }
+    });
+
+    it("should reject posting a message when user is not a project member", async () => {
+      const user = nonMemberAuth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const result = await postUserMessage(nonMemberAuth, {
+        conversation: projectConversation,
+        content: "Hello from a non-member",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(403);
+        expect(result.error.api_error.type).toBe("workspace_auth_error");
+        expect(result.error.api_error.message).toBe(
+          "You are not a member of the project."
+        );
+      }
+    });
+
+    it("should return 404 when project space does not exist", async () => {
+      const user = memberAuth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      // Create a conversation with a non-existent spaceId
+      const conversationWithInvalidSpace: ConversationType = {
+        ...projectConversation,
+        spaceId: "invalid-space-id",
+      };
+
+      const result = await postUserMessage(memberAuth, {
+        conversation: conversationWithInvalidSpace,
+        content: "Hello",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isErr()).toBe(true);
+      if (result.isErr()) {
+        expect(result.error.status_code).toBe(404);
+        expect(result.error.api_error.type).toBe("space_not_found");
+        expect(result.error.api_error.message).toBe("Space not found");
+      }
+    });
+
+    it("should allow posting to non-project conversations without member check", async () => {
+      // Create a regular (non-project) conversation
+      const regularConversationWithoutContent =
+        await ConversationFactory.create(memberAuth, {
+          agentConfigurationId: agentConfig1.sId,
+          messagesCreatedAt: [],
+          // No spaceId means it's not a project conversation
+        });
+
+      const fetchedConversationResult = await getConversation(
+        memberAuth,
+        regularConversationWithoutContent.sId
+      );
+      if (fetchedConversationResult.isErr()) {
+        throw new Error("Failed to fetch conversation");
+      }
+      const regularConversation = fetchedConversationResult.value;
+
+      // Non-member should be able to post to non-project conversations
+      const user = nonMemberAuth.getNonNullableUser();
+      const userJson = user.toJSON();
+
+      const result = await postUserMessage(nonMemberAuth, {
+        conversation: regularConversation,
+        content: "Hello from a non-member to regular conversation",
+        mentions: [],
+        context: {
+          username: userJson.username,
+          timezone: "UTC",
+          fullName: userJson.fullName,
+          email: userJson.email,
+          profilePictureUrl: userJson.image,
+          origin: "web",
+        },
+        skipToolsValidation: false,
+      });
+
+      expect(result.isOk()).toBe(true);
+      if (result.isOk()) {
+        expect(result.value.userMessage.content).toBe(
+          "Hello from a non-member to regular conversation"
+        );
+      }
+    });
+  });
 });
 
 describe("editUserMessage", () => {

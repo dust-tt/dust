@@ -4,7 +4,8 @@ module.exports = {
   meta: {
     type: "suggestion",
     docs: {
-      description: "discourage direct import of useSendNotification from @dust-tt/sparkle",
+      description:
+        "discourage direct import of useSendNotification from @dust-tt/sparkle",
     },
     schema: [],
     fixable: "code",
@@ -35,41 +36,76 @@ module.exports = {
                     'import { useSendNotification } from "@app/hooks/useNotification";'
                   );
                 }
-                
+
                 // If there are multiple imports, just remove this specifier
                 // and add a new import line
                 const sourceCode = context.getSourceCode();
                 const fixes = [];
-                
+
                 // Remove the specifier
                 if (node.specifiers.length === 2) {
                   // Find the other specifier
-                  const otherSpecifier = node.specifiers.find(s => s !== useSendNotificationSpecifier);
-                  const comma = sourceCode.getTokenAfter(useSendNotificationSpecifier);
+                  const otherSpecifier = node.specifiers.find(
+                    (s) => s !== useSendNotificationSpecifier
+                  );
+                  const comma = sourceCode.getTokenAfter(
+                    useSendNotificationSpecifier
+                  );
                   if (comma && comma.value === ",") {
-                    fixes.push(fixer.removeRange([useSendNotificationSpecifier.range[0], comma.range[1]]));
+                    fixes.push(
+                      fixer.removeRange([
+                        useSendNotificationSpecifier.range[0],
+                        comma.range[1],
+                      ])
+                    );
                   } else {
-                    const comma = sourceCode.getTokenBefore(useSendNotificationSpecifier);
+                    const comma = sourceCode.getTokenBefore(
+                      useSendNotificationSpecifier
+                    );
                     if (comma && comma.value === ",") {
-                      fixes.push(fixer.removeRange([comma.range[0], useSendNotificationSpecifier.range[1]]));
+                      fixes.push(
+                        fixer.removeRange([
+                          comma.range[0],
+                          useSendNotificationSpecifier.range[1],
+                        ])
+                      );
                     }
                   }
                 } else {
                   // Multiple imports, remove just this one with its comma
-                  const nextToken = sourceCode.getTokenAfter(useSendNotificationSpecifier);
+                  const nextToken = sourceCode.getTokenAfter(
+                    useSendNotificationSpecifier
+                  );
                   if (nextToken && nextToken.value === ",") {
-                    fixes.push(fixer.removeRange([useSendNotificationSpecifier.range[0], nextToken.range[1]]));
+                    fixes.push(
+                      fixer.removeRange([
+                        useSendNotificationSpecifier.range[0],
+                        nextToken.range[1],
+                      ])
+                    );
                   } else {
-                    const prevToken = sourceCode.getTokenBefore(useSendNotificationSpecifier);
+                    const prevToken = sourceCode.getTokenBefore(
+                      useSendNotificationSpecifier
+                    );
                     if (prevToken && prevToken.value === ",") {
-                      fixes.push(fixer.removeRange([prevToken.range[0], useSendNotificationSpecifier.range[1]]));
+                      fixes.push(
+                        fixer.removeRange([
+                          prevToken.range[0],
+                          useSendNotificationSpecifier.range[1],
+                        ])
+                      );
                     }
                   }
                 }
-                
+
                 // Add new import line
-                fixes.push(fixer.insertTextAfter(node, '\nimport { useSendNotification } from "@app/hooks/useNotification";'));
-                
+                fixes.push(
+                  fixer.insertTextAfter(
+                    node,
+                    '\nimport { useSendNotification } from "@app/hooks/useNotification";'
+                  )
+                );
+
                 return fixes;
               },
             });

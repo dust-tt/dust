@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { COMMIT_HASH } from "@app/lib/commit-hash";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 
 const RECONNECT_DELAY_BASE_MS = 3000; // 3 seconds base delay
 const RECONNECT_DELAY_JITTER_MS = 5000; // +0-5 seconds random jitter
@@ -50,7 +51,10 @@ const stableEventSourceManager = {
       urlWithCommitHash.search +
       urlWithCommitHash.hash;
 
-    const newSource = new EventSource(pathWithQueryAndHash);
+    const newSource = new EventSource(
+      `${getApiBaseUrl()}${pathWithQueryAndHash}`,
+      { withCredentials: true }
+    );
     this.sources.set(uniqueId, newSource);
 
     return newSource;

@@ -36,7 +36,6 @@ export const pokeGetServerSideProps =
         user: auth.getNonNullableUser().toJSON(),
         isAdmin: auth.isAdmin(),
         isBuilder: auth.isBuilder(),
-        isSuperUser: true,
       },
     };
   });

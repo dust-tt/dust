@@ -73,8 +73,11 @@ import {
   useRef,
   useState,
 } from "react";
+import type { Components } from "react-markdown";
 
-import { customColors } from "@sparkle/lib/colors";
+import { customColors } from "@dust-tt/sparkle/lib/colors";
+
+import type { DiffChange } from "@dust-tt/sparkle";
 
 import { InputBar } from "../components/InputBar";
 import { InviteUsersScreen } from "../components/InviteUsersScreen";
@@ -90,6 +93,40 @@ import {
   mockSuggestionChanges,
   mockUsers,
 } from "../data";
+import {
+  ActionCardBlock,
+  actionCardDirective,
+} from "../components/ActionCardBlock";
+
+function parseDiffString(content: string): DiffChange[] {
+  const lines = content.split("\n").filter((line) => line.trim());
+  const changes: DiffChange[] = [];
+  let currentOld: string | undefined;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("- ")) {
+      if (currentOld) {
+        changes.push({ old: currentOld });
+      }
+      currentOld = trimmed.slice(2);
+    } else if (trimmed.startsWith("+ ")) {
+      const newText = trimmed.slice(2);
+      if (currentOld) {
+        changes.push({ old: currentOld, new: newText });
+        currentOld = undefined;
+      } else {
+        changes.push({ new: newText });
+      }
+    }
+  }
+
+  if (currentOld) {
+    changes.push({ old: currentOld });
+  }
+
+  return changes;
+}
 
 type MetadataRowProps = {
   label: string;
@@ -130,6 +167,14 @@ export default function AgentBuilder() {
   const [agentDescription, setAgentDescription] = useState(
     agent?.description || ""
   );
+  const actionCardComponents: Components = useMemo(
+    () =>
+      ({
+        action_card: ActionCardBlock,
+      }) as Components,
+    []
+  );
+  const actionCardPlugins = useMemo(() => [actionCardDirective], []);
   const nameSuggestions = useMemo(() => {
     const count = Math.floor(Math.random() * 3) + 2;
     return getRandomAgents(count).map((suggestedAgent) => suggestedAgent.name);
@@ -996,7 +1041,13 @@ export default function AgentBuilder() {
                               timestamp={item.timestamp}
                             >
                               {item.type === "agent" ? (
-                                <Markdown content={item.content} />
+                                <Markdown
+                                  content={item.content}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
                               ) : (
                                 item.content
                               )}
@@ -1018,11 +1069,25 @@ export default function AgentBuilder() {
                           >
                             <div className="s-flex s-flex-col s-gap-3">
                               {trimmedBefore ? (
-                                <Markdown content={trimmedBefore} />
+                                <Markdown
+                                  content={trimmedBefore}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
                               ) : null}
-                              <DiffBlock content={diffContent.trim()} />
+                              <DiffBlock
+                                changes={parseDiffString(diffContent)}
+                              />
                               {trimmedAfter ? (
-                                <Markdown content={trimmedAfter} />
+                                <Markdown
+                                  content={trimmedAfter}
+                                  additionalMarkdownComponents={
+                                    actionCardComponents
+                                  }
+                                  additionalMarkdownPlugins={actionCardPlugins}
+                                />
                               ) : null}
                             </div>
                           </ConversationMessage>
@@ -1139,7 +1204,6 @@ export default function AgentBuilder() {
                   return (
                     <ListItem
                       key={space.id}
-                      interactive={true}
                       itemsAlignment="center"
                       onClick={() => toggleSpace(space.id)}
                       className={
@@ -1181,7 +1245,6 @@ export default function AgentBuilder() {
                   return (
                     <ListItem
                       key={space.id}
-                      interactive={true}
                       itemsAlignment="center"
                       onClick={() => toggleSpace(space.id)}
                       className={
@@ -1239,9 +1302,11 @@ export default function AgentBuilder() {
         title="Select editors"
         actionLabel="Save"
         initialSelectedUserIds={selectedEditorIdList}
+        initialEditorUserIds={selectedEditorIdList}
+        hasMultipleSelect={true}
         onClose={() => setIsInviteEditorsOpen(false)}
-        onInvite={(selectedUserIds) => {
-          setSelectedEditorIds(new Set(selectedUserIds));
+        onInvite={(_selectedUserIds, editorUserIds) => {
+          setSelectedEditorIds(new Set(editorUserIds));
           setIsInviteEditorsOpen(false);
         }}
       />

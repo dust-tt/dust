@@ -1,112 +1,47 @@
-import { BarHeader, Button, LockIcon, Page } from "@dust-tt/sparkle";
+import { BarHeader, Button, LockIcon, Page, Spinner } from "@dust-tt/sparkle";
 import { CreditCardIcon } from "@heroicons/react/20/solid";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
-import React from "react";
+import type { ReactElement } from "react";
+import React, { useEffect } from "react";
 
 import { ProPlansTable } from "@app/components/plans/ProPlansTable";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { UserMenu } from "@app/components/UserMenu";
 import WorkspacePicker from "@app/components/WorkspacePicker";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { getMessageUsageCount } from "@app/lib/api/assistant/rate_limits";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsPaywallWhitelisted } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
 import { isFreeTrialPhonePlan, isOldFreePlan } from "@app/lib/plans/plan_codes";
-import { SubscriptionResource } from "@app/lib/resources/subscription_resource";
+import { useAppRouter } from "@app/lib/platform";
 import { useUser } from "@app/lib/swr/user";
-import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
+import {
+  useSubscriptionStatus,
+  useWorkspaceSubscriptions,
+} from "@app/lib/swr/workspaces";
 import { TRACKING_AREAS, withTracking } from "@app/lib/tracking";
-import type { BillingPeriod, WorkspaceType } from "@app/types";
+import type { BillingPeriod } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  owner: WorkspaceType;
-  isAdmin: boolean;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner || !auth.isUser()) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps = appGetServerSidePropsPaywallWhitelisted;
 
-  // Check if current subscription is a phone trial - only redirect admins to trial-ended
-  // Non-admins should stay on /subscribe to see the "Workspace locked" UI
-  if (auth.isAdmin()) {
-    const subscription = auth.subscription();
-    if (subscription && isFreeTrialPhonePlan(subscription.plan.code)) {
-      // Active trial - check if messages are exhausted
-      try {
-        const { count, limit } = await getMessageUsageCount(auth);
-        if (limit !== -1 && count >= limit) {
-          return {
-            redirect: {
-              destination: `/w/${owner.sId}/trial-ended`,
-              permanent: false,
-            },
-          };
-        }
-      } catch {
-        // If we can't check message usage, don't redirect - let them see the subscribe page
-      }
-    } else {
-      // No active subscription or not a phone trial - check if last subscription was an ended phone trial
-      const lastSubscription =
-        await SubscriptionResource.fetchLastByWorkspace(owner);
-      if (
-        lastSubscription &&
-        isFreeTrialPhonePlan(lastSubscription.getPlan().code) &&
-        lastSubscription.toJSON().status === "ended"
-      ) {
-        return {
-          redirect: {
-            destination: `/w/${owner.sId}/trial-ended`,
-            permanent: false,
-          },
-        };
-      }
-    }
-  }
-
-  return {
-    props: {
-      owner,
-      isAdmin: auth.isAdmin(),
-    },
-  };
-});
-
-export default function Subscribe({
-  owner,
-  isAdmin,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
+function Subscribe() {
+  const { workspace, isAdmin } = useAuth();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const { user } = useUser();
 
   const { subscriptions } = useWorkspaceSubscriptions({
-    owner,
+    owner: workspace,
   });
-
-  // We treat user as being in free trial if they don't have any non free subs,
-  // regardless of whether they're active or not.
-  const isInFreePhoneTrial = !subscriptions.some(
-    (sub) => !isFreeTrialPhonePlan(sub.plan.code)
-  );
 
   const [billingPeriod, setBillingPeriod] =
     React.useState<BillingPeriod>("monthly");
 
-  // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
-  // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
-  // FREE_NO_PLAN is not on the database, checking it comes down to having at least 1 subscription.
-  const noPreviousSubscription =
-    subscriptions.length === 0 ||
-    (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
-
   const { submit: handleSubscribePlan } = useSubmitFunction(
     async (billingPeriod) => {
-      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -138,6 +73,38 @@ export default function Subscribe({
     }
   );
 
+  // Check if we need to redirect to trial-ended page.
+  const { shouldRedirect, redirectUrl, isSubscriptionStatusLoading } =
+    useSubscriptionStatus({ workspaceId: workspace.sId });
+
+  useEffect(() => {
+    if (shouldRedirect && redirectUrl) {
+      void router.replace(redirectUrl);
+    }
+  }, [shouldRedirect, redirectUrl, router]);
+
+  // Show loading while checking redirect.
+  if (isSubscriptionStatusLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // We treat user as being in free trial if they don't have any non free subs,
+  // regardless of whether they're active or not.
+  const isInFreePhoneTrial = !subscriptions.some(
+    (sub) => !isFreeTrialPhonePlan(sub.plan.code)
+  );
+
+  // If you had another subscription before, you will not get the free trial again: we use this to show the correct message.
+  // Current plan is either FREE_NO_PLAN or FREE_TEST_PLAN if you're on this paywall.
+  // FREE_NO_PLAN is not on the database, checking it comes down to having at least 1 subscription.
+  const noPreviousSubscription =
+    subscriptions.length === 0 ||
+    (subscriptions.length === 1 && isOldFreePlan(subscriptions[0].plan.code)); // FREE_TEST_PLAN did not pay, they should be asked to start instead of resume
+
   return (
     <>
       <BarHeader
@@ -147,11 +114,11 @@ export default function Subscribe({
           <>
             <div className="flex flex-row items-center">
               {user?.organizations && user.organizations.length > 1 && (
-                <WorkspacePicker user={user} workspace={owner} />
+                <WorkspacePicker user={user} workspace={workspace} />
               )}
               <div>
                 {user && (
-                  <UserMenu user={user} owner={owner} subscription={null} />
+                  <UserMenu user={user} owner={workspace} subscription={null} />
                 )}
               </div>
             </div>
@@ -268,7 +235,7 @@ export default function Subscribe({
               </Page.Vertical>
               <Page.Horizontal sizing="grow">
                 <ProPlansTable
-                  owner={owner}
+                  owner={workspace}
                   size="xs"
                   display="subscribe"
                   setBillingPeriod={setBillingPeriod}
@@ -291,7 +258,7 @@ export default function Subscribe({
               </Page.Vertical>
               <Page.Vertical sizing="grow">
                 <ProPlansTable
-                  owner={owner}
+                  owner={workspace}
                   size="xs"
                   display="subscribe"
                   setBillingPeriod={setBillingPeriod}
@@ -304,3 +271,13 @@ export default function Subscribe({
     </>
   );
 }
+
+const SubscribePage = Subscribe as AppPageWithLayout;
+
+SubscribePage.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default SubscribePage;

@@ -87,7 +87,7 @@ import {
   getSkillBuilderRoute,
 } from "@app/lib/utils/router";
 import type { ConversationWithoutContentType, WorkspaceType } from "@app/types";
-import { isAdmin, isBuilder } from "@app/types";
+import { isBuilder } from "@app/types";
 
 type AgentSidebarMenuProps = {
   owner: WorkspaceType;
@@ -355,7 +355,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
           open={!isProjectsSectionCollapsed}
           onOpenChange={(open) => setProjectsSectionCollapsed(!open)}
           action={
-            isAdmin(owner) ? (
+            summary.length > 0 ? (
               <Button
                 size="xs"
                 icon={PlusIcon}
@@ -375,7 +375,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
               <Spinner size="xs" />
             </div>
           ) : summary.length > 0 ? (
-            <ProjectsList owner={owner} summary={summary} />
+            <ProjectsList
+              owner={owner}
+              summary={summary}
+              titleFilter={titleFilter}
+            />
           ) : (
             <NavigationListItem
               label="Create a Project"
@@ -394,6 +398,7 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     isProjectsSectionCollapsed,
     setProjectsSectionCollapsed,
     isSummaryLoading,
+    titleFilter,
   ]);
 
   const conversationsList = useMemo(() => {
@@ -962,7 +967,7 @@ const NavigationListWithInbox = forwardRef<
             action={
               <>
                 <Button
-                  size="xs"
+                  size="xmini"
                   icon={ChatBubbleLeftRightIcon}
                   variant="ghost"
                   aria-label="New Conversation"
@@ -973,7 +978,7 @@ const NavigationListWithInbox = forwardRef<
                 <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
-                      size="xs"
+                      size="xmini"
                       icon={MoreIcon}
                       variant="ghost"
                       aria-label="Conversations options"

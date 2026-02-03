@@ -2,8 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
 import type { InternalMCPServerNameType } from "@app/lib/actions/mcp_internal_actions/constants";
 import { ADVANCED_SEARCH_SWITCH } from "@app/lib/actions/mcp_internal_actions/constants";
-import { default as deepDiveServer } from "@app/lib/actions/mcp_internal_actions/servers/deep_dive";
-import { default as interactiveContentServer } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content";
 import { default as productboardServer } from "@app/lib/actions/mcp_internal_actions/servers/productboard";
 import { default as slideshowServer } from "@app/lib/actions/mcp_internal_actions/servers/slideshow";
 import type { AgentLoopContextType } from "@app/lib/actions/types";
@@ -36,6 +34,7 @@ import { default as httpClientServer } from "@app/lib/api/actions/servers/http_c
 import { default as hubspotServer } from "@app/lib/api/actions/servers/hubspot";
 import { default as imageGenerationServer } from "@app/lib/api/actions/servers/image_generation";
 import { default as includeDataServer } from "@app/lib/api/actions/servers/include_data";
+import { default as interactiveContentServer } from "@app/lib/api/actions/servers/interactive_content";
 import { default as jiraServer } from "@app/lib/api/actions/servers/jira";
 import { default as jitTestingServer } from "@app/lib/api/actions/servers/jit_testing";
 import { default as microsoftDriveServer } from "@app/lib/api/actions/servers/microsoft_drive";
@@ -219,8 +218,6 @@ export async function getInternalMCPServer(
       return valtownServer(auth, agentLoopContext);
     case "vanta":
       return vantaServer(auth, agentLoopContext);
-    case "deep_dive":
-      return deepDiveServer(auth, agentLoopContext);
     case "http_client":
       return httpClientServer(auth, agentLoopContext);
     case "front":

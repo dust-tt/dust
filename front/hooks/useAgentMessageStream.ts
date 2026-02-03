@@ -160,6 +160,7 @@ export function useAgentMessageStream({
           return;
 
         case "tool_personal_auth_required":
+        case "tool_file_auth_required":
         case "tool_approve_execution":
           break;
 
@@ -255,6 +256,17 @@ export function useAgentMessageStream({
                     ...m.streaming,
                     agentState: "done",
                   },
+                }
+              : m
+          );
+          break;
+
+        case "agent_context_pruned":
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...m,
+                  prunedContext: true,
                 }
               : m
           );

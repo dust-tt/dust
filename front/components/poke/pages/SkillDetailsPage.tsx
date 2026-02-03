@@ -1,4 +1,11 @@
-import { LinkWrapper, Spinner, TextArea } from "@dust-tt/sparkle";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+  LinkWrapper,
+  Spinner,
+  TextArea,
+} from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
 
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
@@ -6,7 +13,11 @@ import { SkillOverviewTable } from "@app/components/poke/skills/SkillOverviewTab
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
-import { usePokeSkillDetails } from "@app/poke/swr/skill_details";
+import { formatTimestampToFriendlyDate } from "@app/lib/utils";
+import {
+  usePokeSkillDetails,
+  usePokeSkillVersions,
+} from "@app/poke/swr/skill_details";
 
 export function SkillDetailsPage() {
   const owner = useWorkspace();
@@ -20,6 +31,12 @@ export function SkillDetailsPage() {
     isLoading,
     isError,
   } = usePokeSkillDetails({
+    owner,
+    skillId: sId,
+    disabled: false,
+  });
+
+  const { versions, isLoading: isLoadingVersions } = usePokeSkillVersions({
     owner,
     skillId: sId,
     disabled: false,
@@ -111,6 +128,53 @@ export function SkillDetailsPage() {
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="border-material-200 rounded-lg border p-4">
+          <Collapsible defaultOpen={false}>
+            <CollapsibleTrigger>
+              <h2 className="text-md font-bold">
+                Versions ({isLoadingVersions ? "..." : versions.length})
+              </h2>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              {isLoadingVersions ? (
+                <div className="flex h-32 items-center justify-center">
+                  <Spinner />
+                </div>
+              ) : versions.length === 0 ? (
+                <p className="text-muted-foreground dark:text-muted-foreground-night py-4 text-sm">
+                  No previous versions.
+                </p>
+              ) : (
+                <div className="mt-4 space-y-4">
+                  {versions.map((version) => (
+                    <div
+                      key={version.version}
+                      className="border-material-200 rounded-lg border p-4"
+                    >
+                      <div className="mb-2 flex items-center gap-2">
+                        <span className="font-bold">v{version.version}</span>
+                        <span className="text-foreground dark:text-foreground-night">
+                          {version.createdAt
+                            ? formatTimestampToFriendlyDate(version.createdAt)
+                            : "N/A"}
+                        </span>
+                      </div>
+                      <JsonViewer
+                        theme={isDark ? "dark" : "light"}
+                        value={version}
+                        rootName={false}
+                        defaultInspectDepth={1}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </div>
     </div>

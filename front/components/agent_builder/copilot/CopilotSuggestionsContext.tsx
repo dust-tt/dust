@@ -13,20 +13,31 @@ import React, {
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
+import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
+import { getModelConfigByModelId } from "@app/lib/api/models";
 import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import type { AgentSuggestionType } from "@app/types/suggestions/agent_suggestion";
+import { removeNulls } from "@app/types";
+import type {
+  AgentSuggestionType,
+  AgentSuggestionWithRelationsType,
+} from "@app/types/suggestions/agent_suggestion";
 
 export interface CopilotSuggestionsContextType {
   // Backend suggestions fetched via SWR.
   suggestions: AgentSuggestionType[];
-  getSuggestion: (sId: string) => AgentSuggestionType | null;
+  getSuggestion: (sId: string) => AgentSuggestionWithRelationsType | null;
   triggerRefetch: () => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
+
+  // Refetch tracking (persists across component remounts).
+  hasAttemptedRefetch: (sId: string) => boolean;
+  markRefetchAttempted: (sId: string) => void;
 
   // Editor registration for applying instruction suggestions.
   registerEditor: (editor: Editor) => void;
@@ -63,14 +74,35 @@ export const CopilotSuggestionsProvider = ({
   agentConfigurationId,
 }: CopilotSuggestionsProviderProps) => {
   const { owner } = useAgentBuilderContext();
+  const { skills } = useSkillsContext();
+  const { mcpServerViews } = useMCPServerViewsContext();
   const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
+  const refetchAttemptedRef = useRef<Set<string>>(new Set());
+
+  const hasAttemptedRefetch = useCallback(
+    (sId: string) => refetchAttemptedRef.current.has(sId),
+    []
+  );
+
+  const markRefetchAttempted = useCallback((sId: string) => {
+    refetchAttemptedRef.current.add(sId);
+  }, []);
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
 
-  // Fetch all suggestions from the backend.
+  const skillsMap = useMemo(
+    () => new Map(skills.map((s) => [s.sId, s])),
+    [skills]
+  );
+
+  const mcpServerViewsMap = useMemo(
+    () => new Map(mcpServerViews.map((v) => [v.sId, v])),
+    [mcpServerViews]
+  );
+
   const {
     suggestions,
     isSuggestionsLoading,
@@ -83,9 +115,73 @@ export const CopilotSuggestionsProvider = ({
     workspaceId: owner.sId,
   });
 
+  // Resolve a suggestion with its relations from context.
   const getSuggestion = useCallback(
-    (sId: string) => suggestions.find((s) => s.sId === sId) ?? null,
-    [suggestions]
+    (sId: string): AgentSuggestionWithRelationsType | null => {
+      const suggestion = suggestions.find((s) => s.sId === sId);
+      if (!suggestion) {
+        return null;
+      }
+
+      switch (suggestion.kind) {
+        case "tools": {
+          const additions = removeNulls(
+            (suggestion.suggestion.additions ?? []).map((a) =>
+              mcpServerViewsMap.get(a.id)
+            )
+          );
+          const deletions = removeNulls(
+            (suggestion.suggestion.deletions ?? []).map((id) =>
+              mcpServerViewsMap.get(id)
+            )
+          );
+          const expectedRelations =
+            (suggestion.suggestion.additions?.length ?? 0) +
+            (suggestion.suggestion.deletions?.length ?? 0);
+          const resolvedRelations = additions.length + deletions.length;
+          if (expectedRelations !== resolvedRelations) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { additions, deletions } };
+        }
+
+        case "skills": {
+          const additions = removeNulls(
+            (suggestion.suggestion.additions ?? []).map((id) =>
+              skillsMap.get(id)
+            )
+          );
+          const deletions = removeNulls(
+            (suggestion.suggestion.deletions ?? []).map((id) =>
+              skillsMap.get(id)
+            )
+          );
+          const expectedRelations =
+            (suggestion.suggestion.additions?.length ?? 0) +
+            (suggestion.suggestion.deletions?.length ?? 0);
+          const resolvedRelations = additions.length + deletions.length;
+          if (expectedRelations !== resolvedRelations) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { additions, deletions } };
+        }
+
+        case "model": {
+          const model = getModelConfigByModelId(suggestion.suggestion.modelId);
+          if (!model) {
+            return null;
+          }
+
+          return { ...suggestion, relations: { model } };
+        }
+
+        case "instructions":
+          return { ...suggestion, relations: null };
+      }
+    },
+    [suggestions, skillsMap, mcpServerViewsMap]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
@@ -129,6 +225,23 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
+    // Get current pending instruction suggestion IDs.
+    const currentPendingIds = new Set(
+      suggestions
+        .filter((s) => s.state === "pending" && s.kind === "instructions")
+        .map((s) => s.sId)
+    );
+
+    // Remove marks for suggestions that were applied but are no longer pending.
+    for (const appliedId of appliedSuggestionsRef.current) {
+      if (!currentPendingIds.has(appliedId)) {
+        editor.commands.rejectSuggestion(appliedId);
+        appliedSuggestionsRef.current.delete(appliedId);
+      }
+    }
+
+    const outdatedIds: string[] = [];
+
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
       if (
@@ -153,9 +266,16 @@ export const CopilotSuggestionsProvider = ({
 
       if (applied) {
         appliedSuggestionsRef.current.add(suggestion.sId);
+      } else {
+        // Text no longer matches - mark as outdated.
+        outdatedIds.push(suggestion.sId);
       }
     }
-  }, [suggestions, isSuggestionsLoading, isEditorReady]);
+
+    if (outdatedIds.length > 0) {
+      void patchSuggestions(outdatedIds, "outdated");
+    }
+  }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
 
   const acceptSuggestion = useCallback(
     async (sId: string) => {
@@ -174,12 +294,15 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
+      // Refresh suggestions to update card states
+      void mutateSuggestions();
+
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
     },
-    [patchSuggestions, suggestions]
+    [patchSuggestions, suggestions, mutateSuggestions]
   );
 
   const rejectSuggestion = useCallback(
@@ -199,12 +322,15 @@ export const CopilotSuggestionsProvider = ({
         return;
       }
 
+      // Refresh suggestions to update card states
+      void mutateSuggestions();
+
       if (suggestion.kind === "instructions") {
         editor.commands.rejectSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
     },
-    [patchSuggestions, suggestions]
+    [patchSuggestions, suggestions, mutateSuggestions]
   );
 
   const acceptAllInstructionSuggestions = useCallback(async () => {
@@ -268,6 +394,8 @@ export const CopilotSuggestionsProvider = ({
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
+      hasAttemptedRefetch,
+      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,
@@ -281,6 +409,8 @@ export const CopilotSuggestionsProvider = ({
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
+      hasAttemptedRefetch,
+      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,

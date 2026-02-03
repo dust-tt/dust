@@ -80,6 +80,24 @@ describe("preprocessInstructionBlocks", () => {
     expect(preprocessInstructionBlocks(input)).toBe(input);
   });
 
+  it("keeps generated directive content inside list items", () => {
+    const input = `1. <channel_suggestion>
+
+hello
+
+</channel_suggestion>`;
+
+    const expected = `1. :::instruction_block[channel_suggestion]
+
+
+   hello
+
+
+   :::\n`;
+
+    expect(preprocessInstructionBlocks(input)).toBe(expected);
+  });
+
   it("handles content with line breaks and formatting", () => {
     const input = `<example>
 # Heading

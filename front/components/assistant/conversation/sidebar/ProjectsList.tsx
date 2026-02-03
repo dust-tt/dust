@@ -1,12 +1,17 @@
-import { NavigationListItem } from "@dust-tt/sparkle";
+import { NavigationListItem, NavigationListItemAction } from "@dust-tt/sparkle";
 import { memo, useContext } from "react";
 
+import {
+  ProjectMenu,
+  useProjectMenu,
+} from "@app/components/assistant/conversation/ProjectMenu";
 import { SidebarContext } from "@app/components/sparkle/SidebarContext";
 import { useActiveConversationId } from "@app/hooks/useActiveConversationId";
 import { useAppRouter } from "@app/lib/platform";
 import { getSpaceIcon } from "@app/lib/spaces";
 import { useConversation } from "@app/lib/swr/conversations";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
+import { removeDiacritics, subFilter } from "@app/lib/utils";
 import { getSpaceConversationsRoute } from "@app/lib/utils/router";
 import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces";
 import type { SpaceType, WorkspaceType } from "@app/types";
@@ -14,6 +19,7 @@ import type { SpaceType, WorkspaceType } from "@app/types";
 interface ProjectsListProps {
   owner: WorkspaceType;
   summary: GetBySpacesSummaryResponseBody["summary"];
+  titleFilter: string;
 }
 
 const ProjectListItem = memo(
@@ -30,6 +36,9 @@ const ProjectListItem = memo(
     const { sidebarOpen, setSidebarOpen } = useContext(SidebarContext);
 
     const spacePath = getSpaceConversationsRoute(owner.sId, space.sId);
+
+    const { isMenuOpen, menuTriggerPosition, handleMenuOpenChange } =
+      useProjectMenu();
 
     const activeConversationId = useActiveConversationId();
     const { conversation } = useConversation({
@@ -58,6 +67,18 @@ const ProjectListItem = memo(
             shallow: true,
           });
         }}
+        moreMenu={
+          <ProjectMenu
+            activeSpaceId={space.sId}
+            space={space}
+            owner={owner}
+            trigger={<NavigationListItemAction />}
+            isProjectDisplayed={router.query.cId === space.sId}
+            isOpen={isMenuOpen}
+            onOpenChange={handleMenuOpenChange}
+            triggerPosition={menuTriggerPosition}
+          />
+        }
       />
     );
   }
@@ -65,7 +86,11 @@ const ProjectListItem = memo(
 
 ProjectListItem.displayName = "ProjectListItem";
 
-export function ProjectsList({ owner, summary }: ProjectsListProps) {
+export function ProjectsList({
+  owner,
+  summary,
+  titleFilter,
+}: ProjectsListProps) {
   const { hasFeature } = useFeatureFlags({
     workspaceId: owner.sId,
   });
@@ -78,9 +103,21 @@ export function ProjectsList({ owner, summary }: ProjectsListProps) {
     return null;
   }
 
+  const filteredSummary = titleFilter
+    ? summary.filter(({ space }) =>
+        subFilter(
+          removeDiacritics(titleFilter).toLowerCase(),
+          removeDiacritics(space.name).toLowerCase()
+        )
+      )
+    : summary;
+  if (filteredSummary.length === 0) {
+    return null;
+  }
+
   return (
     <>
-      {summary.map(({ space, unreadConversations }) => (
+      {filteredSummary.map(({ space, unreadConversations }) => (
         <ProjectListItem
           key={space.sId}
           space={space}

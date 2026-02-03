@@ -117,29 +117,6 @@ export function renderAgentSteps(
     }
   }
 
-  // Legacy agent message support
-  if (!message.rawContents.length && message.content?.trim()) {
-    // This should not happen anymore, putting logs to check if anything goes wrong.
-    logger.error(
-      {
-        workspaceId: conversation.owner.sId,
-        conversationId: conversation.sId,
-        agentMessageId: message.sId,
-      },
-      "Unexpected legacy agent message state, agent message with empty `rawContents` and non-empty `content`"
-    );
-    messages.push({
-      role: "assistant",
-      name: message.configuration.name,
-      contents: [
-        {
-          type: "text_content",
-          value: message.content,
-        },
-      ],
-    });
-  }
-
   return messages;
 }
 
@@ -188,7 +165,7 @@ export async function renderAllMessages(
       }
     } else if (isUserMessageType(m)) {
       if (m.visibility === "visible") {
-        messages.push(renderUserMessage(m));
+        messages.push(renderUserMessage(conversation, m));
       }
     } else if (isContentFragmentType(m)) {
       if (m.visibility === "visible") {
