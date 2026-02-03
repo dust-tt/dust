@@ -18,7 +18,8 @@
       "!!**/coverage",
       "!**/.yalc/**/*.{js,jsx,ts,tsx}",
       "!!**/x/**",
-      "!!extension/shared/lib/swr.ts"
+      "!!extension/shared/lib/swr.ts",
+      "!!**/package-lock.json"
     ]
   },
   "formatter": {
