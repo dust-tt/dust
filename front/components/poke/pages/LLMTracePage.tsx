@@ -16,6 +16,7 @@ import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
+import { pluralize } from "@app/types";
 
 export function LLMTracePage() {
   const owner = useWorkspace();
@@ -47,6 +48,8 @@ export function LLMTracePage() {
       </div>
     );
   }
+
+  const toolCallCount = trace?.output?.toolCalls?.length;
 
   const formatDuration = (durationMs: number) => {
     return durationMs >= 1000
@@ -161,8 +164,11 @@ export function LLMTracePage() {
               value="input"
               label={`Input (${trace.input.conversation.messages.length} messages)`}
             />
-            <TabsTrigger value="output" label="Output"  />
-            <TabsTrigger value="raw" label="Raw JSON"  />
+            <TabsTrigger
+              value="output"
+              label={`Output (${toolCallCount ? `${toolCallCount} tool call${pluralize(toolCallCount)}` : "Generation"})`}
+            />
+            <TabsTrigger value="raw" label="Raw JSON" />
           </TabsList>
 
           <TabsContent value="input">
