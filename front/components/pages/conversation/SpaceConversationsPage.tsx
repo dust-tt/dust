@@ -18,14 +18,27 @@ import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
 import { useSendNotification } from "@app/hooks/useNotification";
+import { getLightAgentMessageFromAgentMessage } from "@app/lib/api/assistant/citations";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
-import type { ContentFragmentsType, Result, RichMention } from "@app/types";
-import { Err, Ok, toMentionType } from "@app/types";
+import type {
+  ContentFragmentsType,
+  LightConversationType,
+  Result,
+  RichMention,
+} from "@app/types";
+import {
+  Err,
+  isAgentMessageType,
+  isUserMessageType,
+  Ok,
+  removeNulls,
+  toMentionType,
+} from "@app/types";
 
 type SpaceTab = "conversations" | "knowledge" | "settings";
 
@@ -176,13 +189,34 @@ export function SpaceConversationsPage() {
           { shallow: true }
         );
 
+        // Converting to LightConversationType as createConversationWithMessage returns a ConversationType.
+        const lightConversation: LightConversationType = {
+          ...conversationRes.value,
+          content: removeNulls(
+            conversationRes.value.content.map((v) => {
+              const lastVersion = v[v.length - 1];
+              if (isUserMessageType(lastVersion)) {
+                return {
+                  ...lastVersion,
+                  // We don't really care about content fragments for light conversations in the UI.
+                  contentFragments: [],
+                };
+              }
+              if (isAgentMessageType(lastVersion)) {
+                return getLightAgentMessageFromAgentMessage(lastVersion);
+              }
+              return null;
+            })
+          ),
+        };
+
         // Update the conversations list (prepend new conversation to first page)
         await mutateConversations(
           (currentData) => {
             if (!currentData || currentData.length === 0) {
               return [
                 {
-                  conversations: [conversationRes.value],
+                  conversations: [lightConversation],
                   hasMore: false,
                   lastValue: null,
                 },
@@ -192,10 +226,7 @@ export function SpaceConversationsPage() {
             return [
               {
                 ...firstPage,
-                conversations: [
-                  conversationRes.value,
-                  ...firstPage.conversations,
-                ],
+                conversations: [lightConversation, ...firstPage.conversations],
               },
               ...restPages,
             ];
