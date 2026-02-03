@@ -3,7 +3,6 @@ import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
-import { usePaginationFromUrl } from "@app/hooks/usePaginationFromUrl";
 import { useWorkspaceTopUsers } from "@app/lib/swr/workspaces";
 
 interface TopUserRowData {
@@ -62,11 +61,6 @@ export function WorkspaceTopUsersTable({
   workspaceId,
   period,
 }: WorkspaceTopUsersTableProps) {
-  const { pagination, setPagination } = usePaginationFromUrl({
-    urlPrefix: "topUsers",
-    initialPageSize: 25,
-  });
-
   const { topUsers, isTopUsersLoading, isTopUsersError } = useWorkspaceTopUsers(
     {
       workspaceId,
@@ -112,8 +106,6 @@ export function WorkspaceTopUsersTable({
           data={rows}
           columns={columns}
           maxHeight="max-h-64"
-          pagination={pagination}
-          setPagination={setPagination}
         />
       )}
     </div>
