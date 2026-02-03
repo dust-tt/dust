@@ -18,6 +18,25 @@ import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
 import { pluralize } from "@app/types";
 
+function formatDuration(durationMs: number) {
+  return durationMs >= 1000
+    ? `${(durationMs / 1000).toFixed(1)}s`
+    : `${durationMs}ms`;
+}
+
+function formatTokens(input?: number, output?: number) {
+  if (input === undefined && output === undefined) {
+    return "N/A";
+  }
+  const inputStr = input !== undefined ? input.toLocaleString() : "?";
+  const outputStr = output !== undefined ? output.toLocaleString() : "?";
+  return `${inputStr} → ${outputStr}`;
+}
+
+function formatTimestamp(timestamp: string): string {
+  return new Date(timestamp).toLocaleString();
+}
+
 export function LLMTracePage() {
   const owner = useWorkspace();
   useSetPokePageTitle(`${owner.name} - LLM Trace`);
@@ -50,25 +69,6 @@ export function LLMTracePage() {
   }
 
   const toolCallCount = trace?.output?.toolCalls?.length;
-
-  const formatDuration = (durationMs: number) => {
-    return durationMs >= 1000
-      ? `${(durationMs / 1000).toFixed(1)}s`
-      : `${durationMs}ms`;
-  };
-
-  const formatTokens = (input?: number, output?: number) => {
-    if (input === undefined && output === undefined) {
-      return "N/A";
-    }
-    const inputStr = input !== undefined ? input.toLocaleString() : "?";
-    const outputStr = output !== undefined ? output.toLocaleString() : "?";
-    return `${inputStr} → ${outputStr}`;
-  };
-
-  function formatTimestamp(timestamp: string): string {
-    return new Date(timestamp).toLocaleString();
-  }
 
   return (
     <div className="max-w-6xl">
