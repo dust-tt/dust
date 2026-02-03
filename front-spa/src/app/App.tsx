@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
+import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
 import { AnalyticsPage } from "@dust-tt/front/components/pages/workspace/AnalyticsPage";
 import { APIKeysPage } from "@dust-tt/front/components/pages/workspace/developers/APIKeysPage";
 import { CreditsUsagePage } from "@dust-tt/front/components/pages/workspace/developers/CreditsUsagePage";
@@ -170,8 +171,10 @@ const router = createBrowserRouter(
 
 export default function App() {
   return (
-    <RootLayout>
-      <RouterProvider router={router} />
-    </RootLayout>
+    <RegionProvider>
+      <RootLayout>
+        <RouterProvider router={router} />
+      </RootLayout>
+    </RegionProvider>
   );
 }
