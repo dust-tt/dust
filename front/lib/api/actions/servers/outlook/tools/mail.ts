@@ -94,9 +94,18 @@ interface OutlookContact {
   officeLocation?: string;
 }
 
+interface OutlookFolder {
+  id: string;
+  displayName: string;
+  parentFolderId?: string;
+  childFolderCount?: number;
+  unreadItemCount?: number;
+  totalItemCount?: number;
+}
+
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
-    { search, top = 10, skip = 0, select },
+    { search, folderId, top = 10, skip = 0, select },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
@@ -122,11 +131,14 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
       );
     }
 
-    const response = await fetchFromOutlook(
-      `/me/messages?${params.toString()}`,
-      accessToken,
-      { method: "GET" }
-    );
+    // Use different endpoint if folderId is provided
+    const endpoint = folderId
+      ? `/me/mailFolders/${folderId}/messages?${params.toString()}`
+      : `/me/messages?${params.toString()}`;
+
+    const response = await fetchFromOutlook(endpoint, accessToken, {
+      method: "GET",
+    });
 
     if (!response.ok) {
       const errorText = await getErrorText(response);
@@ -149,6 +161,42 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
             messages: (result.value || []) as OutlookMessage[],
             nextLink: result["@odata.nextLink"],
             totalCount: result["@odata.count"],
+          },
+          null,
+          2
+        ),
+      },
+    ]);
+  },
+
+  list_folders: async (_args, { authInfo }) => {
+    const accessToken = authInfo?.token;
+    if (!accessToken) {
+      return new Err(new MCPError("Authentication required"));
+    }
+
+    const response = await fetchFromOutlook("/me/mailFolders", accessToken, {
+      method: "GET",
+    });
+
+    if (!response.ok) {
+      const errorText = await getErrorText(response);
+      return new Err(
+        new MCPError(
+          `Failed to get folders: ${response.status} ${response.statusText} - ${errorText}`
+        )
+      );
+    }
+
+    const result = await response.json();
+
+    return new Ok([
+      { type: "text" as const, text: "Folders fetched successfully" },
+      {
+        type: "text" as const,
+        text: JSON.stringify(
+          {
+            folders: (result.value ?? []) as OutlookFolder[],
           },
           null,
           2

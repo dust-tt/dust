@@ -10,13 +10,19 @@ export const OUTLOOK_TOOL_NAME = "outlook" as const;
 export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
   get_messages: {
     description:
-      "Get messages from Outlook inbox. Supports search queries to filter messages.",
+      "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder.",
     schema: {
       search: z
         .string()
         .optional()
         .describe(
           'Search query to filter messages. Examples: "from:someone@example.com", "subject:meeting", "hasAttachments:true". Leave empty to get recent messages.'
+        ),
+      folderId: z
+        .string()
+        .optional()
+        .describe(
+          "The ID of the folder to get messages from. Use list_folders to get folder IDs. Leave empty to get messages from all folders."
         ),
       top: z
         .number()
@@ -37,6 +43,16 @@ export const OUTLOOK_TOOLS_METADATA = createToolsRecord({
     displayLabels: {
       running: "Fetching messages",
       done: "Fetch messages",
+    },
+  },
+  list_folders: {
+    description:
+      "List all mail folders in Outlook. Use this to get folder IDs for filtering messages.",
+    schema: {},
+    stake: "never_ask",
+    displayLabels: {
+      running: "Listing folders",
+      done: "List folders",
     },
   },
   get_drafts: {
