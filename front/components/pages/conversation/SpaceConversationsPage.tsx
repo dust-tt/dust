@@ -12,7 +12,8 @@ import React, { useCallback, useState } from "react";
 
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
-import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
+import { SpaceKnowledgeTab } from "@app/components/assistant/conversation/space/SpaceKnowledgeTab";
 import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
 import { useCreateConversationWithMessage } from "@app/hooks/useCreateConversationWithMessage";
@@ -21,17 +22,16 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
-import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
 import { Err, Ok, toMentionType } from "@app/types";
 
-type SpaceTab = "conversations" | "context" | "settings";
+type SpaceTab = "conversations" | "knowledge" | "settings";
 
 export function SpaceConversationsPage() {
   const owner = useWorkspace();
-  const { subscription, user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const router = useAppRouter();
   const spaceId = useActiveSpaceId();
   const sendNotification = useSendNotification();
@@ -50,21 +50,21 @@ export function SpaceConversationsPage() {
     user,
   });
 
-  const { conversations, isConversationsLoading, mutateConversations } =
-    useSpaceConversations({
-      workspaceId: owner.sId,
-      spaceId: spaceId,
-    });
-
-  const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
-  const { groups } = useGroups({
-    owner,
-    kinds: ["provisioned"],
-    disabled: !planAllowsSCIM,
+  const {
+    conversations,
+    isConversationsLoading,
+    mutateConversations,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+  } = useSpaceConversations({
+    workspaceId: owner.sId,
+    spaceId: spaceId,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
+  const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
 
   // Parse and validate the current tab from URL hash
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
@@ -72,7 +72,15 @@ export function SpaceConversationsPage() {
       return "conversations";
     }
     const hash = window.location.hash.slice(1); // Remove the # prefix
-    if (hash === "context" || hash === "settings" || hash === "conversations") {
+    // Backward compatibility: treat "context" as "knowledge"
+    if (hash === "context") {
+      return "knowledge";
+    }
+    if (
+      hash === "knowledge" ||
+      hash === "settings" ||
+      hash === "conversations"
+    ) {
       return hash;
     }
     return "conversations";
@@ -168,16 +176,29 @@ export function SpaceConversationsPage() {
           { shallow: true }
         );
 
-        // Update the conversations list
+        // Update the conversations list (prepend new conversation to first page)
         await mutateConversations(
           (currentData) => {
-            return {
-              ...currentData,
-              conversations: [
-                ...(currentData?.conversations ?? []),
-                conversationRes.value,
-              ],
-            };
+            if (!currentData || currentData.length === 0) {
+              return [
+                {
+                  conversations: [conversationRes.value],
+                  hasMore: false,
+                  lastValue: null,
+                },
+              ];
+            }
+            const [firstPage, ...restPages] = currentData;
+            return [
+              {
+                ...firstPage,
+                conversations: [
+                  conversationRes.value,
+                  ...firstPage.conversations,
+                ],
+              },
+              ...restPages,
+            ];
           },
           { revalidate: false }
         );
@@ -221,10 +242,6 @@ export function SpaceConversationsPage() {
     );
   }
 
-  // Extract permissions from spaceInfo (now includes canRead and canWrite from API)
-  const canReadInSpace = spaceInfo.canRead ?? spaceInfo.isMember;
-  const canWriteInSpace = spaceInfo.canWrite ?? false;
-
   return (
     <div className="flex h-full w-full flex-col">
       <Tabs
@@ -239,7 +256,11 @@ export function SpaceConversationsPage() {
               label="Conversations"
               icon={ChatBubbleLeftRightIcon}
             />
-            <TabsTrigger value="context" label="Context" icon={BookOpenIcon} />
+            <TabsTrigger
+              value="knowledge"
+              label="Knowledge"
+              icon={BookOpenIcon}
+            />
             <TabsTrigger
               value="settings"
               label="Settings"
@@ -264,21 +285,17 @@ export function SpaceConversationsPage() {
             user={user}
             conversations={conversations}
             isConversationsLoading={isConversationsLoading}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            isLoadingMore={isLoadingMore}
             spaceInfo={spaceInfo}
             onSubmit={handleConversationCreation}
+            onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
 
-        <TabsContent value="context">
-          <SpaceContextTab
-            owner={owner}
-            space={spaceInfo}
-            systemSpace={systemSpace}
-            plan={subscription.plan}
-            isAdmin={isAdmin}
-            canReadInSpace={canReadInSpace}
-            canWriteInSpace={canWriteInSpace}
-          />
+        <TabsContent value="knowledge">
+          <SpaceKnowledgeTab owner={owner} space={spaceInfo} />
         </TabsContent>
 
         <TabsContent value="settings">
@@ -286,23 +303,17 @@ export function SpaceConversationsPage() {
             key={spaceId}
             owner={owner}
             space={spaceInfo}
-            initialMembers={spaceInfo.members}
-            planAllowsSCIM={planAllowsSCIM}
-            initialGroups={
-              planAllowsSCIM &&
-              spaceInfo.groupIds &&
-              spaceInfo.groupIds.length > 0 &&
-              groups
-                ? groups.filter((group) =>
-                    spaceInfo.groupIds.includes(group.sId)
-                  )
-                : []
-            }
-            initialManagementMode={spaceInfo.managementMode}
-            initialIsRestricted={spaceInfo.isRestricted}
+            onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
       </Tabs>
+      <ManageUsersPanel
+        isOpen={isInvitePanelOpen}
+        setIsOpen={setIsInvitePanelOpen}
+        owner={owner}
+        space={spaceInfo}
+        currentProjectMembers={spaceInfo.members}
+      />
     </div>
   );
 }

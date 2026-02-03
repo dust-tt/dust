@@ -1,14 +1,18 @@
 import assert from "node:assert";
 
-import type { estypes } from "@elastic/elasticsearch";
 import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
+import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage/common";
+import {
+  hasReachedDailyUsageCap,
+  incrementDailyUsageMicroUsd,
+} from "@app/lib/api/programmatic_usage/daily_cap";
 import {
   hasKeyReachedUsageCap,
   incrementRedisKeyUsageMicroUsd,
-} from "@app/lib/api/key_cap_tracking";
+} from "@app/lib/api/programmatic_usage/key_cap";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -26,51 +30,8 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
-import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
-
-export const USAGE_ORIGINS_CLASSIFICATION: Record<
-  UserMessageOrigin,
-  "programmatic" | "user"
-> = {
-  api: "programmatic",
-  cli: "user",
-  cli_programmatic: "programmatic",
-  email: "user",
-  excel: "programmatic",
-  extension: "user",
-  gsheet: "programmatic",
-  make: "programmatic",
-  n8n: "programmatic",
-  powerpoint: "programmatic",
-  raycast: "user",
-  slack: "user",
-  slack_workflow: "programmatic",
-  teams: "user",
-  transcript: "user",
-  triggered_programmatic: "programmatic",
-  triggered: "user",
-  web: "user",
-  zapier: "programmatic",
-  zendesk: "user",
-  onboarding_conversation: "user",
-  agent_copilot: "user",
-};
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
-
-export const USER_USAGE_ORIGINS = Object.keys(
-  USAGE_ORIGINS_CLASSIFICATION
-).filter(
-  (origin) =>
-    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "user"
-);
-
-const PROGRAMMATIC_USAGE_ORIGINS = Object.keys(
-  USAGE_ORIGINS_CLASSIFICATION
-).filter(
-  (origin) =>
-    USAGE_ORIGINS_CLASSIFICATION[origin as UserMessageOrigin] === "programmatic"
-);
 
 // Programmatic usage tracking: keep Redis key name for backward compatibility.
 const PROGRAMMATIC_USAGE_REMAINING_CREDITS_KEY = "public_api_remaining_credits";
@@ -101,40 +62,6 @@ export function isProgrammaticUsage(
   return false;
 }
 
-export function getShouldTrackTokenUsageCostsESFilter(
-  auth: Authenticator
-): estypes.QueryDslQueryContainer {
-  const workspace = auth.getNonNullableWorkspace();
-
-  // Track for API keys, listed programmatic origins or unspecified user message origins.
-  // This must be in sync with the shouldTrackTokenUsageCosts function.
-  const shouldClauses: estypes.QueryDslQueryContainer[] = [
-    {
-      bool: {
-        must: [{ term: { auth_method: "api_key" } }],
-        must_not: [{ term: { context_origin: "zendesk" } }],
-      },
-    },
-    { bool: { must_not: { exists: { field: "context_origin" } } } },
-    { terms: { context_origin: PROGRAMMATIC_USAGE_ORIGINS } },
-  ];
-
-  return {
-    bool: {
-      filter: [
-        { term: { workspace_id: workspace.sId } },
-        { terms: { status: AGENT_MESSAGE_STATUSES_TO_TRACK } },
-        {
-          bool: {
-            should: shouldClauses,
-            minimum_should_match: 1,
-          },
-        },
-      ],
-    },
-  };
-}
-
 export async function hasReachedProgrammaticUsageLimits(
   auth: Authenticator
 ): Promise<boolean> {
@@ -143,7 +70,7 @@ export async function hasReachedProgrammaticUsageLimits(
 
 /**
  * Check if programmatic usage limits have been reached.
- * Checks both workspace credits and per-key caps.
+ * Checks workspace credits, per-key caps, and daily cap.
  * Returns Ok if no limit reached, Err with message if a limit was reached.
  */
 export async function checkProgrammaticUsageLimits(
@@ -170,6 +97,17 @@ export async function checkProgrammaticUsageLimits(
         "Please increase the cap in the Developers > API Keys section of the Dust dashboard."
       : "This API key has reached its monthly usage cap. " +
         "Please ask a Dust workspace admin to increase the cap.";
+    return new Err(new Error(message));
+  }
+
+  // Finally check daily cap.
+  const dailyCapReached = await hasReachedDailyUsageCap(auth);
+  if (dailyCapReached) {
+    const message = isAdmin
+      ? "Your workspace has reached its daily programmatic usage cap. " +
+        "The cap will reset at midnight UTC, or you can increase it in admin settings."
+      : "Your workspace has reached its daily programmatic usage cap. " +
+        "Please contact your Dust workspace admin.";
     return new Err(new Error(message));
   }
 
@@ -478,6 +416,10 @@ export async function trackProgrammaticCost(
   if (keyAuth) {
     await incrementRedisKeyUsageMicroUsd(keyAuth.id, costWithMarkupMicroUsd);
   }
+
+  // Increment daily usage tracking.
+  const workspace = auth.getNonNullableWorkspace();
+  await incrementDailyUsageMicroUsd(workspace.sId, costWithMarkupMicroUsd);
 
   if (totalInitialMicroUsd > 0) {
     const thresholdMicroUsd = Math.floor(

@@ -25,7 +25,7 @@ import config from "@app/lib/api/config";
 import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";

@@ -250,6 +250,24 @@ class ZendeskClient {
     return new Ok(result.value.ticket_fields.filter((f) => f.active));
   }
 
+  async listAllTicketFields({
+    includeInactive = false,
+  }: {
+    includeInactive?: boolean;
+  } = {}): Promise<Result<ZendeskTicketField[], Error>> {
+    const result = await this.request(
+      `ticket_fields.json`,
+      ZendeskTicketFieldsResponseSchema
+    );
+
+    if (result.isErr()) {
+      return new Err(result.error);
+    }
+
+    const fields = result.value.ticket_fields;
+    return new Ok(includeInactive ? fields : fields.filter((f) => f.active));
+  }
+
   async getTicketComments(
     ticketId: number
   ): Promise<Result<ZendeskTicketComment[], Error>> {

@@ -188,7 +188,7 @@ export async function renderAllMessages(
       }
     } else if (isUserMessageType(m)) {
       if (m.visibility === "visible") {
-        messages.push(renderUserMessage(m));
+        messages.push(renderUserMessage(conversation, m));
       }
     } else if (isContentFragmentType(m)) {
       if (m.visibility === "visible") {

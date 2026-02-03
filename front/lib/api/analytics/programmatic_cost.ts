@@ -13,7 +13,7 @@ import {
   ensureAtMostNGroups,
   searchAnalytics,
 } from "@app/lib/api/elasticsearch";
-import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage_tracking";
+import { getShouldTrackTokenUsageCostsESFilter } from "@app/lib/api/programmatic_usage/common";
 import type { Authenticator } from "@app/lib/auth";
 import { getBillingCycleFromDay } from "@app/lib/client/subscription";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";

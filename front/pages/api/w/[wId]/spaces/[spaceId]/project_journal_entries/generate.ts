@@ -9,8 +9,9 @@ import { apiError } from "@app/logger/withlogging";
 import { launchProjectJournalGenerationWorkflow } from "@app/temporal/project_journal_queue/client";
 import type { WithAPIErrorResponse } from "@app/types";
 
-const COOLDOWN_HOURS = 24;
-const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
+// const COOLDOWN_HOURS = 24;
+// const COOLDOWN_MS = COOLDOWN_HOURS * 60 * 60 * 1000;
+const COOLDOWN_MS = 0;
 
 export type PostGenerateProjectJournalEntryResponseBody = {
   success: true;

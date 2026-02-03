@@ -1,6 +1,11 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
+import type { UsageAggregations } from "@app/lib/api/programmatic_usage/common";
+import {
+  getSecondsUntilMidnightUTC,
+  MARKUP_MULTIPLIER,
+} from "@app/lib/api/programmatic_usage/common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -50,10 +55,6 @@ export const invalidateKeyCapCache = invalidateCacheWithRedis(
   keyCapCacheResolver
 );
 
-type UsageAggregations = {
-  total_cost?: estypes.AggregationsSumAggregate;
-};
-
 /**
  * Get the total usage in microUsd for a key over the last 29 days.
  * Queries Elasticsearch for messages with this key's name.
@@ -93,8 +94,10 @@ async function getLast29DaysKeyUsageMicroUsd(
     return new Err(new Error(`ES query failed: ${result.error.message}`));
   }
 
-  const totalCost = result.value.aggregations?.total_cost?.value ?? 0;
-  return new Ok(Math.round(totalCost));
+  // ES stores raw cost; apply markup to match Redis increments
+  const rawCost = result.value.aggregations?.total_cost?.value ?? 0;
+  const costWithMarkup = Math.round(rawCost * MARKUP_MULTIPLIER);
+  return new Ok(costWithMarkup);
 }
 
 // Per-key usage tracking uses a hybrid Redis + ES approach:
@@ -103,25 +106,6 @@ async function getLast29DaysKeyUsageMicroUsd(
 // - Redis keys expire at midnight UTC, triggering a fresh ES sync daily
 const KEY_USAGE_REDIS_ORIGIN = "key_usage_tracking";
 const getKeyUsageRedisKey = (keyId: ModelId) => `key-usage:${keyId}`;
-
-/**
- * Calculate seconds until midnight UTC.
- * Used to set TTL on Redis keys so they expire at 00:00 UTC.
- */
-function getSecondsUntilMidnightUTC(): number {
-  const now = new Date();
-  const midnight = new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate() + 1,
-      0,
-      0,
-      0
-    )
-  );
-  return Math.floor((midnight.getTime() - now.getTime()) / 1000);
-}
 
 /**
  * Get usage from Redis cache, initializing from ES if missing.

@@ -143,7 +143,6 @@ export class ConversationParticipantModel extends WorkspaceAwareModel<Conversati
   declare action: ParticipantActionType;
   declare unread?: boolean;
   declare actionRequired: boolean;
-  declare lastReadAt: Date | null;
 
   declare conversationId: ForeignKey<ConversationModel["id"]>;
   declare userId: ForeignKey<UserModel["id"]>;
@@ -176,10 +175,6 @@ ConversationParticipantModel.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
-    },
-    lastReadAt: {
-      type: DataTypes.DATE,
-      allowNull: true,
     },
   },
   {
@@ -216,6 +211,54 @@ UserModel.hasMany(ConversationParticipantModel, {
   onDelete: "RESTRICT",
 });
 ConversationParticipantModel.belongsTo(UserModel, {
+  foreignKey: { name: "userId", allowNull: false },
+});
+
+export class UserConversationReadsModel extends WorkspaceAwareModel<UserConversationReadsModel> {
+  declare lastReadAt: Date;
+
+  declare conversationId: ForeignKey<ConversationModel["id"]>;
+  declare userId: ForeignKey<UserModel["id"]>;
+
+  declare conversation?: NonAttribute<ConversationModel>;
+  declare user?: NonAttribute<UserModel>;
+}
+UserConversationReadsModel.init(
+  {
+    lastReadAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+  },
+  {
+    modelName: "user_conversation_reads",
+    sequelize: frontSequelize,
+    indexes: [
+      {
+        fields: ["workspaceId", "userId", "conversationId"],
+        unique: true,
+      },
+      {
+        fields: ["workspaceId", "conversationId"],
+      },
+      {
+        fields: ["workspaceId", "userId"],
+      },
+    ],
+  }
+);
+ConversationModel.hasMany(UserConversationReadsModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+UserConversationReadsModel.belongsTo(ConversationModel, {
+  foreignKey: { name: "conversationId", allowNull: false },
+});
+UserModel.hasMany(UserConversationReadsModel, {
+  foreignKey: { name: "userId", allowNull: false },
+  onDelete: "RESTRICT",
+});
+UserConversationReadsModel.belongsTo(UserModel, {
   foreignKey: { name: "userId", allowNull: false },
 });
 
@@ -373,6 +416,7 @@ export class AgentMessageModel extends WorkspaceAwareModel<AgentMessageModel> {
 
   declare modelInteractionDurationMs: number | null;
   declare completedAt: Date | null;
+  declare prunedContext: boolean | null;
 }
 
 AgentMessageModel.init(
@@ -452,6 +496,11 @@ AgentMessageModel.init(
       type: DataTypes.DATE,
       allowNull: true,
       defaultValue: null,
+    },
+    prunedContext: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
     },
   },
   {

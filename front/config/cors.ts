@@ -1,4 +1,7 @@
 const STATIC_ALLOWED_ORIGINS = [
+  // Front edge.
+  "https://front-edge.dust.tt",
+  "https://eu.front-edge.dust.tt",
   // Front extension.
   "https://front-ext.dust.tt",
   // Chrome extension.

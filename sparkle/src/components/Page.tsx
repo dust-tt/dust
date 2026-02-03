@@ -46,7 +46,11 @@ Page.Header = function ({ title, description, icon }: PageHeaderProps) {
         className="s-text-primary-400 dark:s-text-primary-500"
         size="lg"
       />
-      <Page.H variant="h3">{title}</Page.H>
+      {typeof title === "string" ? (
+        <Page.H variant="h3">{title}</Page.H>
+      ) : (
+        <>{title}</>
+      )}
       {description && <Page.P variant="secondary">{description}</Page.P>}
     </Page.Vertical>
   );

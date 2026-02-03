@@ -107,6 +107,7 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       freeCreditMicroUsd: number | null;
       defaultDiscountPercent: number;
       paygCapMicroUsd: number | null;
+      dailyCapMicroUsd: number | null;
     }>,
     { transaction }: { transaction?: Transaction } = {}
   ): Promise<Result<undefined, Error>> {
@@ -151,6 +152,7 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygCapMicroUsd: this.paygCapMicroUsd,
+      dailyCapMicroUsd: this.dailyCapMicroUsd,
     };
   }
 
@@ -161,6 +163,7 @@ export class ProgrammaticUsageConfigurationResource extends BaseResource<Program
       freeCreditMicroUsd: this.freeCreditMicroUsd,
       defaultDiscountPercent: this.defaultDiscountPercent,
       paygCapMicroUsd: this.paygCapMicroUsd,
+      dailyCapMicroUsd: this.dailyCapMicroUsd,
     };
   }
 

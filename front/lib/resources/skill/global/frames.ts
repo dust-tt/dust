@@ -1,4 +1,4 @@
-import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/instructions";
+import { INTERACTIVE_CONTENT_INSTRUCTIONS } from "@app/lib/api/actions/servers/interactive_content/instructions";
 import type { GlobalSkillDefinition } from "@app/lib/resources/skill/global/registry";
 
 export const framesSkill = {

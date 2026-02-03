@@ -1,7 +1,7 @@
 import {
   isProgrammaticUsage,
   trackProgrammaticCost,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { Authenticator } from "@app/lib/auth";
 import {

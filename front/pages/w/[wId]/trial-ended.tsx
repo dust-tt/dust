@@ -1,44 +1,33 @@
 import { Card, ContentMessage, DustLogo } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
+import type { ReactElement } from "react";
 import React, { useState } from "react";
 
 import { DontLoseSection } from "@app/components/paywall/DontLoseSection";
 import { TrialPricingCard } from "@app/components/paywall/TrialPricingCard";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { useSendNotification } from "@app/hooks/useNotification";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsPaywallWhitelistedForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
-import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import type { BillingPeriod, WorkspaceType } from "@app/types";
+import { useAppRouter } from "@app/lib/platform";
+import type { BillingPeriod } from "@app/types";
 
-export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  owner: WorkspaceType;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
-    return {
-      notFound: true,
-    };
-  }
+export const getServerSideProps =
+  appGetServerSidePropsPaywallWhitelistedForAdmin;
 
-  return {
-    props: {
-      owner,
-    },
-  };
-});
-
-export default function TrialEnded({
-  owner,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
+function TrialEnded() {
+  const { workspace } = useAuth();
+  const router = useAppRouter();
   const sendNotification = useSendNotification();
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   const { submit: handleSubscribePlan, isSubmitting } = useSubmitFunction(
     async (period: BillingPeriod) => {
-      const res = await clientFetch(`/api/w/${owner.sId}/subscriptions`, {
+      const res = await clientFetch(`/api/w/${workspace.sId}/subscriptions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -85,7 +74,7 @@ export default function TrialEnded({
         <div className="flex w-full max-w-4xl flex-col gap-8 lg:flex-row lg:items-start lg:gap-12">
           {/* Left column: Don't lose section */}
           <div className="flex-1">
-            <DontLoseSection owner={owner} />
+            <DontLoseSection owner={workspace} />
           </div>
 
           {/* Right column: Pricing card */}
@@ -116,3 +105,16 @@ export default function TrialEnded({
     </ThemeProvider>
   );
 }
+
+const TrialEndedPage = TrialEnded as AppPageWithLayout;
+
+TrialEndedPage.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default TrialEndedPage;

@@ -5,7 +5,10 @@ import type {
   ToolHandlers,
 } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { buildTools } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import { makeFileAuthorizationError } from "@app/lib/actions/mcp_internal_actions/utils";
+import {
+  makeFileAuthorizationError,
+  makePersonalAuthenticationError,
+} from "@app/lib/actions/mcp_internal_actions/utils";
 import {
   getDocsClient,
   getDriveClient,
@@ -23,28 +26,32 @@ import { Err, Ok } from "@app/types";
 import { normalizeError } from "@app/types/shared/utils/error_utils";
 
 /**
- * Checks if an error is a 404 (file not found / not authorized).
- * Google returns 404 when user doesn't have access to a file via drive.file scope.
+ * Checks if an error indicates the file is not authorized.
+ * Google returns 404 when user doesn't have access to a file via drive.file scope,
+ * or a permission error when the user hasn't granted write access.
  */
-function is404Error(err: unknown): boolean {
+export function isFileNotAuthorizedError(err: unknown): boolean {
   const error = normalizeError(err);
+  const message = error.message?.toLowerCase() ?? "";
   return (
-    error.message?.includes("404") ||
-    error.message?.toLowerCase().includes("not found")
+    message.includes("404") ||
+    message.includes("not found") ||
+    message.includes("has not granted") ||
+    message.includes("write access")
   );
 }
 
 /**
- * Handles file access errors by triggering the authorization flow for 404s.
- * Returns file auth error for 404s, generic MCPError otherwise.
+ * Handles file access errors by triggering the authorization flow for unauthorized files.
+ * Returns file auth error for 404s and permission errors, generic MCPError otherwise.
  */
-function handleFileAccessError(
+export function handleFileAccessError(
   err: unknown,
   fileId: string,
   extra: ToolHandlerExtra,
   fileMeta?: { name?: string; mimeType?: string }
 ): ToolHandlerResult {
-  if (is404Error(err)) {
+  if (isFileNotAuthorizedError(err)) {
     const connectionId =
       extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
       "google_drive";
@@ -66,20 +73,25 @@ function handleFileAccessError(
 
 /**
  * Handles permission errors from Google Drive API calls for write operations.
- * Returns an MCPError with appropriate messaging for 403/permission errors.
+ * Returns OAuth re-auth prompt for 403/permission errors.
  */
-function handlePermissionError(err: unknown): MCPError {
+function handlePermissionError(err: unknown): ToolHandlerResult {
   const error = normalizeError(err);
+
   if (
     error.message?.includes("403") ||
     error.message?.toLowerCase().includes("permission")
   ) {
-    return new MCPError(
-      "Insufficient permissions. Please go to Settings > Connections, disconnect Google Drive, and reconnect to enable write access.",
-      { tracked: false }
+    // Request both scopes - write tools only exist when FF is enabled
+    return new Ok(
+      makePersonalAuthenticationError(
+        "google_drive",
+        "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly"
+      ).content
     );
   }
-  return new MCPError(error.message || "Operation failed");
+
+  return new Err(new MCPError(error.message || "Operation failed"));
 }
 
 const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
@@ -355,7 +367,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 
@@ -383,7 +395,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 
@@ -409,7 +421,64 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
+    }
+  },
+
+  create_comment: async ({ fileId, content }, extra) => {
+    const drive = await getDriveClient(extra.authInfo);
+    if (!drive) {
+      return new Err(new MCPError("Failed to authenticate with Google Drive"));
+    }
+
+    try {
+      const res = await drive.comments.create({
+        fileId,
+        fields: "id,content,createdTime,author",
+        requestBody: { content },
+      });
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              commentId: res.data.id,
+              content: res.data.content,
+              createdTime: res.data.createdTime,
+              author: res.data.author?.displayName,
+              fileId,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      // Only fetch metadata for better error messages if the comment creation fails
+      if (isFileNotAuthorizedError(err)) {
+        let fileName = fileId;
+        let mimeType = "unknown";
+
+        // Try to get file metadata for a better error message (non-blocking failure)
+        try {
+          const fileMetadata = await drive.files.get({
+            fileId,
+            supportsAllDrives: true,
+            fields: "id, name, mimeType",
+          });
+          fileName = fileMetadata.data.name ?? fileId;
+          mimeType = fileMetadata.data.mimeType ?? "unknown";
+        } catch {
+          // If metadata fetch also fails, just use fileId as the name
+        }
+
+        return handleFileAccessError(err, fileId, extra, {
+          name: fileName,
+          mimeType,
+        });
+      }
+
+      return handlePermissionError(err);
     }
   },
 };

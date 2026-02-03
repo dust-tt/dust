@@ -5,6 +5,7 @@ import uniqBy from "lodash/uniqBy";
 import { Op } from "sequelize";
 import z from "zod";
 
+import { isMessageUnread } from "@app/components/assistant/conversation/utils";
 import type { AgentActionSpecification } from "@app/lib/actions/types/agent";
 import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
@@ -77,6 +78,7 @@ export const shouldSendNotificationForAgentAnswer = (
       return true;
     case "onboarding_conversation":
     case "agent_copilot":
+    case "project_butler":
       // Internal bootstrap conversations shouldn't trigger unread notifications.
       return false;
     case "api":
@@ -258,21 +260,7 @@ const getConversationDetails = async ({
   }
 
   const hasUnreadMessages = conversation.content.some((messages) =>
-    messages.some((msg) => {
-      if (conversation.lastReadMs === null) {
-        return true;
-      }
-      if (msg.created > conversation.lastReadMs) {
-        return true;
-      }
-      if (
-        msg.type === "agent_message" &&
-        (msg.completedTs ?? 0) > conversation.lastReadMs
-      ) {
-        return true;
-      }
-      return false;
-    })
+    messages.some((msg) => isMessageUnread(msg, conversation.lastReadMs))
   );
 
   const conversationsRetention = await getConversationsDataRetention(auth);
@@ -441,21 +429,7 @@ const generateUnreadMessagesSummary = async ({
 
   const unreadMessages = conversation.content
     .map((messages) =>
-      messages.filter((msg) => {
-        if (conversation.lastReadMs === null) {
-          return true;
-        }
-        if (msg.created > conversation.lastReadMs) {
-          return true;
-        }
-        if (
-          msg.type === "agent_message" &&
-          (msg.completedTs ?? 0) > conversation.lastReadMs
-        ) {
-          return true;
-        }
-        return false;
-      })
+      messages.filter((msg) => isMessageUnread(msg, conversation.lastReadMs))
     )
     .filter(
       (

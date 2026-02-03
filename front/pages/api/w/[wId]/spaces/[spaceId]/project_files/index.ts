@@ -15,6 +15,7 @@ export type ProjectFileType = FileTypeWithMetadata & {
   user: {
     sId: string;
     name: string | null;
+    imageUrl: string | null;
   } | null;
 };
 
@@ -81,6 +82,7 @@ async function handler(
             ? {
                 sId: user.sId,
                 name: user.fullName() || user.username,
+                imageUrl: user.imageUrl,
               }
             : null,
         };

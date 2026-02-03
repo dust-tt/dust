@@ -277,9 +277,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative",
-            "s-pb-6",
-            "s-pb-4"
+            "relative min-w-60 max-w-3xl"
           )}
           ref={userMessageHoveredRef}
         >
@@ -484,7 +482,7 @@ function ActionMenu({
   return (
     <div
       className={cn(
-        "absolute top-[80%] left-2.5 flex flex-wrap items-center gap-1 pb-3"
+        "absolute -bottom-6 left-2.5 flex flex-wrap items-center gap-1 pb-3"
       )}
       ref={isReactionsHoveredRef}
     >

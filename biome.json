@@ -10,6 +10,8 @@
     "ignoreUnknown": true,
     "includes": [
       "**/*.{js,jsx,ts,tsx}",
+      "**/package.json",
+      "**/biome.json",
       "!!**/.next",
       "!!**/node_modules",
       "!!**/workers-build",
@@ -18,7 +20,8 @@
       "!!**/coverage",
       "!**/.yalc/**/*.{js,jsx,ts,tsx}",
       "!!**/x/**",
-      "!!extension/shared/lib/swr.ts"
+      "!!extension/shared/lib/swr.ts",
+      "!!**/package-lock.json"
     ]
   },
   "formatter": {
@@ -76,9 +79,10 @@
         "front/lib/actions/mcp_cached_metadata.ts",
         "front/lib/actions/mcp_internal_actions/index.ts",
         "front/lib/actions/mcp_internal_actions/servers/index.ts",
-        "front/lib/actions/mcp_internal_actions/servers/interactive_content/index.ts",
-        "front/lib/actions/mcp_internal_actions/servers/interactive_content/template_utils.ts",
         "front/lib/actions/mcp_metadata.ts",
+        "front/lib/api/actions/servers/interactive_content/index.ts",
+        "front/lib/api/actions/servers/interactive_content/template_utils.ts",
+        "front/lib/api/actions/servers/interactive_content/tools/index.ts",
         "front/lib/api/actions/servers/agent_copilot_agent_state/index.ts",
         "front/lib/api/actions/servers/agent_copilot_agent_state/tools/index.ts",
         "front/lib/api/actions/servers/agent_copilot_context/index.ts",
