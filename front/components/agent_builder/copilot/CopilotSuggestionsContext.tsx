@@ -35,6 +35,10 @@ export interface CopilotSuggestionsContextType {
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
 
+  // Refetch tracking (persists across component remounts).
+  hasAttemptedRefetch: (sId: string) => boolean;
+  markRefetchAttempted: (sId: string) => void;
+
   // Editor registration for applying instruction suggestions.
   registerEditor: (editor: Editor) => void;
   getCommittedInstructions: () => string;
@@ -75,6 +79,16 @@ export const CopilotSuggestionsProvider = ({
   const [isEditorReady, setIsEditorReady] = useState(false);
   const editorRef = useRef<Editor | null>(null);
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
+  const refetchAttemptedRef = useRef<Set<string>>(new Set());
+
+  const hasAttemptedRefetch = useCallback(
+    (sId: string) => refetchAttemptedRef.current.has(sId),
+    []
+  );
+
+  const markRefetchAttempted = useCallback((sId: string) => {
+    refetchAttemptedRef.current.add(sId);
+  }, []);
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
@@ -350,6 +364,8 @@ export const CopilotSuggestionsProvider = ({
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
+      hasAttemptedRefetch,
+      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,
@@ -363,6 +379,8 @@ export const CopilotSuggestionsProvider = ({
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
+      hasAttemptedRefetch,
+      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,

@@ -5,7 +5,7 @@
  * suggestion directives in markdown content, enabling the :agent_suggestion[]{sId=xxx kind=yyy} syntax.
  */
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { visit } from "unist-util-visit";
 
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
@@ -54,24 +54,36 @@ export function getCopilotSuggestionPlugin() {
     sId,
     kind,
   }: CopilotSuggestionPluginProps) => {
-    const { getSuggestion, triggerRefetch, isSuggestionsValidating } =
-      useCopilotSuggestions();
+    const {
+      getSuggestion,
+      triggerRefetch,
+      isSuggestionsValidating,
+      hasAttemptedRefetch,
+      markRefetchAttempted,
+    } = useCopilotSuggestions();
 
     const suggestion = sId ? getSuggestion(sId) : null;
 
     // Trigger refetch when suggestion not found and not currently fetching.
-    const refetchAttempted = useRef(false);
+    // Track attempts in context (persists across component remounts).
     useEffect(() => {
       if (
         sId &&
         !suggestion &&
         !isSuggestionsValidating &&
-        !refetchAttempted.current
+        !hasAttemptedRefetch(sId)
       ) {
+        markRefetchAttempted(sId);
         triggerRefetch();
-        refetchAttempted.current = true; // attempt refetch only once.
       }
-    }, [sId, suggestion, isSuggestionsValidating, triggerRefetch]);
+    }, [
+      sId,
+      suggestion,
+      isSuggestionsValidating,
+      triggerRefetch,
+      hasAttemptedRefetch,
+      markRefetchAttempted,
+    ]);
 
     if (isSuggestionsValidating || !sId || !kind) {
       return <SuggestionCardSkeleton kind={kind} />;
