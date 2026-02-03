@@ -13,6 +13,7 @@ import { InputTab } from "@app/components/poke/llm_traces/InputTab";
 import { OutputTab } from "@app/components/poke/llm_traces/OutputTab";
 import { RawJsonTab } from "@app/components/poke/llm_traces/RawJsonTab";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
+import type { TokenUsage } from "@app/lib/api/llm/types/events";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
@@ -24,12 +25,9 @@ function formatDuration(durationMs: number) {
     : `${durationMs}ms`;
 }
 
-function formatTokens(input?: number, output?: number) {
-  if (input === undefined && output === undefined) {
-    return "N/A";
-  }
-  const inputStr = input !== undefined ? input.toLocaleString() : "?";
-  const outputStr = output !== undefined ? output.toLocaleString() : "?";
+function formatTokenUsage({inputTokens, uncachedInputTokens, outputTokens }: TokenUsage) {
+  const inputStr = inputTokens.toLocaleString() + (uncachedInputTokens ? ` (uncached: ${uncachedInputTokens.toLocaleString()})` : "");
+  const outputStr =outputTokens.toLocaleString();
   return `${inputStr} → ${outputStr}`;
 }
 
@@ -120,9 +118,8 @@ export function LLMTracePage() {
           {trace.output?.tokenUsage && (
             <Chip
               color="highlight"
-              label={`Tokens: ${formatTokens(
-                trace.output.tokenUsage.cacheCreationTokens,
-                trace.output.tokenUsage.outputTokens
+              label={`Tokens: ${formatTokenUsage(
+                trace.output.tokenUsage
               )}`}
               size="sm"
             />
