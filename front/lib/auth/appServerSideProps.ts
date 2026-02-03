@@ -65,6 +65,12 @@ export const appGetServerSidePropsForAdmin =
 export const appGetServerSidePropsPaywallWhitelisted =
   withDefaultUserAuthPaywallWhitelisted<AuthContextValue>(
     async (_context, auth) => {
+      if (!auth.workspace() || !auth.isUser()) {
+        return {
+          notFound: true,
+        };
+      }
+
       return {
         props: {
           workspace: auth.getNonNullableWorkspace(),
@@ -80,7 +86,7 @@ export const appGetServerSidePropsPaywallWhitelisted =
 export const appGetServerSidePropsPaywallWhitelistedForAdmin =
   withDefaultUserAuthPaywallWhitelisted<AuthContextValue>(
     async (_context, auth) => {
-      if (!auth.isAdmin()) {
+      if (!auth.workspace() || !auth.isAdmin()) {
         return {
           notFound: true,
         };

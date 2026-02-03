@@ -226,6 +226,28 @@ const NewAgentPage = withSuspense(
   "NewAgentPage"
 );
 
+// Onboarding pages (lazy loaded)
+const WelcomePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/WelcomePage"),
+  "WelcomePage"
+);
+const SubscribePage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/SubscribePage"),
+  "SubscribePage"
+);
+const TrialPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/TrialPage"),
+  "TrialPage"
+);
+const TrialEndedPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/TrialEndedPage"),
+  "TrialEndedPage"
+);
+const VerifyPage = withSuspense(
+  () => import("@dust-tt/front/components/pages/onboarding/VerifyPage"),
+  "VerifyPage"
+);
+
 const router = createBrowserRouter(
   [
     { path: "/", element: <IndexPage /> },
@@ -332,6 +354,13 @@ const router = createBrowserRouter(
         { path: "builder/agents/create", element: <CreateAgentPage /> },
         { path: "builder/agents/new", element: <NewAgentPage /> },
         { path: "builder/agents/:aId", element: <EditAgentPage /> },
+
+        // Onboarding
+        { path: "welcome", element: <WelcomePage /> },
+        { path: "subscribe", element: <SubscribePage /> },
+        { path: "trial", element: <TrialPage /> },
+        { path: "trial-ended", element: <TrialEndedPage /> },
+        { path: "verify", element: <VerifyPage /> },
       ],
     },
     { path: "*", element: <Navigate to="/" replace /> },
