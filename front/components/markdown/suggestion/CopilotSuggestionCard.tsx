@@ -10,11 +10,17 @@ import {
   Icon,
   LoadingBlock,
 } from "@dust-tt/sparkle";
-import React from "react";
+import React, { useCallback } from "react";
+import { useFormContext } from "react-hook-form";
 
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
+import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
+import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentSuggestionKind,
@@ -74,8 +80,43 @@ function ToolsSuggestionCards({
 }: {
   agentSuggestion: Extract<AgentSuggestionWithRelationsType, { kind: "tools" }>;
 }) {
-  const { relations, state, analysis } = agentSuggestion;
+  const { relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
+  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
+
+  const handleAcceptAddition = useCallback(
+    (tool: MCPServerViewType) => {
+      const currentActions = getValues("actions");
+      const alreadyExists = currentActions.some(
+        (action) => action.configuration.mcpServerViewId === tool.sId
+      );
+      if (!alreadyExists) {
+        const newAction = getDefaultMCPAction(tool);
+        setValue("actions", [...currentActions, newAction], {
+          shouldDirty: true,
+        });
+      }
+      void acceptSuggestion(sId);
+    },
+    [getValues, setValue, acceptSuggestion, sId]
+  );
+
+  const handleAcceptDeletion = useCallback(
+    (tool: MCPServerViewType) => {
+      const currentActions = getValues("actions");
+      const filteredActions = currentActions.filter(
+        (action) => action.configuration.mcpServerViewId !== tool.sId
+      );
+      setValue("actions", filteredActions, { shouldDirty: true });
+      void acceptSuggestion(sId);
+    },
+    [getValues, setValue, acceptSuggestion, sId]
+  );
+
+  const handleReject = useCallback(() => {
+    void rejectSuggestion(sId);
+  }, [rejectSuggestion, sId]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -91,6 +132,8 @@ function ToolsSuggestionCards({
             applyLabel="Add"
             rejectLabel="Dismiss"
             actionsPosition="header"
+            onClickAccept={() => handleAcceptAddition(tool)}
+            onClickReject={handleReject}
           />
         );
       })}
@@ -106,6 +149,8 @@ function ToolsSuggestionCards({
             applyLabel="Remove"
             rejectLabel="Dismiss"
             actionsPosition="header"
+            onClickAccept={() => handleAcceptDeletion(tool)}
+            onClickReject={handleReject}
           />
         );
       })}
@@ -122,8 +167,43 @@ function SkillsSuggestionCards({
     { kind: "skills" }
   >;
 }) {
-  const { relations, state, analysis } = agentSuggestion;
+  const { relations, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
+  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
+
+  const handleAcceptAddition = useCallback(
+    (skill: SkillType) => {
+      const currentSkills = getValues("skills");
+      // Check if skill is already added
+      const alreadyExists = currentSkills.some((s) => s.sId === skill.sId);
+      if (!alreadyExists) {
+        const newSkill = {
+          sId: skill.sId,
+          name: skill.name,
+          description: skill.userFacingDescription,
+          icon: skill.icon,
+        };
+        setValue("skills", [...currentSkills, newSkill], { shouldDirty: true });
+      }
+      void acceptSuggestion(sId);
+    },
+    [getValues, setValue, acceptSuggestion, sId]
+  );
+
+  const handleAcceptDeletion = useCallback(
+    (skill: SkillType) => {
+      const currentSkills = getValues("skills");
+      const filteredSkills = currentSkills.filter((s) => s.sId !== skill.sId);
+      setValue("skills", filteredSkills, { shouldDirty: true });
+      void acceptSuggestion(sId);
+    },
+    [getValues, setValue, acceptSuggestion, sId]
+  );
+
+  const handleReject = useCallback(() => {
+    void rejectSuggestion(sId);
+  }, [rejectSuggestion, sId]);
 
   return (
     <div className="flex flex-col gap-2">
@@ -137,6 +217,8 @@ function SkillsSuggestionCards({
           applyLabel="Add"
           rejectLabel="Dismiss"
           actionsPosition="header"
+          onClickAccept={() => handleAcceptAddition(skill)}
+          onClickReject={handleReject}
         />
       ))}
       {relations.deletions.map((skill) => (
@@ -149,6 +231,8 @@ function SkillsSuggestionCards({
           applyLabel="Remove"
           rejectLabel="Dismiss"
           actionsPosition="header"
+          onClickAccept={() => handleAcceptDeletion(skill)}
+          onClickReject={handleReject}
         />
       ))}
     </div>
@@ -161,10 +245,47 @@ function ModelSuggestionCard({
 }: {
   agentSuggestion: Extract<AgentSuggestionWithRelationsType, { kind: "model" }>;
 }) {
-  const { relations, state, analysis } = agentSuggestion;
+  const { relations, suggestion, state, sId, analysis } = agentSuggestion;
   const cardState = mapSuggestionStateToCardState(state);
   const modelName =
     relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
+  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+  const { setValue } = useFormContext<AgentBuilderFormData>();
+
+  const handleAccept = useCallback(() => {
+    const model = relations.model;
+    if (model) {
+      // Update the form with the new model settings
+      setValue("generationSettings.modelSettings", {
+        modelId: model.modelId,
+        providerId: model.providerId,
+      });
+      // Update reasoning effort if specified in the suggestion
+      if (suggestion.reasoningEffort) {
+        setValue(
+          "generationSettings.reasoningEffort",
+          suggestion.reasoningEffort
+        );
+      } else {
+        // Use the model's default reasoning effort
+        setValue(
+          "generationSettings.reasoningEffort",
+          model.defaultReasoningEffort
+        );
+      }
+    }
+    void acceptSuggestion(sId);
+  }, [
+    relations.model,
+    suggestion.reasoningEffort,
+    sId,
+    acceptSuggestion,
+    setValue,
+  ]);
+
+  const handleReject = useCallback(() => {
+    void rejectSuggestion(sId);
+  }, [sId, rejectSuggestion]);
 
   return (
     <ActionCardBlock
@@ -174,6 +295,8 @@ function ModelSuggestionCard({
       applyLabel="Change"
       rejectLabel="Dismiss"
       actionsPosition="header"
+      onClickAccept={handleAccept}
+      onClickReject={handleReject}
     />
   );
 }
