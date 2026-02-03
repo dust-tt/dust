@@ -10,9 +10,12 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useFormContext } from "react-hook-form";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
+import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import {
   useAgentSuggestions,
   usePatchAgentSuggestions,
@@ -69,6 +72,15 @@ export const CopilotSuggestionsProvider = ({
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
+
+  const { getValues, setValue } = useFormContext<AgentBuilderFormData>();
+  const { skills: allSkills } = useSkillsContext();
+
+  // Create a Map for O(1) skill lookups by sId
+  const allSkillsMap = useMemo(
+    () => new Map(allSkills.map((skill) => [skill.sId, skill])),
+    [allSkills]
+  );
 
   // Fetch all suggestions from the backend.
   const {
@@ -170,16 +182,56 @@ export const CopilotSuggestionsProvider = ({
       }
 
       const result = await patchSuggestions([sId], "approved");
-      if (!result || result.suggestions.length === 0) {
+      if (!result) {
         return;
       }
 
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
+      } else if (suggestion.kind === "skills") {
+        const { additions, deletions } = suggestion.suggestion;
+        const currentSkills = getValues("skills");
+
+        if (additions && additions.length > 0) {
+          const currentSkillIds = new Set(currentSkills.map((s) => s.sId));
+          const skillsToAdd: AgentBuilderFormData["skills"] = [];
+
+          for (const skillSId of additions) {
+            if (currentSkillIds.has(skillSId)) {
+              continue;
+            }
+            const skill = allSkillsMap.get(skillSId);
+            if (skill) {
+              skillsToAdd.push({
+                sId: skill.sId,
+                name: skill.name,
+                description: skill.userFacingDescription,
+                icon: skill.icon,
+              });
+            }
+          }
+
+          if (skillsToAdd.length > 0) {
+            setValue("skills", [...currentSkills, ...skillsToAdd], {
+              shouldDirty: true,
+            });
+          }
+        }
+
+        if (deletions && deletions.length > 0) {
+          const updatedSkills = getValues("skills");
+          const deletionSet = new Set(deletions);
+          const filteredSkills = updatedSkills.filter(
+            (s) => !deletionSet.has(s.sId)
+          );
+          if (filteredSkills.length !== updatedSkills.length) {
+            setValue("skills", filteredSkills, { shouldDirty: true });
+          }
+        }
       }
     },
-    [patchSuggestions, suggestions]
+    [patchSuggestions, suggestions, getValues, setValue, allSkillsMap]
   );
 
   const rejectSuggestion = useCallback(
@@ -195,7 +247,7 @@ export const CopilotSuggestionsProvider = ({
       }
 
       const result = await patchSuggestions([sId], "rejected");
-      if (!result || result.suggestions.length === 0) {
+      if (!result) {
         return;
       }
 

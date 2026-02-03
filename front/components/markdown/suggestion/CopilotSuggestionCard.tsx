@@ -11,6 +11,7 @@ import {
 } from "@dust-tt/sparkle";
 import React from "react";
 
+import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
 import { InstructionsDiff } from "@app/components/markdown/suggestion/InstructionsDiff";
 import type {
   AgentSuggestionKind,
@@ -149,10 +150,16 @@ function ModelSuggestionContent({
   );
 }
 
-function SuggestionActions() {
-  // No-op handlers for now - logic will be added in a later PR.
-  const handleAccept = () => {};
-  const handleReject = () => {};
+function SuggestionActions({ suggestionId }: { suggestionId: string }) {
+  const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
+
+  const handleAccept = () => {
+    void acceptSuggestion(suggestionId);
+  };
+
+  const handleReject = () => {
+    void rejectSuggestion(suggestionId);
+  };
 
   return (
     <div className="flex items-center justify-end gap-2">
@@ -162,7 +169,6 @@ function SuggestionActions() {
         label="Reject"
         icon={XMarkIcon}
         onClick={handleReject}
-        disabled
       />
       <Button
         variant="primary"
@@ -170,7 +176,6 @@ function SuggestionActions() {
         label="Accept"
         icon={CheckIcon}
         onClick={handleAccept}
-        disabled
       />
     </div>
   );
@@ -220,7 +225,7 @@ export function CopilotSuggestionCard({
       <ContentMessage title={title} icon={icon} variant="primary" size="sm">
         <div className="flex flex-col gap-3">
           {renderContent()}
-          <SuggestionActions />
+          <SuggestionActions suggestionId={agentSuggestion.sId} />
         </div>
       </ContentMessage>
     </div>
