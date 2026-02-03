@@ -37,10 +37,7 @@ const config = {
   },
   // URL for the poke app (front-spa). Falls back to getClientFacingUrl()/poke when not set.
   getPokeAppUrl: (): string => {
-    return (
-      EnvironmentConfig.getOptionalEnvVariable("POKE_APP_URL") ??
-      `${config.getClientFacingUrl()}/poke`
-    );
+    return EnvironmentConfig.getEnvVariable("POKE_APP_URL");
   },
   // For OAuth/WorkOS redirects. Allows overriding the redirect base URL separately
   // from NEXT_PUBLIC_DUST_CLIENT_FACING_URL. Falls back to getClientFacingUrl() when not set.
