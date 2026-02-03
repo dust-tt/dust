@@ -18,6 +18,8 @@ import {
   useFeatureFlags,
   useWorkspaceSubscriptions,
 } from "@app/lib/swr/workspaces";
+import datadogLogger from "@app/logger/datadogLogger";
+import { normalizeError } from "@app/types";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
@@ -94,8 +96,16 @@ export function AnalyticsPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
+      const normalizedError = normalizeError(error);
+      datadogLogger.error(
+        {
+          error: normalizedError.message,
+          workspaceId: owner.sId,
+          month: selectedMonth,
+        },
+        "[Analytics] Failed to download activity data"
+      );
       alert("Failed to download activity data.");
     } finally {
       setDownloadingMonth(null);
