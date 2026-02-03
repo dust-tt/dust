@@ -1,4 +1,5 @@
 import { cn } from "@dust-tt/sparkle";
+import type { ReactElement } from "react";
 
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import AppContentLayout from "@app/components/sparkle/AppContentLayout";
@@ -7,7 +8,7 @@ import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
+  children: ReactElement;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
