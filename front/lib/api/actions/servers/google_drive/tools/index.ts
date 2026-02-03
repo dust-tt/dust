@@ -38,9 +38,8 @@ function is404Error(err: unknown): boolean {
 }
 
 /**
- * Handles file access errors by triggering the appropriate authorization flow.
- * - 404 errors: File-level authorization (Google Picker flow)
- * - 403 errors: OAuth scope re-authentication
+ * Handles file access errors by triggering the authorization flow for 404s.
+ * Returns file auth error for 404s, generic MCPError otherwise.
  */
 function handleFileAccessError(
   err: unknown,
@@ -48,7 +47,6 @@ function handleFileAccessError(
   extra: ToolHandlerExtra,
   fileMeta?: { name?: string; mimeType?: string }
 ): ToolHandlerResult {
-  // 404: File not accessible with drive.file scope -> use file picker
   if (is404Error(err)) {
     const connectionId =
       extra.agentLoopContext?.runContext?.toolConfiguration.toolServerId ??
@@ -64,22 +62,6 @@ function handleFileAccessError(
     );
   }
 
-  // 403: OAuth scope issue -> prompt re-authentication
-  const error = normalizeError(err);
-  if (
-    error.message?.includes("403") ||
-    error.message?.toLowerCase().includes("permission")
-  ) {
-    // For read tools, only request readonly scope
-    return new Ok(
-      makePersonalAuthenticationError(
-        "google_drive",
-        "https://www.googleapis.com/auth/drive.readonly"
-      ).content
-    );
-  }
-
-  // Other errors
   return new Err(
     new MCPError(normalizeError(err).message || "Failed to access file")
   );
@@ -88,8 +70,6 @@ function handleFileAccessError(
 /**
  * Handles permission errors from Google Drive API calls for write operations.
  * Returns OAuth re-auth prompt for 403/permission errors.
- * Write tools are only registered when google_drive_write_enabled FF is enabled,
- * so if this is called, we know both scopes should be requested.
  */
 function handlePermissionError(err: unknown): ToolHandlerResult {
   const error = normalizeError(err);
@@ -361,8 +341,8 @@ const handlers: ToolHandlers<typeof GOOGLE_DRIVE_TOOLS_METADATA> = {
 export const TOOLS = buildTools(GOOGLE_DRIVE_TOOLS_METADATA, handlers);
 
 const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
-  create_document: async ({ title }, extra) => {
-    const docs = await getDocsClient(extra.authInfo);
+  create_document: async ({ title }, { authInfo }) => {
+    const docs = await getDocsClient(authInfo);
     if (!docs) {
       return new Err(new MCPError("Failed to authenticate with Google Docs"));
     }
@@ -387,8 +367,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  create_spreadsheet: async ({ title }, extra) => {
-    const sheets = await getSheetsClient(extra.authInfo);
+  create_spreadsheet: async ({ title }, { authInfo }) => {
+    const sheets = await getSheetsClient(authInfo);
     if (!sheets) {
       return new Err(new MCPError("Failed to authenticate with Google Sheets"));
     }
@@ -415,8 +395,8 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
     }
   },
 
-  create_presentation: async ({ title }, extra) => {
-    const slides = await getSlidesClient(extra.authInfo);
+  create_presentation: async ({ title }, { authInfo }) => {
+    const slides = await getSlidesClient(authInfo);
     if (!slides) {
       return new Err(new MCPError("Failed to authenticate with Google Slides"));
     }
