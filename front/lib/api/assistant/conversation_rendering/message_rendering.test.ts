@@ -116,6 +116,7 @@ describe("renderAllMessages", () => {
             } as AgentMessageType["configuration"],
             skipToolsValidation: false,
             actions: [],
+            rawContents: [],
             contents: [],
             parsedContents: {},
             modelInteractionDurationMs: null,

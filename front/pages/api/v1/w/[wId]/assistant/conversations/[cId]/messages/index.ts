@@ -19,7 +19,6 @@ import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
-import { addBackwardCompatibleAgentMessageFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
@@ -257,9 +256,7 @@ async function handler(
 
       res.status(200).json({
         message: messageRes.value.userMessage,
-        agentMessages: messageRes.value.agentMessages.map(
-          addBackwardCompatibleAgentMessageFields
-        ),
+        agentMessages: messageRes.value.agentMessages,
       });
       return;
 
