@@ -526,6 +526,8 @@ export async function* tryCallMCPTool(
       content,
     };
   } catch (error) {
+    heartbeat(); // Ensure we have a fresh heartbeat window before handling the error
+
     logger.error(
       {
         conversationId,
