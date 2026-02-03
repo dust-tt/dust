@@ -17085,14 +17085,29 @@
         }
       },
       {
+        "name": "list_ticket_fields",
+        "description": "Lists ticket field definitions with their ID, title, type, and whether they are active. Includes built-in fields (Subject, Priority, Status) and custom fields. Returns active fields by default. Set includeInactive=true for all fields.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "includeInactive": {
+              "description": "Include inactive fields. Defaults to false.",
+              "type": "boolean"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "search_tickets",
-        "description": "Search for Zendesk tickets using query syntax. Returns a list of matching tickets with their details. You can search by status, priority, assignee, tags, and other fields. Query examples: 'status:open', 'priority:high', 'status:open priority:urgent', 'assignee:me', 'tags:bug'.",
+        "description": "Search for Zendesk tickets using query syntax. Returns up to 1,000 matching tickets with their details. Supports filtering by status, priority, type, assignee, tags, custom fields, dates, and text fields. Custom fields use syntax: custom_field_{id}:\"exact_value\". Tags are simple labels; business-specific data are typically stored in custom fields. Use list_ticket_fields to discover available custom field IDs.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
             "query": {
-              "description": "The search query using Zendesk query syntax. Examples: 'status:open', 'priority:high' status:pending', 'assignee:123', 'tags:bug tags:critical'.Do not include 'type:ticket' as it is automatically added.",
+              "description": "Search query using Zendesk query syntax. Supports field:value pairs for status, priority, type, assignee, tags, and custom_field_{id}:\"value\" for custom fields. Multiple conditions are combined with AND logic. Do not include 'type:ticket' as it is automatically added.",
               "type": "string"
             },
             "sortBy": {
@@ -17125,6 +17140,7 @@
     "toolsStakes": {
       "draft_reply": "low",
       "get_ticket": "never_ask",
+      "list_ticket_fields": "never_ask",
       "search_tickets": "never_ask"
     }
   }
