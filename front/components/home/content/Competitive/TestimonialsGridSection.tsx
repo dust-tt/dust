@@ -36,7 +36,8 @@ function TestimonialCard({ quote, name, title, logo }: Testimonial) {
           width={80}
           height={32}
           alt="Company Logo"
-          className="ml-2 h-8 w-auto"
+          className="ml-2"
+          unoptimized
         />
       </div>
     </div>

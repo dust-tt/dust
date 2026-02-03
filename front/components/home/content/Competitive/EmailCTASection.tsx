@@ -1,4 +1,10 @@
-import { ArrowRightIcon, CheckIcon, Icon, Spinner } from "@dust-tt/sparkle";
+import {
+  ArrowRightIcon,
+  Button,
+  CheckIcon,
+  Icon,
+  Spinner,
+} from "@dust-tt/sparkle";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -101,7 +107,11 @@ export function EmailCTASection({
           <div className="mx-auto max-w-lg">
             {hasSession ? (
               <div className="flex flex-col items-center gap-3">
-                <button
+                <Button
+                  variant="highlight"
+                  size="md"
+                  label="Open Dust"
+                  icon={ArrowRightIcon}
                   onClick={withTracking(
                     TRACKING_AREAS.COMPETITIVE,
                     `${trackingObject}_open_dust`,
@@ -109,11 +119,7 @@ export function EmailCTASection({
                       window.location.href = "/api/login";
                     }
                   )}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-500 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:bg-emerald-600 hover:shadow-xl"
-                >
-                  Open Dust
-                  <ArrowRightIcon className="h-5 w-5" />
-                </button>
+                />
                 <p className="text-sm text-blue-200">
                   Welcome back! Continue where you left off.
                 </p>

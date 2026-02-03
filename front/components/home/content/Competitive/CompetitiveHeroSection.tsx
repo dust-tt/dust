@@ -1,5 +1,6 @@
 import {
   ArrowRightIcon,
+  Button,
   CheckIcon,
   Icon,
   LockIcon,
@@ -155,7 +156,11 @@ export function CompetitiveHeroSection({
           <div className="mt-2 w-full max-w-lg">
             {hasSession ? (
               <div className="flex flex-col items-center gap-3">
-                <button
+                <Button
+                  variant="highlight"
+                  size="md"
+                  label="Open Dust"
+                  icon={ArrowRightIcon}
                   onClick={withTracking(
                     TRACKING_AREAS.COMPETITIVE,
                     `${trackingObject}_open_dust`,
@@ -163,11 +168,7 @@ export function CompetitiveHeroSection({
                       window.location.href = "/api/login";
                     }
                   )}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-500 px-8 py-4 text-lg font-semibold text-white shadow-lg transition-all hover:bg-emerald-600 hover:shadow-xl"
-                >
-                  Open Dust
-                  <ArrowRightIcon className="h-5 w-5" />
-                </button>
+                />
                 <p className="text-sm text-muted-foreground">
                   Welcome back! Continue where you left off.
                 </p>

@@ -1,4 +1,5 @@
 import { CheckIcon, Icon, XMarkIcon } from "@dust-tt/sparkle";
+import type { ReactNode } from "react";
 import Image from "next/image";
 
 import { H2 } from "@app/components/home/ContentComponents";
@@ -21,29 +22,38 @@ interface ComparisonTableSectionProps {
   features: ComparisonFeature[];
 }
 
-function StatusIcon({ status }: { status: FeatureStatus }) {
-  if (status === "yes") {
-    return (
-      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-100">
+const STATUS_CONFIG: Record<FeatureStatus, { bg: string; content: ReactNode }> =
+  {
+    yes: {
+      bg: "bg-emerald-100",
+      content: (
         <Icon
           visual={CheckIcon}
           className="h-4 w-4 text-emerald-600"
           size="sm"
         />
-      </div>
-    );
-  }
-  if (status === "no") {
-    return (
-      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100">
-        <Icon visual={XMarkIcon} className="h-4 w-4 text-red-500" />
-      </div>
-    );
-  }
-  // partial
+      ),
+    },
+    no: {
+      bg: "bg-red-100",
+      content: <Icon visual={XMarkIcon} className="h-4 w-4 text-red-500" />,
+    },
+    partial: {
+      bg: "bg-amber-100",
+      content: <span className="text-sm font-bold text-amber-600">~</span>,
+    },
+  };
+
+function StatusIcon({ status }: { status: FeatureStatus }) {
+  const config = STATUS_CONFIG[status];
   return (
-    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100">
-      <span className="text-sm font-bold text-amber-600">~</span>
+    <div
+      className={cn(
+        "flex h-7 w-7 items-center justify-center rounded-full",
+        config.bg
+      )}
+    >
+      {config.content}
     </div>
   );
 }
@@ -69,7 +79,7 @@ export function ComparisonTableSection({
               alt={dustHeader}
               width={80}
               height={24}
-              className="h-6 w-auto"
+              unoptimized
             />
           </div>
           <div className="flex items-center justify-center rounded-tr-xl bg-gray-100 p-4">
@@ -78,8 +88,8 @@ export function ComparisonTableSection({
                 src={competitorLogo}
                 alt={competitorHeader}
                 width={80}
-                height={24}
-                className="h-5 w-auto"
+                height={20}
+                unoptimized
               />
             ) : (
               <span className="text-sm font-medium lowercase tracking-wider text-gray-500">

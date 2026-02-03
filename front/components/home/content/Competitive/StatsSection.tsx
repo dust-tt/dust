@@ -59,13 +59,7 @@ function StatCard({ value, label, company, logo, colorIndex }: StatCardProps) {
       </div>
       <div className="mb-4 text-sm font-medium text-gray-600">{label}</div>
       <div className="mt-auto flex items-center gap-2">
-        <Image
-          src={logo}
-          width={160}
-          height={64}
-          alt={company}
-          className="h-12 w-auto"
-        />
+        <Image src={logo} width={160} height={48} alt={company} unoptimized />
       </div>
     </div>
   );
