@@ -302,7 +302,8 @@ export function MCPActionDetails({
     return <MCPRunAgentActionDetails {...toolOutputDetailsProps} />;
   }
 
-  if (internalMCPServerName === "deep_dive") {
+  // TODO(2026-02-03 aubin): remove the component entirely on Feb, 17. See comment in PR.
+  if (internalMCPServerName?.toString() === "deep_dive") {
     return <MCPDeepDiveActionDetails {...toolOutputDetailsProps} />;
   }
 
