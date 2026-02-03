@@ -7,7 +7,7 @@ import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_de
 import type { InteractiveContentFileContentType } from "@app/types";
 import { frameContentType, INTERACTIVE_CONTENT_FILE_FORMATS } from "@app/types";
 
-export const INTERACTIVE_CONTENT_TOOL_NAME = "interactive_content" as const;
+export const INTERACTIVE_CONTENT_SERVER_NAME = "interactive_content" as const;
 
 const MAX_FILE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 
@@ -73,6 +73,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
             "'Dynamic dashboard')"
         ),
     },
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Creating interactive file",
@@ -141,6 +142,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
           "The ID of the Interactive Content file to revert (e.g., 'fil_abc123')"
         ),
     },
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Reverting Interactive Content file",
@@ -162,6 +164,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
           "The new name for the file, including extension (e.g., 'UpdatedChart.tsx')"
         ),
     },
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Renaming interactive file",
@@ -181,6 +184,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
           "The ID of the Interactive Content file to retrieve (e.g., 'fil_abc123')"
         ),
     },
+    enableAlerting: false,
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Interactive Content file",
@@ -198,6 +202,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
           "The ID of the Interactive Content file to get share URL for (e.g., 'fil_abc123')"
         ),
     },
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Getting share URL",
