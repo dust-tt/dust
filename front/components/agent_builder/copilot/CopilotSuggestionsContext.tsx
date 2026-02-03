@@ -240,6 +240,8 @@ export const CopilotSuggestionsProvider = ({
       }
     }
 
+    const outdatedIds: string[] = [];
+
     for (const suggestion of suggestions) {
       // Only apply pending instruction suggestions.
       if (
@@ -266,8 +268,12 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.add(suggestion.sId);
       } else {
         // Text no longer matches - mark as outdated.
-        void patchSuggestions([suggestion.sId], "outdated");
+        outdatedIds.push(suggestion.sId);
       }
+    }
+
+    if (outdatedIds.length > 0) {
+      void patchSuggestions(outdatedIds, "outdated");
     }
   }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
 
