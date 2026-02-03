@@ -8,10 +8,9 @@ import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_acti
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 
-export const PROJECT_CONTEXT_MANAGEMENT_SERVER_NAME =
-  "project_context_management" as const;
+export const PROJECT_MANAGER_SERVER_NAME = "project_manager" as const;
 
-export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
+export const PROJECT_MANAGER_TOOLS_METADATA = createToolsRecord({
   list_files: {
     description:
       "List all files in the project context. Returns file metadata including names, IDs, and content types.",
@@ -168,29 +167,6 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Get project information",
     },
   },
-  create_conversation: {
-    description:
-      "Create a new conversation in the project and post a user message. The message will be sent on behalf of the user executing the tool.",
-    schema: {
-      message: z
-        .string()
-        .describe("The message content to post in the new conversation"),
-      title: z.string().describe("Title for the conversation"),
-      agentId: z
-        .string()
-        .optional()
-        .describe("Optional agent ID to mention in the conversation"),
-      dustProject:
-        ConfigurableToolInputSchemas[
-          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
-        ].optional(),
-    },
-    stake: "low",
-    displayLabels: {
-      running: "Creating conversation",
-      done: "Create conversation",
-    },
-  },
   search_unread: {
     description:
       "Search for unread conversations in the project. Returns conversations that have been updated since the user last read them, " +
@@ -223,33 +199,30 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
   },
 });
 
-const PROJECT_CONTEXT_MANAGEMENT_INSTRUCTIONS =
-  "Project context files are shared across all conversations in this project. " +
+const PROJECT_MANAGER_INSTRUCTIONS =
+  "Project files, URLs, and metadata are shared across all conversations in this project. " +
   "Only text-based files are supported for adding/updating. " +
   "You can add/update files by providing text content directly, or by copying from existing files (like those you've generated). " +
   "Requires write permissions on the project space.";
 
-export const PROJECT_CONTEXT_MANAGEMENT_SERVER = {
+export const PROJECT_MANAGER_SERVER = {
   serverInfo: {
-    name: "project_context_management",
+    name: "project_manager",
     version: "1.0.0",
     description:
-      "Manage files in the project context. Add, update, delete, and list project files.",
+      "Manage project files, URLs, and metadata. Add, update, list files, and organize project resources.",
     icon: "ActionDocumentTextIcon",
     authorization: null,
     documentationUrl: null,
-    instructions: PROJECT_CONTEXT_MANAGEMENT_INSTRUCTIONS,
+    instructions: PROJECT_MANAGER_INSTRUCTIONS,
   },
-  tools: Object.values(PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA).map((t) => ({
+  tools: Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => ({
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
     displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
-    Object.values(PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA).map((t) => [
-      t.name,
-      t.stake,
-    ])
+    Object.values(PROJECT_MANAGER_TOOLS_METADATA).map((t) => [t.name, t.stake])
   ),
 } as const satisfies ServerMetadata;

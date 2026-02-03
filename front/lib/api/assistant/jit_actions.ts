@@ -7,7 +7,8 @@ import {
   getConversationSearchServer,
 } from "@app/lib/api/assistant/jit/conversation";
 import { getFolderSearchServers } from "@app/lib/api/assistant/jit/folder";
-import { getProjectContextManagementServer } from "@app/lib/api/assistant/jit/project_context_management";
+import { getProjectConversationServer } from "@app/lib/api/assistant/jit/project_conversation";
+import { getProjectManagerServer } from "@app/lib/api/assistant/jit/project_manager";
 import { getProjectSearchServer } from "@app/lib/api/assistant/jit/projects";
 import { getQueryTablesServer } from "@app/lib/api/assistant/jit/query_tables_v2";
 import { getSchedulesManagementServer } from "@app/lib/api/assistant/jit/schedules_management";
@@ -65,11 +66,22 @@ export async function getJITServers(
     jitServers.push(projectSearchServer);
   }
 
-  // Get project context management server (if in a project).
-  const projectContextManagementServer =
-    await getProjectContextManagementServer(auth, conversation);
-  if (projectContextManagementServer) {
-    jitServers.push(projectContextManagementServer);
+  // Get project manager server (if in a project).
+  const projectManagerServer = await getProjectManagerServer(
+    auth,
+    conversation
+  );
+  if (projectManagerServer) {
+    jitServers.push(projectManagerServer);
+  }
+
+  // Get project conversation server (if in a project).
+  const projectConversationServer = await getProjectConversationServer(
+    auth,
+    conversation
+  );
+  if (projectConversationServer) {
+    jitServers.push(projectConversationServer);
   }
 
   // Get schedules management server (if onboarding conversation).
