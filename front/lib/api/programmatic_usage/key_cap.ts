@@ -1,11 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import type { UsageAggregations } from "@app/lib/api/programmatic_usage_common";
-import {
-  getSecondsUntilMidnightUTC,
-  MARKUP_MULTIPLIER,
-} from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { KeyResource } from "@app/lib/resources/key_resource";
@@ -14,6 +9,9 @@ import logger from "@app/logger/logger";
 import type { LightWorkspaceType, ModelId, Result } from "@app/types";
 import { AGENT_MESSAGE_STATUSES_TO_TRACK } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+import type { UsageAggregations } from "./common";
+import { getSecondsUntilMidnightUTC, MARKUP_MULTIPLIER } from "./common";
 
 const KEY_CAP_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 

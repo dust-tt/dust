@@ -1,12 +1,6 @@
 import type { estypes } from "@elastic/elasticsearch";
 
 import { searchAnalytics } from "@app/lib/api/elasticsearch";
-import type { UsageAggregations } from "@app/lib/api/programmatic_usage_common";
-import {
-  getSecondsUntilMidnightUTC,
-  getShouldTrackTokenUsageCostsESFilter,
-  MARKUP_MULTIPLIER,
-} from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import type { Authenticator } from "@app/lib/auth";
 import { executeWithLock } from "@app/lib/lock";
@@ -14,6 +8,13 @@ import { ProgrammaticUsageConfigurationResource } from "@app/lib/resources/progr
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
+
+import type { UsageAggregations } from "./common";
+import {
+  getSecondsUntilMidnightUTC,
+  getShouldTrackTokenUsageCostsESFilter,
+  MARKUP_MULTIPLIER,
+} from "./common";
 
 // $1,000 in microUSD - default daily cap for non-PAYG workspaces, also used as
 // minimum daily cap for PAYG workspaces

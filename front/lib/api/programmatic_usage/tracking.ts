@@ -4,15 +4,6 @@ import moment from "moment-timezone";
 import type { RedisClientType } from "redis";
 
 import { DUST_MARKUP_PERCENT } from "@app/lib/api/assistant/token_pricing";
-import {
-  hasReachedDailyUsageCap,
-  incrementDailyUsageMicroUsd,
-} from "@app/lib/api/daily_cap_tracking";
-import {
-  hasKeyReachedUsageCap,
-  incrementRedisKeyUsageMicroUsd,
-} from "@app/lib/api/key_cap_tracking";
-import { USAGE_ORIGINS_CLASSIFICATION } from "@app/lib/api/programmatic_usage_common";
 import { runOnRedis } from "@app/lib/api/redis";
 import { getWorkspacePublicAPILimits } from "@app/lib/api/workspace";
 import type { Authenticator } from "@app/lib/auth";
@@ -30,6 +21,16 @@ import type {
   UserMessageOrigin,
 } from "@app/types";
 import { Err, Ok } from "@app/types";
+
+import { USAGE_ORIGINS_CLASSIFICATION } from "./common";
+import {
+  hasReachedDailyUsageCap,
+  incrementDailyUsageMicroUsd,
+} from "./daily_cap";
+import {
+  hasKeyReachedUsageCap,
+  incrementRedisKeyUsageMicroUsd,
+} from "./key_cap";
 
 const CREDIT_ALERT_THRESHOLD_PERCENT = 80;
 

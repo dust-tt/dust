@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
 
-import {
-  compareCreditsForConsumption,
-  computeCreditAlertThresholdKey,
-  decreaseProgrammaticCreditsV2,
-} from "@app/lib/api/programmatic_usage_tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";
@@ -13,6 +8,12 @@ import { MembershipFactory } from "@app/tests/utils/MembershipFactory";
 import { UserFactory } from "@app/tests/utils/UserFactory";
 import { WorkspaceFactory } from "@app/tests/utils/WorkspaceFactory";
 import type { WorkspaceType } from "@app/types";
+
+import {
+  compareCreditsForConsumption,
+  computeCreditAlertThresholdKey,
+  decreaseProgrammaticCreditsV2,
+} from "./tracking";
 
 type MockCreditForConsumption = Pick<CreditResource, "type" | "expirationDate">;
 
