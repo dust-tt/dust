@@ -132,7 +132,12 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
-                <Avatar name={user.name} size="xs" isRounded={true} />
+                <Avatar
+                  name={user.name}
+                  visual={user.imageUrl ?? undefined}
+                  size="xs"
+                  isRounded
+                />
                 <span className="text-sm">{user.name}</span>
               </div>
             </DataTable.CellContent>

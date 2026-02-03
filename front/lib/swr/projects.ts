@@ -22,6 +22,7 @@ export type ProjectFileType = FileTypeWithMetadata & {
   user: {
     sId: string;
     name: string | null;
+    imageUrl: string | null;
   } | null;
 };
 
