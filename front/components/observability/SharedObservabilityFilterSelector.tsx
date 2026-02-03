@@ -15,12 +15,6 @@ import { useObservabilityContext } from "@app/components/agent_builder/observabi
 import type { AgentVersionMarker } from "@app/lib/api/assistant/observability/version_markers";
 import { useAgentVersionMarkers } from "@app/lib/swr/assistants";
 
-interface SharedObservabilityFilterSelectorProps {
-  workspaceId: string;
-  agentConfigurationId: string;
-  isCustomAgent: boolean;
-}
-
 function getVersionValue(versionMarker: AgentVersionMarker) {
   const date = new Date(versionMarker.timestamp);
   const formattedTimeDisplay = date.toLocaleString(undefined, {
@@ -34,21 +28,21 @@ function getVersionValue(versionMarker: AgentVersionMarker) {
   return `v${versionMarker.version}: ${formattedTimeDisplay}`;
 }
 
-export function SharedObservabilityFilterSelector({
+interface ObservabilityModeSelectorProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
+export function ObservabilityModeSelector({
   workspaceId,
   agentConfigurationId,
   isCustomAgent,
-}: SharedObservabilityFilterSelectorProps) {
-  const {
-    mode,
-    setMode,
-    period,
-    setPeriod,
-    selectedVersion,
-    setSelectedVersion,
-  } = useObservabilityContext();
+}: ObservabilityModeSelectorProps) {
+  const { mode, setMode, period, selectedVersion, setSelectedVersion } =
+    useObservabilityContext();
 
-  const { versionMarkers, isVersionMarkersLoading } = useAgentVersionMarkers({
+  const { versionMarkers } = useAgentVersionMarkers({
     workspaceId,
     agentConfigurationId,
     days: period,
@@ -66,72 +60,98 @@ export function SharedObservabilityFilterSelector({
     }
   }, [mode, selectedVersion, versionMarkers, setSelectedVersion]);
 
-  return (
-    <div className="flex items-center gap-3">
-      {isCustomAgent && (
-        <ButtonsSwitchList defaultValue={mode} size="xs">
-          <ButtonsSwitch
-            value="timeRange"
-            label="Time range"
-            onClick={() => setMode("timeRange")}
-          />
-          <ButtonsSwitch
-            value="version"
-            label="Version"
-            onClick={() => setMode("version")}
-          />
-        </ButtonsSwitchList>
-      )}
+  if (!isCustomAgent) {
+    return null;
+  }
 
-      {isCustomAgent && mode === "version" ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={
-                selectedVersion
-                  ? getVersionValue(selectedVersion)
-                  : isVersionMarkersLoading
-                    ? "Loading"
-                    : "Not available"
-              }
-              size="xs"
-              variant="outline"
-              isSelect
-              disabled={versionMarkers.length === 0}
+  return (
+    <ButtonsSwitchList defaultValue={mode} size="xs">
+      <ButtonsSwitch
+        value="timeRange"
+        label="By Timerange"
+        onClick={() => setMode("timeRange")}
+      />
+      <ButtonsSwitch
+        value="version"
+        label="By version"
+        onClick={() => setMode("version")}
+      />
+    </ButtonsSwitchList>
+  );
+}
+
+interface ObservabilityPeriodSelectorProps {
+  workspaceId: string;
+  agentConfigurationId: string;
+  isCustomAgent: boolean;
+}
+
+export function ObservabilityPeriodSelector({
+  workspaceId,
+  agentConfigurationId,
+  isCustomAgent,
+}: ObservabilityPeriodSelectorProps) {
+  const { mode, period, setPeriod, selectedVersion, setSelectedVersion } =
+    useObservabilityContext();
+
+  const { versionMarkers, isVersionMarkersLoading } = useAgentVersionMarkers({
+    workspaceId,
+    agentConfigurationId,
+    days: period,
+    disabled: !isCustomAgent,
+  });
+
+  if (isCustomAgent && mode === "version") {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            label={
+              selectedVersion
+                ? getVersionValue(selectedVersion)
+                : isVersionMarkersLoading
+                  ? "Loading"
+                  : "Not available"
+            }
+            size="xs"
+            variant="outline"
+            isSelect
+            disabled={versionMarkers.length === 0}
+          />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel label="Last 30 days" />
+          {(versionMarkers ?? []).map((marker) => (
+            <DropdownMenuItem
+              key={marker.version}
+              label={getVersionValue(marker)}
+              onClick={() => setSelectedVersion(marker)}
             />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel label="Last 30 days" />
-            {(versionMarkers ?? []).map((marker) => (
-              <DropdownMenuItem
-                key={marker.version}
-                label={getVersionValue(marker)}
-                onClick={() => setSelectedVersion(marker)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              label={`${period} days`}
-              size="xs"
-              variant="outline"
-              isSelect
-            />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {OBSERVABILITY_TIME_RANGE.map((p) => (
-              <DropdownMenuItem
-                key={p}
-                label={`${p} days`}
-                onClick={() => setPeriod(p)}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </div>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          label={`Last ${period} days`}
+          size="xs"
+          variant="outline"
+          isSelect
+        />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {OBSERVABILITY_TIME_RANGE.map((p) => (
+          <DropdownMenuItem
+            key={p}
+            label={`Last ${p} days`}
+            onClick={() => setPeriod(p)}
+          />
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

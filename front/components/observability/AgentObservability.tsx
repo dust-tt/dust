@@ -13,8 +13,6 @@ import { lazy, Suspense } from "react";
 
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
 import { TabContentChildSectionLayout } from "@app/components/agent_builder/observability/TabContentChildSectionLayout";
-import { TabContentLayout } from "@app/components/agent_builder/observability/TabContentLayout";
-import { SharedObservabilityFilterSelector } from "@app/components/observability/SharedObservabilityFilterSelector";
 import {
   useAgentAnalytics,
   useAgentObservabilitySummary,
@@ -111,16 +109,7 @@ export function AgentObservability({
     });
 
   return (
-    <TabContentLayout
-      title="Insights"
-      headerAction={
-        <SharedObservabilityFilterSelector
-          workspaceId={owner.sId}
-          agentConfigurationId={agentConfigurationId}
-          isCustomAgent={isCustomAgent}
-        />
-      }
-    >
+    <div className="flex flex-col gap-6 pt-4">
       <TabContentChildSectionLayout title="Overview">
         {isTimeRangeMode && (
           <div className="mb-4">
@@ -281,6 +270,6 @@ export function AgentObservability({
           />
         </Suspense>
       </TabContentChildSectionLayout>
-    </TabContentLayout>
+    </div>
   );
 }
