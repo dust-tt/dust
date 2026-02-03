@@ -282,14 +282,13 @@ async function createRunAgentServer(
           conversation: mainConversation,
         } = agentLoopContext.runContext;
 
-        const parsedChildAgentId = parseAgentConfigurationUri(uri);
-        if (!parsedChildAgentId) {
+        const parsedChildAgentIdRes = parseAgentConfigurationUri(uri);
+        if (parsedChildAgentIdRes.isErr()) {
           return finalizeAndReturn(
-            new Err(
-              new MCPError(`Invalid URI for an agent configuration: ${uri}`)
-            )
+            new Err(new MCPError(parsedChildAgentIdRes.error.message))
           );
         }
+        const parsedChildAgentId = parsedChildAgentIdRes.value;
 
         const user = auth.user();
 
