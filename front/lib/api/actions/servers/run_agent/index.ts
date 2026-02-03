@@ -159,14 +159,7 @@ async function leakyGetAgentNameAndDescriptionForChildAgent(
   };
 }
 
-function createServer(
-  auth: Authenticator,
-  agentLoopContext?: AgentLoopContextType
-): Promise<McpServer> {
-  return createRunAgentServer(auth, agentLoopContext);
-}
-
-async function createRunAgentServer(
+async function createServer(
   auth: Authenticator,
   agentLoopContext?: AgentLoopContextType
 ): Promise<McpServer> {
