@@ -11,7 +11,7 @@ import {
   LoadingBlock,
 } from "@dust-tt/sparkle";
 import React, { useCallback } from "react";
-import { useFormContext } from "react-hook-form";
+import { useController, useFormContext } from "react-hook-form";
 
 import type { AgentBuilderFormData } from "@app/components/agent_builder/AgentBuilderFormContext";
 import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/CopilotSuggestionsContext";
@@ -175,7 +175,6 @@ function SkillsSuggestionCards({
   const handleAcceptAddition = useCallback(
     (skill: SkillType) => {
       const currentSkills = getValues("skills");
-      // Check if skill is already added
       const alreadyExists = currentSkills.some((s) => s.sId === skill.sId);
       if (!alreadyExists) {
         const newSkill = {
@@ -250,29 +249,30 @@ function ModelSuggestionCard({
   const modelName =
     relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
   const { acceptSuggestion, rejectSuggestion } = useCopilotSuggestions();
-  const { setValue } = useFormContext<AgentBuilderFormData>();
+  const { control } = useFormContext<AgentBuilderFormData>();
+
+  const { field: modelSettingsField } = useController({
+    control,
+    name: "generationSettings.modelSettings",
+  });
+
+  const { field: reasoningEffortField } = useController({
+    control,
+    name: "generationSettings.reasoningEffort",
+  });
 
   const handleAccept = useCallback(() => {
     const model = relations.model;
     if (model) {
       // Update the form with the new model settings
-      setValue("generationSettings.modelSettings", {
+      modelSettingsField.onChange({
         modelId: model.modelId,
         providerId: model.providerId,
       });
-      // Update reasoning effort if specified in the suggestion
-      if (suggestion.reasoningEffort) {
-        setValue(
-          "generationSettings.reasoningEffort",
-          suggestion.reasoningEffort
-        );
-      } else {
-        // Use the model's default reasoning effort
-        setValue(
-          "generationSettings.reasoningEffort",
-          model.defaultReasoningEffort
-        );
-      }
+      // Update reasoning effort if specified in the suggestion, otherwise use model default
+      reasoningEffortField.onChange(
+        suggestion.reasoningEffort ?? model.defaultReasoningEffort
+      );
     }
     void acceptSuggestion(sId);
   }, [
@@ -280,7 +280,8 @@ function ModelSuggestionCard({
     suggestion.reasoningEffort,
     sId,
     acceptSuggestion,
-    setValue,
+    modelSettingsField,
+    reasoningEffortField,
   ]);
 
   const handleReject = useCallback(() => {
