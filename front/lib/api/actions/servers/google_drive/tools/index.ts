@@ -478,7 +478,7 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
         });
       }
 
-      return new Err(handlePermissionError(err));
+      return handlePermissionError(err);
     }
   },
 };
