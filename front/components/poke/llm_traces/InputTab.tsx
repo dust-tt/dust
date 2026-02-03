@@ -161,9 +161,12 @@ function ConversationView({ conversation }: ConversationViewProps) {
 
         return (
           <div key={index} className="rounded border p-3">
-            <div className="mb-2">
-              <Chip color={chipColor} size="xs" label={roleName} />
-            </div>
+            <Chip
+              color={chipColor}
+              size="xs"
+              label={roleName}
+              className="mb-2"
+            />
             <MessageContent message={message} />
           </div>
         );
