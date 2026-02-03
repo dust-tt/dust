@@ -481,6 +481,7 @@ export class SpaceResource extends BaseResource<SpaceModel> {
     await SpaceModel.destroy({
       where: {
         id: this.id,
+        workspaceId: auth.getNonNullableWorkspace().id,
       },
       transaction,
       hardDelete,
