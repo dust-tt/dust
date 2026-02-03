@@ -12,6 +12,7 @@ import React, { useCallback, useState } from "react";
 
 import { SpaceAboutTab } from "@app/components/assistant/conversation/space/about/SpaceAboutTab";
 import { SpaceConversationsTab } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsTab";
+import { ManageUsersPanel } from "@app/components/assistant/conversation/space/ManageUsersPanel";
 import { SpaceContextTab } from "@app/components/assistant/conversation/space/SpaceContextTab";
 import { LeaveProjectButton } from "@app/components/spaces/LeaveProjectButton";
 import { useActiveSpaceId } from "@app/hooks/useActiveSpaceId";
@@ -21,7 +22,6 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import type { DustError } from "@app/lib/error";
 import { useAppRouter } from "@app/lib/platform";
 import { useSpaceConversations } from "@app/lib/swr/conversations";
-import { useGroups } from "@app/lib/swr/groups";
 import { useSpaceInfo, useSystemSpace } from "@app/lib/swr/spaces";
 import { getConversationRoute } from "@app/lib/utils/router";
 import type { ContentFragmentsType, Result, RichMention } from "@app/types";
@@ -50,21 +50,21 @@ export function SpaceConversationsPage() {
     user,
   });
 
-  const { conversations, isConversationsLoading, mutateConversations } =
-    useSpaceConversations({
-      workspaceId: owner.sId,
-      spaceId: spaceId,
-    });
-
-  const planAllowsSCIM = subscription.plan.limits.users.isSCIMAllowed;
-  const { groups } = useGroups({
-    owner,
-    kinds: ["provisioned"],
-    disabled: !planAllowsSCIM,
+  const {
+    conversations,
+    isConversationsLoading,
+    mutateConversations,
+    hasMore,
+    loadMore,
+    isLoadingMore,
+  } = useSpaceConversations({
+    workspaceId: owner.sId,
+    spaceId: spaceId,
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [_planLimitReached, setPlanLimitReached] = useState(false);
+  const [isInvitePanelOpen, setIsInvitePanelOpen] = useState(false);
 
   // Parse and validate the current tab from URL hash
   const getCurrentTabFromHash = useCallback((): SpaceTab => {
@@ -168,16 +168,29 @@ export function SpaceConversationsPage() {
           { shallow: true }
         );
 
-        // Update the conversations list
+        // Update the conversations list (prepend new conversation to first page)
         await mutateConversations(
           (currentData) => {
-            return {
-              ...currentData,
-              conversations: [
-                ...(currentData?.conversations ?? []),
-                conversationRes.value,
-              ],
-            };
+            if (!currentData || currentData.length === 0) {
+              return [
+                {
+                  conversations: [conversationRes.value],
+                  hasMore: false,
+                  lastValue: null,
+                },
+              ];
+            }
+            const [firstPage, ...restPages] = currentData;
+            return [
+              {
+                ...firstPage,
+                conversations: [
+                  conversationRes.value,
+                  ...firstPage.conversations,
+                ],
+              },
+              ...restPages,
+            ];
           },
           { revalidate: false }
         );
@@ -264,8 +277,12 @@ export function SpaceConversationsPage() {
             user={user}
             conversations={conversations}
             isConversationsLoading={isConversationsLoading}
+            hasMore={hasMore}
+            loadMore={loadMore}
+            isLoadingMore={isLoadingMore}
             spaceInfo={spaceInfo}
             onSubmit={handleConversationCreation}
+            onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
 
@@ -286,23 +303,17 @@ export function SpaceConversationsPage() {
             key={spaceId}
             owner={owner}
             space={spaceInfo}
-            initialMembers={spaceInfo.members}
-            planAllowsSCIM={planAllowsSCIM}
-            initialGroups={
-              planAllowsSCIM &&
-              spaceInfo.groupIds &&
-              spaceInfo.groupIds.length > 0 &&
-              groups
-                ? groups.filter((group) =>
-                    spaceInfo.groupIds.includes(group.sId)
-                  )
-                : []
-            }
-            initialManagementMode={spaceInfo.managementMode}
-            initialIsRestricted={spaceInfo.isRestricted}
+            onOpenMembersPanel={() => setIsInvitePanelOpen(true)}
           />
         </TabsContent>
       </Tabs>
+      <ManageUsersPanel
+        isOpen={isInvitePanelOpen}
+        setIsOpen={setIsInvitePanelOpen}
+        owner={owner}
+        space={spaceInfo}
+        currentProjectMembers={spaceInfo.members}
+      />
     </div>
   );
 }

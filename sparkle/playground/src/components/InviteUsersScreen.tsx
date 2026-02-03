@@ -1,6 +1,8 @@
 import {
   Avatar,
+  Button,
   Checkbox,
+  CheckIcon,
   ListGroup,
   ListItem,
   SearchInput,
@@ -21,10 +23,12 @@ interface InviteUsersScreenProps {
   isOpen: boolean;
   spaceId: string | null;
   onClose: () => void;
-  onInvite: (selectedUserIds: string[]) => void;
+  onInvite: (selectedUserIds: string[], editorUserIds: string[]) => void;
   title?: string;
   actionLabel?: string;
   initialSelectedUserIds?: string[];
+  initialEditorUserIds?: string[];
+  hasMultipleSelect?: boolean;
 }
 
 export function InviteUsersScreen({
@@ -35,10 +39,13 @@ export function InviteUsersScreen({
   title,
   actionLabel = "Invite",
   initialSelectedUserIds,
+  initialEditorUserIds,
+  hasMultipleSelect = false,
 }: InviteUsersScreenProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(
     new Set()
   );
+  const [editorUserIds, setEditorUserIds] = useState<Set<string>>(new Set());
   const [searchText, setSearchText] = useState("");
 
   const space = spaceId ? getSpaceById(spaceId) : null;
@@ -51,7 +58,16 @@ export function InviteUsersScreen({
     }
     const initialSelection = initialSelectedUserIds ?? [];
     setSelectedUserIds(new Set(initialSelection));
-  }, [initialSelectedUserIds, isOpen]);
+    if (hasMultipleSelect) {
+      const initialEditors = new Set(initialEditorUserIds ?? []);
+      const filteredEditors = Array.from(initialEditors).filter((userId) =>
+        initialSelection.includes(userId)
+      );
+      setEditorUserIds(new Set(filteredEditors));
+    } else {
+      setEditorUserIds(new Set());
+    }
+  }, [initialSelectedUserIds, initialEditorUserIds, isOpen, hasMultipleSelect]);
 
   // Filter users based on search text
   const filteredUsers = useMemo(() => {
@@ -70,6 +86,11 @@ export function InviteUsersScreen({
     const newSelected = new Set(selectedUserIds);
     if (newSelected.has(userId)) {
       newSelected.delete(userId);
+      if (editorUserIds.has(userId)) {
+        const nextEditors = new Set(editorUserIds);
+        nextEditors.delete(userId);
+        setEditorUserIds(nextEditors);
+      }
     } else {
       newSelected.add(userId);
     }
@@ -77,12 +98,14 @@ export function InviteUsersScreen({
   };
 
   const handleInvite = () => {
-    onInvite(Array.from(selectedUserIds));
+    onInvite(Array.from(selectedUserIds), Array.from(editorUserIds));
     setSelectedUserIds(new Set());
+    setEditorUserIds(new Set());
   };
 
   const handleClose = () => {
     setSelectedUserIds(new Set());
+    setEditorUserIds(new Set());
     setSearchText("");
     onClose();
   };
@@ -93,8 +116,23 @@ export function InviteUsersScreen({
       newSelected.add(userId);
     } else {
       newSelected.delete(userId);
+      if (editorUserIds.has(userId)) {
+        const nextEditors = new Set(editorUserIds);
+        nextEditors.delete(userId);
+        setEditorUserIds(nextEditors);
+      }
     }
     setSelectedUserIds(newSelected);
+  };
+
+  const toggleEditor = (userId: string) => {
+    const nextEditors = new Set(editorUserIds);
+    if (nextEditors.has(userId)) {
+      nextEditors.delete(userId);
+    } else {
+      nextEditors.add(userId);
+    }
+    setEditorUserIds(nextEditors);
   };
 
   // Get selected users data for button label and tooltip
@@ -128,18 +166,25 @@ export function InviteUsersScreen({
             <ListGroup>
               {filteredUsers.map((user) => {
                 const isSelected = selectedUserIds.has(user.id);
+
                 return (
                   <ListItem
                     key={user.id}
-                    interactive={true}
                     itemsAlignment="center"
                     onClick={() => toggleUser(user.id)}
-                    className={
-                      isSelected
-                        ? "s-bg-primary-50 dark:s-bg-primary-50-night"
-                        : ""
-                    }
+                    ignorePressSelector=".button-class"
                   >
+                    <Checkbox
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        if (checked !== "indeterminate") {
+                          handleCheckboxChange(user.id, checked);
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                    />
                     <Avatar
                       name={user.fullName}
                       visual={user.portrait}
@@ -154,17 +199,27 @@ export function InviteUsersScreen({
                         {user.email}
                       </span>
                     </div>
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={(checked) => {
-                        if (checked !== "indeterminate") {
-                          handleCheckboxChange(user.id, checked);
+                    {hasMultipleSelect && isSelected && (
+                      <Button
+                        size="xs"
+                        className="button-class"
+                        variant={
+                          editorUserIds.has(user.id) ? "highlight" : "outline"
                         }
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                    />
+                        label={
+                          editorUserIds.has(user.id)
+                            ? "Editor"
+                            : "Set as editor"
+                        }
+                        icon={
+                          editorUserIds.has(user.id) ? CheckIcon : undefined
+                        }
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          toggleEditor(user.id);
+                        }}
+                      />
+                    )}
                   </ListItem>
                 );
               })}

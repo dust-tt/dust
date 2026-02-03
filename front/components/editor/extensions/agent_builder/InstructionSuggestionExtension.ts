@@ -1,14 +1,16 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
+import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
-// Generate a short label from suggestion ID for debugging.
-function getSuggestionLabel(suggestionId: string): string {
-  // Take last 4 chars of the ID for a short identifier.
-  return suggestionId.slice(-4);
+// Normalize suggestion text by stripping list markers and trailing whitespace.
+// List markers (- , * , 1. , etc.) are structural in TipTap, not part of text content.
+function normalizeSuggestionText(text: string): string {
+  return text.replace(/^(?:[-*]|\d+\.)\s+/, "").replace(/\s+$/, "");
 }
 
-// Mark for additions (blue background).
+// Mark for additions (styling applied via decorations based on selection state).
 export const SuggestionAdditionMark = Mark.create({
   name: "suggestionAddition",
 
@@ -25,35 +27,19 @@ export const SuggestionAdditionMark = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
     return [
       "span",
       {
         ...HTMLAttributes,
-        class:
-          "suggestion-addition s-rounded s-bg-highlight-100 dark:s-bg-highlight-100-night s-text-highlight-800",
+        class: "suggestion-addition rounded px-0.5",
         "data-suggestion-id": HTMLAttributes.suggestionId,
-        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
-        contenteditable: "false",
       },
-      [
-        "span",
-        {},
-        0, // Content placeholder.
-      ],
-      [
-        "sup",
-        {
-          class:
-            "s-ml-0.5 s-text-[9px] s-font-mono s-text-highlight-500 s-select-none",
-        },
-        label,
-      ],
+      0,
     ];
   },
 });
 
-// Mark for deletions (red background + strikethrough).
+// Mark for deletions (styling applied via decorations based on selection state).
 export const SuggestionDeletionMark = Mark.create({
   name: "suggestionDeletion",
 
@@ -70,32 +56,109 @@ export const SuggestionDeletionMark = Mark.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    const label = getSuggestionLabel(HTMLAttributes.suggestionId);
     return [
       "span",
       {
         ...HTMLAttributes,
-        class:
-          "suggestion-deletion s-rounded s-bg-warning-100 dark:s-bg-warning-100-night s-text-warning-800 s-line-through",
+        class: "suggestion-deletion rounded px-0.5 line-through",
         "data-suggestion-id": HTMLAttributes.suggestionId,
-        title: `Suggestion: ${HTMLAttributes.suggestionId}`,
-        contenteditable: "false",
       },
-      [
-        "span",
-        {},
-        0, // Content placeholder.
-      ],
-      [
-        "sup",
-        {
-          class:
-            "s-ml-0.5 s-text-[9px] s-font-mono s-text-warning-500 s-select-none s-no-underline",
-          style: "text-decoration: none;",
-        },
-        label,
-      ],
+      0,
     ];
+  },
+});
+
+interface SuggestionNode {
+  from: number;
+  to: number;
+  isAdd: boolean;
+  suggestionId: string | null;
+}
+
+// Collect all suggestion-marked nodes in the document.
+function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
+  const nodes: SuggestionNode[] = [];
+
+  state.doc.descendants((node, pos) => {
+    if (!node.isText) {
+      return;
+    }
+    const addMark = node.marks.find(
+      (m) => m.type.name === "suggestionAddition"
+    );
+    const deletionMark = node.marks.find(
+      (m) => m.type.name === "suggestionDeletion"
+    );
+    const mark = addMark ?? deletionMark;
+    if (mark) {
+      nodes.push({
+        from: pos,
+        to: pos + node.nodeSize,
+        isAdd: !!addMark,
+        suggestionId: (mark.attrs.suggestionId as string) || null,
+      });
+    }
+  });
+
+  return nodes;
+}
+
+// Find the suggestionId of the suggestion block containing the cursor.
+function getSelectedSuggestionId(
+  nodes: SuggestionNode[],
+  cursorPos: number
+): string | null {
+  const cursorNode = nodes.find(
+    (n) => cursorPos >= n.from && cursorPos <= n.to
+  );
+  return cursorNode?.suggestionId ?? null;
+}
+
+// CSS classes for suggestion states: [isAdd][isSelected].
+const SUGGESTION_CLASSES = {
+  addSelected:
+    "rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
+  addUnselected:
+    "rounded bg-blue-50 dark:bg-blue-900/20 text-gray-500 dark:text-gray-400",
+  deleteSelected:
+    "rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 line-through",
+  deleteUnselected:
+    "rounded bg-red-50 dark:bg-red-900/20 text-gray-500 dark:text-gray-400 line-through",
+};
+
+function getSuggestionClass(isAdd: boolean, isSelected: boolean): string {
+  if (isAdd) {
+    return isSelected
+      ? SUGGESTION_CLASSES.addSelected
+      : SUGGESTION_CLASSES.addUnselected;
+  }
+  return isSelected
+    ? SUGGESTION_CLASSES.deleteSelected
+    : SUGGESTION_CLASSES.deleteUnselected;
+}
+
+// ProseMirror plugin that applies decorations based on cursor position.
+const suggestionHighlightPlugin = new Plugin({
+  key: new PluginKey("suggestionHighlight"),
+  props: {
+    decorations(state) {
+      const nodes = collectSuggestionNodes(state);
+      if (nodes.length === 0) {
+        return null;
+      }
+
+      const selectedId = getSelectedSuggestionId(nodes, state.selection.from);
+      const decorations = nodes.map((node) =>
+        Decoration.inline(node.from, node.to, {
+          class: getSuggestionClass(
+            node.isAdd,
+            selectedId !== null && node.suggestionId === selectedId
+          ),
+        })
+      );
+
+      return DecorationSet.create(state.doc, decorations);
+    },
   },
 });
 
@@ -186,6 +249,10 @@ export const InstructionSuggestionExtension = Extension.create({
     return [SuggestionAdditionMark, SuggestionDeletionMark];
   },
 
+  addProseMirrorPlugins() {
+    return [suggestionHighlightPlugin];
+  },
+
   addCommands() {
     return {
       applySuggestion:
@@ -194,9 +261,7 @@ export const InstructionSuggestionExtension = Extension.create({
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
-          // Normalize find string by trimming trailing whitespace/newlines.
-          // Backend may include trailing newlines that don't exist in editor.
-          const normalizedFind = find.replace(/\s+$/, "");
+          const normalizedFind = normalizeSuggestionText(find);
 
           // Get full document text and find the position.
           const fullText = doc.textContent;
@@ -254,8 +319,7 @@ export const InstructionSuggestionExtension = Extension.create({
             return false;
           }
 
-          // Normalize replacement too.
-          const normalizedReplacement = replacement.replace(/\s+$/, "");
+          const normalizedReplacement = normalizeSuggestionText(replacement);
 
           // Simple approach: show old text (red/strikethrough) then new text (blue).
           // No word-level diffing, users accept/reject the whole suggestion.

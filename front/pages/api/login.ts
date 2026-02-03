@@ -5,6 +5,7 @@ import {
   handleMembershipInvite,
   handleRegularSignupFlow,
 } from "@app/lib/api/signup";
+import { getApiBaseUrl } from "@app/lib/egress/client";
 import { AuthFlowError } from "@app/lib/iam/errors";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { getUserFromSession } from "@app/lib/iam/session";
@@ -106,7 +107,7 @@ async function handler(
     if (flow === "unauthorized") {
       // Only happen if the workspace associated with workOSOrganizationId is not found.
       res.redirect(
-        `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
+        `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=sso-login&reason=${flow}`)}`
       );
       return;
     }
@@ -160,7 +161,7 @@ async function handler(
           "Error during login flow."
         );
         res.redirect(
-          `/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
+          `${getApiBaseUrl()}/api/workos/logout?returnTo=/login-error${encodeURIComponent(`?type=login&reason=${error.code}`)}`
         );
         return;
       }
@@ -171,7 +172,7 @@ async function handler(
       }
 
       res.redirect(
-        `/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
+        `${getApiBaseUrl()}/api/workos/logout?returnTo=/sso-enforced?workspaceId=${error.workspaceId}`
       );
       return;
     }

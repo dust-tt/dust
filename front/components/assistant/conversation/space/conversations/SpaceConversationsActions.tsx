@@ -6,7 +6,15 @@ import {
   Icon,
 } from "@dust-tt/sparkle";
 
-export function SpaceConversationsActions() {
+interface SpaceConversationsActionsProps {
+  isEditor: boolean;
+  onOpenMembersPanel: () => void;
+}
+
+export function SpaceConversationsActions({
+  isEditor,
+  onOpenMembersPanel,
+}: SpaceConversationsActionsProps) {
   const suggestions = [
     {
       id: "add-context",
@@ -16,15 +24,18 @@ export function SpaceConversationsActions() {
         window.location.hash = "context";
       },
     },
-    {
-      id: "invite-members",
-      label: "Invite members",
-      icon: ContactsUserIcon,
-      onClick: () => {
-        // todo(projects) open side panel to invite members
-        window.location.hash = "settings";
-      },
-    },
+    ...(isEditor
+      ? [
+          {
+            id: "manage-members",
+            label: "Manage members",
+            icon: ContactsUserIcon,
+            onClick: () => {
+              onOpenMembersPanel();
+            },
+          },
+        ]
+      : []),
   ];
 
   return (

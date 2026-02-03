@@ -328,6 +328,7 @@ const UserMessageOriginSchema = z
     "zendesk",
     "onboarding_conversation",
     "agent_copilot",
+    "project_butler",
   ])
   .catch("api")
   .or(z.null())

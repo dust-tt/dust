@@ -21,7 +21,7 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import type { RegionType } from "@app/lib/api/regions/config";
-import { getRegionDisplay } from "@app/lib/poke/regions";
+import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
 import { usePokeSearch, usePokeSearchAllRegions } from "@app/poke/swr/search";
@@ -33,6 +33,7 @@ const MIN_SEARCH_CHARACTERS = 2;
 interface PokeNavbarProps {
   currentRegion?: RegionType;
   regionUrls?: Record<RegionType, string>;
+  showRegionPicker?: boolean;
   title: string;
 }
 
@@ -55,7 +56,12 @@ function getPokeItemChipColor(
   }
 }
 
-function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
+function PokeNavbar({
+  currentRegion,
+  regionUrls,
+  showRegionPicker = false,
+  title,
+}: PokeNavbarProps) {
   return (
     <nav
       className={classNames(
@@ -82,7 +88,7 @@ function PokeNavbar({ currentRegion, regionUrls, title }: PokeNavbarProps) {
       </div>
       <div className="items-right flex items-center gap-4">
         <PokeFavoriteButton title={title} />
-        {currentRegion && (
+        {showRegionPicker && currentRegion && (
           <PokeRegionDropdown
             currentRegion={currentRegion}
             regionUrls={regionUrls}
@@ -302,9 +308,9 @@ function PokeSearchCommandUI({
                       (id: {item.id})
                     </span>
                     {showRegion && item.region && (
-                      <span className="text-xs text-muted-foreground dark:text-muted-foreground-night">
+                      <Chip size="xs" color={getRegionChipColor(item.region)}>
                         {getRegionDisplay(item.region)}
-                      </span>
+                      </Chip>
                     )}
                   </div>
                   <ChevronRightIcon className="h-4 w-4 flex-shrink-0" />

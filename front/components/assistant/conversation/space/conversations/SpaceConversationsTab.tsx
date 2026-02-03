@@ -16,6 +16,7 @@ import { SpaceConversationListItem } from "@app/components/assistant/conversatio
 import { SpaceConversationsActions } from "@app/components/assistant/conversation/space/conversations/SpaceConversationsActions";
 import { SpaceJournalEntry } from "@app/components/assistant/conversation/space/conversations/SpaceJournalEntry";
 import { getGroupConversationsByDate } from "@app/components/assistant/conversation/utils";
+import { InfiniteScroll } from "@app/components/InfiniteScroll";
 import { DropzoneContainer } from "@app/components/misc/DropzoneContainer";
 import { ProjectJoinCTA } from "@app/components/spaces/ProjectJoinCTA";
 import { useMarkAllConversationsAsRead } from "@app/hooks/useMarkAllConversationsAsRead";
@@ -46,6 +47,9 @@ interface SpaceConversationsTabProps {
   user: UserType;
   conversations: ConversationType[];
   isConversationsLoading: boolean;
+  hasMore: boolean;
+  loadMore: () => void;
+  isLoadingMore: boolean;
   spaceInfo: GetSpaceResponseBody["space"];
   onSubmit: (
     input: string,
@@ -53,6 +57,7 @@ interface SpaceConversationsTabProps {
     contentFragments: ContentFragmentsType,
     selectedMCPServerViewIds?: string[]
   ) => Promise<Result<undefined, any>>;
+  onOpenMembersPanel: () => void;
 }
 
 export function SpaceConversationsTab({
@@ -60,9 +65,14 @@ export function SpaceConversationsTab({
   user,
   conversations,
   isConversationsLoading,
+  hasMore,
+  loadMore,
+  isLoadingMore,
   spaceInfo,
   onSubmit,
+  onOpenMembersPanel,
 }: SpaceConversationsTabProps) {
+  const { isEditor: isProjectEditor } = spaceInfo;
   const router = useAppRouter();
   const hasHistory = useMemo(() => conversations.length > 0, [conversations]);
 
@@ -181,7 +191,12 @@ export function SpaceConversationsTab({
           <SpaceJournalEntry owner={owner} space={spaceInfo} />
 
           {/* Suggestions for empty rooms */}
-          {!hasHistory && <SpaceConversationsActions />}
+          {!hasHistory && (
+            <SpaceConversationsActions
+              isEditor={isProjectEditor}
+              onOpenMembersPanel={onOpenMembersPanel}
+            />
+          )}
 
           {/* Space conversations section */}
           <div className="w-full">
@@ -269,6 +284,16 @@ export function SpaceConversationsTab({
                     </div>
                   );
                 })}
+                <InfiniteScroll
+                  nextPage={loadMore}
+                  hasMore={hasMore}
+                  showLoader={isLoadingMore}
+                  loader={
+                    <div className="flex items-center justify-center py-4">
+                      <Spinner size="xs" />
+                    </div>
+                  }
+                />
               </div>
             </div>
           </div>

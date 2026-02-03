@@ -30,6 +30,7 @@ export const emptyToolCallLLMEvents: LLMEvent[] = [
       cachedTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 120,
+      uncachedInputTokens: 100,
     },
     metadata: {
       clientId: "anthropic" as const,

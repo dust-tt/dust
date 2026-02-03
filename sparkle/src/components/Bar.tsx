@@ -48,7 +48,7 @@ const barVariants = cva("s-flex s-flex-row s-items-center s-gap-3 s-px-4", {
 });
 
 interface BarProps extends VariantProps<typeof barVariants> {
-  title?: string;
+  title?: React.ReactElement | string;
   description?: React.ReactNode;
   tooltip?: string;
   leftActions?: React.ReactNode;
@@ -82,7 +82,7 @@ export function Bar({
               tooltipTriggerAsChild
               trigger={
                 <>
-                  <span>{title}</span>
+                  {typeof title === "string" ? <span>{title}</span> : title}
                   {description}
                 </>
               }
@@ -90,7 +90,7 @@ export function Bar({
             />
           ) : (
             <>
-              <span>{title}</span>
+              {typeof title === "string" ? <span>{title}</span> : title}
               {description}
             </>
           )}

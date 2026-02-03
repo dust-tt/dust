@@ -139,6 +139,9 @@ function DustMain() {
   const [spaceMembers, setSpaceMembers] = useState<Map<string, string[]>>(
     new Map()
   );
+  const [spaceEditors, setSpaceEditors] = useState<Map<string, string[]>>(
+    new Map()
+  );
   const [spacePublicSettings, setSpacePublicSettings] = useState<
     Map<string, boolean>
   >(new Map());
@@ -388,7 +391,6 @@ function DustMain() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Rename conversation:", conversation.id);
             }}
           />
           <DropdownMenuSub>
@@ -432,11 +434,6 @@ function DustMain() {
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        console.log(
-                          "View participant:",
-                          participant.type,
-                          participant.data.id
-                        );
                       }}
                     />
                   ))
@@ -455,7 +452,6 @@ function DustMain() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("Delete conversation:", conversation.id);
             }}
           />
         </DropdownMenuContent>
@@ -592,7 +588,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Manage Spaces");
                             }}
                           />
                           <DropdownMenuItem
@@ -636,7 +631,6 @@ function DustMain() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log("Edit space:", space.id);
                                 }}
                               />
                               <DropdownMenuItem
@@ -645,7 +639,6 @@ function DustMain() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
-                                  console.log("Explore space:", space.id);
                                 }}
                               />
                             </DropdownMenuContent>
@@ -699,7 +692,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit Conversations");
                             }}
                           />
                           <DropdownMenuItem
@@ -708,7 +700,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Edit Conversations");
                             }}
                           />
                           <DropdownMenuItem
@@ -718,7 +709,6 @@ function DustMain() {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              console.log("Clear history");
                             }}
                           />
                         </DropdownMenuContent>
@@ -858,7 +848,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("View profile");
               }}
             />
             <DropdownMenuItem
@@ -867,7 +856,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Administration");
               }}
             />
             <DropdownMenuSub>
@@ -881,7 +869,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Quickstart Guide");
                     }}
                   />
                   <DropdownMenuItem
@@ -890,7 +877,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Guides & Documentation");
                     }}
                   />
                   <DropdownMenuItem
@@ -899,7 +885,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Join the Slack Community");
                     }}
                   />
                   <DropdownMenuLabel label="Ask questions" />
@@ -910,7 +895,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("Ask @help");
                     }}
                   />
                   <DropdownMenuItem
@@ -919,7 +903,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to invite new users?");
                     }}
                   />
                   <DropdownMenuItem
@@ -928,7 +911,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to use agents in Slack workflow?");
                     }}
                   />
                   <DropdownMenuItem
@@ -937,7 +919,6 @@ function DustMain() {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log("How to manage billing?");
                     }}
                   />
                 </DropdownMenuSubContent>
@@ -950,7 +931,6 @@ function DustMain() {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log("Signout");
               }}
             />
           </DropdownMenuContent>
@@ -1003,12 +983,20 @@ function DustMain() {
     setIsInviteUsersScreenOpen(true);
   };
 
-  const handleInviteUsersComplete = (selectedUserIds: string[]) => {
+  const handleInviteUsersComplete = (
+    selectedUserIds: string[],
+    editorUserIds: string[]
+  ) => {
     // Store invited members for the space
     if (inviteSpaceId) {
       setSpaceMembers((prev) => {
         const newMap = new Map(prev);
         newMap.set(inviteSpaceId, selectedUserIds);
+        return newMap;
+      });
+      setSpaceEditors((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(inviteSpaceId, editorUserIds);
         return newMap;
       });
     }
@@ -1020,7 +1008,6 @@ function DustMain() {
   // Handle space name update
   const handleUpdateSpaceName = (spaceId: string, newName: string) => {
     // For prototype, just log the update
-    console.log("Update space name:", spaceId, newName);
     // In a real implementation, this would update the space in the backend
     setSpaces((prev) =>
       prev.map((space) =>
@@ -1044,7 +1031,6 @@ function DustMain() {
       )
     );
     // For prototype, just log the update
-    console.log("Update space public setting:", spaceId, isPublic);
   };
 
   // Main content
@@ -1062,6 +1048,7 @@ function DustMain() {
         conversationsWithMessages={conversationsWithMessages}
         showBackButton={!!previousSpaceId}
         onBack={handleConversationBack}
+        projectTitle={selectedSpace?.name}
       />
     ) : // Priority 2: Show space view if a space is selected
     selectedSpace && selectedSpaceId ? (
@@ -1074,6 +1061,11 @@ function DustMain() {
           spaceMembers.has(selectedSpaceId)
             ? spaceMembers.get(selectedSpaceId)!
             : getMembersBySpaceId(selectedSpaceId)
+        }
+        editorUserIds={
+          spaceEditors.has(selectedSpaceId)
+            ? spaceEditors.get(selectedSpaceId)!
+            : []
         }
         onConversationClick={(conversation) => {
           // Store the current space ID before navigating to conversation
@@ -1138,6 +1130,18 @@ function DustMain() {
           setInviteSpaceId(null);
         }}
         onInvite={handleInviteUsersComplete}
+        actionLabel="Save"
+        initialSelectedUserIds={
+          inviteSpaceId && spaceMembers.has(inviteSpaceId)
+            ? spaceMembers.get(inviteSpaceId)
+            : []
+        }
+        initialEditorUserIds={
+          inviteSpaceId && spaceEditors.has(inviteSpaceId)
+            ? spaceEditors.get(inviteSpaceId)
+            : []
+        }
+        hasMultipleSelect={true}
       />
     </div>
   );

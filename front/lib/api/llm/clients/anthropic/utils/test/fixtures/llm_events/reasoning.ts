@@ -79,6 +79,7 @@ export const reasoningLLMEvents: LLMEvent[] = [
       cachedTokens: 0,
       cacheCreationTokens: 0,
       totalTokens: 2680,
+      uncachedInputTokens: 2500,
     },
     metadata: {
       clientId: "anthropic" as const,

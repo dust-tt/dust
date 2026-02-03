@@ -1,3 +1,5 @@
+import { MCPError } from "@app/lib/actions/mcp_errors";
+import { makeCoreSearchNodesFilters } from "@app/lib/actions/mcp_internal_actions/tools/utils";
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { getSkillDataSourceConfigurations } from "@app/lib/api/assistant/skill_actions";
 import config from "@app/lib/api/config";
@@ -7,9 +9,6 @@ import { SkillResource } from "@app/lib/resources/skill/skill_resource";
 import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { CoreAPI, Err, Ok } from "@app/types";
-
-import { MCPError } from "../../../mcp_errors";
-import { makeCoreSearchNodesFilters } from "../../tools/utils";
 
 const MAX_TEMPLATE_SIZE_BYTES = 1 * 1024 * 1024; // 1MB
 

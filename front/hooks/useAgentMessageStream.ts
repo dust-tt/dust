@@ -261,6 +261,17 @@ export function useAgentMessageStream({
           );
           break;
 
+        case "agent_context_pruned":
+          methods.data.map((m) =>
+            isMessageTemporayState(m) && m.sId === sId
+              ? {
+                  ...m,
+                  prunedContext: true,
+                }
+              : m
+          );
+          break;
+
         case "agent_generation_cancelled":
           methods.data.map((m) =>
             isMessageTemporayState(m) && m.sId === sId

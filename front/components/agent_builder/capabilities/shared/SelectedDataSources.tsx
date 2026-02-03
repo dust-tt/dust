@@ -31,6 +31,7 @@ import {
   SPREADSHEET_INTERNAL_MIME_TYPES,
 } from "@app/lib/content_nodes_constants";
 import { getDisplayNameForDataSource } from "@app/lib/data_sources";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { DataSourceViewType } from "@app/types";
 import { asDisplayName, pluralize } from "@app/types";
 
@@ -96,7 +97,7 @@ const groupSourcesByDataSource = (sources: DataSourceBuilderTreeItemType[]) => {
           } satisfies SourceItem)
         : ({
             id: source.node.internalId,
-            name: source.node.title,
+            name: getDisplayTitleForDataSourceViewContentNode(source.node),
             type: "node",
             nodeType: source.node.type,
             mimeType: source.node.mimeType,
