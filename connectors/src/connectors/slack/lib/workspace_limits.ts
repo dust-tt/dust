@@ -11,6 +11,7 @@ import {
 } from "@connectors/connectors/slack/lib/slack_client";
 import { dataSourceConfigFromConnector } from "@connectors/lib/api/data_source_config";
 import { getDustAPI } from "@connectors/lib/api/dust_api";
+import { makeDustAppUrl } from "@connectors/lib/bot/conversation_utils";
 import { isActiveMemberOfWorkspace } from "@connectors/lib/bot/user_validation";
 import logger from "@connectors/logger/logger";
 import type { ConnectorResource } from "@connectors/resources/connector_resource";
@@ -105,8 +106,9 @@ function makeSlackMembershipAccessBlocksForConnector(
             style: "primary",
             value: "join_my_workspace_cta",
             action_id: "actionId-0",
-            // TODO(2024-02-01 flav) don't hardcode URL.
-            url: `https://dust.tt/w/${connector.workspaceId}/join?wId=${connector.workspaceId}`,
+            url: makeDustAppUrl(
+              `/w/${connector.workspaceId}/join?wId=${connector.workspaceId}`
+            ),
           },
         ],
       },

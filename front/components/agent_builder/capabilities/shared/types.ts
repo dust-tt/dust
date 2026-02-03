@@ -11,7 +11,6 @@ export const TOP_MCP_SERVER_VIEWS: string[] = [
   "web_search_&_browse",
   "image_generation",
   "agent_memory",
-  "deep_dive",
   "interactive_content",
   "slack",
   "gmail",

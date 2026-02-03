@@ -566,7 +566,7 @@ export function createProjectContextManagementTools(
 
         // Construct project URL
         const projectPath = getSpaceConversationsRoute(owner.sId, space.sId);
-        const projectUrl = `${config.getClientFacingUrl()}${projectPath}`;
+        const projectUrl = `${config.getAppUrl()}${projectPath}`;
 
         return new Ok(
           makeSuccessResponse({
@@ -666,7 +666,7 @@ export function createProjectContextManagementTools(
           owner.sId,
           conversation.sId,
           undefined,
-          config.getClientFacingUrl()
+          config.getAppUrl()
         );
 
         return new Ok(

@@ -180,6 +180,21 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
   },
+  update_document: {
+    description:
+      "Update an existing Google Docs document by appending or replacing content.",
+    schema: {
+      documentId: z.string().describe("The ID of the document to update."),
+      content: z.string().describe("The text content to insert."),
+      mode: z
+        .enum(["append", "replace"])
+        .default("append")
+        .describe(
+          "How to update the document: 'append' adds content at the end, 'replace' replaces all existing content."
+        ),
+    },
+    stake: "medium",
+  },
 });
 
 const ALL_TOOLS_METADATA = {

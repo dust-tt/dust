@@ -30,7 +30,7 @@ export class MicrosoftOAuthProvider implements BaseOAuthStrategyProvider {
     };
   }) {
     if (relatedCredential) {
-      return `${config.getClientFacingUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
+      return `${config.getAppUrl()}/oauth/microsoft/finalize?provider=microsoft&code=client&state=${connection.connection_id}`;
     } else {
       const scopes = [
         "User.Read",

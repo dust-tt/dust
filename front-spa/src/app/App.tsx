@@ -6,10 +6,17 @@ import {
   createBrowserRouter,
   Navigate,
   RouterProvider,
+  useLocation,
 } from "react-router-dom";
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+
+// Redirect component that preserves query params
+function RedirectWithSearchParams({ to }: { to: string }) {
+  const location = useLocation();
+  return <Navigate to={`${to}${location.search}`} replace />;
+}
 
 // Loading fallback component
 function PageLoader() {
@@ -336,7 +343,7 @@ const router = createBrowserRouter(
         { path: "builder/agents/:aId", element: <EditAgentPage /> },
       ],
     },
-    { path: "*", element: <Navigate to="/" replace /> },
+    { path: "*", element: <RedirectWithSearchParams to="/" /> },
   ],
   {
     basename: import.meta.env.VITE_BASE_PATH ?? "",

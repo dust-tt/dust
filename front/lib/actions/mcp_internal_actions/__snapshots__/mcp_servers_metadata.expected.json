@@ -1736,22 +1736,6 @@
     }
   },
   {
-    "name": "deep_dive",
-    "tools": [
-      {
-        "name": "handoff",
-        "description": "Hand off the task to @deep-dive agent for comprehensive analysis across company data, databases, and web sources.",
-        "inputSchema": {
-          "$schema": "http://json-schema.org/draft-07/schema#",
-          "additionalProperties": false,
-          "properties": {},
-          "type": "object"
-        }
-      }
-    ],
-    "toolsStakes": null
-  },
-  {
     "name": "extract_data",
     "tools": [
       {
@@ -4757,7 +4741,8 @@
       "get_spreadsheet": "never_ask",
       "get_worksheet": "never_ask",
       "list_drives": "never_ask",
-      "search_files": "never_ask"
+      "search_files": "never_ask",
+      "update_document": "medium"
     }
   },
   {

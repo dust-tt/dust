@@ -10,6 +10,7 @@ import {
 vi.mock("@app/lib/api/config", () => ({
   default: {
     getClientFacingUrl: vi.fn(() => "dust.tt"),
+    getAppUrl: vi.fn(() => "dust.tt"),
   },
 }));
 

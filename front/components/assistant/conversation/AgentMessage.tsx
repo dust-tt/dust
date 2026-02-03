@@ -395,7 +395,7 @@ export function AgentMessage({
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     )}#${agentMessage.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({

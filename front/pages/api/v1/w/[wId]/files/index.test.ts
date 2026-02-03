@@ -15,6 +15,7 @@ describe(
 vi.mock(import("@app/lib/api/config"), (() => ({
   default: {
     getClientFacingUrl: vi.fn().mockReturnValue("http://localhost:9999"),
+    getAppUrl: vi.fn().mockReturnValue("http://localhost:9999"),
   },
 })) as any);
 

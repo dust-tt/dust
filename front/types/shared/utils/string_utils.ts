@@ -144,10 +144,6 @@ export function asDisplayToolName(name?: string | null) {
     return "Create Frames";
   }
 
-  if (name === "deep_dive") {
-    return "Go deep";
-  }
-
   if (name === "slideshow") {
     return "Create Slideshows";
   }
