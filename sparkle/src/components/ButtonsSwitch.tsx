@@ -32,7 +32,7 @@ const useButtonsSwitch = () => {
 const listStyles = cva(
   cn(
     "s-inline-flex s-items-center s-gap-1",
-    "s-bg-muted dark:s-bg-muted-night"
+    "s-box-border s-bg-muted s-border s-border-border dark:s-border-border-night dark:s-bg-muted-night"
   ),
   {
     variants: {
@@ -41,9 +41,9 @@ const listStyles = cva(
         false: "",
       },
       size: {
-        xs: "s-rounded-lg s-p-0.5",
-        sm: "s-rounded-xl s-p-1",
-        md: "s-rounded-2xl s-p-1.5",
+        xs: "s-rounded-[10px] s-p-0.5",
+        sm: "s-rounded-2xl s-p-1",
+        md: "s-rounded-3xl s-p-1.5",
       },
     },
     defaultVariants: {
@@ -54,8 +54,7 @@ const listStyles = cva(
 );
 
 export interface ButtonsSwitchListProps
-  extends
-    React.HTMLAttributes<HTMLDivElement>,
+  extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof listStyles> {
   size?: ButtonSize;
   disabled?: boolean;
@@ -116,10 +115,8 @@ export const ButtonsSwitchList = React.forwardRef<
 );
 ButtonsSwitchList.displayName = "ButtonsSwitchList";
 
-interface ButtonsSwitchProps extends Omit<
-  React.ComponentProps<typeof Button>,
-  "size" | "variant"
-> {
+interface ButtonsSwitchProps
+  extends Omit<React.ComponentProps<typeof Button>, "size" | "variant"> {
   value: string;
   label?: string;
   icon?: React.ComponentProps<typeof Button>["icon"];

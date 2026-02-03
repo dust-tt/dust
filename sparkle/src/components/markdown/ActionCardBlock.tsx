@@ -131,10 +131,10 @@ function buildAvatarStackFromProps(props: AvatarStackStringProps) {
 const titleClassVariants = cva("", {
   variants: {
     status: {
-      default: "s-heading-base s-text-foreground dark:s-text-foreground-night",
+      default: "s-heading-sm s-text-foreground dark:s-text-foreground-night",
       resolved:
         "s-text-base s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
-      disabled: "s-heading-base s-text-faint dark:s-text-faint-night",
+      disabled: "s-heading-sm s-text-faint dark:s-text-faint-night",
     },
   },
   defaultVariants: {
@@ -203,7 +203,7 @@ export function ActionCardBlock({
 
   const resolvedVisual =
     resolvedAvatarList.length > 0 ? (
-      <Avatar.Stack avatars={resolvedAvatarList} size="sm" nbVisibleItems={4} />
+      <Avatar.Stack avatars={resolvedAvatarList} size="xs" nbVisibleItems={4} />
     ) : (
       visual
     );
@@ -246,14 +246,14 @@ export function ActionCardBlock({
     <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
       <Button
         variant="outline"
-        size="sm"
+        size="xs"
         label={rejectLabel ?? DEFAULT_REJECT_LABEL}
         disabled={isDisabled}
         onClick={handleRejectClick}
       />
       <Button
         variant={applyVariant}
-        size="sm"
+        size="xs"
         label={applyLabel ?? DEFAULT_APPLY_LABEL}
         disabled={isDisabled}
         onClick={handleAcceptClick}
@@ -290,7 +290,7 @@ export function ActionCardBlock({
   return (
     <Card
       variant="primary"
-      size="md"
+      size="sm"
       disabled={isDisabled}
       className={containerVariants({ size })}
     >
