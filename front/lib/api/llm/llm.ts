@@ -302,7 +302,8 @@ export abstract class LLM {
       if (tokenUsage) {
         generation.update({
           usageDetails: {
-            input: tokenUsage.inputTokens,
+            // Report the uncached input tokens if provider supports it.
+            input: tokenUsage.uncachedInputTokens ?? tokenUsage.inputTokens,
             output: tokenUsage.outputTokens,
             total: tokenUsage.totalTokens,
             cache_read_input_tokens: tokenUsage.cachedTokens ?? 0,
