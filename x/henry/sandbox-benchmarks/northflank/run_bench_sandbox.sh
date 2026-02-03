@@ -6,5 +6,4 @@ REPO_ROOT="$(cd -- "$SCRIPT_DIR/../../../.." && pwd)"
 
 cd "$REPO_ROOT/front"
 
-exec npx tsx admin/bench_sandbox.ts "$@"
-
+exec npx tsx ../x/henry/sandbox-benchmarks/northflank/bench_sandbox.ts "$@"
