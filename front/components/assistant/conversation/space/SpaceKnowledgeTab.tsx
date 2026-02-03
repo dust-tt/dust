@@ -6,6 +6,7 @@ import {
   EmptyCTA,
   EmptyCTAButton,
   Icon,
+  PencilSquareIcon,
   SearchInput,
   Spinner,
   TrashIcon,
@@ -13,6 +14,7 @@ import {
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import React, { useContext, useMemo, useRef, useState } from "react";
 
+import { RenameFileDialog } from "@app/components/assistant/conversation/space/RenameFileDialog";
 import { ConfirmContext } from "@app/components/Confirm";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
 import { getFileTypeIcon } from "@app/lib/file_icon_utils";
@@ -26,14 +28,16 @@ interface SpaceKnowledgeTabProps {
   space: SpaceType;
 }
 
+type MenuItem = {
+  kind: "item";
+  label: string;
+  icon: typeof TrashIcon;
+  variant?: "warning";
+  onClick: (e: React.MouseEvent) => void;
+};
+
 type ProjectFileWithActions = ProjectFileType & {
-  menuItems: {
-    kind: "item";
-    label: string;
-    icon: typeof TrashIcon;
-    variant: "warning";
-    onClick: (e: React.MouseEvent) => void;
-  }[];
+  menuItems: MenuItem[];
 };
 
 function formatDate(timestamp: number): string {
@@ -48,6 +52,10 @@ function formatDate(timestamp: number): string {
 export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchText, setSearchText] = useState("");
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [fileToRename, setFileToRename] = useState<ProjectFileType | null>(
+    null
+  );
   const confirm = useContext(ConfirmContext);
 
   const { projectFiles, isProjectFilesLoading, mutateProjectFiles } =
@@ -173,10 +181,24 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
     []
   );
 
+  const handleRenameClick = (file: ProjectFileType) => {
+    setFileToRename(file);
+    setShowRenameDialog(true);
+  };
+
   const tableData: ProjectFileWithActions[] = useMemo(() => {
     return projectFiles.map((file) => ({
       ...file,
       menuItems: [
+        {
+          kind: "item" as const,
+          label: "Rename",
+          icon: PencilSquareIcon,
+          onClick: (e: React.MouseEvent) => {
+            e.stopPropagation();
+            handleRenameClick(file);
+          },
+        },
         {
           kind: "item" as const,
           label: "Delete",
@@ -189,7 +211,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         },
       ],
     }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handlers only use stable state setters
   }, [projectFiles]);
 
   const hasFiles = projectFiles.length > 0;
@@ -210,6 +232,13 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
 
   return (
     <>
+      <RenameFileDialog
+        isOpen={showRenameDialog}
+        onClose={() => setShowRenameDialog(false)}
+        onRenamed={() => void mutateProjectFiles()}
+        owner={owner}
+        file={fileToRename}
+      />
       <input
         ref={fileInputRef}
         type="file"

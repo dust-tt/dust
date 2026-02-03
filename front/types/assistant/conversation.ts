@@ -8,7 +8,6 @@ import type {
   RichMention,
 } from "@app/types";
 import type { AgentMCPActionWithOutputType } from "@app/types/actions";
-import type { AgentContentItemType } from "@app/types/assistant/agent_message_content";
 
 import type { UserType, WorkspaceType } from "../user";
 import type {
@@ -16,6 +15,7 @@ import type {
   GenericErrorContent,
   LightAgentConfigurationType,
 } from "./agent";
+import type { AgentContentItemType } from "./agent_message_content";
 
 export type MessageVisibility = "visible" | "deleted";
 
@@ -233,6 +233,10 @@ export type AgentMessageType = BaseAgentMessageType & {
   configuration: LightAgentConfigurationType;
   skipToolsValidation: boolean;
   actions: AgentMCPActionWithOutputType[];
+  rawContents: Array<{
+    step: number;
+    content: string;
+  }>;
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;

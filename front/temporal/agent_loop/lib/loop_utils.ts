@@ -64,6 +64,10 @@ export function sliceConversationForAgentMessage(
     (content) => content.step < step
   );
 
+  slicedAgentMessage.rawContents = slicedAgentMessage.rawContents.filter(
+    (content) => content.step < step
+  );
+
   slicedAgentMessage.actions = slicedAgentMessage.actions.filter(
     (action) => action.step < step
   );
