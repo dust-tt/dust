@@ -16,7 +16,7 @@ import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useRequiredPathParam } from "@app/lib/platform";
 import { usePokeLLMTrace } from "@app/poke/swr";
-import { pluralize } from "@app/types";
+import { isString, pluralize } from "@app/types";
 
 function formatDuration(durationMs: number) {
   return durationMs >= 1000
@@ -82,8 +82,8 @@ export function LLMTracePage() {
           </div>
         </div>
 
-        {(trace.context.agentConfigurationId ||
-          trace.context.conversationId) && (
+        {(isString(trace.context.agentConfigurationId) ||
+          isString(trace.context.conversationId)) && (
           <div className="flex flex-wrap gap-2">
             {trace.context.agentConfigurationId && (
               <Chip
