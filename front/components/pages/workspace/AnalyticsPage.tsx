@@ -1,16 +1,11 @@
 import { BarChartIcon, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { QuickInsights } from "@app/components/workspace/Analytics";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import {
-  useFeatureFlags,
-  useWorkspaceSubscriptions,
-} from "@app/lib/swr/workspaces";
+import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
@@ -21,8 +16,6 @@ export function AnalyticsPage() {
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
   });
-
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
@@ -129,34 +122,22 @@ export function AnalyticsPage() {
   }
 
   return (
-    <>
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({
-          owner,
-          current: "analytics",
-          featureFlags,
-        })}
-      >
-        <Page.Vertical align="stretch" gap="xl">
-          <Page.Header
-            title="Analytics"
-            icon={BarChartIcon}
-            description="Monitor workspace activity and usage"
-          />
-          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-            <QuickInsights owner={owner} />
-            <ActivityReport
-              downloadingMonth={downloadingMonth}
-              monthOptions={monthOptions}
-              handleDownload={handleDownload}
-              includeInactive={includeInactive}
-              onIncludeInactiveChange={setIncludeInactive}
-            />
-          </div>
-        </Page.Vertical>
-      </AppCenteredLayout>
-    </>
+    <Page.Vertical align="stretch" gap="xl">
+      <Page.Header
+        title="Analytics"
+        icon={BarChartIcon}
+        description="Monitor workspace activity and usage"
+      />
+      <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
+        <QuickInsights owner={owner} />
+        <ActivityReport
+          downloadingMonth={downloadingMonth}
+          monthOptions={monthOptions}
+          handleDownload={handleDownload}
+          includeInactive={includeInactive}
+          onIncludeInactiveChange={setIncludeInactive}
+        />
+      </div>
+    </Page.Vertical>
   );
 }
