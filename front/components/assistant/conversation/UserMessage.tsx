@@ -438,7 +438,7 @@ function ActionMenu({
       owner.sId,
       conversationId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     )}#${message.sId}`;
     void navigator.clipboard.writeText(messageUrl);
     sendNotification({

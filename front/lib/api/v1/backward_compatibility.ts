@@ -109,7 +109,7 @@ export function addBackwardCompatibleConversationFields(
       conversation.owner.sId,
       conversation.sId,
       undefined,
-      config.getClientFacingUrl()
+      config.getAppUrl()
     ),
   };
 }

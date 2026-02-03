@@ -106,12 +106,7 @@ async function handler(
         // Return the full conversation object as-is (matches ConversationSchema)
         return {
           ...c,
-          url: getConversationRoute(
-            wId,
-            c.sId,
-            undefined,
-            config.getClientFacingUrl()
-          ),
+          url: getConversationRoute(wId, c.sId, undefined, config.getAppUrl()),
         };
       });
 
