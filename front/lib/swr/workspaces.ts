@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import type { Fetcher } from "swr";
 
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import type {
   GetWorkspaceProgrammaticCostResponse,
   GroupByType,
@@ -8,6 +9,11 @@ import type {
 import { emptyArray, fetcher, useSWRWithDefaults } from "@app/lib/swr/swr";
 import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-context";
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
+import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
+import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
+import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analytics/top-agents";
+import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
+import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
 import type { GetWorkspaceFeatureFlagsResponseType } from "@app/pages/api/w/[wId]/feature-flags";
 import type { GetSeatAvailabilityResponseBody } from "@app/pages/api/w/[wId]/seats/availability";
@@ -85,6 +91,137 @@ export function useWorkspaceAnalytics({
     analytics: data ? data : null,
     isMemberCountLoading: !error && !data,
     isMemberCountError: error,
+  };
+}
+
+export function useWorkspaceUsageMetrics({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  interval = "day",
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  interval?: "day" | "week";
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceUsageMetricsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/usage-metrics?days=${days}&interval=${interval}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    usageMetrics: data?.points ?? emptyArray(),
+    isUsageMetricsLoading: !error && !data && !disabled,
+    isUsageMetricsError: error,
+    isUsageMetricsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceContextOrigin({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceContextOriginResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/source?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    contextOrigin: data ?? { total: 0, buckets: emptyArray() },
+    isContextOriginLoading: !error && !data && !disabled,
+    isContextOriginError: error,
+    isContextOriginValidating: isValidating,
+  };
+}
+
+export function useWorkspaceTopUsers({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 10,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceTopUsersResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/top-users?days=${days}&limit=${limit}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    topUsers: data?.users ?? emptyArray(),
+    isTopUsersLoading: !error && !data && !disabled,
+    isTopUsersError: error,
+    isTopUsersValidating: isValidating,
+  };
+}
+
+export function useWorkspaceTopAgents({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  limit = 10,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  limit?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceTopAgentsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/top-agents?days=${days}&limit=${limit}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    topAgents: data?.agents ?? emptyArray(),
+    isTopAgentsLoading: !error && !data && !disabled,
+    isTopAgentsError: error,
+    isTopAgentsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceAnalyticsOverview({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceAnalyticsOverviewResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/overview?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    overview: data ?? null,
+    isOverviewLoading: !error && !data && !disabled,
+    isOverviewError: error,
+    isOverviewValidating: isValidating,
   };
 }
 

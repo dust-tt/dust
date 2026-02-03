@@ -1,10 +1,17 @@
 import { BarChartIcon, Page } from "@dust-tt/sparkle";
 import { useState } from "react";
 
+import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
+import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
 import { subNavigationAdmin } from "@app/components/navigation/config";
 import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
-import { QuickInsights } from "@app/components/workspace/Analytics";
+import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
+import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
+import { WorkspaceSourceChart } from "@app/components/workspace/analytics/WorkspaceSourceChart";
+import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
+import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
+import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
 import {
@@ -17,6 +24,8 @@ export function AnalyticsPage() {
   const { subscription } = useAuth();
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
+  const [period, setPeriod] =
+    useState<ObservabilityTimeRangeType>(DEFAULT_PERIOD_DAYS);
 
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
@@ -141,20 +150,39 @@ export function AnalyticsPage() {
       >
         <Page.Vertical align="stretch" gap="xl">
           <Page.Header
-            title="Analytics"
+            title={
+              <div className="flex flex-row w-full justify-between">
+                <div>
+                  <Page.H variant="h3">Analytics</Page.H>
+                </div>
+                <div>
+                  <WorkspaceAnalyticsTimeRangeSelector
+                    period={period}
+                    onPeriodChange={setPeriod}
+                  />
+                </div>
+              </div>
+            }
             icon={BarChartIcon}
-            description="Monitor workspace activity and usage"
+            description="Track how your team uses Dust"
           />
-          <div className="grid w-full grid-cols-1 gap-4 md:grid-cols-2">
-            <QuickInsights owner={owner} />
-            <ActivityReport
-              downloadingMonth={downloadingMonth}
-              monthOptions={monthOptions}
-              handleDownload={handleDownload}
-              includeInactive={includeInactive}
-              onIncludeInactiveChange={setIncludeInactive}
-            />
+          <WorkspaceAnalyticsOverviewCards
+            workspaceId={owner.sId}
+            period={period}
+          />
+          <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
+            <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
+            <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
           </div>
+          <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
+          <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
+          <ActivityReport
+            downloadingMonth={downloadingMonth}
+            monthOptions={monthOptions}
+            handleDownload={handleDownload}
+            includeInactive={includeInactive}
+            onIncludeInactiveChange={setIncludeInactive}
+          />
         </Page.Vertical>
       </AppCenteredLayout>
     </>
