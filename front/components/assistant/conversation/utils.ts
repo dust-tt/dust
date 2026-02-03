@@ -1,7 +1,12 @@
 import moment from "moment";
 
 import { removeDiacritics, subFilter } from "@app/lib/utils";
-import type { ConversationWithoutContentType } from "@app/types";
+import type {
+  AgentMessageType,
+  ContentFragmentType,
+  ConversationWithoutContentType,
+  UserMessageType,
+} from "@app/types";
 
 import type { VirtuosoMessage } from "./types";
 
@@ -132,4 +137,23 @@ export function findFirstUnreadMessageIndex(
     }
     return false;
   });
+}
+
+export function isMessageUnread(
+  message: UserMessageType | AgentMessageType | ContentFragmentType,
+  lastReadMs: number | null
+): boolean {
+  if (lastReadMs === null) {
+    return true;
+  }
+  if (message.created > lastReadMs) {
+    return true;
+  }
+  if (
+    message.type === "agent_message" &&
+    (message.completedTs ?? 0) > lastReadMs
+  ) {
+    return true;
+  }
+  return false;
 }
