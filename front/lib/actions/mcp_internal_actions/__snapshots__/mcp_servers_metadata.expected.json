@@ -4749,6 +4749,7 @@
       }
     ],
     "toolsStakes": {
+      "create_comment": "low",
       "create_document": "low",
       "create_presentation": "low",
       "create_spreadsheet": "low",
