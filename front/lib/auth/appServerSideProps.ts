@@ -72,7 +72,6 @@ export const appGetServerSidePropsPaywallWhitelisted =
           user: auth.getNonNullableUser().toJSON(),
           isAdmin: auth.isAdmin(),
           isBuilder: auth.isBuilder(),
-          isSuperUser: false,
         },
       };
     }
@@ -94,7 +93,6 @@ export const appGetServerSidePropsPaywallWhitelistedForAdmin =
           user: auth.getNonNullableUser().toJSON(),
           isAdmin: auth.isAdmin(),
           isBuilder: auth.isBuilder(),
-          isSuperUser: false,
         },
       };
     }

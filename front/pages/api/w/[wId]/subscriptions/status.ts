@@ -70,4 +70,6 @@ async function handler(
   return res.status(200).json({ shouldRedirect: false, redirectUrl: null });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  doesNotRequireCanUseProduct: true,
+});
