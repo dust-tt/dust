@@ -1,7 +1,7 @@
 import { subNavigationAdmin } from "@dust-tt/front/components/navigation/config";
 import AppContentLayout from "@dust-tt/front/components/sparkle/AppContentLayout";
 import { useAuth, useWorkspace } from "@dust-tt/front/lib/auth/AuthContext";
-import { useAppRouter } from "@dust-tt/front/lib/platform";
+import { useAppRouter } from "@app/lib/platform";
 import { useFeatureFlags } from "@dust-tt/front/lib/swr/workspaces";
 import { cn } from "@dust-tt/sparkle";
 import { Outlet } from "react-router-dom";
@@ -13,12 +13,11 @@ export function AdminLayout() {
     workspaceId: owner.sId,
   });
 
-  const { params } = useAppRouter();
-  console.log(params);
+  const router = useAppRouter();
 
   const subNavigation = subNavigationAdmin({
     owner,
-    current: "members",
+    currentRoute: router.pathname,
     featureFlags,
   });
 
