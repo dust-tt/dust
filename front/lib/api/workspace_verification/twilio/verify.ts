@@ -1,3 +1,4 @@
+import logger from "@app/logger/logger";
 import type { Result } from "@app/types";
 import { Err, normalizeError, Ok } from "@app/types";
 
@@ -26,6 +27,10 @@ export async function sendOtp(
       });
   } catch (error) {
     const err = normalizeError(error);
+    logger.error(
+      { err, phoneNumber: phoneNumber.slice(0, 6) + "***" },
+      "Twilio sendOtp error"
+    );
     if (err.message.includes("Invalid parameter `To`")) {
       return new Err(new Error("Invalid phone number format"));
     }

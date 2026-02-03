@@ -1,80 +1,61 @@
-import { Button, DustLogoSquare, Page } from "@dust-tt/sparkle";
-import type { IncomingMessage } from "http";
-import type { InferGetServerSidePropsType } from "next";
-import { useRouter } from "next/router";
+import { Button, DustLogoSquare, Page, Spinner } from "@dust-tt/sparkle";
+import type { ReactElement } from "react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { Country } from "react-phone-number-input";
 
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { ThemeProvider } from "@app/components/sparkle/ThemeContext";
 import { PhoneNumberCodeInput } from "@app/components/trial/PhoneNumberCodeInput";
 import { PhoneNumberInput } from "@app/components/trial/PhoneNumberInput";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSidePropsPaywallWhitelistedForAdmin } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import { resolveCountryCode } from "@app/lib/geo/country-detection";
-import { withDefaultUserAuthPaywallWhitelisted } from "@app/lib/iam/session";
-import { isWorkspaceEligibleForTrial } from "@app/lib/plans/trial/index";
 import {
   CODE_LENGTH,
   isValidPhoneNumber,
   maskPhoneNumber,
   RESEND_COOLDOWN_SECONDS,
 } from "@app/lib/plans/trial/phone";
-import logger from "@app/logger/logger";
-import type { WorkspaceType } from "@app/types";
-import { isString } from "@app/types";
+import { useAppRouter } from "@app/lib/platform";
+import { useVerifyData } from "@app/lib/swr/workspaces";
 
 type Step = "phone" | "code";
 
-async function detectCountryFromIP(req: IncomingMessage): Promise<Country> {
-  try {
-    // Detect country from IP
-    const { "x-forwarded-for": forwarded } = req.headers;
-    const ip = isString(forwarded)
-      ? forwarded.split(",")[0].trim()
-      : req.socket.remoteAddress;
+export const getServerSideProps =
+  appGetServerSidePropsPaywallWhitelistedForAdmin;
 
-    if (!ip) {
-      return "US";
-    }
-    return (await resolveCountryCode(ip)) as Country;
-  } catch (error) {
-    logger.error({ error }, "Error detecting country from IP");
-    return "US";
-  }
-}
+function Verify() {
+  const { workspace } = useAuth();
+  const router = useAppRouter();
 
-export const getServerSideProps = withDefaultUserAuthPaywallWhitelisted<{
-  owner: WorkspaceType;
-  initialCountryCode: Country;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  if (!owner || !auth.isAdmin()) {
-    return { notFound: true };
-  }
+  const {
+    verifyData,
+    isEligibleForTrial,
+    initialCountryCode,
+    isVerifyDataLoading,
+  } = useVerifyData({ workspaceId: workspace.sId });
 
-  const isValidForTrial = await isWorkspaceEligibleForTrial(auth);
-  if (!isValidForTrial) {
-    return { notFound: true };
-  }
-
-  const initialCountryCode = await detectCountryFromIP(context.req);
-  return { props: { owner, initialCountryCode } };
-});
-
-export default function Verify({
-  owner,
-  initialCountryCode,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
   const [isLoading, setIsLoading] = useState(false);
 
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [countryCode, setCountryCode] = useState<Country>(initialCountryCode);
+  const [countryCode, setCountryCode] = useState<Country>("US");
+  const [countryInitialized, setCountryInitialized] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const [code, setCode] = useState<string[]>(Array(CODE_LENGTH).fill(""));
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Initialize countryCode once data is loaded.
+  useEffect(() => {
+    if (verifyData && !countryInitialized) {
+      setCountryCode(initialCountryCode);
+      setCountryInitialized(true);
+    }
+  }, [verifyData, countryInitialized, initialCountryCode]);
 
   useEffect(() => {
     // Note: This is a temporary solution, needs to be replaced when we properly validate the phone.
@@ -112,11 +93,14 @@ export default function Verify({
     const e164Phone = phoneNumber;
     let response: Response;
     try {
-      response = await clientFetch(`/api/w/${owner.sId}/verification/start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: e164Phone }),
-      });
+      response = await clientFetch(
+        `/api/w/${workspace.sId}/verification/start`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: e164Phone }),
+        }
+      );
     } catch {
       setPhoneError("Unexpected error. Please try again.");
       return;
@@ -159,7 +143,7 @@ export default function Verify({
       const e164Phone = phoneNumber;
 
       const verifyResponse = await clientFetch(
-        `/api/w/${owner.sId}/verification/validate`,
+        `/api/w/${workspace.sId}/verification/validate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -174,7 +158,7 @@ export default function Verify({
       }
 
       const trialResponse = await clientFetch(
-        `/api/w/${owner.sId}/trial/start`,
+        `/api/w/${workspace.sId}/trial/start`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -187,7 +171,7 @@ export default function Verify({
         return;
       }
 
-      void router.push(`/w/${owner.sId}/welcome`);
+      void router.push(`/w/${workspace.sId}/welcome`);
     } catch {
       setPhoneError("Network error. Please try again.");
     } finally {
@@ -259,6 +243,25 @@ export default function Verify({
     setCode(Array(CODE_LENGTH).fill(""));
     setPhoneError(null);
   };
+
+  // Show loading while fetching verify data.
+  if (isVerifyDataLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
+
+  // Redirect to subscribe if not eligible for trial.
+  if (!isEligibleForTrial) {
+    void router.replace(`/w/${workspace.sId}/subscribe`);
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  }
 
   if (step === "code") {
     return (
@@ -449,3 +452,13 @@ function CodeVerificationStep({
     </Page>
   );
 }
+
+const VerifyPage = Verify as AppPageWithLayout;
+
+VerifyPage.getLayout = (page: ReactElement, pageProps: AuthContextValue) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
+
+export default VerifyPage;
