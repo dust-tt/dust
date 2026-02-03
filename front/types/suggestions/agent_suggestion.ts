@@ -120,20 +120,12 @@ const BaseAgentSuggestionSchema = z.object({
   source: z.enum(AGENT_SUGGESTION_SOURCES),
 });
 
-/**
- * Full schema for agent suggestions including base fields and discriminated data.
- */
 export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
   AgentSuggestionDataSchema
 );
 
-/**
- * Discriminated union for agent suggestions based on "kind" field.
- * Use switch(suggestion.kind) to narrow the suggestion type.
- */
 export type AgentSuggestionType = z.infer<typeof AgentSuggestionSchema>;
 
-// Relations types for withRelations pattern
 export interface ToolSuggestionRelations {
   additions: MCPServerViewType[];
   deletions: MCPServerViewType[];
@@ -148,7 +140,6 @@ export interface ModelSuggestionRelations {
   model: ModelConfigurationType;
 }
 
-// Discriminated union for suggestions with relations
 export type AgentSuggestionWithRelationsType =
   | (Extract<AgentSuggestionType, { kind: "tools" }> & {
       relations: ToolSuggestionRelations;
