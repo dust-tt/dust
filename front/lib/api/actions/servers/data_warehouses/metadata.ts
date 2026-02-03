@@ -51,6 +51,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
   },
   find: {
     description:
@@ -91,6 +92,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
   },
   describe_tables: {
     description:
@@ -109,6 +111,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
   },
   query: {
     description:
@@ -134,6 +137,7 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the file to save the results to."),
     },
     stake: "never_ask",
+    enableAlerting: true,
   },
 });
 
