@@ -160,6 +160,14 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           });
         }
 
+        if (!mcpServerConnectionRes.value.connectionId) {
+          return new Err({
+            code: "credential_retrieval_failed",
+            message:
+              "Workspace MCP server connection is not configured for OAuth.",
+          });
+        }
+
         const oauthApi = new OAuthAPI(config.getOAuthAPIConfig(), logger);
         const connectionRes = await oauthApi.getConnectionMetadata({
           connectionId: mcpServerConnectionRes.value.connectionId,
@@ -232,6 +240,12 @@ export class MCPOAuthProvider implements BaseOAuthStrategyProvider {
           throw new Error(
             "Failed to find MCP server connection: " +
               mcpServerConnectionRes.error.message
+          );
+        }
+
+        if (!mcpServerConnectionRes.value.connectionId) {
+          throw new Error(
+            "Workspace MCP server connection is not configured for OAuth."
           );
         }
 
