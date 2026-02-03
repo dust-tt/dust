@@ -100,7 +100,7 @@ export function MentionValidationRequired({
         visual={<Avatar icon={ChatBubbleLeftRightIcon} size="sm" />}
         description={description}
         actions={
-          <div className="s-flex s-flex-wrap s-justify-end s-gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               variant="outline"
               size="sm"
