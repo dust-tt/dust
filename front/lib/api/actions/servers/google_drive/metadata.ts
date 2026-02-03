@@ -193,7 +193,7 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
           "How to update the document: 'append' adds content at the end, 'replace' replaces all existing content."
         ),
     },
-    stake: "low",
+    stake: "medium",
   },
 });
 
