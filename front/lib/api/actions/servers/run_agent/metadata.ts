@@ -4,7 +4,6 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import { ConfigurableToolInputSchemas } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { getResourcePrefix } from "@app/lib/resources/string_ids";
@@ -111,5 +110,4 @@ export const RUN_AGENT_SERVER = {
   tools_stakes: {
     [RUN_AGENT_PLACEHOLDER_TOOL_NAME]: RUN_AGENT_DEFAULT_TOOL_STAKE,
   },
-  timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
-} as const satisfies ServerMetadata & { timeoutMs: number };
+} as const satisfies ServerMetadata;

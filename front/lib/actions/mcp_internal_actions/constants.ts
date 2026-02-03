@@ -1,4 +1,5 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
+import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
@@ -915,7 +916,7 @@ export const INTERNAL_MCP_SERVERS = {
     isPreview: false,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: { default: "retry_on_interrupt" },
-    timeoutMs: RUN_AGENT_SERVER.timeoutMs,
+    timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
     metadata: RUN_AGENT_SERVER,
   },
   [TABLE_QUERY_V2_SERVER_NAME]: {
