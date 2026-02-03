@@ -12,6 +12,7 @@ import {
 } from "@app/lib/tracking";
 import { appendUTMParams } from "@app/lib/utils/utm";
 import logger from "@app/logger/logger";
+import { normalizeError } from "@app/types";
 
 interface EmailCTASectionProps {
   title: string;
@@ -74,7 +75,7 @@ export function EmailCTASection({
         window.location.href = appendUTMParams(data.redirectUrl);
       }
     } catch (err) {
-      logger.error({ error: err }, "Enrichment error");
+      logger.error({ error: normalizeError(err) }, "Enrichment error");
       window.location.href = appendUTMParams(
         `/api/workos/login?screenHint=sign-up&loginHint=${encodeURIComponent(email)}`
       );
