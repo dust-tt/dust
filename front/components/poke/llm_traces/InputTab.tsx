@@ -5,12 +5,13 @@ import {
   CollapsibleTrigger,
 } from "@dust-tt/sparkle";
 import { JsonViewer } from "@textea/json-viewer";
-import type {ComponentProps} from "react";
+import type { ComponentProps } from "react";
 
 import { useTheme } from "@app/components/sparkle/ThemeContext";
 import type { LLMTraceInput } from "@app/lib/api/llm/traces/types";
 import type {
-  Content, FunctionCallType,
+  Content,
+  FunctionCallType,
   ModelConversationTypeMultiActions,
   ModelMessageTypeMultiActionsWithoutContentFragment,
 } from "@app/types";
@@ -24,9 +25,7 @@ interface ContentArrayViewProps {
   content: Content[];
 }
 
-function ContentArrayView({
-                            content
-}:ContentArrayViewProps) {
+function ContentArrayView({ content }: ContentArrayViewProps) {
   return (
     <div className="space-y-1">
       {content.map((c, i) =>
@@ -48,9 +47,7 @@ interface FunctionCallCardProps {
   functionCall: FunctionCallType;
 }
 
-function ToolCallCard({
-  functionCall,
-}: FunctionCallCardProps) {
+function ToolCallCard({ functionCall }: FunctionCallCardProps) {
   const { isDark } = useTheme();
 
   let parsedArgs: unknown;
@@ -63,7 +60,11 @@ function ToolCallCard({
   return (
     <div className="rounded border p-3">
       <div className="mb-2">
-        <Chip color="green" size="xs" label={`tool_call: ${functionCall.name}`} />
+        <Chip
+          color="green"
+          size="xs"
+          label={`tool_call: ${functionCall.name}`}
+        />
       </div>
       <JsonViewer
         theme={isDark ? "dark" : "light"}
@@ -79,9 +80,7 @@ interface MessageContentProps {
   message: ModelMessageTypeMultiActionsWithoutContentFragment;
 }
 
-function MessageContent({
-  message,
-}: MessageContentProps) {
+function MessageContent({ message }: MessageContentProps) {
   const { isDark } = useTheme();
 
   switch (message.role) {
@@ -127,9 +126,7 @@ function MessageContent({
           );
         }
         return (
-          <pre className="whitespace-pre-wrap text-sm">
-            {message.content}
-          </pre>
+          <pre className="whitespace-pre-wrap text-sm">{message.content}</pre>
         );
       }
       return <ContentArrayView content={message.content} />;
@@ -142,10 +139,7 @@ interface ConversationViewProps {
 }
 
 function ConversationView({ conversation }: ConversationViewProps) {
-  const roleChipColors: Record<
-    string,
-    ComponentProps<typeof Chip>["color"]
-  > = {
+  const roleChipColors: Record<string, ComponentProps<typeof Chip>["color"]> = {
     user: "blue",
     assistant: "green",
     function: "golden",
@@ -177,9 +171,7 @@ interface SpecificationCardProps {
   spec: LLMTraceInput["specifications"][number];
 }
 
-function SpecificationCard({
-  spec,
-}: SpecificationCardProps) {
+function SpecificationCard({ spec }: SpecificationCardProps) {
   const { isDark } = useTheme();
 
   return (

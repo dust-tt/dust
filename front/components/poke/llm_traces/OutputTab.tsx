@@ -22,7 +22,11 @@ function ToolCallsView({ toolCalls }: ToolCallsViewProps) {
       {toolCalls.map((toolCall, index) => (
         <div key={index} className="rounded border p-3">
           <div className="mb-2">
-            <Chip color="green" size="xs" label={`tool_call: ${toolCall.name}`} />
+            <Chip
+              color="green"
+              size="xs"
+              label={`tool_call: ${toolCall.name}`}
+            />
           </div>
           <JsonViewer
             theme={isDark ? "dark" : "light"}
@@ -50,7 +54,7 @@ export function OutputTab({ output }: OutputTabProps) {
   }
 
   const hasContent =
-    isString(output.content)  ||
+    isString(output.content) ||
     isString(output.reasoning) ||
     (output.toolCalls && output.toolCalls.length > 0);
 
