@@ -1,230 +1,196 @@
+import type { ActionCardState } from "@dust-tt/sparkle";
 import {
+  ActionCardBlock,
+  Avatar,
   Button,
-  CheckIcon,
-  CommandLineIcon,
   ContentMessage,
+  DiffBlock,
   ExclamationCircleIcon,
+  EyeIcon,
+  Icon,
   LoadingBlock,
-  PuzzleIcon,
-  SparklesIcon,
-  XMarkIcon,
 } from "@dust-tt/sparkle";
 import React from "react";
 
-import { InstructionsDiff } from "@app/components/markdown/suggestion/InstructionsDiff";
+import { getIcon } from "@app/components/resources/resources_icons";
+import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
+import { getSkillAvatarIcon } from "@app/lib/skill";
+import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentSuggestionKind,
-  AgentSuggestionType,
-  InstructionsSuggestionType,
-  ModelSuggestionType,
-  SkillsSuggestionType,
-  ToolsSuggestionType,
+  AgentSuggestionState,
+  AgentSuggestionWithRelationsType,
 } from "@app/types/suggestions/agent_suggestion";
 
+function mapSuggestionStateToCardState(
+  state: AgentSuggestionState
+): ActionCardState {
+  switch (state) {
+    case "pending":
+      return "active";
+    case "approved":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "outdated":
+      return "disabled";
+    default:
+      assertNever(state);
+  }
+}
+
 interface SuggestionCardProps {
-  agentSuggestion: AgentSuggestionType;
+  agentSuggestion: AgentSuggestionWithRelationsType;
 }
 
-type SuggestionKindWithHeader = Exclude<AgentSuggestionKind, "instructions">;
-
-function getTitle(kind?: SuggestionKindWithHeader): string {
-  switch (kind) {
-    case "tools":
-      return "Tools Suggestion";
-    case "skills":
-      return "Skills Suggestion";
-    case "model":
-      return "Model Suggestion";
-    default:
-      return "Suggestion";
-  }
-}
-
-function getIcon(kind?: SuggestionKindWithHeader) {
-  switch (kind) {
-    case "tools":
-      return CommandLineIcon;
-    case "skills":
-      return PuzzleIcon;
-    case "model":
-      return SparklesIcon;
-    default:
-      return undefined;
-  }
-}
-
-function InstructionsSuggestionContent({
-  suggestion,
+// Instructions suggestion: collapsible diff view using DiffBlock
+function InstructionsSuggestionCard({
+  agentSuggestion,
 }: {
-  suggestion: InstructionsSuggestionType;
+  agentSuggestion: Extract<
+    AgentSuggestionWithRelationsType,
+    { kind: "instructions" }
+  >;
 }) {
+  const { oldString, newString } = agentSuggestion.suggestion;
+
   return (
-    <InstructionsDiff
-      oldString={suggestion.oldString}
-      newString={suggestion.newString}
+    <DiffBlock
+      changes={[{ old: oldString, new: newString }]}
+      autoCollapsible
+      collapseHeightPx={150}
+      collapsibleLabel="Suggested instructions change"
+      collapsibleOpenLabel="Collapse"
+      actions={
+        <Button variant="outline" size="sm" label="Review" icon={EyeIcon} />
+      }
     />
   );
 }
 
-function ToolsSuggestionContent({
-  suggestion,
+// Tools suggestion: renders separate card per addition/deletion
+function ToolsSuggestionCards({
+  agentSuggestion,
 }: {
-  suggestion: ToolsSuggestionType;
+  agentSuggestion: Extract<AgentSuggestionWithRelationsType, { kind: "tools" }>;
 }) {
-  const additions = suggestion.additions ?? [];
-  const deletions = suggestion.deletions ?? [];
+  const { relations, state, analysis } = agentSuggestion;
+  const cardState = mapSuggestionStateToCardState(state);
 
   return (
-    <div className="space-y-2 text-sm">
-      {additions.length > 0 && (
-        <div>
-          <span className="font-medium">Add: </span>
-          <span className="text-success-700 dark:text-success-700-night">
-            {additions.map((a) => a.id).join(", ")}
-          </span>
-        </div>
-      )}
-      {deletions.length > 0 && (
-        <div>
-          <span className="font-medium">Remove: </span>
-          <span className="text-warning-600 dark:text-warning-600-night">
-            {deletions.join(", ")}
-          </span>
-        </div>
-      )}
+    <div className="flex flex-col gap-2">
+      {relations.additions.map((tool) => {
+        const serverName = getMcpServerViewDisplayName(tool);
+        return (
+          <ActionCardBlock
+            key={`add-${tool.sId}`}
+            title={`Add ${serverName} tool`}
+            visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
+            description={analysis ?? undefined}
+            state={cardState}
+            applyLabel="Add"
+            rejectLabel="Dismiss"
+            actionsPosition="header"
+          />
+        );
+      })}
+      {relations.deletions.map((tool) => {
+        const serverName = getMcpServerViewDisplayName(tool);
+        return (
+          <ActionCardBlock
+            key={`del-${tool.sId}`}
+            title={`Remove ${serverName} tool`}
+            visual={<Avatar icon={getIcon(tool.server.icon)} size="sm" />}
+            description={analysis ?? undefined}
+            state={cardState}
+            applyLabel="Remove"
+            rejectLabel="Dismiss"
+            actionsPosition="header"
+          />
+        );
+      })}
     </div>
   );
 }
 
-function SkillsSuggestionContent({
-  suggestion,
+// Skills suggestion: renders separate card per addition/deletion
+function SkillsSuggestionCards({
+  agentSuggestion,
 }: {
-  suggestion: SkillsSuggestionType;
+  agentSuggestion: Extract<
+    AgentSuggestionWithRelationsType,
+    { kind: "skills" }
+  >;
 }) {
-  const additions = suggestion.additions ?? [];
-  const deletions = suggestion.deletions ?? [];
+  const { relations, state, analysis } = agentSuggestion;
+  const cardState = mapSuggestionStateToCardState(state);
 
   return (
-    <div className="space-y-2 text-sm">
-      {additions.length > 0 && (
-        <div>
-          <span className="font-medium">Add: </span>
-          <span className="text-success-700 dark:text-success-700-night">
-            {additions.join(", ")}
-          </span>
-        </div>
-      )}
-      {deletions.length > 0 && (
-        <div>
-          <span className="font-medium">Remove: </span>
-          <span className="text-warning-600 dark:text-warning-600-night">
-            {deletions.join(", ")}
-          </span>
-        </div>
-      )}
+    <div className="flex flex-col gap-2">
+      {relations.additions.map((skill) => (
+        <ActionCardBlock
+          key={`add-${skill.sId}`}
+          title={`Add ${skill.name} skill`}
+          visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
+          description={analysis ?? undefined}
+          state={cardState}
+          applyLabel="Add"
+          rejectLabel="Dismiss"
+          actionsPosition="header"
+        />
+      ))}
+      {relations.deletions.map((skill) => (
+        <ActionCardBlock
+          key={`del-${skill.sId}`}
+          title={`Remove ${skill.name} skill`}
+          visual={<Icon visual={getSkillAvatarIcon(skill.icon)} />}
+          description={analysis ?? undefined}
+          state={cardState}
+          applyLabel="Remove"
+          rejectLabel="Dismiss"
+          actionsPosition="header"
+        />
+      ))}
     </div>
   );
 }
 
-function ModelSuggestionContent({
-  suggestion,
+// Model suggestion
+function ModelSuggestionCard({
+  agentSuggestion,
 }: {
-  suggestion: ModelSuggestionType;
+  agentSuggestion: Extract<AgentSuggestionWithRelationsType, { kind: "model" }>;
 }) {
-  return (
-    <div className="space-y-2 text-sm">
-      <div>
-        <span className="font-medium">Model: </span>
-        <span className="text-success-700 dark:text-success-700-night">
-          {suggestion.modelId}
-        </span>
-      </div>
-      {suggestion.reasoningEffort && (
-        <div>
-          <span className="font-medium">Reasoning effort: </span>
-          <span>{suggestion.reasoningEffort}</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SuggestionActions() {
-  // No-op handlers for now - logic will be added in a later PR.
-  const handleAccept = () => {};
-  const handleReject = () => {};
+  const { relations, state, analysis } = agentSuggestion;
+  const cardState = mapSuggestionStateToCardState(state);
+  const modelName =
+    relations.model?.displayName ?? relations.model?.modelId ?? "Unknown model";
 
   return (
-    <div className="flex items-center justify-end gap-2">
-      <Button
-        variant="outline"
-        size="xs"
-        label="Reject"
-        icon={XMarkIcon}
-        onClick={handleReject}
-        disabled
-      />
-      <Button
-        variant="primary"
-        size="xs"
-        label="Accept"
-        icon={CheckIcon}
-        onClick={handleAccept}
-        disabled
-      />
-    </div>
+    <ActionCardBlock
+      title={`Change model to: ${modelName}`}
+      description={analysis ?? undefined}
+      state={cardState}
+      applyLabel="Change"
+      rejectLabel="Dismiss"
+      actionsPosition="header"
+    />
   );
 }
 
 export function CopilotSuggestionCard({
   agentSuggestion,
 }: SuggestionCardProps) {
-  // Instructions suggestions: no title/icon, full width, no actions.
-  if (agentSuggestion.kind === "instructions") {
-    return (
-      <div className="mb-2 w-full">
-        <ContentMessage variant="primary" size="lg">
-          <div className="flex flex-col gap-3">
-            <InstructionsSuggestionContent
-              suggestion={agentSuggestion.suggestion}
-            />
-          </div>
-        </ContentMessage>
-      </div>
-    );
+  switch (agentSuggestion.kind) {
+    case "instructions":
+      return <InstructionsSuggestionCard agentSuggestion={agentSuggestion} />;
+    case "tools":
+      return <ToolsSuggestionCards agentSuggestion={agentSuggestion} />;
+    case "skills":
+      return <SkillsSuggestionCards agentSuggestion={agentSuggestion} />;
+    case "model":
+      return <ModelSuggestionCard agentSuggestion={agentSuggestion} />;
   }
-
-  // Other suggestion types: with title/icon, actions at bottom-right.
-  const title = getTitle(agentSuggestion.kind);
-  const icon = getIcon(agentSuggestion.kind);
-
-  const renderContent = () => {
-    switch (agentSuggestion.kind) {
-      case "tools":
-        return (
-          <ToolsSuggestionContent suggestion={agentSuggestion.suggestion} />
-        );
-      case "skills":
-        return (
-          <SkillsSuggestionContent suggestion={agentSuggestion.suggestion} />
-        );
-      case "model":
-        return (
-          <ModelSuggestionContent suggestion={agentSuggestion.suggestion} />
-        );
-    }
-  };
-
-  return (
-    <div className="mb-2 inline-block w-full max-w-md align-top">
-      <ContentMessage title={title} icon={icon} variant="primary" size="sm">
-        <div className="flex flex-col gap-3">
-          {renderContent()}
-          <SuggestionActions />
-        </div>
-      </ContentMessage>
-    </div>
-  );
 }
 
 interface SuggestionCardSkeletonProps {
@@ -233,30 +199,15 @@ interface SuggestionCardSkeletonProps {
 
 export function SuggestionCardSkeleton({ kind }: SuggestionCardSkeletonProps) {
   if (kind === "instructions") {
-    return (
-      <div className="mb-2 w-full">
-        <ContentMessage variant="primary" size="lg">
-          <LoadingBlock className="h-16 w-full rounded-md" />
-        </ContentMessage>
-      </div>
-    );
+    return <LoadingBlock className="h-24 w-full" />;
   }
 
-  const title = getTitle(kind);
-  const icon = getIcon(kind);
-
+  // For tools/skills/model, match ActionCardBlock structure
   return (
-    <div className="mb-2 inline-block w-full max-w-md align-top">
-      <ContentMessage title={title} icon={icon} variant="primary" size="sm">
-        <div className="flex flex-col gap-3">
-          <LoadingBlock className="h-10 w-full rounded-md" />
-          <div className="flex justify-end gap-2">
-            <LoadingBlock className="h-7 w-16 rounded-md" />
-            <LoadingBlock className="h-7 w-16 rounded-md" />
-          </div>
-        </div>
-      </ContentMessage>
-    </div>
+    <ActionCardBlock
+      state="accepted"
+      description={<LoadingBlock className="h-14 w-full" />}
+    />
   );
 }
 
