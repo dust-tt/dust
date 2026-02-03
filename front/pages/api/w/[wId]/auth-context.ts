@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
+import { getWorkspaceRegionRedirect } from "@app/lib/api/regions/lookup";
 import type { Authenticator } from "@app/lib/auth";
 import type { SessionWithUser } from "@app/lib/iam/provider";
 import { apiError } from "@app/logger/withlogging";
@@ -10,6 +11,7 @@ import type {
   UserType,
   WithAPIErrorResponse,
 } from "@app/types";
+import { isString } from "@app/types";
 
 export type GetWorkspaceAuthContextResponseType = {
   user: UserType;
@@ -37,9 +39,44 @@ async function handler(
     });
   }
 
+  const workspace = auth.workspace();
+  const subscription = auth.subscription();
+
+  const { wId } = req.query;
+  if (!isString(wId)) {
+    return apiError(req, res, {
+      status_code: 400,
+      api_error: {
+        type: "invalid_request_error",
+        message: "Invalid workspace ID.",
+      },
+    });
+  }
+
+  // If workspace not found locally, lookup in other region.
+  if (!workspace || !subscription) {
+    const redirect = await getWorkspaceRegionRedirect(wId);
+
+    if (redirect) {
+      return res.status(400).json({
+        error: {
+          type: "workspace_in_different_region",
+          message: "Workspace is located in a different region",
+          redirect,
+        },
+      });
+    }
+
+    return apiError(req, res, {
+      status_code: 404,
+      api_error: {
+        type: "workspace_not_found",
+        message: "Workspace not found.",
+      },
+    });
+  }
+
   const user = auth.getNonNullableUser();
-  const workspace = auth.getNonNullableWorkspace();
-  const subscription = auth.getNonNullableSubscription();
 
   return res.status(200).json({
     user: user.toJSON(),
@@ -50,4 +87,8 @@ async function handler(
   });
 }
 
-export default withSessionAuthenticationForWorkspace(handler);
+export default withSessionAuthenticationForWorkspace(handler, {
+  // Allow the handler to be called even if the workspace is not found.
+  // Handler will check if the workspace is found in other regions.
+  allowMissingWorkspace: true,
+});

@@ -1,5 +1,4 @@
 import { Spinner } from "@dust-tt/sparkle";
-import { useLoginRedirect } from "@spa/hooks/useLoginRedirect";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -7,13 +6,7 @@ import { useAuthContext } from "@dust-tt/front/lib/swr/workspaces";
 
 export function IndexPage() {
   const navigate = useNavigate();
-  const { authContext, isAuthenticated, isAuthContextLoading } =
-    useAuthContext();
-
-  useLoginRedirect({
-    isLoading: isAuthContextLoading,
-    isAuthenticated,
-  });
+  const { authContext } = useAuthContext();
 
   const defaultWorkspaceId = authContext?.defaultWorkspaceId;
 

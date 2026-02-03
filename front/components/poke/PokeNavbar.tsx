@@ -9,10 +9,6 @@ import type { ComponentProps } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { PokeFavoriteButton } from "@app/components/poke/PokeFavorites";
-import {
-  usePokeRegionContext,
-  usePokeRegionContextSafe,
-} from "@app/components/poke/PokeRegionContext";
 import { PokeRegionDropdown } from "@app/components/poke/PokeRegionDropdown";
 import {
   PokeCommandDialog,
@@ -21,6 +17,10 @@ import {
   PokeCommandList,
 } from "@app/components/poke/shadcn/ui/command";
 import type { RegionType } from "@app/lib/api/regions/config";
+import {
+  useRegionContext,
+  useRegionContextSafe,
+} from "@app/lib/auth/RegionContext";
 import { getRegionChipColor, getRegionDisplay } from "@app/lib/poke/regions";
 import { usePokeRegion } from "@app/lib/swr/poke";
 import { classNames } from "@app/lib/utils";
@@ -108,7 +108,7 @@ export default PokeNavbar;
  * - NextJS mode: Single-region search (legacy)
  */
 export function PokeSearchCommand() {
-  const regionContext = usePokeRegionContextSafe();
+  const regionContext = useRegionContextSafe();
 
   // SPA mode has region context available.
   if (regionContext) {
@@ -125,7 +125,7 @@ function PokeSearchCommandSPA() {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
 
-  const { currentRegion, setRegion } = usePokeRegionContext();
+  const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();
   const regionUrls = regionData?.regionUrls ?? null;
 
@@ -138,12 +138,12 @@ function PokeSearchCommandSPA() {
   const handleItemClick = useCallback(
     (item: PokeItemBase) => {
       // Switch region if the item is from a different region.
-      if (item.region && item.region !== currentRegion) {
-        setRegion(item.region);
+      if (item.region && item.region !== regionInfo?.name && regionUrls) {
+        setRegionInfo({ name: item.region, url: regionUrls[item.region] });
       }
       setOpen(false);
     },
-    [currentRegion, setRegion]
+    [regionInfo, setRegionInfo, regionUrls]
   );
 
   return (

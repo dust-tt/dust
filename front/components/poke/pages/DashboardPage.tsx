@@ -14,15 +14,15 @@ import React, { useCallback, useState } from "react";
 import { PokeFavoritesList } from "@app/components/poke/PokeFavorites";
 import { useSetPokePageTitle } from "@app/components/poke/PokeLayout";
 import {
-  usePokeRegionContext,
-  usePokeRegionContextSafe,
-} from "@app/components/poke/PokeRegionContext";
-import {
   PokeTable,
   PokeTableBody,
   PokeTableCell,
   PokeTableRow,
 } from "@app/components/poke/shadcn/ui/table";
+import {
+  useRegionContext,
+  useRegionContextSafe,
+} from "@app/lib/auth/RegionContext";
 import {
   isEntreprisePlanPrefix,
   isFreePlan,
@@ -147,7 +147,7 @@ function WorkspaceList({
  * Entry point that renders the appropriate dashboard based on mode.
  */
 export function DashboardPage() {
-  const regionContext = usePokeRegionContextSafe();
+  const regionContext = useRegionContextSafe();
 
   if (regionContext) {
     return <DashboardPageSPA />;
@@ -162,7 +162,7 @@ export function DashboardPage() {
 function DashboardPageSPA() {
   useSetPokePageTitle("Home");
 
-  const { currentRegion, setRegion } = usePokeRegionContext();
+  const { regionInfo, setRegionInfo } = useRegionContext();
   const { regionData } = usePokeRegion();
   const regionUrls = regionData?.regionUrls ?? null;
 
@@ -196,11 +196,11 @@ function DashboardPageSPA() {
 
   const handleWorkspaceClick = useCallback(
     (ws: PokeWorkspaceWithRegion) => {
-      if (ws.region && ws.region !== currentRegion) {
-        setRegion(ws.region);
+      if (ws.region && ws.region !== regionInfo?.name && regionUrls) {
+        setRegionInfo({ name: ws.region, url: regionUrls[ws.region] });
       }
     },
-    [currentRegion, setRegion]
+    [regionInfo, setRegionInfo, regionUrls]
   );
 
   return (
