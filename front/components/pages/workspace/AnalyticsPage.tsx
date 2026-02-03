@@ -170,7 +170,7 @@ export function AnalyticsPage() {
             workspaceId={owner.sId}
             period={period}
           />
-          <div className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
+          <div className="flex flex-col gap-4">
             <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
             <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
           </div>
