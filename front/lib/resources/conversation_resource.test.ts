@@ -1006,7 +1006,7 @@ describe("listConversationsForUser", () => {
 
   describe("onlyUnread filter", () => {
     it("should return only unread conversations when onlyUnread is true", async () => {
-      const { ConversationParticipantModel } = await import(
+      const { UserConversationReadsModel } = await import(
         "@app/lib/models/agent/conversation"
       );
 
@@ -1035,49 +1035,37 @@ describe("listConversationsForUser", () => {
       });
 
       // Mark the original conversation as read
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              conversationIds[0]
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          conversationIds[0]
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       // Mark unreadConvo as unread
-      await ConversationParticipantModel.update(
-        { lastReadAt: dateFromDaysAgo(3) },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              unreadConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          unreadConvo.sId
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: dateFromDaysAgo(10),
+      });
 
       // Mark readConvo as read
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              readConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          adminAuth,
+          readConvo.sId
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       // Test with onlyUnread: true
       const unreadConversations =
@@ -1110,7 +1098,7 @@ describe("listConversationsForUser", () => {
 
     it("should return empty array when onlyUnread is true but user has no unread conversations", async () => {
       // Mark all conversations as read
-      const { ConversationParticipantModel } = await import(
+      const { UserConversationReadsModel } = await import(
         "@app/lib/models/agent/conversation"
       );
 
@@ -1120,16 +1108,12 @@ describe("listConversationsForUser", () => {
       );
       assert(conversation, "Conversation not found");
 
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: conversation.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: conversation.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       const unreadConversations =
         await ConversationResource.listConversationsForUser(userAuth, {
@@ -1262,7 +1246,7 @@ describe("listConversationsForUser", () => {
 
   describe("combined filters", () => {
     it("should filter by both onlyUnread and kind when both are specified", async () => {
-      const { ConversationParticipantModel } = await import(
+      const { UserConversationReadsModel } = await import(
         "@app/lib/models/agent/conversation"
       );
 
@@ -1329,49 +1313,35 @@ describe("listConversationsForUser", () => {
       });
 
       // Mark unreadSpaceConvo as unread
-      await ConversationParticipantModel.update(
-        { lastReadAt: dateFromDaysAgo(2) },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              userAuth,
-              unreadSpaceConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: unreadSpaceConvo.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: dateFromDaysAgo(2),
+      });
 
       // Mark readSpaceConvo as read
-      await ConversationParticipantModel.update(
-        { lastReadAt: new Date() },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              userAuth,
-              readSpaceConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.upsert({
+        conversationId: (await ConversationResource.fetchById(
+          userAuth,
+          readSpaceConvo.sId
+        ))!.id,
+        workspaceId: userAuth.getNonNullableWorkspace().id,
+        userId: userAuth.getNonNullableUser().id,
+        lastReadAt: new Date(),
+      });
 
       // Mark unreadPrivateConvo as unread
-      await ConversationParticipantModel.update(
-        { lastReadAt: null },
-        {
-          where: {
-            conversationId: (await ConversationResource.fetchById(
-              adminAuth,
-              unreadPrivateConvo.sId
-            ))!.id,
-            workspaceId: userAuth.getNonNullableWorkspace().id,
-            userId: userAuth.getNonNullableUser().id,
-          },
-        }
-      );
+      await UserConversationReadsModel.destroy({
+        where: {
+          conversationId: (await ConversationResource.fetchById(
+            adminAuth,
+            unreadPrivateConvo.sId
+          ))!.id,
+          workspaceId: userAuth.getNonNullableWorkspace().id,
+          userId: userAuth.getNonNullableUser().id,
+        },
+      });
 
       // Test with onlyUnread: true and kind: "space" - should only return unread space conversations
       const unreadSpaceConversations =

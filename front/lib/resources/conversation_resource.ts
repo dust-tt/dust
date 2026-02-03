@@ -287,21 +287,29 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const participations = await ConversationParticipantModel.findAll({
       where: whereClause,
-      attributes: [
-        "actionRequired",
-        "conversationId",
-        "lastReadAt",
-        "updatedAt",
-        "userId",
-      ],
+      attributes: ["actionRequired", "conversationId", "updatedAt"],
     });
+
+    const conversationReads = await UserConversationReadsModel.findAll({
+      where: {
+        conversationId: {
+          [Op.in]: participations.map((p) => p.conversationId),
+        },
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: user.id,
+      },
+    });
+
+    const conversationReadMap = new Map<number, Date>(
+      conversationReads.map((read) => [read.conversationId, read.lastReadAt])
+    );
 
     return new Map(
       participations.map((p) => [
         p.conversationId,
         {
           actionRequired: p.actionRequired,
-          lastReadAt: p.lastReadAt,
+          lastReadAt: conversationReadMap.get(p.conversationId) ?? null,
           updated: p.updatedAt.getTime(),
         },
       ])
@@ -1007,9 +1015,17 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
     });
 
+    const conversationRead = await UserConversationReadsModel.findOne({
+      where: {
+        conversationId: id,
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: auth.getNonNullableUser().id,
+      },
+    });
+
     return {
       actionRequired: participant?.actionRequired ?? false,
-      lastReadAt: participant?.lastReadAt ?? null,
+      lastReadAt: conversationRead?.lastReadAt ?? null,
     };
   }
 
@@ -1599,10 +1615,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
       },
     });
 
-    const lastReadAtMap = new Map<number, Date | null>();
-    for (const participant of participants) {
-      lastReadAtMap.set(participant.userId, participant.lastReadAt);
-    }
+    const conversationReads = await UserConversationReadsModel.findAll({
+      where: {
+        workspaceId: auth.getNonNullableWorkspace().id,
+        userId: { [Op.in]: participants.map((p) => p.userId) },
+        conversationId: this.id,
+      },
+    });
+    const lastReadAtMap = new Map<number, Date>(
+      conversationReads.map((cr) => [cr.userId, cr.lastReadAt])
+    );
 
     const userResources = await UserResource.fetchByModelIds(
       participants.map((p) => p.userId)
