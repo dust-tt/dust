@@ -292,6 +292,11 @@ export function AgentSidebarMenu({ owner }: AgentSidebarMenuProps) {
     setConversationsPage(conversationsPage + 1);
   }, [setConversationsPage, conversationsPage]);
 
+  // Reset pagination when search filter changes to avoid accumulating page count.
+  useEffect(() => {
+    setConversationsPage(0);
+  }, [titleFilter]);
+
   const previousEntry = useRef<IntersectionObserverEntry | undefined>(
     undefined
   );
