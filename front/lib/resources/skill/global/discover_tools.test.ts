@@ -27,7 +27,11 @@ describe("buildDiscoverToolsInstructions", () => {
       description,
     });
 
-    return MCPServerViewFactory.create(testContext.workspace, server.sId, space);
+    return MCPServerViewFactory.create(
+      testContext.workspace,
+      server.sId,
+      space
+    );
   }
 
   describe("sorting behavior", () => {
