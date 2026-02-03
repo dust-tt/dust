@@ -1,6 +1,6 @@
 import type { InternalAllowedIconType } from "@app/components/resources/resources_icons";
-import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
+import { RUN_AGENT_CALL_TOOL_TIMEOUT_MS } from "@app/lib/actions/constants";
 import { PRODUCTBOARD_SERVER_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/productboard/instructions";
 import { SLIDESHOW_INSTRUCTIONS } from "@app/lib/actions/mcp_internal_actions/servers/slideshow/instructions";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
