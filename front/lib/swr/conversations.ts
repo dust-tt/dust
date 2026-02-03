@@ -35,8 +35,8 @@ import type { GetBySpacesSummaryResponseBody } from "@app/pages/api/w/[wId]/assi
 import type { GetSpaceConversationsResponseBody } from "@app/pages/api/w/[wId]/assistant/conversations/spaces/[spaceId]";
 import type {
   ConversationError,
-  ConversationType,
   ConversationWithoutContentType,
+  LightConversationType,
   LightWorkspaceType,
 } from "@app/types";
 import { isProjectConversation, normalizeError } from "@app/types";
@@ -166,7 +166,7 @@ export function useSpaceConversations({
 
   const conversations = useMemo(() => {
     if (!data) {
-      return emptyArray<ConversationType>();
+      return emptyArray<LightConversationType>();
     }
     return data.flatMap((page) => page.conversations);
   }, [data]);

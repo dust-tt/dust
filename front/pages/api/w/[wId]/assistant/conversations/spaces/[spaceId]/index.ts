@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
-import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
+import { getLightConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { withSessionAuthenticationForWorkspace } from "@app/lib/api/auth_wrappers";
 import { getPaginationParams } from "@app/lib/api/pagination";
 import type { Authenticator } from "@app/lib/auth";
@@ -8,11 +8,11 @@ import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { SpaceResource } from "@app/lib/resources/space_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import { apiError } from "@app/logger/withlogging";
-import type { ConversationType, WithAPIErrorResponse } from "@app/types";
+import type { LightConversationType, WithAPIErrorResponse } from "@app/types";
 import { isString, removeNulls } from "@app/types";
 
 export type GetSpaceConversationsResponseBody = {
-  conversations: ConversationType[];
+  conversations: LightConversationType[];
   hasMore: boolean;
   lastValue: string | null;
 };
@@ -86,7 +86,7 @@ async function handler(
       // TODO(@jd) - Find a better way
       const spaceConversationsFull = await concurrentExecutor(
         spaceConversations,
-        async (c) => getConversation(auth, c.sId),
+        async (c) => getLightConversation(auth, c.sId),
         { concurrency: 10 }
       );
 
