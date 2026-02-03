@@ -161,7 +161,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
       name: z.string().describe("Name for the copied item"),
     },
-    stake: "high",
+    stake: "never_ask",
   },
 });
 
