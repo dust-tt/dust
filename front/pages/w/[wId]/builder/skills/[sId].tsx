@@ -28,45 +28,32 @@ function EditSkill() {
     withRelations: true,
   });
 
-  if (isSkillError || (!isSkillLoading && !skill)) {
+  const isNotFound =
+    isSkillError ||
+    (!isSkillLoading && !skill) ||
+    (skill && (!skill.canWrite || skill.status === "archived"));
+
+  if (isNotFound) {
     void router.replace("/404");
+  }
+
+  if (isNotFound || isSkillLoading || !skill) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Spinner size="xl" />
       </div>
     );
   }
-
-  if (isSkillLoading || !skill) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="xl" />
-      </div>
-    );
-  }
-
-  if (!skill.canWrite || skill.status === "archived") {
-    void router.replace("/404");
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Spinner size="xl" />
-      </div>
-    );
-  }
-
-  const extendedSkill = skill.relations?.extendedSkill ?? null;
 
   return (
     <SkillBuilderProvider owner={owner} user={user} skillId={skill.sId}>
-      <>
-        <Head>
-          <title>{`Dust - ${skill.name}`}</title>
-        </Head>
-        <SkillBuilder
-          skill={skill}
-          extendedSkill={extendedSkill ?? undefined}
-        />
-      </>
+      <Head>
+        <title>{`Dust - ${skill.name}`}</title>
+      </Head>
+      <SkillBuilder
+        skill={skill}
+        extendedSkill={skill.relations?.extendedSkill ?? undefined}
+      />
     </SkillBuilderProvider>
   );
 }

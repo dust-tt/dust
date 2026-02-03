@@ -330,7 +330,7 @@ export function useSkillWithRelations(
   owner: LightWorkspaceType,
   options?: SWRMutationConfiguration<
     GetSkillWithRelationsResponseBody,
-    any,
+    Error,
     string,
     string
   >

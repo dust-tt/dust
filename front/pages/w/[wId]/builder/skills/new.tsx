@@ -2,7 +2,6 @@ import { Spinner } from "@dust-tt/sparkle";
 import Head from "next/head";
 import type { ReactElement } from "react";
 
-import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
@@ -43,12 +42,10 @@ function CreateSkill() {
 
   return (
     <SkillBuilderProvider owner={owner} user={user} skillId={null}>
-      <SpacesProvider owner={owner}>
-        <Head>
-          <title>Dust - New Skill</title>
-        </Head>
-        <SkillBuilder extendedSkill={extendedSkill ?? undefined} />
-      </SpacesProvider>
+      <Head>
+        <title>Dust - New Skill</title>
+      </Head>
+      <SkillBuilder extendedSkill={extendedSkill ?? undefined} />
     </SkillBuilderProvider>
   );
 }
