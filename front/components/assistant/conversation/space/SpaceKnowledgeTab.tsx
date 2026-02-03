@@ -1,38 +1,25 @@
 import {
-  ActionVolumeUpIcon,
   ArrowUpOnSquareIcon,
   Avatar,
   Button,
   DataTable,
-  DocumentIcon,
   EmptyCTA,
   EmptyCTAButton,
   Icon,
-  ImageIcon,
   SearchInput,
   Spinner,
   TrashIcon,
 } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
-import type { ComponentType } from "react";
 import React, { useContext, useMemo, useRef, useState } from "react";
 
 import { ConfirmContext } from "@app/components/Confirm";
 import { useFileUploaderService } from "@app/hooks/useFileUploaderService";
+import { getFileTypeIcon } from "@app/lib/file_icon_utils";
 import type { ProjectFileType } from "@app/lib/swr/projects";
 import { useDeleteProjectFile, useProjectFiles } from "@app/lib/swr/projects";
 import type { SpaceType, WorkspaceType } from "@app/types";
 import { getSupportedNonImageFileExtensions } from "@app/types";
-
-function getFileIcon(contentType: string): ComponentType {
-  if (contentType.startsWith("image/")) {
-    return ImageIcon;
-  }
-  if (contentType.startsWith("audio/")) {
-    return ActionVolumeUpIcon;
-  }
-  return DocumentIcon;
-}
 
 interface SpaceKnowledgeTabProps {
   owner: WorkspaceType;
@@ -119,7 +106,7 @@ export function SpaceKnowledgeTab({ owner, space }: SpaceKnowledgeTabProps) {
         },
         cell: (info: CellContext<ProjectFileWithActions, unknown>) => {
           const file = info.row.original;
-          const FileIcon = getFileIcon(file.contentType);
+          const FileIcon = getFileTypeIcon(file.contentType, file.fileName);
           return (
             <DataTable.CellContent>
               <div className="flex items-center gap-2">
