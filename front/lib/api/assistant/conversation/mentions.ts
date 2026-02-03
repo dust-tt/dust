@@ -257,6 +257,7 @@ export const createUserMentions = async (
             conversation,
             action: "subscribed",
             user: user.toJSON(),
+            lastReadAt: null,
             transaction,
           });
 
