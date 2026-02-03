@@ -22,13 +22,13 @@ import {
 } from "@app/types/assistant/agent_message_content";
 
 interface ContentArrayViewProps {
-  content: Content[];
+  contents: Content[];
 }
 
-function ContentArrayView({ content }: ContentArrayViewProps) {
+function ContentArrayView({ contents }: ContentArrayViewProps) {
   return (
     <div className="space-y-1">
-      {content.map((c, i) =>
+      {contents.map((c, i) =>
         isTextContent(c) ? (
           <pre key={i} className="whitespace-pre-wrap text-sm">
             {c.text}
@@ -89,7 +89,7 @@ function MessageContent({ message }: MessageContentProps) {
 
   switch (message.role) {
     case "user":
-      return <ContentArrayView content={message.content} />;
+      return <ContentArrayView contents={message.content} />;
 
     case "assistant": {
       const textContents = message.contents.filter(isAgentTextContent);
@@ -134,7 +134,7 @@ function MessageContent({ message }: MessageContentProps) {
           <pre className="whitespace-pre-wrap text-sm">{message.content}</pre>
         );
       }
-      return <ContentArrayView content={message.content} />;
+      return <ContentArrayView contents={message.content} />;
     }
   }
 }

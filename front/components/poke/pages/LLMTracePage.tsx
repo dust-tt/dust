@@ -121,7 +121,7 @@ export function LLMTracePage() {
             <Chip
               color="highlight"
               label={`Tokens: ${formatTokens(
-                trace.output.tokenUsage.inputTokens,
+                trace.output.tokenUsage.cacheCreationTokens,
                 trace.output.tokenUsage.outputTokens
               )}`}
               size="sm"
