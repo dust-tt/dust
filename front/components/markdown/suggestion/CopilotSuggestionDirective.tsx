@@ -74,7 +74,13 @@ export function getCopilotSuggestionPlugin() {
       ) {
         triggerRefetch(sId);
       }
-    }, [sId, suggestion, isSuggestionsValidating, triggerRefetch, hasAttemptedRefetch]);
+    }, [
+      sId,
+      suggestion,
+      isSuggestionsValidating,
+      triggerRefetch,
+      hasAttemptedRefetch,
+    ]);
 
     if (!sId || !kind) {
       return <SuggestionCardSkeleton kind={kind} />;

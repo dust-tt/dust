@@ -43,11 +43,11 @@ export interface CopilotSuggestionsContextType {
   registerEditor: (editor: Editor) => void;
   getCommittedInstructions: () => string;
 
-  // Actions on suggestions.
-  acceptSuggestion: (sId: string) => void;
-  rejectSuggestion: (sId: string) => void;
-  acceptAllInstructionSuggestions: () => void;
-  rejectAllInstructionSuggestions: () => void;
+  // Actions on suggestions. Returns true on success, false on failure.
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
+  acceptAllInstructionSuggestions: () => Promise<boolean>;
+  rejectAllInstructionSuggestions: () => Promise<boolean>;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -294,18 +294,18 @@ export const CopilotSuggestionsProvider = ({
   }, [suggestions, isSuggestionsLoading, isEditorReady]);
 
   const acceptSuggestion = useCallback(
-    async (sId: string) => {
+    async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
       if (!editor) {
-        return;
+        return false;
       }
 
       const suggestion = getSuggestion(sId);
       if (!suggestion) {
-        return;
+        return false;
       }
 
-      // Optimistic update
+      // Optimistic update for suggestion state
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         next.set(sId, { ...suggestion, state: "approved" });
@@ -319,14 +319,13 @@ export const CopilotSuggestionsProvider = ({
 
       const result = await patchSuggestions([sId], "approved");
       if (!result || result.suggestions.length === 0) {
-        // Revert on error
+        // Revert suggestion state
         setProcessedSuggestions((prev) => {
           const next = new Map(prev);
           next.set(sId, suggestion);
           return next;
         });
         if (suggestion.kind === "instructions") {
-          // Re-apply suggestion in editor
           editor.commands.applySuggestion({
             id: sId,
             find: suggestion.suggestion.oldString,
@@ -334,21 +333,24 @@ export const CopilotSuggestionsProvider = ({
           });
           appliedSuggestionsRef.current.add(sId);
         }
+        return false;
       }
+
+      return true;
     },
     [patchSuggestions, getSuggestion]
   );
 
   const rejectSuggestion = useCallback(
-    async (sId: string) => {
+    async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
       if (!editor) {
-        return;
+        return false;
       }
 
       const suggestion = getSuggestion(sId);
       if (!suggestion) {
-        return;
+        return false;
       }
 
       // Optimistic update
@@ -372,7 +374,6 @@ export const CopilotSuggestionsProvider = ({
           return next;
         });
         if (suggestion.kind === "instructions") {
-          // Re-apply suggestion in editor
           editor.commands.applySuggestion({
             id: sId,
             find: suggestion.suggestion.oldString,
@@ -380,118 +381,127 @@ export const CopilotSuggestionsProvider = ({
           });
           appliedSuggestionsRef.current.add(sId);
         }
+        return false;
       }
+
+      return true;
     },
     [patchSuggestions, getSuggestion]
   );
 
-  const acceptAllInstructionSuggestions = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
-
-    const instructionSuggestions = getAllSuggestions().filter(
-      (s) => s.kind === "instructions" && s.state === "pending"
-    );
-
-    if (instructionSuggestions.length === 0) {
-      return;
-    }
-
-    const sIds = instructionSuggestions.map((s) => s.sId);
-
-    // Optimistic update
-    setProcessedSuggestions((prev) => {
-      const next = new Map(prev);
-      for (const s of instructionSuggestions) {
-        next.set(s.sId, { ...s, state: "approved" });
+  const acceptAllInstructionSuggestions =
+    useCallback(async (): Promise<boolean> => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return false;
       }
-      return next;
-    });
 
-    editor.commands.acceptAllSuggestions();
-    for (const sId of sIds) {
-      appliedSuggestionsRef.current.delete(sId);
-    }
+      const instructionSuggestions = getAllSuggestions().filter(
+        (s) => s.kind === "instructions" && s.state === "pending"
+      );
 
-    const result = await patchSuggestions(sIds, "approved");
-    if (!result) {
-      // Revert on error
+      if (instructionSuggestions.length === 0) {
+        return true;
+      }
+
+      const sIds = instructionSuggestions.map((s) => s.sId);
+
+      // Optimistic update
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         for (const s of instructionSuggestions) {
-          next.set(s.sId, s);
+          next.set(s.sId, { ...s, state: "approved" });
         }
         return next;
       });
-      // Re-apply suggestions in editor
-      for (const s of instructionSuggestions) {
-        if (s.kind === "instructions") {
-          editor.commands.applySuggestion({
-            id: s.sId,
-            find: s.suggestion.oldString,
-            replacement: s.suggestion.newString,
-          });
-          appliedSuggestionsRef.current.add(s.sId);
+
+      editor.commands.acceptAllSuggestions();
+      for (const sId of sIds) {
+        appliedSuggestionsRef.current.delete(sId);
+      }
+
+      const result = await patchSuggestions(sIds, "approved");
+      if (!result) {
+        // Revert on error
+        setProcessedSuggestions((prev) => {
+          const next = new Map(prev);
+          for (const s of instructionSuggestions) {
+            next.set(s.sId, s);
+          }
+          return next;
+        });
+        for (const s of instructionSuggestions) {
+          if (s.kind === "instructions") {
+            editor.commands.applySuggestion({
+              id: s.sId,
+              find: s.suggestion.oldString,
+              replacement: s.suggestion.newString,
+            });
+            appliedSuggestionsRef.current.add(s.sId);
+          }
         }
+        return false;
       }
-    }
-  }, [patchSuggestions, getAllSuggestions]);
 
-  const rejectAllInstructionSuggestions = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
+      return true;
+    }, [patchSuggestions, getAllSuggestions]);
 
-    const instructionSuggestions = getAllSuggestions().filter(
-      (s) => s.kind === "instructions" && s.state === "pending"
-    );
-
-    if (instructionSuggestions.length === 0) {
-      return;
-    }
-
-    const sIds = instructionSuggestions.map((s) => s.sId);
-
-    // Optimistic update
-    setProcessedSuggestions((prev) => {
-      const next = new Map(prev);
-      for (const s of instructionSuggestions) {
-        next.set(s.sId, { ...s, state: "rejected" });
+  const rejectAllInstructionSuggestions =
+    useCallback(async (): Promise<boolean> => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return false;
       }
-      return next;
-    });
 
-    editor.commands.rejectAllSuggestions();
-    for (const sId of sIds) {
-      appliedSuggestionsRef.current.delete(sId);
-    }
+      const instructionSuggestions = getAllSuggestions().filter(
+        (s) => s.kind === "instructions" && s.state === "pending"
+      );
 
-    const result = await patchSuggestions(sIds, "rejected");
-    if (!result) {
-      // Revert on error
+      if (instructionSuggestions.length === 0) {
+        return true;
+      }
+
+      const sIds = instructionSuggestions.map((s) => s.sId);
+
+      // Optimistic update
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         for (const s of instructionSuggestions) {
-          next.set(s.sId, s);
+          next.set(s.sId, { ...s, state: "rejected" });
         }
         return next;
       });
-      // Re-apply suggestions in editor
-      for (const s of instructionSuggestions) {
-        if (s.kind === "instructions") {
-          editor.commands.applySuggestion({
-            id: s.sId,
-            find: s.suggestion.oldString,
-            replacement: s.suggestion.newString,
-          });
-          appliedSuggestionsRef.current.add(s.sId);
-        }
+
+      editor.commands.rejectAllSuggestions();
+      for (const sId of sIds) {
+        appliedSuggestionsRef.current.delete(sId);
       }
-    }
-  }, [patchSuggestions, getAllSuggestions]);
+
+      const result = await patchSuggestions(sIds, "rejected");
+      if (!result) {
+        // Revert on error
+        setProcessedSuggestions((prev) => {
+          const next = new Map(prev);
+          for (const s of instructionSuggestions) {
+            next.set(s.sId, s);
+          }
+          return next;
+        });
+        for (const s of instructionSuggestions) {
+          if (s.kind === "instructions") {
+            editor.commands.applySuggestion({
+              id: s.sId,
+              find: s.suggestion.oldString,
+              replacement: s.suggestion.newString,
+            });
+            appliedSuggestionsRef.current.add(s.sId);
+          }
+        }
+        return false;
+      }
+
+      return true;
+    }, [patchSuggestions, getAllSuggestions]);
 
   const getCommittedInstructions = useCallback(() => {
     const editor = editorRef.current;
