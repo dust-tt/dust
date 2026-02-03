@@ -6,6 +6,7 @@ import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { apiErrorForConversation } from "@app/lib/api/assistant/conversation/helper";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import config from "@app/lib/api/config";
+import { addBackwardCompatibleFullConversationFields } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -136,7 +137,7 @@ async function handler(
   switch (req.method) {
     case "GET": {
       return res.status(200).json({
-        conversation: {
+        conversation: addBackwardCompatibleFullConversationFields({
           ...conversation,
           url: getConversationRoute(
             conversation.owner.sId,
@@ -144,8 +145,7 @@ async function handler(
             undefined,
             config.getClientFacingUrl()
           ),
-          requestedGroupIds: [], // Remove once all old SDKs users are updated
-        },
+        }) as GetConversationResponseType["conversation"],
       });
     }
 

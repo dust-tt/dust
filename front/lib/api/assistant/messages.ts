@@ -624,10 +624,6 @@ async function batchRenderAgentMessages<V extends RenderMessageVariant>(
         actions,
         content,
         chainOfThought,
-        rawContents: textContents.map((c) => ({
-          step: c.step,
-          content: c.content.value,
-        })),
         contents: agentStepContents,
         parsedContents,
         error,
