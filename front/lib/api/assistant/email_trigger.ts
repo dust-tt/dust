@@ -58,15 +58,21 @@ function isEmailReplyContext(value: unknown): value is EmailReplyContext {
   if (typeof value !== "object" || value === null) {
     return false;
   }
-  const v = value as Record<string, unknown>;
   return (
-    typeof v.subject === "string" &&
-    typeof v.originalText === "string" &&
-    typeof v.fromEmail === "string" &&
-    typeof v.fromFull === "string" &&
-    typeof v.agentConfigurationId === "string" &&
-    typeof v.workspaceId === "string" &&
-    typeof v.conversationId === "string"
+    "subject" in value &&
+    typeof value.subject === "string" &&
+    "originalText" in value &&
+    typeof value.originalText === "string" &&
+    "fromEmail" in value &&
+    typeof value.fromEmail === "string" &&
+    "fromFull" in value &&
+    typeof value.fromFull === "string" &&
+    "agentConfigurationId" in value &&
+    typeof value.agentConfigurationId === "string" &&
+    "workspaceId" in value &&
+    typeof value.workspaceId === "string" &&
+    "conversationId" in value &&
+    typeof value.conversationId === "string"
   );
 }
 
