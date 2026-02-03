@@ -12,8 +12,8 @@ import {
   renderAttachmentXml,
 } from "@app/lib/api/assistant/conversation/attachments";
 import { listAttachments } from "@app/lib/api/assistant/jit_utils";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import {
   CONTENT_OUTDATED_MSG,
   getContentFragmentFromAttachmentFile,

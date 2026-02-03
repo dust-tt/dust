@@ -1,7 +1,7 @@
 import assert from "assert";
 import escapeRegExp from "lodash/escapeRegExp";
 
-import { getSupportedModelConfig } from "@app/lib/api/models";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import type {
   GenerationTokensEvent,
   LightAgentConfigurationType,

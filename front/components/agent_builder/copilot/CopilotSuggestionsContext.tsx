@@ -17,7 +17,7 @@ import {
 } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
-import { getModelConfigByModelId } from "@app/lib/api/models";
+import { getModelConfigByModelId } from "@app/lib/llms/model_configurations";
 import {
   useAgentSuggestions,
   usePatchAgentSuggestions,

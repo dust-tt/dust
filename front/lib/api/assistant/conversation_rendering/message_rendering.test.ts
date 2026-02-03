@@ -117,7 +117,6 @@ describe("renderAllMessages", () => {
             skipToolsValidation: false,
             actions: [],
             contents: [],
-            parsedContents: {},
             modelInteractionDurationMs: null,
             richMentions: [],
             completionDurationMs: null,

@@ -235,7 +235,6 @@ export type AgentMessageType = BaseAgentMessageType & {
   skipToolsValidation: boolean;
   actions: AgentMCPActionWithOutputType[];
   contents: Array<{ step: number; content: AgentContentItemType }>;
-  parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
 };
 
