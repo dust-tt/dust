@@ -144,26 +144,6 @@ export function addBackwardCompatibleAgentMessageFields(
 }
 
 /**
- * Adds backward-compatible fields to a full conversation response (with content).
- * These fields are maintained for API backward compatibility with older SDK versions.
- *
- * @param conversation - The conversation object with content
- * @returns The conversation with backward-compatible fields added
- */
-export function addBackwardCompatibleFullConversationFields(
-  conversation: ConversationType & { url?: string }
-): ConversationType & {
-  url?: string;
-  requestedGroupIds: never[];
-} {
-  return {
-    ...conversation,
-    // Remove once all old SDKs users are updated
-    requestedGroupIds: [],
-  };
-}
-
-/**
  * Adds backward-compatible fields to agent configuration responses.
  * These fields are maintained for API backward compatibility with older SDK versions.
  *
