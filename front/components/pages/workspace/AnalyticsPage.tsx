@@ -148,7 +148,7 @@ export function AnalyticsPage() {
           featureFlags,
         })}
       >
-        <Page.Vertical align="stretch" gap="xl">
+        <Page.Vertical align="stretch" gap="lg">
           <Page.Header
             title={
               <div className="flex flex-row w-full justify-between">
@@ -170,7 +170,7 @@ export function AnalyticsPage() {
             workspaceId={owner.sId}
             period={period}
           />
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-5">
             <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
             <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
           </div>
