@@ -402,7 +402,7 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   },
 
   copy_file: async ({ itemId, driveId, siteId, parentItemId, name }, extra) => {
-    // Validation: au moins driveId ou siteId requis
+    // Validation: at least driveId or siteId is required
     if (!driveId && !siteId) {
       return new Err(new MCPError("Either driveId or siteId must be provided"));
     }
@@ -413,24 +413,24 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         return new Err(new MCPError("Failed to get Microsoft Graph client"));
       }
 
-      // Construire l'endpoint source
+      // Build the source endpoint
       const sourceEndpoint = await getDriveItemEndpoint(
         itemId,
         driveId,
         siteId
       );
 
-      // Construire le corps de la requête
+      // Build the request body
       const requestBody: any = { name };
 
-      // Destination parent (optionnel)
+      // Parent destination (optional)
       if (parentItemId) {
         requestBody.parentReference = {
           id: parentItemId,
           driveId: driveId,
         };
 
-        // Si siteId fourni sans driveId, résoudre le driveId du site
+        // If siteId provided without driveId, resolve the site's driveId
         if (siteId && !driveId) {
           const siteResponse = await client.api(`/sites/${siteId}`).get();
           const siteDriveId = siteResponse.drive?.id;
@@ -443,17 +443,17 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         }
       }
 
-      // Effectuer la copie (opération asynchrone)
+      // Perform the copy (asynchronous operation)
       const response = await client
         .api(`${sourceEndpoint}/copy`)
         .post(requestBody);
 
-      // L'API retourne 202 Accepted avec monitoring URL
+      // API returns 202 Accepted with monitoring URL
       const result = {
         status: "accepted",
         message: "Copy operation initiated successfully",
         fileName: name,
-        monitorUrl: response["@odata.location"] || response.location,
+        monitorUrl: response["@odata.location"] ?? response.location,
         note: "The copy operation is asynchronous. Use the monitorUrl to check progress and get the final document ID, or use search_drive_items to find the document by name.",
       };
 
