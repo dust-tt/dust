@@ -111,29 +111,30 @@ function MessageContent({ message }: MessageContentProps) {
     }
 
     case "function": {
-      if (isString(message.content)) {
-        let parsed;
-        try {
-          parsed = JSON.parse(message.content);
-        } catch {
-          parsed = null;
-        }
-        if (parsed) {
-          return (
-            <JsonViewer
-              theme={isDark ? "dark" : "light"}
-              value={parsed}
-              rootName={false}
-              defaultInspectDepth={2}
-              className="p-2"
-            />
-          );
-        }
+      if (!isString(message.content)) {
+        return <ContentArrayView contents={message.content} />;
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(message.content);
+      } catch {
+        parsed = null;
+      }
+      if (parsed) {
         return (
-          <pre className="whitespace-pre-wrap text-sm">{message.content}</pre>
+          <JsonViewer
+            theme={isDark ? "dark" : "light"}
+            value={parsed}
+            rootName={false}
+            defaultInspectDepth={2}
+            className="p-2"
+          />
         );
       }
-      return <ContentArrayView contents={message.content} />;
+      return (
+        <pre className="whitespace-pre-wrap text-sm">{message.content}</pre>
+      );
     }
   }
 }
