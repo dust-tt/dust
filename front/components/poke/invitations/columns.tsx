@@ -6,6 +6,7 @@ import {
 } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { formatTimestampToFriendlyDate } from "@app/lib/utils";
 import type { MembershipInvitationTypeWithLink } from "@app/types";
 
@@ -16,23 +17,31 @@ export function makeColumnsForInvitations(
   return [
     {
       accessorKey: "sId",
-      header: "ID",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "inviteEmail",
-      header: "email",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Email" />
+      ),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Status" />
+      ),
     },
     {
       accessorKey: "isExpired",
-      header: "Expired",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Expired" />
+      ),
     },
     {
       accessorKey: "inviteLink",
-      header: "Invitation Link",
+      header: "Invitation link",
       cell: ({ row }) => {
         const inviteLink: string = row.getValue("inviteLink");
         return (
@@ -79,7 +88,9 @@ export function makeColumnsForInvitations(
     },
     {
       accessorKey: "createdAt",
-      header: "Created at",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created at" />
+      ),
       cell: ({ row }) => {
         const createdAt: string | null = row.getValue("createdAt");
 
@@ -92,7 +103,9 @@ export function makeColumnsForInvitations(
     },
     {
       accessorKey: "initialRole",
-      header: "Role",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Role" />
+      ),
     },
     {
       id: "actions",
