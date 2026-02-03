@@ -21,21 +21,19 @@ import {
 } from "@app/lib/api/assistant/conversation/helper";
 import { postUserMessageAndWaitForCompletion } from "@app/lib/api/assistant/streaming/blocking";
 import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
-import config from "@app/lib/api/config";
 import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
 } from "@app/lib/api/programmatic_usage/tracking";
 import {
+  addBackwardCompatibleConversationFields,
   addBackwardCompatibleConversationWithoutContentFields,
-  addBackwardCompatibleFullConversationFields,
   normalizeConversationVisibility,
 } from "@app/lib/api/v1/backward_compatibility";
 import type { Authenticator } from "@app/lib/auth";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { MCPServerViewResource } from "@app/lib/resources/mcp_server_view_resource";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
-import { getConversationRoute } from "@app/lib/utils/router";
 import logger from "@app/logger/logger";
 import { apiError } from "@app/logger/withlogging";
 import type {
@@ -479,15 +477,7 @@ async function handler(
       }
 
       res.status(200).json({
-        conversation: addBackwardCompatibleFullConversationFields({
-          ...conversation,
-          url: getConversationRoute(
-            conversation.owner.sId,
-            conversation.sId,
-            undefined,
-            config.getClientFacingUrl()
-          ),
-        }) as PostConversationsResponseType["conversation"],
+        conversation: addBackwardCompatibleConversationFields(conversation),
         message: newMessage ?? undefined,
         contentFragment: newContentFragment ?? undefined,
       });
