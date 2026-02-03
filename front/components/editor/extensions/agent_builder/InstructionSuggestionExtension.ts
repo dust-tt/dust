@@ -1,7 +1,7 @@
 import type { JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
-import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 
 // Normalize suggestion text by stripping list markers and trailing whitespace.
@@ -349,7 +349,16 @@ export const InstructionSuggestionExtension = Extension.create({
                 additionMark,
               ]);
               tr.insert(insertPos, additionNode);
+              insertPos += additionNode.nodeSize;
             }
+
+            // Move cursor to end of the suggestion so it appears "selected" and
+            // the accept/reject bubble menu works immediately.
+            // Using end position provides a more natural reading flow.
+            const suggestionEndPos = insertPos;
+            tr.setSelection(
+              TextSelection.near(tr.doc.resolve(suggestionEndPos), -1)
+            );
 
             dispatch(tr);
           }

@@ -66,7 +66,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       editor={editor}
       shouldShow={isOnSuggestion}
       options={{
-        placement: "top",
+        placement: "bottom-start",
         offset: 8,
       }}
     >
