@@ -1700,16 +1700,16 @@ export class ConversationResource extends BaseResource<ConversationModel> {
 
     const conversationIds = conversations.map((c) => c.id);
 
-    const userId = auth.getNonNullableUser().id;
-    const workspaceId = auth.getNonNullableWorkspace().id;
+    const userModelId = auth.getNonNullableUser().id;
+    const workspaceModelId = auth.getNonNullableWorkspace().id;
 
     await ConversationParticipantModel.update(
       { lastReadAt: new Date(), actionRequired: false },
       {
         where: {
           conversationId: { [Op.in]: conversationIds },
-          workspaceId,
-          userId,
+          workspaceId: workspaceModelId,
+          userId: userModelId,
         },
       }
     );
@@ -1718,8 +1718,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     const existingReads = await UserConversationReadsModel.findAll({
       where: {
         conversationId: { [Op.in]: conversationIds },
-        userId,
-        workspaceId,
+        userId: userModelId,
+        workspaceId: workspaceModelId,
       },
     });
 
@@ -1744,8 +1744,8 @@ export class ConversationResource extends BaseResource<ConversationModel> {
     await UserConversationReadsModel.bulkCreate(
       conversationIdsNeedingNewReads.map((conversationId) => ({
         conversationId,
-        userId,
-        workspaceId,
+        userId: userModelId,
+        workspaceId: workspaceModelId,
         lastReadAt: new Date(),
       }))
     );
