@@ -40,6 +40,7 @@ export interface ToolDefinition<
   TSchema extends ZodRawShape = ZodRawShape,
 > {
   name: TName;
+  enableAlerting?: boolean;
   description: string;
   schema: TSchema;
   stake: MCPToolStakeLevelType;

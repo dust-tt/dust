@@ -14,7 +14,7 @@ import {
   RENAME_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
   REVERT_INTERACTIVE_CONTENT_FILE_TOOL_NAME,
-} from "@app/lib/actions/mcp_internal_actions/servers/interactive_content/types";
+} from "@app/lib/api/actions/servers/interactive_content/metadata";
 
 export const INTERACTIVE_CONTENT_INSTRUCTIONS = `\
 ## CREATING VISUALIZATIONS WITH INTERACTIVE CONTENT
@@ -87,7 +87,7 @@ ${RETRIEVE_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
 
 **Step 2: Make targeted edits using the retrieved content**
 \`\`\`
-edit_interactive_content_file({
+${EDIT_INTERACTIVE_CONTENT_FILE_TOOL_NAME}({
   file_id: "fil_abc123",
   old_string: "  for (let x = 0; x <= 360; x += 10) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",
   new_string: "  for (let x = 0; x <= 720; x += 5) {\\n    const radians = (x * Math.PI) / 180;\\n    data.push({",

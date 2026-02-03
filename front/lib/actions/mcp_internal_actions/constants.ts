@@ -31,6 +31,7 @@ import { HTTP_CLIENT_SERVER } from "@app/lib/api/actions/servers/http_client/met
 import { HUBSPOT_SERVER } from "@app/lib/api/actions/servers/hubspot/metadata";
 import { IMAGE_GENERATION_SERVER } from "@app/lib/api/actions/servers/image_generation/metadata";
 import { INCLUDE_DATA_SERVER } from "@app/lib/api/actions/servers/include_data/metadata";
+import { INTERACTIVE_CONTENT_SERVER } from "@app/lib/api/actions/servers/interactive_content/metadata";
 import { JIRA_SERVER } from "@app/lib/api/actions/servers/jira/metadata";
 import { JIT_TESTING_SERVER } from "@app/lib/api/actions/servers/jit_testing/metadata";
 import { MICROSOFT_DRIVE_SERVER } from "@app/lib/api/actions/servers/microsoft_drive/metadata";
@@ -461,20 +462,10 @@ export const INTERNAL_MCP_SERVERS = {
     allowMultipleInstances: false,
     isRestricted: undefined,
     isPreview: false,
-    tools_stakes: undefined,
     tools_arguments_requiring_approval: undefined,
     tools_retry_policies: undefined,
     timeoutMs: undefined,
-    serverInfo: {
-      name: "interactive_content",
-      version: "1.0.0",
-      description:
-        "Create dashboards, presentations, or any interactive content.",
-      authorization: null,
-      icon: "ActionFrameIcon",
-      documentationUrl: null,
-      instructions: null,
-    },
+    metadata: INTERACTIVE_CONTENT_SERVER,
   },
   outlook: {
     id: 24,
