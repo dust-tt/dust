@@ -172,6 +172,14 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
   },
+  create_comment: {
+    description: "Add a comment to a Google Drive file (Doc, Sheet, or Slide).",
+    schema: {
+      fileId: z.string().describe("The ID of the file to comment on."),
+      content: z.string().describe("The text content of the comment."),
+    },
+    stake: "low",
+  },
 });
 
 const ALL_TOOLS_METADATA = {
