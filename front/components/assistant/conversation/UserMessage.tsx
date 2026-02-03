@@ -277,9 +277,7 @@ export function UserMessage({
           type="user"
           className={cn(
             isCurrentUser ? "ml-auto" : undefined,
-            "relative",
-            "s-pb-6",
-            "s-pb-4"
+            "relative min-w-60 max-w-3xl"
           )}
           ref={userMessageHoveredRef}
         >
