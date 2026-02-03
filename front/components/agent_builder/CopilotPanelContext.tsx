@@ -53,6 +53,10 @@ Tool usage rules when creating suggestions:
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
 
+Warning: do not suggest instructions if there is no existing tools or skills to do an action.
+For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
+In that case, instead of doing prompt suggestions ask the user for clarifications.
+
 Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
 }
@@ -83,6 +87,10 @@ Tool usage rules when creating suggestions:
 - \`get_available_models\`: Only if user explicitly asks OR obvious need.
 
 Use \`suggest_*\` tools to create actionable suggestions. Brief explanation (3-4 sentences max). Always include their output verbatim in your response - it renders as interactive cards
+
+Warning: do not suggest instructions if there is no existing tools or skills to do an action.
+For instance if the user wants to create a agent to answer on JIRA issues but there is no tool to interact with JIRA then it won't be possible.
+In that case, instead of doing prompt suggestions ask the user for clarifications.
 
 Balance context gathering with latency - the first copilot message should be fast but helpful in driving builder actions.
 </dust_system>`;
