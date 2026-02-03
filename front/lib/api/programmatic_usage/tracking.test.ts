@@ -4,7 +4,7 @@ import {
   compareCreditsForConsumption,
   computeCreditAlertThresholdKey,
   decreaseProgrammaticCreditsV2,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
 import { Authenticator } from "@app/lib/auth";
 import { CreditResource } from "@app/lib/resources/credit_resource";
 import logger from "@app/logger/logger";

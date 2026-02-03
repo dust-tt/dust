@@ -18,7 +18,7 @@ import { withPublicAPIAuthentication } from "@app/lib/api/auth_wrappers";
 import {
   checkProgrammaticUsageLimits,
   isProgrammaticUsage,
-} from "@app/lib/api/programmatic_usage_tracking";
+} from "@app/lib/api/programmatic_usage/tracking";
 import type { Authenticator } from "@app/lib/auth";
 import { concurrentExecutor } from "@app/lib/utils/async_utils";
 import logger from "@app/logger/logger";
