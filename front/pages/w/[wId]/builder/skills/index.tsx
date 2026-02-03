@@ -9,8 +9,8 @@ import {
   TabsList,
   TabsTrigger,
 } from "@dust-tt/sparkle";
-import type { InferGetServerSidePropsType } from "next";
 import Head from "next/head";
+import type { ReactElement } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentSidebarMenu } from "@app/components/assistant/conversation/SidebarMenu";
@@ -18,16 +18,20 @@ import { AgentDetails } from "@app/components/assistant/details/AgentDetails";
 import { SkillDetailsSheet } from "@app/components/skills/SkillDetailsSheet";
 import { SkillsTable } from "@app/components/skills/SkillsTable";
 import { SuggestedSkillsSection } from "@app/components/skills/SuggestedSkillsSection";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useHashParam } from "@app/hooks/useHashParams";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  appGetServerSidePropsForBuilders,
+  type AppPageWithLayout,
+} from "@app/lib/auth/appServerSideProps";
 import { SKILL_ICON } from "@app/lib/skill";
 import { useSkillsWithRelations } from "@app/lib/swr/skill_configurations";
 import { compareForFuzzySort, subFilter } from "@app/lib/utils";
 import { getSkillBuilderRoute } from "@app/lib/utils/router";
-import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import { isBuilder, isEmptyString } from "@app/types";
+import { isEmptyString } from "@app/types";
 import type { SkillWithRelationsType } from "@app/types/assistant/skill_configuration";
 
 const SKILL_SEARCH_TAB = {
@@ -76,36 +80,11 @@ function sortSkillsByName(skills: SkillWithRelationsType[]) {
   return [...skills].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  subscription: SubscriptionType;
-  user: UserType;
-}>(async (_, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
+export const getServerSideProps = appGetServerSidePropsForBuilders;
 
-  if (!owner || !subscription || !isBuilder(owner)) {
-    return {
-      notFound: true,
-    };
-  }
-
-  const user = auth.getNonNullableUser();
-
-  return {
-    props: {
-      owner,
-      subscription,
-      user: user.toJSON(),
-    },
-  };
-});
-
-export default function WorkspaceSkills({
-  owner,
-  subscription,
-  user,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+function WorkspaceSkills() {
+  const owner = useWorkspace();
+  const { user, subscription } = useAuth();
   const [selectedSkill, setSelectedSkill] =
     useState<SkillWithRelationsType | null>(null);
   const [agentId, setAgentId] = useState<string | null>(null);
@@ -317,6 +296,15 @@ export default function WorkspaceSkills({
   );
 }
 
-WorkspaceSkills.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const WorkspaceSkillsWithLayout = WorkspaceSkills as AppPageWithLayout;
+
+WorkspaceSkillsWithLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default WorkspaceSkillsWithLayout;

@@ -1,56 +1,46 @@
-import type { InferGetServerSidePropsType } from "next";
+import { Spinner } from "@dust-tt/sparkle";
 import Head from "next/head";
-import React from "react";
+import type { ReactElement } from "react";
 
 import { SpacesProvider } from "@app/components/agent_builder/SpacesContext";
 import SkillBuilder from "@app/components/skill_builder/SkillBuilder";
 import { SkillBuilderProvider } from "@app/components/skill_builder/SkillBuilderContext";
-import AppRootLayout from "@app/components/sparkle/AppRootLayout";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { SkillResource } from "@app/lib/resources/skill/skill_resource";
-import type { SubscriptionType, UserType, WorkspaceType } from "@app/types";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
+import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import {
+  appGetServerSidePropsForBuilders,
+  type AppPageWithLayout,
+} from "@app/lib/auth/appServerSideProps";
+import { useSearchParam } from "@app/lib/platform/next";
+import { useSkill } from "@app/lib/swr/skill_configurations";
 
-export const getServerSideProps = withDefaultUserAuthRequirements<{
-  owner: WorkspaceType;
-  user: UserType;
-  subscription: SubscriptionType;
-  extendedSkill: SkillType | null;
-}>(async (context, auth) => {
-  const owner = auth.workspace();
-  const subscription = auth.subscription();
-  const { query } = context;
-  const skillToExtend =
-    typeof query.extends === "string"
-      ? await SkillResource.fetchById(auth, query.extends)
-      : null;
-  const extendedSkill = skillToExtend?.isExtendable
-    ? skillToExtend.toJSON(auth)
-    : null;
+export const getServerSideProps = appGetServerSidePropsForBuilders;
 
-  if (!owner || !auth.isBuilder() || !subscription) {
-    return {
-      notFound: true,
-    };
+function CreateSkill() {
+  const owner = useWorkspace();
+  const { user } = useAuth();
+  const extendsParam = useSearchParam("extends");
+
+  const { skill: extendedSkillData, isSkillLoading: isExtendedSkillLoading } =
+    useSkill({
+      workspaceId: owner.sId,
+      skillId: extendsParam,
+      disabled: !extendsParam,
+    });
+
+  if (extendsParam && isExtendedSkillLoading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="xl" />
+      </div>
+    );
   }
 
-  const user = auth.getNonNullableUser().toJSON();
+  const extendedSkill = extendedSkillData?.isExtendable
+    ? extendedSkillData
+    : null;
 
-  return {
-    props: {
-      owner,
-      subscription,
-      user,
-      extendedSkill,
-    },
-  };
-});
-
-export default function CreateSkill({
-  owner,
-  user,
-  extendedSkill,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   return (
     <SkillBuilderProvider owner={owner} user={user} skillId={null}>
       <SpacesProvider owner={owner}>
@@ -63,6 +53,15 @@ export default function CreateSkill({
   );
 }
 
-CreateSkill.getLayout = (page: React.ReactElement) => {
-  return <AppRootLayout>{page}</AppRootLayout>;
+const CreateSkillWithLayout = CreateSkill as AppPageWithLayout;
+
+CreateSkillWithLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
 };
+
+export default CreateSkillWithLayout;
