@@ -112,11 +112,3 @@ export const RUN_AGENT_SERVER = {
   tools_stakes: { [RUN_AGENT_TOOL_NAME]: RUN_AGENT_DEFAULT_TOOL_STAKE },
   timeoutMs: RUN_AGENT_CALL_TOOL_TIMEOUT_MS,
 } as const satisfies ServerMetadata & { timeoutMs: number };
-
-export function parseAgentConfigurationUri(uri: string): string | null {
-  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
-  if (!match) {
-    return null;
-  }
-  return match[2];
-}

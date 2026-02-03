@@ -32,10 +32,10 @@ import {
   isServerSideMCPServerConfiguration,
 } from "@app/lib/actions/types/guards";
 import { RUN_AGENT_ACTION_NUM_RESULTS } from "@app/lib/actions/utils";
+import { AGENT_CONFIGURATION_URI_PATTERN } from "@app/lib/actions/mcp_internal_actions/input_schemas";
 import {
-  parseAgentConfigurationUri,
   RUN_AGENT_CONFIGURABLE_PROPERTIES,
-  RUN_AGENT_TOOL_NAME,
+  RUN_AGENT_PLACEHOLDER_TOOL_NAME,
   RUN_AGENT_TOOL_SCHEMA,
 } from "@app/lib/api/actions/servers/run_agent/metadata";
 import {
@@ -61,6 +61,14 @@ import {
 } from "@app/types";
 
 const ABORT_SIGNAL_CANCEL_REASON = "CancelledFailure: CANCELLED";
+
+function parseAgentConfigurationUri(uri: string): Result<string, Error> {
+  const match = uri.match(AGENT_CONFIGURATION_URI_PATTERN);
+  if (!match) {
+    return new Err(new Error(`Invalid URI for an agent configuration: ${uri}`));
+  }
+  return new Ok(match[2]);
+}
 
 function isRunAgentHandoffMode(
   agentLoopContext?: AgentLoopContextType
