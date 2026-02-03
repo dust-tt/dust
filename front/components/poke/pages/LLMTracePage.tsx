@@ -58,10 +58,10 @@ export function LLMTracePage() {
   if (isLLMTraceError || !trace) {
     return (
       <div className="flex h-64 flex-col items-center justify-center">
-        <div className="text-lg font-medium text-red-600">
+        <div className="text-lg font-medium text-warning dark:text-warning-night">
           Failed to load LLM trace
         </div>
-        <div className="mt-2 text-sm text-muted-foreground">
+        <div className="mt-2 text-sm text-muted-foreground dark:text-muted-foreground-night">
           The trace may not exist or there was an error fetching it from GCS.
         </div>
       </div>
@@ -76,7 +76,7 @@ export function LLMTracePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">LLM Trace</h1>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground dark:text-muted-foreground-night">
               Run ID: <code className="text-xs">{runId}</code>
             </div>
           </div>
@@ -158,7 +158,7 @@ export function LLMTracePage() {
                 <Chip color="warning" label="Partial completion" size="xs" />
               )}
             </div>
-            <p className="text-smin text-red-700 dark:text-red-300">
+            <p className="text-sm text-warning dark:text-warning-night">
               {trace.error.message}
             </p>
             <p className="mt-1 text-xs text-red-600 dark:text-red-400">
