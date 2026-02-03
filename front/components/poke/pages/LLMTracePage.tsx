@@ -82,25 +82,31 @@ export function LLMTracePage() {
           </div>
         </div>
 
+        {(trace.context.agentConfigurationId ||
+          trace.context.conversationId) && (
+          <div className="flex flex-wrap gap-2">
+            {trace.context.agentConfigurationId && (
+              <Chip
+                color="rose"
+                label={`Agent: ${trace.context.agentConfigurationId}`}
+                size="sm"
+                href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
+                icon={ExternalLinkIcon}
+              />
+            )}
+            {trace.context.conversationId && (
+              <Chip
+                color="golden"
+                label={`Conversation`}
+                size="sm"
+                href={`/poke/${owner.sId}/conversation/${trace.context.conversationId}`}
+                icon={ExternalLinkIcon}
+              />
+            )}
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-2">
-          {trace.context.agentConfigurationId && (
-            <Chip
-              color="rose"
-              label={`Agent: ${trace.context.agentConfigurationId}`}
-              size="sm"
-              href={`/poke/${owner.sId}/assistants/${trace.context.agentConfigurationId}`}
-              icon={ExternalLinkIcon}
-            />
-          )}
-          {trace.context.conversationId && (
-            <Chip
-              color="golden"
-              label={`Conversation`}
-              size="sm"
-              href={`/poke/${owner.sId}/conversation/${trace.context.conversationId}`}
-              icon={ExternalLinkIcon}
-            />
-          )}
           <Chip
             color="blue"
             label={`Model: ${trace.input.modelId}`}
@@ -132,7 +138,7 @@ export function LLMTracePage() {
           )}
           {trace.context.operationType && (
             <Chip
-              color="primary"
+              color="highlight"
               label={`Type: ${trace.context.operationType}`}
               size="sm"
             />
