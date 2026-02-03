@@ -105,7 +105,7 @@ export function WorkspaceTopUsersTable({
         <ScrollableDataTable<TopUserRowData>
           data={rows}
           columns={columns}
-          maxHeight="max-h-125"
+          maxHeight="max-h-64"
         />
       )}
     </div>
