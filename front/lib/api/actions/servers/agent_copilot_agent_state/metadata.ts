@@ -2,10 +2,8 @@ import type { JSONSchema7 as JSONSchema } from "json-schema";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
-import type { MCPToolStakeLevelType } from "@app/lib/actions/constants";
 import type { ServerMetadata } from "@app/lib/actions/mcp_internal_actions/tool_definition";
 import { createToolsRecord } from "@app/lib/actions/mcp_internal_actions/tool_definition";
-import type { MCPToolType } from "@app/lib/api/mcp";
 
 export const AGENT_COPILOT_AGENT_STATE_TOOL_NAME =
   "agent_copilot_agent_state" as const;
@@ -15,40 +13,13 @@ export const AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA = createToolsRecord({
     description:
       "Get detailed information about the current agent configuration, including name, description, instructions, model settings, and the IDs of all skills and tools currently used by the agent.",
     schema: {},
-    stake: "never_ask" as MCPToolStakeLevelType,
+    stake: "never_ask",
     displayLabels: {
       running: "Getting agent info",
       done: "Get agent info",
     },
   },
 });
-
-type AgentCopilotAgentStateToolKey =
-  keyof typeof AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA;
-
-export const AGENT_COPILOT_AGENT_STATE_TOOLS: MCPToolType[] = (
-  Object.keys(
-    AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA
-  ) as AgentCopilotAgentStateToolKey[]
-).map((key) => ({
-  name: AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].name,
-  description: AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].description,
-  inputSchema: zodToJsonSchema(
-    z.object(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].schema)
-  ) as JSONSchema,
-  displayLabels: AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].displayLabels,
-}));
-
-export const AGENT_COPILOT_AGENT_STATE_TOOL_STAKES: Record<
-  string,
-  MCPToolStakeLevelType
-> = Object.fromEntries(
-  (
-    Object.keys(
-      AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA
-    ) as AgentCopilotAgentStateToolKey[]
-  ).map((key) => [key, AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA[key].stake])
-);
 
 export const AGENT_COPILOT_AGENT_STATE_SERVER_INFO = {
   name: "agent_copilot_agent_state" as const,
@@ -63,6 +34,16 @@ export const AGENT_COPILOT_AGENT_STATE_SERVER_INFO = {
 
 export const AGENT_COPILOT_AGENT_STATE_SERVER = {
   serverInfo: AGENT_COPILOT_AGENT_STATE_SERVER_INFO,
-  tools: AGENT_COPILOT_AGENT_STATE_TOOLS,
-  tools_stakes: AGENT_COPILOT_AGENT_STATE_TOOL_STAKES,
+  tools: Object.values(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA).map((t) => ({
+    name: t.name,
+    description: t.description,
+    inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
+  })),
+  tools_stakes: Object.fromEntries(
+    Object.values(AGENT_COPILOT_AGENT_STATE_TOOLS_METADATA).map((t) => [
+      t.name,
+      t.stake,
+    ])
+  ),
 } as const satisfies ServerMetadata;
