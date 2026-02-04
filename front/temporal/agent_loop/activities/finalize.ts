@@ -1,13 +1,13 @@
+import {
+  sendEmailReplyOnCompletion,
+  sendEmailReplyOnError,
+} from "@app/lib/api/assistant/email_reply";
 import type { AuthenticatorType } from "@app/lib/auth";
 import { launchAgentMessageAnalytics } from "@app/temporal/agent_loop/activities/analytics";
 import {
   finalizeCancellation,
   notifyWorkflowError,
 } from "@app/temporal/agent_loop/activities/common";
-import {
-  sendEmailReplyOnCompletion,
-  sendEmailReplyOnError,
-} from "@app/lib/api/assistant/email_reply";
 import { handleMentions } from "@app/temporal/agent_loop/activities/mentions";
 import { conversationUnreadNotificationActivity } from "@app/temporal/agent_loop/activities/notification";
 import { snapshotAgentMessageSkills } from "@app/temporal/agent_loop/activities/snapshot_skills";
