@@ -1,72 +1,22 @@
-import { isLeft } from "fp-ts/lib/Either";
-import * as t from "io-ts";
+import type { ReactElement } from "react";
 
-import { createConnectionAndGetSetupUrl } from "@app/lib/api/oauth";
-import { withDefaultUserAuthRequirements } from "@app/lib/iam/session";
-import { isOAuthProvider, isOAuthUseCase } from "@app/types";
-import { safeParseJSON } from "@app/types/shared/utils/json_utils";
+import { OAuthSetupRedirectPage } from "@app/components/pages/oauth/OAuthSetupRedirectPage";
+import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
+import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
+import { appGetServerSideProps } from "@app/lib/auth/appServerSideProps";
+import type { AuthContextValue } from "@app/lib/auth/AuthContext";
 
-export const ExtraConfigTypeSchema = t.record(t.string, t.string);
-export type ExtraConfigType = t.TypeOf<typeof ExtraConfigTypeSchema>;
+export const getServerSideProps = appGetServerSideProps;
 
-export const getServerSideProps = withDefaultUserAuthRequirements<object>(
-  async (context, auth) => {
-    if (!auth.workspace() || !auth.user()) {
-      return {
-        notFound: true,
-      };
-    }
+const PageWithAuthLayout = OAuthSetupRedirectPage as AppPageWithLayout;
 
-    const { provider, useCase, extraConfig } = context.query;
+PageWithAuthLayout.getLayout = (
+  page: ReactElement,
+  pageProps: AuthContextValue
+) => {
+  return (
+    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+  );
+};
 
-    if (!isOAuthProvider(provider)) {
-      return {
-        notFound: true,
-      };
-    }
-    if (!isOAuthUseCase(useCase)) {
-      return {
-        notFound: true,
-      };
-    }
-
-    let parsedExtraConfig: ExtraConfigType = {};
-    const parseRes = safeParseJSON(extraConfig as string);
-    if (parseRes.isErr()) {
-      return {
-        notFound: true,
-      };
-    }
-    const bodyValidation = ExtraConfigTypeSchema.decode(parseRes.value);
-    if (isLeft(bodyValidation)) {
-      return {
-        notFound: true,
-      };
-    }
-    parsedExtraConfig = bodyValidation.right;
-
-    const urlRes = await createConnectionAndGetSetupUrl(
-      auth,
-      provider,
-      useCase,
-      parsedExtraConfig
-    );
-
-    if (!urlRes.isOk()) {
-      return {
-        notFound: true,
-      };
-    }
-
-    return {
-      redirect: {
-        destination: urlRes.value,
-        permanent: false,
-      },
-    };
-  }
-);
-
-export default function Redirect() {
-  return <></>;
-}
+export default PageWithAuthLayout;

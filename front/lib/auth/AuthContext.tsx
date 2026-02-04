@@ -36,6 +36,25 @@ export function useWorkspace(): LightWorkspaceType {
   return ctx.workspace;
 }
 
+// Context for pages that require authenticated user but no workspace (e.g., OAuth finalize).
+// User is non-nullable because authentication is required.
+export interface AuthContextUserOnlyValue {
+  user: UserType;
+}
+
+export const AuthContextUserOnly =
+  createContext<AuthContextUserOnlyValue | null>(null);
+
+export function useAuthUserOnly(): AuthContextUserOnlyValue {
+  const ctx = useContext(AuthContextUserOnly);
+  if (!ctx) {
+    throw new Error(
+      "useAuthUserOnly must be used within AuthContextUserOnly.Provider"
+    );
+  }
+  return ctx;
+}
+
 // Context for global pages without workspace (e.g., /poke/plans, /poke/templates).
 export interface AuthContextNoWorkspaceValue {
   user: UserType | null;
