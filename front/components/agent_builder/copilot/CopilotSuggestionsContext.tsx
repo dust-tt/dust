@@ -11,7 +11,10 @@ import React, {
 } from "react";
 
 import { useAgentBuilderContext } from "@app/components/agent_builder/AgentBuilderContext";
-import { getCommittedTextContent } from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
+import {
+  getCommittedTextContent,
+  getSuggestionPosition,
+} from "@app/components/editor/extensions/agent_builder/InstructionSuggestionExtension";
 import { useSkillsContext } from "@app/components/shared/skills/SkillsContext";
 import { useMCPServerViewsContext } from "@app/components/shared/tools_picker/MCPServerViewsContext";
 import { getModelConfigByModelId } from "@app/lib/api/models";
@@ -49,6 +52,9 @@ export interface CopilotSuggestionsContextType {
   rejectSuggestion: (sId: string) => Promise<boolean>;
   acceptAllInstructionSuggestions: () => Promise<boolean>;
   rejectAllInstructionSuggestions: () => Promise<boolean>;
+
+  // Focus editor on a specific suggestion.
+  focusOnSuggestion: (suggestionId: string) => void;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -474,6 +480,23 @@ export const CopilotSuggestionsProvider = ({
     return getCommittedTextContent(editor);
   }, []);
 
+  const focusOnSuggestion = useCallback((suggestionId: string) => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    const position = getSuggestionPosition(editor, suggestionId);
+    if (position !== null) {
+      editor
+        .chain()
+        .focus()
+        // Position + 1 to trigger the suggestion bubble menu
+        .setTextSelection(position + 1)
+        .scrollIntoView()
+        .run();
+    }
+  }, []);
+
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
       getSuggestionWithRelations,
@@ -488,6 +511,7 @@ export const CopilotSuggestionsProvider = ({
       rejectSuggestion,
       acceptAllInstructionSuggestions,
       rejectAllInstructionSuggestions,
+      focusOnSuggestion,
     }),
     [
       getSuggestionWithRelations,
@@ -502,6 +526,7 @@ export const CopilotSuggestionsProvider = ({
       rejectSuggestion,
       acceptAllInstructionSuggestions,
       rejectAllInstructionSuggestions,
+      focusOnSuggestion,
     ]
   );
 

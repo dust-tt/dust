@@ -59,6 +59,7 @@ function InstructionsSuggestionCard({
   >;
 }) {
   const { oldString, newString } = agentSuggestion.suggestion;
+  const { focusOnSuggestion } = useCopilotSuggestions();
 
   return (
     <DiffBlock
@@ -68,7 +69,13 @@ function InstructionsSuggestionCard({
       collapsibleLabel="Suggested instructions change"
       collapsibleOpenLabel="Collapse"
       actions={
-        <Button variant="outline" size="sm" label="Review" icon={EyeIcon} />
+        <Button
+          variant="outline"
+          size="sm"
+          label="Review"
+          icon={EyeIcon}
+          onClick={() => focusOnSuggestion(agentSuggestion.sId)}
+        />
       }
     />
   );
