@@ -121,12 +121,10 @@ export function WorkspaceToolUsageChart({
     disabled: !workspaceId,
   });
 
-  // Auto-select first 5 tools when available tools are loaded
+  // Auto-select first 3 tools when available tools are loaded
   useEffect(() => {
     if (availableTools.length > 0 && selectedTools.length === 0) {
-      const initialTools = availableTools
-        .slice(0, MAX_SELECTED_TOOLS)
-        .map((t) => t.serverName);
+      const initialTools = availableTools.slice(0, 3).map((t) => t.serverName);
       setSelectedTools(initialTools);
     }
   }, [availableTools, selectedTools.length]);
@@ -169,18 +167,26 @@ export function WorkspaceToolUsageChart({
     [tool1Usage, tool2Usage, tool3Usage, tool4Usage, tool5Usage]
   );
 
-  const isLoading =
-    isToolsLoading ||
-    toolUsages.some((t, i) => toolsToFetch[i] && t.isToolUsageLoading);
+  // Only include tools that have loaded data to prevent chart flickering
+  const toolsWithData = useMemo(() => {
+    return selectedTools.filter((tool, idx) => {
+      const usage = toolUsages[idx];
+      // Tool has data if it's not loading and has no error
+      return usage && !usage.isToolUsageLoading && !usage.isToolUsageError;
+    });
+  }, [selectedTools, toolUsages]);
+
+  // Show loading only on initial load (when no tools have data yet)
+  const isLoading = isToolsLoading || toolsWithData.length === 0;
 
   const hasError = toolUsages.some(
     (t, i) => toolsToFetch[i] && t.isToolUsageError
   );
 
-  const toolsForChart = selectedTools;
+  const toolsForChart = toolsWithData;
 
   const data = useMemo((): ToolUsageChartPoint[] => {
-    if (selectedTools.length === 0) {
+    if (toolsWithData.length === 0) {
       return [];
     }
 
@@ -198,7 +204,8 @@ export function WorkspaceToolUsageChart({
       const timestamp = startTime + i * dayMs;
       const values: Record<string, number> = {};
 
-      selectedTools.forEach((tool, idx) => {
+      toolsWithData.forEach((tool) => {
+        const idx = selectedTools.indexOf(tool);
         const toolData = toolUsages[idx]?.toolUsage.find(
           (p) => p.timestamp === timestamp
         );
@@ -213,7 +220,7 @@ export function WorkspaceToolUsageChart({
     }
 
     return points;
-  }, [displayMode, period, selectedTools, toolUsages]);
+  }, [displayMode, period, toolsWithData, selectedTools, toolUsages]);
 
   const handleToolToggle = (tool: string, checked: boolean) => {
     if (checked) {
