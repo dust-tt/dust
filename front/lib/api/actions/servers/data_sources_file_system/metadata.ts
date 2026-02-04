@@ -63,8 +63,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading content",
-      done: "Read content",
+      running: "Reading file from data source",
+      done: "Read file from data source",
     },
   },
   [FILESYSTEM_LIST_TOOL_NAME]: {
@@ -77,8 +77,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     schema: DataSourceFilesystemListInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
-      running: "Listing contents",
-      done: "List contents",
+      running: "Listing data source contents",
+      done: "List data source contents",
     },
   },
   [FILESYSTEM_SEARCH_TOOL_NAME]: {
@@ -87,8 +87,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     schema: SearchWithNodesInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
-      running: "Searching content",
-      done: "Search content",
+      running: "Searching data sources",
+      done: "Search data sources",
     },
   },
   [FILESYSTEM_FIND_TOOL_NAME]: {
@@ -98,8 +98,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     schema: DataSourceFilesystemFindInputSchema.shape,
     stake: "never_ask",
     displayLabels: {
-      running: "Finding nodes",
-      done: "Find nodes",
+      running: "Finding in data sources",
+      done: "Find in data sources",
     },
   },
   [FILESYSTEM_LOCATE_IN_TREE_TOOL_NAME]: {
@@ -117,8 +117,8 @@ export const DATA_SOURCES_FILE_SYSTEM_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Locating in tree",
-      done: "Locate in tree",
+      running: "Locating content in hierarchy",
+      done: "Locate content in hierarchy",
     },
   },
   [FIND_TAGS_TOOL_NAME]: {

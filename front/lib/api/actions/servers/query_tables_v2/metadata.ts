@@ -45,8 +45,8 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
     stake: "never_ask",
     enableAlerting: true,
     displayLabels: {
-      running: "Executing query",
-      done: "Execute query",
+      running: "Executing database query",
+      done: "Execute database query",
     },
   },
 });
