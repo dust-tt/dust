@@ -8,7 +8,6 @@ import { renderConversationForModel } from "@app/lib/api/assistant/conversation_
 import { Authenticator } from "@app/lib/auth";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
-import { renderEmail } from "@app/lib/notifications/email-templates/default";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
 import { UserResource } from "@app/lib/resources/user_resource";
 import { getConversationRoute } from "@app/lib/utils/router";
@@ -17,6 +16,7 @@ import { Err, getSmallWhitelistedModel, stripMarkdown } from "@app/types";
 import { Ok } from "@app/types";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 
+import { renderEmail } from "../email-templates/conversation-added-as-participant";
 import type { ConversationAddedAsParticipantPayloadType } from "../triggers/conversation-added-as-participant";
 import {
   CONVERSATION_ADDED_AS_PARTICIPANT_TRIGGER_ID,
@@ -271,13 +271,16 @@ const generateConversationSummary = async (
   );
 };
 
-const generateEmailContent = async (
-  subscriberId: string | undefined,
+const generateEmailBody = async (
+  subscriber: {
+    subscriberId?: string;
+    firstName?: string | null;
+  },
   payload: ConversationAddedAsParticipantPayloadType,
   details: ConversationDetailsType
 ): Promise<string> => {
   const summaryResult = await generateConversationSummary(
-    subscriberId,
+    subscriber.subscriberId,
     payload
   );
   if (summaryResult.isErr()) {
@@ -292,9 +295,33 @@ const generateEmailContent = async (
       default:
         assertNever(summaryResult.error.code);
     }
-    return `${details.userThatAddedYouFullname} added you to the conversation "${details.subject}".`;
+    return renderEmail({
+      name: subscriber.firstName ?? "You",
+      workspace: {
+        id: payload.workspaceId,
+        name: details.workspaceName,
+      },
+      userThatAddedYouFullname: details.userThatAddedYouFullname,
+      conversation: {
+        id: payload.conversationId,
+        title: details.subject,
+        summary: null,
+      },
+    });
   }
-  return `${details.userThatAddedYouFullname} added you to the conversation "${details.subject}".\n\n${summaryResult.value}`;
+  return renderEmail({
+    name: subscriber.firstName ?? "You",
+    workspace: {
+      id: payload.workspaceId,
+      name: details.workspaceName,
+    },
+    userThatAddedYouFullname: details.userThatAddedYouFullname,
+    conversation: {
+      id: payload.conversationId,
+      title: details.subject,
+      summary: summaryResult.value,
+    },
+  });
 };
 
 export const conversationAddedAsParticipantWorkflow = workflow(
@@ -343,25 +370,7 @@ export const conversationAddedAsParticipantWorkflow = workflow(
     await step.email(
       "send-email",
       async () => {
-        const content = await generateEmailContent(
-          subscriber.subscriberId,
-          payload,
-          details
-        );
-        const body = await renderEmail({
-          name: subscriber.firstName ?? "You",
-          workspace: {
-            id: payload.workspaceId,
-            name: details.workspaceName,
-          },
-          content,
-          action: {
-            label: "View conversation",
-            url:
-              process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL +
-              getConversationRoute(payload.workspaceId, payload.conversationId),
-          },
-        });
+        const body = await generateEmailBody(subscriber, payload, details);
         return {
           subject: `[Dust] You were mentioned in '${details.subject}'`,
           body,
