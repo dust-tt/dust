@@ -18,9 +18,7 @@ import { useCopilotSuggestions } from "@app/components/agent_builder/copilot/Cop
 import { getDefaultMCPAction } from "@app/components/agent_builder/types";
 import { getIcon } from "@app/components/resources/resources_icons";
 import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
-import type { MCPServerViewType } from "@app/lib/api/mcp";
 import { getSkillAvatarIcon } from "@app/lib/skill";
-import type { SkillType } from "@app/types/assistant/skill_configuration";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
   AgentSuggestionKind,
@@ -87,28 +85,28 @@ function ToolSuggestionCard({
   const isAddition = suggestion.action === "add";
   const tool = relations.tool;
 
-  const handleAccept = useCallback(() => {
-  const success = await acceptSuggestion(sId);
-  if (success) {
-    if (isAddition) {
-      const currentActions = getValues("actions");
-      const alreadyExists = currentActions.some(
-        (action) => action.configuration.mcpServerViewId === tool.sId
-      );
-      if (!alreadyExists) {
-        const newAction = getDefaultMCPAction(tool);
-        setValue("actions", [...currentActions, newAction], {
-          shouldDirty: true,
-        });
+  const handleAccept = useCallback(async () => {
+    const success = await acceptSuggestion(sId);
+    if (success) {
+      if (isAddition) {
+        const currentActions = getValues("actions");
+        const alreadyExists = currentActions.some(
+          (action) => action.configuration.mcpServerViewId === tool.sId
+        );
+        if (!alreadyExists) {
+          const newAction = getDefaultMCPAction(tool);
+          setValue("actions", [...currentActions, newAction], {
+            shouldDirty: true,
+          });
+        }
+      } else {
+        const currentActions = getValues("actions");
+        const filteredActions = currentActions.filter(
+          (action) => action.configuration.mcpServerViewId !== tool.sId
+        );
+        setValue("actions", filteredActions, { shouldDirty: true });
       }
-    } else {
-      const currentActions = getValues("actions");
-      const filteredActions = currentActions.filter(
-        (action) => action.configuration.mcpServerViewId !== tool.sId
-      );
-      setValue("actions", filteredActions, { shouldDirty: true });
     }
-  }
   }, [acceptSuggestion, sId, getValues, setValue, isAddition, tool]);
 
   const handleReject = useCallback(() => {
@@ -127,8 +125,10 @@ function ToolSuggestionCard({
       state={cardState}
       applyLabel={isAddition ? "Add" : "Remove"}
       rejectLabel="Dismiss"
-            acceptedTitle={isAddition ? `${serverName} tool added` : ${serverName} tool removed`}
-            rejectedTitle={`${serverName} tool dismissed`}
+      acceptedTitle={
+        isAddition ? `${serverName} tool added` : `${serverName} tool removed`
+      }
+      rejectedTitle={`${serverName} tool dismissed`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}
@@ -152,27 +152,29 @@ function SkillSuggestionCard({
   const isAddition = suggestion.action === "add";
   const skill = relations.skill;
 
-  const handleAccept = useCallback(() => {
-      const success = await acceptSuggestion(sId);
-      if (success) {
-    if (isAddition) {
-      const currentSkills = getValues("skills");
-      const alreadyExists = currentSkills.some((s) => s.sId === skill.sId);
-      if (!alreadyExists) {
-        const newSkill = {
-          sId: skill.sId,
-          name: skill.name,
-          description: skill.userFacingDescription,
-          icon: skill.icon,
-        };
-        setValue("skills", [...currentSkills, newSkill], { shouldDirty: true });
+  const handleAccept = useCallback(async () => {
+    const success = await acceptSuggestion(sId);
+    if (success) {
+      if (isAddition) {
+        const currentSkills = getValues("skills");
+        const alreadyExists = currentSkills.some((s) => s.sId === skill.sId);
+        if (!alreadyExists) {
+          const newSkill = {
+            sId: skill.sId,
+            name: skill.name,
+            description: skill.userFacingDescription,
+            icon: skill.icon,
+          };
+          setValue("skills", [...currentSkills, newSkill], {
+            shouldDirty: true,
+          });
+        }
+      } else {
+        const currentSkills = getValues("skills");
+        const filteredSkills = currentSkills.filter((s) => s.sId !== skill.sId);
+        setValue("skills", filteredSkills, { shouldDirty: true });
       }
-    } else {
-      const currentSkills = getValues("skills");
-      const filteredSkills = currentSkills.filter((s) => s.sId !== skill.sId);
-      setValue("skills", filteredSkills, { shouldDirty: true });
     }
-  }
   }, [acceptSuggestion, sId, getValues, setValue, isAddition, skill]);
 
   const handleReject = useCallback(() => {
@@ -189,8 +191,10 @@ function SkillSuggestionCard({
       state={cardState}
       applyLabel={isAddition ? "Add" : "Remove"}
       rejectLabel="Dismiss"
-          acceptedTitle={ isAddition ? `${skill.name} skill added` : `${skill.name} skill removed`}
-          rejectedTitle={`${skill.name} skill dismissed`}
+      acceptedTitle={
+        isAddition ? `${skill.name} skill added` : `${skill.name} skill removed`
+      }
+      rejectedTitle={`${skill.name} skill dismissed`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}

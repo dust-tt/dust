@@ -7,7 +7,6 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
-import type { Logger } from "@app/logger/logger";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";

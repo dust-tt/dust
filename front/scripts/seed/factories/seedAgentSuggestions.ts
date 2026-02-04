@@ -54,10 +54,15 @@ async function resolveMCPServerViewIds(
 
   // Resolve the tool IDs
   const resolvedToolId = serverNameToViewSId.get(suggestion.toolId);
+  if (resolvedToolId === undefined) {
+    throw new Error(
+      `Failed to resolve MCP server view ID for tool "${suggestion.toolId}"`
+    );
+  }
 
   return {
     ...suggestion,
-    toolId: resolvedToolId ?? suggestion.toolId,
+    toolId: resolvedToolId,
   };
 }
 
@@ -68,6 +73,11 @@ export async function seedAgentSuggestions(
 ): Promise<void> {
   const { auth, execute, logger } = ctx;
   const { agents } = options;
+
+  if (suggestionAssets.some((s) => s.kind === "tools")) {
+    // To seed tool suggestions we need the MCP server views to exist.
+    await MCPServerViewResource.ensureAllAutoToolsAreCreated(auth);
+  }
 
   for (const suggestionAsset of suggestionAssets) {
     const agent = agents.get(suggestionAsset.agentName);

@@ -39,7 +39,6 @@ import {
 import { CUSTOM_MODEL_CONFIGS } from "@app/types/assistant/models/custom_models.generated";
 import type {
   AgentSuggestionState,
-  SkillsSuggestionType,
   ToolsSuggestionType,
 } from "@app/types/suggestions/agent_suggestion";
 
@@ -672,7 +671,7 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
 
     // Validate that the tool ID exists and is accessible.
     const { action, toolId } = params.suggestion;
-    const tool = MCPServerViewResource.fetchById(auth, toolId);
+    const tool = await MCPServerViewResource.fetchById(auth, toolId);
 
     if (!tool) {
       return new Err(
@@ -761,8 +760,8 @@ const handlers: ToolHandlers<typeof AGENT_COPILOT_CONTEXT_TOOLS_METADATA> = {
     }
 
     // Validate that the skill ID exists and is accessible.
-    const skillId = params.suggestion.skillId;
-    const skill = SkillResource.fetchById(auth, skillId);
+    const { action, skillId } = params.suggestion;
+    const skill = await SkillResource.fetchById(auth, skillId);
 
     if (!skill) {
       return new Err(
