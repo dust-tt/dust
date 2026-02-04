@@ -10,7 +10,7 @@ import {
   Page,
   Spinner,
 } from "@dust-tt/sparkle";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
@@ -27,24 +27,11 @@ import {
 } from "@app/lib/swr/spaces";
 import { isValidDataSourceViewCategory } from "@app/types";
 
-interface SpaceLayoutShellProps {
+interface SpaceLayoutProps {
   children: React.ReactNode;
 }
 
-/**
- * SpaceLayout is a shared layout wrapper for all space pages.
- * It persists across navigation between space pages, preventing the sidebar from remounting.
- *
- * This component:
- * - Wraps with AppWideModeLayout
- * - Renders SpaceSideBarMenu navigation
- * - Renders SpaceSearchInput (persists across pages)
- * - Manages space creation modals
- * - Fetches space data via hooks based on route params
- *
- * Use this in SPA route wrapper (SpaceLayoutWrapper) and Next.js getLayout.
- */
-export function SpaceLayout({ children }: SpaceLayoutShellProps) {
+export function SpaceLayout({ children }: SpaceLayoutProps) {
   const params = usePathParams();
   const spaceId = params.spaceId;
   const category = params.category;
@@ -97,10 +84,6 @@ export function SpaceLayout({ children }: SpaceLayoutShellProps) {
     },
     []
   );
-
-  useEffect(() => {
-    console.log("SpaceLayout mounted")
-  }, []);
 
   const isLoading =
     isSpaceInfoLoading || (dataSourceViewId && isDataSourceViewLoading);
