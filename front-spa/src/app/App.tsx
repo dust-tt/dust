@@ -255,7 +255,6 @@ const router = createBrowserRouter(
         },
 
         {
-          path: "",
           element: <AdminLayout />,
           children: [
             { path: "members", element: <MembersPage /> },
