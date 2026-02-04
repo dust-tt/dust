@@ -1,27 +1,22 @@
 import { Spinner } from "@dust-tt/sparkle";
 import { useEffect } from "react";
 
-import {
-  useAppRouter,
-  useRequiredPathParam,
-  useSearchParam,
-} from "@app/lib/platform";
+import { useAppRouter, usePathParam, useSearchParam } from "@app/lib/platform";
 import { useOAuthSetup } from "@app/lib/swr/oauth";
 import type { OAuthCredentials, OAuthProvider, OAuthUseCase } from "@app/types";
 import { isOAuthProvider, isOAuthUseCase } from "@app/types";
 
 export function OAuthSetupRedirectPage() {
-  const wId = useRequiredPathParam("wId");
-  const provider = useRequiredPathParam("provider");
+  const wId = usePathParam("wId");
+  const providerParam = usePathParam("provider");
   const useCaseParam = useSearchParam("useCase");
   const extraConfigParam = useSearchParam("extraConfig");
 
   const router = useAppRouter();
 
-  // Validate provider
-  const validProvider: OAuthProvider | null = isOAuthProvider(provider)
-    ? provider
-    : null;
+  // Validate provider (null if router not ready or invalid)
+  const provider: OAuthProvider | null =
+    providerParam && isOAuthProvider(providerParam) ? providerParam : null;
 
   // Validate useCase
   const useCase: OAuthUseCase | null = isOAuthUseCase(useCaseParam)
@@ -39,15 +34,13 @@ export function OAuthSetupRedirectPage() {
   }
 
   // When disabled, placeholder values are not used but required for types
-  const { redirectUrl, isOAuthSetupLoading, isOAuthSetupError } = useOAuthSetup(
-    {
-      workspaceId: wId,
-      provider: validProvider ?? "github",
-      useCase: useCase ?? "connection",
-      extraConfig,
-      disabled: !validProvider || !useCase,
-    }
-  );
+  const { redirectUrl, isOAuthSetupError } = useOAuthSetup({
+    workspaceId: wId ?? "placeholder",
+    provider: provider ?? "github",
+    useCase: useCase ?? "connection",
+    extraConfig,
+    disabled: !wId || !provider || !useCase,
+  });
 
   useEffect(() => {
     if (redirectUrl) {
@@ -55,11 +48,21 @@ export function OAuthSetupRedirectPage() {
     }
   }, [redirectUrl, router]);
 
-  if (isOAuthSetupError || !validProvider || !useCase) {
+  // Show spinner while waiting for router to be ready
+  if (!wId || !providerParam) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner size="xl" />
+      </div>
+    );
+  }
+
+  // Router is ready, check for validation errors
+  if (isOAuthSetupError || !provider || !useCase) {
     return (
       <div className="flex h-64 items-center justify-center">
         <p className="text-element-700">
-          {!validProvider
+          {!provider
             ? "Invalid OAuth provider."
             : !useCase
               ? "Invalid OAuth use case."
@@ -69,14 +72,7 @@ export function OAuthSetupRedirectPage() {
     );
   }
 
-  if (isOAuthSetupLoading || redirectUrl) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Spinner size="xl" />
-      </div>
-    );
-  }
-
+  // Loading or redirecting
   return (
     <div className="flex h-64 items-center justify-center">
       <Spinner size="xl" />
