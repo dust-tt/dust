@@ -6,6 +6,7 @@ import { frontSequelize } from "@app/lib/resources/storage";
 import { UserModel } from "@app/lib/resources/storage/models/user";
 import { WorkspaceAwareModel } from "@app/lib/resources/storage/wrappers/workspace_models";
 import { assertNever } from "@app/types/shared/utils/assert_never";
+import { isString } from "@app/types/shared/utils/general";
 
 export class MCPServerConnectionModel extends WorkspaceAwareModel<MCPServerConnectionModel> {
   declare createdAt: CreationOptional<Date>;
@@ -102,9 +103,9 @@ MCPServerConnectionModel.init(
     hooks: {
       beforeValidate: (config: MCPServerConnectionModel) => {
         const hasConnectionId =
-          typeof config.connectionId === "string" && config.connectionId !== "";
+          isString(config.connectionId) && config.connectionId !== "";
         const hasCredentialId =
-          typeof config.credentialId === "string" && config.credentialId !== "";
+          isString(config.credentialId) && config.credentialId !== "";
 
         if (hasConnectionId === hasCredentialId) {
           throw new Error(

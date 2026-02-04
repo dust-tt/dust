@@ -2,6 +2,7 @@ import type { Authenticator } from "@app/lib/auth";
 import { MCPServerConnectionResource } from "@app/lib/resources/mcp_server_connection_resource";
 import type { Result } from "@app/types";
 import { Err, Ok } from "@app/types";
+import { isString } from "@app/types/shared/utils/general";
 
 export type WorkspaceMCPServerAuthRefError =
   | {
@@ -38,9 +39,9 @@ export async function getWorkspaceOAuthConnectionIdForMCPServer(
   }
 
   const hasAnyAuthRef =
-    (typeof connectionRes.value.connectionId === "string" &&
+    (isString(connectionRes.value.connectionId) &&
       connectionRes.value.connectionId !== "") ||
-    (typeof connectionRes.value.credentialId === "string" &&
+    (isString(connectionRes.value.credentialId) &&
       connectionRes.value.credentialId !== "");
 
   if (!hasAnyAuthRef) {
@@ -51,7 +52,7 @@ export async function getWorkspaceOAuthConnectionIdForMCPServer(
   }
 
   const connectionId = connectionRes.value.connectionId;
-  if (!connectionId) {
+  if (!isString(connectionId) || connectionId === "") {
     return new Err({
       kind: "oauth_not_configured",
       message: "Workspace MCP server connection is not configured for OAuth.",
