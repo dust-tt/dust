@@ -59,11 +59,8 @@ export const frontSequelize = new SequelizeWithComments(
       // TODO(2025-11-29 flav) Revisit all Sequelize pool settings.
       // In test environment, use a much smaller pool to avoid exhausting
       // PostgreSQL's max_connections when running tests in parallel with sharding.
-      max: process.env.NODE_ENV === "test" ? 15 : 25,
-      min: 0, // Allow pool to shrink to 0 when idle
+      max: process.env.NODE_ENV === "test" ? 100 : 25,
       acquire: 30000,
-      idle: process.env.NODE_ENV === "test" ? 1000 : 10000, // Release idle connections quickly in tests
-      evict: process.env.NODE_ENV === "test" ? 1000 : 10000, // Check for idle connections frequently in tests
     },
     logging: isDevelopment() && DB_LOGGING_ENABLED ? sequelizeLogger : false,
     hooks: {
