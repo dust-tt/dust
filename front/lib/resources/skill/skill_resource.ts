@@ -1010,10 +1010,6 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
 
   /**
    * List skills for the agent loop, returning both (extended) enabled skills and equipped skills.
-   *
-   * When called with full `AgentLoopExecutionData`, skills with `isDisabledForAgentLoop` returning
-   * true will be filtered out. When called with just `{ agentConfiguration, conversation }`, no
-   * filtering is applied (for auxiliary tools).
    */
   static async listForAgentLoop(
     auth: Authenticator,
@@ -1554,7 +1550,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
       // Save the current version before updating.
       await this.saveVersion(auth, { transaction });
 
-      // Snapshot the previously requested space IDs before updating.
+      // Snapshot the previous requested space IDs before updating.
       const previousRequestedSpaceIds = [...this.requestedSpaceIds];
 
       const editedBy = auth.user()?.id;
