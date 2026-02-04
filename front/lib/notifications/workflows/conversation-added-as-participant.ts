@@ -99,17 +99,19 @@ const shouldSkipConversation = async ({
   return false;
 };
 
-const FUNCTION_NAME = "write_summary";
+const FUNCTION_NAME = "write_mention_summary";
 
 const specification: AgentActionSpecification = {
   name: FUNCTION_NAME,
-  description: "Write a summary of the conversation",
+  description:
+    "Write a concise summary explaining why a user was mentioned and what action is needed from them",
   inputSchema: {
     type: "object",
     properties: {
       conversation_summary: {
         type: "string",
-        description: "A short summary of the conversation.",
+        description:
+          "A single sentence stating who needs something from the user and what specific action/decision is required.",
       },
     },
     required: ["conversation_summary"],
@@ -175,47 +177,27 @@ const generateConversationSummary = async (
   // Generate LLM summary
   const prompt =
     `# Task\n` +
-    `Write a 1-2 sentence summary explaining why ${userFullName} was mentioned in this conversation and what action/input is needed from them.\n\n` +
-    `CRITICAL RULE: You are writing to ${userFullName}. NEVER write their name "${userFullName}" in the summary. Always use "you/your/yours" instead.\n\n` +
-    `# Input Format\n` +
-    `You'll receive a JSON array of messages. Each message has:\n` +
-    `- "role": "user" (human) or "assistant" (AI agent)\n` +
-    `- "name": sender's display name (e.g., "Sarah Chen", "dust")\n` +
-    `- "content": message text (human messages start with <dust_system> block with sender details)\n\n` +
-    `Use "role", "name", and <dust_system> to attribute senders correctly. Use message text for context and what's needed.\n\n` +
-    `# Writing Rules\n` +
-    `1. **Length**: 1-2 sentences maximum\n` +
-    `2. **Second person**: Use "you/your/yours" when referring to ${userFullName} - NEVER write "${userFullName}"\n` +
-    `3. **Action-first**: Lead with what's needed from the user, then provide essential context\n` +
-    `4. **Be specific**: Include concrete details (deadlines, numbers, decisions needed)\n` +
-    `5. **No chat narration**: Don't write "X asked", "then Y replied", "assistant provided"\n` +
-    `6. **Clear attribution**: Name who needs something from the user\n` +
-    `7. **Concise context**: Only include background details necessary to understand the ask\n\n` +
+    `Write ONE sentence explaining to ${userFullName} why he was mentioned in the conversation and what action is needed from him.\n\n` +
+    `CRITICAL RULES:\n` +
+    `- You are writing TO ${userFullName}. Use "you/your" - NEVER write "${userFullName}"\n` +
+    `- DO NOT describe the conversation. Only state what's needed.\n\n` +
+    `# Input\n` +
+    `You'll receive JSON messages with:\n` +
+    `- "name": sender's display name (use this, not "user" or "assistant")\n` +
+    `- "content": message text\n\n` +
+    `# Extract\n` +
+    `1. WHO needs something (actual person's name) from ${userFullName}\n` +
+    `2. WHAT specific action/decision is needed\n` +
+    `3. KEY DETAILS: deadlines, numbers, specific options\n\n` +
+    `# Example Output Format\n` +
+    `[Person's name] needs you to [specific action] [key details].\n\n` +
     `# Examples\n\n` +
-    `## BAD\n` +
-    `"Sarah asked assistant about the budget; assistant replied with numbers; then Sarah mentioned ${userFullName} should review."\n` +
-    `Problems: Chat narration, uses "${userFullName}", no clear action\n\n` +
-    `## GOOD\n` +
     `"Sarah needs your approval on the Q1 hiring budget ($450K) by end of week to finalize headcount."\n` +
-    `Why: Clear ask, uses "your", specific details, who needs it\n\n` +
-    `## BAD\n` +
-    `"User discussed design options with assistant and mentioned ${userFullName} for final decision."\n` +
-    `Problems: Vague "user", uses "${userFullName}", unclear what decision\n\n` +
-    `## GOOD\n` +
     `"Alex needs you to choose between the three homepage designs by Tuesday for the product launch."\n` +
-    `Why: Specific choice, clear deadline, clear reason\n\n` +
-    `## BAD\n` +
-    `"Assistant helped user with analysis; they want ${userFullName}'s input on the findings."\n` +
-    `Problems: Vague "input", uses "${userFullName}", unclear who wants it\n\n` +
-    `## GOOD\n` +
     `"Jordan needs your technical review of the migration plan—specifically whether the 2-week timeline is feasible."\n` +
-    `Why: Specific ask, uses "your", clear scope of input needed\n\n` +
     `# Your Task\n` +
-    `Read the conversation messages below and write a 1-2 sentence summary that clearly explains:\n` +
-    `- What action/input is needed from the mentioned user\n` +
-    `- Who needs it and any critical context (deadlines, stakes)\n\n` +
-    `Remember: Use "you/your" - NEVER write "${userFullName}".\n` +
-    `Write in a clear, actionable tone that helps someone quickly understand what they need to do.`;
+    `Write ONE sentence: [Name] needs you to [action] [details].\n` +
+    `Use "you/your" and actual person names only.`;
 
   const modelConversationRes = await renderConversationForModel(auth, {
     conversation,
@@ -312,7 +294,7 @@ const generateEmailContent = async (
     }
     return `${details.userThatAddedYouFullname} added you to the conversation "${details.subject}".`;
   }
-  return `## ${details.userThatAddedYouFullname} added you to the conversation "${details.subject}".\n\n${summaryResult.value}`;
+  return `${details.userThatAddedYouFullname} added you to the conversation "${details.subject}".\n\n${summaryResult.value}`;
 };
 
 export const conversationAddedAsParticipantWorkflow = workflow(
