@@ -53,9 +53,13 @@ When there are pending suggestions, the "instructions" field shows the original 
           reasoningEffort: formData.generationSettings.reasoningEffort,
         },
         tools: formData.actions.map((action) => ({
-          sId: action.id,
+          sId: action.configuration.mcpServerViewId,
           name: action.name,
           description: action.description,
+          // If the childAgentId is set, include it
+          ...(action.configuration.childAgentId
+            ? { childAgentId: action.configuration.childAgentId }
+            : {}),
         })),
         skills: formData.skills.map((skill) => ({
           sId: skill.sId,

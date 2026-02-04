@@ -62,6 +62,22 @@
         }
       },
       {
+        "name": "get_available_agents",
+        "description": "Get the list of available agents that can be used as sub-agents. Returns active agents accessible to the current user, excluding global agents.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "limit": {
+              "default": 100,
+              "description": "Maximum number of agents to return (default: 100)",
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      {
         "name": "get_available_knowledge",
         "description": "Get the list of available knowledge sources that can be added to an agent. Returns a hierarchical structure organized by spaces, with connected data sources, folders, and websites listed under each space. Only includes sources accessible to the current user.",
         "inputSchema": {
@@ -128,10 +144,11 @@
           "additionalProperties": false,
           "properties": {
             "kind": {
-              "description": "Filter by suggestion type. Options: instructions, tools, skills, model. If not provided, returns all types.",
+              "description": "Filter by suggestion type. Options: instructions, tools, sub_agent, skills, model. If not provided, returns all types.",
               "enum": [
                 "instructions",
                 "tools",
+                "sub_agent",
                 "skills",
                 "model"
               ],
@@ -346,8 +363,39 @@
         }
       },
       {
+        "name": "suggest_sub_agent",
+        "description": "Suggest adding or removing a sub-agent from the agent's configuration. A sub-agent allows the main agent to delegate tasks to a child agent. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "description": "The action to perform: 'add' to add the sub-agent, 'remove' to remove it",
+              "enum": [
+                "add",
+                "remove"
+              ],
+              "type": "string"
+            },
+            "analysis": {
+              "description": "Analysis or reasoning for the suggestion",
+              "type": "string"
+            },
+            "subAgentId": {
+              "description": "The sId of the agent to add or remove as a sub-agent",
+              "type": "string"
+            }
+          },
+          "required": [
+            "action",
+            "subAgentId"
+          ],
+          "type": "object"
+        }
+      },
+      {
         "name": "suggest_tools",
-        "description": "Suggest adding or removing tools from the agent's configuration. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
+        "description": "Suggest adding or removing tools from the agent's configuration. This tool does not support sub_agent suggestions - use `suggest_sub_agent` instead for that purpose. IMPORTANT: Include the tool output verbatim in your response - it renders as interactive card.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
@@ -430,6 +478,7 @@
     "toolsStakes": {
       "get_agent_feedback": "never_ask",
       "get_agent_insights": "never_ask",
+      "get_available_agents": "never_ask",
       "get_available_knowledge": "never_ask",
       "get_available_models": "never_ask",
       "get_available_skills": "never_ask",
@@ -438,6 +487,7 @@
       "suggest_model": "never_ask",
       "suggest_prompt_edits": "never_ask",
       "suggest_skills": "never_ask",
+      "suggest_sub_agent": "never_ask",
       "suggest_tools": "never_ask",
       "update_suggestions_state": "never_ask"
     }

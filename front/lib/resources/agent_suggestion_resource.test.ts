@@ -73,7 +73,6 @@ describe("AgentSuggestionResource", () => {
           suggestion: {
             action: "add",
             toolId: "github",
-            additionalConfiguration: { repo: "dust" },
           },
           analysis: "Adding GitHub tool",
         }
@@ -93,7 +92,6 @@ describe("AgentSuggestionResource", () => {
       expect(json.suggestion).toEqual({
         action: "add",
         toolId: "github",
-        additionalConfiguration: { repo: "dust" },
       });
     });
 
