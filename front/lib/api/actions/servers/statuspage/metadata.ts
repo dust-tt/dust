@@ -20,8 +20,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing status pages",
-      done: "List status pages",
+      running: "Listing Statuspage pages",
+      done: "List Statuspage pages",
     },
   },
   list_components: {
@@ -37,8 +37,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing components",
-      done: "List components",
+      running: "Listing Statuspage components",
+      done: "List Statuspage components",
     },
   },
   list_incidents: {
@@ -62,8 +62,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing incidents",
-      done: "List incidents",
+      running: "Listing Statuspage incidents",
+      done: "List Statuspage incidents",
     },
   },
   get_incident: {
@@ -84,8 +84,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting incident",
-      done: "Get incident",
+      running: "Getting Statuspage incident",
+      done: "Get Statuspage incident",
     },
   },
   create_incident: {
@@ -122,8 +122,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating incident",
-      done: "Create incident",
+      running: "Creating Statuspage incident",
+      done: "Create Statuspage incident",
     },
   },
   update_incident: {
@@ -161,8 +161,8 @@ export const STATUSPAGE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating incident",
-      done: "Update incident",
+      running: "Updating Statuspage incident",
+      done: "Update Statuspage incident",
     },
   },
 });

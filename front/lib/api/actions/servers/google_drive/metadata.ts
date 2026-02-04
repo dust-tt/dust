@@ -212,8 +212,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating Google Drive comment",
-      done: "Create Google Drive comment",
+      running: "Adding comment on Google Drive",
+      done: "Add comment on Google Drive",
     },
   },
   update_document: {
