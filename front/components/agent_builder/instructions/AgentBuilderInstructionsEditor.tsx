@@ -28,6 +28,7 @@ import { MentionExtension } from "@app/components/editor/extensions/MentionExten
 import { cleanupPastedHTML } from "@app/components/editor/input_bar/cleanupPastedHTML";
 import { LinkExtension } from "@app/components/editor/input_bar/LinkExtension";
 import { createMentionSuggestion } from "@app/components/editor/input_bar/mentionSuggestion";
+import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { LightAgentConfigurationType } from "@app/types";
 
 export const INSTRUCTIONS_MAXIMUM_CHARACTER_COUNT = 120_000;
@@ -73,6 +74,9 @@ export function AgentBuilderInstructionsEditor({
   isInstructionDiffMode = false,
 }: AgentBuilderInstructionsEditorProps = {}) {
   const { owner } = useAgentBuilderContext();
+  const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
+  const hasCopilot = hasFeature("agent_builder_copilot");
+
   const { field } = useController<AgentBuilderFormData, "instructions">({
     name: "instructions",
   });
@@ -359,9 +363,12 @@ export function AgentBuilderInstructionsEditor({
       <div className="relative p-px">
         <EditorContent editor={editor} />
         {editor && <SuggestionBubbleMenu editor={editor} />}
-        <div className="absolute bottom-2 right-2">
-          <InstructionTipsPopover owner={owner} />
-        </div>
+        {!hasCopilot && (
+          // TODO(copilot): Remove the whole InstructionTipsPopover and endpoint when copilot is released.
+          <div className="absolute bottom-2 right-2">
+            <InstructionTipsPopover owner={owner} />
+          </div>
+        )}
       </div>
       {editor && (
         <CharacterCountDisplay
