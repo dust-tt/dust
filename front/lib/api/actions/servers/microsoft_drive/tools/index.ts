@@ -428,15 +428,20 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         requestBody.parentReference = { id: parentItemId };
       }
 
-      const response = await client
+      const response = (await client
         .api(`${sourceEndpoint}/copy`)
-        .post(requestBody);
+        .post(requestBody)) as {
+        "@odata.location"?: string;
+        location?: string;
+      };
+
+      const monitorUrl = response["@odata.location"] ?? response.location;
 
       const result = {
         status: "accepted",
         message: "Copy operation initiated successfully",
         fileName: name,
-        monitorUrl: response["@odata.location"] ?? response.location,
+        monitorUrl,
         note: "The copy operation is asynchronous. Use the monitorUrl to check progress and get the final document ID, or use search_drive_items to find the document by name.",
       };
 
