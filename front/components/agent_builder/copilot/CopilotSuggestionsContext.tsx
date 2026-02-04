@@ -30,7 +30,6 @@ import type {
 } from "@app/types/suggestions/agent_suggestion";
 
 export interface CopilotSuggestionsContextType {
-  // Backend suggestions fetched via SWR.
   getSuggestionWithRelations: (
     sId: string
   ) => AgentSuggestionWithRelationsType | null;
@@ -52,7 +51,6 @@ export interface CopilotSuggestionsContextType {
   acceptAllInstructionSuggestions: () => Promise<boolean>;
   rejectAllInstructionSuggestions: () => Promise<boolean>;
 
-  // Focus editor on a specific suggestion.
   focusOnSuggestion: (suggestionId: string) => void;
 }
 
