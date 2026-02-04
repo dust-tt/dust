@@ -3,12 +3,15 @@ import {
   ActionCardBlock,
   Avatar,
   Button,
+  CheckIcon,
+  ClockIcon,
   ContentMessage,
   DiffBlock,
   ExclamationCircleIcon,
   EyeIcon,
   Icon,
   LoadingBlock,
+  XMarkIcon,
 } from "@dust-tt/sparkle";
 import React, { useCallback } from "react";
 import { useController, useFormContext } from "react-hook-form";
@@ -21,6 +24,7 @@ import { getMcpServerViewDisplayName } from "@app/lib/actions/mcp_helper";
 import { getSkillAvatarIcon } from "@app/lib/skill";
 import { assertNever } from "@app/types/shared/utils/assert_never";
 import type {
+  AgentInstructionsSuggestionType,
   AgentSuggestionKind,
   AgentSuggestionState,
   AgentSuggestionWithRelationsType,
@@ -43,33 +47,56 @@ function mapSuggestionStateToCardState(
   }
 }
 
+const INSTRUCTIONS_ACTION_CONFIG: Record<
+  ActionCardState,
+  { icon: typeof CheckIcon; tooltip: string }
+> = {
+  active: { icon: EyeIcon, tooltip: "Review" },
+  accepted: { icon: CheckIcon, tooltip: "Accepted" },
+  rejected: { icon: XMarkIcon, tooltip: "Rejected" },
+  disabled: { icon: ClockIcon, tooltip: "Outdated" },
+};
+
+function getInstructionsAction(
+  state: ActionCardState,
+  onClick: () => void
+): React.ReactNode {
+  const { icon, tooltip } = INSTRUCTIONS_ACTION_CONFIG[state];
+
+  return (
+    <Button
+      variant="outline"
+      size="xs"
+      icon={icon}
+      tooltip={tooltip}
+      onClick={onClick}
+      disabled={state !== "active"}
+    />
+  );
+}
+
 interface SuggestionCardProps {
   agentSuggestion: AgentSuggestionWithRelationsType;
 }
 
-// Instructions suggestion: collapsible diff view using DiffBlock
 function InstructionsSuggestionCard({
   agentSuggestion,
 }: {
-  agentSuggestion: Extract<
-    AgentSuggestionWithRelationsType,
-    { kind: "instructions" }
-  >;
+  agentSuggestion: AgentInstructionsSuggestionType;
 }) {
   const { oldString, newString } = agentSuggestion.suggestion;
   const { focusOnSuggestion } = useCopilotSuggestions();
 
+  const cardState = mapSuggestionStateToCardState(agentSuggestion.state);
+  const actions = getInstructionsAction(cardState, () =>
+    focusOnSuggestion(agentSuggestion.sId)
+  );
+
   return (
     <DiffBlock
       changes={[{ old: oldString, new: newString }]}
-      actions={
-        <Button
-          variant="outline"
-          size="xs"
-          icon={EyeIcon}
-          onClick={() => focusOnSuggestion(agentSuggestion.sId)}
-        />
-      }
+      actions={actions}
+      className={cardState !== "active" ? "opacity-70" : undefined}
     />
   );
 }
@@ -126,11 +153,10 @@ function ToolSuggestionCard({
       description={analysis ?? undefined}
       state={cardState}
       applyLabel={isAddition ? "Add" : "Remove"}
-      rejectLabel="Dismiss"
       acceptedTitle={
         isAddition ? `${serverName} tool added` : `${serverName} tool removed`
       }
-      rejectedTitle={`${serverName} tool dismissed`}
+      rejectedTitle={`${serverName} tool suggestion rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}
@@ -192,11 +218,10 @@ function SkillSuggestionCard({
       description={analysis ?? undefined}
       state={cardState}
       applyLabel={isAddition ? "Add" : "Remove"}
-      rejectLabel="Dismiss"
       acceptedTitle={
         isAddition ? `${skill.name} skill added` : `${skill.name} skill removed`
       }
-      rejectedTitle={`${skill.name} skill dismissed`}
+      rejectedTitle={`${skill.name} skill suggestion rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}
@@ -257,9 +282,8 @@ function ModelSuggestionCard({
       description={analysis ?? undefined}
       state={cardState}
       applyLabel="Change"
-      rejectLabel="Dismiss"
       acceptedTitle={`Model changed to ${modelName}`}
-      rejectedTitle={`${modelName} model dismissed`}
+      rejectedTitle={`${modelName} model suggestion rejected`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}
