@@ -8,7 +8,7 @@ import type {
   WithMetadataFinishEvent,
   WithMetadataStreamEvent,
 } from "@/types/output";
-import type { Payload } from "@/types/payload";
+import type { Payload } from "@/types/history";
 
 export abstract class Client {
   protected constructor() {}

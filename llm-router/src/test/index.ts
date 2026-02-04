@@ -1,38 +1,87 @@
-import { TEMPERATURE_CONFIGS } from "@/test/configurations";
 import { payload } from "@/test/conversations/textOnly";
-import type { Config } from "@/types/config";
+import {
+  REASONING_DETAILS_LEVELS,
+  REASONING_EFFORTS,
+  ReasoningDetailsLevel,
+  ReasoningEffort,
+  type InputConfig,
+} from "@/types/config";
 import type { FinishEvent } from "@/types/output";
-import type { Payload } from "@/types/payload";
+import type { Payload } from "@/types/history";
 import { expect } from "vitest";
 
-/**
- * Vitest matcher to match any string value
- */
-export const anyString = () => expect.stringMatching(/.*/);
+export const TEMPERATURES = [0, 0.7, 1];
+export const TOP_LOGPROBS = [0, 10, 100];
+export const TOP_PROBABILITIES = [0, 0.5, 1];
 
-/**
- * Alternative: use expect.any(String) for type-based matching
- */
-export const anyStringType = () => expect.any(String);
+export const getInputvalidationCases = ({
+  temperatures = [undefined],
+  reasoningEfforts = [undefined],
+  reasoningDetailsLevels = [undefined],
+  topLogprobs = [undefined],
+  topProbability = [undefined],
+}: {
+  temperatures?: (number | undefined)[];
+  reasoningEfforts?: (ReasoningEffort | undefined)[];
+  reasoningDetailsLevels?: (ReasoningDetailsLevel | undefined)[];
+  topLogprobs?: (number | undefined)[];
+  topProbability?: (number | undefined)[];
+} = {}) => {
+  const cases: [{ payload: Payload; config: InputConfig }, FinishEvent][] = [];
 
-export const getCases = () => {
-  const cases: [{ payload: Payload; config: Config }, FinishEvent][] = [];
-
-  for (const temperatureConfig of TEMPERATURE_CONFIGS) {
-    cases.push([
-      { payload, config: { temperature: temperatureConfig } },
-      {
-        type: "completion",
-        content: {
-          textGenerated: { content: { value: "hi" }, type: "text_generated" },
-          responseId: {
-            content: { id: anyStringType() },
-            type: "interaction_id",
-          },
-        },
-      },
-    ]);
+  for (const temperature of temperatures) {
+    for (const reasoningEffort of reasoningEfforts) {
+      for (const reasoningDetailsLevel of reasoningDetailsLevels) {
+        for (const topLogprob of topLogprobs) {
+          for (const topProb of topProbability) {
+            cases.push([
+              {
+                payload,
+                config: {
+                  temperature,
+                  reasoningEffort,
+                  reasoningDetailsLevel,
+                  maxOutputTokens: 100,
+                  topLogprobs: topLogprob,
+                  topProbability: topProb,
+                },
+              },
+              {
+                type: "completion",
+                content: {
+                  value: expect.arrayContaining([
+                    expect.objectContaining({ type: "text_generated" }),
+                  ]),
+                },
+              },
+            ]);
+          }
+        }
+      }
+    }
   }
+
+  cases.push([
+    {
+      payload,
+      config: {
+        temperature: temperatures[0],
+        reasoningEffort: REASONING_EFFORTS[0],
+        reasoningDetailsLevel: REASONING_DETAILS_LEVELS[0],
+        maxOutputTokens: undefined,
+        topLogprobs: undefined,
+        topProbability: undefined,
+      },
+    },
+    {
+      type: "completion",
+      content: {
+        value: expect.arrayContaining([
+          expect.objectContaining({ type: "text_generated" }),
+        ]),
+      },
+    },
+  ]);
 
   return cases;
 };

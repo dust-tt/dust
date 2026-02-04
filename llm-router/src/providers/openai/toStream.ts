@@ -1,166 +1,84 @@
 import type {
-  StreamEvent,
-  TextGeneratedEvent,
+  WithMetadataCompletionEvent,
+  WithMetadataOutputEvent,
+  WithMetadataReasoningGeneratedEvent,
+  WithMetadataResponseIdEvent,
   WithMetadataStreamEvent,
+  WithMetadataTextGeneratedEvent,
 } from "@/types/output";
-import type {
-  Response,
-  ResponseOutputItem,
-  ResponseOutputRefusal,
-  ResponseOutputText,
-  ResponseStreamEvent,
-} from "openai/resources/responses/responses";
-import flatMap from "lodash/flatMap";
-import { OPENAI_PROVIDER_ID, type OpenAIModelId } from "@/providers/openai/provider";
+import type { ResponseStreamEvent } from "openai/resources/responses/responses";
+import {
+  OPENAI_PROVIDER_ID,
+  type OpenAIModelId,
+} from "@/providers/openai/provider";
+import assertNever from "assert-never";
+import type { Stream } from "openai/streaming";
 
-const responseOutputToEvent = (
-  responseOutput: ResponseOutputText | ResponseOutputRefusal
-): StreamEvent => {
-  switch (responseOutput.type) {
-    case "output_text":
-      return {
-        type: "text_generated",
-        content: {
-          value: responseOutput.text,
-        },
-      };
-    case "refusal":
-      return {
-        type: "error",
-        content: {
-          message: { value: responseOutput.refusal },
-          code: "refusal",
-        },
-      };
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
 
-    default:
-      return {
-        type: "error",
-        content: {
-          message: {
-            value: `Unexpected response output type: ${responseOutput}`,
-          },
-          code: "unexpected",
-        },
-      };
-  }
-};
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-const itemToEvents = (item: ResponseOutputItem): StreamEvent[] => {
-  switch (item.type) {
-    case "message":
-      return item.content.map((responseOutput) =>
-        responseOutputToEvent(responseOutput)
-      );
-    default:
-      return [
-        {
-          type: "error",
-          content: {
-            message: {
-              value: `Unsupported OpenAI Response type: ${item.type}`,
-            },
-            code: "unsupported",
-          },
-        },
-      ];
-  }
-};
-
-const toCompletion = (
-  response: Response,
+export async function* convertOpenAIStreamToRouterEvents(
+  stream: Stream<ResponseStreamEvent>,
   modelId: OpenAIModelId
-): WithMetadataStreamEvent[] => {
-  const responseId = {
-    type: "interaction_id",
-    content: { id: response.id },
-  } as const;
+): AsyncGenerator<WithMetadataStreamEvent, void, unknown> {
+  const outputEvents: WithMetadataOutputEvent[] = [];
 
-  const events: StreamEvent[] = flatMap(
-    response.output.map((i) => itemToEvents(i))
+  const providerEvents = [];
+  const routerEvents = [];
+
+  for await (const event of stream) {
+    providerEvents.push(event);
+    const events = toEvents(event, modelId, outputEvents);
+    routerEvents.push(...events);
+
+    yield* events;
+  }
+
+  const providerPath = path.join(
+    __dirname,
+    `events_provider_${Date.now().toString()}.json`
   );
-
-  // Find the text_generated event to use in the completion
-  const textGeneratedEvent = events.find((e) => e.type === "text_generated") as
-    | TextGeneratedEvent
-    | undefined;
-
-  if (!textGeneratedEvent) {
-    return [
-      {
-        type: "error",
-        content: {
-          message: { value: "No text generated in response" },
-          code: "unexpected",
-        },
-        metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-      },
-    ];
-  }
-
-  if (response.usage === undefined) {
-    return [
-      {
-        type: "completion",
-        content: {
-          responseId,
-          textGenerated: textGeneratedEvent,
-        },
-        metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-      },
-    ];
-  }
-
-  const {
-    input_tokens: inputTokens,
-    output_tokens: outputTokens,
-    input_tokens_details: inputTokensDetails,
-    output_tokens_details: outputTokensDetails,
-  } = response.usage;
-
-  const cacheReadTokens = inputTokensDetails?.cached_tokens ?? 0;
-  const reasoningTokens = outputTokensDetails?.reasoning_tokens ?? 0;
-
-  return [
-    {
-      type: "token_usage",
-      content: {
-        inputTokens: inputTokens - cacheReadTokens,
-        cacheReadTokens,
-        reasoningTokens,
-        outputTokens: outputTokens - reasoningTokens,
-        cacheWriteTokens: 0,
-      },
-      metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-    },
-    {
-      type: "completion",
-      content: {
-        responseId,
-        textGenerated: textGeneratedEvent,
-      },
-      metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-    },
-  ];
-};
+  await fs.promises.writeFile(
+    providerPath,
+    JSON.stringify(providerEvents, null, 2),
+    "utf8"
+  );
+  const routerPath = path.join(
+    __dirname,
+    `events_router_${Date.now().toString()}.json`
+  );
+  await fs.promises.writeFile(
+    routerPath,
+    JSON.stringify(routerEvents, null, 2),
+    "utf8"
+  );
+}
 
 export const toEvents = (
   event: ResponseStreamEvent,
-  modelId: OpenAIModelId
+  modelId: OpenAIModelId,
+  outputEvents: WithMetadataOutputEvent[]
 ): WithMetadataStreamEvent[] => {
   switch (event.type) {
-    case "response.created":
-      return [
-        {
-          type: "interaction_id",
-          content: { id: event.response.id },
-          metadata: {
-            modelId,
-            providerId: OPENAI_PROVIDER_ID,
-            createdAt: { value: event.response.created_at },
-          },
+    case "response.created": {
+      const responseIdEvent: WithMetadataResponseIdEvent = {
+        type: "interaction_id",
+        content: { id: event.response.id },
+        metadata: {
+          modelId,
+          providerId: OPENAI_PROVIDER_ID,
+          createdAt: event.response.created_at,
+          responseId: event.response.id,
         },
-      ];
+      };
+      outputEvents.push(responseIdEvent);
+      return [responseIdEvent];
+    }
     case "response.output_text.delta":
       return [
         {
@@ -169,18 +87,74 @@ export const toEvents = (
           metadata: {
             modelId,
             providerId: OPENAI_PROVIDER_ID,
+            itemId: event.item_id,
+          },
+        },
+      ];
+    case "response.output_text.done": {
+      const textGeneratedEvent: WithMetadataTextGeneratedEvent = {
+        type: "text_generated",
+        content: { value: event.text },
+        metadata: {
+          modelId,
+          providerId: OPENAI_PROVIDER_ID,
+          itemId: event.item_id,
+        },
+      };
+      outputEvents.push(textGeneratedEvent);
+
+      console.log(
+        "Text generated event:",
+        JSON.stringify(outputEvents, null, 2)
+      );
+      return [textGeneratedEvent];
+    }
+    case "response.reasoning_summary_text.delta":
+      return [
+        {
+          type: "reasoning_delta",
+          content: { value: event.delta },
+          metadata: {
+            modelId,
+            providerId: OPENAI_PROVIDER_ID,
             itemId: { value: event.item_id },
           },
         },
       ];
-    case "response.completed":
-      return toCompletion(event.response, modelId);
+    case "response.reasoning_summary_text.done": {
+      const reasoningGeneratedEvent: WithMetadataReasoningGeneratedEvent = {
+        type: "reasoning_generated",
+        content: { value: event.text },
+        metadata: {
+          modelId,
+          providerId: OPENAI_PROVIDER_ID,
+          itemId: event.item_id,
+        },
+      };
+      outputEvents.push(reasoningGeneratedEvent);
+      return [reasoningGeneratedEvent];
+    }
+    case "response.completed": {
+      const completionEvent: WithMetadataCompletionEvent = {
+        type: "completion",
+        content: { value: [...outputEvents] },
+        metadata: {
+          modelId,
+          providerId: OPENAI_PROVIDER_ID,
+          responseId: event.response.id,
+          createdAt: event.response.created_at,
+          completedAt: event.response.completed_at ?? undefined,
+        },
+      };
+      outputEvents.length = 0;
+      return [completionEvent];
+    }
     case "error":
       return [
         {
           type: "error",
           content: {
-            message: { value: event.message },
+            message: event.message,
             originalError: event,
             code: "unknown",
           },
@@ -211,7 +185,6 @@ export const toEvents = (
     case "response.image_generation_call.in_progress":
     case "response.image_generation_call.partial_image":
     case "response.in_progress":
-    case "response.incomplete":
     case "response.mcp_call_arguments.delta":
     case "response.mcp_call_arguments.done":
     case "response.mcp_call.completed":
@@ -223,22 +196,31 @@ export const toEvents = (
     case "response.output_item.added":
     case "response.output_item.done":
     case "response.output_text.annotation.added":
-    case "response.output_text.done":
-      return [];
-    case "response.queued":
-    case "response.reasoning_summary_part.added":
     case "response.reasoning_summary_part.done":
-    case "response.reasoning_summary_text.delta":
-    case "response.reasoning_summary_text.done":
     case "response.reasoning_text.delta":
     case "response.reasoning_text.done":
+    case "response.queued":
+    case "response.reasoning_summary_part.added":
+      return [];
+    case "response.incomplete":
+      return [
+        {
+          type: "error",
+          content: {
+            message: "Incomplete answer likely due to token limit reached",
+            originalError: event,
+            code: "incomplete",
+          },
+          metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
+        },
+      ];
     case "response.refusal.delta":
     case "response.refusal.done":
       return [
         {
           type: "error",
           content: {
-            message: { value: "Provider refusal" },
+            message: "Provider refusal",
             originalError: event,
             code: "refusal",
           },
@@ -250,16 +232,6 @@ export const toEvents = (
     case "response.web_search_call.searching":
       return [];
     default:
-      return [
-        {
-          type: "error",
-          content: {
-            message: { value: "Unsupported OpenAI Response Event" },
-            originalError: event,
-            code: "unknown",
-          },
-          metadata: { modelId, providerId: OPENAI_PROVIDER_ID },
-        },
-      ];
+      assertNever(event);
   }
 };
