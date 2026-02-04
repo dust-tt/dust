@@ -66,8 +66,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching messages",
-      done: "Search messages",
+      running: "Searching Slack messages",
+      done: "Search Slack messages",
     },
   },
   semantic_search_messages: {
@@ -83,8 +83,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Semantic searching messages",
-      done: "Semantic search messages",
+      running: "Searching Slack messages",
+      done: "Search Slack messages",
     },
   },
   post_message: {
@@ -117,8 +117,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Posting message",
-      done: "Post message",
+      running: "Posting Slack message",
+      done: "Post Slack message",
     },
   },
   schedule_message: {
@@ -152,8 +152,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Scheduling message",
-      done: "Schedule message",
+      running: "Scheduling Slack message",
+      done: "Schedule Slack message",
     },
   },
   list_users: {
@@ -172,8 +172,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing users",
-      done: "List users",
+      running: "Listing Slack users",
+      done: "List Slack users",
     },
   },
   get_user: {
@@ -186,8 +186,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting user",
-      done: "Get user",
+      running: "Getting Slack user",
+      done: "Get Slack user",
     },
   },
   search_channels: {
@@ -220,8 +220,8 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching channels",
-      done: "Search channels",
+      running: "Searching Slack channels",
+      done: "Search Slack channels",
     },
   },
   list_messages: {
@@ -245,8 +245,8 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing messages",
-      done: "List messages",
+      running: "Listing Slack messages",
+      done: "List Slack messages",
     },
   },
   read_thread_messages: {
@@ -282,8 +282,8 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading thread messages",
-      done: "Read thread messages",
+      running: "Reading Slack thread messages",
+      done: "Read Slack thread messages",
     },
   },
 });

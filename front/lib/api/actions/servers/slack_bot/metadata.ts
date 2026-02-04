@@ -37,8 +37,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Posting message",
-      done: "Post message",
+      running: "Posting Slack message",
+      done: "Post Slack message",
     },
   },
   list_users: {
@@ -51,8 +51,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing users",
-      done: "List users",
+      running: "Listing Slack users",
+      done: "List Slack users",
     },
   },
   get_user: {
@@ -65,8 +65,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting user",
-      done: "Get user",
+      running: "Getting Slack user",
+      done: "Get Slack user",
     },
   },
   list_public_channels: {
@@ -79,8 +79,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing public channels",
-      done: "List public channels",
+      running: "Listing Slack public channels",
+      done: "List Slack public channels",
     },
   },
   read_channel_history: {
@@ -109,8 +109,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading channel history",
-      done: "Read channel history",
+      running: "Reading Slack channel history",
+      done: "Read Slack channel history",
     },
   },
   read_thread_messages: {
@@ -142,8 +142,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading thread messages",
-      done: "Read thread messages",
+      running: "Reading Slack thread messages",
+      done: "Read Slack thread messages",
     },
   },
   add_reaction: {
@@ -161,8 +161,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding reaction",
-      done: "Add reaction",
+      running: "Adding Slack reaction",
+      done: "Add Slack reaction",
     },
   },
   remove_reaction: {
@@ -180,8 +180,8 @@ export const SLACK_BOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Removing reaction",
-      done: "Remove reaction",
+      running: "Removing Slack reaction",
+      done: "Remove Slack reaction",
     },
   },
 });

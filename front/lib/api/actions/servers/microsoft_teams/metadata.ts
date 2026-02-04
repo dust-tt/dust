@@ -18,8 +18,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching messages",
-      done: "Search messages",
+      running: "Searching Teams messages",
+      done: "Search Teams messages",
     },
   },
   list_teams: {
@@ -28,8 +28,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing teams",
-      done: "List teams",
+      running: "Listing Teams teams",
+      done: "List Teams teams",
     },
   },
   list_users: {
@@ -48,8 +48,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing users",
-      done: "List users",
+      running: "Listing Teams users",
+      done: "List Teams users",
     },
   },
   list_channels: {
@@ -68,8 +68,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing channels",
-      done: "List channels",
+      running: "Listing Teams channels",
+      done: "List Teams channels",
     },
   },
   list_chats: {
@@ -96,8 +96,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing chats",
-      done: "List chats",
+      running: "Listing Teams chats",
+      done: "List Teams chats",
     },
   },
   list_messages: {

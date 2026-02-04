@@ -168,7 +168,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
     enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
-      running: "Renaming Interactive Content File",
+      running: "Renaming Interactive Content file",
       done: "Rename Interactive Content file",
     },
   },
