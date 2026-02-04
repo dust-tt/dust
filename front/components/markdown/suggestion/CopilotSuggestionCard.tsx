@@ -63,10 +63,6 @@ function InstructionsSuggestionCard({
   return (
     <DiffBlock
       changes={[{ old: oldString, new: newString }]}
-      autoCollapsible
-      collapseHeightPx={150}
-      collapsibleLabel="Suggested instructions change"
-      collapsibleOpenLabel="Collapse"
       actions={
         <Button variant="outline" size="sm" label="Review" icon={EyeIcon} />
       }
