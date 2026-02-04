@@ -27,6 +27,7 @@ interface BaseGlobalSkillDefinition {
   readonly inheritAgentConfigurationDataSources?: boolean;
   readonly isAutoEnabled?: boolean;
   readonly isRestricted?: (auth: Authenticator) => Promise<boolean>;
+  // Optional callback to hide a skill from a given agent loop (both from equipped and enabled).
   readonly isDisabledForAgentLoop?: (
     agentLoopData: AgentLoopExecutionData
   ) => boolean;
