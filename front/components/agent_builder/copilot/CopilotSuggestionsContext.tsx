@@ -129,10 +129,6 @@ export const CopilotSuggestionsProvider = ({
       return;
     }
 
-    // Get current markdown to check for overlaps.
-    const markdown =
-      editor.getMarkdown();
-
     // Track ranges that have been marked to detect overlaps.
     const markedRanges: Array<{ start: number; end: number }> = [];
 
@@ -144,6 +140,9 @@ export const CopilotSuggestionsProvider = ({
     };
 
     for (const suggestion of suggestions) {
+      // Get FRESH markdown each time (doesn't include marks!)
+      const currentMarkdown = editor.getMarkdown();
+
       // Only apply pending instruction suggestions.
       if (
         suggestion.state !== "pending" ||
@@ -160,11 +159,12 @@ export const CopilotSuggestionsProvider = ({
       const { oldString, newString } = suggestion.suggestion;
 
       // Find position in markdown and check for overlap.
-      const startIndex = markdown.indexOf(oldString);
+      const startIndex = currentMarkdown.indexOf(oldString);
       if (startIndex === -1) {
         continue;
       }
 
+      // TODO: This is innacurate.
       const endIndex = startIndex + oldString.length;
 
       // Skip if this range overlaps with an already-applied suggestion.

@@ -1,6 +1,6 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, Mark, mergeAttributes } from "@tiptap/core";
-import { Node } from "@tiptap/pm/model";
+import { Fragment, Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
@@ -105,6 +105,18 @@ export const SuggestionMark = Mark.create({
         },
       }),
     ];
+  },
+
+  addStorage() {
+    return {
+      markdown: {
+        serialize: {
+          open: "", // Don't add any markdown syntax
+          close: "", // Don't add any markdown syntax
+          // This makes the mark "invisible" to markdown serialization
+        },
+      },
+    };
   },
 });
 
@@ -309,9 +321,35 @@ function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
 }
 
 /**
- * Processes a suggestion: either accept (replace with newString) or reject (remove mark).
+ * Parses markdown string and returns ProseMirror nodes for inline content.
+ * Falls back to plain text if parsing fails.
+ */
+function parseMarkdownToNodes(editor: Editor, markdown: string): Node | Node[] {
+  const markdownManager = editor.markdown;
+  if (!markdownManager) {
+    return editor.state.schema.text(markdown);
+  }
+
+  const parsed = markdownManager.parse(markdown);
+  const doc = Node.fromJSON(editor.state.schema, parsed);
+
+  // Extract inline content from the parsed document.
+  // The parsed doc is typically: doc > paragraph > inline content
+  const firstBlock = doc.firstChild;
+  if (firstBlock && firstBlock.content.size > 0) {
+    const nodes: Node[] = [];
+    firstBlock.content.forEach((node) => nodes.push(node));
+    return nodes.length === 1 ? nodes[0] : nodes;
+  }
+
+  return editor.state.schema.text(markdown);
+}
+
+/**
+ * Processes a suggestion: either accept (replace with newString as markdown) or reject (remove mark).
  */
 function processSuggestion(
+  editor: Editor,
   state: EditorState,
   tr: Transaction,
   suggestionId: string,
@@ -332,8 +370,10 @@ function processSuggestion(
 
   for (const node of nodes) {
     if (accept) {
-      // Replace with newString.
-      tr.replaceWith(node.from, node.to, schema.text(node.newString));
+      // Parse newString as markdown and replace.
+      const content = parseMarkdownToNodes(editor, node.newString);
+      const fragment = Fragment.from(content);
+      tr.replaceWith(node.from, node.to, fragment);
     } else {
       // Just remove the mark, keep original text.
       tr.removeMark(node.from, node.to, schema.marks.suggestion);
@@ -347,6 +387,7 @@ function processSuggestion(
  * Processes all suggestions in the document.
  */
 function processAllSuggestions(
+  editor: Editor,
   state: EditorState,
   tr: Transaction,
   accept: boolean
@@ -364,7 +405,12 @@ function processAllSuggestions(
 
   for (const node of nodes) {
     if (accept) {
-      tr.replaceWith(node.from, node.to, schema.text(node.newString));
+      // Parse newString as markdown and replace.
+      const content = parseMarkdownToNodes(editor, node.newString);
+      const fragment = Array.isArray(content)
+        ? Fragment.from(content)
+        : Fragment.from(content);
+      tr.replaceWith(node.from, node.to, fragment);
     } else {
       tr.removeMark(node.from, node.to, schema.marks.suggestion);
     }
@@ -393,6 +439,26 @@ export const InstructionSuggestionExtension = Extension.create({
         ({ tr, state, dispatch, editor }) => {
           const { id, find, replacement } = options;
           const { doc, schema } = state;
+
+ console.log('=== APPLY SUGGESTION ===');
+    console.log('ID:', id);
+    console.log('Find (with escaped newlines):', JSON.stringify(find));
+    console.log('Replacement:', JSON.stringify(replacement));
+
+    const markdown = editor.getMarkdown();
+    console.log('Markdown length:', markdown.length);
+
+    // Check how many times it appears
+    let count = 0;
+    let pos = 0;
+    while ((pos = markdown.indexOf(find, pos)) !== -1) {
+      count++;
+      console.log(`Found occurrence ${count} at position:`, pos);
+      pos += find.length;
+    }
+
+    console.log('Total occurrences in markdown:', count);
+
 
           let from: number;
           let to: number;
@@ -450,8 +516,14 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptSuggestion:
         (suggestionId: string) =>
-        ({ state, tr }) => {
-          const modified = processSuggestion(state, tr, suggestionId, true);
+        ({ state, tr, editor }) => {
+          const modified = processSuggestion(
+            editor,
+            state,
+            tr,
+            suggestionId,
+            true
+          );
 
           if (modified) {
             this.storage.activeSuggestionIds =
@@ -465,8 +537,14 @@ export const InstructionSuggestionExtension = Extension.create({
 
       rejectSuggestion:
         (suggestionId: string) =>
-        ({ state, tr }) => {
-          const modified = processSuggestion(state, tr, suggestionId, false);
+        ({ state, tr, editor }) => {
+          const modified = processSuggestion(
+            editor,
+            state,
+            tr,
+            suggestionId,
+            false
+          );
 
           if (modified) {
             this.storage.activeSuggestionIds =
@@ -480,8 +558,8 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ state, tr }) => {
-          const modified = processAllSuggestions(state, tr, true);
+        ({ state, tr, editor }) => {
+          const modified = processAllSuggestions(editor, state, tr, true);
 
           if (modified) {
             this.storage.activeSuggestionIds = [];
@@ -492,8 +570,8 @@ export const InstructionSuggestionExtension = Extension.create({
 
       rejectAllSuggestions:
         () =>
-        ({ state, tr }) => {
-          const modified = processAllSuggestions(state, tr, false);
+        ({ state, tr, editor }) => {
+          const modified = processAllSuggestions(editor, state, tr, false);
 
           if (modified) {
             this.storage.activeSuggestionIds = [];
