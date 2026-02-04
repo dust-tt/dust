@@ -84,17 +84,18 @@ function ToolUsageTooltip({
   const title = point.date ?? formatShortDate(point.timestamp);
   const label = displayMode === "users" ? "users" : "executions";
 
-  const rows = toolsForChart.map((tool) => ({
+  const values = toolsForChart.map((tool) => point.values[tool] ?? 0);
+  const rows = toolsForChart.map((tool, idx) => ({
     label: asDisplayToolName(tool),
-    value: point.values[tool] ?? 0,
+    value: values[idx].toLocaleString(),
     colorClassName: getToolColor(tool, toolsForChart),
   }));
 
   if (toolsForChart.length > 1) {
-    const total = rows.reduce((sum, r) => sum + r.value, 0);
+    const total = values.reduce((sum, v) => sum + v, 0);
     rows.push({
       label: `Total ${label}`,
-      value: total,
+      value: total.toLocaleString(),
       colorClassName: "",
     });
   }
@@ -294,7 +295,7 @@ export function WorkspaceToolUsageChart({
   return (
     <ChartContainer
       title="Tool usage"
-      description="Track how tools are being used across your workspace."
+      description={`Tool usage across your workspace over the last ${period} days.`}
       isLoading={isLoading}
       errorMessage={hasError ? "Failed to load tool usage data." : undefined}
       emptyMessage={
@@ -336,6 +337,7 @@ export function WorkspaceToolUsageChart({
           allowDecimals={false}
         />
         <Tooltip
+          isAnimationActive={false}
           content={(props: TooltipContentProps<number, string>) => (
             <ToolUsageTooltip
               {...props}

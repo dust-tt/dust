@@ -38,7 +38,7 @@ export function WorkspaceSourceChart({
   return (
     <ChartContainer
       title="Source"
-      description="Message volume broken down by source."
+      description={`Message volume broken down by source over the last ${period} days.`}
       isLoading={isContextOriginLoading}
       errorMessage={
         isContextOriginError ? "Failed to load source breakdown." : undefined
@@ -51,6 +51,7 @@ export function WorkspaceSourceChart({
     >
       <PieChart>
         <Tooltip
+          isAnimationActive={false}
           cursor={false}
           wrapperStyle={{ outline: "none", zIndex: 50 }}
           content={({ active }) => {
@@ -59,7 +60,7 @@ export function WorkspaceSourceChart({
             }
             const rows = data.map((d) => ({
               label: d.label,
-              value: d.count,
+              value: d.count.toLocaleString(),
               percent: d.percent,
               colorClassName: getSourceColor(d.origin),
             }));
@@ -98,7 +99,9 @@ export function WorkspaceSourceChart({
             dominantBaseline="middle"
             className="fill-foreground dark:fill-foreground-night"
           >
-            <tspan className="text-2xl font-semibold">{total}</tspan>
+            <tspan className="text-2xl font-semibold">
+              {total.toLocaleString()}
+            </tspan>
             <tspan x="50%" dy="1.2em" className="text-sm">
               Messages
             </tspan>
