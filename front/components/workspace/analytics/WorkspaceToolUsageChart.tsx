@@ -5,12 +5,10 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@dust-tt/sparkle";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   Line,
@@ -54,7 +52,7 @@ function getToolColor(toolName: string, allTools: string[]): string {
 
 function getToolSelectorLabel(selectedTools: string[]): string {
   if (selectedTools.length === 0) {
-    return "All tools";
+    return "Select tools";
   }
   if (selectedTools.length === 1) {
     return asDisplayToolName(selectedTools[0]);
@@ -87,7 +85,7 @@ function ToolUsageTooltip({
   const label = displayMode === "users" ? "users" : "executions";
 
   const rows = toolsForChart.map((tool) => ({
-    label: tool === "all_tools" ? "All tools" : asDisplayToolName(tool),
+    label: asDisplayToolName(tool),
     value: point.values[tool] ?? 0,
     colorClassName: getToolColor(tool, toolsForChart),
   }));
@@ -123,14 +121,17 @@ export function WorkspaceToolUsageChart({
     disabled: !workspaceId,
   });
 
-  const toolsToFetch = selectedTools.length > 0 ? selectedTools : [];
+  // Auto-select first 5 tools when available tools are loaded
+  useEffect(() => {
+    if (availableTools.length > 0 && selectedTools.length === 0) {
+      const initialTools = availableTools
+        .slice(0, MAX_SELECTED_TOOLS)
+        .map((t) => t.serverName);
+      setSelectedTools(initialTools);
+    }
+  }, [availableTools, selectedTools.length]);
 
-  const { toolUsage: allToolsUsage, isToolUsageLoading: isAllToolsLoading } =
-    useWorkspaceToolUsage({
-      workspaceId,
-      days: period,
-      disabled: !workspaceId || selectedTools.length > 0,
-    });
+  const toolsToFetch = selectedTools;
 
   const tool1Usage = useWorkspaceToolUsage({
     workspaceId,
@@ -170,17 +171,19 @@ export function WorkspaceToolUsageChart({
 
   const isLoading =
     isToolsLoading ||
-    (selectedTools.length === 0 && isAllToolsLoading) ||
     toolUsages.some((t, i) => toolsToFetch[i] && t.isToolUsageLoading);
 
   const hasError = toolUsages.some(
     (t, i) => toolsToFetch[i] && t.isToolUsageError
   );
 
-  const toolsForChart =
-    selectedTools.length > 0 ? selectedTools : ["all_tools"];
+  const toolsForChart = selectedTools;
 
   const data = useMemo((): ToolUsageChartPoint[] => {
+    if (selectedTools.length === 0) {
+      return [];
+    }
+
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
     const [startDate, endDate] = getTimeRangeBounds(period);
@@ -195,17 +198,12 @@ export function WorkspaceToolUsageChart({
       const timestamp = startTime + i * dayMs;
       const values: Record<string, number> = {};
 
-      if (selectedTools.length === 0) {
-        const allData = allToolsUsage.find((p) => p.timestamp === timestamp);
-        values["all_tools"] = allData ? allData[valueKey] : 0;
-      } else {
-        selectedTools.forEach((tool, idx) => {
-          const toolData = toolUsages[idx]?.toolUsage.find(
-            (p) => p.timestamp === timestamp
-          );
-          values[tool] = toolData ? toolData[valueKey] : 0;
-        });
-      }
+      selectedTools.forEach((tool, idx) => {
+        const toolData = toolUsages[idx]?.toolUsage.find(
+          (p) => p.timestamp === timestamp
+        );
+        values[tool] = toolData ? toolData[valueKey] : 0;
+      });
 
       points.push({
         timestamp,
@@ -215,7 +213,7 @@ export function WorkspaceToolUsageChart({
     }
 
     return points;
-  }, [displayMode, period, selectedTools, allToolsUsage, toolUsages]);
+  }, [displayMode, period, selectedTools, toolUsages]);
 
   const handleToolToggle = (tool: string, checked: boolean) => {
     if (checked) {
@@ -227,13 +225,9 @@ export function WorkspaceToolUsageChart({
     }
   };
 
-  const handleSelectAll = () => {
-    setSelectedTools([]);
-  };
-
   const legendItems: LegendItem[] = toolsForChart.map((tool) => ({
     key: tool,
-    label: tool === "all_tools" ? "All tools" : asDisplayToolName(tool),
+    label: asDisplayToolName(tool),
     colorClassName: getToolColor(tool, toolsForChart),
   }));
 
@@ -249,8 +243,6 @@ export function WorkspaceToolUsageChart({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem label="All tools" onClick={handleSelectAll} />
-        <DropdownMenuSeparator />
         <DropdownMenuLabel>
           Select tools (max {MAX_SELECTED_TOOLS})
         </DropdownMenuLabel>
@@ -359,7 +351,7 @@ export function WorkspaceToolUsageChart({
             type={period === 7 || period === 14 ? "linear" : "monotone"}
             strokeWidth={2}
             dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
-            name={tool === "all_tools" ? "All tools" : asDisplayToolName(tool)}
+            name={asDisplayToolName(tool)}
             className={getToolColor(tool, toolsForChart)}
             stroke="currentColor"
             dot={false}
