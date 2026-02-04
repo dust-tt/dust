@@ -268,7 +268,7 @@ export async function lookupPhoneNumber(
       );
     }
 
-    // In many countries (including DK), prepaid numbers are still valid mobile/SMS-capable numbers.
+    // In many countries, prepaid numbers are still valid mobile/SMS-capable numbers.
     const isMobileOrPrepaid = phoneType === "mobile" || phoneType === "prepaid";
     if (!isMobileOrPrepaid) {
       return new Err(
