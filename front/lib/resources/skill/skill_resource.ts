@@ -1017,16 +1017,17 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
    */
   static async listForAgentLoop(
     auth: Authenticator,
-    params: AgentLoopExecutionData | {
-      agentConfiguration: AgentConfigurationType;
-      conversation: ConversationType;
-    }
+    params:
+      | AgentLoopExecutionData
+      | {
+          agentConfiguration: AgentConfigurationType;
+          conversation: ConversationType;
+        }
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
   }> {
-    const { agentConfiguration, conversation } =
-      params;
+    const { agentConfiguration, conversation } = params;
     // Light type-guard to check whether we have a full AgentLoopExecutionData.
     const agentLoopData = "userMessage" in params ? params : undefined;
 
