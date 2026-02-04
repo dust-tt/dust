@@ -173,10 +173,40 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     stake: "low",
   },
   create_comment: {
-    description: "Add a comment to a Google Drive file (Doc, Sheet, or Slide).",
+    description:
+      "Add a comment to a Google Drive file (Doc, Sheet, or Presentation).",
     schema: {
       fileId: z.string().describe("The ID of the file to comment on."),
       content: z.string().describe("The text content of the comment."),
+    },
+    stake: "low",
+  },
+  list_comments: {
+    description:
+      "List comments on a Google Drive file (Doc, Sheet, or Presentation). Returns comment threads with their replies.",
+    schema: {
+      fileId: z.string().describe("The ID of the file to list comments from."),
+      pageSize: z
+        .number()
+        .optional()
+        .default(100)
+        .describe("Maximum number of comments to return (max 100)."),
+      pageToken: z.string().optional().describe("Page token for pagination."),
+      includeDeleted: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Whether to include deleted comments."),
+    },
+    stake: "never_ask",
+  },
+  create_reply: {
+    description:
+      "Reply to an existing comment on a Google Drive file (Doc, Sheet, or Presentation).",
+    schema: {
+      fileId: z.string().describe("The ID of the file containing the comment."),
+      commentId: z.string().describe("The ID of the comment to reply to."),
+      content: z.string().describe("The plain text content of the reply."),
     },
     stake: "low",
   },
