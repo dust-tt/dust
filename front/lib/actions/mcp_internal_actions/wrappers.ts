@@ -28,7 +28,11 @@ export function registerTool(
     tool.schema,
     withToolLogging(
       auth,
-      { toolNameForMonitoring: monitoringName, agentLoopContext },
+      {
+        toolNameForMonitoring: monitoringName,
+        agentLoopContext,
+        enableAlerting: tool.enableAlerting,
+      },
       (params, extra) =>
         tool.handler(params, { ...extra, agentLoopContext, auth })
     )

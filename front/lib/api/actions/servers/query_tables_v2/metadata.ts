@@ -21,6 +21,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
         ConfigurableToolInputSchemas[INTERNAL_MIME_TYPES.TOOL_INPUT.TABLE],
     },
     stake: "never_ask",
+    enableAlerting: true,
   },
   [EXECUTE_DATABASE_QUERY_TOOL_NAME]: {
     description:
@@ -38,6 +39,7 @@ export const QUERY_TABLES_V2_TOOLS_METADATA = createToolsRecord({
         .describe("The name of the file to save the results to."),
     },
     stake: "never_ask",
+    enableAlerting: true,
   },
 });
 

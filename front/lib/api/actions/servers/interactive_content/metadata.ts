@@ -125,6 +125,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
             "to replace multiple identical instances of the same text."
         ),
     },
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Updating Interactive Content file",
@@ -184,7 +185,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
           "The ID of the Interactive Content file to retrieve (e.g., 'fil_abc123')"
         ),
     },
-    enableAlerting: false,
+    enableAlerting: true,
     stake: "never_ask",
     displayLabels: {
       running: "Retrieving Interactive Content file",
@@ -202,7 +203,7 @@ export const INTERACTIVE_CONTENT_TOOLS_METADATA = createToolsRecord({
           "The ID of the Interactive Content file to get share URL for (e.g., 'fil_abc123')"
         ),
     },
-    enableAlerting: true,
+    enableAlerting: false,
     stake: "never_ask",
     displayLabels: {
       running: "Getting share URL",
