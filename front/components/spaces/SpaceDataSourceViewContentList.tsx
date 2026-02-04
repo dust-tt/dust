@@ -87,44 +87,6 @@ const columnsBreakpoints = {
   spaces: "md" as const,
 };
 
-function isMicrosoftNode(row: RowData) {
-  return row.dataSourceView.dataSource.connectorProvider === "microsoft";
-}
-
-/**
- * Microsoft root folders' titles do not contain the sites / unsynced parent
- * directory information, which had caused usability issues, see
- * https://github.com/dust-tt/tasks/issues/2619
- *
- * As such we extract title from the sourceUrl rather than using titles
- * directly.
- *
- * TODO(pr, 2025-04-18): if solution is satisfactory, change the title field for
- * microsoft directly in connectors + backfill, then remove this logic.
- */
-function getTitleForMicrosoftNode(
-  row: RowData,
-  { isTopLevelInView }: { isTopLevelInView: boolean }
-) {
-  if (isTopLevelInView) {
-    return getDisplayTitleForDataSourceViewContentNode(row, {
-      prefixSiteName: true,
-    });
-  }
-
-  if (
-    row.parentInternalId !== null ||
-    row.type !== "folder" ||
-    !row.sourceUrl
-  ) {
-    return row.title;
-  }
-
-  const url = new URL(row.sourceUrl);
-  const decodedPathname = decodeURIComponent(url.pathname);
-  return decodedPathname.split("/").slice(2).join("/");
-}
-
 const getTableColumns = ({
   showSpaceUsage,
   isTopLevelInView,
@@ -136,14 +98,10 @@ const getTableColumns = ({
   columns.push({
     header: "Name",
     id: "title",
-    accessorFn: (row) => {
-      if (isMicrosoftNode(row)) {
-        return getTitleForMicrosoftNode(row, {
-          isTopLevelInView,
-        });
-      }
-      return row.title;
-    },
+    accessorFn: (row) =>
+      getDisplayTitleForDataSourceViewContentNode(row, {
+        prefixSiteName: isTopLevelInView,
+      }),
     sortingFn: (a, b, columnId) => {
       const aValue = a.getValue(columnId) as string;
       const bValue = b.getValue(columnId) as string;
