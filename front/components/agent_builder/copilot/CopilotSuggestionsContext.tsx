@@ -298,20 +298,13 @@ export const CopilotSuggestionsProvider = ({
       }
 
       // Optimistic update for card state
-      setProcessedSuggestions((prev) => {
-        const next = new Map(prev);
-        next.set(sId, { ...suggestion, state: "approved" });
-        return next;
-      });
+      setProcessedSuggestions((prev) =>
+        new Map(prev).set(sId, { ...suggestion, state: "approved" })
+      );
 
       const result = await patchSuggestions([sId], "approved");
       if (!result || result.suggestions.length === 0) {
-        // Revert on error
-        setProcessedSuggestions((prev) => {
-          const next = new Map(prev);
-          next.set(sId, suggestion);
-          return next;
-        });
+        setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
         return false;
       }
 
@@ -339,20 +332,13 @@ export const CopilotSuggestionsProvider = ({
       }
 
       // Optimistic update for card state
-      setProcessedSuggestions((prev) => {
-        const next = new Map(prev);
-        next.set(sId, { ...suggestion, state: "rejected" });
-        return next;
-      });
+      setProcessedSuggestions((prev) =>
+        new Map(prev).set(sId, { ...suggestion, state: "rejected" })
+      );
 
       const result = await patchSuggestions([sId], "rejected");
       if (!result || result.suggestions.length === 0) {
-        // Revert on error
-        setProcessedSuggestions((prev) => {
-          const next = new Map(prev);
-          next.set(sId, suggestion);
-          return next;
-        });
+        setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
         return false;
       }
 
@@ -391,13 +377,12 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      setProcessedSuggestions((prev) => {
-        const next = new Map(prev);
-        for (const s of instructionSuggestions) {
-          next.set(s.sId, { ...s, state: "approved" });
-        }
-        return next;
-      });
+      setProcessedSuggestions((prev) =>
+        instructionSuggestions.reduce(
+          (map, s) => map.set(s.sId, { ...s, state: "approved" }),
+          new Map(prev)
+        )
+      );
 
       editor.commands.acceptAllSuggestions();
       for (const sId of instructionSuggestionIds) {
@@ -431,13 +416,12 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      setProcessedSuggestions((prev) => {
-        const next = new Map(prev);
-        for (const s of instructionSuggestions) {
-          next.set(s.sId, { ...s, state: "rejected" });
-        }
-        return next;
-      });
+      setProcessedSuggestions((prev) =>
+        instructionSuggestions.reduce(
+          (map, s) => map.set(s.sId, { ...s, state: "rejected" }),
+          new Map(prev)
+        )
+      );
 
       editor.commands.rejectAllSuggestions();
       for (const sId of instructionSuggestionIds) {
