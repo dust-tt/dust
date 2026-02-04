@@ -181,10 +181,7 @@ export async function runModelActivity(
     );
 
   const { enabledSkills, equippedSkills } =
-    await SkillResource.listForAgentLoop(auth, {
-      agentConfiguration,
-      conversation,
-    });
+    await SkillResource.listForAgentLoop(auth, runAgentData);
 
   const skillServers = await getSkillServers(auth, {
     agentConfiguration,
