@@ -18,9 +18,9 @@ import type { ToolGeneratedFileType } from "@app/lib/actions/mcp_internal_action
 import type { AgentLoopRunContextType } from "@app/lib/actions/types";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { getDatasetSchema } from "@app/lib/api/datasets";
-import { getSupportedModelConfig } from "@app/lib/api/models";
 import type { Authenticator } from "@app/lib/auth";
 import { extractConfig } from "@app/lib/config";
+import { getSupportedModelConfig } from "@app/lib/llms/model_configurations";
 import { AppResource } from "@app/lib/resources/app_resource";
 import type { FileResource } from "@app/lib/resources/file_resource";
 import logger from "@app/logger/logger";

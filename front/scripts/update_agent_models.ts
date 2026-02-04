@@ -3,7 +3,7 @@ import { Op } from "sequelize";
 import {
   getModelConfigByModelId,
   getSupportedModelConfigs,
-} from "@app/lib/api/models";
+} from "@app/lib/llms/model_configurations";
 import { AgentConfigurationModel } from "@app/lib/models/agent/agent";
 import { WorkspaceResource } from "@app/lib/resources/workspace_resource";
 import { makeScript } from "@app/scripts/helpers";
