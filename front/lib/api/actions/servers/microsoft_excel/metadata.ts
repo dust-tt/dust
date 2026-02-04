@@ -19,8 +19,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing Excel files",
-      done: "List Excel files",
+      running: "Listing Microsoft Excel files",
+      done: "List Microsoft Excel files",
     },
   },
   get_worksheets: {
@@ -45,8 +45,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting worksheets",
-      done: "Get worksheets",
+      running: "Getting Excel worksheets",
+      done: "Get Excel worksheets",
     },
   },
   read_worksheet: {
@@ -78,8 +78,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading worksheet",
-      done: "Read worksheet",
+      running: "Reading Excel worksheet",
+      done: "Read Excel worksheet",
     },
   },
   write_worksheet: {
@@ -117,8 +117,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Writing to worksheet",
-      done: "Write to worksheet",
+      running: "Writing to Excel worksheet",
+      done: "Write to Excel worksheet",
     },
   },
   create_worksheet: {
@@ -146,8 +146,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating worksheet",
-      done: "Create worksheet",
+      running: "Creating Excel worksheet",
+      done: "Create Excel worksheet",
     },
   },
   clear_range: {
@@ -184,8 +184,8 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Clearing range",
-      done: "Clear range",
+      running: "Clearing Excel range",
+      done: "Clear Excel range",
     },
   },
 });

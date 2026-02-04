@@ -66,8 +66,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching Slack messages",
-      done: "Search Slack messages",
+      running: "Searching Slack messages (keyword)",
+      done: "Search Slack messages (keyword)",
     },
   },
   semantic_search_messages: {
@@ -83,8 +83,8 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching Slack messages",
-      done: "Search Slack messages",
+      running: "Searching Slack messages (semantic)",
+      done: "Search Slack messages (semantic)",
     },
   },
   post_message: {

@@ -123,8 +123,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing messages",
-      done: "List messages",
+      running: "Listing Teams messages",
+      done: "List Teams messages",
     },
   },
   post_message: {
@@ -174,8 +174,8 @@ export const MICROSOFT_TEAMS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Posting message",
-      done: "Post message",
+      running: "Posting Teams message",
+      done: "Post Teams message",
     },
   },
 });
