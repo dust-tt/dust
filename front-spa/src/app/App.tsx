@@ -263,6 +263,12 @@ const router = createBrowserRouter(
       path: "/w/:wId",
       element: <WorkspacePage />,
       children: [
+        // Index - redirect to conversation/new
+        {
+          index: true,
+          element: <RedirectWithSearchParams to="conversation/new" />,
+        },
+
         // Profile
         { path: "me", element: <ProfilePage /> },
 
