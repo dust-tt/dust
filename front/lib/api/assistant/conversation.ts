@@ -685,6 +685,19 @@ export async function postUserMessage(
       transaction: t,
     });
 
+    // If a user is mentioned, we want to make sure the conversation has a title.
+    // This ensures that mentioned users receive a notification with a conversation title.
+    if (mentions.some((m) => isUserMention(m))) {
+      await ensureConversationTitle(auth, {
+        conversation,
+        userMessage: {
+          ...userMessageWithoutMentions,
+          richMentions: [],
+          mentions: [],
+        },
+      });
+    }
+
     const richMentions = await createUserMentions(auth, {
       mentions,
       message: userMessageWithoutMentions,
