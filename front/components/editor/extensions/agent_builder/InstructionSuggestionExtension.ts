@@ -228,7 +228,7 @@ interface MarkerPosition {
  * This technique comes from the ProseMirror community:
  * https://discuss.prosemirror.net/t/thoughts-on-offsets-and-positions/706
  */
-function findPositionWithMarkers(
+export function findPositionWithMarkers(
   editor: Editor,
   searchString: string
 ): MarkerPosition | null {

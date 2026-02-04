@@ -210,3 +210,87 @@ body {
   background-color: theme("colors.gray.50");
   font-weight: 600;
 }
+
+/* ============================================
+   Suggestion Decoration Styles
+   ============================================ */
+
+/* Old text: strikethrough with dim red background */
+.suggestion-old {
+  text-decoration: line-through;
+  text-decoration-color: theme("colors.red.600");
+  background-color: theme("colors.red.500" / 15%);
+  opacity: 0.7;
+}
+
+.dark .suggestion-old {
+  background-color: theme("colors.red.500" / 25%);
+}
+
+/* Widget: new text block */
+.suggestion-widget {
+  display: block;
+  margin: 8px 0;
+  padding: 12px;
+  background-color: theme("colors.green.500" / 10%);
+  border-left: 3px solid theme("colors.green.500");
+  border-radius: 4px;
+}
+
+.dark .suggestion-widget {
+  background-color: theme("colors.green.500" / 15%);
+}
+
+.suggestion-new-text {
+  margin-bottom: 8px;
+}
+
+.suggestion-new-line {
+  color: theme("colors.green.800");
+}
+
+.dark .suggestion-new-line {
+  color: theme("colors.green.300");
+}
+
+.suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.suggestion-accept-btn,
+.suggestion-reject-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+}
+
+.suggestion-accept-btn {
+  background-color: theme("colors.green.500");
+  color: white;
+}
+
+.suggestion-accept-btn:hover {
+  background-color: theme("colors.green.600");
+}
+
+.suggestion-reject-btn {
+  background-color: theme("colors.gray.100");
+  color: theme("colors.gray.700");
+}
+
+.suggestion-reject-btn:hover {
+  background-color: theme("colors.gray.200");
+}
+
+.dark .suggestion-reject-btn {
+  background-color: theme("colors.gray.700");
+  color: theme("colors.gray.200");
+}
+
+.dark .suggestion-reject-btn:hover {
+  background-color: theme("colors.gray.600");
+}
