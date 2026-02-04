@@ -55,8 +55,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing tickets",
-      done: "List tickets",
+      running: "Listing Freshservice tickets",
+      done: "List Freshservice tickets",
     },
   },
   get_ticket: {
@@ -79,8 +79,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting ticket",
-      done: "Get ticket",
+      running: "Getting Freshservice ticket",
+      done: "Get Freshservice ticket",
     },
   },
   get_ticket_read_fields: {
@@ -89,8 +89,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting ticket read fields",
-      done: "Get ticket read fields",
+      running: "Getting Freshservice ticket read fields",
+      done: "Get Freshservice ticket read fields",
     },
   },
   get_ticket_write_fields: {
@@ -104,8 +104,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting ticket write fields",
-      done: "Get ticket write fields",
+      running: "Getting Freshservice ticket write fields",
+      done: "Get Freshservice ticket write fields",
     },
   },
   create_ticket: {
@@ -132,8 +132,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating ticket",
-      done: "Create ticket",
+      running: "Creating Freshservice ticket",
+      done: "Create Freshservice ticket",
     },
   },
   update_ticket: {
@@ -158,8 +158,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating ticket",
-      done: "Update ticket",
+      running: "Updating Freshservice ticket",
+      done: "Update Freshservice ticket",
     },
   },
   add_ticket_note: {
@@ -175,8 +175,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding ticket note",
-      done: "Add ticket note",
+      running: "Adding Freshservice ticket note",
+      done: "Add Freshservice ticket note",
     },
   },
   add_ticket_reply: {
@@ -187,8 +187,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding ticket reply",
-      done: "Add ticket reply",
+      running: "Adding Freshservice ticket reply",
+      done: "Add Freshservice ticket reply",
     },
   },
 
@@ -200,8 +200,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing ticket tasks",
-      done: "List ticket tasks",
+      running: "Listing Freshservice ticket tasks",
+      done: "List Freshservice ticket tasks",
     },
   },
   get_ticket_task: {
@@ -212,8 +212,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting ticket task",
-      done: "Get ticket task",
+      running: "Getting Freshservice ticket task",
+      done: "Get Freshservice ticket task",
     },
   },
   create_ticket_task: {
@@ -243,8 +243,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating ticket task",
-      done: "Create ticket task",
+      running: "Creating Freshservice ticket task",
+      done: "Create Freshservice ticket task",
     },
   },
   update_ticket_task: {
@@ -277,8 +277,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating ticket task",
-      done: "Update ticket task",
+      running: "Updating Freshservice ticket task",
+      done: "Update Freshservice ticket task",
     },
   },
   delete_ticket_task: {
@@ -289,8 +289,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Deleting ticket task",
-      done: "Delete ticket task",
+      running: "Deleting Freshservice ticket task",
+      done: "Delete Freshservice ticket task",
     },
   },
 
@@ -303,8 +303,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting ticket approval",
-      done: "Get ticket approval",
+      running: "Getting Freshservice ticket approval",
+      done: "Get Freshservice ticket approval",
     },
   },
   list_ticket_approvals: {
@@ -314,8 +314,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing ticket approvals",
-      done: "List ticket approvals",
+      running: "Listing Freshservice ticket approvals",
+      done: "List Freshservice ticket approvals",
     },
   },
   request_service_approval: {
@@ -340,8 +340,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Requesting service approval",
-      done: "Request service approval",
+      running: "Requesting Freshservice approval",
+      done: "Request Freshservice approval",
     },
   },
 

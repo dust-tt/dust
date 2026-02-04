@@ -24,8 +24,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting drafts",
-      done: "Get drafts",
+      running: "Getting Gmail drafts",
+      done: "Get Gmail drafts",
     },
   },
   create_draft: {
@@ -48,8 +48,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Creating draft",
-      done: "Create draft",
+      running: "Creating Gmail draft",
+      done: "Create Gmail draft",
     },
   },
   delete_draft: {
@@ -61,8 +61,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Deleting draft",
-      done: "Delete draft",
+      running: "Deleting Gmail draft",
+      done: "Delete Gmail draft",
     },
   },
   get_messages: {
@@ -94,8 +94,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting messages",
-      done: "Get messages",
+      running: "Getting Gmail messages",
+      done: "Get Gmail messages",
     },
   },
   get_attachment: {
@@ -131,8 +131,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting attachment",
-      done: "Get attachment",
+      running: "Getting Gmail attachment",
+      done: "Get Gmail attachment",
     },
   },
   create_reply_draft: {
@@ -164,8 +164,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Creating reply draft",
-      done: "Create reply draft",
+      running: "Creating Gmail reply draft",
+      done: "Create Gmail reply draft",
     },
   },
   send_mail: {
@@ -191,8 +191,8 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Sending email",
-      done: "Send email",
+      running: "Sending Gmail email",
+      done: "Send Gmail email",
     },
   },
 });

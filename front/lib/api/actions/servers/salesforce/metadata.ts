@@ -16,8 +16,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Executing query",
-      done: "Execute query",
+      running: "Executing Salesforce query",
+      done: "Execute Salesforce query",
     },
   },
   list_objects: {
@@ -31,8 +31,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing objects",
-      done: "List objects",
+      running: "Listing Salesforce objects",
+      done: "List Salesforce objects",
     },
   },
   describe_object: {
@@ -42,8 +42,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Describing object",
-      done: "Describe object",
+      running: "Describing Salesforce object",
+      done: "Describe Salesforce object",
     },
   },
   update_object: {
@@ -72,8 +72,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating records",
-      done: "Update records",
+      running: "Updating Salesforce records",
+      done: "Update Salesforce records",
     },
   },
   list_attachments: {
@@ -83,8 +83,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing attachments",
-      done: "List attachments",
+      running: "Listing Salesforce attachments",
+      done: "List Salesforce attachments",
     },
   },
   read_attachment: {
@@ -98,8 +98,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading attachment",
-      done: "Read attachment",
+      running: "Reading Salesforce attachment",
+      done: "Read Salesforce attachment",
     },
   },
 });
