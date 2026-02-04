@@ -90,11 +90,13 @@ export function useOAuthSetup({
   provider,
   useCase,
   extraConfig,
+  disabled,
 }: {
   workspaceId: string;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig?: OAuthCredentials;
+  disabled?: boolean;
 }) {
   const oauthSetupFetcher: Fetcher<GetOAuthSetupResponseBody> = fetcher;
 
@@ -103,11 +105,17 @@ export function useOAuthSetup({
     url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
   }
 
-  const { data, error, isLoading } = useSWRWithDefaults(url, oauthSetupFetcher);
+  const { data, error, isLoading } = useSWRWithDefaults(
+    url,
+    oauthSetupFetcher,
+    {
+      disabled,
+    }
+  );
 
   return {
     redirectUrl: data?.redirectUrl,
-    isOAuthSetupLoading: isLoading,
+    isOAuthSetupLoading: isLoading && !disabled,
     isOAuthSetupError: error,
   };
 }

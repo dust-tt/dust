@@ -7,8 +7,8 @@ import {
   useSearchParam,
 } from "@app/lib/platform";
 import { useOAuthSetup } from "@app/lib/swr/oauth";
-import type { OAuthCredentials, OAuthUseCase } from "@app/types";
-import { isOAuthUseCase } from "@app/types";
+import type { OAuthCredentials, OAuthProvider, OAuthUseCase } from "@app/types";
+import { isOAuthProvider, isOAuthUseCase } from "@app/types";
 
 export function OAuthSetupRedirectPage() {
   const wId = useRequiredPathParam("wId");
@@ -17,6 +17,11 @@ export function OAuthSetupRedirectPage() {
   const extraConfigParam = useSearchParam("extraConfig");
 
   const router = useAppRouter();
+
+  // Validate provider
+  const validProvider: OAuthProvider | null = isOAuthProvider(provider)
+    ? provider
+    : null;
 
   // Validate useCase
   const useCase: OAuthUseCase | null = isOAuthUseCase(useCaseParam)
@@ -33,12 +38,14 @@ export function OAuthSetupRedirectPage() {
     }
   }
 
+  // When disabled, placeholder values are not used but required for types
   const { redirectUrl, isOAuthSetupLoading, isOAuthSetupError } = useOAuthSetup(
     {
       workspaceId: wId,
-      provider: provider as any, // Type will be validated on the API side
-      useCase: useCase ?? ("connection" as OAuthUseCase), // Fallback, will error if invalid
+      provider: validProvider ?? "github",
+      useCase: useCase ?? "connection",
       extraConfig,
+      disabled: !validProvider || !useCase,
     }
   );
 
@@ -48,13 +55,15 @@ export function OAuthSetupRedirectPage() {
     }
   }, [redirectUrl, router]);
 
-  if (isOAuthSetupError || !useCase) {
+  if (isOAuthSetupError || !validProvider || !useCase) {
     return (
       <div className="flex h-64 items-center justify-center">
         <p className="text-element-700">
-          {!useCase
-            ? "Invalid OAuth use case."
-            : "Failed to initialize OAuth connection."}
+          {!validProvider
+            ? "Invalid OAuth provider."
+            : !useCase
+              ? "Invalid OAuth use case."
+              : "Failed to initialize OAuth connection."}
         </p>
       </div>
     );
