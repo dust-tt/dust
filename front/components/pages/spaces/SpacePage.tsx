@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
 import { SpaceCategoriesList } from "@app/components/spaces/SpaceCategoriesList";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -19,6 +20,7 @@ export function SpacePage() {
 
   const {
     spaceInfo: space,
+    canReadInSpace,
     canWriteInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
@@ -53,28 +55,39 @@ export function SpacePage() {
   }
 
   return (
-    <Page.Vertical gap="xl" align="stretch">
-      <SpaceCategoriesList
-        owner={owner}
-        canWriteInSpace={canWriteInSpace}
-        space={space}
-        onSelect={(category) => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`
-          );
-        }}
-        isAdmin={isAdmin}
-        isBuilder={isBuilder}
-        onButtonClick={() => setShowSpaceEditionModal(true)}
-      />
-      <CreateOrEditSpaceModal
-        owner={owner}
-        isOpen={showSpaceEditionModal}
-        onClose={() => setShowSpaceEditionModal(false)}
-        space={space}
-        isAdmin={isAdmin}
-        plan={plan}
-      />
-    </Page.Vertical>
+    <SpaceSearchInput
+      category={undefined}
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={undefined}
+      parentId={undefined}
+      useBackendSearch
+    >
+      <Page.Vertical gap="xl" align="stretch">
+        <SpaceCategoriesList
+          owner={owner}
+          canWriteInSpace={canWriteInSpace}
+          space={space}
+          onSelect={(category) => {
+            void router.push(
+              `/w/${owner.sId}/spaces/${space.sId}/categories/${category}`
+            );
+          }}
+          isAdmin={isAdmin}
+          isBuilder={isBuilder}
+          onButtonClick={() => setShowSpaceEditionModal(true)}
+        />
+        <CreateOrEditSpaceModal
+          owner={owner}
+          isOpen={showSpaceEditionModal}
+          onClose={() => setShowSpaceEditionModal(false)}
+          space={space}
+          isAdmin={isAdmin}
+          plan={plan}
+        />
+      </Page.Vertical>
+    </SpaceSearchInput>
   );
 }

@@ -3,6 +3,7 @@ import { useMemo } from "react";
 
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useAppRouter,
@@ -38,6 +39,7 @@ export function SpaceCategoryPage() {
 
   const {
     spaceInfo: space,
+    canReadInSpace,
     canWriteInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
@@ -135,22 +137,33 @@ export function SpaceCategoryPage() {
   }
 
   return (
-    <SpaceResourcesList
-      owner={owner}
-      user={user}
-      plan={plan}
-      space={space}
-      systemSpace={systemSpace}
-      isAdmin={isAdmin}
-      canWriteInSpace={canWriteInSpace}
+    <SpaceSearchInput
       category={validCategory}
-      integrations={integrations}
-      activeSeats={seatsCount}
-      onSelect={(sId) => {
-        void router.push(
-          `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
-        );
-      }}
-    />
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
+      owner={owner}
+      space={space}
+      dataSourceView={undefined}
+      parentId={undefined}
+      useBackendSearch
+    >
+      <SpaceResourcesList
+        owner={owner}
+        user={user}
+        plan={plan}
+        space={space}
+        systemSpace={systemSpace}
+        isAdmin={isAdmin}
+        canWriteInSpace={canWriteInSpace}
+        category={validCategory}
+        integrations={integrations}
+        activeSeats={seatsCount}
+        onSelect={(sId) => {
+          void router.push(
+            `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
+          );
+        }}
+      />
+    </SpaceSearchInput>
   );
 }

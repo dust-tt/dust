@@ -1,6 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { SpaceAppsList } from "@app/components/spaces/SpaceAppsList";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
 import { useSpaceInfo } from "@app/lib/swr/spaces";
@@ -11,7 +12,12 @@ export function SpaceAppsListPage() {
   const owner = useWorkspace();
   const { isBuilder } = useAuth();
 
-  const { spaceInfo: space, isSpaceInfoLoading } = useSpaceInfo({
+  const {
+    spaceInfo: space,
+    canReadInSpace,
+    canWriteInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
   });
@@ -25,13 +31,23 @@ export function SpaceAppsListPage() {
   }
 
   return (
-    <SpaceAppsList
+    <SpaceSearchInput
+      category="apps"
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
       owner={owner}
       space={space}
-      isBuilder={isBuilder}
-      onSelect={(sId) => {
-        void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
-      }}
-    />
+      dataSourceView={undefined}
+      parentId={undefined}
+    >
+      <SpaceAppsList
+        owner={owner}
+        space={space}
+        isBuilder={isBuilder}
+        onSelect={(sId) => {
+          void router.push(`/w/${owner.sId}/spaces/${space.sId}/apps/${sId}`);
+        }}
+      />
+    </SpaceSearchInput>
   );
 }

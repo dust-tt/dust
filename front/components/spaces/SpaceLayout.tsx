@@ -13,19 +13,13 @@ import {
 import React, { useCallback, useState } from "react";
 
 import { CreateOrEditSpaceModal } from "@app/components/spaces/CreateOrEditSpaceModal";
-import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import SpaceSideBarMenu from "@app/components/spaces/SpaceSideBarMenu";
 import { AppWideModeLayout } from "@app/components/sparkle/AppWideModeLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isEntreprisePlanPrefix } from "@app/lib/plans/plan_codes";
-import { useAppRouter, usePathParams, useSearchParam } from "@app/lib/platform";
+import { useAppRouter, usePathParams } from "@app/lib/platform";
 import { isPrivateSpacesLimitReached } from "@app/lib/spaces";
-import {
-  useSpaceDataSourceView,
-  useSpaceInfo,
-  useSpacesAsAdmin,
-} from "@app/lib/swr/spaces";
-import { isValidDataSourceViewCategory } from "@app/types";
+import { useSpaceInfo, useSpacesAsAdmin } from "@app/lib/swr/spaces";
 
 interface SpaceLayoutProps {
   children: React.ReactNode;
@@ -34,9 +28,6 @@ interface SpaceLayoutProps {
 export function SpaceLayout({ children }: SpaceLayoutProps) {
   const params = usePathParams();
   const spaceId = params.spaceId;
-  const category = params.category;
-  const dataSourceViewId = params.dataSourceViewId;
-  const parentId = useSearchParam("parentId");
 
   const owner = useWorkspace();
   const { subscription, isAdmin } = useAuth();
@@ -51,19 +42,11 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
 
   const {
     spaceInfo: space,
-    canWriteInSpace,
     canReadInSpace,
     isSpaceInfoLoading,
   } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId: spaceId ?? null,
-  });
-
-  const { dataSourceView, isDataSourceViewLoading } = useSpaceDataSourceView({
-    owner,
-    spaceId: spaceId ?? null,
-    dataSourceViewId: dataSourceViewId ?? null,
-    disabled: !dataSourceViewId,
   });
 
   const { spaces } = useSpacesAsAdmin({
@@ -85,13 +68,6 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
     []
   );
 
-  const isLoading =
-    isSpaceInfoLoading || (dataSourceViewId && isDataSourceViewLoading);
-
-  const validCategory = isValidDataSourceViewCategory(category)
-    ? category
-    : undefined;
-
   return (
     <AppWideModeLayout
       subscription={subscription}
@@ -104,7 +80,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
         />
       }
     >
-      {isLoading || !space ? (
+      {isSpaceInfoLoading || !space ? (
         <div className="flex h-screen items-center justify-center">
           <Spinner />
         </div>
@@ -125,24 +101,7 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
                 </div>
               )
             }
-            <SpaceSearchInput
-              category={validCategory}
-              canReadInSpace={canReadInSpace}
-              canWriteInSpace={canWriteInSpace}
-              owner={owner}
-              useBackendSearch
-              space={space}
-              dataSourceView={dataSourceView ?? undefined}
-              parentId={parentId ?? undefined}
-            >
-              {isLoading || !space ? (
-                <div className="flex h-screen items-center justify-center">
-                  <Spinner />
-                </div>
-              ) : (
-                children
-              )}
-            </SpaceSearchInput>
+            {children}
           </Page.Vertical>
         </div>
       )}

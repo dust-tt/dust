@@ -1,6 +1,7 @@
 import { Spinner } from "@dust-tt/sparkle";
 
 import { SpaceDataSourceViewContentList } from "@app/components/spaces/SpaceDataSourceViewContentList";
+import { SpaceSearchInput } from "@app/components/spaces/SpaceSearchLayout";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   useAppRouter,
@@ -68,22 +69,33 @@ export function DataSourceViewPage() {
   }
 
   return (
-    <SpaceDataSourceViewContentList
+    <SpaceSearchInput
+      category={validCategory}
+      canReadInSpace={canReadInSpace}
+      canWriteInSpace={canWriteInSpace}
       owner={owner}
       space={space}
-      plan={plan}
-      canWriteInSpace={canWriteInSpace}
-      canReadInSpace={canReadInSpace}
-      parentId={parentId ?? undefined}
       dataSourceView={dataSourceView}
-      onSelect={(selectedParentId) => {
-        void router.push(
-          `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${validCategory}/data_source_views/${dataSourceView.sId}?parentId=${selectedParentId}`
-        );
-      }}
-      isAdmin={isAdmin}
-      systemSpace={systemSpace}
-      connector={connector}
-    />
+      parentId={parentId ?? undefined}
+      useBackendSearch
+    >
+      <SpaceDataSourceViewContentList
+        owner={owner}
+        space={space}
+        plan={plan}
+        canWriteInSpace={canWriteInSpace}
+        canReadInSpace={canReadInSpace}
+        parentId={parentId ?? undefined}
+        dataSourceView={dataSourceView}
+        onSelect={(selectedParentId) => {
+          void router.push(
+            `/w/${owner.sId}/spaces/${dataSourceView.spaceId}/categories/${validCategory}/data_source_views/${dataSourceView.sId}?parentId=${selectedParentId}`
+          );
+        }}
+        isAdmin={isAdmin}
+        systemSpace={systemSpace}
+        connector={connector}
+      />
+    </SpaceSearchInput>
   );
 }
