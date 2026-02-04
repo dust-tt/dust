@@ -33,46 +33,6 @@ export async function getWorkspaceMCPServerAuthRef(
   {
     mode,
   }: {
-    mode: "oauth";
-  }
-): Promise<
-  Result<
-    { authType: "oauth"; connectionId: string },
-    WorkspaceMCPServerAuthRefError
-  >
->;
-
-export async function getWorkspaceMCPServerAuthRef(
-  auth: Authenticator,
-  mcpServerId: string,
-  {
-    mode,
-  }: {
-    mode: "credentials";
-  }
-): Promise<
-  Result<
-    { authType: "credentials"; credentialId: string },
-    WorkspaceMCPServerAuthRefError
-  >
->;
-
-export async function getWorkspaceMCPServerAuthRef(
-  auth: Authenticator,
-  mcpServerId: string,
-  {
-    mode,
-  }: {
-    mode: "any";
-  }
-): Promise<Result<MCPServerConnectionAuthRef, WorkspaceMCPServerAuthRefError>>;
-
-export async function getWorkspaceMCPServerAuthRef(
-  auth: Authenticator,
-  mcpServerId: string,
-  {
-    mode,
-  }: {
     mode: MCPServerConnectionAuthMode;
   }
 ): Promise<Result<MCPServerConnectionAuthRef, WorkspaceMCPServerAuthRefError>> {
@@ -156,6 +116,12 @@ export async function getWorkspaceOAuthConnectionIdForMCPServer(
   });
   if (authRefRes.isErr()) {
     return authRefRes;
+  }
+  if (authRefRes.value.authType !== "oauth") {
+    return new Err({
+      kind: "invalid_connection",
+      message: "Workspace MCP server connection is not configured for OAuth.",
+    } satisfies WorkspaceMCPServerAuthRefError);
   }
   return new Ok(authRefRes.value.connectionId);
 }
