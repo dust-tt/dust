@@ -440,25 +440,24 @@ export const InstructionSuggestionExtension = Extension.create({
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
- console.log('=== APPLY SUGGESTION ===');
-    console.log('ID:', id);
-    console.log('Find (with escaped newlines):', JSON.stringify(find));
-    console.log('Replacement:', JSON.stringify(replacement));
+          console.log("=== APPLY SUGGESTION ===");
+          console.log("ID:", id);
+          console.log("Find (with escaped newlines):", JSON.stringify(find));
+          console.log("Replacement:", JSON.stringify(replacement));
 
-    const markdown = editor.getMarkdown();
-    console.log('Markdown length:', markdown.length);
+          const markdown = editor.getMarkdown();
+          console.log("Markdown length:", markdown.length);
 
-    // Check how many times it appears
-    let count = 0;
-    let pos = 0;
-    while ((pos = markdown.indexOf(find, pos)) !== -1) {
-      count++;
-      console.log(`Found occurrence ${count} at position:`, pos);
-      pos += find.length;
-    }
+          // Check how many times it appears
+          let count = 0;
+          let pos = 0;
+          while ((pos = markdown.indexOf(find, pos)) !== -1) {
+            count++;
+            console.log(`Found occurrence ${count} at position:`, pos);
+            pos += find.length;
+          }
 
-    console.log('Total occurrences in markdown:', count);
-
+          console.log("Total occurrences in markdown:", count);
 
           let from: number;
           let to: number;
