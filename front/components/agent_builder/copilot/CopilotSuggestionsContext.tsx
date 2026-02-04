@@ -20,11 +20,7 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import {
-  isInstructionAgentSuggestionType,
-  isInstructionsSuggestion,
-  removeNulls,
-} from "@app/types";
+import { removeNulls } from "@app/types";
 import type {
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
@@ -386,8 +382,11 @@ export const CopilotSuggestionsProvider = ({
         return true;
       }
 
-      const sIds = instructionSuggestions.map((s) => s.sId);
-      const result = await patchSuggestions(sIds, "approved");
+      const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
+      const result = await patchSuggestions(
+        instructionSuggestionIds,
+        "approved"
+      );
       if (!result) {
         return false;
       }
@@ -401,7 +400,7 @@ export const CopilotSuggestionsProvider = ({
       });
 
       editor.commands.acceptAllSuggestions();
-      for (const sId of sIds) {
+      for (const sId of instructionSuggestionIds) {
         appliedSuggestionsRef.current.delete(sId);
       }
 
@@ -423,8 +422,11 @@ export const CopilotSuggestionsProvider = ({
         return true;
       }
 
-      const sIds = instructionSuggestions.map((s) => s.sId);
-      const result = await patchSuggestions(sIds, "rejected");
+      const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
+      const result = await patchSuggestions(
+        instructionSuggestionIds,
+        "rejected"
+      );
       if (!result) {
         return false;
       }
@@ -438,7 +440,7 @@ export const CopilotSuggestionsProvider = ({
       });
 
       editor.commands.rejectAllSuggestions();
-      for (const sId of sIds) {
+      for (const sId of instructionSuggestionIds) {
         appliedSuggestionsRef.current.delete(sId);
       }
 
