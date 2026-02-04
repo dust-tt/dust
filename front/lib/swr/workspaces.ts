@@ -13,9 +13,9 @@ import type { GetNoWorkspaceAuthContextResponseType } from "@app/pages/api/auth-
 import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
 import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
-import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analytics/top-agents";
 import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
 import type { GetWorkspaceToolsResponse } from "@app/pages/api/w/[wId]/analytics/tools";
+import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analytics/top-agents";
 import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";

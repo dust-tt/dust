@@ -1,5 +1,7 @@
 import {
   Button,
+  ButtonsSwitch,
+  ButtonsSwitchList,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -39,10 +41,10 @@ type ToolUsageDisplayMode = "users" | "executions";
 
 const MAX_SELECTED_TOOLS = 5;
 
-interface ToolUsagePoint {
+interface ToolUsageChartPoint {
   timestamp: number;
   date: string;
-  [key: string]: number | string; // Dynamic keys for each tool
+  values: Record<string, number>;
 }
 
 function getToolColor(toolName: string, allTools: string[]): string {
@@ -60,21 +62,17 @@ function getToolSelectorLabel(selectedTools: string[]): string {
   return `${selectedTools.length} tools`;
 }
 
-function getDataKeySuffix(displayMode: ToolUsageDisplayMode): string {
-  return displayMode === "users" ? "_users" : "_executions";
-}
-
 interface ToolUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: ToolUsageDisplayMode;
-  selectedTools: string[];
+  toolsForChart: string[];
 }
 
 function ToolUsageTooltip({
   displayMode,
-  selectedTools,
-  ...props
+  toolsForChart,
+  active,
+  payload,
 }: ToolUsageTooltipProps) {
-  const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -84,24 +82,18 @@ function ToolUsageTooltip({
     return null;
   }
 
-  const row = first.payload as ToolUsagePoint;
-  const title = row.date ?? formatShortDate(row.timestamp);
-
-  const suffix = getDataKeySuffix(displayMode);
+  const point = first.payload as ToolUsageChartPoint;
+  const title = point.date ?? formatShortDate(point.timestamp);
   const label = displayMode === "users" ? "users" : "executions";
 
-  const rows = selectedTools.map((tool) => ({
-    label: asDisplayToolName(tool),
-    value: row[`${tool}${suffix}`] ?? 0,
-    colorClassName: getToolColor(tool, selectedTools),
+  const rows = toolsForChart.map((tool) => ({
+    label: tool === "all_tools" ? "All tools" : asDisplayToolName(tool),
+    value: point.values[tool] ?? 0,
+    colorClassName: getToolColor(tool, toolsForChart),
   }));
 
-  // Add total if multiple tools
-  if (selectedTools.length > 1) {
-    const total = rows.reduce(
-      (sum, r) => sum + (typeof r.value === "number" ? r.value : 0),
-      0
-    );
+  if (toolsForChart.length > 1) {
+    const total = rows.reduce((sum, r) => sum + r.value, 0);
     rows.push({
       label: `Total ${label}`,
       value: total,
@@ -125,17 +117,14 @@ export function WorkspaceToolUsageChart({
     useState<ToolUsageDisplayMode>("executions");
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
 
-  // Fetch list of available tools for dropdown
   const { tools: availableTools, isToolsLoading } = useWorkspaceTools({
     workspaceId,
     days: period,
     disabled: !workspaceId,
   });
 
-  // Fetch data for all tools (when no selection) or each selected tool
   const toolsToFetch = selectedTools.length > 0 ? selectedTools : [];
 
-  // Fetch aggregated data when no specific tools are selected
   const { toolUsage: allToolsUsage, isToolUsageLoading: isAllToolsLoading } =
     useWorkspaceToolUsage({
       workspaceId,
@@ -143,7 +132,6 @@ export function WorkspaceToolUsageChart({
       disabled: !workspaceId || selectedTools.length > 0,
     });
 
-  // Fetch data for each selected tool
   const tool1Usage = useWorkspaceToolUsage({
     workspaceId,
     days: period,
@@ -175,18 +163,13 @@ export function WorkspaceToolUsageChart({
     disabled: !workspaceId || !toolsToFetch[4],
   });
 
-  const toolUsages = [
-    tool1Usage,
-    tool2Usage,
-    tool3Usage,
-    tool4Usage,
-    tool5Usage,
-  ];
+  const toolUsages = useMemo(
+    () => [tool1Usage, tool2Usage, tool3Usage, tool4Usage, tool5Usage],
+    [tool1Usage, tool2Usage, tool3Usage, tool4Usage, tool5Usage]
+  );
 
   const isLoading =
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     isToolsLoading ||
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (selectedTools.length === 0 && isAllToolsLoading) ||
     toolUsages.some((t, i) => toolsToFetch[i] && t.isToolUsageLoading);
 
@@ -194,42 +177,41 @@ export function WorkspaceToolUsageChart({
     (t, i) => toolsToFetch[i] && t.isToolUsageError
   );
 
-  // Merge data from all selected tools into a single dataset
-  const data = useMemo(() => {
-    const suffix = getDataKeySuffix(displayMode);
+  const toolsForChart =
+    selectedTools.length > 0 ? selectedTools : ["all_tools"];
+
+  const data = useMemo((): ToolUsageChartPoint[] => {
     const valueKey = displayMode === "users" ? "uniqueUsers" : "executionCount";
 
-    // Generate all dates in the range
     const [startDate, endDate] = getTimeRangeBounds(period);
     const startTime = new Date(startDate + "T00:00:00Z").getTime();
     const endTime = new Date(endDate + "T00:00:00Z").getTime();
     const dayMs = 24 * 60 * 60 * 1000;
     const numDays = Math.floor((endTime - startTime) / dayMs) + 1;
 
-    const points: ToolUsagePoint[] = [];
+    const points: ToolUsageChartPoint[] = [];
 
     for (let i = 0; i < numDays; i++) {
       const timestamp = startTime + i * dayMs;
-      const point: ToolUsagePoint = {
-        timestamp,
-        date: formatShortDate(timestamp),
-      };
+      const values: Record<string, number> = {};
 
       if (selectedTools.length === 0) {
-        // Show aggregated "all tools" data
         const allData = allToolsUsage.find((p) => p.timestamp === timestamp);
-        point["all_tools" + suffix] = allData ? allData[valueKey] : 0;
+        values["all_tools"] = allData ? allData[valueKey] : 0;
       } else {
-        // Show data for each selected tool
         selectedTools.forEach((tool, idx) => {
           const toolData = toolUsages[idx]?.toolUsage.find(
             (p) => p.timestamp === timestamp
           );
-          point[`${tool}${suffix}`] = toolData ? toolData[valueKey] : 0;
+          values[tool] = toolData ? toolData[valueKey] : 0;
         });
       }
 
-      points.push(point);
+      points.push({
+        timestamp,
+        date: formatShortDate(timestamp),
+        values,
+      });
     }
 
     return points;
@@ -248,10 +230,6 @@ export function WorkspaceToolUsageChart({
   const handleSelectAll = () => {
     setSelectedTools([]);
   };
-
-  const suffix = getDataKeySuffix(displayMode);
-  const toolsForChart =
-    selectedTools.length > 0 ? selectedTools : ["all_tools"];
 
   const legendItems: LegendItem[] = toolsForChart.map((tool) => ({
     key: tool,
@@ -300,26 +278,18 @@ export function WorkspaceToolUsageChart({
   );
 
   const modeSelector = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          label={displayMode === "users" ? "Unique users" : "Executions"}
-          size="xs"
-          variant="outline"
-          isSelect
-        />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem
-          label="Executions"
-          onClick={() => setDisplayMode("executions")}
-        />
-        <DropdownMenuItem
-          label="Unique users"
-          onClick={() => setDisplayMode("users")}
-        />
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <ButtonsSwitchList defaultValue={displayMode} size="xs">
+      <ButtonsSwitch
+        value="executions"
+        label="Executions"
+        onClick={() => setDisplayMode("executions")}
+      />
+      <ButtonsSwitch
+        value="users"
+        label="Users"
+        onClick={() => setDisplayMode("users")}
+      />
+    </ButtonsSwitchList>
   );
 
   return (
@@ -371,7 +341,7 @@ export function WorkspaceToolUsageChart({
             <ToolUsageTooltip
               {...props}
               displayMode={displayMode}
-              selectedTools={toolsForChart}
+              toolsForChart={toolsForChart}
             />
           )}
           cursor={false}
@@ -388,7 +358,7 @@ export function WorkspaceToolUsageChart({
             key={tool}
             type={period === 7 || period === 14 ? "linear" : "monotone"}
             strokeWidth={2}
-            dataKey={`${tool}${suffix}`}
+            dataKey={(point: ToolUsageChartPoint) => point.values[tool] ?? 0}
             name={tool === "all_tools" ? "All tools" : asDisplayToolName(tool)}
             className={getToolColor(tool, toolsForChart)}
             stroke="currentColor"
