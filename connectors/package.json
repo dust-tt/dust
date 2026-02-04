@@ -2,11 +2,10 @@
   "name": "connectors",
   "version": "0.1.0",
   "scripts": {
-    "format": "npm run format:lefthook -- .",
-    "format:lefthook": "biome format --write",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format --write .",
     "format:check": "biome format .",
-    "lint": "npm run lint:lefthook -- .",
-    "lint:lefthook": "eslint",
     "build": "tsgo --noEmit && tsx esbuild.config.ts",
     "start": "tsx ./src/start.ts -p 3002",
     "start:web": "node ./dist/start_server.js -p 3002",
@@ -99,7 +98,6 @@
     "zod-validation-error": "^3.5.4"
   },
   "devDependencies": {
-    "@types/eslint": "^8.56.10",
     "@types/gunzip-maybe": "^1.4.2",
     "@types/lodash": "^4.17.7",
     "@types/morgan": "^1.9.9",
@@ -108,20 +106,12 @@
     "@types/tar-stream": "^3.1.4",
     "@types/turndown": "^5.0.4",
     "@types/yargs": "^17.0.32",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
     "@typescript/native-preview": "7.0.0-dev.20260105.1",
     "danger": "^13.0.4",
     "esbuild": "^0.27.2",
-    "eslint": "^9.18.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-simple-import-sort": "^12.1.0",
-    "eslint-plugin-unused-imports": "^4.3.0",
     "tsconfig-paths-webpack-plugin": "^4.1.0",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.48.0",
     "vitest": "^4.0.16"
   }
 }

@@ -42,7 +42,7 @@
     "useEditorconfig": true
   },
   "linter": {
-    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "includes": ["sdks/js/**", "viz/**", "extension/**", "connectors/**"],
     "rules": {
       "recommended": false,
       "correctness": {
@@ -83,7 +83,7 @@
     }
   },
   "assist": {
-    "includes": ["sdks/js/**", "viz/**", "extension/**"],
+    "includes": ["sdks/js/**", "viz/**", "extension/**", "connectors/**"],
     "enabled": true,
     "actions": {
       "source": {
