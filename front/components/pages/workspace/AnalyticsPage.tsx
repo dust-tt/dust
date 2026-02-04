@@ -9,6 +9,7 @@ import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
 import { WorkspaceSourceChart } from "@app/components/workspace/analytics/WorkspaceSourceChart";
+import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/WorkspaceToolUsageChart";
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
 import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
@@ -183,6 +184,7 @@ export function AnalyticsPage() {
           <div className="flex flex-col gap-5">
             <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
             <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
+            <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
           </div>
           <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
           <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
