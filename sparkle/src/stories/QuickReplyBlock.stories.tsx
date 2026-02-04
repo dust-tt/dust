@@ -1,13 +1,17 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import React from "react";
 
-import { QuickReplyBlock, QuickReplyContainer } from "../index_with_tw_base";
+import {
+  Button,
+  QuickReplyBlock,
+  QuickReplyContainer,
+} from "../index_with_tw_base";
 
 const meta: Meta<typeof QuickReplyBlock> = {
   title: "Conversation/QuickReplyBlock",
   component: QuickReplyBlock,
   parameters: {
-    layout: "centered",
+    layout: "story",
   },
 };
 
@@ -16,6 +20,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Examples: Story = {
   render: () => {
+    const [resetKey, setResetKey] = React.useState(0);
     const handleSend = async () => {
       await new Promise((resolve) => {
         setTimeout(resolve, 800);
@@ -23,15 +28,27 @@ export const Examples: Story = {
     };
 
     return (
-      <QuickReplyContainer className="s-w-full">
-        <QuickReplyBlock label="Summarize this" onSend={handleSend} />
-        <QuickReplyBlock
-          label="Ask a longer question that should wrap onto multiple lines"
-          onSend={handleSend}
+      <div className="s-w-full s-p-6 s-space-y-4">
+        <Button
+          variant="outline"
+          size="xs"
+          label="Re initiate"
+          onClick={() => setResetKey((value) => value + 1)}
         />
-        <QuickReplyBlock label="Sending..." onSend={handleSend} />
-        <QuickReplyBlock label="Disabled reply" disabled onSend={handleSend} />
-      </QuickReplyContainer>
+        <QuickReplyContainer key={resetKey} className="s-w-full">
+          <QuickReplyBlock label="Summarize this" onSend={handleSend} />
+          <QuickReplyBlock
+            label="Ask a longer question that should wrap onto multiple lines"
+            onSend={handleSend}
+          />
+          <QuickReplyBlock label="Sending..." onSend={handleSend} />
+          <QuickReplyBlock
+            label="Disabled reply"
+            disabled
+            onSend={handleSend}
+          />
+        </QuickReplyContainer>
+      </div>
     );
   },
 };
