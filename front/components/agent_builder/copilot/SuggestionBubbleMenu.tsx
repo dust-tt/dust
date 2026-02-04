@@ -17,10 +17,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
 
   // Check if cursor is on a suggestion mark.
   const isOnSuggestion = () => {
-    return (
-      editor.isActive("suggestionAddition") ||
-      editor.isActive("suggestionDeletion")
-    );
+    return editor.isActive("suggestion");
   };
 
   // Get the suggestion ID at the current position.
@@ -31,10 +28,7 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     const marks = $pos.marks();
 
     for (const mark of marks) {
-      if (
-        mark.type.name === "suggestionAddition" ||
-        mark.type.name === "suggestionDeletion"
-      ) {
+      if (mark.type.name === "suggestion") {
         return mark.attrs.suggestionId as string | null;
       }
     }

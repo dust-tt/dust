@@ -1,9 +1,12 @@
 import type { Editor, JSONContent } from "@tiptap/core";
-import { Extension, Mark } from "@tiptap/core";
+import { Extension, Mark, mergeAttributes } from "@tiptap/core";
 import { Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
+import { ReactMarkViewRenderer } from "@tiptap/react";
+
+import SuggestionMarkView from "@app/components/editor/extensions/agent_builder/NodeView";
 
 // Mark for additions (styling applied via decorations based on selection state).
 export const SuggestionAdditionMark = Mark.create({
@@ -64,32 +67,59 @@ export const SuggestionDeletionMark = Mark.create({
 });
 
 export const SuggestionMark = Mark.create({
-  name: "suggestion",
+  name: 'suggestion',
   spanning: true,
 
   addAttributes() {
     return {
-      suggestionId: { default: null },
-      oldString: { default: null },
-      newString: { default: null },
+      suggestionId: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-suggestion-id'),
+        renderHTML: attributes => {
+          if (!attributes.suggestionId) {return {};}
+          return { 'data-suggestion-id': attributes.suggestionId };
+        },
+      },
+      oldString: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-old'),
+        renderHTML: attributes => {
+          if (!attributes.oldString) {return {};}
+          return { 'data-old': attributes.oldString };
+        },
+      },
+      newString: {
+        default: null,
+        parseHTML: element => element.getAttribute('data-new'),
+        renderHTML: attributes => {
+          if (!attributes.newString) {return {};}
+          return { 'data-new': attributes.newString };
+        },
+      },
     };
   },
 
   parseHTML() {
-    return [{ tag: "span[data-suggestion-id]" }];
+    return [
+      {
+        tag: 'span[data-suggestion-id]',
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes }) {
     return [
-      "span",
-      {
-        class: "suggestion-deletion rounded px-0.5 line-through",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-        "data-old": HTMLAttributes.oldString,
-        "data-new": HTMLAttributes.newString,
-      },
+      'span',
+      mergeAttributes(HTMLAttributes, {
+        class: 'suggestion-mark',
+      }),
       0,
     ];
+  },
+
+  // ✅ Add the NodeView
+  addMarkView() {
+    return ReactMarkViewRenderer(SuggestionMarkView);
   },
 });
 
