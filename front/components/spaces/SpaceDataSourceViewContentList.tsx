@@ -52,6 +52,7 @@ import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { isFolder, isManaged, isWebsite } from "@app/lib/data_sources";
 import { clientFetch } from "@app/lib/egress/client";
 import { useAppRouter } from "@app/lib/platform";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import {
   useDataSourceViewContentNodes,
   useDataSourceViews,
@@ -90,6 +91,16 @@ function isMicrosoftNode(row: RowData) {
   return row.dataSourceView.dataSource.connectorProvider === "microsoft";
 }
 
+function getDuplicateTitles(nodes: { title: string }[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const node of nodes) {
+    counts.set(node.title, (counts.get(node.title) ?? 0) + 1);
+  }
+  return new Set(
+    [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
+  );
+}
+
 /**
  * Microsoft root folders' titles do not contain the sites / unsynced parent
  * directory information, which had caused usability issues, see
@@ -101,7 +112,19 @@ function isMicrosoftNode(row: RowData) {
  * TODO(pr, 2025-04-18): if solution is satisfactory, change the title field for
  * microsoft directly in connectors + backfill, then remove this logic.
  */
-function getTitleForMicrosoftNode(row: RowData) {
+function getTitleForMicrosoftNode(
+  row: RowData,
+  {
+    isTopLevelInView,
+    duplicateTitles,
+  }: { isTopLevelInView: boolean; duplicateTitles: Set<string> }
+) {
+  if (isTopLevelInView && duplicateTitles.has(row.title)) {
+    return getDisplayTitleForDataSourceViewContentNode(row, {
+      prefixSiteName: true,
+    });
+  }
+
   if (
     row.parentInternalId !== null ||
     row.type !== "folder" ||
@@ -109,23 +132,31 @@ function getTitleForMicrosoftNode(row: RowData) {
   ) {
     return row.title;
   }
-  // remove the trailing url in parenthesis
-  //title = title.replace(/\s*\([^\)\()]*\)\s*$/, "");
 
-  // extract the title from the sourceUrl
   const url = new URL(row.sourceUrl);
   const decodedPathname = decodeURIComponent(url.pathname);
-  const title = decodedPathname.split("/").slice(2).join("/");
-  return title;
+  return decodedPathname.split("/").slice(2).join("/");
 }
-const getTableColumns = (showSpaceUsage: boolean): ColumnDef<RowData>[] => {
+
+const getTableColumns = ({
+  showSpaceUsage,
+  isTopLevelInView,
+  duplicateTitles,
+}: {
+  showSpaceUsage: boolean;
+  isTopLevelInView: boolean;
+  duplicateTitles: Set<string>;
+}): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
     header: "Name",
     id: "title",
     accessorFn: (row) => {
       if (isMicrosoftNode(row)) {
-        return getTitleForMicrosoftNode(row);
+        return getTitleForMicrosoftNode(row, {
+          isTopLevelInView,
+          duplicateTitles,
+        });
       }
       return row.title;
     },
@@ -330,11 +361,6 @@ export const SpaceDataSourceViewContentList = ({
 
   const { setIsSearchDisabled } = useContext(SpaceSearchContext);
 
-  const columns = useMemo(
-    () => getTableColumns(showSpaceUsage),
-    [showSpaceUsage]
-  );
-
   // Convert DataTable sorting format to our API format
   const apiSorting = sorting.map((sort) => ({
     field: sort.id,
@@ -358,6 +384,23 @@ export const SpaceDataSourceViewContentList = ({
       : DEFAULT_VIEW_TYPE,
     sorting: apiSorting,
   });
+
+  const isTopLevelInView = !parentId;
+  const duplicateTitles = useMemo(() => {
+    return isTopLevelInView
+      ? getDuplicateTitles(childrenNodes)
+      : new Set<string>();
+  }, [childrenNodes, isTopLevelInView]);
+
+  const columns = useMemo(
+    () =>
+      getTableColumns({
+        showSpaceUsage,
+        isTopLevelInView,
+        duplicateTitles,
+      }),
+    [showSpaceUsage, isTopLevelInView, duplicateTitles]
+  );
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);
 

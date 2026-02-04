@@ -20,6 +20,16 @@ interface DataSourceNodeTableProps {
   viewType: ContentNodesViewType;
 }
 
+function getDuplicateTitles(nodes: { title: string }[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const node of nodes) {
+    counts.set(node.title, (counts.get(node.title) ?? 0) + 1);
+  }
+  return new Set(
+    [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
+  );
+}
+
 export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const { owner } = useAgentBuilderContext();
   const { navigationHistory, addNodeEntry } = useDataSourceBuilderContext();
@@ -27,6 +37,12 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const traversedNode = getLatestNodeFromNavigationHistory(navigationHistory);
   const dataSourceView =
     findDataSourceViewFromNavigationHistory(navigationHistory);
+
+  const parentId =
+    traversedNode !== null && traversedNode.parentInternalIds !== null
+      ? traversedNode.internalId
+      : undefined;
+  const isTopLevelInView = !parentId;
 
   const {
     nodes: childNodes,
@@ -38,10 +54,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     owner,
     dataSourceView:
       traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
-    parentId:
-      traversedNode !== null && traversedNode.parentInternalIds !== null
-        ? traversedNode.internalId
-        : undefined,
+    parentId,
     viewType,
     pagination: { limit: PAGE_SIZE, cursor: null },
     sorting: [{ field: "title", direction: "asc" }],
@@ -53,12 +66,20 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     }
   }, [hasNextPage, isLoadingMore, loadMore]);
 
+  const duplicateTitles = useMemo(() => {
+    return isTopLevelInView
+      ? getDuplicateTitles(childNodes)
+      : new Set<string>();
+  }, [childNodes, isTopLevelInView]);
+
   const listItems: DataSourceListItem[] = useMemo(
     () =>
       childNodes.map((node) => {
         return {
           id: node.internalId,
-          title: getDisplayTitleForDataSourceViewContentNode(node),
+          title: getDisplayTitleForDataSourceViewContentNode(node, {
+            prefixSiteName: isTopLevelInView && duplicateTitles.has(node.title),
+          }),
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,
           entry: {
@@ -68,7 +89,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           },
         };
       }),
-    [childNodes, addNodeEntry]
+    [childNodes, addNodeEntry, duplicateTitles, isTopLevelInView]
   );
 
   if (isNodesLoading) {

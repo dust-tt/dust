@@ -31,6 +31,7 @@ import { getConnectorProviderLogoWithFallback } from "@app/lib/connector_provide
 import { getVisualForDataSourceViewContentNode } from "@app/lib/content_nodes";
 import { getDataSourceNameFromView } from "@app/lib/data_sources";
 import { useAppRouter } from "@app/lib/platform";
+import { getDisplayTitleForDataSourceViewContentNode } from "@app/lib/providers/content_nodes_display";
 import type { SpaceSectionGroupType } from "@app/lib/spaces";
 import {
   CATEGORY_DETAILS,
@@ -460,11 +461,13 @@ const SpaceDataSourceViewItem = ({
   owner,
   space,
   node,
+  siblingDuplicateTitles,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
   space: SpaceType;
   node?: DataSourceViewContentNode;
+  siblingDuplicateTitles?: Set<string>;
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
@@ -525,6 +528,25 @@ const SpaceDataSourceViewItem = ({
   const expandableNodes = nodes.filter((node) => node.expandable);
   const hiddenNodesCount = Math.max(0, totalNodesCount - nodes.length);
 
+  const duplicateTitlesForTopLevelChildren = useMemo(() => {
+    if (node) {
+      return undefined;
+    }
+    const counts = new Map<string, number>();
+    for (const child of expandableNodes) {
+      counts.set(child.title, (counts.get(child.title) ?? 0) + 1);
+    }
+    return new Set(
+      [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
+    );
+  }, [expandableNodes, node]);
+
+  const label = node
+    ? getDisplayTitleForDataSourceViewContentNode(node, {
+        prefixSiteName: siblingDuplicateTitles?.has(node.title) ?? false,
+      })
+    : getDataSourceNameFromView(item);
+
   return (
     <Tree.Item
       isNavigatable
@@ -540,7 +562,7 @@ const SpaceDataSourceViewItem = ({
         void router.push(dataSourceViewPath);
       }}
       collapsed={!isExpanded || isEmpty}
-      label={node ? node.title : getDataSourceNameFromView(item)}
+      label={label}
       visual={LogoComponent}
       areActionsFading={false}
     >
@@ -553,6 +575,7 @@ const SpaceDataSourceViewItem = ({
               owner={owner}
               space={space}
               node={node}
+              siblingDuplicateTitles={duplicateTitlesForTopLevelChildren}
             />
           ))}
           {hiddenNodesCount > 0 && (

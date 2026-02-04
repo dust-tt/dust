@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { getMicrosoftSharePointRootFolderDisplayTitle } from "@app/lib/providers/microsoft/content_nodes_display";
+import {
+  getMicrosoftSharePointDisplayTitle,
+  getMicrosoftSharePointRootFolderDisplayTitle,
+} from "@app/lib/providers/microsoft/content_nodes_display";
 import type { DataSourceViewContentNode } from "@app/types";
 
 function makeNode(
@@ -100,5 +103,19 @@ describe("getMicrosoftSharePointRootFolderDisplayTitle", () => {
     expect(getMicrosoftSharePointRootFolderDisplayTitle(node)).toBe(
       "01 Engagement"
     );
+  });
+});
+
+describe("getMicrosoftSharePointDisplayTitle", () => {
+  it("prefixes non-root nodes when requested", () => {
+    const node = makeNode({ parentInternalId: "parent" });
+    expect(
+      getMicrosoftSharePointDisplayTitle(node, { prefixSiteName: true })
+    ).toBe("Project Alpha → 01 Engagement");
+  });
+
+  it("does not prefix non-root nodes by default", () => {
+    const node = makeNode({ parentInternalId: "parent" });
+    expect(getMicrosoftSharePointDisplayTitle(node)).toBe("01 Engagement");
   });
 });

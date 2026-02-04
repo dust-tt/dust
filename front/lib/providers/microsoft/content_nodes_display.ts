@@ -20,17 +20,30 @@ function extractSharePointSiteNameFromSourceUrl(
   }
 }
 
-export function getMicrosoftSharePointRootFolderDisplayTitle(
-  node: DataSourceViewContentNode
+type MicrosoftSharePointDisplayTitleOptions = {
+  prefixSiteName?: boolean;
+};
+
+export function getMicrosoftSharePointDisplayTitle(
+  node: DataSourceViewContentNode,
+  { prefixSiteName }: MicrosoftSharePointDisplayTitleOptions = {}
 ): string {
-  if (
-    node.type !== "folder" ||
-    node.parentInternalId !== null ||
-    !node.sourceUrl
-  ) {
+  if (node.type !== "folder" || !node.sourceUrl) {
+    return node.title;
+  }
+
+  const shouldPrefix =
+    prefixSiteName === true || node.parentInternalId === null;
+  if (!shouldPrefix) {
     return node.title;
   }
 
   const siteName = extractSharePointSiteNameFromSourceUrl(node.sourceUrl);
   return siteName ? `${siteName} → ${node.title}` : node.title;
+}
+
+export function getMicrosoftSharePointRootFolderDisplayTitle(
+  node: DataSourceViewContentNode
+): string {
+  return getMicrosoftSharePointDisplayTitle(node);
 }
