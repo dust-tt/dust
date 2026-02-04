@@ -146,14 +146,16 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
 
   const handleAccept = useCallback(() => {
     if (activeId && suggestionsContext) {
-      suggestionsContext.acceptSuggestion(activeId);
+      // Intentionally ignoring the result as we want to not block the user if suggestions are outdated.
+      void suggestionsContext.acceptSuggestion(activeId);
       setActiveId(null);
     }
   }, [activeId, suggestionsContext]);
 
   const handleReject = useCallback(() => {
     if (activeId && suggestionsContext) {
-      suggestionsContext.rejectSuggestion(activeId);
+      // Intentionally ignoring the result as we want to not block the user if suggestions are outdated.
+      void suggestionsContext.rejectSuggestion(activeId);
       setActiveId(null);
     }
   }, [activeId, suggestionsContext]);
