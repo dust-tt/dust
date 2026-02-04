@@ -2,7 +2,6 @@ import { Spinner } from "@dust-tt/sparkle";
 import { useMemo } from "react";
 
 import type { DataSourceIntegration } from "@app/components/spaces/AddConnectionMenu";
-import { SpaceLayoutWrapper } from "@app/components/spaces/SpaceLayout";
 import { SpaceResourcesList } from "@app/components/spaces/SpaceResourcesList";
 import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import {
@@ -136,24 +135,22 @@ export function SpaceCategoryPage() {
   }
 
   return (
-    <SpaceLayoutWrapper useBackendSearch>
-      <SpaceResourcesList
-        owner={owner}
-        user={user}
-        plan={plan}
-        space={space}
-        systemSpace={systemSpace}
-        isAdmin={isAdmin}
-        canWriteInSpace={canWriteInSpace}
-        category={validCategory}
-        integrations={integrations}
-        activeSeats={seatsCount}
-        onSelect={(sId) => {
-          void router.push(
-            `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
-          );
-        }}
-      />
-    </SpaceLayoutWrapper>
+    <SpaceResourcesList
+      owner={owner}
+      user={user}
+      plan={plan}
+      space={space}
+      systemSpace={systemSpace}
+      isAdmin={isAdmin}
+      canWriteInSpace={canWriteInSpace}
+      category={validCategory}
+      integrations={integrations}
+      activeSeats={seatsCount}
+      onSelect={(sId) => {
+        void router.push(
+          `/w/${owner.sId}/spaces/${space.sId}/categories/${validCategory}/data_source_views/${sId}`
+        );
+      }}
+    />
   );
 }
