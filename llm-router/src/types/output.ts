@@ -1,14 +1,19 @@
 import type {
+  OpenAICompletionMetadata,
+  OpenAIReasoningDeltaMetadata,
+  OpenAIReasoningGeneratedMetadata,
   OpenAIResponseIdMetadata,
   OpenAITextDeltaMetadata,
   OpenAITextGeneratedMetadata,
 } from "@/providers/openai/provider";
 import type { Model } from "@/types/model";
-import type { Value } from "@/types/utils";
 
 type TextDeltaEventMetadata = OpenAITextDeltaMetadata;
 type TextGeneratedEventMetadata = OpenAITextGeneratedMetadata;
+type ReasoningDeltaEventMetadata = OpenAIReasoningDeltaMetadata;
+type ReasoningGeneratedEventMetadata = OpenAIReasoningGeneratedMetadata;
 type ResponseIdEventMetadata = OpenAIResponseIdMetadata;
+type CompletionEventMetadata = OpenAICompletionMetadata;
 
 export interface ResponseIdEvent {
   type: "interaction_id";
@@ -20,7 +25,7 @@ export interface WithMetadataResponseIdEvent extends ResponseIdEvent {
 
 export interface TextDeltaEvent {
   type: "text_delta";
-  content: Value<string>;
+  content: { value: string };
 }
 export interface WithMetadataTextDeltaEvent extends TextDeltaEvent {
   metadata: TextDeltaEventMetadata;
@@ -28,11 +33,34 @@ export interface WithMetadataTextDeltaEvent extends TextDeltaEvent {
 
 export interface TextGeneratedEvent {
   type: "text_generated";
-  content: Value<string>;
+  content: { value: string };
 }
 export interface WithMetadataTextGeneratedEvent extends TextGeneratedEvent {
   metadata: TextGeneratedEventMetadata;
 }
+
+export interface ReasoningDeltaEvent {
+  type: "reasoning_delta";
+  content: { value: string };
+}
+export interface WithMetadataReasoningDeltaEvent extends ReasoningDeltaEvent {
+  metadata: ReasoningDeltaEventMetadata;
+}
+
+export interface ReasoningGeneratedEvent {
+  type: "reasoning_generated";
+  content: { value: string };
+}
+export interface WithMetadataReasoningGeneratedEvent
+  extends ReasoningGeneratedEvent {
+  metadata: ReasoningGeneratedEventMetadata;
+}
+
+export type OutputEvent = ReasoningGeneratedEvent | TextGeneratedEvent;
+export type WithMetadataOutputEvent =
+  | WithMetadataResponseIdEvent
+  | WithMetadataReasoningGeneratedEvent
+  | WithMetadataTextGeneratedEvent;
 
 export interface TokenUsageEvent {
   type: "token_usage";
@@ -50,15 +78,17 @@ export interface WithMetadataTokenUsageEvent extends TokenUsageEvent {
 
 export interface CompletionEvent {
   type: "completion";
-  content: { textGenerated: TextGeneratedEvent; responseId: ResponseIdEvent };
+  content: {
+    value: WithMetadataOutputEvent[];
+  };
 }
 export interface WithMetadataCompletionEvent extends CompletionEvent {
-  metadata: Model;
+  metadata: CompletionEventMetadata;
 }
 
 export interface ErrorEvent {
   type: "error";
-  content: { message: Value<string>; originalError?: unknown; code: ErrorCode };
+  content: { message: string; originalError?: unknown; code: ErrorCode };
 }
 export interface WithMetadataErrorEvent extends ErrorEvent {
   metadata: Model;
@@ -73,6 +103,8 @@ export type StreamEvent =
   | ResponseIdEvent
   | TextDeltaEvent
   | TextGeneratedEvent
+  | ReasoningDeltaEvent
+  | ReasoningGeneratedEvent
   | TokenUsageEvent
   | FinishEvent;
 
@@ -80,6 +112,8 @@ export type WithMetadataStreamEvent =
   | WithMetadataResponseIdEvent
   | WithMetadataTextDeltaEvent
   | WithMetadataTextGeneratedEvent
+  | WithMetadataReasoningDeltaEvent
+  | WithMetadataReasoningGeneratedEvent
   | WithMetadataTokenUsageEvent
   | WithMetadataCompletionEvent
   | WithMetadataErrorEvent;

@@ -1,13 +1,13 @@
 import { OpenAI } from "openai";
 import { Client } from "@/client";
 
-import type { Payload } from "@/types/payload";
+import type { Payload } from "@/types/history";
 import type {
   Gpt5220251211Config,
   GPT_5_2_2025_12_11_MODEL_ID,
 } from "@/providers/openai/models/gpt-5.2-2025-12-11";
 import type { WithMetadataStreamEvent } from "@/types/output";
-import { toEvents } from "@/providers/openai/toStream";
+import { convertOpenAIStreamToRouterEvents } from "@/providers/openai/toStream";
 
 const toInput = (payload: Payload) => {
   return [
@@ -22,11 +22,33 @@ const toInput = (payload: Payload) => {
   ];
 };
 
+const reasoningEffortMapping = {
+  none: "none",
+  very_low: "minimal",
+  low: "low",
+  medium: "medium",
+  high: "high",
+  very_high: "xhigh",
+};
+const reasoningDetailsLevelMapping = {
+  low: "concise",
+  high: "detailed",
+};
+
 const toConfig = (config: Gpt5220251211Config) => {
-  return {
-    temperature: config.temperature?.value ?? null,
-    max_output_tokens: config.maxOutputTokens?.value ?? null,
+  const baseConfig: Record<string, unknown> = {
+    max_output_tokens: config.maxOutputTokens ?? null,
+    reasoning: {
+      effort: reasoningEffortMapping[config.reasoningEffort ?? "none"],
+      summary:
+        reasoningDetailsLevelMapping[config.reasoningDetailsLevel ?? "high"],
+    },
+    temperature: config.temperature ?? 1,
+    top_p: config.topProbability ?? 0.98,
+    top_logprobs: config.topLogprobs ?? 0,
   };
+
+  return baseConfig;
 };
 
 export interface OpenAIClientConfig {
@@ -59,8 +81,6 @@ export class OpenAIResponsesClient extends Client {
       ...toConfig(config),
     });
 
-    for await (const event of stream) {
-      yield* toEvents(event, modelId);
-    }
+    yield* convertOpenAIStreamToRouterEvents(stream, modelId);
   }
 }
