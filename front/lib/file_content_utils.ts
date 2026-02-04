@@ -20,10 +20,6 @@ const CSV_CONTENT_TYPES = [
   "text/tab-separated-values",
 ] as const;
 
-/**
- * Checks if a content type is compatible with Microsoft Office Online viewer.
- * Exported for use by API endpoint.
- */
 export function isOfficeViewerCompatible(contentType: string): boolean {
   return OFFICE_VIEWER_CONTENT_TYPES.includes(
     contentType as (typeof OFFICE_VIEWER_CONTENT_TYPES)[number]
@@ -49,9 +45,6 @@ export type ProcessedContent = {
   format: "markdown" | "text" | "audio";
 };
 
-/**
- * Categories for file preview rendering
- */
 export type FilePreviewCategory =
   | "pdf"
   | "office"
@@ -60,22 +53,12 @@ export type FilePreviewCategory =
   | "csv"
   | "text";
 
-/**
- * Configuration for how to preview a file based on its content type
- */
 export interface FilePreviewConfig {
-  /** The category determines which renderer to use */
   category: FilePreviewCategory;
-  /** Needs text extraction via processed endpoint (PDF, Office, Audio) */
   needsProcessedVersion: boolean;
-  /** Has "Open in browser" option */
   supportsExternalViewer: boolean;
 }
 
-/**
- * Returns preview configuration for a given content type.
- * This is the single source of truth for file preview behavior.
- */
 export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   if (isPdfContentType(contentType)) {
     return {
@@ -124,9 +107,6 @@ export function getFilePreviewConfig(contentType: string): FilePreviewConfig {
   };
 }
 
-/**
- * Converts CSV/TSV content to markdown table format.
- */
 function csvToMarkdownTable(content: string, isTsv: boolean): string {
   const delimiter = isTsv ? "\t" : ",";
   const lines = content.split("\n").filter((line) => line.trim());
@@ -150,9 +130,6 @@ function csvToMarkdownTable(content: string, isTsv: boolean): string {
   return markdownRows.join("\n");
 }
 
-/**
- * Converts content with TABLE: markers to markdown tables.
- */
 function tableMarkersToMarkdown(content: string): string {
   const sections = content.split(/(?=TABLE:)/);
   const markdownSections: string[] = [];
@@ -186,9 +163,6 @@ function tableMarkersToMarkdown(content: string): string {
   return markdownSections.join("\n\n");
 }
 
-/**
- * Processes file content and determines the best display format.
- */
 export function processFileContent(
   content: string,
   contentType: string

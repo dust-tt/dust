@@ -35,12 +35,7 @@ import type { WorkspaceType } from "@app/types";
 
 type ViewMode = "preview" | "ingested";
 
-interface TextContentProps {
-  text: string;
-  viewMode: ViewMode;
-}
-
-function TextContent({ text, viewMode }: TextContentProps) {
+function TextContent({ text, viewMode }: { text: string; viewMode: ViewMode }) {
   if (viewMode === "ingested") {
     return (
       <pre className="whitespace-pre-wrap break-words text-sm">{text}</pre>
@@ -49,17 +44,15 @@ function TextContent({ text, viewMode }: TextContentProps) {
   return <Markdown content={text} isStreaming={false} />;
 }
 
-interface FileContentRendererProps {
-  content: ProcessedContent;
-  viewMode: ViewMode;
-  audioUrl?: string;
-}
-
 function FileContentRenderer({
   content,
   viewMode,
   audioUrl,
-}: FileContentRendererProps) {
+}: {
+  content: ProcessedContent;
+  viewMode: ViewMode;
+  audioUrl?: string;
+}) {
   if (content.format === "audio") {
     return (
       <div className="flex flex-col gap-4">
@@ -88,19 +81,6 @@ function FileContentRenderer({
   return <TextContent text={content.text} viewMode={viewMode} />;
 }
 
-interface FilePreviewContentProps {
-  file: ProjectFileType | null;
-  owner: WorkspaceType;
-  previewConfig: FilePreviewConfig;
-  viewMode: ViewMode;
-  isLoading: boolean;
-  hasError: boolean;
-  rawFileContent: string | null;
-  processedContent: ProcessedContent | null;
-  officeViewerUrl: string | null;
-  officeViewerError: boolean;
-}
-
 function FilePreviewContent({
   file,
   owner,
@@ -112,7 +92,18 @@ function FilePreviewContent({
   processedContent,
   officeViewerUrl,
   officeViewerError,
-}: FilePreviewContentProps) {
+}: {
+  file: ProjectFileType | null;
+  owner: WorkspaceType;
+  previewConfig: FilePreviewConfig;
+  viewMode: ViewMode;
+  isLoading: boolean;
+  hasError: boolean;
+  rawFileContent: string | null;
+  processedContent: ProcessedContent | null;
+  officeViewerUrl: string | null;
+  officeViewerError: boolean;
+}) {
   if (isLoading) {
     return <Spinner />;
   }
@@ -228,13 +219,27 @@ export function FilePreviewSheet({
     });
 
   const textPromiseData = useMemo(() => {
-    if (isProcessedLoading || !file || !previewConfig.needsProcessedVersion) {
+    if (
+      isProcessedLoading ||
+      !file ||
+      !previewConfig.needsProcessedVersion ||
+      isCached
+    ) {
       return undefined;
     }
-    const promise = processedResponse()?.text();
-    return promise ? { promise, fileId: file.sId } : undefined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only recompute when loading state changes or file changes
-  }, [isProcessedLoading, file?.sId, previewConfig.needsProcessedVersion]);
+    const response = processedResponse();
+    if (!response) {
+      return undefined;
+    }
+    const promise = response.text();
+    return { promise, fileId: file.sId };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isProcessedLoading,
+    file?.sId,
+    previewConfig.needsProcessedVersion,
+    isCached,
+  ]);
 
   useEffect(() => {
     const extractText = async () => {
