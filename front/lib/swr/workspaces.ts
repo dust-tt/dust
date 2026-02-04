@@ -14,6 +14,8 @@ import type { GetWorkspaceResponseBody } from "@app/pages/api/w/[wId]";
 import type { GetWorkspaceAnalyticsOverviewResponse } from "@app/pages/api/w/[wId]/analytics/overview";
 import type { GetWorkspaceContextOriginResponse } from "@app/pages/api/w/[wId]/analytics/source";
 import type { GetWorkspaceTopAgentsResponse } from "@app/pages/api/w/[wId]/analytics/top-agents";
+import type { GetWorkspaceToolUsageResponse } from "@app/pages/api/w/[wId]/analytics/tool-usage";
+import type { GetWorkspaceToolsResponse } from "@app/pages/api/w/[wId]/analytics/tools";
 import type { GetWorkspaceTopUsersResponse } from "@app/pages/api/w/[wId]/analytics/top-users";
 import type { GetWorkspaceUsageMetricsResponse } from "@app/pages/api/w/[wId]/analytics/usage-metrics";
 import type { GetWorkspaceAuthContextResponseType } from "@app/pages/api/w/[wId]/auth-context";
@@ -163,6 +165,62 @@ export function useWorkspaceContextOrigin({
     isContextOriginLoading: !error && !data && !disabled,
     isContextOriginError: error,
     isContextOriginValidating: isValidating,
+  };
+}
+
+export function useWorkspaceTools({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceToolsResponse> = fetcher;
+  const key = `/api/w/${workspaceId}/analytics/tools?days=${days}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    tools: data?.tools ?? emptyArray(),
+    isToolsLoading: !error && !data && !disabled,
+    isToolsError: error,
+    isToolsValidating: isValidating,
+  };
+}
+
+export function useWorkspaceToolUsage({
+  workspaceId,
+  days = DEFAULT_PERIOD_DAYS,
+  serverName,
+  disabled,
+}: {
+  workspaceId: string;
+  days?: number;
+  serverName?: string;
+  disabled?: boolean;
+}) {
+  const fetcherFn: Fetcher<GetWorkspaceToolUsageResponse> = fetcher;
+  const params = new URLSearchParams({ days: String(days) });
+  if (serverName) {
+    params.set("serverName", serverName);
+  }
+  const key = `/api/w/${workspaceId}/analytics/tool-usage?${params.toString()}`;
+
+  const { data, error, isValidating } = useSWRWithDefaults(
+    disabled ? null : key,
+    fetcherFn
+  );
+
+  return {
+    toolUsage: data?.points ?? emptyArray(),
+    isToolUsageLoading: !error && !data && !disabled,
+    isToolUsageError: error,
+    isToolUsageValidating: isValidating,
   };
 }
 
