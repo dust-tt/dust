@@ -48,7 +48,7 @@ export default function GleanLandingPage() {
         <H4 className="mb-6 w-full text-center text-muted-foreground">
           TRUSTED BY TEAMS WHO SWITCHED FROM GLEAN
         </H4>
-        <TrustedBy hideTitle />
+        <TrustedBy showTitle={false} />
       </div>
 
       {/* Testimonials */}

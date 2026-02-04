@@ -44,7 +44,11 @@ const STATUS_CONFIG: Record<FeatureStatus, { bg: string; content: ReactNode }> =
     },
   };
 
-function StatusIcon({ status }: { status: FeatureStatus }) {
+interface StatusIconProps {
+  status: FeatureStatus;
+}
+
+function StatusIcon({ status }: StatusIconProps) {
   const config = STATUS_CONFIG[status];
   return (
     <div

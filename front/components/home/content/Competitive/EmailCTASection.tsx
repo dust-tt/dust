@@ -142,7 +142,7 @@ export function EmailCTASection({
                   >
                     {isLoading && <Spinner size="xs" />}
                     {buttonText}
-                    <ArrowRightIcon className="h-4 w-4" />
+                    <Icon visual={ArrowRightIcon} size="sm" />
                   </button>
                 </div>
                 {error && <p className="mt-2 text-sm text-red-200">{error}</p>}
