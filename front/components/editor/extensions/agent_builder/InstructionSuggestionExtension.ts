@@ -6,65 +6,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ReactMarkViewRenderer } from "@tiptap/react";
 
-import SuggestionMarkView from "@app/components/editor/extensions/agent_builder/NodeView";
-
-// Mark for additions (styling applied via decorations based on selection state).
-export const SuggestionAdditionMark = Mark.create({
-  name: "suggestionAddition",
-
-  addAttributes() {
-    return {
-      suggestionId: {
-        default: null,
-      },
-    };
-  },
-
-  parseHTML() {
-    return [{ tag: "span.suggestion-addition" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      {
-        ...HTMLAttributes,
-        class: "suggestion-addition rounded px-0.5",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-      },
-      0,
-    ];
-  },
-});
-
-// Mark for deletions (styling applied via decorations based on selection state).
-export const SuggestionDeletionMark = Mark.create({
-  name: "suggestionDeletion",
-
-  addAttributes() {
-    return {
-      suggestionId: {
-        default: null,
-      },
-    };
-  },
-
-  parseHTML() {
-    return [{ tag: "span.suggestion-deletion" }];
-  },
-
-  renderHTML({ HTMLAttributes }) {
-    return [
-      "span",
-      {
-        ...HTMLAttributes,
-        class: "suggestion-deletion rounded px-0.5 line-through",
-        "data-suggestion-id": HTMLAttributes.suggestionId,
-      },
-      0,
-    ];
-  },
-});
+import SuggestionMarkView from "@app/components/editor/extensions/agent_builder/SuggestionMarkView";
 
 export const SuggestionMark = Mark.create({
   name: 'suggestion',
@@ -117,120 +59,55 @@ export const SuggestionMark = Mark.create({
     ];
   },
 
-  // ✅ Add the NodeView
   addMarkView() {
     return ReactMarkViewRenderer(SuggestionMarkView);
   },
-});
 
-// // Apply only to existing text, store both strings in mark
-// function applySuggestion(editor, oldString, newString) {
-//   const position = findPositionInMarkdown(editor, oldString);
+  // TODO: Add back darker highlighting for selected suggestion.
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('suggestionHighlight'),
+        props: {
+          decorations(state) {
+            const { from } = state.selection;
+            const $pos = state.doc.resolve(from);
+            const marks = $pos.marks();
 
-//   editor.commands.command(({ state, dispatch, tr }) => {
-//     const mark = state.schema.marks.suggestion.create({
-//       suggestionId: generateId(),
-//       oldString,
-//       newString,
-//     });
+            console.log(">>> Current marks at cursor:", marks);
 
-//     tr.addMark(position.from, position.to, mark);
-//     if (dispatch) {dispatch(tr);}
-//     return true;
-//   });
-// }
+            // Find the selected suggestion mark
+            const selectedMark = marks.find(m => m.type.name === 'suggestion');
+            console.log(">>> Selected suggestion mark:", selectedMark);
+            if (!selectedMark) {
+              return null;
+            }
 
-interface SuggestionNode {
-  from: number;
-  to: number;
-  isAdd: boolean;
-  suggestionId: string | null;
-}
+            const selectedId = selectedMark.attrs.suggestionId;
+            const decorations: Decoration[] = [];
 
-// Collect all suggestion-marked nodes in the document.
-function collectSuggestionNodes(state: EditorState): SuggestionNode[] {
-  const nodes: SuggestionNode[] = [];
+            // Find all text nodes with this suggestion and add decoration
+            state.doc.descendants((node, pos) => {
+              if (node.isText) {
+                node.marks.forEach(mark => {
+                  console.log(">> Checking mark:", mark);
+                  if (mark.type.name === 'suggestion' &&
+                      mark.attrs.suggestionId === selectedId) {
+                    decorations.push(
+                      Decoration.inline(pos, pos + node.nodeSize, {
+                        class: 'suggestion-selected',
+                      })
+                    );
+                  }
+                });
+              }
+            });
 
-  state.doc.descendants((node, pos) => {
-    if (!node.isText) {
-      return;
-    }
-    const addMark = node.marks.find(
-      (m) => m.type.name === "suggestionAddition"
-    );
-    const deletionMark = node.marks.find(
-      (m) => m.type.name === "suggestionDeletion"
-    );
-    const mark = addMark ?? deletionMark;
-    if (mark) {
-      nodes.push({
-        from: pos,
-        to: pos + node.nodeSize,
-        isAdd: !!addMark,
-        suggestionId: (mark.attrs.suggestionId as string) || null,
-      });
-    }
-  });
-
-  return nodes;
-}
-
-// Find the suggestionId of the suggestion block containing the cursor.
-function getSelectedSuggestionId(
-  nodes: SuggestionNode[],
-  cursorPos: number
-): string | null {
-  const cursorNode = nodes.find(
-    (n) => cursorPos >= n.from && cursorPos <= n.to
-  );
-  return cursorNode?.suggestionId ?? null;
-}
-
-// CSS classes for suggestion states: [isAdd][isSelected].
-const SUGGESTION_CLASSES = {
-  addSelected:
-    "rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200",
-  addUnselected:
-    "rounded bg-blue-50 dark:bg-blue-900/20 text-gray-500 dark:text-gray-400",
-  deleteSelected:
-    "rounded bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 line-through",
-  deleteUnselected:
-    "rounded bg-red-50 dark:bg-red-900/20 text-gray-500 dark:text-gray-400 line-through",
-};
-
-function getSuggestionClass(isAdd: boolean, isSelected: boolean): string {
-  if (isAdd) {
-    return isSelected
-      ? SUGGESTION_CLASSES.addSelected
-      : SUGGESTION_CLASSES.addUnselected;
-  }
-  return isSelected
-    ? SUGGESTION_CLASSES.deleteSelected
-    : SUGGESTION_CLASSES.deleteUnselected;
-}
-
-// ProseMirror plugin that applies decorations based on cursor position.
-const suggestionHighlightPlugin = new Plugin({
-  key: new PluginKey("suggestionHighlight"),
-  props: {
-    decorations(state) {
-      const nodes = collectSuggestionNodes(state);
-      if (nodes.length === 0) {
-        return null;
-      }
-
-      const selectedId = getSelectedSuggestionId(nodes, state.selection.from);
-      const decorations = nodes.map((node) =>
-        Decoration.inline(node.from, node.to, {
-          class: getSuggestionClass(
-            node.isAdd,
-            selectedId !== null && node.suggestionId === selectedId
-          ),
-        })
-      );
-
-      return DecorationSet.create(state.doc, decorations);
-    },
+            return DecorationSet.create(state.doc, decorations);
+          },
+        },
+      }),
+    ];
   },
 });
 
@@ -326,8 +203,8 @@ interface MarkerPosition {
 }
 
 // Unicode Private Use Area base for markers.
-const MARKER_BASE = '\uE000';
-
+const START_MARKER = '\uE000';
+const END_MARKER = '\uE001';
 
 /**
  * Finds positions in ProseMirror document using marker-based approach.
@@ -345,32 +222,33 @@ const MARKER_BASE = '\uE000';
 function findPositionWithMarkers(
   editor: Editor,
   searchString: string,
-  suggestionId: string
 ): MarkerPosition | null {
   const markdown = editor.getMarkdown();
   const markdownIndex = markdown.indexOf(searchString);
-
   if (markdownIndex === -1) {
     return null;
   }
 
-  const startMarker = '\uE000';
-  const endMarker = '\uE001';
+  const markdownManager = editor.markdown;
+  if (!markdownManager) {
+    throw new Error(
+      "Markdown extension is required for InstructionSuggestionExtension"
+    );
+  }
 
-  // Insert markers in markdown
+  // Insert markers in markdown.
   const markedMarkdown =
     markdown.slice(0, markdownIndex) +
-    startMarker +
+    START_MARKER +
     markdown.slice(markdownIndex, markdownIndex + searchString.length) +
-    endMarker +
+    END_MARKER +
     markdown.slice(markdownIndex + searchString.length);
 
-  // Parse to ProseMirror
-  const parsedJSON = editor.markdown.parse(markedMarkdown);
+  // Parse to ProseMirror.
+  const parsedJSON = markdownManager.parse(markedMarkdown);
   const parsedDoc = Node.fromJSON(editor.state.schema, parsedJSON);
 
-  // ✅ Create offset-aligned string using the technique from the forum
-  const injectStr = (sourceStr, index, newStr) => {
+  const injectStr = (sourceStr: string, index: number, newStr: string) => {
     return (
       sourceStr.slice(0, index) +
       newStr +
@@ -386,9 +264,9 @@ function findPositionWithMarkers(
     }
   });
 
-  // Find markers in offset-aligned text
-  const startIdx = offsetText.indexOf(startMarker);
-  const endIdx = offsetText.indexOf(endMarker);
+  // Find markers in offset-aligned text.
+  const startIdx = offsetText.indexOf(START_MARKER);
+  const endIdx = offsetText.indexOf(END_MARKER);
 
   if (startIdx === -1 || endIdx === -1) {
     return null;
@@ -401,36 +279,6 @@ function findPositionWithMarkers(
   };
 }
 
-/**
- * Maps a text offset to a ProseMirror document position.
- * Text offset is the character position in doc.textContent.
- */
-function textOffsetToDocPosition(doc: Node, textOffset: number): number {
-  let currentTextOffset = 0;
-  let result = -1;
-
-  doc.descendants((node, pos) => {
-    if (result !== -1) {
-      return false;
-    }
-
-    if (node.isText && node.text) {
-      const nodeStart = currentTextOffset;
-      const nodeEnd = currentTextOffset + node.text.length;
-
-      if (textOffset >= nodeStart && textOffset <= nodeEnd) {
-        result = pos + (textOffset - nodeStart);
-        return false;
-      }
-
-      currentTextOffset = nodeEnd;
-    }
-    return true;
-  });
-
-  return result;
-}
-
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
 
@@ -441,11 +289,7 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addExtensions() {
-    return [SuggestionAdditionMark, SuggestionDeletionMark, SuggestionMark];
-  },
-
-  addProseMirrorPlugins() {
-    return [suggestionHighlightPlugin];
+    return [SuggestionMark];
   },
 
   addCommands() {
@@ -478,7 +322,6 @@ export const InstructionSuggestionExtension = Extension.create({
             const markerPosition = findPositionWithMarkers(
               editor,
               find,
-              id
             );
 
             if (!markerPosition) {
