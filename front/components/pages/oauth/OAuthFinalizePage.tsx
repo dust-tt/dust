@@ -1,17 +1,23 @@
+import { Spinner } from "@dust-tt/sparkle";
 import { useEffect, useMemo } from "react";
 
-import { useAppRouter, useRequiredPathParam } from "@app/lib/platform";
+import { useAppRouter, usePathParam } from "@app/lib/platform";
 import { useFinalize } from "@app/lib/swr/oauth";
+import { useAuthContext } from "@app/lib/swr/workspaces";
 import logger from "@app/logger/logger";
 import { isOAuthProvider } from "@app/types";
 
 export function OAuthFinalizePage() {
   const router = useAppRouter();
-  const providerParam = useRequiredPathParam("provider");
+  const providerParam = usePathParam("provider");
   const doFinalize = useFinalize();
 
-  // Validate provider
-  const provider = isOAuthProvider(providerParam) ? providerParam : null;
+  // Ensure user is authenticated (redirects to login if not)
+  const { isAuthenticated } = useAuthContext();
+
+  // Validate provider (null if router not ready or invalid provider)
+  const provider =
+    providerParam && isOAuthProvider(providerParam) ? providerParam : null;
 
   // Extract query params (excluding 'provider' which is a path param)
   // Memoize to avoid re-creating the object on every render
@@ -28,8 +34,8 @@ export function OAuthFinalizePage() {
   }, [router.isReady, router.query]);
 
   useEffect(() => {
-    // Wait for router to be ready and provider to be valid
-    if (!router.isReady || !provider) {
+    // Wait for router to be ready, auth to be confirmed, and provider to be valid
+    if (!router.isReady || !isAuthenticated || !provider) {
       return;
     }
 
@@ -90,8 +96,18 @@ export function OAuthFinalizePage() {
       }, 1000);
     }
     void finalizeOAuth();
-  }, [router.isReady, provider, queryParams, doFinalize]);
+  }, [router.isReady, isAuthenticated, provider, queryParams, doFinalize]);
 
+  // Show spinner while authenticating or waiting for router
+  if (!isAuthenticated || !providerParam) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Spinner size="xl" />
+      </div>
+    );
+  }
+
+  // Router is ready but provider is invalid
   if (!provider) {
     return (
       <div className="flex h-64 items-center justify-center">
