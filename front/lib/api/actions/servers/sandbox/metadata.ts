@@ -34,8 +34,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Executing command",
-      done: "Execute command",
+      running: "Executing command in sandbox",
+      done: "Execute command in sandbox",
     },
   },
   write_file: {
@@ -53,8 +53,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Writing file",
-      done: "Write file",
+      running: "Writing file to sandbox",
+      done: "Write file to sandbox",
     },
   },
   read_file: {
@@ -71,8 +71,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading file",
-      done: "Read file",
+      running: "Reading file from sandbox",
+      done: "Read file from sandbox",
     },
   },
   list_files: {
@@ -91,8 +91,8 @@ export const SANDBOX_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing files",
-      done: "List files",
+      running: "Listing files in sandbox",
+      done: "List files in sandbox",
     },
   },
 });
