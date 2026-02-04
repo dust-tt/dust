@@ -6,6 +6,10 @@ import { runMultiActionsAgent } from "@app/lib/api/assistant/call_llm";
 import { getConversation } from "@app/lib/api/assistant/conversation/fetch";
 import { renderConversationForModel } from "@app/lib/api/assistant/conversation_rendering";
 import { Authenticator } from "@app/lib/auth";
+import {
+  getAgentsDataRetention,
+  getConversationsDataRetention,
+} from "@app/lib/data_retention";
 import { DustError } from "@app/lib/error";
 import type { NotificationAllowedTags } from "@app/lib/notifications";
 import { ConversationResource } from "@app/lib/resources/conversation_resource";
@@ -27,6 +31,8 @@ const ConversationDetailsSchema = z.object({
   subject: z.string(),
   userThatAddedYouFullname: z.string(),
   workspaceName: z.string(),
+  hasConversationRetentionPolicy: z.boolean(),
+  hasAgentRetentionPolicies: z.boolean(),
 });
 
 type ConversationDetailsType = z.infer<typeof ConversationDetailsSchema>;
@@ -41,6 +47,8 @@ const getConversationDetails = async ({
   let subject: string = "A dust conversation";
   let userThatAddedYouFullname: string = "Someone else";
   let workspaceName: string = "A workspace";
+  let hasConversationRetentionPolicy = false;
+  let hasAgentRetentionPolicies = false;
 
   if (subscriberId) {
     const auth = await Authenticator.fromUserIdAndWorkspaceId(
@@ -48,12 +56,10 @@ const getConversationDetails = async ({
       payload.workspaceId
     );
 
-    const conversation = await ConversationResource.fetchById(
-      auth,
-      payload.conversationId
-    );
+    const conversationRes = await getConversation(auth, payload.conversationId);
 
-    if (conversation) {
+    if (conversationRes.isOk()) {
+      const conversation = conversationRes.value;
       workspaceName = auth.getNonNullableWorkspace().name;
       subject = conversation.title ?? "Dust conversation";
 
@@ -64,12 +70,26 @@ const getConversationDetails = async ({
       if (userThatAddedYou) {
         userThatAddedYouFullname = userThatAddedYou.fullName();
       }
+
+      const conversationsRetention = await getConversationsDataRetention(auth);
+      hasConversationRetentionPolicy = conversationsRetention !== null;
+
+      const agentsRetention = await getAgentsDataRetention(auth);
+      hasAgentRetentionPolicies = conversation.content.flat().some((msg) => {
+        if (msg.type !== "agent_message") {
+          return false;
+        }
+
+        return msg.configuration.sId in agentsRetention;
+      });
     }
   }
   return {
     subject,
     userThatAddedYouFullname,
     workspaceName,
+    hasConversationRetentionPolicy,
+    hasAgentRetentionPolicies,
   };
 };
 
@@ -279,6 +299,39 @@ const generateEmailBody = async (
   payload: ConversationAddedAsParticipantPayloadType,
   details: ConversationDetailsType
 ): Promise<string> => {
+  if (details.hasConversationRetentionPolicy) {
+    return renderEmail({
+      name: subscriber.firstName ?? "You",
+      workspace: {
+        id: payload.workspaceId,
+        name: details.workspaceName,
+      },
+      userThatAddedYouFullname: details.userThatAddedYouFullname,
+      conversation: {
+        id: payload.conversationId,
+        title: details.subject,
+        summary:
+          "Summary not generated due to data retention policy on conversations in this workspace.",
+      },
+    });
+  }
+
+  if (details.hasAgentRetentionPolicies) {
+    return renderEmail({
+      name: subscriber.firstName ?? "You",
+      workspace: {
+        id: payload.workspaceId,
+        name: details.workspaceName,
+      },
+      userThatAddedYouFullname: details.userThatAddedYouFullname,
+      conversation: {
+        id: payload.conversationId,
+        title: details.subject,
+        summary:
+          "Summary not generated due to data retention policy on agents in this conversation.",
+      },
+    });
+  }
   const summaryResult = await generateConversationSummary(
     subscriber.subscriberId,
     payload
