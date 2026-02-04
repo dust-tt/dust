@@ -126,6 +126,11 @@ export const AgentSuggestionSchema = BaseAgentSuggestionSchema.and(
 
 export type AgentSuggestionType = z.infer<typeof AgentSuggestionSchema>;
 
+export type AgentInstructionsSuggestionType = Extract<
+  AgentSuggestionType,
+  { kind: "instructions" }
+>;
+
 export interface ToolSuggestionRelations {
   additions: MCPServerViewType[];
   deletions: MCPServerViewType[];
@@ -150,6 +155,6 @@ export type AgentSuggestionWithRelationsType =
   | (Extract<AgentSuggestionType, { kind: "model" }> & {
       relations: ModelSuggestionRelations;
     })
-  | (Extract<AgentSuggestionType, { kind: "instructions" }> & {
+  | (AgentInstructionsSuggestionType & {
       relations: null;
     });
