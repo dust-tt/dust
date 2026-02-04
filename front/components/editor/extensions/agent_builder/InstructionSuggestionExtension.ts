@@ -63,7 +63,6 @@ export const SuggestionMark = Mark.create({
     return ReactMarkViewRenderer(SuggestionMarkView);
   },
 
-  // TODO: Add darker highlighting for selected suggestion.
   addProseMirrorPlugins() {
     return [
       new Plugin({
@@ -194,13 +193,26 @@ interface MarkerPosition {
 }
 
 /**
- * Finds positions in ProseMirror document using marker-based approach.
+ * Finds ProseMirror document positions for a markdown string using the marker technique.
  *
- * 1. Get current markdown from editor
- * 2. Insert unique markers around the target string in markdown
- * 3. Parse the marked markdown back to a ProseMirror Node
- * 4. Find marker positions in the parsed Node's text content
- * 5. The text offsets directly give us ProseMirror-compatible positions
+ * ## The Challenge
+ * We need to find where a markdown string (like "**bold text**") appears in the ProseMirror
+ * document. Direct text search doesn't work because markdown syntax (**, __, ##, etc.) gets
+ * stripped during parsing. For example:
+ * - Markdown: "**bold**" (8 chars)
+ * - ProseMirror: "bold" (4 chars, with a mark)
+ *
+ * ## The Solution (Marker Technique)
+ * 1. Insert invisible Unicode markers around the target string in the markdown
+ * 2. Parse the marked markdown to ProseMirror
+ * 3. The markers survive parsing and appear in the document at the correct positions
+ * 4. Find the markers to get the ProseMirror positions
+ *
+ * ## Key Insight: Offset-Aligned String
+ * ProseMirror positions are NOT simple character offsets. They account for node boundaries.
+ * We create an "offset-aligned string" where character index = ProseMirror position.
+ * This technique comes from the ProseMirror community:
+ * https://discuss.prosemirror.net/t/thoughts-on-offsets-and-positions/706
  */
 function findPositionWithMarkers(
   editor: Editor,
@@ -219,7 +231,8 @@ function findPositionWithMarkers(
     );
   }
 
-  // Insert markers in markdown.
+  // Step 1: Insert invisible Unicode markers around the target string in markdown.
+  // These markers are Unicode Private Use Area characters that won't interfere with parsing.
   const markedMarkdown =
     markdown.slice(0, markdownIndex) +
     START_MARKER +
@@ -227,9 +240,14 @@ function findPositionWithMarkers(
     END_MARKER +
     markdown.slice(markdownIndex + searchString.length);
 
-  // Parse to ProseMirror.
+  // Step 2: Parse the marked markdown to a ProseMirror document
+  // The markers will survive the markdown→ProseMirror transformation
   const parsedJSON = markdownManager.parse(markedMarkdown);
   const parsedDoc = Node.fromJSON(editor.state.schema, parsedJSON);
+
+  // Step 3: Create an "offset-aligned string"
+  // This is a string where character index directly corresponds to ProseMirror position.
+  // We do this by creating a string with spaces, then injecting text at their doc positions.
 
   const injectStr = (sourceStr: string, index: number, newStr: string) => {
     return (
@@ -247,7 +265,8 @@ function findPositionWithMarkers(
     }
   });
 
-  // Find markers in offset-aligned text.
+  // Step 4: Find where the markers ended up in the offset-aligned text
+  // Because offsetText index = doc position, these indices ARE the ProseMirror positions!
   const startIdx = offsetText.indexOf(START_MARKER);
   const endIdx = offsetText.indexOf(END_MARKER);
 
