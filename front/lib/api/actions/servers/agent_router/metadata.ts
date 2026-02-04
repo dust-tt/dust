@@ -19,6 +19,7 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       "(e.g., `:mention[agent-name]{sId=xyz}`) to display a clickable link to the agent.",
     schema: {},
     stake: "never_ask",
+    enableAlerting: true,
     displayLabels: {
       running: "Listing agents",
       done: "List agents",
@@ -36,6 +37,7 @@ export const AGENT_ROUTER_TOOLS_METADATA = createToolsRecord({
       conversationId: z.string().describe("The conversation id."),
     },
     stake: "never_ask",
+    enableAlerting: true,
     displayLabels: {
       running: "Suggesting agents",
       done: "Suggest agents",

@@ -23,6 +23,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    enableAlerting: true,
     displayLabels: {
       running: "Searching the web",
       done: "Web search",
@@ -49,6 +50,7 @@ export const WEB_SEARCH_BROWSE_TOOLS_METADATA = createToolsRecord({
         .describe("If true, also retrieve outgoing links from the page."),
     },
     stake: "never_ask",
+    enableAlerting: true,
     displayLabels: {
       running: "Browsing web page",
       done: "Browse web page",

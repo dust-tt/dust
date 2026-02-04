@@ -5,7 +5,9 @@ import type {
   AgentMessageType,
   ContentFragmentType,
   ConversationWithoutContentType,
+  LightAgentMessageType,
   UserMessageType,
+  UserMessageTypeWithContentFragments,
 } from "@app/types";
 
 import type { VirtuosoMessage } from "./types";
@@ -140,7 +142,12 @@ export function findFirstUnreadMessageIndex(
 }
 
 export function isMessageUnread(
-  message: UserMessageType | AgentMessageType | ContentFragmentType,
+  message:
+    | UserMessageType
+    | AgentMessageType
+    | ContentFragmentType
+    | LightAgentMessageType
+    | UserMessageTypeWithContentFragments,
   lastReadMs: number | null
 ): boolean {
   if (lastReadMs === null) {

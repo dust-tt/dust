@@ -20,14 +20,20 @@ function extractSharePointSiteNameFromSourceUrl(
   }
 }
 
-export function getMicrosoftSharePointRootFolderDisplayTitle(
-  node: DataSourceViewContentNode
+type MicrosoftSharePointDisplayTitleOptions = {
+  disambiguate?: boolean;
+};
+
+export function getMicrosoftSharePointDisplayTitle(
+  node: DataSourceViewContentNode,
+  { disambiguate }: MicrosoftSharePointDisplayTitleOptions = {}
 ): string {
-  if (
-    node.type !== "folder" ||
-    node.parentInternalId !== null ||
-    !node.sourceUrl
-  ) {
+  if (node.type !== "folder" || !node.sourceUrl) {
+    return node.title;
+  }
+
+  const shouldPrefix = disambiguate === true || node.parentInternalId === null;
+  if (!shouldPrefix) {
     return node.title;
   }
 

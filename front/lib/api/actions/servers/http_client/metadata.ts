@@ -48,6 +48,7 @@ export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    enableAlerting: true,
   },
 });
 

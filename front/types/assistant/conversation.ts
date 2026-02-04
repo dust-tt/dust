@@ -218,6 +218,7 @@ export type BaseAgentMessageType = {
   visibility: MessageVisibility;
   richMentions: RichMentionWithStatus[];
   completionDurationMs: number | null;
+  reactions: MessageReactionType[];
   prunedContext?: boolean;
 };
 
@@ -236,7 +237,6 @@ export type AgentMessageType = BaseAgentMessageType & {
   contents: Array<{ step: number; content: AgentContentItemType }>;
   parsedContents: Record<number, Array<ParsedContentItem>>;
   modelInteractionDurationMs: number | null;
-  reactions: MessageReactionType[];
 };
 
 export type AgentMessageTypeWithoutMentions = Omit<
@@ -254,8 +254,6 @@ export type LightAgentMessageType = BaseAgentMessageType & {
   };
   citations: Record<string, CitationType>;
   generatedFiles: Omit<ActionGeneratedFileType, "snippet">[];
-  reactions: MessageReactionType[];
-  prunedContext?: boolean;
 };
 
 // This type represents the agent message we can reconstruct by accumulating streaming events
@@ -326,6 +324,16 @@ export type ConversationType = ConversationWithoutContentType & {
   owner: WorkspaceType;
   visibility: ConversationVisibility;
   content: (UserMessageType[] | AgentMessageType[] | ContentFragmentType[])[];
+};
+
+/**
+ * Same as ConversationType but with light agent messages and user messages with content fragments inside.
+ * Only keep the last version of each message.
+ */
+export type LightConversationType = ConversationWithoutContentType & {
+  owner: WorkspaceType;
+  visibility: ConversationVisibility;
+  content: (LightAgentMessageType | UserMessageTypeWithContentFragments)[];
 };
 
 export const isProjectConversation = <T extends ConversationWithoutContentType>(

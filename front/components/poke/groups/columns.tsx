@@ -1,7 +1,7 @@
-import { Chip, IconButton, LinkWrapper } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
+import { Chip, LinkWrapper } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import type { GroupKind, GroupType, WorkspaceType } from "@app/types";
 
 export const getPokeGroupKindChipColor = (kind: GroupKind) => {
@@ -35,37 +35,15 @@ export function makeColumnsForGroups(
           </LinkWrapper>
         );
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>sId</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="sId" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Name</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Name" />
+      ),
     },
     {
       accessorKey: "kind",
@@ -73,20 +51,9 @@ export function makeColumnsForGroups(
         const kind: GroupKind = row.getValue("kind");
         return <Chip color={getPokeGroupKindChipColor(kind)}>{kind}</Chip>;
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Kind</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Kind" />
+      ),
     },
     {
       accessorKey: "memberCount",
@@ -95,20 +62,9 @@ export function makeColumnsForGroups(
 
         return memberCount.toString();
       },
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Members</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Members" />
+      ),
     },
   ];
 }

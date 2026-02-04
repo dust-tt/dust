@@ -130,7 +130,7 @@ export async function pruneSuggestions(
   await AgentSuggestionResource.bulkUpdateState(auth, allOutdated, "outdated");
 }
 
-/** Outdated if any addition already exists or any deletion no longer exists. */
+/** Outdated if tool to add already exists or tool to remove no longer exists. */
 function getOutdatedToolsSuggestions(
   suggestions: ToolsSuggestionResource[],
   currentActions: MCPServerConfigurationType[]
@@ -147,25 +147,11 @@ function getOutdatedToolsSuggestions(
   const outdatedSuggestions: ToolsSuggestionResource[] = [];
 
   for (const suggestion of suggestions) {
-    let isOutdated = false;
-
-    if (suggestion.suggestion.additions) {
-      for (const addition of suggestion.suggestion.additions) {
-        if (currentToolIds.has(addition.id)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
-
-    if (!isOutdated && suggestion.suggestion.deletions) {
-      for (const deletion of suggestion.suggestion.deletions) {
-        if (!currentToolIds.has(deletion)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
+    const { action, toolId } = suggestion.suggestion;
+    const isOutdated =
+      action === "add"
+        ? currentToolIds.has(toolId)
+        : !currentToolIds.has(toolId);
 
     if (isOutdated) {
       outdatedSuggestions.push(suggestion);
@@ -175,7 +161,7 @@ function getOutdatedToolsSuggestions(
   return outdatedSuggestions;
 }
 
-/** Outdated if any addition already exists or any deletion no longer exists. */
+/** Outdated if skill to add already exists or skill to remove no longer exists. */
 async function getOutdatedSkillsSuggestions(
   auth: Authenticator,
   suggestions: SkillsSuggestionResource[],
@@ -193,25 +179,11 @@ async function getOutdatedSkillsSuggestions(
   const outdatedSuggestions: SkillsSuggestionResource[] = [];
 
   for (const suggestion of suggestions) {
-    let isOutdated = false;
-
-    if (suggestion.suggestion.additions) {
-      for (const addition of suggestion.suggestion.additions) {
-        if (currentSkillIds.has(addition)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
-
-    if (!isOutdated && suggestion.suggestion.deletions) {
-      for (const deletion of suggestion.suggestion.deletions) {
-        if (!currentSkillIds.has(deletion)) {
-          isOutdated = true;
-          break;
-        }
-      }
-    }
+    const { action, skillId } = suggestion.suggestion;
+    const isOutdated =
+      action === "add"
+        ? currentSkillIds.has(skillId)
+        : !currentSkillIds.has(skillId);
 
     if (isOutdated) {
       outdatedSuggestions.push(suggestion);

@@ -55,13 +55,11 @@ export class AgentSuggestionFactory {
       {
         kind: "tools",
         suggestion: overrides.suggestion ?? {
-          additions: [
-            { id: "notion", additionalConfiguration: { database: "tasks" } },
-            { id: "slack" },
-          ],
-          deletions: ["deprecated_tool"],
+          action: "add",
+          toolId: "notion",
+          additionalConfiguration: { database: "tasks" },
         },
-        analysis: overrides.analysis ?? "Added useful integrations",
+        analysis: overrides.analysis ?? "Added useful integration",
         state: overrides.state ?? "pending",
         source: overrides.source ?? "reinforcement",
       }
@@ -84,9 +82,10 @@ export class AgentSuggestionFactory {
       {
         kind: "skills",
         suggestion: overrides.suggestion ?? {
-          additions: ["code_review", "summarization"],
+          action: "add",
+          skillId: "code_review",
         },
-        analysis: overrides.analysis ?? "Added skills for better assistance",
+        analysis: overrides.analysis ?? "Added skill for better assistance",
         state: overrides.state ?? "pending",
         source: overrides.source ?? "copilot",
       }

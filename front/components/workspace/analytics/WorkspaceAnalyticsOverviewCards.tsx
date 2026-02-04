@@ -30,11 +30,11 @@ export function WorkspaceAnalyticsOverviewCards({
   const totalMembers =
     isOverviewError || overview?.totalMembers === undefined
       ? "-"
-      : overview.totalMembers;
+      : overview.totalMembers.toLocaleString();
   const activeUsers =
     isOverviewError || overview?.activeUsers === undefined
       ? "-"
-      : overview.activeUsers;
+      : overview.activeUsers.toLocaleString();
 
   return (
     <div className="grid grid-cols-2 gap-6">
@@ -50,7 +50,7 @@ export function WorkspaceAnalyticsOverviewCards({
         }
       />
       <ValueCard
-        title="Active users"
+        title={`Active users (last ${period} days)`}
         className="h-24"
         content={
           <div className="flex flex-col gap-1 text-2xl">

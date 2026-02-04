@@ -26,8 +26,8 @@ import { getConversationRoute } from "@app/lib/utils/router";
 import type { GetSpaceResponseBody } from "@app/pages/api/w/[wId]/spaces/[spaceId]";
 import type {
   ContentFragmentsType,
-  ConversationType,
   ConversationWithoutContentType,
+  LightConversationType,
   Result,
   RichMention,
   UserType,
@@ -45,7 +45,7 @@ type GroupLabel =
 interface SpaceConversationsTabProps {
   owner: WorkspaceType;
   user: UserType;
-  conversations: ConversationType[];
+  conversations: LightConversationType[];
   isConversationsLoading: boolean;
   hasMore: boolean;
   loadMore: () => void;
@@ -96,13 +96,13 @@ export function SpaceConversationsTab({
     initialSearchText: "",
   });
 
-  const conversationsByDate: Record<GroupLabel, ConversationType[]> =
+  const conversationsByDate: Record<GroupLabel, LightConversationType[]> =
     useMemo(() => {
       return conversations.length
         ? (getGroupConversationsByDate({
             conversations,
             titleFilter: "",
-          }) as Record<GroupLabel, ConversationType[]>)
+          }) as Record<GroupLabel, LightConversationType[]>)
         : ({} as Record<GroupLabel, typeof conversations>);
     }, [conversations]);
 

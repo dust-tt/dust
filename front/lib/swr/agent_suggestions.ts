@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import type { Fetcher } from "swr";
 
 import { useSendNotification } from "@app/hooks/useNotification";
@@ -72,41 +73,53 @@ export function usePatchAgentSuggestions({
     disabled: true,
   });
 
-  const patchSuggestions = async (
-    suggestionIds: string[],
-    state: PatchSuggestionRequestBody["state"]
-  ): Promise<PatchSuggestionResponseBody | null> => {
-    if (!agentConfigurationId || suggestionIds.length === 0) {
-      return null;
-    }
-
-    const res = await clientFetch(
-      `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          suggestionIds,
-          state,
-        } satisfies PatchSuggestionRequestBody),
+  const patchSuggestions = useCallback(
+    async (
+      suggestionIds: string[],
+      state: PatchSuggestionRequestBody["state"]
+    ): Promise<PatchSuggestionResponseBody | null> => {
+      if (!agentConfigurationId || suggestionIds.length === 0) {
+        return null;
       }
-    );
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
-      sendNotification({
-        type: "error",
-        title: "Error updating suggestions",
-        description: `Error: ${errorData.message}`,
-      });
-      return null;
-    }
+      try {
+        const res = await clientFetch(
+          `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              suggestionIds,
+              state,
+            } satisfies PatchSuggestionRequestBody),
+          }
+        );
 
-    void mutateSuggestions();
-    return res.json();
-  };
+        if (!res.ok) {
+          const errorData = await getErrorFromResponse(res);
+          sendNotification({
+            type: "error",
+            title: "Failed to update suggestion",
+            description: errorData.message,
+          });
+          return null;
+        }
+
+        void mutateSuggestions();
+        const data = await res.json();
+        return data;
+      } catch {
+        sendNotification({
+          type: "error",
+          title: "Failed to update suggestion",
+        });
+        return null;
+      }
+    },
+    [agentConfigurationId, mutateSuggestions, sendNotification, workspaceId]
+  );
 
   return { patchSuggestions };
 }

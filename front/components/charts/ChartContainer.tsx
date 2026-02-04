@@ -13,9 +13,8 @@ import { useState } from "react";
 import { ResponsiveContainer } from "recharts";
 
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
-
-import type { LegendItem } from "./ChartLegend";
-import { ChartLegend } from "./ChartLegend";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartLegend } from "@app/components/charts/ChartLegend";
 
 interface ChartContainerProps {
   title: ReactNode;
@@ -50,7 +49,7 @@ export function ChartContainer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
     <>
-      <div className="observability-chart-container">
+      <div className="observability-chart-container rounded-lg border border-border bg-card p-4 dark:border-border-night">
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-medium text-foreground dark:text-foreground-night">

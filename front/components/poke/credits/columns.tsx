@@ -1,7 +1,7 @@
-import { Chip, IconButton } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
+import { Chip } from "@dust-tt/sparkle";
 import type { ColumnDef } from "@tanstack/react-table";
 
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 import { TYPE_COLORS } from "@app/components/workspace/CreditsList";
 import type { PokeCreditType } from "@app/pages/api/poke/workspaces/[wId]/credits";
 import { dateToHumanReadable } from "@app/types";
@@ -14,24 +14,15 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
   return [
     {
       accessorKey: "id",
-      header: "ID",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="ID" />
+      ),
     },
     {
       accessorKey: "type",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Type</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Type" />
+      ),
       cell: ({ row }) => {
         const { type } = row.original;
         return (
@@ -43,58 +34,25 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "initialAmountMicroUsd",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Initial</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Initial" />
+      ),
       cell: ({ row }) =>
         formatMicroUsdToUsd(row.original.initialAmountMicroUsd),
     },
     {
       accessorKey: "consumedAmountMicroUsd",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Consumed</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Consumed" />
+      ),
       cell: ({ row }) =>
         formatMicroUsdToUsd(row.original.consumedAmountMicroUsd),
     },
     {
       accessorKey: "remainingAmountMicroUsd",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Remaining</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Remaining" />
+      ),
       cell: ({ row }) => {
         const remaining = row.original.remainingAmountMicroUsd;
         const initial = row.original.initialAmountMicroUsd;
@@ -111,20 +69,9 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "startDate",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Start Date</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Start date" />
+      ),
       cell: ({ row }) => {
         const { startDate } = row.original;
         if (!startDate) {
@@ -139,20 +86,9 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "expirationDate",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Expiration</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Expiration" />
+      ),
       cell: ({ row }) => {
         const { expirationDate } = row.original;
         if (!expirationDate) {
@@ -170,7 +106,9 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "discount",
-      header: "Billed Discount",
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Billed discount" />
+      ),
       cell: ({ row }) => {
         const { discount } = row.original;
         if (discount === null) {
@@ -181,20 +119,9 @@ export function makeColumnsForCredits(): ColumnDef<PokeCreditType>[] {
     },
     {
       accessorKey: "createdAt",
-      header: ({ column }) => {
-        return (
-          <div className="flex items-center space-x-2">
-            <p>Created</p>
-            <IconButton
-              variant="outline"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Created" />
+      ),
       cell: ({ row }) => {
         return (
           <span className="text-sm">

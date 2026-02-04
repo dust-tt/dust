@@ -1,4 +1,4 @@
-import { LegendDot } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { LegendDot } from "@app/components/charts/ChartTooltip";
 
 export type LegendEntry = {
   key: string;
