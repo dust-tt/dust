@@ -38,6 +38,10 @@ export default defineConfig({
       return {
         pool: "forks",
         isolate: true, // Each test file gets its own process
+        // Limit concurrent workers to avoid exhausting DB connections.
+        // Each worker creates a pool with 15 connections.
+        // 6 workers × 15 = 90 connections (safely under PostgreSQL's default 100 limit)
+        maxForks: 6,
       };
     })(),
   },
