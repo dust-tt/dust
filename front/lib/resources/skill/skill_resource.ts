@@ -1014,10 +1014,7 @@ export class SkillResource extends BaseResource<SkillConfigurationModel> {
     auth: Authenticator,
     params:
       | AgentLoopExecutionData
-      | {
-          agentConfiguration: AgentConfigurationType;
-          conversation: ConversationType;
-        }
+      | Pick<AgentLoopExecutionData, "agentConfiguration" | "conversation">
   ): Promise<{
     enabledSkills: (SkillResource & { extendedSkill: SkillResource | null })[];
     equippedSkills: SkillResource[];
