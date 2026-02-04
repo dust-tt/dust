@@ -105,12 +105,51 @@ interface OutlookFolder {
 
 const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
   get_messages: async (
-    { search, folderId, top = 10, skip = 0, select },
+    { search, folderName, top = 10, skip = 0, select },
     { authInfo }
   ) => {
     const accessToken = authInfo?.token;
     if (!accessToken) {
       return new Err(new MCPError("Authentication required"));
+    }
+
+    // If folderName is provided, search for the folder and get its ID
+    let folderId: string | undefined;
+    if (folderName) {
+      const foldersResponse = await fetchFromOutlook(
+        "/me/mailFolders",
+        accessToken,
+        {
+          method: "GET",
+        }
+      );
+
+      if (!foldersResponse.ok) {
+        const errorText = await getErrorText(foldersResponse);
+        return new Err(
+          new MCPError(
+            `Failed to fetch folders: ${foldersResponse.status} ${foldersResponse.statusText} - ${errorText}`
+          )
+        );
+      }
+
+      const foldersResult = await foldersResponse.json();
+      const folders = (foldersResult.value ?? []) as OutlookFolder[];
+
+      // Search for the folder by name (case-insensitive)
+      const folder = folders.find(
+        (f) => f.displayName.toLowerCase() === folderName.toLowerCase()
+      );
+
+      if (!folder) {
+        return new Err(
+          new MCPError(
+            `Folder "${folderName}" not found. Available folders: ${folders.map((f) => f.displayName).join(", ")}`
+          )
+        );
+      }
+
+      folderId = folder.id;
     }
 
     const params = new URLSearchParams();
@@ -161,42 +200,6 @@ const handlers: ToolHandlers<typeof OUTLOOK_TOOLS_METADATA> = {
             messages: (result.value || []) as OutlookMessage[],
             nextLink: result["@odata.nextLink"],
             totalCount: result["@odata.count"],
-          },
-          null,
-          2
-        ),
-      },
-    ]);
-  },
-
-  list_folders: async (_args, { authInfo }) => {
-    const accessToken = authInfo?.token;
-    if (!accessToken) {
-      return new Err(new MCPError("Authentication required"));
-    }
-
-    const response = await fetchFromOutlook("/me/mailFolders", accessToken, {
-      method: "GET",
-    });
-
-    if (!response.ok) {
-      const errorText = await getErrorText(response);
-      return new Err(
-        new MCPError(
-          `Failed to get folders: ${response.status} ${response.statusText} - ${errorText}`
-        )
-      );
-    }
-
-    const result = await response.json();
-
-    return new Ok([
-      { type: "text" as const, text: "Folders fetched successfully" },
-      {
-        type: "text" as const,
-        text: JSON.stringify(
-          {
-            folders: (result.value ?? []) as OutlookFolder[],
           },
           null,
           2
