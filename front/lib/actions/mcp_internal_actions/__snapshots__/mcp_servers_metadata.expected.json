@@ -9333,7 +9333,7 @@
     "tools": [
       {
         "name": "copy_file",
-        "description": "Copy a file or folder to a new location in OneDrive or SharePoint. Returns immediately with a monitor URL to check copy progress. This is the recommended method for creating documents from templates.",
+        "description": "Copy a file or folder to a new location in OneDrive or SharePoint.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,

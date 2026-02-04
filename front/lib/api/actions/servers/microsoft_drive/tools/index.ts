@@ -402,53 +402,36 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
   },
 
   copy_file: async ({ itemId, driveId, siteId, parentItemId, name }, extra) => {
-    // Validation: at least driveId or siteId is required
     if (!driveId && !siteId) {
       return new Err(new MCPError("Either driveId or siteId must be provided"));
     }
 
-    try {
-      const client = await getGraphClient(extra.authInfo);
-      if (!client) {
-        return new Err(new MCPError("Failed to get Microsoft Graph client"));
-      }
+    const client = await getGraphClient(extra.authInfo);
+    if (!client) {
+      return new Err(
+        new MCPError("Failed to authenticate with Microsoft Graph")
+      );
+    }
 
-      // Build the source endpoint
+    try {
       const sourceEndpoint = await getDriveItemEndpoint(
         itemId,
         driveId,
         siteId
       );
 
-      // Build the request body
-      const requestBody: any = { name };
+      const requestBody: { name: string; parentReference?: { id: string } } = {
+        name,
+      };
 
-      // Parent destination (optional)
       if (parentItemId) {
-        requestBody.parentReference = {
-          id: parentItemId,
-          driveId: driveId,
-        };
-
-        // If siteId provided without driveId, resolve the site's driveId
-        if (siteId && !driveId) {
-          const siteResponse = await client.api(`/sites/${siteId}`).get();
-          const siteDriveId = siteResponse.drive?.id;
-          if (!siteDriveId) {
-            return new Err(
-              new MCPError(`Could not find drive for site ${siteId}`)
-            );
-          }
-          requestBody.parentReference.driveId = siteDriveId;
-        }
+        requestBody.parentReference = { id: parentItemId };
       }
 
-      // Perform the copy (asynchronous operation)
       const response = await client
         .api(`${sourceEndpoint}/copy`)
         .post(requestBody);
 
-      // API returns 202 Accepted with monitoring URL
       const result = {
         status: "accepted",
         message: "Copy operation initiated successfully",
@@ -464,7 +447,11 @@ const handlers: ToolHandlers<typeof MICROSOFT_DRIVE_TOOLS_METADATA> = {
         },
       ]);
     } catch (err) {
-      return new Err(new MCPError(normalizeError(err).message));
+      return new Err(
+        new MCPError(
+          normalizeError(err).message || "Failed to copy file or folder"
+        )
+      );
     }
   },
 };

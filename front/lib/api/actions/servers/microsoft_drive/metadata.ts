@@ -145,7 +145,7 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
   },
   copy_file: {
     description:
-      "Copy a file or folder to a new location in OneDrive or SharePoint. Returns immediately with a monitor URL to check copy progress. This is the recommended method for creating documents from templates.",
+      "Copy a file or folder to a new location in OneDrive or SharePoint.",
     schema: {
       itemId: z.string().describe("ID of the item to copy"),
       driveId: z
