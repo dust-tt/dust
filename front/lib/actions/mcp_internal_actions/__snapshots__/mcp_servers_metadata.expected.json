@@ -12289,11 +12289,15 @@
       },
       {
         "name": "get_messages",
-        "description": "Get messages from Outlook inbox. Supports search queries to filter messages.",
+        "description": "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "folderId": {
+              "description": "The ID of the folder to get messages from. Use list_folders to get folder IDs. Leave empty to get messages from all folders.",
+              "type": "string"
+            },
             "search": {
               "description": "Search query to filter messages. Examples: \"from:someone@example.com\", \"subject:meeting\", \"hasAttachments:true\". Leave empty to get recent messages.",
               "type": "string"
@@ -12314,6 +12318,16 @@
               "type": "number"
             }
           },
+          "type": "object"
+        }
+      },
+      {
+        "name": "list_folders",
+        "description": "List all mail folders in Outlook. Use this to get folder IDs for filtering messages.",
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "additionalProperties": false,
+          "properties": {},
           "type": "object"
         }
       },
@@ -12409,6 +12423,7 @@
       "get_contacts": "never_ask",
       "get_drafts": "never_ask",
       "get_messages": "never_ask",
+      "list_folders": "never_ask",
       "update_contact": "high"
     }
   },
