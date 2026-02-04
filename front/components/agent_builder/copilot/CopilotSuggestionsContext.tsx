@@ -1,5 +1,4 @@
 import type { Editor } from "@tiptap/react";
-import debounce from "lodash/debounce";
 import type { ReactNode } from "react";
 import React, {
   createContext,
@@ -29,25 +28,26 @@ import type {
 
 export interface CopilotSuggestionsContextType {
   // Backend suggestions fetched via SWR.
-  suggestions: AgentSuggestionType[];
-  getSuggestion: (sId: string) => AgentSuggestionWithRelationsType | null;
-  triggerRefetch: () => void;
+  getSuggestionWithRelations: (
+    sId: string
+  ) => AgentSuggestionWithRelationsType | null;
+  getPendingSuggestions: () => AgentSuggestionType[];
+  triggerRefetch: (sId: string) => void;
   isSuggestionsLoading: boolean;
   isSuggestionsValidating: boolean;
 
   // Refetch tracking (persists across component remounts).
   hasAttemptedRefetch: (sId: string) => boolean;
-  markRefetchAttempted: (sId: string) => void;
 
   // Editor registration for applying instruction suggestions.
   registerEditor: (editor: Editor) => void;
   getCommittedInstructions: () => string;
 
-  // Actions on suggestions.
-  acceptSuggestion: (sId: string) => void;
-  rejectSuggestion: (sId: string) => void;
-  acceptAllInstructionSuggestions: () => void;
-  rejectAllInstructionSuggestions: () => void;
+  // Actions on suggestions. Returns true on success, false on failure.
+  acceptSuggestion: (sId: string) => Promise<boolean>;
+  rejectSuggestion: (sId: string) => Promise<boolean>;
+  acceptAllInstructionSuggestions: () => Promise<boolean>;
+  rejectAllInstructionSuggestions: () => Promise<boolean>;
 }
 
 export const CopilotSuggestionsContext = createContext<
@@ -81,14 +81,15 @@ export const CopilotSuggestionsProvider = ({
   const appliedSuggestionsRef = useRef<Set<string>>(new Set());
   const refetchAttemptedRef = useRef<Set<string>>(new Set());
 
+  // Local state for processed (accepted/rejected) suggestions - prevents card "blink"
+  const [processedSuggestions, setProcessedSuggestions] = useState<
+    Map<string, AgentSuggestionType>
+  >(new Map());
+
   const hasAttemptedRefetch = useCallback(
     (sId: string) => refetchAttemptedRef.current.has(sId),
     []
   );
-
-  const markRefetchAttempted = useCallback((sId: string) => {
-    refetchAttemptedRef.current.add(sId);
-  }, []);
 
   const { hasFeature } = useFeatureFlags({ workspaceId: owner.sId });
   const hasCopilot = hasFeature("agent_builder_copilot");
@@ -111,14 +112,27 @@ export const CopilotSuggestionsProvider = ({
   } = useAgentSuggestions({
     agentConfigurationId,
     disabled: !hasCopilot,
-    state: ["pending", "approved", "rejected"],
+    state: ["pending"],
     workspaceId: owner.sId,
   });
 
-  // Resolve a suggestion with its relations from context.
+  // Get suggestion: check local state first, then backend (n is small, .find is fine)
   const getSuggestion = useCallback(
+    (sId: string) =>
+      processedSuggestions.get(sId) ?? suggestions.find((s) => s.sId === sId),
+    [processedSuggestions, suggestions]
+  );
+
+  // Get pending suggestions: backend suggestions not yet processed locally
+  const getPendingSuggestions = useCallback(
+    () => suggestions.filter((s) => !processedSuggestions.has(s.sId)),
+    [suggestions, processedSuggestions]
+  );
+
+  // Resolve a suggestion with its relations from context.
+  const getSuggestionWithRelations = useCallback(
     (sId: string): AgentSuggestionWithRelationsType | null => {
-      const suggestion = suggestions.find((s) => s.sId === sId);
+      const suggestion = getSuggestion(sId);
       if (!suggestion) {
         return null;
       }
@@ -181,12 +195,30 @@ export const CopilotSuggestionsProvider = ({
           return { ...suggestion, relations: null };
       }
     },
-    [suggestions, skillsMap, mcpServerViewsMap]
+    [getSuggestion, skillsMap, mcpServerViewsMap]
   );
 
   // Debounced refetch to batch multiple directive renders into one SWR call.
-  const triggerRefetch = useMemo(
-    () => debounce(() => void mutateSuggestions(), 100),
+  // Marks sIds as attempted only AFTER the fetch completes to avoid error flash.
+  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const attemptedRefetchRef = useRef<Set<string>>(new Set());
+
+  const triggerRefetch = useCallback(
+    (sId: string) => {
+      attemptedRefetchRef.current.add(sId);
+
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+
+      debounceTimerRef.current = setTimeout(async () => {
+        await mutateSuggestions();
+        for (const id of attemptedRefetchRef.current) {
+          refetchAttemptedRef.current.add(id);
+        }
+        attemptedRefetchRef.current.clear();
+      }, 100);
+    },
     [mutateSuggestions]
   );
 
@@ -278,106 +310,150 @@ export const CopilotSuggestionsProvider = ({
   }, [suggestions, isSuggestionsLoading, isEditorReady, patchSuggestions]);
 
   const acceptSuggestion = useCallback(
-    async (sId: string) => {
+    async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
       if (!editor) {
-        return;
+        return false;
       }
 
-      const suggestion = suggestions.find((s) => s.sId === sId);
+      const suggestion = getSuggestion(sId);
       if (!suggestion) {
-        return;
+        return false;
       }
+
+      // Optimistic update for card state
+      setProcessedSuggestions((prev) =>
+        new Map(prev).set(sId, { ...suggestion, state: "approved" })
+      );
 
       const result = await patchSuggestions([sId], "approved");
       if (!result || result.suggestions.length === 0) {
-        return;
+        setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
+        return false;
       }
 
-      // Refresh suggestions to update card states
-      void mutateSuggestions();
-
+      // Update editor only on success
       if (suggestion.kind === "instructions") {
         editor.commands.acceptSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
+
+      return true;
     },
-    [patchSuggestions, suggestions, mutateSuggestions]
+    [patchSuggestions, getSuggestion]
   );
 
   const rejectSuggestion = useCallback(
-    async (sId: string) => {
+    async (sId: string): Promise<boolean> => {
       const editor = editorRef.current;
       if (!editor) {
-        return;
+        return false;
       }
 
-      const suggestion = suggestions.find((s) => s.sId === sId);
+      const suggestion = getSuggestion(sId);
       if (!suggestion) {
-        return;
+        return false;
       }
+
+      // Optimistic update for card state
+      setProcessedSuggestions((prev) =>
+        new Map(prev).set(sId, { ...suggestion, state: "rejected" })
+      );
 
       const result = await patchSuggestions([sId], "rejected");
       if (!result || result.suggestions.length === 0) {
-        return;
+        setProcessedSuggestions((prev) => new Map(prev).set(sId, suggestion));
+        return false;
       }
 
-      // Refresh suggestions to update card states
-      void mutateSuggestions();
-
+      // Update editor only on success
       if (suggestion.kind === "instructions") {
         editor.commands.rejectSuggestion(sId);
         appliedSuggestionsRef.current.delete(sId);
       }
+
+      return true;
     },
-    [patchSuggestions, suggestions, mutateSuggestions]
+    [patchSuggestions, getSuggestion]
   );
 
-  const acceptAllInstructionSuggestions = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
+  const acceptAllInstructionSuggestions =
+    useCallback(async (): Promise<boolean> => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return false;
+      }
 
-    const instructionSuggestionIds = suggestions
-      .filter((s) => s.kind === "instructions" && s.state === "pending")
-      .map((s) => s.sId);
+      const instructionSuggestions = getPendingSuggestions().filter(
+        (s) => s.kind === "instructions"
+      );
 
-    if (instructionSuggestionIds.length === 0) {
-      return;
-    }
+      if (instructionSuggestions.length === 0) {
+        return true;
+      }
 
-    const result = await patchSuggestions(instructionSuggestionIds, "approved");
-    if (result) {
+      const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
+      const result = await patchSuggestions(
+        instructionSuggestionIds,
+        "approved"
+      );
+      if (!result) {
+        return false;
+      }
+
+      setProcessedSuggestions((prev) =>
+        instructionSuggestions.reduce(
+          (map, s) => map.set(s.sId, { ...s, state: "approved" }),
+          new Map(prev)
+        )
+      );
+
       editor.commands.acceptAllSuggestions();
       for (const sId of instructionSuggestionIds) {
         appliedSuggestionsRef.current.delete(sId);
       }
-    }
-  }, [patchSuggestions, suggestions]);
 
-  const rejectAllInstructionSuggestions = useCallback(async () => {
-    const editor = editorRef.current;
-    if (!editor) {
-      return;
-    }
+      return true;
+    }, [patchSuggestions, getPendingSuggestions]);
 
-    const instructionSuggestionIds = suggestions
-      .filter((s) => s.kind === "instructions" && s.state === "pending")
-      .map((s) => s.sId);
+  const rejectAllInstructionSuggestions =
+    useCallback(async (): Promise<boolean> => {
+      const editor = editorRef.current;
+      if (!editor) {
+        return false;
+      }
 
-    if (instructionSuggestionIds.length === 0) {
-      return;
-    }
+      const instructionSuggestions = getPendingSuggestions().filter(
+        (s) => s.kind === "instructions"
+      );
 
-    const result = await patchSuggestions(instructionSuggestionIds, "rejected");
-    if (result) {
+      if (instructionSuggestions.length === 0) {
+        return true;
+      }
+
+      const instructionSuggestionIds = instructionSuggestions.map((s) => s.sId);
+      const result = await patchSuggestions(
+        instructionSuggestionIds,
+        "rejected"
+      );
+      if (!result) {
+        return false;
+      }
+
+      setProcessedSuggestions((prev) =>
+        instructionSuggestions.reduce(
+          (map, s) => map.set(s.sId, { ...s, state: "rejected" }),
+          new Map(prev)
+        )
+      );
+
       editor.commands.rejectAllSuggestions();
       for (const sId of instructionSuggestionIds) {
         appliedSuggestionsRef.current.delete(sId);
       }
-    }
-  }, [patchSuggestions, suggestions]);
+
+      return true;
+    }, [patchSuggestions, getPendingSuggestions]);
 
   const getCommittedInstructions = useCallback(() => {
     const editor = editorRef.current;
@@ -389,13 +465,12 @@ export const CopilotSuggestionsProvider = ({
 
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
-      suggestions,
-      getSuggestion,
+      getSuggestionWithRelations,
+      getPendingSuggestions,
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
       hasAttemptedRefetch,
-      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,
@@ -404,13 +479,12 @@ export const CopilotSuggestionsProvider = ({
       rejectAllInstructionSuggestions,
     }),
     [
-      suggestions,
-      getSuggestion,
+      getSuggestionWithRelations,
+      getPendingSuggestions,
       triggerRefetch,
       isSuggestionsLoading,
       isSuggestionsValidating,
       hasAttemptedRefetch,
-      markRefetchAttempted,
       registerEditor,
       getCommittedInstructions,
       acceptSuggestion,

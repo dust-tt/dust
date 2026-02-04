@@ -80,32 +80,41 @@ export function usePatchAgentSuggestions({
       return null;
     }
 
-    const res = await clientFetch(
-      `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          suggestionIds,
-          state,
-        } satisfies PatchSuggestionRequestBody),
-      }
-    );
+    try {
+      const res = await clientFetch(
+        `/api/w/${workspaceId}/assistant/agent_configurations/${agentConfigurationId}/suggestions`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            suggestionIds,
+            state,
+          } satisfies PatchSuggestionRequestBody),
+        }
+      );
 
-    if (!res.ok) {
-      const errorData = await getErrorFromResponse(res);
+      if (!res.ok) {
+        const errorData = await getErrorFromResponse(res);
+        sendNotification({
+          type: "error",
+          title: "Failed to update suggestion",
+          description: errorData.message,
+        });
+        return null;
+      }
+
+      void mutateSuggestions();
+      const data = await res.json();
+      return data;
+    } catch {
       sendNotification({
         type: "error",
-        title: "Error updating suggestions",
-        description: `Error: ${errorData.message}`,
+        title: "Failed to update suggestion",
       });
       return null;
     }
-
-    void mutateSuggestions();
-    return res.json();
   };
 
   return { patchSuggestions };

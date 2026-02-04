@@ -86,32 +86,38 @@ function ToolsSuggestionCards({
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const handleAcceptAddition = useCallback(
-    (tool: MCPServerViewType) => {
-      const currentActions = getValues("actions");
-      const alreadyExists = currentActions.some(
-        (action) => action.configuration.mcpServerViewId === tool.sId
-      );
-      if (!alreadyExists) {
-        const newAction = getDefaultMCPAction(tool);
-        setValue("actions", [...currentActions, newAction], {
-          shouldDirty: true,
-        });
+    async (tool: MCPServerViewType) => {
+      const success = await acceptSuggestion(sId);
+      if (success) {
+        const currentActions = getValues("actions");
+        const alreadyExists = currentActions.some(
+          (a) => a.configuration.mcpServerViewId === tool.sId
+        );
+        if (!alreadyExists) {
+          setValue("actions", [...currentActions, getDefaultMCPAction(tool)], {
+            shouldDirty: true,
+          });
+        }
       }
-      void acceptSuggestion(sId);
     },
-    [getValues, setValue, acceptSuggestion, sId]
+    [acceptSuggestion, sId, getValues, setValue]
   );
 
   const handleAcceptDeletion = useCallback(
-    (tool: MCPServerViewType) => {
-      const currentActions = getValues("actions");
-      const filteredActions = currentActions.filter(
-        (action) => action.configuration.mcpServerViewId !== tool.sId
-      );
-      setValue("actions", filteredActions, { shouldDirty: true });
-      void acceptSuggestion(sId);
+    async (tool: MCPServerViewType) => {
+      const success = await acceptSuggestion(sId);
+      if (success) {
+        const currentActions = getValues("actions");
+        setValue(
+          "actions",
+          currentActions.filter(
+            (a) => a.configuration.mcpServerViewId !== tool.sId
+          ),
+          { shouldDirty: true }
+        );
+      }
     },
-    [getValues, setValue, acceptSuggestion, sId]
+    [acceptSuggestion, sId, getValues, setValue]
   );
 
   const handleReject = useCallback(() => {
@@ -131,6 +137,8 @@ function ToolsSuggestionCards({
             state={cardState}
             applyLabel="Add"
             rejectLabel="Dismiss"
+            acceptedTitle={`${serverName} tool added`}
+            rejectedTitle={`${serverName} tool dismissed`}
             actionsPosition="header"
             onClickAccept={() => handleAcceptAddition(tool)}
             onClickReject={handleReject}
@@ -148,6 +156,8 @@ function ToolsSuggestionCards({
             state={cardState}
             applyLabel="Remove"
             rejectLabel="Dismiss"
+            acceptedTitle={`${serverName} tool removed`}
+            rejectedTitle={`${serverName} tool dismissed`}
             actionsPosition="header"
             onClickAccept={() => handleAcceptDeletion(tool)}
             onClickReject={handleReject}
@@ -173,31 +183,44 @@ function SkillsSuggestionCards({
   const { setValue, getValues } = useFormContext<AgentBuilderFormData>();
 
   const handleAcceptAddition = useCallback(
-    (skill: SkillType) => {
-      const currentSkills = getValues("skills");
-      const alreadyExists = currentSkills.some((s) => s.sId === skill.sId);
-      if (!alreadyExists) {
-        const newSkill = {
-          sId: skill.sId,
-          name: skill.name,
-          description: skill.userFacingDescription,
-          icon: skill.icon,
-        };
-        setValue("skills", [...currentSkills, newSkill], { shouldDirty: true });
+    async (skill: SkillType) => {
+      const success = await acceptSuggestion(sId);
+      if (success) {
+        const currentSkills = getValues("skills");
+        const alreadyExists = currentSkills.some((s) => s.sId === skill.sId);
+        if (!alreadyExists) {
+          setValue(
+            "skills",
+            [
+              ...currentSkills,
+              {
+                sId: skill.sId,
+                name: skill.name,
+                description: skill.userFacingDescription,
+                icon: skill.icon,
+              },
+            ],
+            { shouldDirty: true }
+          );
+        }
       }
-      void acceptSuggestion(sId);
     },
-    [getValues, setValue, acceptSuggestion, sId]
+    [acceptSuggestion, sId, getValues, setValue]
   );
 
   const handleAcceptDeletion = useCallback(
-    (skill: SkillType) => {
-      const currentSkills = getValues("skills");
-      const filteredSkills = currentSkills.filter((s) => s.sId !== skill.sId);
-      setValue("skills", filteredSkills, { shouldDirty: true });
-      void acceptSuggestion(sId);
+    async (skill: SkillType) => {
+      const success = await acceptSuggestion(sId);
+      if (success) {
+        const currentSkills = getValues("skills");
+        setValue(
+          "skills",
+          currentSkills.filter((s) => s.sId !== skill.sId),
+          { shouldDirty: true }
+        );
+      }
     },
-    [getValues, setValue, acceptSuggestion, sId]
+    [acceptSuggestion, sId, getValues, setValue]
   );
 
   const handleReject = useCallback(() => {
@@ -215,6 +238,8 @@ function SkillsSuggestionCards({
           state={cardState}
           applyLabel="Add"
           rejectLabel="Dismiss"
+          acceptedTitle={`${skill.name} skill added`}
+          rejectedTitle={`${skill.name} skill dismissed`}
           actionsPosition="header"
           onClickAccept={() => handleAcceptAddition(skill)}
           onClickReject={handleReject}
@@ -229,6 +254,8 @@ function SkillsSuggestionCards({
           state={cardState}
           applyLabel="Remove"
           rejectLabel="Dismiss"
+          acceptedTitle={`${skill.name} skill removed`}
+          rejectedTitle={`${skill.name} skill dismissed`}
           actionsPosition="header"
           onClickAccept={() => handleAcceptDeletion(skill)}
           onClickReject={handleReject}
@@ -261,25 +288,22 @@ function ModelSuggestionCard({
     name: "generationSettings.reasoningEffort",
   });
 
-  const handleAccept = useCallback(() => {
-    const model = relations.model;
-    if (model) {
-      // Update the form with the new model settings
+  const handleAccept = useCallback(async () => {
+    const success = await acceptSuggestion(sId);
+    if (success && relations.model) {
       modelSettingsField.onChange({
-        modelId: model.modelId,
-        providerId: model.providerId,
+        modelId: relations.model.modelId,
+        providerId: relations.model.providerId,
       });
-      // Update reasoning effort if specified in the suggestion, otherwise use model default
       reasoningEffortField.onChange(
-        suggestion.reasoningEffort ?? model.defaultReasoningEffort
+        suggestion.reasoningEffort ?? relations.model.defaultReasoningEffort
       );
     }
-    void acceptSuggestion(sId);
   }, [
-    relations.model,
-    suggestion.reasoningEffort,
     sId,
     acceptSuggestion,
+    relations.model,
+    suggestion.reasoningEffort,
     modelSettingsField,
     reasoningEffortField,
   ]);
@@ -295,6 +319,8 @@ function ModelSuggestionCard({
       state={cardState}
       applyLabel="Change"
       rejectLabel="Dismiss"
+      acceptedTitle={`Model changed to ${modelName}`}
+      rejectedTitle={`${modelName} model dismissed`}
       actionsPosition="header"
       onClickAccept={handleAccept}
       onClickReject={handleReject}
