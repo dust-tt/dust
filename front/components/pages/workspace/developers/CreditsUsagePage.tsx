@@ -506,18 +506,16 @@ export function CreditsUsagePage() {
         </Page.Vertical>
 
         {/* Usage Graph */}
-        {billingCycleStartDay && (
-          <Suspense
-            fallback={
-              <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
-            }
-          >
-            <ProgrammaticCostChart
-              workspaceId={owner.sId}
-              billingCycleStartDay={billingCycleStartDay}
-            />
-          </Suspense>
-        )}
+        <Suspense
+          fallback={
+            <div className="h-64 animate-pulse rounded bg-muted-foreground/20" />
+          }
+        >
+          <ProgrammaticCostChart
+            workspaceId={owner.sId}
+            billingCycleStartDay={billingCycleStartDay ?? 1}
+          />
+        </Suspense>
       </Page.Vertical>
       <div className="h-12" />
     </AppCenteredLayout>
