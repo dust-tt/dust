@@ -120,14 +120,15 @@ describe("pruneSuggestionsForAgent", () => {
   });
 
   describe("tools suggestions", () => {
-    it("should mark tool suggestion as outdated when tool to delete no longer exists", async () => {
-      // Create a suggestion to delete a tool that doesn't exist in the agent.
+    it("should mark tool suggestion as outdated when tool to remove no longer exists", async () => {
+      // Create a suggestion to remove a tool that doesn't exist in the agent.
       const suggestion = await AgentSuggestionFactory.createTools(
         authenticator,
         agentConfiguration,
         {
           suggestion: {
-            deletions: ["non_existent_tool"],
+            action: "remove",
+            toolId: "non_existent_tool",
           },
         }
       );
@@ -152,7 +153,8 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            additions: [{ id: "new_tool_to_add" }],
+            action: "add",
+            toolId: "new_tool_to_add",
           },
         }
       );
@@ -188,7 +190,8 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            additions: [skill.sId],
+            action: "add",
+            skillId: skill.sId,
           },
         }
       );
@@ -218,7 +221,8 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            additions: ["go-deep"],
+            action: "add",
+            skillId: "go-deep",
           },
         }
       );
@@ -237,13 +241,14 @@ describe("pruneSuggestionsForAgent", () => {
       expect(fetched?.state).toBe("outdated");
     });
 
-    it("should mark skill suggestion as outdated when skill to delete no longer exists", async () => {
+    it("should mark skill suggestion as outdated when skill to remove no longer exists", async () => {
       const suggestion = await AgentSuggestionFactory.createSkills(
         authenticator,
         agentConfiguration,
         {
           suggestion: {
-            deletions: ["non_existent_skill"],
+            action: "remove",
+            skillId: "non_existent_skill",
           },
         }
       );
@@ -268,7 +273,8 @@ describe("pruneSuggestionsForAgent", () => {
         agentConfiguration,
         {
           suggestion: {
-            additions: ["new_skill_to_add"],
+            action: "add",
+            skillId: "new_skill_to_add",
           },
         }
       );

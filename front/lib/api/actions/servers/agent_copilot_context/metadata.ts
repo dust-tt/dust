@@ -33,34 +33,14 @@ const InstructionsSuggestionSchema = z.object({
     .describe("Analysis or reasoning for this specific suggestion"),
 });
 
-const ToolAdditionSchema = z.object({
-  id: z.string().describe("The tool/server identifier"),
-  additionalConfiguration: z
-    .record(z.unknown())
-    .optional()
-    .describe("Optional configuration for the tool"),
-});
-
 const ToolsSuggestionSchema = z.object({
-  additions: z
-    .array(ToolAdditionSchema)
-    .optional()
-    .describe("Tools to add to the agent"),
-  deletions: z
-    .array(z.string())
-    .optional()
-    .describe("Tool IDs to remove from the agent"),
+  action: z.enum(["add", "remove"]).describe("The action to perform"),
+  toolId: z.string().describe("The tool/server identifier"),
 });
 
 const SkillsSuggestionSchema = z.object({
-  additions: z
-    .array(z.string())
-    .optional()
-    .describe("Skill IDs to add to the agent"),
-  deletions: z
-    .array(z.string())
-    .optional()
-    .describe("Skill IDs to remove from the agent"),
+  action: z.enum(["add", "remove"]).describe("The action to perform"),
+  skillId: z.string().describe("The skill identifier"),
 });
 
 const ModelSuggestionSchema = z.object({

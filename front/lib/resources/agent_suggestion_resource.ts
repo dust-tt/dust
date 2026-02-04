@@ -390,4 +390,13 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       ...suggestionData,
     };
   }
+
+  /**
+   * Lists all suggestions for the workspace.
+   */
+  static async listAll(
+    auth: Authenticator
+  ): Promise<AgentSuggestionResource[]> {
+    return this.baseFetch(auth, {});
+  }
 }

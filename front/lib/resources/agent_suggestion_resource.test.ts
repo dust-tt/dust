@@ -65,19 +65,17 @@ describe("AgentSuggestionResource", () => {
   });
 
   describe("tools suggestion", () => {
-    it("should create and fetch a tools suggestion", async () => {
+    it("should create and fetch a tools add suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createTools(
         authenticator,
         agentConfiguration,
         {
           suggestion: {
-            additions: [
-              { id: "github", additionalConfiguration: { repo: "dust" } },
-              { id: "jira" },
-            ],
-            deletions: ["old_tool"],
+            action: "add",
+            toolId: "github",
+            additionalConfiguration: { repo: "dust" },
           },
-          analysis: "Adding project management tools",
+          analysis: "Adding GitHub tool",
         }
       );
 
@@ -93,23 +91,52 @@ describe("AgentSuggestionResource", () => {
       const json = fetched!.toJSON();
       expect(json.kind).toBe("tools");
       expect(json.suggestion).toEqual({
-        additions: [
-          { id: "github", additionalConfiguration: { repo: "dust" } },
-          { id: "jira" },
-        ],
-        deletions: ["old_tool"],
+        action: "add",
+        toolId: "github",
+        additionalConfiguration: { repo: "dust" },
+      });
+    });
+
+    it("should create and fetch a tools remove suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createTools(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            action: "remove",
+            toolId: "old_tool",
+          },
+          analysis: "Removing old tool",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("tools");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("tools");
+      expect(json.suggestion).toEqual({
+        action: "remove",
+        toolId: "old_tool",
       });
     });
   });
 
   describe("skills suggestion", () => {
-    it("should create and fetch a skills suggestion", async () => {
+    it("should create and fetch a skills add suggestion", async () => {
       const suggestion = await AgentSuggestionFactory.createSkills(
         authenticator,
         agentConfiguration,
         {
           suggestion: {
-            additions: ["data_analysis"],
+            action: "add",
+            skillId: "data_analysis",
           },
           source: "copilot",
         }
@@ -128,7 +155,39 @@ describe("AgentSuggestionResource", () => {
       const json = fetched!.toJSON();
       expect(json.kind).toBe("skills");
       expect(json.suggestion).toEqual({
-        additions: ["data_analysis"],
+        action: "add",
+        skillId: "data_analysis",
+      });
+    });
+
+    it("should create and fetch a skills remove suggestion", async () => {
+      const suggestion = await AgentSuggestionFactory.createSkills(
+        authenticator,
+        agentConfiguration,
+        {
+          suggestion: {
+            action: "remove",
+            skillId: "old_skill",
+          },
+          source: "copilot",
+        }
+      );
+
+      expect(suggestion).toBeDefined();
+      expect(suggestion.kind).toBe("skills");
+      expect(suggestion.source).toBe("copilot");
+
+      const fetched = await AgentSuggestionResource.fetchById(
+        authenticator,
+        suggestion.sId
+      );
+      expect(fetched).toBeDefined();
+
+      const json = fetched!.toJSON();
+      expect(json.kind).toBe("skills");
+      expect(json.suggestion).toEqual({
+        action: "remove",
+        skillId: "old_skill",
       });
     });
   });
