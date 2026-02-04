@@ -35,4 +35,4 @@ jobs:
       - name: Install Biome
         run: npm install -g @biomejs/biome@2.3.8
       - name: Format Check
-        run: npm run format:check
+        run: npm run biome
