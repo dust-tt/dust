@@ -164,6 +164,12 @@ export {
   MultiPageSheetTrigger,
 } from "./MultiPageSheet";
 export * from "./NavigationList";
+export {
+  NewConversationMessageAvatar,
+  NewConversationMessageContainer,
+  NewConversationMessageContent,
+  NewConversationMessageTitle,
+} from "./NewConversationMessages";
 export type { NotificationType } from "./Notification";
 export { Notification, useSendNotification } from "./Notification";
 export { NotificationButton } from "./NotificationButton";
