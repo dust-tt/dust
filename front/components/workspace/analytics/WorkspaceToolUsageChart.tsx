@@ -24,10 +24,10 @@ import {
   CHART_HEIGHT,
   INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import type { LegendItem } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
 import { getTimeRangeBounds } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import {
   useWorkspaceTools,
   useWorkspaceToolUsage,
