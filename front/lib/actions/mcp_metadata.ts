@@ -355,7 +355,10 @@ export async function connectToMCPServer(
                   connectionType: "workspace",
                 });
                 // If no admin connection exists, return an error to display a message to the user saying that the server requires the admin to setup the connection.
-                if (adminConnection.isErr()) {
+                if (
+                  adminConnection.isErr() &&
+                  adminConnection.error.message === "connection_not_found"
+                ) {
                   return new Err(
                     new MCPServerRequiresAdminAuthenticationError(
                       params.mcpServerId,
