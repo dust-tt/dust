@@ -461,13 +461,13 @@ const SpaceDataSourceViewItem = ({
   owner,
   space,
   node,
-  siblingDuplicateTitles,
+  prefixSiteNameForNode,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
   space: SpaceType;
   node?: DataSourceViewContentNode;
-  siblingDuplicateTitles?: Set<string>;
+  prefixSiteNameForNode?: boolean;
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
@@ -528,22 +528,9 @@ const SpaceDataSourceViewItem = ({
   const expandableNodes = nodes.filter((node) => node.expandable);
   const hiddenNodesCount = Math.max(0, totalNodesCount - nodes.length);
 
-  const duplicateTitlesForTopLevelChildren = useMemo(() => {
-    if (node) {
-      return undefined;
-    }
-    const counts = new Map<string, number>();
-    for (const child of expandableNodes) {
-      counts.set(child.title, (counts.get(child.title) ?? 0) + 1);
-    }
-    return new Set(
-      [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
-    );
-  }, [expandableNodes, node]);
-
   const label = node
     ? getDisplayTitleForDataSourceViewContentNode(node, {
-        prefixSiteName: siblingDuplicateTitles?.has(node.title) ?? false,
+        prefixSiteName: prefixSiteNameForNode === true,
       })
     : getDataSourceNameFromView(item);
 
@@ -568,14 +555,14 @@ const SpaceDataSourceViewItem = ({
     >
       {isExpanded && (
         <Tree isLoading={isNodesLoading}>
-          {expandableNodes.map((node) => (
+          {expandableNodes.map((childNode) => (
             <SpaceDataSourceViewItem
               item={item}
-              key={node.internalId}
+              key={childNode.internalId}
               owner={owner}
               space={space}
-              node={node}
-              siblingDuplicateTitles={duplicateTitlesForTopLevelChildren}
+              node={childNode}
+              prefixSiteNameForNode={node === undefined}
             />
           ))}
           {hiddenNodesCount > 0 && (

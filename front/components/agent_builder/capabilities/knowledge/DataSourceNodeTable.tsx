@@ -20,16 +20,6 @@ interface DataSourceNodeTableProps {
   viewType: ContentNodesViewType;
 }
 
-function getDuplicateTitles(nodes: { title: string }[]): Set<string> {
-  const counts = new Map<string, number>();
-  for (const node of nodes) {
-    counts.set(node.title, (counts.get(node.title) ?? 0) + 1);
-  }
-  return new Set(
-    [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
-  );
-}
-
 export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const { owner } = useAgentBuilderContext();
   const { navigationHistory, addNodeEntry } = useDataSourceBuilderContext();
@@ -66,19 +56,13 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     }
   }, [hasNextPage, isLoadingMore, loadMore]);
 
-  const duplicateTitles = useMemo(() => {
-    return isTopLevelInView
-      ? getDuplicateTitles(childNodes)
-      : new Set<string>();
-  }, [childNodes, isTopLevelInView]);
-
   const listItems: DataSourceListItem[] = useMemo(
     () =>
       childNodes.map((node) => {
         return {
           id: node.internalId,
           title: getDisplayTitleForDataSourceViewContentNode(node, {
-            prefixSiteName: isTopLevelInView && duplicateTitles.has(node.title),
+            prefixSiteName: isTopLevelInView,
           }),
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,
@@ -89,7 +73,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           },
         };
       }),
-    [childNodes, addNodeEntry, duplicateTitles, isTopLevelInView]
+    [childNodes, addNodeEntry, isTopLevelInView]
   );
 
   if (isNodesLoading) {

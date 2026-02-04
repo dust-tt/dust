@@ -91,16 +91,6 @@ function isMicrosoftNode(row: RowData) {
   return row.dataSourceView.dataSource.connectorProvider === "microsoft";
 }
 
-function getDuplicateTitles(nodes: { title: string }[]): Set<string> {
-  const counts = new Map<string, number>();
-  for (const node of nodes) {
-    counts.set(node.title, (counts.get(node.title) ?? 0) + 1);
-  }
-  return new Set(
-    [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
-  );
-}
-
 /**
  * Microsoft root folders' titles do not contain the sites / unsynced parent
  * directory information, which had caused usability issues, see
@@ -114,12 +104,9 @@ function getDuplicateTitles(nodes: { title: string }[]): Set<string> {
  */
 function getTitleForMicrosoftNode(
   row: RowData,
-  {
-    isTopLevelInView,
-    duplicateTitles,
-  }: { isTopLevelInView: boolean; duplicateTitles: Set<string> }
+  { isTopLevelInView }: { isTopLevelInView: boolean }
 ) {
-  if (isTopLevelInView && duplicateTitles.has(row.title)) {
+  if (isTopLevelInView) {
     return getDisplayTitleForDataSourceViewContentNode(row, {
       prefixSiteName: true,
     });
@@ -141,11 +128,9 @@ function getTitleForMicrosoftNode(
 const getTableColumns = ({
   showSpaceUsage,
   isTopLevelInView,
-  duplicateTitles,
 }: {
   showSpaceUsage: boolean;
   isTopLevelInView: boolean;
-  duplicateTitles: Set<string>;
 }): ColumnDef<RowData>[] => {
   const columns: ColumnDef<RowData, any>[] = [];
   columns.push({
@@ -155,7 +140,6 @@ const getTableColumns = ({
       if (isMicrosoftNode(row)) {
         return getTitleForMicrosoftNode(row, {
           isTopLevelInView,
-          duplicateTitles,
         });
       }
       return row.title;
@@ -386,20 +370,14 @@ export const SpaceDataSourceViewContentList = ({
   });
 
   const isTopLevelInView = !parentId;
-  const duplicateTitles = useMemo(() => {
-    return isTopLevelInView
-      ? getDuplicateTitles(childrenNodes)
-      : new Set<string>();
-  }, [childrenNodes, isTopLevelInView]);
 
   const columns = useMemo(
     () =>
       getTableColumns({
         showSpaceUsage,
         isTopLevelInView,
-        duplicateTitles,
       }),
-    [showSpaceUsage, isTopLevelInView, duplicateTitles]
+    [showSpaceUsage, isTopLevelInView]
   );
 
   const { startPeriodicRefresh } = usePeriodicRefresh(mutateContentNodes);

@@ -235,25 +235,13 @@ export function DataSourceSearchResults({
   }, [searchResults]);
 
   const listItems: DataSourceListItem[] = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const node of searchResults) {
-      if (node.dataSourceView.dataSource.connectorProvider !== "microsoft") {
-        continue;
-      }
-      counts.set(node.title, (counts.get(node.title) ?? 0) + 1);
-    }
-    const duplicateTitles = new Set(
-      [...counts.entries()].filter(([, c]) => c > 1).map(([t]) => t)
-    );
-
     return searchResults.map((node) => {
       const id = `${node.dataSourceView.sId}:${node.internalId}`;
       return {
         id,
         title: getDisplayTitleForDataSourceViewContentNode(node, {
           prefixSiteName:
-            node.dataSourceView.dataSource.connectorProvider === "microsoft" &&
-            duplicateTitles.has(node.title),
+            node.dataSourceView.dataSource.connectorProvider === "microsoft",
         }),
         icon: getVisualForDataSourceViewContentNode(node),
         onClick: node.expandable
