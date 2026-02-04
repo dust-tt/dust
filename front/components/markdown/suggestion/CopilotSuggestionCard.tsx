@@ -63,9 +63,7 @@ function InstructionsSuggestionCard({
   return (
     <DiffBlock
       changes={[{ old: oldString, new: newString }]}
-      actions={
-        <Button variant="outline" size="sm" label="Review" icon={EyeIcon} />
-      }
+      actions={<Button variant="outline" size="xs" icon={EyeIcon} />}
     />
   );
 }

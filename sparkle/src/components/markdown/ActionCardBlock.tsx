@@ -133,7 +133,7 @@ const titleClassVariants = cva("", {
     status: {
       default: "s-heading-sm s-text-foreground dark:s-text-foreground-night",
       resolved:
-        "s-text-base s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
+        "s-text-sm s-italic s-text-muted-foreground dark:s-text-muted-foreground-night",
       disabled: "s-heading-sm s-text-faint dark:s-text-faint-night",
     },
   },
@@ -145,8 +145,8 @@ const titleClassVariants = cva("", {
 const descriptionClassVariants = cva("", {
   variants: {
     status: {
-      default: "s-text-foreground dark:s-text-foreground-night",
-      disabled: "s-text-faint dark:s-text-faint-night",
+      default: "s-text-sm s-text-foreground dark:s-text-foreground-night",
+      disabled: "s-text-sm s-text-faint dark:s-text-faint-night",
     },
   },
   defaultVariants: {
