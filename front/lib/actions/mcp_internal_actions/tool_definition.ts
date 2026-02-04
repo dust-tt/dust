@@ -82,8 +82,8 @@ type InternalMCPToolType = MCPToolType & {
   displayLabels: ToolDisplayLabels;
 };
 
-export interface ServerMetadata {
+export type ServerMetadata = {
   serverInfo: InternalMCPServerDefinitionType;
   tools: InternalMCPToolType[];
   tools_stakes: Record<string, MCPToolStakeLevelType>;
-}
+};
