@@ -1,14 +1,9 @@
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Extension, Mark } from "@tiptap/core";
+import { Node } from "@tiptap/pm/model";
 import type { EditorState, Transaction } from "@tiptap/pm/state";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-
-// Normalize suggestion text by stripping list markers and trailing whitespace.
-// List markers (- , * , 1. , etc.) are structural in TipTap, not part of text content.
-function normalizeSuggestionText(text: string): string {
-  return text.replace(/^(?:[-*]|\d+\.)\s+/, "").replace(/\s+$/, "");
-}
 
 // Mark for additions (styling applied via decorations based on selection state).
 export const SuggestionAdditionMark = Mark.create({
@@ -67,6 +62,53 @@ export const SuggestionDeletionMark = Mark.create({
     ];
   },
 });
+
+export const SuggestionMark = Mark.create({
+  name: "suggestion",
+  spanning: true,
+
+  addAttributes() {
+    return {
+      suggestionId: { default: null },
+      oldString: { default: null },
+      newString: { default: null },
+    };
+  },
+
+  parseHTML() {
+    return [{ tag: "span[data-suggestion-id]" }];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "span",
+      {
+        class: "suggestion-deletion rounded px-0.5 line-through",
+        "data-suggestion-id": HTMLAttributes.suggestionId,
+        "data-old": HTMLAttributes.oldString,
+        "data-new": HTMLAttributes.newString,
+      },
+      0,
+    ];
+  },
+});
+
+// // Apply only to existing text, store both strings in mark
+// function applySuggestion(editor, oldString, newString) {
+//   const position = findPositionInMarkdown(editor, oldString);
+
+//   editor.commands.command(({ state, dispatch, tr }) => {
+//     const mark = state.schema.marks.suggestion.create({
+//       suggestionId: generateId(),
+//       oldString,
+//       newString,
+//     });
+
+//     tr.addMark(position.from, position.to, mark);
+//     if (dispatch) {dispatch(tr);}
+//     return true;
+//   });
+// }
 
 interface SuggestionNode {
   from: number;
@@ -248,6 +290,117 @@ function filterAdditionMarks(node: JSONContent): JSONContent {
   };
 }
 
+interface MarkerPosition {
+  from: number;
+  to: number;
+}
+
+// Unicode Private Use Area base for markers.
+const MARKER_BASE = '\uE000';
+
+
+/**
+ * Finds positions in ProseMirror document using marker-based approach.
+ *
+ * The approach:
+ * 1. Get current markdown from editor
+ * 2. Insert unique markers around the target string in markdown
+ * 3. Parse the marked markdown back to a ProseMirror Node
+ * 4. Find marker positions in the parsed Node's text content
+ * 5. The text offsets directly give us ProseMirror-compatible positions
+ *
+ * This handles markdown formatting correctly because we work with the actual
+ * markdown representation that gets parsed back to ProseMirror.
+ */
+function findPositionWithMarkers(
+  editor: Editor,
+  searchString: string,
+  suggestionId: string
+): MarkerPosition | null {
+  const markdown = editor.getMarkdown();
+  const markdownIndex = markdown.indexOf(searchString);
+
+  if (markdownIndex === -1) {
+    return null;
+  }
+
+  const startMarker = '\uE000';
+  const endMarker = '\uE001';
+
+  // Insert markers in markdown
+  const markedMarkdown =
+    markdown.slice(0, markdownIndex) +
+    startMarker +
+    markdown.slice(markdownIndex, markdownIndex + searchString.length) +
+    endMarker +
+    markdown.slice(markdownIndex + searchString.length);
+
+  // Parse to ProseMirror
+  const parsedJSON = editor.markdown.parse(markedMarkdown);
+  const parsedDoc = Node.fromJSON(editor.state.schema, parsedJSON);
+
+  // ✅ Create offset-aligned string using the technique from the forum
+  const injectStr = (sourceStr, index, newStr) => {
+    return (
+      sourceStr.slice(0, index) +
+      newStr +
+      sourceStr.slice(index + newStr.length, sourceStr.length)
+    );
+  };
+
+  let offsetText = new Array(parsedDoc.content.size).join(" ");
+
+  parsedDoc.descendants((node, pos) => {
+    if (node.isText && node.text) {
+      offsetText = injectStr(offsetText, pos, node.text);
+    }
+  });
+
+  // Find markers in offset-aligned text
+  const startIdx = offsetText.indexOf(startMarker);
+  const endIdx = offsetText.indexOf(endMarker);
+
+  if (startIdx === -1 || endIdx === -1) {
+    return null;
+  }
+
+  // ✅ These positions ARE document positions!
+  return {
+    from: startIdx,
+    to: endIdx,
+  };
+}
+
+/**
+ * Maps a text offset to a ProseMirror document position.
+ * Text offset is the character position in doc.textContent.
+ */
+function textOffsetToDocPosition(doc: Node, textOffset: number): number {
+  let currentTextOffset = 0;
+  let result = -1;
+
+  doc.descendants((node, pos) => {
+    if (result !== -1) {
+      return false;
+    }
+
+    if (node.isText && node.text) {
+      const nodeStart = currentTextOffset;
+      const nodeEnd = currentTextOffset + node.text.length;
+
+      if (textOffset >= nodeStart && textOffset <= nodeEnd) {
+        result = pos + (textOffset - nodeStart);
+        return false;
+      }
+
+      currentTextOffset = nodeEnd;
+    }
+    return true;
+  });
+
+  return result;
+}
+
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
 
@@ -258,7 +411,7 @@ export const InstructionSuggestionExtension = Extension.create({
   },
 
   addExtensions() {
-    return [SuggestionAdditionMark, SuggestionDeletionMark];
+    return [SuggestionAdditionMark, SuggestionDeletionMark, SuggestionMark];
   },
 
   addProseMirrorPlugins() {
@@ -269,101 +422,106 @@ export const InstructionSuggestionExtension = Extension.create({
     return {
       applySuggestion:
         (options: ApplySuggestionOptions) =>
-        ({ tr, state, dispatch }) => {
+        ({ tr, state, dispatch, editor }) => {
           const { id, find, replacement } = options;
           const { doc, schema } = state;
 
-          const normalizedFind = normalizeSuggestionText(find);
+          let from: number;
+          let to: number;
 
-          // Get full document text and find the position.
-          const fullText = doc.textContent;
-          const textIndex = fullText.indexOf(normalizedFind);
+          // Handle empty find (insertion at beginning).
+          if (find.length === 0) {
+            // Find first text position or default to position 1.
+            let firstTextPos = -1;
+            doc.descendants((node, pos) => {
+              if (firstTextPos === -1 && node.isText) {
+                firstTextPos = pos;
+                return false;
+              }
+              return firstTextPos === -1;
+            });
+            from = firstTextPos === -1 ? 1 : firstTextPos;
+            to = from;
+          } else {
+            console.log('>>> APPLYING:', { find, replacement });
+            // Use marker-based approach for accurate markdown handling.
+            const markerPosition = findPositionWithMarkers(
+              editor,
+              find,
+              id
+            );
 
-          if (textIndex === -1) {
-            return false;
-          }
-
-          // Use normalizedFind for position mapping.
-          const findLength = normalizedFind.length;
-
-          // Map text offset to document position.
-          // We need to account for non-text content (block boundaries, etc.)
-          let from = -1;
-          let to = -1;
-          let currentTextOffset = 0;
-
-          doc.descendants((node, pos) => {
-            if (from !== -1 && to !== -1) {
+            if (!markerPosition) {
               return false;
             }
 
-            if (node.isText && node.text) {
-              const nodeStart = currentTextOffset;
-              const nodeEnd = currentTextOffset + node.text.length;
+            // Convert text offsets to document positions.
+            from = markerPosition.from;
+            to = markerPosition.to;
 
-              // Check if find starts in this node.
-              if (
-                from === -1 &&
-                textIndex >= nodeStart &&
-                textIndex < nodeEnd
-              ) {
-                from = pos + (textIndex - nodeStart);
-              }
+                  // ✅ ADD DEBUG HERE - BEFORE applying the mark
+      console.log('=== DEBUG POSITIONS ===');
+      console.log('searchString (find):', find);
+      console.log('Positions from markers:', { from, to });
+      console.log('Length:', to - from);
+      console.log('state.doc.textContent length:', doc.textContent.length);
+      console.log('Text at position:', doc.textBetween(from, to));
+      console.log('Does it match?', doc.textBetween(from, to) === find);
+      console.log('======================');
 
-              // Check if find ends in this node.
-              const findEnd = textIndex + findLength;
-              if (to === -1 && findEnd > nodeStart && findEnd <= nodeEnd) {
-                to = pos + (findEnd - nodeStart);
-              }
-
-              currentTextOffset = nodeEnd;
+            if (from === -1 || to === -1) {
+              return false;
             }
-            return true;
-          });
-
-          if (findLength === 0) {
-            // If no text nodes exist, insert at position 1 (after opening paragraph).
-            from = from === -1 ? 1 : from;
-            to = from;
           }
 
-          if (from === -1 || to === -1) {
-            return false;
-          }
-
-          const normalizedReplacement = normalizeSuggestionText(replacement);
-
-          // Simple approach: show old text (red/strikethrough) then new text (blue).
-          // No word-level diffing, users accept/reject the whole suggestion.
-          const deletionMark = schema.marks.suggestionDeletion.create({
-            suggestionId: id,
-          });
-          const additionMark = schema.marks.suggestionAddition.create({
-            suggestionId: id,
-          });
+          // // Simple approach: show old text (red/strikethrough) then new text (blue).
+          // // No word-level diffing, users accept/reject the whole suggestion.
+          // const deletionMark = schema.marks.suggestionDeletion.create({
+          //   suggestionId: id,
+          // });
+          // const additionMark = schema.marks.suggestionAddition.create({
+          //   suggestionId: id,
+          // });
 
           // Apply the transaction: replace old text with [old marked as deletion] + [new marked as addition].
           if (dispatch) {
-            tr.delete(from, to);
+            // tr.delete(from, to);
 
-            let insertPos = from;
+            const suggestionMark = schema.marks.suggestion.create({
+              suggestionId: id,
+              oldString: find,
+              newString: replacement,
+            });
 
-            // Insert old text with deletion mark (if not empty).
-            if (normalizedFind.length > 0) {
-              const deletionNode = schema.text(normalizedFind, [deletionMark]);
-              tr.insert(insertPos, deletionNode);
-              insertPos += deletionNode.nodeSize;
+            // For pure insertion (find is empty)
+            if (find.length === 0) {
+              const textNode = schema.text(replacement, [suggestionMark]);
+              tr.insert(from, textNode);
+            } else {
+              // Just mark the existing text!
+              tr.addMark(from, to, suggestionMark);
             }
 
-            // Insert new text with addition mark (if not empty).
-            if (normalizedReplacement.length > 0) {
-              const additionNode = schema.text(normalizedReplacement, [
-                additionMark,
-              ]);
-              tr.insert(insertPos, additionNode);
-            }
+            // let insertPos = from;
+
+            // // Insert old text with deletion mark (if not empty).
+            // if (find.length > 0) {
+            //   const deletionNode = schema.text(find, [deletionMark]);
+            //   tr.insert(insertPos, deletionNode);
+            //   insertPos += deletionNode.nodeSize;
+            // }
+
+            // // Insert new text with addition mark (if not empty).
+            // if (replacement.length > 0) {
+            //   const additionNode = schema.text(replacement, [
+            //     additionMark,
+            //   ]);
+            //   tr.insert(insertPos, additionNode);
+            // }
 
             dispatch(tr);
+
+            console.log("Applied suggestion:", state.doc);
           }
 
           // Track this suggestion.
@@ -412,18 +570,36 @@ export const InstructionSuggestionExtension = Extension.create({
 
       acceptAllSuggestions:
         () =>
-        ({ commands }) => {
-          const suggestionIds = [...this.storage.activeSuggestionIds];
+        ({ state, tr }) => {
+          // // Process all suggestions in a single transaction to avoid
+          // // intermediate state issues with chained commands.
+          // const modified = processAllSuggestionMarks(state, tr, {
+          //   markToDelete: "suggestionDeletion",
+          //   markToKeep: "suggestionAddition",
+          // });
 
-          return suggestionIds.every((id) => commands.acceptSuggestion(id));
+          // if (modified) {
+          //   this.storage.activeSuggestionIds = [];
+          // }
+
+          // return modified;
         },
 
       rejectAllSuggestions:
         () =>
-        ({ commands }) => {
-          const suggestionIds = [...this.storage.activeSuggestionIds];
+        ({ state, tr }) => {
+          // // Process all suggestions in a single transaction to avoid
+          // // intermediate state issues with chained commands.
+          // const modified = processAllSuggestionMarks(state, tr, {
+          //   markToDelete: "suggestionAddition",
+          //   markToKeep: "suggestionDeletion",
+          // });
 
-          return suggestionIds.every((id) => commands.rejectSuggestion(id));
+          // if (modified) {
+          //   this.storage.activeSuggestionIds = [];
+          // }
+
+          // return modified;
         },
     };
   },
