@@ -40,9 +40,3 @@ export function getMicrosoftSharePointDisplayTitle(
   const siteName = extractSharePointSiteNameFromSourceUrl(node.sourceUrl);
   return siteName ? `${siteName} → ${node.title}` : node.title;
 }
-
-export function getMicrosoftSharePointRootFolderDisplayTitle(
-  node: DataSourceViewContentNode
-): string {
-  return getMicrosoftSharePointDisplayTitle(node);
-}
