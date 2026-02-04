@@ -64,7 +64,7 @@ function getDataKeySuffix(displayMode: ToolUsageDisplayMode): string {
   return displayMode === "users" ? "_users" : "_executions";
 }
 
-interface ToolUsageTooltipProps {
+interface ToolUsageTooltipProps extends TooltipContentProps<number, string> {
   displayMode: ToolUsageDisplayMode;
   selectedTools: string[];
 }
@@ -73,7 +73,7 @@ function ToolUsageTooltip({
   displayMode,
   selectedTools,
   ...props
-}: TooltipContentProps<number, string> & ToolUsageTooltipProps) {
+}: ToolUsageTooltipProps) {
   const { active, payload } = props;
   if (!active || !payload || payload.length === 0) {
     return null;
@@ -92,7 +92,7 @@ function ToolUsageTooltip({
 
   const rows = selectedTools.map((tool) => ({
     label: asDisplayToolName(tool),
-    value: (row[`${tool}${suffix}`] as number) ?? 0,
+    value: row[`${tool}${suffix}`] ?? 0,
     colorClassName: getToolColor(tool, selectedTools),
   }));
 
@@ -184,7 +184,9 @@ export function WorkspaceToolUsageChart({
   ];
 
   const isLoading =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     isToolsLoading ||
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     (selectedTools.length === 0 && isAllToolsLoading) ||
     toolUsages.some((t, i) => toolsToFetch[i] && t.isToolUsageLoading);
 
