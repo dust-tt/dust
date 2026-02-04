@@ -20,7 +20,11 @@ import {
   usePatchAgentSuggestions,
 } from "@app/lib/swr/agent_suggestions";
 import { useFeatureFlags } from "@app/lib/swr/workspaces";
-import { removeNulls } from "@app/types";
+import {
+  isInstructionAgentSuggestionType,
+  isInstructionsSuggestion,
+  removeNulls,
+} from "@app/types";
 import type {
   AgentSuggestionType,
   AgentSuggestionWithRelationsType,
@@ -116,26 +120,18 @@ export const CopilotSuggestionsProvider = ({
     workspaceId: owner.sId,
   });
 
-  // Convert backend suggestions to Map for O(1) lookups
-  const suggestionsMap = useMemo(
-    () => new Map(suggestions.map((s) => [s.sId, s])),
-    [suggestions]
-  );
-
-  // Get suggestion: check local state first, then backend
+  // Get suggestion: check local state first, then backend (n is small, .find is fine)
   const getSuggestion = useCallback(
-    (sId: string) => processedSuggestions.get(sId) ?? suggestionsMap.get(sId),
-    [processedSuggestions, suggestionsMap]
+    (sId: string) =>
+      processedSuggestions.get(sId) ?? suggestions.find((s) => s.sId === sId),
+    [processedSuggestions, suggestions]
   );
 
-  // Get all suggestions (local state takes precedence over backend)
-  const getAllSuggestions = useCallback(() => {
-    const all = new Map(suggestionsMap);
-    for (const [sId, s] of processedSuggestions) {
-      all.set(sId, s);
-    }
-    return [...all.values()];
-  }, [suggestionsMap, processedSuggestions]);
+  // Get pending suggestions: backend suggestions not yet processed locally
+  const getPendingSuggestions = useCallback(
+    () => suggestions.filter((s) => !processedSuggestions.has(s.sId)),
+    [suggestions, processedSuggestions]
+  );
 
   // Resolve a suggestion with its relations from context.
   const getSuggestionWithRelations = useCallback(
@@ -305,35 +301,28 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      // Optimistic update for suggestion state
+      // Optimistic update for card state
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         next.set(sId, { ...suggestion, state: "approved" });
         return next;
       });
 
-      if (suggestion.kind === "instructions") {
-        editor.commands.acceptSuggestion(sId);
-        appliedSuggestionsRef.current.delete(sId);
-      }
-
       const result = await patchSuggestions([sId], "approved");
       if (!result || result.suggestions.length === 0) {
-        // Revert suggestion state
+        // Revert on error
         setProcessedSuggestions((prev) => {
           const next = new Map(prev);
           next.set(sId, suggestion);
           return next;
         });
-        if (suggestion.kind === "instructions") {
-          editor.commands.applySuggestion({
-            id: sId,
-            find: suggestion.suggestion.oldString,
-            replacement: suggestion.suggestion.newString,
-          });
-          appliedSuggestionsRef.current.add(sId);
-        }
         return false;
+      }
+
+      // Update editor only on success
+      if (suggestion.kind === "instructions") {
+        editor.commands.acceptSuggestion(sId);
+        appliedSuggestionsRef.current.delete(sId);
       }
 
       return true;
@@ -353,17 +342,12 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      // Optimistic update
+      // Optimistic update for card state
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         next.set(sId, { ...suggestion, state: "rejected" });
         return next;
       });
-
-      if (suggestion.kind === "instructions") {
-        editor.commands.rejectSuggestion(sId);
-        appliedSuggestionsRef.current.delete(sId);
-      }
 
       const result = await patchSuggestions([sId], "rejected");
       if (!result || result.suggestions.length === 0) {
@@ -373,15 +357,13 @@ export const CopilotSuggestionsProvider = ({
           next.set(sId, suggestion);
           return next;
         });
-        if (suggestion.kind === "instructions") {
-          editor.commands.applySuggestion({
-            id: sId,
-            find: suggestion.suggestion.oldString,
-            replacement: suggestion.suggestion.newString,
-          });
-          appliedSuggestionsRef.current.add(sId);
-        }
         return false;
+      }
+
+      // Update editor only on success
+      if (suggestion.kind === "instructions") {
+        editor.commands.rejectSuggestion(sId);
+        appliedSuggestionsRef.current.delete(sId);
       }
 
       return true;
@@ -396,8 +378,8 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      const instructionSuggestions = getAllSuggestions().filter(
-        (s) => s.kind === "instructions" && s.state === "pending"
+      const instructionSuggestions = getPendingSuggestions().filter(
+        (s) => s.kind === "instructions"
       );
 
       if (instructionSuggestions.length === 0) {
@@ -405,8 +387,11 @@ export const CopilotSuggestionsProvider = ({
       }
 
       const sIds = instructionSuggestions.map((s) => s.sId);
+      const result = await patchSuggestions(sIds, "approved");
+      if (!result) {
+        return false;
+      }
 
-      // Optimistic update
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         for (const s of instructionSuggestions) {
@@ -420,31 +405,8 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
-      const result = await patchSuggestions(sIds, "approved");
-      if (!result) {
-        // Revert on error
-        setProcessedSuggestions((prev) => {
-          const next = new Map(prev);
-          for (const s of instructionSuggestions) {
-            next.set(s.sId, s);
-          }
-          return next;
-        });
-        for (const s of instructionSuggestions) {
-          if (s.kind === "instructions") {
-            editor.commands.applySuggestion({
-              id: s.sId,
-              find: s.suggestion.oldString,
-              replacement: s.suggestion.newString,
-            });
-            appliedSuggestionsRef.current.add(s.sId);
-          }
-        }
-        return false;
-      }
-
       return true;
-    }, [patchSuggestions, getAllSuggestions]);
+    }, [patchSuggestions, getPendingSuggestions]);
 
   const rejectAllInstructionSuggestions =
     useCallback(async (): Promise<boolean> => {
@@ -453,8 +415,8 @@ export const CopilotSuggestionsProvider = ({
         return false;
       }
 
-      const instructionSuggestions = getAllSuggestions().filter(
-        (s) => s.kind === "instructions" && s.state === "pending"
+      const instructionSuggestions = getPendingSuggestions().filter(
+        (s) => s.kind === "instructions"
       );
 
       if (instructionSuggestions.length === 0) {
@@ -462,8 +424,11 @@ export const CopilotSuggestionsProvider = ({
       }
 
       const sIds = instructionSuggestions.map((s) => s.sId);
+      const result = await patchSuggestions(sIds, "rejected");
+      if (!result) {
+        return false;
+      }
 
-      // Optimistic update
       setProcessedSuggestions((prev) => {
         const next = new Map(prev);
         for (const s of instructionSuggestions) {
@@ -477,31 +442,8 @@ export const CopilotSuggestionsProvider = ({
         appliedSuggestionsRef.current.delete(sId);
       }
 
-      const result = await patchSuggestions(sIds, "rejected");
-      if (!result) {
-        // Revert on error
-        setProcessedSuggestions((prev) => {
-          const next = new Map(prev);
-          for (const s of instructionSuggestions) {
-            next.set(s.sId, s);
-          }
-          return next;
-        });
-        for (const s of instructionSuggestions) {
-          if (s.kind === "instructions") {
-            editor.commands.applySuggestion({
-              id: s.sId,
-              find: s.suggestion.oldString,
-              replacement: s.suggestion.newString,
-            });
-            appliedSuggestionsRef.current.add(s.sId);
-          }
-        }
-        return false;
-      }
-
       return true;
-    }, [patchSuggestions, getAllSuggestions]);
+    }, [patchSuggestions, getPendingSuggestions]);
 
   const getCommittedInstructions = useCallback(() => {
     const editor = editorRef.current;
@@ -510,11 +452,6 @@ export const CopilotSuggestionsProvider = ({
     }
     return getCommittedTextContent(editor);
   }, []);
-
-  const getPendingSuggestions = useCallback(
-    () => getAllSuggestions().filter((s) => s.state === "pending"),
-    [getAllSuggestions]
-  );
 
   const value: CopilotSuggestionsContextType = useMemo(
     () => ({
