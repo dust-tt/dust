@@ -12289,11 +12289,15 @@
       },
       {
         "name": "get_messages",
-        "description": "Get messages from Outlook inbox. Supports search queries to filter messages.",
+        "description": "Get messages from Outlook inbox. Supports search queries to filter messages and filter by folder name.",
         "inputSchema": {
           "$schema": "http://json-schema.org/draft-07/schema#",
           "additionalProperties": false,
           "properties": {
+            "folderName": {
+              "description": "The name of the folder to get messages from. Examples: \"Inbox\", \"Sent Items\", \"Drafts\". The tool will search for a folder matching this name. Leave empty to get messages from all folders.",
+              "type": "string"
+            },
             "search": {
               "description": "Search query to filter messages. Examples: \"from:someone@example.com\", \"subject:meeting\", \"hasAttachments:true\". Leave empty to get recent messages.",
               "type": "string"
