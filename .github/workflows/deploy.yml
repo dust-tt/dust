@@ -43,6 +43,11 @@ on:
         options:
           - "us"
           - "eu"
+      override_dust_app_url:
+        description: "Override NEXT_PUBLIC_DUST_APP_URL with https://app.dust.tt (front-edge only)"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -163,6 +168,7 @@ jobs:
           contentful_space_id: ${{ secrets.CONTENTFUL_SPACE_ID }}
           contentful_access_token: ${{ secrets.CONTENTFUL_ACCESS_TOKEN }}
           workload_identity_provider: "projects/357744735673/locations/global/workloadIdentityPools/github-pool-apps/providers/github-provider-apps"
+          override_dust_app_url: ${{ inputs.override_dust_app_url }}
 
       - name: Notify build success
         uses: ./.github/actions/slack-notify
