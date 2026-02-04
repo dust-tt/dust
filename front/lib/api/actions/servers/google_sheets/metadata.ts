@@ -26,8 +26,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing spreadsheets",
-      done: "List spreadsheets",
+      running: "Listing Google Sheets spreadsheets",
+      done: "List Google Sheets spreadsheets",
     },
   },
   get_spreadsheet: {
@@ -40,8 +40,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting spreadsheet",
-      done: "Get spreadsheet",
+      running: "Getting Google Sheets spreadsheet",
+      done: "Get Google Sheets spreadsheet",
     },
   },
   get_worksheet: {
@@ -65,8 +65,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting worksheet",
-      done: "Get worksheet",
+      running: "Getting Google Sheets worksheet",
+      done: "Get Google Sheets worksheet",
     },
   },
   update_cells: {
@@ -92,8 +92,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Updating cells",
-      done: "Update cells",
+      running: "Updating Google Sheets cells",
+      done: "Update Google Sheets cells",
     },
   },
   append_data: {
@@ -123,8 +123,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Appending data",
-      done: "Append data",
+      running: "Appending data to Google Sheets",
+      done: "Append data to Google Sheets",
     },
   },
   clear_range: {
@@ -139,8 +139,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Clearing range",
-      done: "Clear range",
+      running: "Clearing Google Sheets range",
+      done: "Clear Google Sheets range",
     },
   },
   create_spreadsheet: {
@@ -156,8 +156,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating spreadsheet",
-      done: "Create spreadsheet",
+      running: "Creating Google Sheets spreadsheet",
+      done: "Create Google Sheets spreadsheet",
     },
   },
   add_worksheet: {
@@ -177,8 +177,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding worksheet",
-      done: "Add worksheet",
+      running: "Adding Google Sheets worksheet",
+      done: "Add Google Sheets worksheet",
     },
   },
   delete_worksheet: {
@@ -189,8 +189,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Deleting worksheet",
-      done: "Delete worksheet",
+      running: "Deleting Google Sheets worksheet",
+      done: "Delete Google Sheets worksheet",
     },
   },
   format_cells: {
@@ -231,8 +231,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Formatting cells",
-      done: "Format cells",
+      running: "Formatting Google Sheets cells",
+      done: "Format Google Sheets cells",
     },
   },
   copy_sheet: {
@@ -255,8 +255,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Copying sheet",
-      done: "Copy sheet",
+      running: "Copying Google Sheets sheet",
+      done: "Copy Google Sheets sheet",
     },
   },
   rename_worksheet: {
@@ -268,8 +268,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Renaming worksheet",
-      done: "Rename worksheet",
+      running: "Renaming Google Sheets worksheet",
+      done: "Rename Google Sheets worksheet",
     },
   },
   move_worksheet: {
@@ -287,8 +287,8 @@ export const GOOGLE_SHEETS_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Moving worksheet",
-      done: "Move worksheet",
+      running: "Moving Google Sheets worksheet",
+      done: "Move Google Sheets worksheet",
     },
   },
 });

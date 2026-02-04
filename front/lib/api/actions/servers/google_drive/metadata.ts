@@ -27,8 +27,8 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing drives",
-      done: "List drives",
+      running: "Listing Google drives",
+      done: "List Google drives",
     },
   },
   search_files: {
@@ -100,8 +100,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching files",
-      done: "Search files",
+      running: "Searching Google Drive files",
+      done: "Search Google Drive files",
     },
   },
   get_file_content: {
@@ -125,8 +125,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting file content",
-      done: "Get file content",
+      running: "Getting Google Drive file content",
+      done: "Get Google Drive file content",
     },
   },
   get_spreadsheet: {
@@ -139,8 +139,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting spreadsheet",
-      done: "Get spreadsheet",
+      running: "Retrieving Google spreadsheet",
+      done: "Retrieve Google spreadsheet",
     },
   },
   get_worksheet: {
@@ -164,8 +164,8 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting worksheet",
-      done: "Get worksheet",
+      running: "Retrieving Google worksheet",
+      done: "Retrieve Google worksheet",
     },
   },
 });
@@ -178,8 +178,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating document",
-      done: "Create document",
+      running: "Creating Google document",
+      done: "Create Google document",
     },
   },
   create_spreadsheet: {
@@ -189,8 +189,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating spreadsheet",
-      done: "Create spreadsheet",
+      running: "Creating Google spreadsheet",
+      done: "Create Google spreadsheet",
     },
   },
   create_presentation: {
@@ -200,8 +200,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating presentation",
-      done: "Create presentation",
+      running: "Creating Google presentation",
+      done: "Create Google presentation",
     },
   },
   create_comment: {
@@ -212,8 +212,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Creating comment",
-      done: "Create comment",
+      running: "Creating Google Drive comment",
+      done: "Create Google Drive comment",
     },
   },
   update_document: {
@@ -231,8 +231,8 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "medium",
     displayLabels: {
-      running: "Updating document",
-      done: "Update document",
+      running: "Updating Google document",
+      done: "Update Google document",
     },
   },
 });

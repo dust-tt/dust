@@ -75,8 +75,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting object properties",
-      done: "Get object properties",
+      running: "Retrieving HubSpot object properties",
+      done: "Retrieve HubSpot object properties",
     },
   },
   get_object_by_email: {
@@ -87,8 +87,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting object by email",
-      done: "Get object by email",
+      running: "Retrieving HubSpot object by email",
+      done: "Retrieve HubSpot object by email",
     },
   },
   list_owners: {
@@ -99,8 +99,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing owners",
-      done: "List owners",
+      running: "Listing HubSpot owners",
+      done: "List HubSpot owners",
     },
   },
   search_owners: {
@@ -117,8 +117,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching owners",
-      done: "Search owners",
+      running: "Searching HubSpot owners",
+      done: "Search HubSpot owners",
     },
   },
   count_objects_by_properties: {
@@ -131,8 +131,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Counting objects by properties",
-      done: "Count objects by properties",
+      running: "Counting HubSpot objects by properties",
+      done: "Count HubSpot objects by properties",
     },
   },
   get_latest_objects: {
@@ -143,8 +143,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting latest objects",
-      done: "Get latest objects",
+      running: "Retrieving latest HubSpot objects",
+      done: "Retrieve latest HubSpot objects",
     },
   },
   get_contact: {
@@ -154,8 +154,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting contact",
-      done: "Get contact",
+      running: "Retrieving HubSpot contact",
+      done: "Retrieve HubSpot contact",
     },
   },
   get_company: {
@@ -172,8 +172,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting company",
-      done: "Get company",
+      running: "Retrieving HubSpot company",
+      done: "Retrieve HubSpot company",
     },
   },
   get_deal: {
@@ -190,8 +190,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting deal",
-      done: "Get deal",
+      running: "Retrieving HubSpot deal",
+      done: "Retrieve HubSpot deal",
     },
   },
   get_meeting: {
@@ -203,8 +203,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting meeting",
-      done: "Get meeting",
+      running: "Retrieving HubSpot meeting",
+      done: "Retrieve HubSpot meeting",
     },
   },
   get_file_public_url: {
@@ -214,8 +214,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting file public URL",
-      done: "Get file public URL",
+      running: "Retrieving HubSpot file public URL",
+      done: "Retrieve HubSpot file public URL",
     },
   },
   get_associated_meetings: {
@@ -229,8 +229,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting associated meetings",
-      done: "Get associated meetings",
+      running: "Retrieving HubSpot associated meetings",
+      done: "Retrieve HubSpot associated meetings",
     },
   },
   search_crm_objects: {
@@ -256,8 +256,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching CRM objects",
-      done: "Search CRM objects",
+      running: "Searching HubSpot CRM objects",
+      done: "Search HubSpot CRM objects",
     },
   },
   export_crm_objects_csv: {
@@ -279,8 +279,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Exporting CRM objects to CSV",
-      done: "Export CRM objects to CSV",
+      running: "Exporting HubSpot CRM objects to CSV",
+      done: "Export HubSpot CRM objects to CSV",
     },
   },
   get_hubspot_link: {
@@ -297,8 +297,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting HubSpot link",
-      done: "Get HubSpot link",
+      running: "Retrieving HubSpot UI link",
+      done: "Retrieve HubSpot UI link",
     },
   },
   get_hubspot_portal_id: {
@@ -307,8 +307,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting HubSpot portal ID",
-      done: "Get HubSpot portal ID",
+      running: "Retrieving HubSpot portal ID",
+      done: "Retrieve HubSpot portal ID",
     },
   },
   list_associations: {
@@ -326,8 +326,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing associations",
-      done: "List associations",
+      running: "Listing HubSpot associations",
+      done: "List HubSpot associations",
     },
   },
   get_current_user_id: {
@@ -338,8 +338,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Getting current user ID",
-      done: "Get current user ID",
+      running: "Retrieving HubSpot current user ID",
+      done: "Retrieve HubSpot current user ID",
     },
   },
   get_user_activity: {
@@ -376,8 +376,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting user activity",
-      done: "Get user activity",
+      running: "Retrieving HubSpot user activity",
+      done: "Retrieve HubSpot user activity",
     },
   },
 
@@ -396,8 +396,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating contact",
-      done: "Create contact",
+      running: "Creating HubSpot contact",
+      done: "Create HubSpot contact",
     },
   },
   create_company: {
@@ -414,8 +414,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating company",
-      done: "Create company",
+      running: "Creating HubSpot company",
+      done: "Create HubSpot company",
     },
   },
   create_deal: {
@@ -431,8 +431,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating deal",
-      done: "Create deal",
+      running: "Creating HubSpot deal",
+      done: "Create HubSpot deal",
     },
   },
   create_lead: {
@@ -451,8 +451,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating lead",
-      done: "Create lead",
+      running: "Creating HubSpot lead",
+      done: "Create HubSpot lead",
     },
   },
   create_task: {
@@ -470,8 +470,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating task",
-      done: "Create task",
+      running: "Creating HubSpot task",
+      done: "Create HubSpot task",
     },
   },
   create_note: {
@@ -494,8 +494,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating note",
-      done: "Create note",
+      running: "Creating HubSpot note",
+      done: "Create HubSpot note",
     },
   },
   create_communication: {
@@ -513,8 +513,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating communication",
-      done: "Create communication",
+      running: "Creating HubSpot communication",
+      done: "Create HubSpot communication",
     },
   },
   create_meeting: {
@@ -532,8 +532,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating meeting",
-      done: "Create meeting",
+      running: "Creating HubSpot meeting",
+      done: "Create HubSpot meeting",
     },
   },
   create_association: {
@@ -551,8 +551,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating association",
-      done: "Create association",
+      running: "Creating HubSpot association",
+      done: "Create HubSpot association",
     },
   },
 
@@ -569,8 +569,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating contact",
-      done: "Update contact",
+      running: "Updating HubSpot contact",
+      done: "Update HubSpot contact",
     },
   },
   update_company: {
@@ -585,8 +585,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating company",
-      done: "Update company",
+      running: "Updating HubSpot company",
+      done: "Update HubSpot company",
     },
   },
   update_deal: {
@@ -601,8 +601,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating deal",
-      done: "Update deal",
+      running: "Updating HubSpot deal",
+      done: "Update HubSpot deal",
     },
   },
   remove_association: {
@@ -619,8 +619,8 @@ export const HUBSPOT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Removing association",
-      done: "Remove association",
+      running: "Removing HubSpot association",
+      done: "Remove HubSpot association",
     },
   },
 });

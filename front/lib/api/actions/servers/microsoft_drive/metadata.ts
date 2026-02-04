@@ -30,8 +30,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching in files",
-      done: "Search in files",
+      running: "Searching in OneDrive/SharePoint files",
+      done: "Search in OneDrive/SharePoint files",
     },
   },
   search_drive_items: {
@@ -46,8 +46,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching drive items",
-      done: "Search drive items",
+      running: "Searching OneDrive/SharePoint items",
+      done: "Search OneDrive/SharePoint items",
     },
   },
   update_word_document: {
@@ -75,8 +75,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Updating Word document",
-      done: "Update Word document",
+      running: "Updating Microsoft Word document",
+      done: "Update Microsoft Word document",
     },
   },
   get_file_content: {
@@ -119,8 +119,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting file content",
-      done: "Get file content",
+      running: "Getting OneDrive/SharePoint file content",
+      done: "Get OneDrive/SharePoint file content",
     },
   },
   upload_file: {
@@ -159,8 +159,8 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Uploading file",
-      done: "Upload file",
+      running: "Uploading file to OneDrive/SharePoint",
+      done: "Upload file to OneDrive/SharePoint",
     },
   },
 });
