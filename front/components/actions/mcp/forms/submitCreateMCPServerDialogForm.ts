@@ -169,7 +169,6 @@ export async function submitCreateMCPServerDialogForm({
         : authorization.scope;
 
     const cRes = await setupOAuthConnection({
-      dustClientFacingUrl: `${process.env.NEXT_PUBLIC_DUST_CLIENT_FACING_URL}`,
       owner,
       provider: authorization.provider,
       // During setup, the use case is always "platform_actions".

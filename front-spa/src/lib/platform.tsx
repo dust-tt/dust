@@ -157,10 +157,13 @@ export function useAppRouter(): AppRouter {
       _options?: TransitionOptions
     ) => {
       const urlString = urlToString(url);
-      if (navigate) {
+      if (
+        navigate &&
+        !urlString.startsWith("http://") &&
+        !urlString.startsWith("https://")
+      ) {
         await navigate(urlString);
       } else {
-        // Fallback to window.location if not in Router context
         window.location.href = urlString;
       }
       return true;
@@ -175,7 +178,11 @@ export function useAppRouter(): AppRouter {
       _options?: TransitionOptions
     ) => {
       const urlString = urlToString(url);
-      if (navigate) {
+      if (
+        navigate &&
+        !urlString.startsWith("http://") &&
+        !urlString.startsWith("https://")
+      ) {
         await navigate(urlString, { replace: true });
       } else {
         // Fallback to window.location if not in Router context

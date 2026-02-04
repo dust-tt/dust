@@ -1,3 +1,5 @@
+import config from "@app/lib/api/config";
+
 import type {
   OAuthConnectionType,
   OAuthCredentials,
@@ -8,22 +10,19 @@ import { isOAuthConnectionType } from "../../oauth/lib";
 import type { Result } from "../../shared/result";
 import { Err, Ok } from "../../shared/result";
 import type { LightWorkspaceType } from "../../user";
-
 export async function setupOAuthConnection({
-  dustClientFacingUrl,
   owner,
   provider,
   useCase,
   extraConfig,
 }: {
-  dustClientFacingUrl: string;
   owner: LightWorkspaceType;
   provider: OAuthProvider;
   useCase: OAuthUseCase;
   extraConfig: OAuthCredentials;
 }): Promise<Result<OAuthConnectionType, Error>> {
   return new Promise((resolve) => {
-    let url = `${dustClientFacingUrl}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
+    let url = `${config.getAppUrl()}/w/${owner.sId}/oauth/${provider}/setup?useCase=${useCase}`;
     if (extraConfig) {
       url += `&extraConfig=${encodeURIComponent(JSON.stringify(extraConfig))}`;
     }
