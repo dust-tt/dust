@@ -1,16 +1,11 @@
-import {
-  Button,
-  DataTable,
-  LinkIcon,
-  ScrollableDataTable,
-  Spinner,
-} from "@dust-tt/sparkle";
+import { DataTable, ScrollableDataTable, Spinner } from "@dust-tt/sparkle";
 import type { CellContext, ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { LinkWrapper } from "@app/lib/platform";
 import { useWorkspaceTopAgents } from "@app/lib/swr/workspaces";
+import { getAgentBuilderRoute } from "@app/lib/utils/router";
 import { isGlobalAgentId } from "@app/types";
 
 interface TopAgentRowData {
@@ -36,17 +31,16 @@ function makeColumns(workspaceId: string): ColumnDef<TopAgentRowData>[] {
 
         return (
           <DataTable.CellContent>
-            <div className="group flex items-center gap-1">
-              <span>{name}</span>
-              {isCustomAgent && (
-                <LinkWrapper
-                  href={`/w/${workspaceId}/builder/assistants/${agentId}`}
-                  className="invisible group-hover:visible"
-                >
-                  <Button icon={LinkIcon} size="xs" variant="ghost" />
-                </LinkWrapper>
-              )}
-            </div>
+            {isCustomAgent ? (
+              <LinkWrapper
+                href={getAgentBuilderRoute(workspaceId, agentId)}
+                className="hover:underline"
+              >
+                {name}
+              </LinkWrapper>
+            ) : (
+              name
+            )}
           </DataTable.CellContent>
         );
       },
@@ -99,7 +93,7 @@ export function WorkspaceTopAgentsTable({
       disabled: !workspaceId,
     });
 
-  const columns = useMemo(() => makeColumns(workspaceId), [workspaceId]);
+  const columns = makeColumns(workspaceId);
 
   const rows = useMemo<TopAgentRowData[]>(() => {
     return topAgents.map((agent) => ({
