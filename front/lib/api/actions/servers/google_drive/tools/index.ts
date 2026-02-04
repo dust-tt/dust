@@ -690,6 +690,50 @@ const writeHandlers: ToolHandlers<typeof GOOGLE_DRIVE_WRITE_TOOLS_METADATA> = {
       return handlePermissionError(err);
     }
   },
+
+  update_presentation: async ({ presentationId, requests }, extra) => {
+    const slides = await getSlidesClient(extra.authInfo);
+    if (!slides) {
+      return new Err(new MCPError("Failed to authenticate with Google Slides"));
+    }
+
+    try {
+      // Attempt to get presentation metadata first to check access
+      const metadata = await slides.presentations.get({
+        presentationId,
+        fields: "presentationId,title",
+      });
+
+      const res = await slides.presentations.batchUpdate({
+        presentationId,
+        requestBody: { requests },
+      });
+
+      return new Ok([
+        {
+          type: "text" as const,
+          text: JSON.stringify(
+            {
+              presentationId,
+              title: metadata.data.title,
+              updatedSlides: res.data.replies?.length ?? 0,
+              url: `https://docs.google.com/presentation/d/${presentationId}/edit`,
+            },
+            null,
+            2
+          ),
+        },
+      ]);
+    } catch (err) {
+      if (isFileNotAuthorizedError(err)) {
+        return handleFileAccessError(err, presentationId, extra, {
+          name: presentationId,
+          mimeType: "application/vnd.google-apps.presentation",
+        });
+      }
+      return handlePermissionError(err);
+    }
+  },
 };
 
 export const WRITE_TOOLS = buildTools(
