@@ -241,54 +241,17 @@ body {
   color: theme("colors.green.300");
 }
 
-/* Action buttons: inline compact buttons */
-.suggestion-actions-inline {
-  display: inline-flex;
-  gap: 2px;
-  margin-left: 4px;
-  vertical-align: middle;
+/* Block preview for multi-line suggestions */
+.suggestion-preview-block {
+  background-color: theme("colors.green.500" / 15%);
+  border-left: 3px solid theme("colors.green.500");
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 4px;
+  color: theme("colors.green.700");
 }
 
-.suggestion-accept-btn-inline,
-.suggestion-reject-btn-inline {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border-radius: 3px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  line-height: 1;
-  vertical-align: middle;
-}
-
-.suggestion-accept-btn-inline {
-  background-color: theme("colors.green.500");
-  color: white;
-}
-
-.suggestion-accept-btn-inline:hover {
-  background-color: theme("colors.green.600");
-}
-
-.suggestion-reject-btn-inline {
-  background-color: theme("colors.gray.200");
-  color: theme("colors.gray.600");
-}
-
-.suggestion-reject-btn-inline:hover {
-  background-color: theme("colors.gray.300");
-}
-
-.dark .suggestion-reject-btn-inline {
-  background-color: theme("colors.gray.600");
-  color: theme("colors.gray.300");
-}
-
-.dark .suggestion-reject-btn-inline:hover {
-  background-color: theme("colors.gray.500");
+.dark .suggestion-preview-block {
+  background-color: theme("colors.green.500" / 25%);
+  color: theme("colors.green.300");
 }
