@@ -28,6 +28,12 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
   const dataSourceView =
     findDataSourceViewFromNavigationHistory(navigationHistory);
 
+  const parentId =
+    traversedNode !== null && traversedNode.parentInternalIds !== null
+      ? traversedNode.internalId
+      : undefined;
+  const isTopLevelInView = !parentId;
+
   const {
     nodes: childNodes,
     isNodesLoading,
@@ -38,10 +44,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
     owner,
     dataSourceView:
       traversedNode?.dataSourceView ?? dataSourceView ?? undefined,
-    parentId:
-      traversedNode !== null && traversedNode.parentInternalIds !== null
-        ? traversedNode.internalId
-        : undefined,
+    parentId,
     viewType,
     pagination: { limit: PAGE_SIZE, cursor: null },
     sorting: [{ field: "title", direction: "asc" }],
@@ -58,7 +61,9 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
       childNodes.map((node) => {
         return {
           id: node.internalId,
-          title: getDisplayTitleForDataSourceViewContentNode(node),
+          title: getDisplayTitleForDataSourceViewContentNode(node, {
+            disambiguate: isTopLevelInView,
+          }),
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,
           entry: {
@@ -68,7 +73,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
           },
         };
       }),
-    [childNodes, addNodeEntry]
+    [childNodes, addNodeEntry, isTopLevelInView]
   );
 
   if (isNodesLoading) {

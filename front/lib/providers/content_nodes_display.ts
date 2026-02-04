@@ -1,15 +1,16 @@
 import type { DataSourceViewContentNode } from "@app/types";
 
-import { getMicrosoftSharePointRootFolderDisplayTitle } from "./microsoft/content_nodes_display";
+import { getMicrosoftSharePointDisplayTitle } from "./microsoft/content_nodes_display";
 
 export function getDisplayTitleForDataSourceViewContentNode(
-  node: DataSourceViewContentNode
+  node: DataSourceViewContentNode,
+  { disambiguate }: { disambiguate?: boolean } = {}
 ): string {
   const provider = node.dataSourceView.dataSource.connectorProvider;
 
   switch (provider) {
     case "microsoft":
-      return getMicrosoftSharePointRootFolderDisplayTitle(node);
+      return getMicrosoftSharePointDisplayTitle(node, { disambiguate });
     default:
       return node.title;
   }
