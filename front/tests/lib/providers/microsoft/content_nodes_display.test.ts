@@ -110,7 +110,7 @@ describe("getMicrosoftSharePointDisplayTitle", () => {
   it("prefixes non-root nodes when requested", () => {
     const node = makeNode({ parentInternalId: "parent" });
     expect(
-      getMicrosoftSharePointDisplayTitle(node, { prefixSiteName: true })
+      getMicrosoftSharePointDisplayTitle(node, { disambiguate: true })
     ).toBe("Project Alpha → 01 Engagement");
   });
 

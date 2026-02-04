@@ -4,13 +4,13 @@ import { getMicrosoftSharePointDisplayTitle } from "./microsoft/content_nodes_di
 
 export function getDisplayTitleForDataSourceViewContentNode(
   node: DataSourceViewContentNode,
-  { prefixSiteName }: { prefixSiteName?: boolean } = {}
+  { disambiguate }: { disambiguate?: boolean } = {}
 ): string {
   const provider = node.dataSourceView.dataSource.connectorProvider;
 
   switch (provider) {
     case "microsoft":
-      return getMicrosoftSharePointDisplayTitle(node, { prefixSiteName });
+      return getMicrosoftSharePointDisplayTitle(node, { disambiguate });
     default:
       return node.title;
   }

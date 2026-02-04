@@ -21,19 +21,18 @@ function extractSharePointSiteNameFromSourceUrl(
 }
 
 type MicrosoftSharePointDisplayTitleOptions = {
-  prefixSiteName?: boolean;
+  disambiguate?: boolean;
 };
 
 export function getMicrosoftSharePointDisplayTitle(
   node: DataSourceViewContentNode,
-  { prefixSiteName }: MicrosoftSharePointDisplayTitleOptions = {}
+  { disambiguate }: MicrosoftSharePointDisplayTitleOptions = {}
 ): string {
   if (node.type !== "folder" || !node.sourceUrl) {
     return node.title;
   }
 
-  const shouldPrefix =
-    prefixSiteName === true || node.parentInternalId === null;
+  const shouldPrefix = disambiguate === true || node.parentInternalId === null;
   if (!shouldPrefix) {
     return node.title;
   }

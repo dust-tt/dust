@@ -240,8 +240,7 @@ export function DataSourceSearchResults({
       return {
         id,
         title: getDisplayTitleForDataSourceViewContentNode(node, {
-          prefixSiteName:
-            node.dataSourceView.dataSource.connectorProvider === "microsoft",
+          disambiguate: true,
         }),
         icon: getVisualForDataSourceViewContentNode(node),
         onClick: node.expandable

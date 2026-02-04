@@ -62,7 +62,7 @@ export function DataSourceNodeTable({ viewType }: DataSourceNodeTableProps) {
         return {
           id: node.internalId,
           title: getDisplayTitleForDataSourceViewContentNode(node, {
-            prefixSiteName: isTopLevelInView,
+            disambiguate: isTopLevelInView,
           }),
           icon: getVisualForDataSourceViewContentNode(node),
           onClick: node.expandable ? () => addNodeEntry(node) : undefined,

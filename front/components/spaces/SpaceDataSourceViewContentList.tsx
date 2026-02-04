@@ -100,7 +100,7 @@ const getTableColumns = ({
     id: "title",
     accessorFn: (row) =>
       getDisplayTitleForDataSourceViewContentNode(row, {
-        prefixSiteName: isTopLevelInView,
+        disambiguate: isTopLevelInView,
       }),
     sortingFn: (a, b, columnId) => {
       const aValue = a.getValue(columnId) as string;

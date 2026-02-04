@@ -461,13 +461,13 @@ const SpaceDataSourceViewItem = ({
   owner,
   space,
   node,
-  prefixSiteNameForNode,
+  disambiguateForNode,
 }: {
   item: DataSourceViewType;
   owner: LightWorkspaceType;
   space: SpaceType;
   node?: DataSourceViewContentNode;
-  prefixSiteNameForNode?: boolean;
+  disambiguateForNode?: boolean;
 }): ReactElement => {
   const { isDark } = useTheme();
   const { setNavigationSelection } = usePersistedNavigationSelection();
@@ -530,7 +530,7 @@ const SpaceDataSourceViewItem = ({
 
   const label = node
     ? getDisplayTitleForDataSourceViewContentNode(node, {
-        prefixSiteName: prefixSiteNameForNode === true,
+        disambiguate: disambiguateForNode === true,
       })
     : getDataSourceNameFromView(item);
 
@@ -562,7 +562,7 @@ const SpaceDataSourceViewItem = ({
               owner={owner}
               space={space}
               node={childNode}
-              prefixSiteNameForNode={node === undefined}
+              disambiguateForNode={node === undefined}
             />
           ))}
           {hiddenNodesCount > 0 && (
