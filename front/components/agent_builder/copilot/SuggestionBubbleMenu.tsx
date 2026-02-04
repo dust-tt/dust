@@ -10,21 +10,17 @@ interface SuggestionBubbleMenuProps {
 
 /**
  * Floating menu for suggestion actions.
- * - Click on suggestion: stays selected until click elsewhere or action taken
- * - Hover without selection: last hovered suggestion stays until you hover another
+ * Shows for the last hovered/clicked suggestion, clears on click outside.
  */
 export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   const suggestionsContext = useCopilotSuggestions();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [menuPosition, setMenuPosition] = useState<{
     top: number;
     left: number;
     visible: boolean;
   } | null>(null);
   const activeIdRef = useRef<string | null>(null);
-
-  const activeId = selectedId ?? hoveredId;
 
   useEffect(() => {
     activeIdRef.current = activeId;
@@ -51,8 +47,6 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     }
 
     const editorDom = editor.view.dom;
-
-    // Find all elements for this suggestion.
     const elements = editorDom.querySelectorAll<HTMLElement>(
       `[data-suggestion-id="${suggestionId}"]`
     );
@@ -62,10 +56,8 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       return;
     }
 
-    // Get the editor's bounding rect (the scrollable container).
     const editorRect = editorDom.getBoundingClientRect();
 
-    // Find the combined bounds of all suggestion elements.
     let maxBottom = -Infinity;
     let minLeft = Infinity;
     let minTop = Infinity;
@@ -77,14 +69,11 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
       minTop = Math.min(minTop, rect.top);
     }
 
-    // Check if suggestion is visible within the editor viewport.
     const visible =
       maxBottom > editorRect.top &&
       minTop < editorRect.bottom &&
-      maxBottom <= editorRect.bottom + 50; // Allow menu to show if suggestion bottom is near viewport bottom
+      maxBottom <= editorRect.bottom + 50;
 
-    // Position relative to the editor's parent wrapper (which has position: relative).
-    // We need to account for the editor's position within the wrapper.
     const wrapper = editorDom.parentElement;
     if (!wrapper) {
       setMenuPosition(null);
@@ -100,20 +89,22 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     });
   }, [editor]);
 
+  // On hover, update activeId if over a suggestion.
   const handleMouseMove = useCallback(
     (event: MouseEvent) => {
       const id = getSuggestionId(event.target);
       if (id) {
-        setHoveredId(id);
+        setActiveId(id);
       }
     },
     [getSuggestionId]
   );
 
+  // On click, set activeId (clears if clicking outside suggestions).
   const handleClick = useCallback(
     (event: MouseEvent) => {
       const id = getSuggestionId(event.target);
-      setSelectedId(id);
+      setActiveId(id);
     },
     [getSuggestionId]
   );
@@ -149,7 +140,6 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
     };
   }, [activeId, editor, updateMenuPosition]);
 
-  // Update the editor's highlighted suggestion.
   useEffect(() => {
     editor.commands.setHighlightedSuggestion(activeId);
   }, [editor, activeId]);
@@ -157,16 +147,14 @@ export function SuggestionBubbleMenu({ editor }: SuggestionBubbleMenuProps) {
   const handleAccept = useCallback(() => {
     if (activeId && suggestionsContext) {
       suggestionsContext.acceptSuggestion(activeId);
-      setSelectedId(null);
-      setHoveredId(null);
+      setActiveId(null);
     }
   }, [activeId, suggestionsContext]);
 
   const handleReject = useCallback(() => {
     if (activeId && suggestionsContext) {
       suggestionsContext.rejectSuggestion(activeId);
-      setSelectedId(null);
-      setHoveredId(null);
+      setActiveId(null);
     }
   }, [activeId, suggestionsContext]);
 
