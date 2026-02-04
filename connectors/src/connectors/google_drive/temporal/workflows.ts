@@ -503,7 +503,9 @@ export async function googleDriveFullSyncV2({
 
     while (!syncCompleted) {
       await sleep("30 seconds");
-      if (syncCompleted) { break; }
+      if (syncCompleted) {
+        break;
+      }
 
       // Count total files synced so far in this run
       const totalFilesSynced = await getFilesCountForSync(

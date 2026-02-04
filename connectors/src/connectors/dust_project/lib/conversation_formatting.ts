@@ -23,7 +23,9 @@ export async function formatConversationForUpsert({
     // Only take the last version of each rank
     const msg = versions[versions.length - 1];
 
-    if (!msg) { continue; }
+    if (!msg) {
+      continue;
+    }
 
     let prefix: string | null = null;
     let content: string | null = null;
