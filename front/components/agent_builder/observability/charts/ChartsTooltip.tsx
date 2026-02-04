@@ -8,7 +8,7 @@ import {
 import {
   ChartTooltipCard,
   LegendDot,
-} from "@app/components/agent_builder/observability/shared/ChartTooltip";
+} from "@app/components/charts/ChartTooltip";
 import { isToolChartUsagePayload } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
 import { asDisplayToolName } from "@app/types/shared/utils/string_utils";

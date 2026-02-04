@@ -2,8 +2,8 @@ import { Cell, Pie, PieChart, Tooltip } from "recharts";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import {
   buildSourceChartData,
   getSourceColor,

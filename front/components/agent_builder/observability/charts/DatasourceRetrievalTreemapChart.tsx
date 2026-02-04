@@ -17,8 +17,8 @@ import {
   INDEXED_COLORS,
 } from "@app/components/agent_builder/observability/constants";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import {
   getIndexedBaseColor,
   getIndexedColor,

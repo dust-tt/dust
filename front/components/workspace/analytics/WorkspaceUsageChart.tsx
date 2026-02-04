@@ -14,9 +14,9 @@ import {
   USAGE_METRICS_LEGEND,
   USAGE_METRICS_PALETTE,
 } from "@app/components/agent_builder/observability/constants";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { legendFromConstant } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { legendFromConstant } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import { padSeriesToTimeRange } from "@app/components/agent_builder/observability/utils";
 import { useWorkspaceUsageMetrics } from "@app/lib/swr/workspaces";
 import { formatShortDate } from "@app/lib/utils/timestamps";

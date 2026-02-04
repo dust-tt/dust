@@ -29,9 +29,9 @@ import {
   OTHER_LABEL,
   USER_MESSAGE_ORIGIN_LABELS,
 } from "@app/components/agent_builder/observability/constants";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import type { LegendItem } from "@app/components/agent_builder/observability/shared/ChartLegend";
-import { ChartTooltipCard } from "@app/components/agent_builder/observability/shared/ChartTooltip";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartTooltipCard } from "@app/components/charts/ChartTooltip";
 import {
   getIndexedColor,
   getSourceColor,

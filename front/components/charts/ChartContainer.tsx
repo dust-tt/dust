@@ -14,8 +14,8 @@ import { ResponsiveContainer } from "recharts";
 
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 
-import type { LegendItem } from "./ChartLegend";
-import { ChartLegend } from "./ChartLegend";
+import type { LegendItem } from "@app/components/charts/ChartLegend";
+import { ChartLegend } from "@app/components/charts/ChartLegend";
 
 interface ChartContainerProps {
   title: ReactNode;

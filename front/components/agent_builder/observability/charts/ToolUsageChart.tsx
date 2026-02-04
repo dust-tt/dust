@@ -15,8 +15,8 @@ import { ChartsTooltip } from "@app/components/agent_builder/observability/chart
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { RoundedBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import type {
   ChartDatum,
   ToolChartModeType,
