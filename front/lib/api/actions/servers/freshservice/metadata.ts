@@ -354,8 +354,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing departments",
-      done: "List departments",
+      running: "Listing Freshservice departments",
+      done: "List Freshservice departments",
     },
   },
   list_products: {
@@ -366,8 +366,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing products",
-      done: "List products",
+      running: "Listing Freshservice products",
+      done: "List Freshservice products",
     },
   },
   list_oncall_schedules: {
@@ -378,8 +378,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing on-call schedules",
-      done: "List on-call schedules",
+      running: "Listing Freshservice on-call schedules",
+      done: "List Freshservice on-call schedules",
     },
   },
 
@@ -393,8 +393,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing service categories",
-      done: "List service categories",
+      running: "Listing Freshservice service categories",
+      done: "List Freshservice service categories",
     },
   },
   list_service_items: {
@@ -412,8 +412,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing service items",
-      done: "List service items",
+      running: "Listing Freshservice service items",
+      done: "List Freshservice service items",
     },
   },
   search_service_items: {
@@ -443,8 +443,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Searching service items",
-      done: "Search service items",
+      running: "Searching Freshservice service items",
+      done: "Search Freshservice service items",
     },
   },
   get_service_item: {
@@ -457,8 +457,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting service item",
-      done: "Get service item",
+      running: "Getting Freshservice service item",
+      done: "Get Freshservice service item",
     },
   },
   get_service_item_fields: {
@@ -471,8 +471,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting service item fields",
-      done: "Get service item fields",
+      running: "Getting Freshservice service item fields",
+      done: "Get Freshservice service item fields",
     },
   },
   request_service_item: {
@@ -501,8 +501,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Requesting service item",
-      done: "Request service item",
+      running: "Requesting Freshservice service item",
+      done: "Request Freshservice service item",
     },
   },
 
@@ -516,8 +516,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing solution categories",
-      done: "List solution categories",
+      running: "Listing Freshservice solution categories",
+      done: "List Freshservice solution categories",
     },
   },
   list_solution_folders: {
@@ -530,8 +530,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing solution folders",
-      done: "List solution folders",
+      running: "Listing Freshservice solution folders",
+      done: "List Freshservice solution folders",
     },
   },
   list_solution_articles: {
@@ -552,8 +552,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing solution articles",
-      done: "List solution articles",
+      running: "Listing Freshservice solution articles",
+      done: "List Freshservice solution articles",
     },
   },
   get_solution_article: {
@@ -564,8 +564,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting solution article",
-      done: "Get solution article",
+      running: "Getting Freshservice solution article",
+      done: "Get Freshservice solution article",
     },
   },
   create_solution_article: {
@@ -587,8 +587,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating solution article",
-      done: "Create solution article",
+      running: "Creating Freshservice solution article",
+      done: "Create Freshservice solution article",
     },
   },
 
@@ -604,8 +604,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing requesters",
-      done: "List requesters",
+      running: "Listing Freshservice requesters",
+      done: "List Freshservice requesters",
     },
   },
   get_requester: {
@@ -615,8 +615,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting requester",
-      done: "Get requester",
+      running: "Getting Freshservice requester",
+      done: "Get Freshservice requester",
     },
   },
 
@@ -629,8 +629,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing purchase orders",
-      done: "List purchase orders",
+      running: "Listing Freshservice purchase orders",
+      done: "List Freshservice purchase orders",
     },
   },
 
@@ -640,8 +640,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing SLA policies",
-      done: "List SLA policies",
+      running: "Listing Freshservice SLA policies",
+      done: "List Freshservice SLA policies",
     },
   },
 
@@ -664,8 +664,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing canned responses",
-      done: "List canned responses",
+      running: "Listing Freshservice canned responses",
+      done: "List Freshservice canned responses",
     },
   },
   get_canned_response: {
@@ -675,8 +675,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting canned response",
-      done: "Get canned response",
+      running: "Getting Freshservice canned response",
+      done: "Get Freshservice canned response",
     },
   },
 });

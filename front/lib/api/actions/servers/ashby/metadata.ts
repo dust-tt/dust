@@ -28,8 +28,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
     schema: CandidateSearchSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Searching candidates",
-      done: "Search candidates",
+      running: "Searching candidates on Ashby",
+      done: "Search candidates on Ashby",
     },
   },
   get_report_data: {
@@ -43,8 +43,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving report data",
-      done: "Retrieve report data",
+      running: "Retrieving Ashby report data",
+      done: "Retrieve Ashby report data",
     },
   },
   get_interview_feedback: {
@@ -55,8 +55,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
     schema: CandidateSearchSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving interview feedback",
-      done: "Retrieve interview feedback",
+      running: "Retrieving interview feedback from Ashby",
+      done: "Retrieve interview feedback from Ashby",
     },
   },
   get_candidate_notes: {
@@ -66,8 +66,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
     schema: CandidateSearchSchema,
     stake: "never_ask",
     displayLabels: {
-      running: "Retrieving candidate notes",
-      done: "Retrieve candidate notes",
+      running: "Retrieving candidate notes from Ashby",
+      done: "Retrieve candidate notes from Ashby",
     },
   },
   create_candidate_note: {
@@ -82,8 +82,8 @@ export const ASHBY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "high",
     displayLabels: {
-      running: "Creating candidate note",
-      done: "Create candidate note",
+      running: "Creating candidate note on Ashby",
+      done: "Create candidate note on Ashby",
     },
   },
 });

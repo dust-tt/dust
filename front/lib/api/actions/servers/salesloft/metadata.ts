@@ -28,8 +28,8 @@ export const SALESLOFT_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Getting actions",
-      done: "Get actions",
+      running: "Getting Salesloft actions",
+      done: "Get Salesloft actions",
     },
   },
 });

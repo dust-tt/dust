@@ -34,7 +34,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
-    displayLabels: { running: "Retrieving Zendesk ticket", done: "Retrieve Zendesk ticket" },
+    displayLabels: {
+      running: "Retrieving Zendesk ticket",
+      done: "Retrieve Zendesk ticket",
+    },
   },
   search_tickets: {
     description:
@@ -62,7 +65,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
         .describe("Sort order. Defaults to 'desc' if not specified."),
     },
     stake: "never_ask",
-    displayLabels: { running: "Searching Zendesk tickets", done: "Search Zendesk tickets" },
+    displayLabels: {
+      running: "Searching Zendesk tickets",
+      done: "Search Zendesk tickets",
+    },
   },
   list_ticket_fields: {
     description:
@@ -95,7 +101,10 @@ export const ZENDESK_TOOLS_METADATA = createToolsRecord({
       body: z.string().describe("The content of the draft reply."),
     },
     stake: "low", // Low because it's a draft.
-    displayLabels: { running: "Drafting Zendesk reply", done: "Draft Zendesk reply" },
+    displayLabels: {
+      running: "Drafting Zendesk reply",
+      done: "Draft Zendesk reply",
+    },
   },
 });
 
