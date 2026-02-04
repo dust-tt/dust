@@ -7,6 +7,7 @@ import type {
   WhereOptions,
 } from "sequelize";
 import { Op } from "sequelize";
+import type { Logger } from "@app/logger/logger";
 
 import { getAgentConfigurations } from "@app/lib/api/assistant/configuration/agent";
 import type { Authenticator } from "@app/lib/auth";
@@ -115,8 +116,7 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
     blob: Omit<
       CreationAttributes<AgentSuggestionModel>,
       "workspaceId" | "agentConfigurationId"
-    >,
-    { transaction }: { transaction?: Transaction } = {}
+    >
   ): Promise<AgentSuggestionResource> {
     const owner = auth.getNonNullableWorkspace();
 
@@ -135,14 +135,11 @@ export class AgentSuggestionResource extends BaseResource<AgentSuggestionModel> 
       throw new Error("User does not have permission to edit this agent");
     }
 
-    const suggestion = await AgentSuggestionModel.create(
-      {
-        ...blob,
-        agentConfigurationId: agentConfiguration.id,
-        workspaceId: owner.id,
-      },
-      { transaction }
-    );
+    const suggestion = await AgentSuggestionModel.create({
+      ...blob,
+      agentConfigurationId: agentConfiguration.id,
+      workspaceId: owner.id,
+    });
 
     return new this(
       AgentSuggestionModel,
