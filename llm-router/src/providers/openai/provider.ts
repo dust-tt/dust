@@ -11,11 +11,23 @@ export type OpenAIModel = {
 };
 
 export type OpenAITextGeneratedMetadata = OpenAIModel & {
-  itemId: { value: string };
+  itemId: string;
 };
 export type OpenAITextDeltaMetadata = OpenAIModel & {
+  itemId: string;
+};
+export type OpenAIReasoningGeneratedMetadata = OpenAIModel & {
+  itemId: string;
+};
+export type OpenAIReasoningDeltaMetadata = OpenAIModel & {
   itemId: { value: string };
 };
 export type OpenAIResponseIdMetadata = OpenAIModel & {
-  createdAt: { value: number };
+  createdAt: number;
+  responseId: string;
+};
+export type OpenAICompletionMetadata = OpenAIModel & {
+  createdAt: number;
+  completedAt: number | undefined;
+  responseId: string;
 };

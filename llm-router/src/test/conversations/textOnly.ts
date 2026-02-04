@@ -1,15 +1,15 @@
-import type { Payload } from "@/types/payload";
+import type { Payload } from "@/types/history";
 
 export const payload: Payload = {
   conversation: {
     messages: [
       {
         role: "system",
-        content: { value: 'Say "hi"' },
+        content: { value: "Assistant" },
       },
     ],
   },
   prompt: {
-    value: "Do what you're asked to.",
+    value: "Hi",
   },
 };

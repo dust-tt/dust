@@ -30,6 +30,7 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
+    "assert-never": "^1.4.0",
     "openai": "^6.17.0"
   },
   "devDependencies": {
