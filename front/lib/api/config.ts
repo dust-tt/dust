@@ -23,9 +23,13 @@ const config = {
   },
   // URL for the main app pages (/w/..., /share/..., etc.). Falls back to getClientFacingUrl() when not set.
   // Use this for page URLs, not API endpoints.
-  getAppUrl: (): string => {
+  // TODO(spa): make NEXT_PUBLIC_DUST_APP_URL mandatory, remove allowRelativeUrl parameter.
+  getAppUrl: (allowRelativeUrl: boolean = false): string => {
     // Using process.env here to make sure the function is usable on the client side.
     if (!process.env.NEXT_PUBLIC_DUST_APP_URL) {
+      if (allowRelativeUrl) {
+        return "";
+      }
       return config.getClientFacingUrl();
     }
 
