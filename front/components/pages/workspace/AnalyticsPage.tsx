@@ -3,8 +3,6 @@ import { useState } from "react";
 
 import type { ObservabilityTimeRangeType } from "@app/components/agent_builder/observability/constants";
 import { DEFAULT_PERIOD_DAYS } from "@app/components/agent_builder/observability/constants";
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { ActivityReport } from "@app/components/workspace/ActivityReport";
 import { WorkspaceAnalyticsOverviewCards } from "@app/components/workspace/analytics/WorkspaceAnalyticsOverviewCards";
 import { WorkspaceAnalyticsTimeRangeSelector } from "@app/components/workspace/analytics/WorkspaceAnalyticsTimeRangeSelector";
@@ -13,18 +11,14 @@ import { WorkspaceToolUsageChart } from "@app/components/workspace/analytics/Wor
 import { WorkspaceTopAgentsTable } from "@app/components/workspace/analytics/WorkspaceTopAgentsTable";
 import { WorkspaceTopUsersTable } from "@app/components/workspace/analytics/WorkspaceTopUsersTable";
 import { WorkspaceUsageChart } from "@app/components/workspace/analytics/WorkspaceUsageChart";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { clientFetch } from "@app/lib/egress/client";
-import {
-  useFeatureFlags,
-  useWorkspaceSubscriptions,
-} from "@app/lib/swr/workspaces";
+import { useWorkspaceSubscriptions } from "@app/lib/swr/workspaces";
 import datadogLogger from "@app/logger/datadogLogger";
 import { normalizeError } from "@app/types";
 
 export function AnalyticsPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
   const [downloadingMonth, setDownloadingMonth] = useState<string | null>(null);
   const [includeInactive, setIncludeInactive] = useState(true);
   const [period, setPeriod] =
@@ -33,8 +27,6 @@ export function AnalyticsPage() {
   const { subscriptions } = useWorkspaceSubscriptions({
     owner,
   });
-
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   const handleDownload = async (selectedMonth: string | null) => {
     if (!selectedMonth) {
@@ -149,52 +141,40 @@ export function AnalyticsPage() {
   }
 
   return (
-    <>
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({
-          owner,
-          current: "analytics",
-          featureFlags,
-        })}
-      >
-        <Page.Vertical align="stretch" gap="xl">
-          <Page.Header
-            title={
-              <div className="flex flex-row w-full justify-between">
-                <div>
-                  <Page.H variant="h3">Analytics</Page.H>
-                </div>
-                <div>
-                  <WorkspaceAnalyticsTimeRangeSelector
-                    period={period}
-                    onPeriodChange={setPeriod}
-                  />
-                </div>
-              </div>
-            }
-            icon={BarChartIcon}
-            description="Track how your team uses Dust"
-          />
-          <WorkspaceAnalyticsOverviewCards
-            workspaceId={owner.sId}
-            period={period}
-          />
-          <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
-          <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
-          <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
-          <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
-          <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
-          <ActivityReport
-            downloadingMonth={downloadingMonth}
-            monthOptions={monthOptions}
-            handleDownload={handleDownload}
-            includeInactive={includeInactive}
-            onIncludeInactiveChange={setIncludeInactive}
-          />
-        </Page.Vertical>
-      </AppCenteredLayout>
-    </>
+    <Page.Vertical align="stretch" gap="xl">
+      <Page.Header
+        title={
+          <div className="flex flex-row w-full justify-between">
+            <div>
+              <Page.H variant="h3">Analytics</Page.H>
+            </div>
+            <div>
+              <WorkspaceAnalyticsTimeRangeSelector
+                period={period}
+                onPeriodChange={setPeriod}
+              />
+            </div>
+          </div>
+        }
+        icon={BarChartIcon}
+        description="Track how your team uses Dust"
+      />
+      <WorkspaceAnalyticsOverviewCards
+        workspaceId={owner.sId}
+        period={period}
+      />
+      <WorkspaceUsageChart workspaceId={owner.sId} period={period} />
+      <WorkspaceSourceChart workspaceId={owner.sId} period={period} />
+      <WorkspaceToolUsageChart workspaceId={owner.sId} period={period} />
+      <WorkspaceTopUsersTable workspaceId={owner.sId} period={period} />
+      <WorkspaceTopAgentsTable workspaceId={owner.sId} period={period} />
+      <ActivityReport
+        downloadingMonth={downloadingMonth}
+        monthOptions={monthOptions}
+        handleDownload={handleDownload}
+        includeInactive={includeInactive}
+        onIncludeInactiveChange={setIncludeInactive}
+      />
+    </Page.Vertical>
   );
 }

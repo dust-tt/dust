@@ -11,6 +11,7 @@ import {
 
 import RootLayout from "@dust-tt/front/components/app/RootLayout";
 import { RegionProvider } from "@dust-tt/front/lib/auth/RegionContext";
+import { AdminLayout } from "@spa/app/layouts/AdminLayout";
 
 // Redirect component that preserves query params
 function RedirectWithSearchParams({ to }: { to: string }) {
@@ -275,28 +276,27 @@ const router = createBrowserRouter(
           ],
         },
 
-        // Workspace settings
-        { path: "workspace", element: <WorkspaceSettingsPage /> },
-
-        // Members
-        { path: "members", element: <MembersPage /> },
-
-        // Analytics
-        { path: "analytics", element: <AnalyticsPage /> },
-
-        // Subscription
-        { path: "subscription", element: <SubscriptionPage /> },
-        { path: "subscription/manage", element: <ManageSubscriptionPage /> },
         {
-          path: "subscription/payment_processing",
-          element: <PaymentProcessingPage />,
+          element: <AdminLayout />,
+          children: [
+            { path: "members", element: <MembersPage /> },
+            { path: "workspace", element: <WorkspaceSettingsPage /> },
+            { path: "analytics", element: <AnalyticsPage /> },
+            { path: "subscription", element: <SubscriptionPage /> },
+            {
+              path: "subscription/manage",
+              element: <ManageSubscriptionPage />,
+            },
+            {
+              path: "subscription/payment_processing",
+              element: <PaymentProcessingPage />,
+            },
+            { path: "developers/api-keys", element: <APIKeysPage /> },
+            { path: "developers/credits-usage", element: <CreditsUsagePage /> },
+            { path: "developers/providers", element: <ProvidersPage /> },
+            { path: "developers/dev-secrets", element: <SecretsPage /> },
+          ],
         },
-
-        // Developers
-        { path: "developers/api-keys", element: <APIKeysPage /> },
-        { path: "developers/credits-usage", element: <CreditsUsagePage /> },
-        { path: "developers/providers", element: <ProvidersPage /> },
-        { path: "developers/dev-secrets", element: <SecretsPage /> },
 
         // Labs
         { path: "labs", element: <LabsPage /> },

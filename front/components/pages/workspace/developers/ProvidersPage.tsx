@@ -8,21 +8,18 @@ import {
 } from "@dust-tt/sparkle";
 import { useState } from "react";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
 import {
   MODEL_PROVIDER_CONFIGS,
   ProviderSetup,
   SERVICE_PROVIDER_CONFIGS,
 } from "@app/components/providers/ProviderSetup";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import {
   APP_MODEL_PROVIDER_IDS,
   modelProviders,
   serviceProviders,
 } from "@app/lib/providers";
 import { useProviders } from "@app/lib/swr/apps";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { WorkspaceType } from "@app/types";
 import { redactString } from "@app/types";
 
@@ -211,30 +208,17 @@ function ProviderListItem({
 
 export function ProvidersPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
-
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
-      owner={owner}
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "providers",
-        featureFlags,
-      })}
-    >
-      <Page.Vertical gap="xl" align="stretch">
-        <Page.Header
-          title="Providers"
-          icon={ShapesIcon}
-          description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
-        />
-        <Page.Vertical align="stretch" gap="md">
-          <Providers owner={owner} />
-        </Page.Vertical>
+    <Page.Vertical gap="xl" align="stretch">
+      <Page.Header
+        title="Providers"
+        icon={ShapesIcon}
+        description="Configure model and service providers to enable advanced capabilities in your Apps. Note: These providers are not used by Dust agents at all, but are required for running your own custom Dust Apps."
+      />
+      <Page.Vertical align="stretch" gap="md">
+        <Providers owner={owner} />
       </Page.Vertical>
-    </AppCenteredLayout>
+    </Page.Vertical>
   );
 }

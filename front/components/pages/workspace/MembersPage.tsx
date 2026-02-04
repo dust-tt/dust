@@ -17,8 +17,6 @@ import { ReachedLimitPopup } from "@app/components/app/ReachedLimitPopup";
 import { InvitationsList } from "@app/components/members/InvitationsList";
 import { InviteEmailButtonWithModal } from "@app/components/members/InviteEmailButtonWithModal";
 import { MembersList } from "@app/components/members/MembersList";
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { ChangeMemberModal } from "@app/components/workspace/ChangeMemberModal";
 import WorkspaceAccessPanel from "@app/components/workspace/WorkspaceAccessPanel";
 import { WorkspaceSection } from "@app/components/workspace/WorkspaceSection";
@@ -26,7 +24,6 @@ import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
 import { isUpgraded } from "@app/lib/plans/plan_codes";
 import { useSearchMembers } from "@app/lib/swr/memberships";
 import {
-  useFeatureFlags,
   usePerSeatPricing,
   useWorkspaceSeatAvailability,
   useWorkspaceVerifiedDomains,
@@ -151,7 +148,6 @@ export function MembersPage() {
   const [inviteBlockedPopupReason, setInviteBlockedPopupReason] =
     useState<WorkspaceLimit | null>(null);
 
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
   const { verifiedDomains, isVerifiedDomainsLoading } =
     useWorkspaceVerifiedDomains({ workspaceId: owner.sId });
   const { hasAvailableSeats, isSeatAvailabilityLoading } =
@@ -189,84 +185,64 @@ export function MembersPage() {
 
   if (isLoading) {
     return (
-      <AppCenteredLayout
-        subscription={subscription}
-        owner={owner}
-        subNavigation={subNavigationAdmin({
-          owner,
-          current: "members",
-          featureFlags,
-        })}
-      >
-        <div className="flex h-full items-center justify-center">
-          <Spinner size="lg" />
-        </div>
-      </AppCenteredLayout>
+      <div className="flex h-full items-center justify-center">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
-      owner={owner}
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "members",
-        featureFlags,
-      })}
-    >
-      <div className="mb-4">
-        <Page.Vertical gap="lg" align="stretch">
-          <Page.Header
-            title="People & Security"
-            icon={UsersIcon}
-            description="Verify your domain, manage team members and their permissions."
-          />
-          <WorkspaceAccessPanel
-            workspaceVerifiedDomains={verifiedDomains}
-            owner={owner}
-            plan={plan}
-          />
-          <WorkspaceSection title="Members" icon={UserIcon}>
-            <div className="flex flex-row gap-2">
-              <SearchInput
-                placeholder={
-                  isProvisioningEnabled ? "Search" : "Search members (email)"
-                }
-                value={searchTerm}
-                name="search"
-                onChange={setSearchTerm}
-                className="w-full"
+    <div className="mb-4">
+      <Page.Vertical gap="lg" align="stretch">
+        <Page.Header
+          title="People & Security"
+          icon={UsersIcon}
+          description="Verify your domain, manage team members and their permissions."
+        />
+        <WorkspaceAccessPanel
+          workspaceVerifiedDomains={verifiedDomains}
+          owner={owner}
+          plan={plan}
+        />
+        <WorkspaceSection title="Members" icon={UserIcon}>
+          <div className="flex flex-row gap-2">
+            <SearchInput
+              placeholder={
+                isProvisioningEnabled ? "Search" : "Search members (email)"
+              }
+              value={searchTerm}
+              name="search"
+              onChange={setSearchTerm}
+              className="w-full"
+            />
+            {isManualInvitationsEnabled && (
+              <InviteEmailButtonWithModal
+                owner={owner}
+                prefillText=""
+                perSeatPricing={perSeatPricing}
+                onInviteClick={onInviteClick}
               />
-              {isManualInvitationsEnabled && (
-                <InviteEmailButtonWithModal
-                  owner={owner}
-                  prefillText=""
-                  perSeatPricing={perSeatPricing}
-                  onInviteClick={onInviteClick}
-                />
-              )}
-            </div>
-            <WorkspaceMembersGroupsList
-              currentUser={user}
-              owner={owner}
-              searchTerm={searchTerm}
-              isProvisioningEnabled={isProvisioningEnabled}
-              isManualInvitationsEnabled={isManualInvitationsEnabled}
-            />
-          </WorkspaceSection>
-          {inviteBlockedPopupReason && (
-            <ReachedLimitPopup
-              isAdmin={isAdmin(owner)}
-              isOpened={!!inviteBlockedPopupReason}
-              onClose={() => setInviteBlockedPopupReason(null)}
-              subscription={subscription}
-              owner={owner}
-              code={inviteBlockedPopupReason}
-            />
-          )}
-        </Page.Vertical>
-      </div>
-    </AppCenteredLayout>
+            )}
+          </div>
+          <WorkspaceMembersGroupsList
+            currentUser={user}
+            owner={owner}
+            searchTerm={searchTerm}
+            isProvisioningEnabled={isProvisioningEnabled}
+            isManualInvitationsEnabled={isManualInvitationsEnabled}
+          />
+        </WorkspaceSection>
+        {inviteBlockedPopupReason && (
+          <ReachedLimitPopup
+            isAdmin={isAdmin(owner)}
+            isOpened={!!inviteBlockedPopupReason}
+            onClose={() => setInviteBlockedPopupReason(null)}
+            subscription={subscription}
+            owner={owner}
+            code={inviteBlockedPopupReason}
+          />
+        )}
+      </Page.Vertical>
+    </div>
   );
 }
