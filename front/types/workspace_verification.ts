@@ -71,5 +71,6 @@ export type PhoneLookupErrorCode =
   | "invalid_phone_number"
   | "lookup_failed"
   | "not_mobile"
+  | "prepaid_not_accepted"
   | "high_risk_blocked"
   | "flagged_for_review";
