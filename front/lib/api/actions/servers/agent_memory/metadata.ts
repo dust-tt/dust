@@ -67,8 +67,8 @@ export const AGENT_MEMORY_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Editing entries",
-      done: "Edit entries",
+      running: "Editing memory entries",
+      done: "Edit memory entries",
     },
   },
   [AGENT_MEMORY_COMPACT_TOOL_NAME]: {

@@ -98,8 +98,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     stake: "never_ask",
     enableAlerting: true,
     displayLabels: {
-      running: "Finding tables",
-      done: "Find tables",
+      running: "Finding tables in warehouse",
+      done: "Find tables in warehouse",
     },
   },
   describe_tables: {
@@ -121,8 +121,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     stake: "never_ask",
     enableAlerting: true,
     displayLabels: {
-      running: "Describing tables",
-      done: "Describe tables",
+      running: "Describing warehouse tables",
+      done: "Describe warehouse tables",
     },
   },
   query: {
@@ -151,8 +151,8 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     stake: "never_ask",
     enableAlerting: true,
     displayLabels: {
-      running: "Running query",
-      done: "Run query",
+      running: "Running warehouse query",
+      done: "Run warehouse query",
     },
   },
 });

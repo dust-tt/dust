@@ -50,8 +50,8 @@ export const HTTP_CLIENT_TOOLS_METADATA = createToolsRecord({
     stake: "low",
     enableAlerting: true,
     displayLabels: {
-      running: "Sending request",
-      done: "Send request",
+      running: "Sending HTTP request",
+      done: "Send HTTP request",
     },
   },
 });
