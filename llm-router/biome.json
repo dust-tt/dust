@@ -17,6 +17,18 @@
     "lineEnding": "lf",
     "lineWidth": 80
   },
+  "overrides": [
+    {
+      "includes": ["vite.config.ts", "vitest.config.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noDefaultExport": "off"
+          }
+        }
+      }
+    }
+  ],
   "linter": {
     "enabled": true,
     "rules": {
@@ -166,7 +178,15 @@
           "level": "error",
           "options": {
             "strictCase": false,
-            "requireAscii": true
+            "requireAscii": true,
+            "conventions": [
+              {
+                "selector": {
+                  "kind": "objectLiteralProperty"
+                },
+                "formats": ["camelCase", "snake_case", "PascalCase"]
+              }
+            ]
           }
         },
         "useNodejsImportProtocol": "error",
