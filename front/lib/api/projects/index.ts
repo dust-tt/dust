@@ -349,7 +349,7 @@ export async function createDataSourceAndConnectorForProject(
         parents: [PROJECT_CONTEXT_FOLDER_ID],
         mimeType: INTERNAL_MIME_TYPES.DUST_PROJECT.CONTEXT_FOLDER,
         sourceUrl:
-          config.getClientFacingUrl() +
+          config.getAppUrl() +
           getSpaceConversationsRoute(workspace.sId, space.sId),
         timestamp: null,
         providerVisibility: null,

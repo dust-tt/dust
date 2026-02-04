@@ -236,6 +236,32 @@ function extractCommittedText(node: JSONContent): string {
   return "";
 }
 
+/**
+ * Gets the document position of a suggestion mark by its ID.
+ * Returns the start position of the first mark with the given suggestionId, or null if not found.
+ */
+export function getSuggestionPosition(
+  editor: { state: EditorState },
+  suggestionId: string
+): number | null {
+  let position: number | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (position !== null) {
+      return false;
+    }
+    const mark = node.marks.find(
+      (m) =>
+        (m.type.name === "suggestionAddition" ||
+          m.type.name === "suggestionDeletion") &&
+        m.attrs.suggestionId === suggestionId
+    );
+    if (mark) {
+      position = pos;
+    }
+  });
+  return position;
+}
+
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
 

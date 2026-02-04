@@ -202,7 +202,6 @@ async function handler(
         configuration: agentConfiguration,
         skipToolsValidation: false,
         actions: [],
-        rawContents: [],
         contents: [],
         parsedContents: {},
         modelInteractionDurationMs: null,

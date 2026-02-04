@@ -217,8 +217,12 @@ function constructSkillsSection({
     "tool when they become relevant to the conversation.\n" +
     "- **Enabled**: Fully active with instructions loaded. Once enabled, a skill remains active " +
     "for the rest of the conversation.\n\n" +
-    "Enable skills proactively when a user's request matches a skill's purpose. " +
-    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n";
+    "Enable skills proactively when a user's request matches a skill's purpose.\n" +
+    "Only enable skills you actually need—enabling a skill loads its full instructions into context.\n" +
+    "If you need to enable multiple skills, enable them in parallel.\n\n" +
+    "When in doubt about enabling a skill, prefer enabling it as it may give you a new " +
+    "perspective on the currently available context.\n" +
+    "Decisions taken prior to enabling a skill may need to be revisited after enabling it.\n";
 
   if (!enabledSkills.length && !equippedSkills.length) {
     skillsSection +=

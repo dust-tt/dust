@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 
+import { AdminLayout } from "@app/components/layouts/AdminLayout";
 import { APIKeysPage } from "@app/components/pages/workspace/developers/APIKeysPage";
 import { AppAuthContextLayout } from "@app/components/sparkle/AppAuthContextLayout";
 import type { AppPageWithLayout } from "@app/lib/auth/appServerSideProps";
@@ -15,7 +16,9 @@ PageWithAuthLayout.getLayout = (
   pageProps: AuthContextValue
 ) => {
   return (
-    <AppAuthContextLayout authContext={pageProps}>{page}</AppAuthContextLayout>
+    <AppAuthContextLayout authContext={pageProps}>
+      <AdminLayout>{page}</AdminLayout>
+    </AppAuthContextLayout>
   );
 };
 

@@ -55,17 +55,16 @@ export function getCopilotSuggestionPlugin() {
     kind,
   }: CopilotSuggestionPluginProps) => {
     const {
-      getSuggestion,
+      getSuggestionWithRelations,
       triggerRefetch,
       isSuggestionsValidating,
       hasAttemptedRefetch,
-      markRefetchAttempted,
     } = useCopilotSuggestions();
 
-    const suggestion = sId ? getSuggestion(sId) : null;
+    const suggestion = sId ? getSuggestionWithRelations(sId) : null;
 
     // Trigger refetch when suggestion not found and not currently fetching.
-    // Track attempts in context (persists across component remounts).
+    // triggerRefetch queues the sId and marks it as attempted after fetch completes.
     useEffect(() => {
       if (
         sId &&
@@ -73,8 +72,7 @@ export function getCopilotSuggestionPlugin() {
         !isSuggestionsValidating &&
         !hasAttemptedRefetch(sId)
       ) {
-        markRefetchAttempted(sId);
-        triggerRefetch();
+        triggerRefetch(sId);
       }
     }, [
       sId,
@@ -82,14 +80,17 @@ export function getCopilotSuggestionPlugin() {
       isSuggestionsValidating,
       triggerRefetch,
       hasAttemptedRefetch,
-      markRefetchAttempted,
     ]);
 
-    if (isSuggestionsValidating || !sId || !kind) {
+    if (!sId || !kind) {
       return <SuggestionCardSkeleton kind={kind} />;
     }
 
     if (!suggestion) {
+      // Show skeleton while validating or haven't completed a refetch attempt
+      if (isSuggestionsValidating || !hasAttemptedRefetch(sId)) {
+        return <SuggestionCardSkeleton kind={kind} />;
+      }
       return <SuggestionCardError />;
     }
 

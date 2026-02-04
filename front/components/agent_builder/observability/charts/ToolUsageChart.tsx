@@ -15,13 +15,13 @@ import { ChartsTooltip } from "@app/components/agent_builder/observability/chart
 import { CHART_HEIGHT } from "@app/components/agent_builder/observability/constants";
 import { useToolUsageData } from "@app/components/agent_builder/observability/hooks";
 import { useObservabilityContext } from "@app/components/agent_builder/observability/ObservabilityContext";
-import { ChartContainer } from "@app/components/agent_builder/observability/shared/ChartContainer";
-import { RoundedBarShape } from "@app/components/agent_builder/observability/shared/ChartShapes";
 import type {
   ChartDatum,
   ToolChartModeType,
 } from "@app/components/agent_builder/observability/types";
 import { getIndexedColor } from "@app/components/agent_builder/observability/utils";
+import { ChartContainer } from "@app/components/charts/ChartContainer";
+import { RoundedBarShape } from "@app/components/charts/ChartShapes";
 import { useAgentMcpConfigurations } from "@app/lib/swr/assistants";
 
 interface ToolUsageChartProps {

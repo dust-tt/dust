@@ -10,13 +10,21 @@ on:
           - poke
           - app
         required: true
+      env:
+        description: "The environment to use for API endpoints (prod or edge)"
+        type: choice
+        options:
+          - prod
+          - edge
+        default: "prod"
+        required: true        
       region:
-        description: "Default region for API endpoint"
+        description: "Default region for API endpoint (should stay US unless we have a reason to change it)"
         type: choice
         options:
           - eu
           - us
-        default: "eu"
+        default: "us"
         required: true
 
 concurrency:
@@ -48,7 +56,13 @@ jobs:
           NEXT_PUBLIC_COMMIT_HASH: ${{ github.sha }}
         run: |
           set -a
-          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.prod
+          source ../.github/configs/${{ inputs.region == 'eu' && 'europe-west1' || 'us-central1' }}/.env.${{ inputs.env }}
+          # Override NEXT_PUBLIC_DUST_APP_URL: use branch preview URL for non-main branches
+          if [ "${{ github.ref_name }}" == "main" ]; then
+            export NEXT_PUBLIC_DUST_APP_URL=https://app.dust.tt
+          else
+            export NEXT_PUBLIC_DUST_APP_URL=https://${{ github.ref_name }}.app-dust-tt.pages.dev
+          fi
           # Map all NEXT_PUBLIC_* to VITE_* for SPA
           for var in $(compgen -v | grep '^NEXT_PUBLIC_'); do
             export "VITE_${var#NEXT_PUBLIC_}=${!var}"

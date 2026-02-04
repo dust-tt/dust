@@ -1,6 +1,6 @@
-import { IconButton } from "@dust-tt/sparkle";
-import { ArrowsUpDownIcon } from "@heroicons/react/20/solid";
 import type { ColumnDef, Row } from "@tanstack/react-table";
+
+import { PokeColumnSortableHeader } from "@app/components/poke/PokeColumnSortableHeader";
 
 export type SubscriptionsDisplayType = {
   id: string;
@@ -34,54 +34,21 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
   return [
     {
       accessorKey: "id",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Id</p>
-            <IconButton
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="ID" />
+      ),
     },
     {
       accessorKey: "name",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Plan Code</p>
-            <IconButton
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Plan code" />
+      ),
     },
     {
       accessorKey: "status",
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Status</p>
-            <IconButton
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Status" />
+      ),
     },
     {
       accessorKey: "stripeSubscriptionId",
@@ -103,38 +70,16 @@ export function makeColumnsForSubscriptions(): ColumnDef<SubscriptionsDisplayTyp
     {
       accessorKey: "startDate",
       sortingFn: sortDate,
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>Start Date</p>
-            <IconButton
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="Start date" />
+      ),
     },
     {
       accessorKey: "endDate",
       sortingFn: sortDate,
-      header: ({ column }) => {
-        return (
-          <div className="flex space-x-2">
-            <p>End Date</p>
-            <IconButton
-              variant="ghost"
-              icon={ArrowsUpDownIcon}
-              onClick={() =>
-                column.toggleSorting(column.getIsSorted() === "asc")
-              }
-            />
-          </div>
-        );
-      },
+      header: ({ column }) => (
+        <PokeColumnSortableHeader column={column} label="End date" />
+      ),
     },
   ];
 }

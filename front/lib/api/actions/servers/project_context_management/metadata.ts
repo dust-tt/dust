@@ -191,6 +191,36 @@ export const PROJECT_CONTEXT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
       done: "Create conversation",
     },
   },
+  search_unread: {
+    description:
+      "Search for unread conversations in the project. Returns conversations that have been updated since the user last read them, " +
+      "within an optional time window (defaults to 30 days).",
+    schema: {
+      daysBack: z
+        .number()
+        .optional()
+        .default(30)
+        .describe(
+          "Number of days to look back for unread conversations (default: 30 days)"
+        ),
+      limit: z
+        .number()
+        .optional()
+        .default(20)
+        .describe(
+          "Maximum number of conversations to return (default: 20, max: 100)"
+        ),
+      dustProject:
+        ConfigurableToolInputSchemas[
+          INTERNAL_MIME_TYPES.TOOL_INPUT.DUST_PROJECT
+        ].optional(),
+    },
+    stake: "never_ask",
+    displayLabels: {
+      running: "Searching unread conversations",
+      done: "Search unread conversations",
+    },
+  },
 });
 
 const PROJECT_CONTEXT_MANAGEMENT_INSTRUCTIONS =
