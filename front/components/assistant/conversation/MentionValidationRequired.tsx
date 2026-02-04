@@ -1,4 +1,9 @@
-import { ChatBubbleLeftRightIcon, RequestCard } from "@dust-tt/sparkle";
+import {
+  ActionCardBlock,
+  Avatar,
+  Button,
+  ChatBubbleLeftRightIcon,
+} from "@dust-tt/sparkle";
 import { useMemo, useState } from "react";
 
 import type { VirtuosoMessage } from "@app/components/assistant/conversation/types";
@@ -89,22 +94,31 @@ export function MentionValidationRequired({
   );
 
   return (
-    <RequestCard
-      className="my-3 max-w-md"
-      icon={ChatBubbleLeftRightIcon}
-      title={title}
-      description={description}
-      primaryAction={{
-        label: isProjectMembership ? "Add to project" : "Invite",
-        onClick: handleApprove,
-        disabled: isSubmitting,
-        isLoading: isSubmitting,
-      }}
-      secondaryAction={{
-        label: "Decline",
-        onClick: handleReject,
-        disabled: isSubmitting,
-      }}
-    />
+    <div className="my-3">
+      <ActionCardBlock
+        title={title}
+        visual={<Avatar icon={ChatBubbleLeftRightIcon} size="sm" />}
+        description={description}
+        actions={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              label="Decline"
+              disabled={isSubmitting}
+              onClick={handleReject}
+            />
+            <Button
+              variant="highlight"
+              size="sm"
+              label={isProjectMembership ? "Add to project" : "Invite"}
+              disabled={isSubmitting}
+              isLoading={isSubmitting}
+              onClick={handleApprove}
+            />
+          </div>
+        }
+      />
+    </div>
   );
 }
