@@ -15,8 +15,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
     schema: {},
     stake: "never_ask",
     displayLabels: {
-      running: "Listing files",
-      done: "List files",
+      running: "Listing files in conversation",
+      done: "List files in conversation",
     },
   },
   [CONVERSATION_CAT_FILE_ACTION_NAME]: {
@@ -52,8 +52,8 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading file",
-      done: "Read file",
+      running: "Reading file from conversation",
+      done: "Read file from conversation",
     },
   },
 });
