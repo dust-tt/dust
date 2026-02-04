@@ -62,7 +62,7 @@ function stubModulesPlugin(): Plugin {
   };
 }
 
-// Plugin to rename output HTML to index.html for SPA deployment
+// Plugin to rename output HTML to index.html for SPA deployment (poke only)
 function renameHtmlPlugin(sourceHtml: string): Plugin {
   return {
     name: "rename-html",
@@ -79,8 +79,27 @@ function renameHtmlPlugin(sourceHtml: string): Plugin {
   };
 }
 
+// Plugin to organize multi-entry HTML output into subdirectories
+// Moves oauth.html to oauth/index.html for clean URL routing
+function organizeMultiEntryOutputPlugin(): Plugin {
+  return {
+    name: "organize-multi-entry-output",
+    enforce: "post",
+    generateBundle(_, bundle) {
+      // Move oauth.html to oauth/index.html for clean URLs
+      const oauthAsset = bundle["oauth.html"];
+      if (oauthAsset) {
+        oauthAsset.fileName = "oauth/index.html";
+        delete bundle["oauth.html"];
+        bundle["oauth/index.html"] = oauthAsset;
+      }
+    },
+  };
+}
+
 // Plugin to serve the correct HTML file in dev mode (SPA fallback)
-function serveHtmlPlugin(htmlFile: string): Plugin {
+// For app builds, routes OAuth paths to oauth.html, everything else to index.html
+function serveHtmlPlugin(isPokeApp: boolean): Plugin {
   return {
     name: "serve-html",
     configureServer(server) {
@@ -94,8 +113,17 @@ function serveHtmlPlugin(htmlFile: string): Plugin {
         ) {
           return next();
         }
-        // Rewrite all other requests to the HTML file (SPA fallback)
-        req.url = `/${htmlFile}`;
+
+        if (isPokeApp) {
+          // Poke: single entry point
+          req.url = "/poke.html";
+        } else {
+          // App: route OAuth paths to oauth.html, everything else to index.html
+          const isOAuthPath =
+            req.url?.startsWith("/oauth/") ||
+            req.url?.match(/^\/w\/[^/]+\/oauth\//);
+          req.url = isOAuthPath ? "/oauth.html" : "/index.html";
+        }
         next();
       });
     },
@@ -129,19 +157,21 @@ export default defineConfig(({ mode }) => {
   // Base path for the app (set via VITE_BASE_PATH env var from build script)
   const basePath = env.VITE_BASE_PATH ?? "/";
 
-  // HTML entry file based on app
-  const htmlEntry = isPokeApp ? "poke.html" : "index.html";
+  // Build plugins based on app type
+  const plugins = [stubModulesPlugin(), serveHtmlPlugin(isPokeApp), react()];
+
+  // Poke uses single entry with rename, app uses multi-entry with organize
+  if (isPokeApp) {
+    plugins.splice(2, 0, renameHtmlPlugin("poke.html"));
+  } else {
+    plugins.splice(2, 0, organizeMultiEntryOutputPlugin());
+  }
 
   return {
     base: basePath,
     root: path.resolve(__dirname, "."),
     publicDir: path.resolve(__dirname, "../front/public"),
-    plugins: [
-      stubModulesPlugin(),
-      serveHtmlPlugin(htmlEntry),
-      renameHtmlPlugin(htmlEntry),
-      react(),
-    ],
+    plugins,
     define: {
       ...envVarDefines,
       // Fallback for any remaining process.env access
@@ -202,7 +232,13 @@ export default defineConfig(({ mode }) => {
       outDir: path.resolve(__dirname, `dist/${appName}`),
       sourcemap: true,
       rollupOptions: {
-        input: path.resolve(__dirname, htmlEntry),
+        // Poke: single entry, App: multi-entry (main + oauth)
+        input: isPokeApp
+          ? path.resolve(__dirname, "poke.html")
+          : {
+              main: path.resolve(__dirname, "index.html"),
+              oauth: path.resolve(__dirname, "oauth.html"),
+            },
       },
     },
   };
