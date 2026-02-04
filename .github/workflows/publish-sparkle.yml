@@ -63,7 +63,7 @@ jobs:
         run: |
           cd sparkle
           CURRENT_VERSION=$(npm version ${{ github.event.inputs.release_type }} --no-git-tag-version)
-          git add package.json package-lock.json
+          git add package.json ../package-lock.json
           git commit -m "chore(release): bump sparkle version to ${CURRENT_VERSION} [skip ci]"
           echo "Created version ${CURRENT_VERSION}"
 

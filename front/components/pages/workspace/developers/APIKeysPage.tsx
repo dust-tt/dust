@@ -9,19 +9,16 @@ import get from "lodash/get";
 import { useMemo, useState } from "react";
 import { useSWRConfig } from "swr";
 
-import { subNavigationAdmin } from "@app/components/navigation/config";
-import { AppCenteredLayout } from "@app/components/sparkle/AppCenteredLayout";
 import { APIKeyCreationSheet } from "@app/components/workspace/api-keys/APIKeyCreationSheet";
 import { APIKeysList } from "@app/components/workspace/api-keys/APIKeysList";
 import { EditKeyCapDialog } from "@app/components/workspace/api-keys/EditKeyCapDialog";
 import { NewAPIKeyDialog } from "@app/components/workspace/api-keys/NewAPIKeyDialog";
 import { useSendNotification } from "@app/hooks/useNotification";
-import { useAuth, useWorkspace } from "@app/lib/auth/AuthContext";
+import { useWorkspace } from "@app/lib/auth/AuthContext";
 import { useSubmitFunction } from "@app/lib/client/utils";
 import { clientFetch } from "@app/lib/egress/client";
 import { useKeys } from "@app/lib/swr/apps";
 import { useGroups } from "@app/lib/swr/groups";
-import { useFeatureFlags } from "@app/lib/swr/workspaces";
 import type { GroupType, KeyType, ModelId, WorkspaceType } from "@app/types";
 
 interface APIKeysProps {
@@ -191,20 +188,9 @@ export function APIKeys({ owner }: APIKeysProps) {
 
 export function APIKeysPage() {
   const owner = useWorkspace();
-  const { subscription } = useAuth();
-
-  const { featureFlags } = useFeatureFlags({ workspaceId: owner.sId });
 
   return (
-    <AppCenteredLayout
-      subscription={subscription}
-      owner={owner}
-      subNavigation={subNavigationAdmin({
-        owner,
-        current: "api_keys",
-        featureFlags,
-      })}
-    >
+    <>
       <Page.Vertical gap="xl" align="stretch">
         <Page.Header
           title="API Keys"
@@ -216,6 +202,6 @@ export function APIKeysPage() {
         </Page.Vertical>
       </Page.Vertical>
       <div className="h-12" />
-    </AppCenteredLayout>
+    </>
   );
 }

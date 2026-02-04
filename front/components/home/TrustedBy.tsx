@@ -198,11 +198,13 @@ type SizeKey = "default" | "large";
 interface TrustedByProps {
   logoSet?: LogoSetKey;
   size?: SizeKey;
+  showTitle?: boolean;
 }
 
 export default function TrustedBy({
   logoSet = "default",
   size = "default",
+  showTitle = true,
 }: TrustedByProps) {
   const { geoData } = useGeolocation();
   const [mounted, setMounted] = useState(false);
@@ -233,9 +235,11 @@ export default function TrustedBy({
         "xl:col-span-10 xl:col-start-2"
       )}
     >
-      <H4 className="mb-6 w-full text-center text-foreground">
-        Trusted by <span className="text-blue-500">2,000+</span> organizations
-      </H4>
+      {showTitle && (
+        <H4 className="mb-6 w-full text-center text-foreground">
+          Trusted by <span className="text-blue-500">2,000+</span> organizations
+        </H4>
+      )}
 
       <div className="w-full">
         <div

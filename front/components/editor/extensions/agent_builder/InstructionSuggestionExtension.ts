@@ -134,12 +134,14 @@ declare module "@tiptap/core" {
       rejectSuggestion: (suggestionId: string) => ReturnType;
       acceptAllSuggestions: () => ReturnType;
       rejectAllSuggestions: () => ReturnType;
+      setHighlightedSuggestion: (suggestionId: string | null) => ReturnType;
     };
   }
 
   interface Storage {
     instructionSuggestion: {
       activeSuggestionIds: string[];
+      highlightedSuggestionId: string | null;
     };
   }
 }
@@ -419,12 +421,37 @@ function processAllSuggestions(
   return true;
 }
 
+/**
+ * Gets the document position of a suggestion mark by its ID.
+ * Returns the start position of the first mark with the given suggestionId, or null if not found.
+ */
+export function getSuggestionPosition(
+  editor: { state: EditorState },
+  suggestionId: string
+): number | null {
+  let position: number | null = null;
+  editor.state.doc.descendants((node, pos) => {
+    if (position !== null) {
+      return false;
+    }
+    const mark = node.marks.find(
+      (m) =>
+        m.type.name === "suggestion" && m.attrs.suggestionId === suggestionId
+    );
+    if (mark) {
+      position = pos;
+    }
+  });
+  return position;
+}
+
 export const InstructionSuggestionExtension = Extension.create({
   name: "instructionSuggestion",
 
   addStorage() {
     return {
       activeSuggestionIds: [] as string[],
+      highlightedSuggestionId: null as string | null,
     };
   },
 
@@ -577,6 +604,24 @@ export const InstructionSuggestionExtension = Extension.create({
           }
 
           return modified;
+        },
+
+      setHighlightedSuggestion:
+        (suggestionId: string | null) =>
+        ({ tr, dispatch, view }) => {
+          this.storage.highlightedSuggestionId = suggestionId;
+
+          if (dispatch) {
+            // TODO(2026-01-04 COPILOT): Fix highlight updating.
+            // tr.setMeta(suggestionHighlightPluginKey, suggestionId);
+            dispatch(tr);
+          }
+
+          if (view) {
+            view.updateState(view.state);
+          }
+
+          return true;
         },
     };
   },
