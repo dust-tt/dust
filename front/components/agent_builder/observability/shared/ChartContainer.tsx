@@ -50,7 +50,7 @@ export function ChartContainer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   return (
     <>
-      <div className="observability-chart-container">
+      <div className="observability-chart-container rounded-lg border border-border bg-card p-4 dark:border-border-night">
         <div className="flex items-center justify-between">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-base font-medium text-foreground dark:text-foreground-night">
