@@ -16,7 +16,6 @@ const config: KnipConfig = {
       ignoreFiles: [
         "**/vite.config.js",
         "**/esbuild.worker.ts",
-        "hooks/useGooglePicker.ts", // Google Picker not used currently, will be re-added later
         "components/home/content/Product/BlogSection.tsx", // Temporarily disabled due to broken blog.dust.tt images
         "lib/api/sandbox/client.ts", // Sandbox client not wired up yet
       ],

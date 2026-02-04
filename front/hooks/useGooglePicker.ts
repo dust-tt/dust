@@ -1,6 +1,3 @@
-// TODO: remove comment, file is unused, for now.
-
-/** 
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const GOOGLE_API_SCRIPT_URL = "https://apis.google.com/js/api.js";
@@ -226,4 +223,3 @@ export function useGooglePicker({
     error,
   };
 }
-*/
