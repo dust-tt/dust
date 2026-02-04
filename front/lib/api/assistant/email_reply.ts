@@ -200,7 +200,8 @@ export async function sendEmailReplyOnError(
 
     const email = reconstructEmailFromContext(context);
     const htmlContent =
-      `<p>Error running agent:</p>\n` + `<p>${errorMessage}</p>\n`;
+      `<p>Error running agent:</p>\n` +
+      `<p>${sanitizeHtml(errorMessage, { allowedTags: [], allowedAttributes: {} })}</p>\n`;
 
     await replyToEmail({
       email,
