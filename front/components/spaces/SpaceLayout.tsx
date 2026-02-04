@@ -104,10 +104,12 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
         />
       }
     >
-      {
-        isLoading || !space ? <div className="flex h-screen items-center justify-center">
+      {isLoading || !space ? (
+        <div className="flex h-screen items-center justify-center">
           <Spinner />
-        </div> : <div className="flex w-full flex-col">
+        </div>
+      ) : (
+        <div className="flex w-full flex-col">
           <Page.Vertical gap="lg" align="stretch">
             {
               // Message to admins that are not members of the space.
@@ -124,22 +126,26 @@ export function SpaceLayout({ children }: SpaceLayoutProps) {
               )
             }
             <SpaceSearchInput
-                category={validCategory}
-                canReadInSpace={canReadInSpace}
-                canWriteInSpace={canWriteInSpace}
-                owner={owner}
-                useBackendSearch
-                space={space}
-                dataSourceView={dataSourceView ?? undefined}
-                parentId={parentId ?? undefined}
-              >
-                {isLoading || !space ? <div className="flex h-screen items-center justify-center">
+              category={validCategory}
+              canReadInSpace={canReadInSpace}
+              canWriteInSpace={canWriteInSpace}
+              owner={owner}
+              useBackendSearch
+              space={space}
+              dataSourceView={dataSourceView ?? undefined}
+              parentId={parentId ?? undefined}
+            >
+              {isLoading || !space ? (
+                <div className="flex h-screen items-center justify-center">
                   <Spinner />
-                </div> : children}
-              </SpaceSearchInput>
-            </Page.Vertical>
-          </div>
-      }
+                </div>
+              ) : (
+                children
+              )}
+            </SpaceSearchInput>
+          </Page.Vertical>
+        </div>
+      )}
 
       {isAdmin && !isLimitReached && (
         <CreateOrEditSpaceModal

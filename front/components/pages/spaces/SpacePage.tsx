@@ -17,7 +17,11 @@ export function SpacePage() {
   const { subscription, isAdmin, isBuilder } = useAuth();
   const plan = subscription.plan;
 
-  const { spaceInfo: space, canWriteInSpace, isSpaceInfoLoading } = useSpaceInfo({
+  const {
+    spaceInfo: space,
+    canWriteInSpace,
+    isSpaceInfoLoading,
+  } = useSpaceInfo({
     workspaceId: owner.sId,
     spaceId,
   });
