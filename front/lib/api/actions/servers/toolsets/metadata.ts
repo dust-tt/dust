@@ -13,6 +13,10 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
       "List the available toolsets with their names and descriptions. This is like using 'ls' in Unix.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing toolsets",
+      done: "List toolsets",
+    },
   },
   enable: {
     description: "Enable a toolset for this conversation.",
@@ -20,6 +24,10 @@ export const TOOLSETS_TOOLS_METADATA = createToolsRecord({
       toolsetId: z.string().describe("The ID of the toolset to enable."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Enabling toolset",
+      done: "Enable toolset",
+    },
   },
 });
 
@@ -37,6 +45,7 @@ export const TOOLSETS_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(TOOLSETS_TOOLS_METADATA).map((t) => [t.name, t.stake])

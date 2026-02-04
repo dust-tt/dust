@@ -23,6 +23,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe("Token for fetching the next page of results."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting drafts",
+      done: "Get drafts",
+    },
   },
   create_draft: {
     description: `Create a new email draft in Gmail.
@@ -43,6 +47,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       body: z.string().describe("The body of the email"),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Creating draft",
+      done: "Create draft",
+    },
   },
   delete_draft: {
     description: "Delete a draft email from Gmail.",
@@ -52,6 +60,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       to: z.array(z.string()).describe("The email addresses of the recipients"),
     },
     stake: "high",
+    displayLabels: {
+      running: "Deleting draft",
+      done: "Delete draft",
+    },
   },
   get_messages: {
     description:
@@ -81,6 +93,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting messages",
+      done: "Get messages",
+    },
   },
   get_attachment: {
     description:
@@ -114,6 +130,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting attachment",
+      done: "Get attachment",
+    },
   },
   create_reply_draft: {
     description: `Create a reply draft to an existing email thread in Gmail.
@@ -143,6 +163,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
         .describe("Override the BCC recipients for the reply."),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Creating reply draft",
+      done: "Create reply draft",
+    },
   },
   send_mail: {
     description: `Send an email directly via Gmail.
@@ -166,6 +190,10 @@ export const GMAIL_TOOLS_METADATA = createToolsRecord({
       body: z.string().describe("The body of the email"),
     },
     stake: "high",
+    displayLabels: {
+      running: "Sending email",
+      done: "Send email",
+    },
   },
 });
 
@@ -188,6 +216,7 @@ export const GMAIL_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(GMAIL_TOOLS_METADATA).map((t) => [t.name, t.stake])

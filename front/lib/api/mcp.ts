@@ -50,6 +50,8 @@ export type MCPToolType = {
   name: string;
   description: string;
   inputSchema?: JSONSchema;
+  // Optional for remote MCP servers (external sources may not have this).
+  // Mandatory for internal MCP servers (enforced via ServerMetadata type).
   displayLabels?: ToolDisplayLabels;
 };
 

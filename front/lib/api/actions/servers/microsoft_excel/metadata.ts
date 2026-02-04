@@ -18,6 +18,10 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing Excel files",
+      done: "List Excel files",
+    },
   },
   get_worksheets: {
     description:
@@ -40,6 +44,10 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting worksheets",
+      done: "Get worksheets",
+    },
   },
   read_worksheet: {
     description:
@@ -69,6 +77,10 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading worksheet",
+      done: "Read worksheet",
+    },
   },
   write_worksheet: {
     description:
@@ -104,6 +116,10 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Writing to worksheet",
+      done: "Write to worksheet",
+    },
   },
   create_worksheet: {
     description:
@@ -129,6 +145,10 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         .describe("Name for the new worksheet (e.g., 'Q4 Results')"),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating worksheet",
+      done: "Create worksheet",
+    },
   },
   clear_range: {
     description:
@@ -163,6 +183,10 @@ export const MICROSOFT_EXCEL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Clearing range",
+      done: "Clear range",
+    },
   },
 });
 
@@ -184,6 +208,7 @@ export const MICROSOFT_EXCEL_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_EXCEL_TOOLS_METADATA).map((t) => [t.name, t.stake])

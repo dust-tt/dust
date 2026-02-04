@@ -52,6 +52,10 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     enableAlerting: true,
+    displayLabels: {
+      running: "Listing warehouse contents",
+      done: "List warehouse contents",
+    },
   },
   find: {
     description:
@@ -93,6 +97,10 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     enableAlerting: true,
+    displayLabels: {
+      running: "Finding tables",
+      done: "Find tables",
+    },
   },
   describe_tables: {
     description:
@@ -112,6 +120,10 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     enableAlerting: true,
+    displayLabels: {
+      running: "Describing tables",
+      done: "Describe tables",
+    },
   },
   query: {
     description:
@@ -138,6 +150,10 @@ export const DATA_WAREHOUSES_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     enableAlerting: true,
+    displayLabels: {
+      running: "Running query",
+      done: "Run query",
+    },
   },
 });
 
@@ -156,6 +172,7 @@ export const DATA_WAREHOUSES_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(DATA_WAREHOUSES_TOOLS_METADATA).map((t) => [t.name, t.stake])

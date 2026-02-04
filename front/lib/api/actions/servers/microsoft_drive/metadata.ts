@@ -29,6 +29,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         .describe("Maximum number of results to return (max 25)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching in files",
+      done: "Search in files",
+    },
   },
   search_drive_items: {
     description:
@@ -41,6 +45,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching drive items",
+      done: "Search drive items",
+    },
   },
   update_word_document: {
     description:
@@ -66,6 +74,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Updating Word document",
+      done: "Update Word document",
+    },
   },
   get_file_content: {
     description:
@@ -106,6 +118,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting file content",
+      done: "Get file content",
+    },
   },
   upload_file: {
     description:
@@ -142,6 +158,10 @@ export const MICROSOFT_DRIVE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Uploading file",
+      done: "Upload file",
+    },
   },
 });
 
@@ -163,6 +183,7 @@ export const MICROSOFT_DRIVE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(MICROSOFT_DRIVE_TOOLS_METADATA).map((t) => [t.name, t.stake])

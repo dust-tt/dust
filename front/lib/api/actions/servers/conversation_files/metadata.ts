@@ -14,6 +14,10 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
     description: "List all files attached to the conversation.",
     schema: {},
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing files",
+      done: "List files",
+    },
   },
   [CONVERSATION_CAT_FILE_ACTION_NAME]: {
     description:
@@ -47,6 +51,10 @@ export const CONVERSATION_FILES_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading file",
+      done: "Read file",
+    },
   },
 });
 
@@ -64,6 +72,7 @@ export const CONVERSATION_FILES_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(CONVERSATION_FILES_TOOLS_METADATA).map((t) => [

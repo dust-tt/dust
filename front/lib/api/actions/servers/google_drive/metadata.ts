@@ -26,6 +26,10 @@ export const GOOGLE_DRIVE_TOOLS_METADATA = createToolsRecord({
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing drives",
+      done: "List drives",
+    },
   },
   search_files: {
     description:
@@ -95,6 +99,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
       pageToken: z.string().optional().describe("Page token for pagination."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching files",
+      done: "Search files",
+    },
   },
   get_file_content: {
     description: `Get the content of a Google Drive file with offset-based pagination. Supported mimeTypes: ${SUPPORTED_MIMETYPES.join(", ")}.`,
@@ -116,6 +124,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting file content",
+      done: "Get file content",
+    },
   },
   get_spreadsheet: {
     description:
@@ -126,6 +138,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("The ID of the spreadsheet to retrieve."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting spreadsheet",
+      done: "Get spreadsheet",
+    },
   },
   get_worksheet: {
     description:
@@ -147,6 +163,10 @@ Each key sorts ascending by default, but can be reversed with desc modified. Exa
         .describe("How values should be represented in the output."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting worksheet",
+      done: "Get worksheet",
+    },
   },
 });
 
@@ -157,6 +177,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new document."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating document",
+      done: "Create document",
+    },
   },
   create_spreadsheet: {
     description: "Create a new Google Sheets spreadsheet in the user's Drive.",
@@ -164,6 +188,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new spreadsheet."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating spreadsheet",
+      done: "Create spreadsheet",
+    },
   },
   create_presentation: {
     description: "Create a new Google Slides presentation in the user's Drive.",
@@ -171,6 +199,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       title: z.string().describe("The title of the new presentation."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating presentation",
+      done: "Create presentation",
+    },
   },
   create_comment: {
     description: "Add a comment to a Google Drive file (Doc, Sheet, or Slide).",
@@ -179,6 +211,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
       content: z.string().describe("The text content of the comment."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Creating comment",
+      done: "Create comment",
+    },
   },
   update_document: {
     description:
@@ -194,6 +230,10 @@ export const GOOGLE_DRIVE_WRITE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Updating document",
+      done: "Update document",
+    },
   },
 });
 
@@ -223,6 +263,7 @@ export const GOOGLE_DRIVE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(ALL_TOOLS_METADATA).map((t) => [t.name, t.stake])

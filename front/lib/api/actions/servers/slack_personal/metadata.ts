@@ -65,6 +65,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       ...commonSearchParams,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching messages",
+      done: "Search messages",
+    },
   },
   semantic_search_messages: {
     description:
@@ -78,6 +82,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
       ...commonSearchParams,
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Semantic searching messages",
+      done: "Semantic search messages",
+    },
   },
   post_message: {
     description:
@@ -108,6 +116,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .describe("The file id of the file to attach to the message."),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Posting message",
+      done: "Post message",
+    },
   },
   schedule_message: {
     description:
@@ -139,6 +151,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "medium",
+    displayLabels: {
+      running: "Scheduling message",
+      done: "Schedule message",
+    },
   },
   list_users: {
     description: "List all users in the workspace, and optionally user groups",
@@ -155,6 +171,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing users",
+      done: "List users",
+    },
   },
   get_user: {
     description:
@@ -165,6 +185,10 @@ export const SLACK_PERSONAL_TOOLS_METADATA = createToolsRecord({
         .describe("The Slack user ID to look up (for example: U0123456789)."),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Getting user",
+      done: "Get user",
+    },
   },
   search_channels: {
     description: `Search for Slack channels by ID or name.
@@ -195,6 +219,10 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Searching channels",
+      done: "Search channels",
+    },
   },
   list_messages: {
     description:
@@ -216,6 +244,10 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
         ),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Listing messages",
+      done: "List messages",
+    },
   },
   read_thread_messages: {
     description:
@@ -249,6 +281,10 @@ IMPORTANT: Always use 'auto' scope unless the user explicitly requests a specifi
         .describe("Only messages before this timestamp (Unix timestamp)"),
     },
     stake: "never_ask",
+    displayLabels: {
+      running: "Reading thread messages",
+      done: "Read thread messages",
+    },
   },
 });
 
@@ -274,6 +310,7 @@ export const SLACK_PERSONAL_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(SLACK_PERSONAL_TOOLS_METADATA).map((t) => [t.name, t.stake])

@@ -44,7 +44,7 @@ export interface ToolDefinition<
   description: string;
   schema: TSchema;
   stake: MCPToolStakeLevelType;
-  displayLabels?: ToolDisplayLabels;
+  displayLabels: ToolDisplayLabels;
   handler: (
     params: z.infer<z.ZodObject<TSchema>>,
     extra: ToolHandlerExtra
@@ -77,8 +77,13 @@ export function buildTools<T extends Record<string, ToolMeta>>(
   );
 }
 
+// Internal MCP server tools must have displayLabels (unlike remote servers).
+type InternalMCPToolType = MCPToolType & {
+  displayLabels: ToolDisplayLabels;
+};
+
 export interface ServerMetadata {
   serverInfo: InternalMCPServerDefinitionType;
-  tools: MCPToolType[];
+  tools: InternalMCPToolType[];
   tools_stakes: Record<string, MCPToolStakeLevelType>;
 }

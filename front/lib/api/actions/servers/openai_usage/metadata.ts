@@ -73,6 +73,10 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "low",
+    displayLabels: {
+      running: "Getting completions usage",
+      done: "Get completions usage",
+    },
   },
   get_organization_costs: {
     description:
@@ -115,6 +119,10 @@ export const OPENAI_USAGE_TOOLS_METADATA = createToolsRecord({
         .describe("Return only costs for these projects. Optional."),
     },
     stake: "low",
+    displayLabels: {
+      running: "Getting organization costs",
+      done: "Get organization costs",
+    },
   },
 });
 
@@ -133,6 +141,7 @@ export const OPENAI_USAGE_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(OPENAI_USAGE_TOOLS_METADATA).map((t) => [t.name, t.stake])

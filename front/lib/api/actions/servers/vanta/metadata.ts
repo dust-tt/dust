@@ -72,6 +72,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing tests", done: "List tests" },
   },
   list_test_entities: {
     description:
@@ -85,6 +86,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing test entities", done: "List test entities" },
   },
   list_controls: {
     description:
@@ -101,6 +103,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing controls", done: "List controls" },
   },
   list_control_tests: {
     description:
@@ -110,6 +113,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing control tests", done: "List control tests" },
   },
   list_control_documents: {
     description:
@@ -121,6 +125,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing control documents", done: "List control documents" },
   },
   list_documents: {
     description:
@@ -135,6 +140,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing documents", done: "List documents" },
   },
   list_document_resources: {
     description:
@@ -147,6 +153,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing document resources", done: "List document resources" },
   },
   list_integrations: {
     description:
@@ -159,6 +166,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing integrations", done: "List integrations" },
   },
   list_frameworks: {
     description:
@@ -171,6 +179,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing frameworks", done: "List frameworks" },
   },
   list_framework_controls: {
     description:
@@ -182,6 +191,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing framework controls", done: "List framework controls" },
   },
   list_people: {
     description:
@@ -194,6 +204,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing people", done: "List people" },
   },
   list_risks: {
     description:
@@ -206,6 +217,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing risks", done: "List risks" },
   },
   list_vulnerabilities: {
     description:
@@ -264,6 +276,7 @@ export const VANTA_TOOLS_METADATA = createToolsRecord({
       ...PaginationSchema,
     },
     stake: "never_ask",
+    displayLabels: { running: "Listing vulnerabilities", done: "List vulnerabilities" },
   },
 });
 
@@ -285,6 +298,7 @@ export const VANTA_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(VANTA_TOOLS_METADATA).map((t) => [t.name, t.stake])

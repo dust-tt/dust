@@ -53,6 +53,10 @@ export const AGENT_MANAGEMENT_TOOLS_METADATA = createToolsRecord({
         ),
     },
     stake: "high",
+    displayLabels: {
+      running: "Creating agent",
+      done: "Create agent",
+    },
   },
 });
 
@@ -71,6 +75,7 @@ export const AGENT_MANAGEMENT_SERVER = {
     name: t.name,
     description: t.description,
     inputSchema: zodToJsonSchema(z.object(t.schema)) as JSONSchema,
+    displayLabels: t.displayLabels,
   })),
   tools_stakes: Object.fromEntries(
     Object.values(AGENT_MANAGEMENT_TOOLS_METADATA).map((t) => [t.name, t.stake])
