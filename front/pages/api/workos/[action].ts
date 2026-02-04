@@ -332,7 +332,13 @@ async function handleCallback(req: NextApiRequest, res: NextApiResponse) {
     };
 
     if (sanitizedReturnTo) {
-      res.redirect(appendUtmToUrl(sanitizedReturnTo));
+      if (sanitizedReturnTo.startsWith("/api")) {
+        res.redirect(appendUtmToUrl(sanitizedReturnTo));
+      } else {
+        res.redirect(
+          appendUtmToUrl(`${config.getAppUrl(true)}${sanitizedReturnTo}`)
+        );
+      }
       return;
     }
 
