@@ -175,8 +175,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding Freshservice ticket note",
-      done: "Add Freshservice ticket note",
+      running: "Adding note to Freshservice ticket",
+      done: "Add note to Freshservice ticket",
     },
   },
   add_ticket_reply: {
@@ -187,8 +187,8 @@ export const FRESHSERVICE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "low",
     displayLabels: {
-      running: "Adding Freshservice ticket reply",
-      done: "Add Freshservice ticket reply",
+      running: "Adding reply to Freshservice ticket",
+      done: "Add reply to Freshservice ticket",
     },
   },
 

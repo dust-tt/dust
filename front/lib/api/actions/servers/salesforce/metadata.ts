@@ -83,8 +83,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Listing Salesforce attachments",
-      done: "List Salesforce attachments",
+      running: "Listing attachments on Salesforce",
+      done: "List attachments on Salesforce",
     },
   },
   read_attachment: {
@@ -98,8 +98,8 @@ export const SALESFORCE_TOOLS_METADATA = createToolsRecord({
     },
     stake: "never_ask",
     displayLabels: {
-      running: "Reading Salesforce attachment",
-      done: "Read Salesforce attachment",
+      running: "Reading attachment from Salesforce",
+      done: "Read attachment from Salesforce",
     },
   },
 });
