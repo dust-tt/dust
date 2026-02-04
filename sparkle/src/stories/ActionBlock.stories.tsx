@@ -17,7 +17,7 @@ const meta = {
   title: "Conversation/ActionBlock",
   component: ActionCardBlock,
   parameters: {
-    layout: "centered",
+    layout: "fullscreen",
   },
 } satisfies Meta<typeof ActionCardBlock>;
 
@@ -45,9 +45,9 @@ const StatefulActionCard = (
   );
 };
 
-export const Examples: Story = {
-  render: () => (
-    <div className="s-flex s-w-full s-max-w-3xl s-flex-col s-gap-3">
+const ExamplesView = () => {
+  return (
+    <div className="s-flex s-w-full s-min-w-full s-flex-col s-gap-3 s-p-6">
       <StatefulActionCard
         title="Update agent name and avatar"
         acceptedTitle="Agent name and avatar updated"
@@ -56,7 +56,7 @@ export const Examples: Story = {
         rejectLabel="Reject"
         cardVariant="highlight"
         actionsPosition="header"
-        visual={<Avatar size="sm" emoji="👋" backgroundColor="s-bg-blue-100" />}
+        visual={<Avatar size="md" emoji="👋" backgroundColor="s-bg-blue-100" />}
         description="The current name is too generic. A descriptive name helps users pick the right agent faster."
         collapsibleContent={
           <Markdown
@@ -96,9 +96,17 @@ export const Examples: Story = {
         title="Invite editors"
         acceptedTitle="Editors invited"
         rejectedTitle="Invite editors rejected"
-        avatarNames="Ava Chen,Noah Patel,Maya Lopez,Theo Martin"
-        avatarEmojis="👩‍💻,🧑‍🔧,👩‍🎨,🧑‍💼"
-        avatarIsRounded
+        visual={
+          <Avatar.Stack
+            avatars={[
+              { name: "Ava Chen", emoji: "👩‍💻", isRounded: true },
+              { name: "Noah Patel", emoji: "🧑‍🔧", isRounded: true },
+              { name: "Maya Lopez", emoji: "👩‍🎨", isRounded: true },
+              { name: "Theo Martin", emoji: "🧑‍💼", isRounded: true },
+            ]}
+            nbVisibleItems={4}
+          />
+        }
         applyLabel="Invite"
         rejectLabel="Skip"
         cardVariant="highlight"
@@ -119,5 +127,12 @@ export const Examples: Story = {
         description="Details about the action"
       />
     </div>
-  ),
+  );
+};
+
+export const Examples: Story = {
+  args: {
+    title: "Action block examples",
+  },
+  render: () => <ExamplesView />,
 };
